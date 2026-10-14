@@ -1,0 +1,37 @@
+#!/bin/sh
+# hpy: run the harness's Python. Usage: sh hpy <python args...>
+#
+# Candidates, first one that starts wins:
+#   $HARNESS_PY                    project settings env (per repo)
+#   $CLAUDE_PLUGIN_OPTION_PYTHON   plugin userConfig "python" (per user)
+#   python, py -3                  PATH fallback
+# python3 is deliberately absent: on Windows it is usually the Microsoft Store alias stub.
+# A missing jsonschema / referencing / pydantic only warns: hooks that need them say so themselves.
+
+probe() {
+    [ -n "$1" ] || return 1
+    case "$1" in *WindowsApps*) return 1 ;; esac
+    "$@" -c "import sys" >/dev/null 2>&1
+}
+
+# PY is always one executable path, kept quoted; PYFLAG carries the "-3" of the py launcher, if any.
+pick() {
+    PYFLAG=
+    for cand in "$HARNESS_PY" "$CLAUDE_PLUGIN_OPTION_PYTHON"; do
+        if probe "$cand"; then PY="$cand"; return 0; fi
+    done
+    if probe python; then PY=python; return 0; fi
+    if probe py -3; then PY=py; PYFLAG=-3; return 0; fi
+    return 1
+}
+
+if ! pick; then
+    echo "hpy: no usable Python (set HARNESS_PY or the harness plugin's python option)" >&2
+    exit 127
+fi
+
+if ! "$PY" ${PYFLAG:+"$PYFLAG"} -c "import jsonschema, referencing, pydantic" >/dev/null 2>&1; then
+    echo "hpy: WARNING: $PY lacks jsonschema/referencing/pydantic; schema checks will not run" >&2
+fi
+
+exec "$PY" ${PYFLAG:+"$PYFLAG"} "$@"
