@@ -1,0 +1,32 @@
+---
+name: d-w
+description: Use when asked to start, move, or do the work in a detached-HEAD worktree, a throwaway worktree, or an isolated checkout cut from HEAD, the base branch, or another ref.
+argument-hint: "[HEAD|<integration-branch>|<ref>] [--name NAME] [--no-fetch]"
+---
+
+# d-w: work in a detached-HEAD worktree
+
+Create the worktree with the bundled command (Bash tool), then do every later step of the task inside it.
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/new_worktree.py" $ARGUMENTS
+```
+
+- Base defaults to the current **HEAD**. The project's integration branches (`integration_branches` in
+  `.claude/harness.json`; when empty, the configured `base_branch` or the `origin/HEAD` branch, plus `main`)
+  fetch `origin` and cut from `origin/<base>`. Without a remote, or with `--no-fetch`, they cut from the local
+  branch (else the existing `origin/<base>`). Any other ref is cut as given.
+- **stdout is the absolute worktree path, nothing else**; stderr names the sha and ref. Exit 1 = bad ref, a
+  failed fetch (offline: rerun with `--no-fetch`) or an unreadable `harness.json`, nothing created. `--help`
+  lists the rest.
+- The path lands under the project's `worktree_root` (default `~/.config/superpowers/worktrees/<repo>/`; `--root`
+  overrides); collisions get `-2`, `-3`.
+
+## Afterward
+
+- Report the path and the base sha in one line.
+- Every Read / Edit / Write uses absolute paths under that worktree; every git call is `git -C "<path>" ...`.
+  Do not `cd`. Do not touch the main checkout.
+- Commits in the worktree are allowed. They sit on a detached HEAD: before the worktree is removed, keep them with
+  `git -C "<path>" switch -c <branch>` or merge them elsewhere.
+- Cleanup: `git worktree remove "<path>"`, only once its commits are integrated or the developer says so.
