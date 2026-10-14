@@ -1,0 +1,48 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: pytest + ruff (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m ruff check plugins tests
+      - name: pytest
+        shell: bash
+        run: python -m pytest tests/*/test_*.py -q
+      - name: hpy launches under sh
+        shell: bash
+        run: sh plugins/harness/scripts/hpy -c "import jsonschema, referencing, pydantic, sys; print(sys.version)"
+
+  plugins:
+    name: plugin validate + mod tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: validate (strict)
+        run: |
+          claude plugin validate --strict .
+          for p in plugins/*/; do claude plugin validate --strict "$p"; done
+      - name: mod tests
+        run: |
+          for p in plugins/pr-review-watch plugins/git-status plugins/session-bookmark; do claude plugin test "$p"; done
