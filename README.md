@@ -1,3 +1,4 @@
+[![ci](https://github.com/t968rs/operator-straps/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/t968rs/operator-straps/actions/workflows/ci.yml)
 # operator-straps
 
 A Claude Code plugin marketplace that carries an agent harness: PR review and fix waves, commit and PR-summary
