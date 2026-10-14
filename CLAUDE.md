@@ -26,6 +26,9 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 - **Hooks** register in `plugins/harness/hooks/hooks.json` in shell form through `hpy`. A file under `hooks/`
   without a leading underscore must be registered (`tests/contract/test_hooks_json_paths.py`).
 
+- **Porting a file in** from another repository follows the project skill `porting-into-straps`
+  (`.claude/skills/porting-into-straps/`); its `port_scan.py` lists the decoupling work before the copy.
+
 ## Tests
 
 - Python: name test files, never a directory:
