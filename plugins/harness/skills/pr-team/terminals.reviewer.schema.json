@@ -1,0 +1,151 @@
+{
+  "title": "pr-team terminals.jsonl - reviewer row",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/harness/pr-team/terminals.reviewer.schema.json",
+  "description": "Schema for terminals.jsonl rows emitted by Step 2 parallel reviewer fan-out. Reviewer agents may emit only DONE / FAIL / STOP signals (no FORK_*). Disambiguated from fixer rows by `agent_role: 'reviewer'`. Common field $defs live in terminals.common.schema.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "agent_id",
+    "agent_role",
+    "signal"
+  ],
+  "properties": {
+    "agent_id": {
+      "$ref": "terminals.common.schema.json#/$defs/agent_id"
+    },
+    "agent_role": {
+      "$ref": "terminals.common.schema.json#/$defs/agent_role",
+      "enum": [
+        "reviewer"
+      ],
+      "description": "Always `reviewer` on this row type."
+    },
+    "signal": {
+      "type": "string",
+      "enum": [
+        "DONE",
+        "FAIL",
+        "STOP"
+      ],
+      "description": "Reviewer-allowable verbs. Reviewers do NOT emit FORK_AMBIGUITY or FORK_BLOCKER - they have no design-fork authority.",
+      "$comment": "`STOP` may appear in terminals.jsonl. `STOP_PROTOCOL` is shim-internal and never appears directly."
+    },
+    "ts": {
+      "$ref": "terminals.common.schema.json#/$defs/ts"
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "findings",
+        "critical",
+        "important",
+        "minor"
+      ],
+      "properties": {
+        "findings": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "critical": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "important": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "minor": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "description": "Reviewer-style DONE counts. `findings` MUST equal `critical + important + minor`. JSON Schema cannot express the arithmetic; check B2 in qa_review_json.py fails any DONE reviewer row that breaks it."
+    },
+    "output_path": {
+      "$ref": "terminals.common.schema.json#/$defs/output_path"
+    },
+    "notes": {
+      "$ref": "terminals.common.schema.json#/$defs/notes"
+    },
+    "reason": {
+      "$ref": "terminals.common.schema.json#/$defs/reason"
+    },
+    "partial_output": {
+      "$ref": "terminals.common.schema.json#/$defs/partial_output"
+    },
+    "phase": {
+      "$ref": "terminals.common.schema.json#/$defs/phase"
+    },
+    "diagnostic": {
+      "$ref": "terminals.common.schema.json#/$defs/diagnostic"
+    },
+    "recovery": {
+      "$ref": "terminals.common.schema.json#/$defs/recovery"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "DONE"
+            ]
+          }
+        },
+        "required": [
+          "signal"
+        ]
+      },
+      "then": {
+        "required": [
+          "counts",
+          "output_path"
+        ],
+        "description": "DONE-reviewer requires both counts and output_path."
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "FAIL"
+            ]
+          }
+        },
+        "required": [
+          "signal"
+        ]
+      },
+      "then": {
+        "required": [
+          "reason"
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "signal": {
+            "enum": [
+              "STOP"
+            ]
+          }
+        },
+        "required": [
+          "signal"
+        ]
+      },
+      "then": {
+        "required": [
+          "phase",
+          "diagnostic",
+          "recovery"
+        ]
+      }
+    }
+  ]
+}
