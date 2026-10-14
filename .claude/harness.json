@@ -1,0 +1,16 @@
+{
+  "$schema": "../plugins/harness/config/harness.schema.json",
+  "harness_version": "0.1.0",
+  "tests": {
+    "roots": ["tests/"]
+  },
+  "commit_buckets": [
+    {"bucket": "Planning", "prefixes": ["docs/plans/"], "names": ["CLAUDE.md"]},
+    {"bucket": "Cicd", "prefixes": [".github/workflows/"]},
+    {"bucket": "Test", "prefixes": ["tests/"], "suffixes": [".test.ts", ".test.tsx"]},
+    {"bucket": "Agent", "prefixes": ["plugins/harness/skills/", "plugins/harness/agents/", "plugins/harness/rules/",
+                                     "plugins/harness/reference/", ".claude/"]},
+    {"bucket": "Runtime", "prefixes": ["plugins/"]},
+    {"bucket": "Docs", "prefixes": ["docs/"]}
+  ]
+}

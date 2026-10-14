@@ -1,0 +1,46 @@
+{
+  "harness_version": null,
+  "base_branch": null,
+  "integration_branches": [],
+  "skills_dir": ".claude/skills/",
+  "schemas_dir": ".claude/agent-schemas",
+  "state_dir": ".claude/state/harness",
+  "matrix_path": "docs/_harness/pr_review_invocation_test_matrix.jsonl",
+  "exclusions": null,
+  "artifacts": {
+    "reviews": "docs/PR_REVIEWS",
+    "plans": "docs/PLANS",
+    "summaries": "docs/PR_SUMMARIES",
+    "commit_messages": "docs/_commit_messages",
+    "scratch": "docs/_scratch/pr_review",
+    "research": "docs/RESEARCH",
+    "planning_prefixes": ["docs/superpowers/", "docs/PLANS/"]
+  },
+  "tests": {
+    "roots": ["tests/"],
+    "file_pattern": "(^|/)test_[^/]*\\.py$|(^|/)conftest\\.py$|\\.test\\.(ts|tsx|js)$",
+    "registry": null,
+    "registry_names": []
+  },
+  "review": {
+    "guard_suite": [],
+    "local_guards": [],
+    "local_test_pattern": "(^|/)test_[^/]*_local\\.py$",
+    "registry_guards": [],
+    "structural_guard_prefixes": [],
+    "content_pin_pattern": null,
+    "lenses": null,
+    "domain_pointers": []
+  },
+  "commit_buckets": [
+    {"bucket": "Artifact", "prefixes": ["docs/PR_REVIEWS/", "docs/PR_SUMMARIES/"], "names": [], "suffixes": ["matrix.jsonl"]},
+    {"bucket": "Planning", "prefixes": ["docs/superpowers/", "docs/PLANS/"], "names": ["CLAUDE.md", "DesignEvolution.json"], "suffixes": []},
+    {"bucket": "Agent", "prefixes": [".claude/"], "names": [], "suffixes": []},
+    {"bucket": "Cicd", "prefixes": [".github/workflows/"], "names": [], "suffixes": []},
+    {"bucket": "Test", "prefixes": ["tests/"], "names": [], "suffixes": []},
+    {"bucket": "Runtime", "prefixes": ["src/"], "names": [], "suffixes": []},
+    {"bucket": "Docs", "prefixes": ["docs/"], "names": [], "suffixes": []}
+  ],
+  "auto_approve_python_c": false,
+  "worktree_root": null
+}

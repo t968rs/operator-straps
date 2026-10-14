@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Decomposition Catalog",
+  "description": "Catalog of symbols in a Python module, classified for decomposition (keep-and-relocate / delete / keep-internal / needs-review). Extends SymbolCatalog.base.",
+  "allOf": [
+    {
+      "$ref": "SymbolCatalog.base.schema.json"
+    },
+    {
+      "type": "object",
+      "required": [
+        "module_path",
+        "file_path",
+        "total_lines",
+        "symbols"
+      ],
+      "properties": {
+        "summary": {
+          "type": "object",
+          "required": [
+            "total_symbols",
+            "total_functions",
+            "total_classes",
+            "used_symbols",
+            "unused_symbols"
+          ],
+          "properties": {
+            "total_symbols": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_functions": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_classes": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "total_constants": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "used_symbols": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Symbols with >= 1 confirmed external usage."
+            },
+            "unused_symbols": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Symbols with 0 external usages and not classified keep_internal."
+            }
+          }
+        },
+        "symbols": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/decompose_symbol"
+          }
+        },
+        "dependency_chains": {
+          "type": "array",
+          "description": "Pairs or groups of symbols that must move together.",
+          "items": {
+            "type": "object",
+            "required": [
+              "symbols",
+              "reason"
+            ],
+            "properties": {
+              "symbols": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 2
+              },
+              "reason": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "decompose_symbol": {
+      "allOf": [
+        {
+          "$ref": "SymbolCatalog.base.schema.json#/$defs/cataloged_entry"
+        },
+        {
+          "type": "object",
+          "required": [
+            "line_start",
+            "line_end",
+            "external_usage_count",
+            "disposition"
+          ],
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": [
+                "function",
+                "class",
+                "context_manager",
+                "constant",
+                "private_function"
+              ]
+            },
+            "external_usage_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Confirmed external callers from Phase 2 Pass 1 (explicit imports)."
+            },
+            "external_usage_files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "evidence": {
+              "type": "string",
+              "description": "Raw search evidence supporting the disposition (Pass 1 hit count, internal call sites, supersession check result)."
+            },
+            "disposition": {
+              "type": "string",
+              "enum": [
+                "keep_and_relocate",
+                "delete",
+                "keep_internal",
+                "needs_review"
+              ]
+            },
+            "confidence": {
+              "type": "string",
+              "enum": [
+                "high",
+                "medium",
+                "needs_review"
+              ],
+              "description": "Confidence tier for relocation suggestion. Required when disposition is keep_and_relocate."
+            },
+            "relocation_candidates": {
+              "type": "array",
+              "description": "Top relocation candidates (ranked best-fit first). Capped at 3 per decompose-module skill discipline - Stage 3 ranks and reports only the top three.",
+              "items": {
+                "type": "object",
+                "required": [
+                  "target_module",
+                  "rationale"
+                ],
+                "properties": {
+                  "target_module": {
+                    "type": "string"
+                  },
+                  "rationale": {
+                    "type": "string"
+                  }
+                }
+              },
+              "maxItems": 3
+            }
+          },
+          "if": {
+            "properties": {
+              "disposition": {
+                "const": "keep_and_relocate"
+              }
+            },
+            "required": [
+              "disposition"
+            ]
+          },
+          "then": {
+            "required": [
+              "confidence",
+              "relocation_candidates"
+            ],
+            "properties": {
+              "relocation_candidates": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

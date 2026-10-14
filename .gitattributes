@@ -1,0 +1,4 @@
+* text=auto
+# Shell launchers run under Git Bash; CRLF breaks the shebang and every line.
+*.sh text eol=lf
+plugins/harness/scripts/hpy text eol=lf

@@ -1,3 +1,10 @@
+
+# Folders
+.idea/
+docs/_commit_messages/
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -218,3 +225,10 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Plugin code lives under plugins/<name>/lib; the Python template ignores lib/ everywhere.
+!plugins/*/lib/
+!tests/lib/
+
+# Runtime state written by the harness into consuming projects never belongs here.
+.claude/state/

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_comment": "Cross-cutting reviewer-lens catalog. Used by pr-review Phase 1 (pr_review.py capture, which embeds scope templates in reviewer briefs) and pr-team to add concept-shaped reviewer slots on top of the path-shaped bucket-sort floor. Each lens declares a mechanical trigger and a scope-prompt scaffold. A project adds or overrides lenses through the lens file its harness.json names at review.lenses (see policy.project_lenses). In shell forms, $SKILLS_DIR and $SCHEMAS_DIR stand for the project's configured skills_dir and schemas_dir, with or without a trailing slash; the forms strip it and match them as literal path prefixes (awk index), never as regexes.",
+  "default_sub_lenses": [
+    {
+      "name": "linear docstring-vs-code pass",
+      "summary": "Default pass every bucket reviewer runs before specialized reasoning: linearly read each scoped file and compare docstring/prose contracts against implementation.",
+      "trigger": {
+        "description": "Always on for every bucket reviewer scope (docs/tests/runtime/config-or-registry/cicd).",
+        "always_on": true,
+        "detection_command": null
+      },
+      "scope_template": "For each in-scope file, perform one linear top-to-bottom read. For every module/class/function docstring or adjacent prose contract, verify implementation agreement. Record each contradiction as file:line with the claim and conflicting code behavior before running bucket-specific or cross-cutting analysis."
+    }
+  ],
+  "lenses": [
+    {
+      "name": "per-skill-package",
+      "summary": "Reviews ONE skill as a unit: SKILL.md, manifests, referenced schemas, AND every cross-reference to it elsewhere in the repo.",
+      "trigger": {
+        "description": "PR touches files under the project's skills_dir ($SKILLS_DIR/<name>/**) AND <name> appears in any file outside that skill folder.",
+        "detection_command": "sd=\"${SKILLS_DIR%/}/\"; for n in $(gh pr view $PR --json files --jq '.files[].path' | awk -v p=\"$sd\" 'index($0, p) == 1 { r = substr($0, length(p) + 1); if (index(r, \"/\") > 1) print r }' | cut -d/ -f1 | sort -u); do count=$(grep -rlF \"$n\" .claude docs .github 2>/dev/null | awk -v p=\"$sd$n/\" 'index($0, p) != 1' | wc -l); [ \"$count\" -gt 0 ] && echo \"$n\"; done"
+      },
+      "scope_template": "Review skill `<name>` as a single coherent package. In-scope: SKILL.md, manifest(s) under that folder, any schemas referenced by SKILL.md, AND every cross-reference to '<name>' in CLAUDE.md, other SKILL.md files, agent definitions, and docs/. Verify: (1) rename consistency - no orphan references to a prior name; (2) cross-link integrity - every linked file exists; (3) manifest-skill alignment - manifest fields match the skill's actual behavior; (4) phase/step structure internally consistent; (5) any rules the skill articulates are not contradicted by its own examples."
+    },
+    {
+      "name": "coordinated-multi-artifact",
+      "summary": "Reviews compose-correctness across N new artifacts that share a single design intent (multi-schema PRs, schema+test+config triads, etc.).",
+      "trigger": {
+        "description": "PR adds >= 2 NEW files that compose with each other - *.schema.json files anywhere, or files under the project's schemas_dir.",
+        "detection_command": "gh pr view $PR --json files --jq '.files[] | select(.additions > 0 and .deletions == 0) | .path' | awk -v p=\"${SCHEMAS_DIR%/}/\" '/\\.schema\\.json$/ || index($0, p) == 1' | wc -l"
+      },
+      "trigger_threshold": 2,
+      "scope_template": "Review compose-correctness across the N new artifacts together: [enumerate paths]. Walk every $ref / cross-reference between them. Verify: (1) allOf composition resolves cleanly under draft 2020-12; (2) ID and filename conventions are consistent (no $id-by-bare-token mixed with bare-relative-path $ref); (3) shared base structures actually narrow correctly in variants (no silent enum contradictions under allOf); (4) the artifacts together describe one coherent design, not N parallel designs that happen to share a folder. The canonical miss is an $id/$ref resolution bug that is invisible to a per-bucket reviewer reading one schema at a time."
+    },
+    {
+      "name": "overall-system-shape",
+      "summary": "Broader narrative-coherence pass: do README/docs claims match schema/skill actual behavior?",
+      "trigger": {
+        "description": "The path bucket-sort produces >= 3 non-empty buckets.",
+        "detection_command": "(count of non-empty path buckets)"
+      },
+      "trigger_threshold": 3,
+      "scope_template": "Review narrative coherence across the PR's diff. In-scope: every README/docs file touched, plus every schema/skill it references. Verify: (1) docs claims match schema/skill behavior - no doc says X when the schema enforces Y; (2) cross-document rename/path/version consistency; (3) `Update protocol` discipline - if the PR changes a schema, are README + CLAUDE.md + skill all updated in lockstep, or does one drift; (4) any rule the docs articulate is not contradicted by the same PR's diff. Cite each contradiction with file:line refs."
+    }
+  ],
+  "policy": {
+    "additivity": "Cross-cutting lenses are ADDED to the bucket-floor reviewer count, never substituted. A 3-bucket PR that triggers multi-artifact + overall = bucket count + 2 reviewer slots. One exception, pr-review only: the small-PR cut in policy.small_pr. pr-team keeps strict additivity.",
+    "small_pr": "pr-review only. Below 20 reviewable files (after exclusions), overall-system-shape gets no slot of its own: its scope_template is appended to the OVERALL reviewer's brief. When the roast roll fires on such a PR, the roast slot replaces the OVERALL slot and its brief carries OVERALL's full scope plus system shape in the roast voice, so coverage is kept and only the duplicate slot is dropped. At or above 20 reviewable files, OVERALL, overall-system-shape and roast are separate slots. Applied by harness_lib.review_plan (SMALL_PR_FILES, slot_plan).",
+    "mechanical_triggers": "Scope-decision is mechanical, not judgment. Do not add a lens because it 'feels right'; do not skip a lens because the bucket-sort 'looks complete enough'. Each detection_command is the pr-team shell form (gh + grep). For pr-review, harness_lib.review_plan is authoritative and reads only scope_template and default_sub_lenses of these three lenses from this catalog; its triggers differ from the shell forms: per-skill-package matches the skill name as a whole word (pr-review does not match pr-review-watch) and skips excluded files; coordinated-multi-artifact counts only status-A *.schema.json and schemas_dir paths; trigger_threshold is not read (the thresholds live in review_plan).",
+    "project_lenses": "A project's lens file (harness.json review.lenses, project-relative) holds {\"lenses\": [...], \"default_sub_lenses\": [...]}. A lens whose name matches one above replaces only its summary and scope_template (the trigger stays the code-driven one). Any other lens is a project lens: name is lowercase-hyphenated, must not collide with a bucket, overall, roast, system-shape, skill-package or multi-artifact slot id, and its trigger carries path_globs (fnmatch over reviewable paths) and optional min_files (default 1); when at least min_files reviewable paths match, one opus slot reviews the matching paths with the lens's scope_template. Project default_sub_lenses are appended after the plugin's.",
+    "merging": "pr-team only. pr-review never merges slots by judgment; pr_review.py capture applies the only merges (review_plan.slot_plan and the policy.small_pr cut). In pr-team, cross-cutting lenses MAY merge with bucket reviewers if the file overlap is total (e.g., per-skill-package lens entirely subsumes a single-skill bucket reviewer). Merge requires a one-line rationale in the dispatch announcement, same rule as bucket-merging."
+  }
+}

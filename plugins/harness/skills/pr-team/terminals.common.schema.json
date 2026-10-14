@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.local/harness/pr-team/terminals.common.schema.json",
+  "title": "pr-team terminals.jsonl - shared $defs",
+  "description": "Shared field $defs used by both the reviewer-row schema and the fixer-row schema.",
+  "$defs": {
+    "agent_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(_[a-z0-9]+)*$",
+      "description": "A regex-compatible identifier - for non-closer rows, exactly matches the originating dispatch_plan.json agents[].id; for the closer row (CLOSEOUT atomic close), the shim hardcodes the literal value `closer`. 'closer' is the shim-reserved literal, enforced by convention rather than a separate regex branch."
+    },
+    "agent_role": {
+      "type": "string",
+      "enum": [
+        "reviewer",
+        "fixer"
+      ],
+      "description": "Coarse role discriminator recorded on every row. `reviewer` for Step 2 fan-out returns (rows match terminals.reviewer.schema.json). `fixer` for Step 5 fixer-fan-out returns AND the Step 6 closer return (rows match terminals.fixer.schema.json). The closer is technically a fixer-mode agent (MODE=CLOSEOUT) - distinguished from individual fixers by `agent_id == 'closer'`."
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional ISO-8601 timestamp the shim recorded when parsing the agent's return. Useful for sequencing parallel returns; not required because file is line-ordered by append order anyway."
+    },
+    "output_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![/\\\\])(?![A-Za-z]:)(?!(.*[/\\\\])?\\.\\.([/\\\\]|$)).+",
+      "description": "Repo-relative path inside the checkout; rooted, drive-letter, UNC and parent-directory paths are forbidden. The shim verifies existence-on-disk at parse time; missing path is treated as STOP_PROTOCOL.",
+      "$comment": "Cross-platform path audit: the regex blocks a leading `/` or `\\` (Unix absolute, Windows rooted, UNC `\\\\server` and `//server`), any drive prefix (`C:\\foo`, `C:/foo`, drive-relative `C:foo`) and any `..` segment under either separator. Repo-relative is the only legal shape."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional freeform one-line note from the agent."
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "FAIL: one-line diagnostic."
+    },
+    "partial_output": {
+      "type": "string",
+      "description": "FAIL: optional path to whatever was written before failure."
+    },
+    "issue_id": {
+      "type": "string",
+      "pattern": "^[CIM][0-9]+$",
+      "description": "The ID assigned to a problem detected by a reviewer agent. These are carried in arrays (e.g. `issue_id_list`) and cross-referenced by fixers. The prefix letter encodes the issue type: `C` for code issues, `I` for infra issues, `M` for misc issues. The numeric portion is a simple integer sequence (e.g. C1, C2, C3... I1, I2... M1, M2...)."
+    },
+    "issue_description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line problem statement.",
+      "$comment": "Named `issue_description` (NOT `description`) to avoid colliding with the JSON-Schema reserved meta-keyword."
+    },
+    "phase": {
+      "type": "string",
+      "description": "STOP: dotted-path identifier (e.g. `phase1.check1`, `phase4_second.check3`)."
+    },
+    "diagnostic": {
+      "type": "string",
+      "description": "STOP: one-line diagnostic."
+    },
+    "recovery": {
+      "type": "string",
+      "description": "STOP: one-line actionable recovery."
+    },
+    "issue_id_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/issue_id"
+      },
+      "uniqueItems": true,
+      "description": "Array of unique issue IDs (no duplicates allowed)."
+    }
+  }
+}

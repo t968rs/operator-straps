@@ -1,0 +1,1045 @@
+"""pr-review merge, verdict, review document, fix waves and closeout over recorded reports.
+
+Pure functions over ``harness_lib.review_models`` reports and ``PR_REVIEW.schema.json`` dicts, plus
+``validate_review``: the in-process gate every review write goes through (the schema ``schema_path``
+resolves, with a registry of its sibling ``*.schema.json`` files, the hook's pending-``pre_fix_time``
+coherence rule, and ``harness_lib.validation.pr_json_validation.validate_issue_counts``).
+
+``schema_ref`` in a review document: the POSIX path from the review file's directory to the project's pinned
+``PR_REVIEW.schema.json`` (``<schemas_dir>/PR_REVIEW.schema.json``) when the project pins one, else the
+plugin schema's ``$id``. A project-relative path would dangle in a project that pins nothing, and an absolute
+path into the installed plugin would name a versioned cache directory, so the plugin case carries the
+schema's stable identifier instead.
+
+Merge rule: two findings merge only when they share the primary file and some line range of one lies within
+``MERGE_WINDOW`` lines of some range of the other, and a finding joins a merged group only when that holds for
+every member (no transitive chaining); findings without lines never auto-merge and surface through
+``merge_candidates``. Ids are numbered per severity by (primary file, first line, name). A source folded
+after build goes through ``append_findings``: the same conversion for its one report, ids continuing per
+severity after the review's highest, nothing renumbered or merged; ``cross_candidates`` only reports pairs.
+
+Fix waves: a mechanical multi-file issue splits into one single-file part per file; a judgment multi-file
+issue stays whole. Whole multi-file issues are placed first, widest first; the remaining units group by file,
+groups over ``MAX_ISSUES_PER_FIXER`` units split into chunks, and chunks are placed largest first into the
+first wave where they touch at most one fixer with room. Fixers within a wave are file-disjoint over the
+files they own. Given a test registry map, each unit also owns the registered tests targeting its files and
+the existing paths its ``fix`` text names (widened files: in the fixer's ``files`` and the disjointness
+check, never in ``parts``).
+
+Closeout: a fixer may resolve only the ids its planned parts assign it; a split issue (some fixer owns less
+than its file set, or a mechanical issue planned over more than one file, all parts in one fixer included)
+resolves only when its fixers' entries together cover every planned part, each part edited or marked
+``no_change`` by its fixer (a part's entry may also list its fixer's widened files); only ids already closed
+(``RESOLVED`` / ``CLOSED_NO_ACTION``, latest status) are skipped. ``remaining_parts`` and ``only_files`` let
+a follow-up wave re-plan just the unrecorded parts of a partially fixed split issue; given the closeout
+inputs, ``remaining_parts`` counts only the entries closeout accepts, so a rejected entry is re-planned.
+"""
+from __future__ import annotations
+
+import copy
+import functools
+import json
+import math
+import os
+import re
+from dataclasses import dataclass, field, replace
+from pathlib import Path
+from typing import TYPE_CHECKING, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
+
+from harness_lib.review_models import Finding, FixEntry, FixReport, ReviewerReport, Severity, config_for
+
+if TYPE_CHECKING:
+    from jsonschema.protocols import Validator
+
+    from harness_lib.config import HarnessConfig
+
+MERGE_WINDOW = 3
+MAX_ISSUES_PER_FIXER = 6
+PENDING = "pending - to be populated in Phase 4"
+SCHEMA_NAME = "PR_REVIEW.schema.json"
+SCHEMA_VERSION = "2.1.0"
+EVIDENCE_NOTE = "(working-tree snapshot; developer commits)"
+TIERS = ("critical", "important", "minor")
+CLOSED_STATUSES = ("RESOLVED", "CLOSED_NO_ACTION")
+_LETTER = {"critical": "C", "important": "I", "minor": "M"}
+_TIER_OF = {v: k for k, v in _LETTER.items()}
+_RANK = {tier: n for n, tier in enumerate(TIERS)}
+_LINES = re.compile(r"^\d+(-\d+)?(,\s*\d+(-\d+)?)*$")
+_ISSUE_ID = re.compile(r"^([CIM])(\d+)$")
+_TOKEN = re.compile(r"[a-z0-9]+")
+_PATH_TOKEN = re.compile(r"[\w.-]+(?:/[\w.-]+)+")
+_PATH_EXT = re.compile(r"/[^/]*\w\.[A-Za-z0-9]+$")
+_SLUG_DROP = re.compile(r"[^A-Za-z0-9._-]")
+
+Issue = Dict[str, object]
+Range = Tuple[int, int]
+Parts = Mapping[str, Mapping[str, Sequence[str]]]
+
+
+# --- line ranges and the merge record -----------------------------------------------------------------------
+
+
+def line_ranges(lines: Optional[str]) -> Tuple[Range, ...]:
+    """``(start, end)`` ranges of a ``lines`` string (``"9,146-155"``); empty for None; malformed raises."""
+    if lines is None:
+        return ()
+    if not _LINES.match(lines):
+        raise ValueError(f"lines {lines!r} is not a comma-separated list of N or N-M")
+    pairs = [[int(n) for n in part.strip().split("-")] for part in lines.split(",")]
+    return tuple((min(p), max(p)) for p in pairs)
+
+
+def _near(a: Sequence[Range], b: Sequence[Range]) -> bool:
+    """True when some range of ``a`` lies within ``MERGE_WINDOW`` lines of some range of ``b``."""
+    return any(s1 <= e2 + MERGE_WINDOW and s2 <= e1 + MERGE_WINDOW for s1, e1 in a for s2, e2 in b)
+
+
+def same_issue(a: Finding, b: Finding) -> bool:
+    """True when ``a`` and ``b`` share the primary file and have line ranges within the merge window."""
+    return a.file == b.file and _near(line_ranges(a.lines), line_ranges(b.lines))
+
+
+def _union(items: Iterable[str]) -> Tuple[str, ...]:
+    """Distinct ``items`` in first-seen order."""
+    return tuple(dict.fromkeys(items))
+
+
+def _merge_ranges(ranges: Iterable[Range]) -> Tuple[Range, ...]:
+    """Sorted ranges with overlapping or touching ranges joined."""
+    out: List[Range] = []
+    for start, end in sorted(ranges):
+        if out and start <= out[-1][1] + 1:
+            out[-1] = (out[-1][0], max(out[-1][1], end))
+        else:
+            out.append((start, end))
+    return tuple(out)
+
+
+def _tier(issue_id: str) -> str:
+    """Tier name of an issue id (``I3`` -> ``important``)."""
+    return _TIER_OF[issue_id[0]]
+
+
+def _files(issue: Mapping[str, object]) -> List[str]:
+    """Full file list of a schema issue: ``files`` when present, else ``[file]``."""
+    files = issue.get("files") or [issue["file"]]
+    return [str(f) for f in files]  # type: ignore[union-attr]
+
+
+@dataclass(frozen=True)
+class _Record:
+    """One finding or issue while merging; ``rank`` 0 is critical."""
+
+    rank: int
+    name: str
+    summary: str
+    fix: Tuple[str, ...]
+    file: str
+    also: Tuple[str, ...]
+    ranges: Tuple[Range, ...]
+    slots: Tuple[str, ...]
+    judgment: bool
+
+    @classmethod
+    def of_finding(cls, slot: str, finding: Finding) -> _Record:
+        """Record for one finding of reviewer ``slot``."""
+        return cls(_RANK[finding.severity.value], finding.name, finding.summary, finding.fix, finding.file,
+                   finding.also, line_ranges(finding.lines), (slot,), finding.fix_kind.value == "judgment")
+
+    @classmethod
+    def of_issue(cls, issue: Mapping[str, object]) -> _Record:
+        """Record for a schema issue dict (a missing ``fix_kind`` reads as judgment)."""
+        files = _files(issue)
+        slots = tuple(s.strip() for s in str(issue.get("reviewer", "")).split(",") if s.strip())
+        lines = issue.get("lines")
+        ranges = line_ranges(None if lines is None else str(lines))
+        fixes = tuple(str(f) for f in issue["fix"])  # type: ignore[attr-defined]
+        return cls(_RANK[_tier(str(issue["id"]))], str(issue["name"]), str(issue["summary"]),
+                   fixes, files[0], tuple(files[1:]), ranges, slots, issue.get("fix_kind") != "mechanical")
+
+    def issue(self, issue_id: str) -> Issue:
+        """Schema issue dict under ``issue_id``."""
+        out: Issue = {"id": issue_id, "name": self.name, "file": self.file}
+        if self.also:
+            out["files"] = [self.file, *self.also]
+        if self.ranges:
+            out["lines"] = ",".join(f"{s}" if s == e else f"{s}-{e}" for s, e in self.ranges)
+        out["reviewer"] = ", ".join(self.slots)
+        if len(self.slots) > 1:
+            out["both_reviewers"] = True
+        out["fix_kind"] = "judgment" if self.judgment else "mechanical"
+        out.update(summary=self.summary, fix=list(self.fix))
+        return out
+
+
+def _summary(records: Sequence[_Record]) -> str:
+    """The first record's summary, then each other distinct summary tagged with its reviewers."""
+    parts = [records[0].summary]
+    seen = {records[0].summary}
+    for record in records[1:]:
+        if record.summary not in seen:
+            seen.add(record.summary)
+            parts.append(f"Also ({', '.join(record.slots)}): {record.summary}")
+    return "\n\n".join(parts)
+
+
+def _combine(records: Sequence[_Record]) -> _Record:
+    """One record from ``records``; the first supplies the name and primary file, the best rank wins."""
+    first = records[0]
+    others = _union(f for r in records for f in (r.file, *r.also))
+    fixes = _union(f for r in records for f in r.fix)
+    return _Record(
+        min(r.rank for r in records), first.name, _summary(records), fixes,
+        first.file, tuple(f for f in others if f != first.file),
+        _merge_ranges(rng for r in records if r.file == first.file for rng in r.ranges),
+        _union(s for r in records for s in r.slots), any(r.judgment for r in records),
+    )
+
+
+# --- merge --------------------------------------------------------------------------------------------------
+
+
+def _groups(findings: Sequence[Finding]) -> List[List[int]]:
+    """Indexes of ``findings`` grouped by ``same_issue``, in first-seen order; a finding joins the first group
+    whose every member is ``same_issue`` with it (no chaining: 10, 13 and 16 make two groups), else starts
+    its own."""
+    groups: List[List[int]] = []
+    for i, finding in enumerate(findings):
+        home = next((g for g in groups if all(same_issue(finding, findings[j]) for j in g)), None)
+        if home is None:
+            groups.append([i])
+        else:
+            home.append(i)
+    return groups
+
+
+def _sort_key(record: _Record) -> Tuple[str, float, str]:
+    """Id order inside a tier: primary file, first line (no lines last), name."""
+    return record.file, (record.ranges[0][0] if record.ranges else math.inf), record.name
+
+
+def _number(records: Sequence[_Record]) -> List[Issue]:
+    """Schema issues with ids numbered per tier in ``_sort_key`` order, tiers critical first."""
+    out: List[Issue] = []
+    for rank, tier in enumerate(TIERS):
+        tiered = sorted((r for r in records if r.rank == rank), key=_sort_key)
+        out += [r.issue(f"{_LETTER[tier]}{n}") for n, r in enumerate(tiered, start=1)]
+    return out
+
+
+def merge_findings(reports: Sequence[ReviewerReport]) -> List[Issue]:
+    """Schema issue dicts from every report's findings, merged by ``same_issue`` and numbered per tier."""
+    items = [(report.reviewer, finding) for report in reports for finding in report.findings]
+    merged = []
+    for group in _groups([finding for _, finding in items]):
+        records = sorted((_Record.of_finding(*items[i]) for i in group), key=lambda r: r.rank)
+        merged.append(_combine(records))
+    return _number(merged)
+
+
+def _tokens(name: object) -> Set[str]:
+    """Lowercase alphanumeric tokens of an issue name."""
+    return set(_TOKEN.findall(str(name).lower()))
+
+
+def _jaccard(a: Set[str], b: Set[str]) -> float:
+    """Jaccard similarity of two token sets (0 when both are empty)."""
+    return len(a & b) / len(a | b) if a | b else 0.0
+
+
+def merge_candidates(issues: Sequence[Issue]) -> List[Tuple[str, str]]:
+    """Id pairs sharing a file whose name tokens have Jaccard similarity of at least 0.5."""
+    pairs: List[Tuple[str, str]] = []
+    for j, b in enumerate(issues):
+        for a in issues[:j]:
+            shared = set(_files(a)) & set(_files(b))
+            if shared and _jaccard(_tokens(a["name"]), _tokens(b["name"])) >= 0.5:
+                pairs.append((str(a["id"]), str(b["id"])))
+    return pairs
+
+
+# --- append after build -------------------------------------------------------------------------------------
+
+
+def _highest(issues: Sequence[Issue], tier: str) -> int:
+    """Highest id number of ``tier`` among ``issues`` (0 when the tier is empty)."""
+    return max((int(str(i["id"])[1:]) for i in issues if _tier(str(i["id"])) == tier), default=0)
+
+
+def append_findings(existing: Sequence[Issue], report: ReviewerReport) -> List[Issue]:
+    """Schema issues for one report, one issue per finding (no grouping: findings on the same lines stay
+    separate), numbered as ``merge_findings`` numbers them, with ids continuing per tier after the highest
+    id of ``existing``; ``existing`` is neither renumbered nor merged into."""
+    offset = {tier: _highest(existing, tier) for tier in TIERS}
+    added = _number([_combine([_Record.of_finding(report.reviewer, f)]) for f in report.findings])
+    return [{**i, "id": f"{str(i['id'])[0]}{int(str(i['id'])[1:]) + offset[_tier(str(i['id']))]}"}
+            for i in added]
+
+
+def cross_candidates(existing: Sequence[Issue], new: Sequence[Issue]) -> List[Tuple[str, str]]:
+    """``merge_candidates`` pairs of one ``existing`` id and one ``new`` id, existing id first."""
+    old = {str(i["id"]) for i in existing}
+    return [(a, b) for a, b in merge_candidates([*existing, *new]) if (a in old) != (b in old)]
+
+
+# --- verdict ------------------------------------------------------------------------------------------------
+
+
+def _id_key(issue_id: str) -> Tuple[int, int]:
+    """Natural id order: tier, then number."""
+    return _RANK[_tier(issue_id)], int(issue_id[1:])
+
+
+def _tolerant_key(issue_id: str) -> Tuple[int, int, str]:
+    """Natural id order that accepts any string: well-formed ids by tier and number, others after them."""
+    match = _ISSUE_ID.match(issue_id)
+    if match is None:
+        return len(TIERS), 0, issue_id
+    return _RANK[_TIER_OF[match.group(1)]], int(match.group(2)), issue_id
+
+
+def _listed(ids: Iterable[str]) -> str:
+    """Ids in natural order (malformed ids last), comma-separated."""
+    return ", ".join(sorted(ids, key=_tolerant_key))
+
+
+def issues_by_severity(issues: Sequence[Issue]) -> Dict[str, List[Issue]]:
+    """Issues keyed by tier (every tier present), in input order."""
+    return {tier: [i for i in issues if _tier(str(i["id"])) == tier] for tier in TIERS}
+
+
+def _ids(issues: Mapping[str, Sequence[Issue]]) -> Set[str]:
+    """Every issue id across the tiers."""
+    return {str(i["id"]) for tier in issues.values() for i in tier}
+
+
+def _closed_ids(resolutions: Sequence[Mapping[str, object]]) -> Set[str]:
+    """Ids whose latest resolution is ``RESOLVED`` or ``CLOSED_NO_ACTION``."""
+    latest = {str(r["id"]): r.get("status") for r in resolutions}
+    return {i for i, status in latest.items() if status in CLOSED_STATUSES}
+
+
+def _bubbled_ids(bubbles: Sequence[str], bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
+    """Ids in ``bubbles`` or the ``bubble_up`` ledger."""
+    return set(bubbles) | {str(b["id"]) for b in bubble_up}
+
+
+def _named_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequence[str],
+               bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
+    """Ids carrying any disposition: a resolution of any status, a ``bubbles`` or a ``bubble_up`` entry."""
+    return {str(r["id"]) for r in resolutions} | _bubbled_ids(bubbles, bubble_up)
+
+
+def _settled_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequence[str],
+                 bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
+    """Ids closed (latest status ``RESOLVED`` / ``CLOSED_NO_ACTION``) or bubbled; a ``DOWNGRADED_TO_*`` (or
+    any other non-closing) resolution alone does not settle an id."""
+    return _closed_ids(resolutions) | _bubbled_ids(bubbles, bubble_up)
+
+
+def undispositioned_ids(doc: Mapping[str, object]) -> List[str]:
+    """Issue ids of a review document neither closed nor bubbled, natural order."""
+    settled = _settled_ids(doc.get("post_review_resolutions") or [],  # type: ignore[arg-type]
+                           doc.get("bubbles") or [], doc.get("bubble_up") or [])  # type: ignore[arg-type]
+    return sorted(_ids(doc["issues"]) - settled, key=_tolerant_key)  # type: ignore[arg-type]
+
+
+def compute_verdict(issues: Mapping[str, Sequence[Issue]], resolutions: Sequence[Mapping[str, object]],
+                    bubbles: Sequence[str], bubble_up: Sequence[Mapping[str, object]]) -> str:
+    """Verdict line per the pr-review verdict rule; an orphan disposition id raises ``ValueError``."""
+    ids = _ids(issues)
+    named = _named_ids(resolutions, bubbles, bubble_up)
+    if named - ids:
+        raise ValueError(f"orphan disposition ids (match no issue): {_listed(named - ids)}")
+    closed = _closed_ids(resolutions)
+    for tier in ("critical", "important"):
+        open_ids = {str(i["id"]) for i in issues.get(tier, ())} - closed
+        if open_ids:
+            return f"NOT READY TO MERGE - {tier}: {_listed(open_ids)}"
+    pending = ids - _settled_ids(resolutions, bubbles, bubble_up)
+    if pending:
+        return f"NOT READY TO MERGE - minor findings pending Phase 5: {_listed(pending)}"
+    bubbled = _bubbled_ids(bubbles, bubble_up) - closed
+    return f"READY TO MERGE - {len(closed)} of {len(ids)} findings resolved, {len(bubbled)} bubbled"
+
+
+# --- amend --------------------------------------------------------------------------------------------------
+
+
+def _flat(issues: Sequence[Issue]) -> List[Issue]:
+    """Deep copies of ``issues`` ordered by tier, input order within a tier."""
+    return [copy.deepcopy(i) for tier in issues_by_severity(issues).values() for i in tier]
+
+
+def _find(issues: Sequence[Issue], issue_id: str) -> Issue:
+    """The issue with ``issue_id``; ``ValueError`` when absent."""
+    for issue in issues:
+        if issue["id"] == issue_id:
+            return issue
+    raise ValueError(f"no issue {issue_id}")
+
+
+def _tier_name(severity: Union[Severity, str]) -> str:
+    """Tier name from a ``Severity`` or a letter / name in any case; ``ValueError`` otherwise."""
+    text = str(getattr(severity, "value", severity)).strip().lower()
+    tier = _TIER_OF.get(text.upper(), text)
+    if tier not in TIERS:
+        raise ValueError(f"unknown severity {severity!r}")
+    return tier
+
+
+def regrade(issues: Sequence[Issue], issue_id: str, severity: Union[Severity, str]) -> List[Issue]:
+    """Issues with ``issue_id`` moved to ``severity`` under a new id at the end of that tier."""
+    tier = _tier_name(severity)
+    out = _flat(issues)
+    moving = _find(out, issue_id)
+    if _tier(issue_id) == tier:
+        raise ValueError(f"{issue_id} is already {tier}")
+    numbers = [int(str(i["id"])[1:]) for i in out if _tier(str(i["id"])) == tier]
+    out.remove(moving)
+    moving["id"] = f"{_LETTER[tier]}{max(numbers, default=0) + 1}"
+    return _flat([*out, moving])
+
+
+def merge_ids(issues: Sequence[Issue], keep: str, drop: Sequence[str]) -> List[Issue]:
+    """Issues with each ``drop`` id folded into ``keep`` (fixes, files, lines, reviewers, fix kind)."""
+    if not drop or keep in drop:
+        raise ValueError("merge needs at least one id to drop, and keep must not be dropped")
+    out = _flat(issues)
+    kept = _find(out, keep)
+    dropped = [_find(out, d) for d in drop]
+    if any(_RANK[_tier(d)] < _RANK[_tier(keep)] for d in drop):
+        raise ValueError(f"cannot fold a higher-severity issue into {keep}; regrade first")
+    combined = _combine([_Record.of_issue(i) for i in [kept, *dropped]])
+    out[out.index(kept)] = replace(combined, rank=_RANK[_tier(keep)]).issue(keep)
+    return [i for i in out if i["id"] not in drop]
+
+
+# --- review document and validation -------------------------------------------------------------------------
+
+
+def slugify_title(title: str) -> str:
+    """Filename slug of a PR title (pr-team rule: strip backticks and colons, ``_`` runs, keep ``._-``)."""
+    text = title.replace("`", "").replace(":", "")
+    text = re.sub(r"\s+", "_", text)
+    return _SLUG_DROP.sub("", text).strip("_")
+
+
+def default_schema_ref() -> str:
+    """The plugin ``PR_REVIEW.schema.json``'s ``$id`` (its file name when the schema carries none)."""
+    from harness_lib.project import plugin_root
+    schema = json.loads((plugin_root() / "schemas" / SCHEMA_NAME).read_text(encoding="utf-8"))
+    return str(schema.get("$id") or SCHEMA_NAME)
+
+
+def schema_ref_for(review_path: Path, cfg: HarnessConfig) -> str:
+    """``schema_ref`` for a review written to ``review_path``: the POSIX path from its directory to the
+    project's pinned schema when ``cfg`` pins one, else ``default_schema_ref()``."""
+    pinned = cfg.path(cfg.schemas_dir) / SCHEMA_NAME
+    if not pinned.is_file():
+        return default_schema_ref()
+    return Path(os.path.relpath(pinned.resolve(), Path(review_path).resolve().parent)).as_posix()
+
+
+def review_document(meta: Mapping[str, object], draft: Mapping[str, object],
+                    dispatch_time: Mapping[str, object], *,
+                    schema_ref: Optional[str] = None) -> Dict[str, object]:
+    """PR_REVIEW document from capture ``meta``, the merge ``draft`` and the Phase 1 ``dispatch_time`` block.
+
+    ``meta`` keys: pr, pr_title, branch, base_branch, base_sha, head_sha, review_date, stats and optional
+    scoped_review_files. ``draft`` keys: issues (flat list), strengths, reviewers. ``schema_ref`` defaults
+    to ``default_schema_ref()``; a writer that knows the target path passes ``schema_ref_for``.
+    """
+    issues = copy.deepcopy(issues_by_severity(draft["issues"]))  # type: ignore[arg-type]
+    named = ("pr", "pr_title", "branch", "base_branch", "base_sha", "head_sha", "review_date")
+    return {
+        "schema_ref": schema_ref or default_schema_ref(), "version": SCHEMA_VERSION,
+        **{k: meta[k] for k in named},
+        "verdict": compute_verdict(issues, [], [], []), "stats": copy.deepcopy(meta["stats"]),
+        "reviewers": list(draft["reviewers"]),  # type: ignore[call-overload]
+        "scoped_review_files": list(meta.get("scoped_review_files") or []),  # type: ignore[call-overload]
+        "bubbles": [], "strengths": list(draft["strengths"]),  # type: ignore[call-overload]
+        "issues": issues, "bubble_up": [],
+        "verification_log": {"dispatch_time": copy.deepcopy(dict(dispatch_time)), "pre_fix_time": PENDING},
+    }
+
+
+def review_validator(schema_file: Path) -> Validator:
+    """Validator for the PR_REVIEW schema at ``schema_file`` over a registry of each sibling ``*.schema.json``
+    (cached per path and modification time)."""
+    path = Path(schema_file).resolve()
+    return _cached_validator(str(path), path.stat().st_mtime_ns)
+
+
+@functools.lru_cache(maxsize=8)
+def _cached_validator(schema_file: str, _mtime_ns: int) -> Validator:
+    """The validator ``review_validator`` returns; ``_mtime_ns`` only keys the cache."""
+    import jsonschema
+    from referencing import Registry, Resource
+
+    path = Path(schema_file)
+    schema = json.loads(path.read_text(encoding="utf-8"))
+    registry = Registry()
+    for sibling in path.parent.glob("*.schema.json"):
+        content = json.loads(sibling.read_text(encoding="utf-8"))
+        registry = registry.with_resource(uri=sibling.name, resource=Resource.from_contents(content))
+    return jsonschema.validators.validator_for(schema)(schema, registry=registry)
+
+
+def _schema_problems(doc: Mapping[str, object], schema_file: Path) -> List[str]:
+    """One ``schema: <path>: <message>`` line per schema error."""
+    errors = sorted(review_validator(schema_file).iter_errors(doc),
+                    key=lambda e: list(map(str, e.absolute_path)))
+    return [f"schema: {'.'.join(map(str, e.absolute_path)) or '<root>'}: {e.message}" for e in errors]
+
+
+def _pending_problems(doc: Mapping[str, object]) -> List[str]:
+    """The hook's Layer 2 rule: a pending ``pre_fix_time`` allows no READY verdict and no resolution."""
+    log = doc.get("verification_log")
+    if not isinstance(log, dict) or log.get("pre_fix_time") != PENDING:
+        return []
+    ready = str(doc.get("verdict") or "").startswith("READY TO MERGE")
+    if ready or doc.get("post_review_resolutions"):
+        return ["pre_fix_time is still pending but the review has a READY verdict or resolutions"]
+    return []
+
+
+def validate_review(doc: Mapping[str, object], repo: Optional[Path] = None) -> List[str]:
+    """Problems that block writing ``doc``: schema errors, the pending rule and the issue-count check.
+
+    ``repo`` names the project whose schema governs (default: the active project).
+    """
+    from harness_lib.project import schema_path
+    from harness_lib.validation.pr_json_validation import IssueTabulationError, validate_issue_counts
+
+    problems = _schema_problems(doc, schema_path(SCHEMA_NAME, config_for(repo))) + _pending_problems(doc)
+    try:
+        validate_issue_counts(dict(doc))
+    except IssueTabulationError as exc:
+        problems.append(f"issue counts: {exc.message}")
+    return problems
+
+
+# --- fix waves ----------------------------------------------------------------------------------------------
+
+
+def fix_paths(issue: Mapping[str, object]) -> List[str]:
+    """Path tokens shaped ``a/b/c.ext`` named in an issue's ``fix`` options, first-seen order; tokens with a
+    ``..`` segment are dropped (existence is the caller's check)."""
+    text = " ".join(str(option) for option in issue.get("fix") or [])  # type: ignore[union-attr]
+    tokens = (t.rstrip(".,:;") for t in _PATH_TOKEN.findall(text))
+    paths = (t[2:] if t.startswith("./") else t for t in tokens if _PATH_EXT.search(t))
+    return list(_union(p for p in paths if ".." not in p.split("/")))
+
+
+def _target_covers(target: str, files: Set[str]) -> bool:
+    """True when ``target`` equals a file of ``files`` or, as a directory, contains one (the registry's
+    exact-or-descendant rule: ``src/pkg`` covers ``src/pkg/mod.py``, not ``src/pkg_other.py``)."""
+    prefix = target.rstrip("/") + "/"
+    return target in files or any(f.startswith(prefix) for f in files)
+
+
+def registry_tests(files: Iterable[str], registry: Mapping[str, Sequence[str]]) -> List[str]:
+    """Registered test files (``registry``: test file -> ``test_target_paths``) targeting any of ``files``,
+    a directory target covering every file beneath it (the rule registry test selection applies)."""
+    wanted = set(files)
+    return [test for test, targets in registry.items() if any(_target_covers(t, wanted) for t in targets)]
+
+
+def _widening(issue: Issue, files: Sequence[str], registry: Mapping[str, Sequence[str]],
+              existing: Set[str]) -> Tuple[str, ...]:
+    """Files a unit's fixer may also edit: tests targeting ``files`` and existing paths the fix names, minus
+    the issue's own files."""
+    own = set(_files(issue))
+    found = [*registry_tests(files, registry), *(p for p in fix_paths(issue) if p in existing)]
+    return tuple(f for f in _union(found) if f not in own)
+
+
+@dataclass(frozen=True)
+class _Unit:
+    """One placement unit: a whole issue, or one file (part) of a split mechanical issue, plus the widened
+    files its fixer also owns (tests and fix-named paths; never part of the issue's parts)."""
+
+    issue: Issue
+    files: Tuple[str, ...]
+    extra: Tuple[str, ...] = ()
+
+    @property
+    def id(self) -> str:
+        """The issue id."""
+        return str(self.issue["id"])
+
+
+def _units(issue: Issue, registry: Mapping[str, Sequence[str]], existing: Set[str]) -> List[_Unit]:
+    """One part per file of a mechanical multi-file issue, else the whole issue; each widened."""
+    files = _union(_files(issue))
+    split = issue.get("fix_kind") == "mechanical" and len(files) > 1
+    parts = [(f,) for f in files] if split else [files]
+    return [_Unit(issue, part, _widening(issue, part, registry, existing)) for part in parts]
+
+
+def _by_id(units: Iterable[_Unit]) -> List[_Unit]:
+    """``units`` most severe first."""
+    return sorted(units, key=lambda u: _id_key(u.id))
+
+
+def _chunks(units: Sequence[_Unit], cap: int) -> List[List[_Unit]]:
+    """Placement order: each multi-file unit alone (widest first), then single-file units grouped by file
+    (first-seen order), most severe first, split into chunks of ``cap``, largest chunk first."""
+    wide = sorted((u for u in units if len(u.files) > 1), key=lambda u: (-len(u.files), _id_key(u.id)))
+    groups: Dict[str, List[_Unit]] = {}
+    for unit in (u for u in units if len(u.files) == 1):
+        groups.setdefault(unit.files[0], []).append(unit)
+    chunks = [ordered[n:n + cap] for ordered in map(_by_id, groups.values())
+              for n in range(0, len(ordered), cap)]
+    return [[u] for u in wide] + sorted(chunks, key=len, reverse=True)
+
+
+def _chunk_files(chunk: Sequence[_Unit]) -> Set[str]:
+    """Owned file set of a chunk, widened files included."""
+    return {f for unit in chunk for f in (*unit.files, *unit.extra)}
+
+
+def _place_in_wave(wave: List[List[_Unit]], chunk: List[_Unit], cap: int) -> bool:
+    """Place ``chunk`` in ``wave`` when it touches at most one fixer with room; False otherwise."""
+    files = _chunk_files(chunk)
+    touching = [b for b in wave if _chunk_files(b) & files]
+    if len(touching) > 1 or (touching and len(touching[0]) + len(chunk) > cap):
+        return False
+    roomy = touching or [b for b in wave if len(b) + len(chunk) <= cap]
+    if roomy:
+        max(roomy, key=len).extend(chunk)
+    else:
+        wave.append(list(chunk))
+    return True
+
+
+def _parts(chunk: Sequence[_Unit]) -> Dict[str, List[str]]:
+    """Owned files per issue id (in the issue's file order), ids minor, then important, then critical."""
+    owned: Dict[str, Set[str]] = {}
+    issues: Dict[str, Issue] = {}
+    for unit in chunk:
+        owned.setdefault(unit.id, set()).update(unit.files)
+        issues[unit.id] = unit.issue
+    ids = sorted(owned, key=lambda i: (-_RANK[_tier(i)], int(i[1:])))
+    return {i: [f for f in _union(_files(issues[i])) if f in owned[i]] for i in ids}
+
+
+def _fixer(wave: int, number: int, chunk: Sequence[_Unit]) -> Dict[str, object]:
+    """Fixer row: id, model, issue ids (minor, then important, then critical), parts and owned files."""
+    mechanical = all(u.issue.get("fix_kind") == "mechanical" for u in chunk)
+    parts = _parts(chunk)
+    return {"id": f"w{wave}_fix_{number}", "model": "haiku" if mechanical else "opus",
+            "issue_ids": list(parts), "parts": parts, "files": sorted(_chunk_files(chunk))}
+
+
+def plan_waves(issues: Sequence[Issue], held: Sequence[str], done: Sequence[str],
+               cap: int = MAX_ISSUES_PER_FIXER, start_wave: int = 1,
+               registry: Optional[Mapping[str, Sequence[str]]] = None,
+               existing: Optional[Set[str]] = None) -> List[List[Dict[str, object]]]:
+    """Fix waves (lists of file-disjoint fixers) over ``issues`` minus ``held`` and ``done`` ids.
+
+    A mechanical multi-file issue is planned as one part per file; ``cap`` counts parts and whole issues.
+    Each fixer's ``parts`` maps an issue id to the files that fixer owns for it. ``start_wave`` numbers the
+    first wave, so follow-up waves never reuse an earlier fixer id. Each unit's file set widens by the
+    ``registry`` tests (test file -> ``test_target_paths``) targeting its files and by the ``fix_paths``
+    found in ``existing``; widened files join the fixer's ``files`` and the disjointness check, never
+    ``parts``.
+    """
+    skip = set(held) | set(done)
+    units = [u for i in issues if i["id"] not in skip for u in _units(i, registry or {}, existing or set())]
+    waves: List[List[List[_Unit]]] = []
+    for chunk in _chunks(units, cap):
+        if not any(_place_in_wave(wave, chunk, cap) for wave in waves):
+            waves.append([list(chunk)])
+    return [[_fixer(start_wave + w, k, b) for k, b in enumerate(wave, start=1)]
+            for w, wave in enumerate(waves)]
+
+
+# --- closeout -----------------------------------------------------------------------------------------------
+
+
+def _resolution(issue_id: str, status: str, today: str, evidence: str) -> Dict[str, str]:
+    """A ``post_review_resolutions`` entry."""
+    return {"id": issue_id, "status": status, "date": today, "evidence": evidence}
+
+
+def _entry_problem(entry: FixEntry, fixer: str, bin_files: Set[str], changed: Set[str],
+                   created: Set[str]) -> Optional[str]:
+    """Why a fixed entry does not count, or None when every listed file is changed and in bounds and every
+    ``no_change`` file lies in the fixer's set."""
+    unchanged = [f for f in entry.files if f not in changed]
+    if unchanged:
+        return f"{entry.id} ({fixer}): listed files not changed since build: {', '.join(unchanged)}"
+    outside = [f for f in entry.files if f not in bin_files and f not in created]
+    if outside:
+        return f"{entry.id} ({fixer}): files outside the fixer's set and not new: {', '.join(outside)}"
+    foreign = [f for f in entry.no_change if f not in bin_files]
+    if foreign:
+        return f"{entry.id} ({fixer}): no_change files outside the fixer's set: {', '.join(foreign)}"
+    return None
+
+
+@dataclass(frozen=True)
+class _Planned:
+    """What closeout checks entries against: fixer file sets, each fixer's assigned ids (None when no plan
+    parts are known), per split issue each fixer's part, per fixer the widened files no part owns, and per
+    issue its own files (primary and also)."""
+
+    fixer_files: Mapping[str, Sequence[str]]
+    split: Mapping[str, Mapping[str, Tuple[str, ...]]]
+    ids: Set[str]
+    assigned: Optional[Mapping[str, Set[str]]] = None
+    extra: Mapping[str, Set[str]] = field(default_factory=dict)
+    own: Mapping[str, Set[str]] = field(default_factory=dict)
+
+    def is_assigned(self, fixer: str, issue_id: str) -> bool:
+        """True when ``issue_id`` is in ``fixer``'s planned parts, or when no parts were given."""
+        return self.assigned is None or issue_id in self.assigned.get(fixer, set())
+
+    def owned(self, fixer: str, issue_id: str) -> Optional[Set[str]]:
+        """Files ``fixer`` may list for ``issue_id``; None when it owns none. A split part also allows the
+        fixer's widened files that are no planned part of the same issue."""
+        if fixer not in self.fixer_files:
+            return None
+        if issue_id in self.split:
+            part = self.split[issue_id].get(fixer)
+            widened = self.extra.get(fixer, set()) - set(self.required(issue_id))
+            return None if part is None else set(part) | widened
+        return set(self.fixer_files[fixer])
+
+    def required(self, issue_id: str) -> List[str]:
+        """Every file planned for a split issue across its fixers, first-seen order."""
+        return list(_union(f for part in self.split[issue_id].values() for f in part))
+
+
+def _full_files(issues: Iterable[Issue]) -> Dict[str, Set[str]]:
+    """Issue id -> full file set."""
+    return {str(i["id"]): set(_files(i)) for i in issues}
+
+
+def _doc_issues(doc: Mapping[str, object]) -> List[Issue]:
+    """Every issue of a review document, tier by tier."""
+    return [i for tier in doc["issues"].values() for i in tier]  # type: ignore[attr-defined]
+
+
+def _mechanical_ids(issues: Iterable[Issue]) -> Set[str]:
+    """Ids of the ``mechanical`` issues."""
+    return {str(i["id"]) for i in issues if i.get("fix_kind") == "mechanical"}
+
+
+def _is_split(issue_id: str, fixers: Mapping[str, Tuple[str, ...]], full: Mapping[str, Set[str]],
+              mechanical: Set[str]) -> bool:
+    """True when some fixer owns less than the issue's file set, or when a mechanical issue's planned part
+    files number more than one (whatever the placement, one fixer included)."""
+    if issue_id not in full:
+        return False
+    if any(set(f) < full[issue_id] for f in fixers.values()):
+        return True
+    return issue_id in mechanical and len({f for files in fixers.values() for f in files}) > 1
+
+
+def _split_parts(full: Mapping[str, Set[str]], parts: Optional[Parts],
+                 mechanical: Optional[Set[str]] = None) -> Dict[str, Dict[str, Tuple[str, ...]]]:
+    """Issue id -> fixer -> owned files, for ids planned as parts (``_is_split``)."""
+    by_id: Dict[str, Dict[str, Tuple[str, ...]]] = {}
+    for fixer, owned in (parts or {}).items():
+        for issue_id, files in owned.items():
+            by_id.setdefault(issue_id, {})[fixer] = tuple(files)
+    return {i: fixers for i, fixers in by_id.items() if _is_split(i, fixers, full, mechanical or set())}
+
+
+def _check_entry(planned: _Planned, fixer: str, entry: FixEntry, changed: Set[str],
+                 created: Set[str]) -> Optional[str]:
+    """Why ``entry`` of ``fixer`` does not count, or None."""
+    if fixer not in planned.fixer_files:
+        return f"{fixer}: not a planned fixer; {entry.id} not resolved"
+    if entry.id not in planned.ids:
+        return f"{entry.id} ({fixer}): no such issue"
+    if not planned.is_assigned(fixer, entry.id):
+        return f"{entry.id} ({fixer}): not assigned to this fixer"
+    owned = planned.owned(fixer, entry.id)
+    if owned is None:
+        return f"{entry.id} ({fixer}): no part of {entry.id} planned for this fixer"
+    return _entry_problem(entry, fixer, owned, changed, created) or _own_file_problem(planned, fixer, entry)
+
+
+def _own_file_problem(planned: _Planned, fixer: str, entry: FixEntry) -> Optional[str]:
+    """Why a non-split entry that edited files edited none of its issue's own files, or None; widened tests,
+    docs and the fixer's other issues' files alone do not resolve an issue."""
+    if entry.id in planned.split or not entry.files or set(entry.files) & planned.own.get(entry.id, set()):
+        return None
+    own = ", ".join(sorted(planned.own.get(entry.id, set())))
+    return f"{entry.id} ({fixer}): no listed file is one of the issue's own files ({own})"
+
+
+def _valid_entries(planned: _Planned, fixes: Sequence[FixReport], changed: Set[str],
+                   created: Set[str]) -> Tuple[Dict[str, List[FixEntry]], List[Tuple[str, str]]]:
+    """Validated fixed entries per issue id (first-seen order), plus each rejected entry's (id, problem)."""
+    valid: Dict[str, List[FixEntry]] = {}
+    rejected: List[Tuple[str, str]] = []
+    for report in fixes:
+        for entry in report.fixed:
+            problem = _check_entry(planned, report.fixer, entry, changed, created)
+            if problem:
+                rejected.append((entry.id, problem))
+            else:
+                valid.setdefault(entry.id, []).append(entry)
+    return valid, rejected
+
+
+def _coverage_problem(planned: _Planned, issue_id: str, entries: Sequence[FixEntry]) -> Optional[str]:
+    """``<id> partially fixed: missing <files>`` when a split issue's entries miss a planned file (a file
+    edited or marked ``no_change`` by its owner counts as covered); a problem too when no entry edited a
+    file."""
+    if not any(entry.files for entry in entries):
+        return f"{issue_id}: no fixed entry edited a file (only no_change files)"
+    if issue_id not in planned.split:
+        return None
+    covered = {f for entry in entries for f in (*entry.files, *entry.no_change)}
+    missing = [f for f in planned.required(issue_id) if f not in covered]
+    return f"{issue_id} partially fixed: missing {', '.join(missing)}" if missing else None
+
+
+def _apply_fixed(doc: Dict[str, object], planned: _Planned, valid: Mapping[str, Sequence[FixEntry]],
+                 head: str, today: str) -> List[str]:
+    """Append a RESOLVED entry per issue whose validated entries suffice; return the coverage problems."""
+    resolutions: List[Dict[str, str]] = doc["post_review_resolutions"]  # type: ignore[assignment]
+    already = _closed_ids(resolutions)
+    problems: List[str] = []
+    for issue_id, entries in valid.items():
+        if issue_id in already:
+            continue
+        problem = _coverage_problem(planned, issue_id, entries)
+        if problem:
+            problems.append(problem)
+            continue
+        whats = _union(e.what for e in entries) if issue_id in planned.split else (entries[0].what,)
+        evidence = f"{head} {EVIDENCE_NOTE} - {'; '.join(whats)}"
+        resolutions.append(_resolution(issue_id, "RESOLVED", today, evidence))
+    return problems
+
+
+def _bubble_problem(planned: _Planned, fixer: str, issue_id: str) -> Optional[str]:
+    """Why a bubble of ``issue_id`` by ``fixer`` does not count, or None."""
+    if fixer not in planned.fixer_files:
+        return f"{fixer}: not a planned fixer; {issue_id} not bubbled"
+    if issue_id not in planned.ids:
+        return f"{issue_id} ({fixer}): bubbled id matches no issue"
+    if not planned.is_assigned(fixer, issue_id):
+        return f"{issue_id} ({fixer}): bubbled id not assigned to this fixer"
+    return None
+
+
+def _apply_bubbles(doc: Dict[str, object], planned: _Planned, report: FixReport) -> List[str]:
+    """Add each bubble of ``report`` to ``bubbles`` and ``bubble_up`` unless closed; return the problems.
+
+    A bubble counts only from a planned fixer, for an id assigned to it (the rule fixed entries follow).
+    """
+    resolved = _closed_ids(doc["post_review_resolutions"])  # type: ignore[arg-type]
+    problems: List[str] = []
+    for bubble in report.bubbled:
+        problem = _bubble_problem(planned, report.fixer, bubble.id)
+        if problem:
+            problems.append(problem)
+        elif bubble.id not in resolved:
+            if bubble.id not in doc["bubbles"]:  # type: ignore[operator]
+                doc["bubbles"].append(bubble.id)  # type: ignore[attr-defined]
+            if bubble.id not in {b["id"] for b in doc["bubble_up"]}:  # type: ignore[attr-defined]
+                doc["bubble_up"].append(bubble.model_dump(mode="json"))  # type: ignore[attr-defined]
+    return problems
+
+
+def _apply_closed(doc: Dict[str, object], closed: Mapping[str, str], head: str, today: str) -> List[str]:
+    """Append a CLOSED_NO_ACTION entry per ``closed`` id not yet closed; return the problems."""
+    resolutions: List[Dict[str, str]] = doc["post_review_resolutions"]  # type: ignore[assignment]
+    ids, already = _ids(doc["issues"]), _closed_ids(resolutions)  # type: ignore[arg-type]
+    problems: List[str] = []
+    for issue_id, rationale in closed.items():
+        if issue_id not in ids:
+            problems.append(f"{issue_id}: closed id matches no issue")
+        elif issue_id not in already:
+            evidence = f"{head} {EVIDENCE_NOTE} - closed, no action: {rationale}"
+            resolutions.append(_resolution(issue_id, "CLOSED_NO_ACTION", today, evidence))
+    return problems
+
+
+def _ensure_bubble_up(doc: Dict[str, object], issue_id: str, text: str) -> None:
+    """Add a ``needs_follow_up`` ``bubble_up`` entry for ``issue_id`` (reason: ``text``, one line, at most
+    200 characters) unless one exists."""
+    ledger: List[Dict[str, object]] = doc["bubble_up"]  # type: ignore[assignment]
+    if issue_id not in {str(b["id"]) for b in ledger}:
+        reason = " ".join(text.split())[:200]
+        ledger.append({"id": issue_id, "classification": "needs_follow_up", "reason": reason})
+
+
+def _apply_deferred(doc: Dict[str, object], deferred: Mapping[str, str], head: str, today: str) -> List[str]:
+    """Resolve each ``deferred`` id not yet closed as a developer-confirmed defer; return the problems."""
+    resolutions: List[Dict[str, str]] = doc["post_review_resolutions"]  # type: ignore[assignment]
+    ids, already = _ids(doc["issues"]), _closed_ids(resolutions)  # type: ignore[arg-type]
+    problems: List[str] = []
+    for issue_id, text in deferred.items():
+        if issue_id not in ids:
+            problems.append(f"{issue_id}: deferred id matches no issue")
+        elif issue_id not in already:
+            evidence = f"{head} (developer-confirmed defer) - {text}"
+            resolutions.append(_resolution(issue_id, "RESOLVED", today, evidence))
+            _ensure_bubble_up(doc, issue_id, text)
+    return problems
+
+
+def _extra_files(fixer_files: Mapping[str, Sequence[str]], parts: Optional[Parts]) -> Dict[str, Set[str]]:
+    """Per fixer: planned files none of its parts own (the files ``plan_waves`` widened it by); empty
+    without ``parts``."""
+    if parts is None:
+        return {}
+    return {fixer: set(files) - {f for owned in parts.get(fixer, {}).values() for f in owned}
+            for fixer, files in fixer_files.items()}
+
+
+def _planned(full: Mapping[str, Set[str]], fixer_files: Mapping[str, Sequence[str]],
+             parts: Optional[Parts], mechanical: Optional[Set[str]] = None) -> _Planned:
+    """The closeout plan over ``full`` (issue id -> files): fixer file sets, split issues (``mechanical``
+    ids count as split once planned over more than one file), widened files and, when ``parts`` is given,
+    assigned ids."""
+    assigned = None if parts is None else {fixer: set(owned) for fixer, owned in parts.items()}
+    return _Planned(fixer_files, _split_parts(full, parts, mechanical), set(full), assigned,
+                    _extra_files(fixer_files, parts), full)
+
+
+def _resolved_problem(issue: Optional[Issue], issue_id: str, changed: Set[str]) -> Optional[str]:
+    """Why a developer-directed resolution of ``issue_id`` does not count, or None."""
+    if issue is None:
+        return f"{issue_id}: resolved id matches no issue"
+    if not set(_files(issue)) & changed:
+        return f"{issue_id}: none of its files changed since build: {', '.join(_files(issue))}"
+    return None
+
+
+def _apply_resolved(doc: Dict[str, object], resolved: Mapping[str, str], changed: Set[str], head: str,
+                    today: str) -> List[str]:
+    """Resolve each ``resolved`` id (developer-directed work outside the fixer waves) when one of its files
+    changed; return the problems."""
+    resolutions: List[Dict[str, str]] = doc["post_review_resolutions"]  # type: ignore[assignment]
+    by_id, already = {str(i["id"]): i for i in _doc_issues(doc)}, _closed_ids(resolutions)
+    problems: List[str] = []
+    for issue_id, what in resolved.items():
+        problem = _resolved_problem(by_id.get(issue_id), issue_id, changed)
+        if problem:
+            problems.append(problem)
+        elif issue_id not in already:
+            evidence = f"{head} {EVIDENCE_NOTE} - {what} (outside fixer waves)"
+            resolutions.append(_resolution(issue_id, "RESOLVED", today, evidence))
+    return problems
+
+
+def apply_closeout(review: Mapping[str, object], fixes: Sequence[FixReport],
+                   fixer_files: Mapping[str, Sequence[str]], changed: Set[str], created: Set[str], head: str,
+                   today: str, closed: Mapping[str, str], parts: Optional[Parts] = None,
+                   deferred: Optional[Mapping[str, str]] = None,
+                   resolved: Optional[Mapping[str, str]] = None) -> Tuple[Dict[str, object], List[str]]:
+    """Review with validated fixes resolved, ``closed`` ids closed, fixer bubbles recorded, ``deferred``
+    ids resolved as developer-confirmed defers and ``resolved`` ids resolved as developer-directed work;
+    plus problems.
+
+    A fixed entry counts only when every listed file is in ``changed`` and either in its fixer's
+    ``fixer_files`` set or in ``created``. ``parts`` (fixer -> issue id -> owned files, as ``plan_waves``
+    writes them) assigns ids to fixers: an entry or a bubble for an id outside its fixer's parts, or from a
+    fixer outside ``fixer_files``, is rejected with a problem, unless the id ends the closeout closed
+    (``RESOLVED`` / ``CLOSED_NO_ACTION`` by any path, e.g. a later fixer's valid entry or ``closed``): a
+    superseded rejected entry raises nothing. It also marks split issues (some fixer owns less than the
+    file set, or a mechanical issue planned over more than one file, even in one fixer): there an entry is
+    bounded by its fixer's part, and the issue resolves only when its validated entries together cover
+    every planned file, each edited or marked ``no_change`` by its part's fixer (evidence joins their
+    ``what`` texts); otherwise it gets a ``partially fixed`` problem. A non-split entry that edits files
+    must list at least one of its issue's own files (primary or also); widened files alone are rejected
+    with a problem. An issue whose validated entries edited no file at all gets a problem instead of a
+    resolution. Only ids already ``RESOLVED`` / ``CLOSED_NO_ACTION`` (latest status) are skipped. A
+    ``deferred`` id (id -> decision text) is RESOLVED with ``<head> (developer-confirmed defer) - <text>``
+    evidence and keeps (or gains) a ``needs_follow_up`` ``bubble_up`` entry. A
+    ``resolved`` id (id -> what changed) is RESOLVED with ``<head> (working-tree snapshot; developer
+    commits) - <what> (outside fixer waves)`` evidence when one of its files is in ``changed``. Closed ids
+    leave ``bubbles``; the verdict is recomputed.
+    """
+    doc = copy.deepcopy(dict(review))
+    doc["post_review_resolutions"] = list(doc.get("post_review_resolutions") or [])
+    doc["bubbles"], doc["bubble_up"] = list(doc.get("bubbles") or []), list(doc.get("bubble_up") or [])
+    issues = _doc_issues(doc)
+    planned = _planned(_full_files(issues), fixer_files, parts, _mechanical_ids(issues))
+    valid, rejected = _valid_entries(planned, fixes, changed, created)
+    problems = _apply_fixed(doc, planned, valid, head, today)
+    problems += _apply_closed(doc, closed, head, today)
+    problems += _apply_resolved(doc, resolved or {}, changed, head, today)
+    for report in fixes:
+        problems += _apply_bubbles(doc, planned, report)
+    problems += _apply_deferred(doc, deferred or {}, head, today)
+    resolved = _closed_ids(doc["post_review_resolutions"])  # type: ignore[arg-type]
+    problems = [problem for issue_id, problem in rejected if issue_id not in resolved] + problems
+    doc["bubbles"] = [b for b in doc["bubbles"] if b not in resolved]  # type: ignore[attr-defined]
+    doc["verdict"] = compute_verdict(doc["issues"], doc["post_review_resolutions"],  # type: ignore[arg-type]
+                                     doc["bubbles"], doc["bubble_up"])  # type: ignore[arg-type]
+    return doc, problems
+
+
+# --- follow-up waves ----------------------------------------------------------------------------------------
+
+
+def _listed_files(fixes: Sequence[FixReport], known: Set[str]) -> Dict[str, Set[str]]:
+    """Issue id -> files any fixed entry lists (edited or ``no_change``) for it, for ids in ``known``."""
+    listed: Dict[str, Set[str]] = {}
+    for report in fixes:
+        for entry in (e for e in report.fixed if e.id in known):
+            listed.setdefault(entry.id, set()).update(entry.files, entry.no_change)
+    return listed
+
+
+def _accepted_files(full: Mapping[str, Set[str]], parts: Optional[Parts], fixes: Sequence[FixReport],
+                    fixer_files: Mapping[str, Sequence[str]], changed: Set[str],
+                    created: Set[str], mechanical: Optional[Set[str]] = None) -> Dict[str, Set[str]]:
+    """Issue id -> files (edited or ``no_change``) listed by the fixed entries closeout accepts
+    (``_check_entry``), for ids in ``full``. An id whose accepted entries edit no file is absent, as
+    ``_coverage_problem`` rejects it."""
+    valid, _ = _valid_entries(_planned(full, fixer_files, parts, mechanical), fixes, changed, created)
+    return {issue_id: {f for e in entries for f in (*e.files, *e.no_change)}
+            for issue_id, entries in valid.items() if any(e.files for e in entries)}
+
+
+def remaining_parts(issues: Sequence[Issue], parts: Optional[Parts], fixes: Sequence[FixReport],
+                    fixer_files: Optional[Mapping[str, Sequence[str]]] = None,
+                    changed: Optional[Set[str]] = None,
+                    created: Optional[Set[str]] = None) -> Dict[str, List[str]]:
+    """Issue id -> planned files no counted fixed entry lists yet, for every id some counted entry covers.
+
+    Without ``changed`` every recorded fixed entry counts. With ``changed`` (and ``fixer_files`` /
+    ``created``, as ``apply_closeout`` takes them) only entries closeout accepts count, so an entry it
+    rejects (unchanged files, unassigned id, files outside the fixer's set) leaves its issue to re-plan.
+    A split issue (planned as parts, see ``apply_closeout``) needs each planned file listed by some counted
+    entry; any other counted id is fully covered (an empty list). Ids without a counted entry are absent.
+    """
+    full, mechanical = _full_files(issues), _mechanical_ids(issues)
+    split = _split_parts(full, parts, mechanical)
+    if changed is None:
+        listed = _listed_files(fixes, set(full))
+    else:
+        listed = _accepted_files(full, parts, fixes, fixer_files or {}, changed, created or set(), mechanical)
+    out: Dict[str, List[str]] = {}
+    for issue_id, files in listed.items():
+        required = _union(f for part in split.get(issue_id, {}).values() for f in part)
+        out[issue_id] = [f for f in required if f not in files]
+    return out
+
+
+def only_files(issue: Issue, files: Sequence[str]) -> Issue:
+    """Copy of ``issue`` narrowed to ``files`` (issue file order); ``lines`` stays only with the primary
+    file; ``ValueError`` when no file of ``files`` belongs to the issue."""
+    keep = [f for f in _union(_files(issue)) if f in set(files)]
+    if not keep:
+        raise ValueError(f"{issue['id']}: none of {', '.join(files)} belongs to the issue")
+    out = copy.deepcopy(dict(issue))
+    out.pop("files", None)
+    if keep[0] != issue["file"]:
+        out.pop("lines", None)
+    out["file"] = keep[0]
+    if len(keep) > 1:
+        out["files"] = keep
+    return out

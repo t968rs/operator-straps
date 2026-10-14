@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PR Attributes",
+  "description": "Metadata describing a single PR associated with an Action Plan. A plan may carry zero or more of these in its pr_attributes[] array.",
+  "type": "object",
+  "required": [
+    "pr",
+    "branch",
+    "base_branch"
+  ],
+  "properties": {
+    "pr": {
+      "type": [
+        "integer",
+        "string"
+      ],
+      "description": "GitHub PR number (integer preferred). Accepts a string for pre-creation drafts or branch-based identifiers where no PR number exists yet."
+    },
+    "review_doc": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^docs/PR_REVIEWS/.+\\.json$",
+      "description": "Path to the source PR_REVIEW JSON file. Null when no formal review exists for this PR."
+    },
+    "branch": {
+      "type": "string",
+      "description": "Feature branch being worked on for this PR"
+    },
+    "base_branch": {
+      "type": "string",
+      "description": "Target branch for merge"
+    },
+    "pip_document": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^docs/PLANS/.+_PIP\\.md$",
+      "description": "Path to the detailed implementation plan (markdown). Null when no PIP exists for this PR."
+    },
+    "merged_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "Date the PR was merged (YYYY-MM-DD). Null while the PR is open."
+    }
+  }
+}

@@ -1,0 +1,259 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Action Plan",
+  "description": "Unified execution plan schema. JSON is the source of truth for TODO state, implementation progress, and verification references per action item. A plan may reference zero or more PRs via pr_attributes[]; project-scoped plans (research, refactor, incident) may omit pr_attributes entirely.",
+  "type": "object",
+  "required": [
+    "plan_id",
+    "plan_created",
+    "execution_model",
+    "items"
+  ],
+  "properties": {
+    "plan_id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}$",
+      "description": "Zero-padded 4-digit sequential plan number. Counts up within docs/PLANS/. Also enforced as the filename prefix: docs/PLANS/{plan_id}_{Title}_ActionPlan.json and docs/PLANS/{plan_id}_{Title}_PIP.md."
+    },
+    "plan_created": {
+      "type": "string",
+      "format": "date",
+      "description": "Date plan was created (YYYY-MM-DD)"
+    },
+    "completed": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "Date all items reached a terminal status (COMPLETE or CLOSED_NO_ACTION). Null while the plan is in progress."
+    },
+    "source_document": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Path or reference to the source document (issue, spec, ticket, research note). Per-PR review documents live in pr_attributes[].review_doc instead."
+    },
+    "documentation": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Optional path to a detailed implementation plan or design document (e.g., docs/PLANS/{plan_id}_{Title}_PIP.md)"
+    },
+    "branch": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Primary working branch if the plan has a single-branch shape. Per-PR branches go in pr_attributes[].branch."
+    },
+    "base_branch": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Primary target branch if the plan has a single-branch shape. Per-PR base branches go in pr_attributes[].base_branch."
+    },
+    "execution_model": {
+      "type": "string",
+      "description": "How work is organized (e.g., 'serial', 'parallel (3 worktrees: A=CI, B=workflow, C=tests)', 'staged (phase 1, 2, 3)')"
+    },
+    "markdown_sync_status": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "pending_markdown_sync",
+        "in_sync",
+        null
+      ],
+      "description": "Optional JSON->Markdown sync marker. Use pending_markdown_sync when JSON moved ahead; Markdown must be brought in sync before branch close."
+    },
+    "markdown_last_updated": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date",
+      "description": "Date when companion Markdown sections were last synchronized with this JSON plan."
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional metadata about the plan context",
+      "properties": {
+        "project": {
+          "type": "string",
+          "description": "Project or system name"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Owner or assignee"
+        },
+        "deadline": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date",
+          "description": "Target completion date if applicable"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Arbitrary tags for filtering/categorization"
+        }
+      }
+    },
+    "pr_attributes": {
+      "type": "array",
+      "items": {
+        "$ref": "prAttributes.schema.json"
+      },
+      "description": "Zero or more PR associations for this plan. Empty/omit for project-scoped plans."
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/action_item"
+      },
+      "description": "Array of action items, one per issue/task"
+    },
+    "deferred_to_future_plans": {
+      "type": "array",
+      "description": "Optional log of scope deferrals - what was considered and explicitly pushed out of this plan.",
+      "items": {
+        "type": "object",
+        "required": [
+          "topic",
+          "rationale"
+        ],
+        "properties": {
+          "topic": {
+            "type": "string"
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "affected_sites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "action_item": {
+      "type": "object",
+      "required": [
+        "id",
+        "title",
+        "action",
+        "status",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Z]{2,4}-[0-9.]+$",
+          "description": "Item identifier: 2-4 uppercase letters + '-' + digits/periods (e.g., 'CRS-1', 'TASK-3.2', 'BUG-789'). Priority/severity is carried in the separate priority field, not encoded in the ID."
+        },
+        "priority": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "critical",
+            "important",
+            "minor",
+            null
+          ],
+          "description": "Issue severity or priority (optional)"
+        },
+        "category": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Category or type (e.g., 'code', 'test', 'docs', 'config')"
+        },
+        "worktree": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Parallel work unit if applicable. Free string - the schema doesn't enforce a specific vocabulary (e.g., 'A', 'B', 'phase-1', 'service-x', null)."
+        },
+        "title": {
+          "type": "string",
+          "description": "Action item title or summary"
+        },
+        "action": {
+          "type": "string",
+          "description": "TODO implementation steps in concise, execution-ready form. Keep this as source-of-truth checklist content."
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Paths to files modified to resolve this item (empty array if no changes). Entries should be pure paths - put clarifying notes in the notes field, not embedded in path strings."
+        },
+        "dependencies": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "Item IDs that must be completed before this one (null if none)"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "PENDING",
+            "IN_PROGRESS",
+            "COMPLETE",
+            "CLOSED_NO_ACTION",
+            "BLOCKED"
+          ],
+          "description": "Current status. Never set without corresponding evidence. BLOCKED captures 'cannot proceed until X' with rationale in evidence."
+        },
+        "evidence": {
+          "type": "string",
+          "description": "Current reality claim (what is COMPLETE, IN_PROGRESS, BLOCKED, or CLOSED_NO_ACTION). Keep concise; put durable proof pointers in verification_references."
+        },
+        "verification_references": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Durable references that verify the current status (git tree SHAs, test commands, CI run links, artifact paths, or doc anchors)."
+        },
+        "markdown_section": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Companion Markdown section key/anchor that expands this item (e.g., 'FCC-1', '#task-fcc-1', or docs/PLANS/...#fcc-1)."
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Optional additional context, decision rationale, or legacy ID mapping (e.g., 'Was C1 in pre-unification schema')"
+        }
+      }
+    }
+  }
+}

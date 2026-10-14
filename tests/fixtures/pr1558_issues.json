@@ -1,0 +1,326 @@
+{
+  "source": "docs/PR_REVIEWS/1558_9058_skill_pr_summaries.json",
+  "note": "primary file = file or files[0]; also = files[1:]; lines kept for the primary file only; fix_kind is a judgment call from each issue's fix text",
+  "issues": [
+    {
+      "id": "I1",
+      "severity": "important",
+      "name": "pr_sum diff: 30k char cap, path order and artifacts hide the core sources",
+      "file": ".claude/agent_scripts/pr_sum.py",
+      "also": [
+        ".claude/skills/pr-sum/SKILL.md",
+        ".claude/skills/pr-sum-viz/SKILL.md"
+      ],
+      "lines": "9,146-155",
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "I2",
+      "severity": "important",
+      "name": "git output decoded as strict UTF-8",
+      "file": "scripts/gh_workflows/branch_capture.py",
+      "also": [],
+      "lines": "30-31",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "I3",
+      "severity": "important",
+      "name": "Re-running capture silently wipes the drafted prose",
+      "file": ".claude/agent_scripts/pr_sum.py",
+      "also": [
+        ".claude/skills/pr-sum/SKILL.md"
+      ],
+      "lines": "201-207",
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "I4",
+      "severity": "important",
+      "name": "draft_from_payload coerces malformed agent input into wrong output",
+      "file": "scripts/gh_workflows/pr_summary.py",
+      "also": [],
+      "lines": "136-140",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "I5",
+      "severity": "important",
+      "name": "CLI failures end in tracebacks, not problem: lines",
+      "file": ".claude/agent_scripts/pr_sum.py",
+      "also": [
+        "scripts/__tests__/discipline/test_pr_sum.py"
+      ],
+      "lines": "86-92,196-198,224-234",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "I6",
+      "severity": "important",
+      "name": "Plan is not an as-landed record",
+      "file": "docs/superpowers/plans/2026-10-10-pr-sum-local-capture.md",
+      "also": [],
+      "lines": "18-34,191,313-354,483,696,826-832,1040,1153-1156,1263-1266",
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "I7",
+      "severity": "important",
+      "name": "No DesignEvolution.json for the spec-altering visual redesign",
+      "file": "docs/superpowers/plans/2026-10-10-pr-sum-local-capture.md",
+      "also": [],
+      "lines": null,
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "I8",
+      "severity": "important",
+      "name": "pr-sum-viz example breaks its own [new] tag rule",
+      "file": ".claude/skills/pr-sum-viz/SKILL.md",
+      "also": [],
+      "lines": "67,76",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "I9",
+      "severity": "important",
+      "name": "No defined source for the PR number in a forked run",
+      "file": ".claude/skills/pr-sum/SKILL.md",
+      "also": [
+        ".claude/skills/pr-sum-viz/SKILL.md",
+        ".claude/agents/messenger.md"
+      ],
+      "lines": null,
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "I10",
+      "severity": "important",
+      "name": "The fetch / gh path of capture is never exercised",
+      "file": "scripts/__tests__/discipline/test_pr_sum.py",
+      "also": [],
+      "lines": null,
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "I11",
+      "severity": "important",
+      "name": "Agent planning documents land in a commit of their own",
+      "file": "scripts/gh_workflows/branch_commits.py",
+      "also": [],
+      "lines": "44-53",
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "I12",
+      "severity": "important",
+      "name": "Doc paths scatter across several commits instead of one Docs and one Planning commit",
+      "file": "scripts/gh_workflows/branch_commits.py",
+      "also": [
+        "scripts/gh_workflows/commit_grouping.py",
+        ".claude/skills/branch-commit-msg/txt_format.md"
+      ],
+      "lines": null,
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "M1",
+      "severity": "minor",
+      "name": "New lines over the 110-column limit",
+      "file": "scripts/gh_workflows/pr_summary.py",
+      "also": [
+        "scripts/gh_workflows/branch_capture.py",
+        ".claude/agent_scripts/pr_sum.py"
+      ],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M2",
+      "severity": "minor",
+      "name": "Binary file renamed and edited reads as a pure move",
+      "file": "scripts/gh_workflows/pr_summary.py",
+      "also": [],
+      "lines": "50-52",
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "M3",
+      "severity": "minor",
+      "name": "Unused API: PrMeta.state, resolve_merge_base base/head (vacuous test)",
+      "file": ".claude/agent_scripts/pr_sum.py",
+      "also": [
+        "scripts/gh_workflows/branch_capture.py",
+        "scripts/__tests__/discipline/test_branch_capture.py"
+      ],
+      "lines": null,
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "M4",
+      "severity": "minor",
+      "name": "'Files Changed' shows two different counts",
+      "file": "scripts/gh_workflows/pr_summary.py",
+      "also": [],
+      "lines": "315,336",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M5",
+      "severity": "minor",
+      "name": "Flow-check claims exceed what build checks",
+      "file": "scripts/gh_workflows/pr_summary.py",
+      "also": [
+        ".claude/skills/pr-sum-viz/SKILL.md"
+      ],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M6",
+      "severity": "minor",
+      "name": "40-char cell cap scope stated too narrowly",
+      "file": ".claude/skills/pr-sum-viz/SKILL.md",
+      "also": [],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M7",
+      "severity": "minor",
+      "name": "pr-sum omits the script-added artifact Note and the counts caveat",
+      "file": ".claude/skills/pr-sum/SKILL.md",
+      "also": [],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M8",
+      "severity": "minor",
+      "name": "pr-sum-alt carries stale comparisons to the rewritten pr-sum",
+      "file": ".claude/skills/pr-sum-alt/SKILL.md",
+      "also": [],
+      "lines": "3,10",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M9",
+      "severity": "minor",
+      "name": "messenger.md assumes a format reference file; examples cover commits only",
+      "file": ".claude/agents/messenger.md",
+      "also": [],
+      "lines": "8-20,62-63",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M10",
+      "severity": "minor",
+      "name": "Registry entries lag the shipped tests",
+      "file": "scripts/__tests__/__fixtures__/REGISTRY/testRegistry.json",
+      "also": [],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M11",
+      "severity": "minor",
+      "name": "BuildError alias unexplained",
+      "file": ".claude/agent_scripts/branch_commit_msg.py",
+      "also": [],
+      "lines": "88",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M12",
+      "severity": "minor",
+      "name": "Merged PR with a deleted base branch cannot be captured",
+      "file": ".claude/agent_scripts/pr_sum.py",
+      "also": [],
+      "lines": "110-111",
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "M13",
+      "severity": "minor",
+      "name": "diff --path <old_path> reports [not in this PR] for renames",
+      "file": ".claude/agent_scripts/pr_sum.py",
+      "also": [],
+      "lines": "146,154",
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M14",
+      "severity": "minor",
+      "name": "Validation nits in pr_summary",
+      "file": "scripts/gh_workflows/pr_summary.py",
+      "also": [],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M15",
+      "severity": "minor",
+      "name": "Render and capture coverage gaps",
+      "file": "scripts/__tests__/discipline/test_pr_summary.py",
+      "also": [
+        "scripts/__tests__/discipline/test_pr_sum.py"
+      ],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M16",
+      "severity": "minor",
+      "name": "Git test helpers duplicated and not hermetic",
+      "file": "scripts/__tests__/discipline/test_branch_capture.py",
+      "also": [
+        "scripts/__tests__/discipline/test_pr_sum.py",
+        "scripts/__tests__/discipline/test_branch_commit_msg.py"
+      ],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M17",
+      "severity": "minor",
+      "name": "Commits 1 and 2 are not registry-guard green",
+      "file": "scripts/__tests__/__fixtures__/REGISTRY/testRegistry.json",
+      "also": [],
+      "lines": null,
+      "fix_kind": "judgment"
+    },
+    {
+      "id": "M18",
+      "severity": "minor",
+      "name": "Skill wording nits",
+      "file": ".claude/skills/pr-sum/SKILL.md",
+      "also": [
+        ".claude/skills/pr-sum-viz/SKILL.md",
+        ".claude/agents/messenger.md"
+      ],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M19",
+      "severity": "minor",
+      "name": "Script paths: backslashes stripped; relative commands vs worktree",
+      "file": ".claude/agents/messenger.md",
+      "also": [
+        ".claude/skills/pr-sum/SKILL.md",
+        ".claude/skills/pr-sum-viz/SKILL.md"
+      ],
+      "lines": null,
+      "fix_kind": "mechanical"
+    },
+    {
+      "id": "M20",
+      "severity": "minor",
+      "name": "CLAUDE.md PR Summaries rules conflict with the script-owned layout",
+      "file": ".claude/CLAUDE.md",
+      "also": [],
+      "lines": null,
+      "fix_kind": "judgment"
+    }
+  ]
+}
