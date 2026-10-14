@@ -2,7 +2,7 @@
 # Folders
 .idea/
 docs/_commit_messages/
-
+.artifacts/
 
 
 # Byte-compiled / optimized / DLL files
