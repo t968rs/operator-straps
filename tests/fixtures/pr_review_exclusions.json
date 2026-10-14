@@ -1,0 +1,9 @@
+{
+  "_comment": "Machine-generated exclusions for the pr-review driver test project (fnmatch patterns over repo-relative POSIX paths).",
+  "exclusions": [
+    {"pattern": "docs/PR_REVIEWS/*_*.json", "reason": "pr-review output"},
+    {"pattern": "docs/PR_SUMMARIES/*", "reason": "pr-sum output"},
+    {"pattern": ".github/offline/*", "reason": "generated offline test report"},
+    {"pattern": "*.gitignore", "reason": "ignore files"}
+  ]
+}

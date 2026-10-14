@@ -1,0 +1,37 @@
+{
+  "schema_ref": "PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 1,
+  "pr_title": "Sample review fixture",
+  "branch": "feature/sample",
+  "base_branch": "main",
+  "base_sha": "0000000000000000000000000000000000000000",
+  "head_sha": "1111111111111111111111111111111111111111",
+  "review_date": "2026-10-13",
+  "reviewers": ["runtime", "tests"],
+  "stats": {"additions": 12, "deletions": 3, "files_changed": 2},
+  "verdict": "READY TO MERGE -- all issues resolved",
+  "strengths": ["Small, focused change"],
+  "issues": {
+    "critical": [
+      {"id": "C1", "name": "single-file issue", "file": "src/app.py", "summary": "Location given by file.",
+       "fix": ["Guard the None case."]}
+    ],
+    "important": [
+      {"id": "I1", "name": "multi-file issue", "files": ["src/app.py", "src/util.py"],
+       "summary": "Location given by files.", "fix": ["Share the helper.", "Inline the helper."]}
+    ],
+    "minor": [
+      {"id": "M1", "name": "redundant both-form", "file": "src/util.py", "files": ["src/util.py"],
+       "summary": "Deprecated but consistent both-form.", "fix": ["Drop the file key."]}
+    ]
+  },
+  "bubbles": [],
+  "bubble_up": [],
+  "post_review_resolutions": [
+    {"id": "C1", "status": "RESOLVED", "date": "2026-10-13", "evidence": "abc1234 guard added"},
+    {"id": "I1", "status": "RESOLVED", "date": "2026-10-13", "evidence": "abc1234 helper shared"},
+    {"id": "M1", "status": "CLOSED_NO_ACTION", "date": "2026-10-13", "evidence": "cosmetic"}
+  ],
+  "verification_log": {"skipped": true, "reason": "fixture"}
+}

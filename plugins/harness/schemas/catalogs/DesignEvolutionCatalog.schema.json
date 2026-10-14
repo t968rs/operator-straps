@@ -1,0 +1,379 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+  "_comment": "Validates Design Evolution Catalogs - documents that trace design changes across a feature's lifecycle (spec-review, PR-bot-review, plan-review, post-exec-start phases). Each change entry records the original intent, the issue discovered, and the new outcome with rationale. Used by code-review skills to consolidate findings and track design decision evolution.",
+  "type": "object",
+  "required": [
+    "feature",
+    "issue",
+    "pr",
+    "branch_lineage",
+    "primary_documents",
+    "category_enums",
+    "changes",
+    "summary"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema version identifier"
+    },
+    "_comment": {
+      "type": "string",
+      "description": "Human-readable description of this document"
+    },
+    "feature": {
+      "type": "string",
+      "description": "Feature name or title"
+    },
+    "issue": {
+      "type": "integer",
+      "description": "GitHub issue number"
+    },
+    "pr": {
+      "type": "integer",
+      "description": "GitHub PR number"
+    },
+    "branch_lineage": {
+      "type": "string",
+      "description": "Branch ancestry chain in format [base]-->[parent]-->[child]"
+    },
+    "id_conventions": {
+      "type": "object",
+      "description": "Optional per-prefix mapping of catalog ID space to discovery phase, plus narrative on numbering conventions. Each non-_comment value is a string description of what an ID with that prefix represents. Sparse numbering is permitted: working IDs that were folded into other entries during edit cycles are not reissued.",
+      "properties": {
+        "_comment": {
+          "type": "string",
+          "description": "Narrative explanation of the prefix mapping, sparse-numbering convention, and any phase-overlap rules."
+        }
+      },
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "primary_documents": {
+      "type": "object",
+      "description": "Links to key design documents (spec, plan, primer, research notes)",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "category_enums": {
+      "type": "object",
+      "description": "Enumerated category sets for issue and why_new_outcome fields. MUST stay in sync with instance data.",
+      "additionalProperties": false,
+      "required": [
+        "issue.category",
+        "why_new_outcome.category"
+      ],
+      "properties": {
+        "issue.category": {
+          "type": "array",
+          "description": "Valid categories for issue.category in changes entries. MUST stay in sync with actual instance values.",
+          "items": {
+            "type": "string"
+          },
+          "enum": [
+            [
+              "correctness",
+              "reference-accuracy",
+              "path-arithmetic",
+              "signature-mismatch",
+              "tdd-discipline",
+              "bash-discipline",
+              "dyad-drift",
+              "merge-conflict-risk",
+              "spec-coverage",
+              "fail-open-semantics",
+              "spec-plan-drift",
+              "yagni"
+            ]
+          ]
+        },
+        "why_new_outcome.category": {
+          "type": "array",
+          "description": "Valid categories for why_new_outcome.category in changes entries. MUST stay in sync with actual instance values.",
+          "items": {
+            "type": "string"
+          },
+          "enum": [
+            [
+              "factual-correction",
+              "execution-blocker",
+              "merge-conflict-avoidance",
+              "spec-source-alignment",
+              "discoverability",
+              "mechanical-fix",
+              "convention-compliance",
+              "yagni",
+              "review-pin-update"
+            ]
+          ]
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "description": "List of design change entries, each tracing an issue from discovery through resolution",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "discovered_by",
+          "phase",
+          "original",
+          "issue",
+          "new_outcome",
+          "why_new_outcome"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^(S|PR|P|EX|CX)\\d{1,2}$",
+            "description": "Change ID: S=spec-review, PR=pr-bot-review, P=plan-review, EX=post-exec-start (Claude self-sweep), CX=post-exec-start (external/Codex review), followed by 1-2 digit sequence"
+          },
+          "discovered_by": {
+            "type": "string",
+            "description": "Name/role of the reviewer who discovered this change"
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "spec-review",
+              "pr-bot-review",
+              "plan-review",
+              "post-exec-start"
+            ],
+            "description": "Lifecycle phase in which this change was discovered"
+          },
+          "original": {
+            "type": "object",
+            "description": "The original intent or direction in the source document",
+            "required": [
+              "doc",
+              "location",
+              "indicated"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "doc": {
+                "type": "string",
+                "description": "Reference key to a document in primary_documents (spec, plan, primer, research_note)"
+              },
+              "location": {
+                "type": "string",
+                "description": "Section/line/paragraph reference within the document"
+              },
+              "indicated": {
+                "type": "string",
+                "description": "The exact or paraphrased text/intent from the source document"
+              }
+            }
+          },
+          "issue": {
+            "type": "object",
+            "description": "The problem or gap discovered in the original",
+            "required": [
+              "category",
+              "why_categorical",
+              "why_free_form"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": [
+                  "correctness",
+                  "reference-accuracy",
+                  "path-arithmetic",
+                  "signature-mismatch",
+                  "tdd-discipline",
+                  "bash-discipline",
+                  "dyad-drift",
+                  "merge-conflict-risk",
+                  "spec-coverage",
+                  "fail-open-semantics",
+                  "spec-plan-drift",
+                  "yagni"
+                ],
+                "description": "Problem category. MUST stay in sync with category_enums['issue.category']."
+              },
+              "why_categorical": {
+                "type": "string",
+                "description": "Brief categorical label or reason"
+              },
+              "why_free_form": {
+                "type": "string",
+                "description": "Detailed explanation of the problem"
+              }
+            }
+          },
+          "new_outcome": {
+            "type": "object",
+            "description": "The corrected direction or text to use instead",
+            "required": [
+              "doc",
+              "indicated"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "doc": {
+                "type": "string",
+                "description": "Reference key to the document being updated"
+              },
+              "indicated": {
+                "type": "string",
+                "description": "The new/corrected text or direction"
+              }
+            }
+          },
+          "why_new_outcome": {
+            "type": "object",
+            "description": "Rationale for the new direction",
+            "required": [
+              "category",
+              "free_form"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "category": {
+                "type": "string",
+                "enum": [
+                  "factual-correction",
+                  "execution-blocker",
+                  "merge-conflict-avoidance",
+                  "spec-source-alignment",
+                  "discoverability",
+                  "mechanical-fix",
+                  "convention-compliance",
+                  "yagni",
+                  "review-pin-update"
+                ],
+                "description": "Outcome category. MUST stay in sync with category_enums['why_new_outcome.category']."
+              },
+              "free_form": {
+                "type": "string",
+                "description": "Detailed explanation of why the new outcome is better or necessary"
+              }
+            }
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Aggregated statistics and key findings across all changes",
+      "required": [
+        "total_changes_cataloged",
+        "by_phase",
+        "by_issue_category",
+        "by_why_new_outcome_category",
+        "highest_impact_finding",
+        "most_embarrassing_finding",
+        "lessons"
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "total_changes_cataloged": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of changes recorded"
+        },
+        "by_phase": {
+          "type": "object",
+          "description": "Count of changes per phase",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "by_issue_category": {
+          "type": "object",
+          "description": "Count of issues per category",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "by_why_new_outcome_category": {
+          "type": "object",
+          "description": "Count of outcomes per category",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "integer",
+                "minimum": 0
+              },
+              {
+                "type": "string"
+              }
+            ]
+          }
+        },
+        "highest_impact_finding": {
+          "type": "object",
+          "description": "The most critical or widely-consequential change",
+          "required": [
+            "id",
+            "rationale"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^(S|PR|P|EX|CX)\\d{1,2}$",
+              "description": "ID of the change entry (must match a change.id)"
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Explanation of why this is the highest impact finding"
+            }
+          }
+        },
+        "most_embarrassing_finding": {
+          "type": "object",
+          "description": "The most obviously wrong or ridiculous mistake found",
+          "required": [
+            "id",
+            "rationale"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "type": "string",
+              "pattern": "^(S|PR|P|EX|CX)\\d{1,2}$",
+              "description": "ID of the change entry (must match a change.id)"
+            },
+            "rationale": {
+              "type": "string",
+              "description": "Explanation of why this is the most embarrassing finding"
+            }
+          }
+        },
+        "lessons": {
+          "type": "array",
+          "description": "Key insights or learnings from the catalog",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

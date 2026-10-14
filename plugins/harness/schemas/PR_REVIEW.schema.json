@@ -1,0 +1,627 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "$version": "2.1.0",
+  "title": "PR Code Review Output",
+  "description": "Standard schema for code review results produced by agent reviewers",
+  "type": "object",
+  "required": [
+    "schema_ref",
+    "version",
+    "pr",
+    "pr_title",
+    "branch",
+    "base_branch",
+    "base_sha",
+    "head_sha",
+    "review_date",
+    "verdict",
+    "stats",
+    "reviewers",
+    "bubbles",
+    "issues",
+    "strengths",
+    "bubble_up"
+  ],
+  "properties": {
+    "schema_ref": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "description": "Schema payload version for PR review artifacts"
+    },
+    "pr": {
+      "type": [
+        "integer",
+        "string"
+      ],
+      "description": "GitHub PR number"
+    },
+    "pr_title": {
+      "type": "string",
+      "description": "PR title from GitHub"
+    },
+    "branch": {
+      "type": "string",
+      "description": "Feature branch name"
+    },
+    "base_branch": {
+      "type": "string",
+      "description": "Target branch for merge (e.g., main, FBS_Integration)"
+    },
+    "base_sha": {
+      "type": "string",
+      "description": "Merge-base commit SHA (where feature branch diverged from base)"
+    },
+    "head_sha": {
+      "type": "string",
+      "description": "Feature branch HEAD commit SHA at time of review"
+    },
+    "review_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date review was completed (YYYY-MM-DD)"
+    },
+    "bubbles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[CIM][0-9]+$"
+      },
+      "description": "List of Issue ID that are *currently bubbled* for developer review"
+    },
+    "reviewers": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of reviewer names or agent IDs"
+    },
+    "stats": {
+      "type": "object",
+      "required": [
+        "additions",
+        "deletions",
+        "files_changed"
+      ],
+      "properties": {
+        "additions": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Total lines added"
+        },
+        "deletions": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Total lines deleted"
+        },
+        "files_changed": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Total number of files modified"
+        }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "pattern": "^(READY TO MERGE|NOT READY TO MERGE)(.*)$",
+      "description": "Final verdict: must be explicit about merge readiness and any blockers"
+    },
+    "strengths": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Bullet-point list of positive findings, design choices, test coverage"
+    },
+    "issues": {
+      "type": "object",
+      "properties": {
+        "critical": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/issue"
+          },
+          "description": "Must fix before merge"
+        },
+        "important": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/issue"
+          },
+          "description": "Should fix in fast-follow PR"
+        },
+        "minor": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/issue"
+          },
+          "description": "Nice-to-have, can defer to phase 2"
+        }
+      }
+    },
+    "bubble_up": {
+      "type": "array",
+      "description": "Issues raised by reviewers that exit Phase 5 unresolved. Includes all issues *ever bubbled.* Mirrors items[] in the pr-team skill's bubble_ups.schema.json sidecar. pr-review and pr-team workflows write this array directly into the consolidated review JSON; the schema enforces the shape, not the policy. Empty array is valid (no bubbled items). See `classification.description` below for per-value semantics.",
+      "$comment": "Inline mirror (not $ref) because this schema is draft-07 and the sibling is draft-2020-12; cross-dialect $ref is fragile.",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "classification",
+          "reason"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[CIM][0-9]+$",
+            "description": "Issue ID from issues.{critical,important,minor}[].id."
+          },
+          "classification": {
+            "type": "string",
+            "enum": [
+              "architectural_ambiguity",
+              "out_of_scope",
+              "needs_follow_up",
+              "fixer_failed"
+            ],
+            "description": "Why this issue is bubbled. architectural_ambiguity = two or more reasonable weight-bearing resolutions exist (user decision required); out_of_scope = real issue but outside this PR's scope; needs_follow_up = net-new work exceeding Phase 5 mechanical scope; fixer_failed = a Phase 5 fixer attempted the issue and returned FAIL."
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200,
+            "description": "One-line freetext explanation. For 'fixer_failed', includes the fixer's FAIL REASON (e.g., 'fixer FAIL: missing file at path X'). Capped at 200 chars to mirror the FAIL REASON contract in pr-team return_contract.md."
+          }
+        }
+      }
+    },
+    "post_review_resolutions": {
+      "type": "array",
+      "description": "Resolutions applied immediately after review, before the action plan begins. Tracks items resolved in the review session itself (rule updates, quick fixes, reclassifications).",
+      "items": {
+        "$ref": "#/definitions/post_review_resolution"
+      }
+    },
+    "verification_log": {
+      "description": "One of three shapes: (1) 'skipped' advisory for catalog-style review JSONs; (2) the canonical nested two-block structure populated by pr-review Phase 1/3 (dispatch_time) and Phase 4 (pre_fix_time) - used by all new JSONs; (3) a legacy flat shape kept for backward compatibility with pre-2026-05 review JSONs. New review JSONs MUST use (1) or (2). Drift between this contract and the pr-review SKILL.md is caught by the harness test tests/schemas/test_pr_review_schema_verification_log.py.",
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "skipped",
+            "reason"
+          ],
+          "properties": {
+            "skipped": {
+              "type": "boolean",
+              "const": true
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Canonical nested two-block shape. dispatch_time is populated during Phase 1 / Phase 3 atomic close; pre_fix_time is populated during Phase 4. Each inner sub-object MUST contain raw command output - stdout fields are paste captures, not summaries. The literal string 'OK', a paraphrase, or a one-line summary in any stdout field is a STUB and fails the corresponding done-criterion.",
+          "required": [
+            "dispatch_time",
+            "pre_fix_time"
+          ],
+          "properties": {
+            "dispatch_time": {
+              "type": "object",
+              "required": [
+                "pr_metadata_check",
+                "structural_guards_check"
+              ],
+              "properties": {
+                "pr_metadata_check": {
+                  "type": "object",
+                  "description": "Phase 1 Check 1 - gh pr view authoritative metadata fetch. All three fields required.",
+                  "required": [
+                    "command",
+                    "stdout",
+                    "result"
+                  ],
+                  "properties": {
+                    "command": {
+                      "type": "string",
+                      "description": "The exact gh pr view command invoked (e.g. `gh pr view <PR> --json number,title,headRefName,baseRefName,state,commits --jq ...`)."
+                    },
+                    "stdout": {
+                      "type": "string",
+                      "minLength": 1,
+                      "not": {
+                        "enum": [
+                          "OK",
+                          "ok",
+                          "Ok"
+                        ]
+                      },
+                      "description": "Raw paste capture of the command's JSON output. The literal string 'OK' (any case) is rejected by the schema as a STUB; must be the verbatim JSON the gh command emitted."
+                    },
+                    "result": {
+                      "type": "string",
+                      "description": "Short status: 'OK (state=OPEN)' for a successful check, 'STOP - state=<X>' for a closed/merged PR."
+                    }
+                  }
+                },
+                "structural_guards_check": {
+                  "type": "object",
+                  "description": "Phase 1 Check 2 - structural guard pytest invocation. Mandatory-but-conditional: applies=false when the path filter (Step 1) and content filter (Step 2) both return empty; in that case command and stdout_tail MAY be empty strings. When applies=true, command and stdout_tail MUST contain the full invocation and the verbatim tail of pytest output (including the '=== N passed in Xs ===' summary).",
+                  "required": [
+                    "applies",
+                    "command",
+                    "stdout_tail",
+                    "result"
+                  ],
+                  "properties": {
+                    "applies": {
+                      "type": "boolean",
+                      "description": "True if Phase 1 Check 2's path filter (Step 1) or content filter (Step 2) matched any PR file. False if both filters returned empty (the gate is mandatory-but-conditional and was correctly skipped)."
+                    },
+                    "command": {
+                      "type": "string",
+                      "description": "The full pytest invocation of the project's configured guard suite (`review.guard_suite` in the project's harness config), verbatim as run. Empty string if applies=false."
+                    },
+                    "stdout_tail": {
+                      "type": "string",
+                      "description": "Last ~10 lines of pytest output verbatim, including the '=== N passed in Xs ===' summary. Empty string if applies=false."
+                    },
+                    "result": {
+                      "type": "string",
+                      "description": "One of: 'OK (N passed)' if applies=true and all guards green; 'SKIPPED (no CICD/test-infra paths in PR)' if applies=false; 'STOP - guards red' if any guard failed (this halts dispatch)."
+                    }
+                  }
+                }
+              }
+            },
+            "pre_fix_time": {
+              "description": "Phase 4 branch-safety log. At Phase 3 write time this is the literal pending string; Phase 4 first-run replaces it in-place with the full five-check struct. The pending string is the ONLY acceptable placeholder - any other text is a stub and fails the Phase 4 hand-off check.",
+              "oneOf": [
+                {
+                  "type": "string",
+                  "const": "pending - to be populated in Phase 4"
+                },
+                {
+                  "type": "object",
+                  "required": [
+                    "current_branch_check",
+                    "branch_match_check",
+                    "clean_tree_check",
+                    "sha_ancestry_check",
+                    "base_branch_recorded"
+                  ],
+                  "properties": {
+                    "current_branch_check": {
+                      "type": "object",
+                      "description": "Phase 4 Check 1 - current branch read via git rev-parse. stdout is the raw branch name; the literal string 'OK' is invalid here because `git rev-parse --abbrev-ref HEAD` never emits 'OK'.",
+                      "required": [
+                        "command",
+                        "stdout",
+                        "result"
+                      ],
+                      "properties": {
+                        "command": {
+                          "type": "string",
+                          "description": "The exact git command, e.g. `git -C $REPO rev-parse --abbrev-ref HEAD`."
+                        },
+                        "stdout": {
+                          "type": "string",
+                          "minLength": 1,
+                          "not": {
+                            "enum": [
+                              "OK",
+                              "ok",
+                              "Ok"
+                            ]
+                          },
+                          "description": "Raw stdout verbatim - e.g. '115-DEV-get_schema_03'. The literal string 'OK' (any case) is rejected by the schema because `git rev-parse --abbrev-ref HEAD` never emits 'OK'; must be the actual branch name."
+                        },
+                        "result": {
+                          "type": "string",
+                          "description": "Short status: 'OK' if the branch was read successfully."
+                        }
+                      }
+                    },
+                    "branch_match_check": {
+                      "type": "object",
+                      "description": "Phase 4 Check 2 - assert current branch equals headRefName from Phase 1 Check 1. Pure equality assertion; carries the two compared values for audit.",
+                      "required": [
+                        "assertion",
+                        "current_branch",
+                        "head_ref_name",
+                        "result"
+                      ],
+                      "properties": {
+                        "assertion": {
+                          "type": "string",
+                          "const": "CURRENT_BRANCH == headRefName",
+                          "description": "Literal assertion string for the equality check."
+                        },
+                        "current_branch": {
+                          "type": "string",
+                          "description": "The branch name from current_branch_check.stdout - verbatim."
+                        },
+                        "head_ref_name": {
+                          "type": "string",
+                          "description": "The headRefName value from Phase 1 Check 1's pr_metadata_check.stdout - verbatim."
+                        },
+                        "result": {
+                          "type": "string",
+                          "description": "Outcome: 'OK (match)' on success, 'STOP - mismatch' on failure."
+                        }
+                      }
+                    },
+                    "clean_tree_check": {
+                      "type": "object",
+                      "description": "Phase 4 Check 3 - `git status --porcelain` clean-tree assertion. stdout MAY be the empty string (which IS the affirmative 'clean' claim); a stdout of the literal 'OK' is a LIE because `git status --porcelain` never emits 'OK'. result describes inspection outcome (clean OR dirty with per-file disposition).",
+                      "required": [
+                        "command",
+                        "stdout",
+                        "result"
+                      ],
+                      "properties": {
+                        "command": {
+                          "type": "string",
+                          "description": "The exact git command, e.g. `git -C $REPO status --porcelain`."
+                        },
+                        "stdout": {
+                          "type": "string",
+                          "not": {
+                            "enum": [
+                              "OK",
+                              "ok",
+                              "Ok"
+                            ]
+                          },
+                          "description": "Raw `git status --porcelain` output verbatim, pre-exclusion. For clean-tree assertion semantics, see filtered_stdout (post-exclusion stdout - empty IS the affirmative clean claim)."
+                        },
+                        "filtered_stdout": {
+                          "type": "string",
+                          "description": "Post-exclusion stdout - the output of `git status --porcelain` filtered through git_status_filter_excluded.py. Empty string IS the affirmative clean-tree claim."
+                        },
+                        "exclusions_fixture": {
+                          "type": "string",
+                          "description": "Repo-relative path to the machine-generated exclusions JSON used for this check (e.g. `reference/git_curated/machine_generated_exclusions.json`). Records which exclusions list governed the branch-safety check."
+                        },
+                        "result": {
+                          "type": "string",
+                          "description": "Inspection outcome: 'OK (empty)' for a clean tree, or 'DIRTY - inspected: [<file1>: unrelated, stashed | file2: committed]' with per-file disposition."
+                        }
+                      }
+                    },
+                    "sha_ancestry_check": {
+                      "type": "object",
+                      "description": "Phase 4 Check 4 - verify both base_sha and head_sha are ancestors of HEAD via two `git merge-base --is-ancestor` invocations. Exit codes are integers (0 = ancestor, 1 = not ancestor).",
+                      "required": [
+                        "base_sha",
+                        "head_sha",
+                        "base_ancestor_command",
+                        "base_ancestor_exit",
+                        "head_ancestor_command",
+                        "head_ancestor_exit",
+                        "result"
+                      ],
+                      "properties": {
+                        "base_sha": {
+                          "type": "string",
+                          "description": "From Phase 1 Check 1 first_sha - the merge-base SHA being verified."
+                        },
+                        "head_sha": {
+                          "type": "string",
+                          "description": "From Phase 1 Check 1 last_sha - the HEAD SHA being verified."
+                        },
+                        "base_ancestor_command": {
+                          "type": "string",
+                          "description": "The exact git invocation, e.g. `git merge-base --is-ancestor <base_sha> HEAD`."
+                        },
+                        "base_ancestor_exit": {
+                          "type": "integer",
+                          "description": "Exit code from the base-ancestor command. 0 means base_sha is an ancestor of HEAD; 1 means it is not (which halts review)."
+                        },
+                        "head_ancestor_command": {
+                          "type": "string",
+                          "description": "The exact git invocation, e.g. `git merge-base --is-ancestor <head_sha> HEAD`."
+                        },
+                        "head_ancestor_exit": {
+                          "type": "integer",
+                          "description": "Exit code from the head-ancestor command. 0 means head_sha is an ancestor of HEAD; 1 means it is not (which halts review)."
+                        },
+                        "result": {
+                          "type": "string",
+                          "description": "Combined outcome: 'OK (both ancestors)' on success, 'STOP - <which> not ancestor' on failure."
+                        }
+                      }
+                    },
+                    "base_branch_recorded": {
+                      "type": "object",
+                      "description": "Phase 4 Check 5 - capture the verbatim baseRefName from gh. value is NOT always 'main'; many repos default to 'dev' or another integration branch. source documents the gh command that produced value.",
+                      "required": [
+                        "source",
+                        "value",
+                        "result"
+                      ],
+                      "properties": {
+                        "source": {
+                          "type": "string",
+                          "description": "The gh command that produced value, e.g. `gh pr view <PR> --json baseRefName --jq .baseRefName`."
+                        },
+                        "value": {
+                          "type": "string",
+                          "description": "Verbatim baseRefName from the gh command - NOT always 'main'. Many repos default to 'dev' or another integration branch."
+                        },
+                        "result": {
+                          "type": "string",
+                          "description": "Short status: 'OK (recorded)' on success."
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "description": "Legacy flat shape - pre-contract JSONs. Do NOT use for new review JSONs.",
+          "anyOf": [
+            {
+              "required": [
+                "current_branch_check"
+              ]
+            },
+            {
+              "required": [
+                "pr_metadata_check"
+              ]
+            },
+            {
+              "required": [
+                "branch_match_check"
+              ]
+            },
+            {
+              "required": [
+                "clean_tree_check"
+              ]
+            },
+            {
+              "required": [
+                "sha_ancestry_check"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "post_review_resolution": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "date",
+        "evidence"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Issue ID from the review (e.g., C1, I9, M4)"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "RESOLVED",
+            "DOWNGRADED_TO_MINOR",
+            "DOWNGRADED_TO_IMPORTANT",
+            "CLOSED_NO_ACTION"
+          ],
+          "description": "RESOLVED = fixed in session; DOWNGRADED = severity reduced with rationale; CLOSED_NO_ACTION = not applicable or excluded"
+        },
+        "date": {
+          "type": "string",
+          "format": "date",
+          "description": "Date the resolution was applied (YYYY-MM-DD)"
+        },
+        "evidence": {
+          "type": "string",
+          "description": "What was done: commit SHA, file changed, rule updated, or rationale for downgrade/exclusion"
+        }
+      }
+    },
+    "issue": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "summary",
+        "fix"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "file"
+          ]
+        },
+        {
+          "required": [
+            "files"
+          ]
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[CIM][0-9]+$",
+          "description": "Issue ID (C=critical, I=important, M=minor, followed by number)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Short title of the issue"
+        },
+        "file": {
+          "type": "string",
+          "description": "Path to affected file"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Multiple affected files (alternative to single 'file')"
+        },
+        "step": {
+          "type": "string",
+          "description": "Optional: workflow step name (for CI/CD issues)"
+        },
+        "lines": {
+          "type": "string",
+          "description": "Optional: line range (e.g., '28-29' or '~189-190')"
+        },
+        "both_reviewers": {
+          "type": "boolean",
+          "description": "True if multiple reviewers identified this issue independently"
+        },
+        "reviewer": {
+          "type": "string",
+          "description": "Optional: specific reviewer if not both"
+        },
+        "summary": {
+          "type": "string",
+          "description": "Detailed explanation of the issue, including impact and evidence"
+        },
+        "fix": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          },
+          "description": "One-or-more actionable remediation options (code snippet, command, or approach)"
+        },
+        "fix_kind": {
+          "type": "string",
+          "enum": [
+            "mechanical",
+            "judgment"
+          ],
+          "description": "Optional: mechanical = the fix follows from the text alone (a haiku fixer suffices); judgment = the fix needs design judgment. Recorded per finding by each reviewer; merge keeps judgment when merged findings disagree; absent reads as judgment. Fix-wave planning picks the fixer model from it."
+        }
+      }
+    }
+  }
+}

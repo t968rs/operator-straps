@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json",
+  "title": "PR Review Invocation Test Matrix / Reviewer Statistics",
+  "description": "One row per reviewer subagent invocation OR per end-to-end pr-review skill test cell. Records dispatch metadata (model_family/effort/dev_commit), runtime cost (tokens/tool_uses/duration_s), and verdict shape (findings_count + per-severity counts + verdict_prefix). Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cell",
+    "pr",
+    "model_family",
+    "effort",
+    "dev_commit",
+    "dispatch_shape",
+    "tokens",
+    "tool_uses",
+    "duration_s",
+    "findings_count",
+    "C_count",
+    "I_count",
+    "M_count",
+    "other_count",
+    "verdict_prefix",
+    "notes"
+  ],
+  "properties": {
+    "cell": {
+      "type": "string",
+      "description": "Unique identifier for this row. For reviewer subagents, recommend `pr{NNNN}_{lens}_{model_family}` (e.g. `pr0916_runtime_sonnet`). For end-to-end skill tests, recommend `{H|S|O}-Run{N}` or `pr{NNNN}_{model_family}_{effort}`."
+    },
+    "pr": {
+      "type": "integer",
+      "description": "PR number under review. NOT zero-padded.",
+      "minimum": 1
+    },
+    "model_family": {
+      "type": "string",
+      "enum": [
+        "haiku",
+        "sonnet",
+        "opus"
+      ],
+      "description": "Model FAMILY only - one of haiku / sonnet / opus. NOT the full model ID. Derive by extracting whichever enum token (`haiku` / `sonnet` / `opus`) appears in the system-prompt's model identifier, regardless of any `claude-` prefix or version/context suffixes around it (e.g. any `claude-<family>-X-Y` or `<family>-X-Y-...` form). Do NOT use a naive left-truncation like `.split('-')[0]`: the family token sits between prefix and suffix in `claude-opus-4-7`, so left-splitting yields `claude` (rejected by the enum). One-line reference: `next(t for t in ('haiku','sonnet','opus') if t in raw_id)`. Inherited from the main session unless explicitly overridden at dispatch. The enum is intentionally narrow so downstream rollups can pivot without normalization."
+    },
+    "effort": {
+      "type": "string",
+      "description": "Effort/thinking-budget setting at dispatch. Use lowercase forms (`low`, `medium`, `high`, `xhigh`) or `default` when not explicitly set, or `MAX`/`HIGH`/`XHIGH (ultrathink)` for ad-hoc test cells."
+    },
+    "dev_commit": {
+      "type": "string",
+      "description": "Skill-version anchor at dispatch time. **New-format rows (`legacy` absent or false):** must start with a 40-char lowercase hex SHA from `git merge-base HEAD <base branch>` (the project's configured base branch), optionally followed by ` -- <freetext-suffix>` for human readability. Example: `cfadc5dc3f286e2b93a3cbce788764ee10a6f022 -- 1914-SKILL-pr_review_phase4 (self-referential dogfood)`. **Legacy rows (`legacy: true`):** freetext anchor for narrative-only states that have no recoverable SHA in git history (e.g. `dev (pre-#916)`, `main (pre-rename)`). The conditional schema (if/then/else below) enforces the SHA pattern only on non-legacy rows."
+    },
+    "legacy": {
+      "type": "boolean",
+      "description": "True for grandfathered rows whose dev_commit is narrative freetext with no anchorable SHA in git history. False or omitted = new-format row; dev_commit must match the 40-char hex SHA pattern. Use sparingly; new dispatches should always capture `git merge-base HEAD <base branch>` and set legacy: false (or omit it)."
+    },
+    "dispatch_shape": {
+      "type": "string",
+      "enum": [
+        "parallel",
+        "inline"
+      ],
+      "description": "Whether this row was produced by a parallel-dispatched Phase 2 reviewer subagent (`parallel`) or by an orchestrator running inline with no fan-out (`inline`). Inline rows record the orchestrator's own usage envelope; parallel rows record one row per dispatched reviewer. Required so downstream analysis can pivot on dispatch shape without inferring it from the cell name."
+    },
+    "tokens": {
+      "type": "integer",
+      "description": "Total tokens consumed by the subagent invocation (input + output, as reported by the harness).",
+      "minimum": 0
+    },
+    "tool_uses": {
+      "type": "integer",
+      "description": "Tool-call count from the subagent invocation envelope.",
+      "minimum": 0
+    },
+    "duration_s": {
+      "type": "number",
+      "description": "Wall-clock duration of the subagent invocation, in seconds. Three decimals of precision (millisecond -> second conversion).",
+      "minimum": 0
+    },
+    "phase4_script": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Whether the agent invoked `phase4_branch_safety.py` during its run. `yes` / `no` / `n/a (no script in dev)` / null. Null/omitted is correct for per-reviewer rows; reviewers don't run Phase 4 - that's the orchestrator's job. Meaningful only for end-to-end skill-invocation test cells."
+    },
+    "findings_count": {
+      "type": "integer",
+      "description": "Total findings emitted by this reviewer. Should equal C_count + I_count + M_count + other_count for any row where all four severities were classifiable.",
+      "minimum": 0
+    },
+    "C_count": {
+      "type": "integer",
+      "description": "Count of Critical-severity findings. Use 0 for confidently-zero; use null for not-measured (during pandas load, fillna(0).astype(int)).",
+      "minimum": 0
+    },
+    "I_count": {
+      "type": "integer",
+      "description": "Count of Important-severity findings.",
+      "minimum": 0
+    },
+    "M_count": {
+      "type": "integer",
+      "description": "Count of Minor-severity findings.",
+      "minimum": 0
+    },
+    "other_count": {
+      "type": "integer",
+      "description": "Count of findings outside the C/I/M scheme (e.g. Strengths, Notes, Observations). Typically 0.",
+      "minimum": 0
+    },
+    "verdict_prefix": {
+      "type": "string",
+      "description": "First clause of the reviewer's verdict line. Conventional values: `READY TO MERGE`, `NOT READY TO MERGE`, `N/A (bailed)`. Free-form OK; downstream pivots key off the prefix string."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Freeform residual narrative - unique catches, behavioral observations, philosophy tags. Keep short (one to three sentences). The structured columns are for pivots; this column is for the irreducible-prose part."
+    }
+  },
+  "if": {
+    "properties": {
+      "legacy": {
+        "const": true
+      }
+    },
+    "required": [
+      "legacy"
+    ]
+  },
+  "then": {
+    "description": "Legacy row: dev_commit may be narrative freetext."
+  },
+  "else": {
+    "description": "New-format row: dev_commit must start with a 40-char lowercase hex SHA, optionally followed by ' -- <suffix>'.",
+    "properties": {
+      "dev_commit": {
+        "pattern": "^[0-9a-f]{40}( -- .*)?$"
+      }
+    }
+  }
+}

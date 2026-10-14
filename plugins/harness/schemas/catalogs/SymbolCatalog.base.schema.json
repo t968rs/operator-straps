@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Symbol Catalog (Base)",
+  "description": "Universal scaffolding for any catalog of code symbols. Variants (decomposition, consumer audit, research snapshot, post-fix verification) extend this base via allOf + $ref.",
+  "type": "object",
+  "required": ["catalog_date", "categories", "summary"],
+  "properties": {
+    "catalog_date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date when this catalog was produced (YYYY-MM-DD)."
+    },
+    "module_path": {
+      "type": "string",
+      "description": "Optional dotted Python import path (e.g., pkg.geo.helpers). Required by some variants."
+    },
+    "file_path": {
+      "type": "string",
+      "description": "Optional repo-relative file path (e.g., src/pkg/geo/helpers.py). Required by some variants."
+    },
+    "total_lines": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional total line count for the cataloged module/file."
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form catalog-level notes (caveats, scope, methodology)."
+    },
+    "categories": {
+      "type": "array",
+      "description": "Logical groupings within the catalog. Variants decide what categories mean (source sections, consumer tiers, risk bands, etc.).",
+      "items": { "$ref": "#/$defs/category" }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Aggregate counts. Variants extend with their own totals.",
+      "properties": {}
+    }
+  },
+  "$defs": {
+    "category": {
+      "type": "object",
+      "required": ["id", "label"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "description": "Snake_case identifier referenced from cataloged_entry.category_id."
+        },
+        "label": {
+          "type": "string",
+          "description": "Human-readable section label."
+        },
+        "line_range": {
+          "type": "array",
+          "prefixItems": [
+            { "type": "integer", "minimum": 1, "description": "start line (1-indexed, inclusive)" },
+            { "type": "integer", "minimum": 1, "description": "end line (1-indexed, inclusive); must be >= start (not enforceable in pure JSON Schema)" }
+          ],
+          "items": false,
+          "description": "[start_line, end_line] tuple."
+        },
+        "entry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of cataloged entries in this category."
+        }
+      }
+    },
+    "cataloged_entry": {
+      "type": "object",
+      "description": "Per-entry shape shared by all catalog variants. Variants extend this via allOf + $ref to add variant-specific fields.",
+      "required": ["name", "kind", "category_id"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Symbol name as it appears in source (or qualified name for consumers)."
+        },
+        "kind": {
+          "type": "string",
+          "description": "Symbol kind. Variants narrow this enum to their domain (function/class/constant for decomposition; attribute/method/registry_field for consumer audits, etc.).",
+          "enum": [
+            "function",
+            "class",
+            "method",
+            "context_manager",
+            "constant",
+            "attribute",
+            "private_function",
+            "registry_field",
+            "module",
+            "test",
+            "other"
+          ]
+        },
+        "category_id": {
+          "type": "string",
+          "description": "References categories[].id."
+        },
+        "line_start": { "type": "integer", "minimum": 1 },
+        "line_end": { "type": "integer", "minimum": 1 },
+        "line_count": { "type": "integer", "minimum": 0 },
+        "file_path": {
+          "type": "string",
+          "description": "Repo-relative file path. Required for consumer-style entries that live outside the cataloged module."
+        },
+        "docstring_summary": {
+          "type": "string",
+          "description": "One-line summary of what the entry does or means."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Free-form per-entry notes."
+        }
+      }
+    }
+  }
+}

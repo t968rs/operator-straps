@@ -1,0 +1,176 @@
+{
+  "_comment": "Per-task validity gates for subagent-dispatched tasks. Each task's `accept_if` must all be true for the return to count as valid. `fixup_if` is acceptable but requires an inline follow-up. `reject_if` triggers a re-dispatch.",
+  "tasks": {
+    "T1": {
+      "executor": "subagent_haiku",
+      "expected_files_created": [
+        "tests/workflows/scripts/check_runner.py",
+        "tests/workflows/test_check_runner.py"
+      ],
+      "expected_files_modified": [],
+      "expected_symbols_defined": [
+        "check_runner.CheckPaths (dataclass with 8 Path fields)",
+        "check_runner.parse_bool (function)"
+      ],
+      "expected_tests_passing": [
+        "TestParseBool::test_truthy_values (parametrized x 8)",
+        "TestParseBool::test_falsy_values (parametrized x 7)"
+      ],
+      "expected_commit_message_contains": "scaffold check_runner.py",
+      "accept_if": [
+        "Both files exist at the expected paths",
+        "parse_bool truthy set is exactly {1, true, yes, y, on} case-insensitive",
+        "CheckPaths has frozen=True and slots=True",
+        "No heavy runtime packages imports in check_runner.py",
+        "sys.path.insert uses parents[4] for _REPO_ROOT",
+        "pytest TestParseBool passes green",
+        "commit SHA on 747-CICD-Decompose-checks"
+      ],
+      "fixup_if": [
+        "Docstring wording slightly different (style-only)",
+        "Extra blank line or import ordering drift"
+      ],
+      "reject_if": [
+        "Module imports heavy runtime packages",
+        "parse_bool truthy set differs (e.g., includes 'enabled' or excludes 'y')",
+        "Tests fail or are not parametrized as expected",
+        "Commit was not made or was pushed",
+        "Files landed outside the worktree"
+      ]
+    },
+    "T3": {
+      "executor": "subagent_haiku",
+      "expected_files_created": [],
+      "expected_files_modified": [
+        "tests/workflows/scripts/check_runner.py",
+        "tests/workflows/test_check_runner.py"
+      ],
+      "expected_symbols_defined": [
+        "check_runner.load_allowlisted_tests (function, returns List[str])"
+      ],
+      "expected_tests_passing": [
+        "TestLoadAllowlistedTests::test_loads_existing_tests",
+        "TestLoadAllowlistedTests::test_filters_missing_files_silently",
+        "TestLoadAllowlistedTests::test_include_additional_appends",
+        "TestLoadAllowlistedTests::test_empty_raises_with_exact_message"
+      ],
+      "expected_commit_message_contains": "load_allowlisted_tests",
+      "accept_if": [
+        "Function signature matches plan: (allowlist_path, include_additional, repo_root) -> List[str]",
+        "Empty-result error message contains 'No allowlisted spawn-safety tests found in branch.'",
+        "Missing-file filter uses (repo_root / rel_path).is_file()",
+        "All 4 TestLoadAllowlistedTests cases green",
+        "No changes to unrelated code in check_runner.py"
+      ],
+      "fixup_if": [
+        "List comprehension vs. explicit loop - either acceptable",
+        "Error message wording matches but punctuation drifts slightly"
+      ],
+      "reject_if": [
+        "Function raises on missing files instead of filtering silently",
+        "Function returns generator instead of list",
+        "Empty-result exception class differs from FileNotFoundError",
+        "Pre-existing tests fail"
+      ]
+    },
+    "T5": {
+      "executor": "subagent_opus",
+      "expected_files_created": [],
+      "expected_files_modified": [
+        "tests/workflows/scripts/check_runner.py",
+        "tests/workflows/test_check_runner.py"
+      ],
+      "expected_symbols_defined": [
+        "check_runner._STATUS_MAP (module-level dict)",
+        "check_runner._RESULT_ORDER (module-level dict)",
+        "check_runner._build_entry (helper function)",
+        "check_runner.convert_results (function, returns int)"
+      ],
+      "expected_tests_passing": [
+        "TestConvertResults::test_happy_path_writes_both_files",
+        "TestConvertResults::test_missing_pytest_json_returns_zero"
+      ],
+      "expected_commit_message_contains": "convert_results",
+      "accept_if": [
+        "_STATUS_MAP exactly equals {'FAILED':'Failed', 'ERROR':'Error', 'SKIPPED':'Skipped', 'XFAILED':'Skipped'}",
+        "_RESULT_ORDER exactly equals {'Failed':0, 'Error':1, 'Skipped':2}",
+        "_build_entry reads setup.longrepr as fallback when call.longrepr is None AND outcome is skipped",
+        "convert_results returns 0 and prints 'run_tests.json not found' on missing input",
+        "jsonschema.validate is called for BOTH run_results AND summary BEFORE writing files",
+        "Output files are NOT written if validation raises",
+        "nonpass.sort key is (result_order, -count, reason) in that order",
+        "Both TestConvertResults cases green"
+      ],
+      "fixup_if": [
+        "Minor docstring differences",
+        "Print message wording differs slightly"
+      ],
+      "reject_if": [
+        "Partial writes on schema validation failure",
+        "longrepr fallback logic missing or wrong phase",
+        "STATUS_MAP includes outcomes not in the original heredoc",
+        "Summary 'status' field is not 'PASS'/'FAIL'",
+        "import jsonschema at module top instead of inside function body (optional - either OK, but check)",
+        "utcnow() replaced with now() or now(tz=...)  - timestamp contract differs from heredoc"
+      ]
+    },
+    "T7": {
+      "executor": "subagent_sonnet",
+      "expected_files_created": [],
+      "expected_files_modified": [
+        "tests/workflows/scripts/check_runner.py",
+        "tests/workflows/test_check_runner.py"
+      ],
+      "expected_symbols_defined": [
+        "check_runner._build_parser (returns ArgumentParser)",
+        "check_runner._derive_check_paths (returns CheckPaths)",
+        "check_runner.main (returns int)",
+        "`if __name__ == '__main__': raise SystemExit(main())`"
+      ],
+      "expected_tests_passing": [
+        "TestCLI::test_should_run_prints_true",
+        "TestCLI::test_should_run_prints_false",
+        "TestCLI::test_help_text_lists_subcommands"
+      ],
+      "expected_commit_message_contains": "CLI dispatch",
+      "accept_if": [
+        "argparse.ArgumentParser with three subparsers: should-run, run-pytest, convert-results",
+        "subparsers(required=True)",
+        "main() returns 0 for should-run, pytest exit code for run-pytest, convert_results return for convert-results",
+        "All three TestCLI cases green",
+        "Running `python check_runner.py --help` exits 0 and mentions all three subcommands",
+        "Pre-existing tests (Parse/ShouldRun/LoadAllowlist/RunPytest/ConvertResults) still green"
+      ],
+      "fixup_if": [
+        "Help-text phrasing differs",
+        "Argument dest names drift (e.g., event_name vs event-name) but still parse correctly"
+      ],
+      "reject_if": [
+        "argparse.ArgumentParser without subparsers(required=True) - would allow no-subcommand invocation",
+        "main() does not return int",
+        "any subcommand silently catches SystemExit or swallows errors"
+      ]
+    }
+  },
+  "common_constraints_for_all_subagents": [
+    "Work ONLY in the worktree at <user-home>/.config/superpowers/worktrees/<repo>/747-CICD-Decompose-checks (the dispatcher provides the absolute path)",
+    "NEVER run git push",
+    "NEVER edit files outside the worktree",
+    "DO NOT run git commit or git add - main session owns commits. Contract revised after T1 (a9a4468450d42c451) got stuck on git permission.",
+    "Read the plan from docs/superpowers/plans/2026-04-23-checks-yaml-decomposition-plan.md before implementing",
+    "Follow the plan's code blocks VERBATIM - function signatures, error messages, control flow are the contract, not guidelines",
+    "Run the pytest block the plan specifies for the task before returning - report pass/fail to main session"
+  ],
+  "contract_change_log": [
+    {
+      "date": "2026-04-23",
+      "from_task": "T1",
+      "change": "Removed 'subagent must commit' from accept criteria. Subagent in T1 (Haiku) was stuck waiting for git permission prompt; main session committed after validity gate. Subsequent task dispatches instruct subagents NOT to commit."
+    },
+    {
+      "date": "2026-04-23",
+      "from_task": "T3",
+      "change": "Add explicit 'follow function signatures verbatim' guidance. T3 subagent (Haiku) initially wrote load_allowlisted_tests with wrong signature: `(allowlist_json_path)` instead of plan's `(allowlist_path, include_additional, repo_root)`. Reject criteria worked; main session caught it."
+    }
+  ]
+}

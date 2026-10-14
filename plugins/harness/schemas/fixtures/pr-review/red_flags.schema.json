@@ -1,0 +1,65 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/fixtures/pr-review/red_flags.schema.json",
+  "title": "PR Review Red Flags",
+  "description": "Internal-monologue red flags that signal an imminent pr-review skill violation. If a thought matches one of these, STOP and re-read the relevant phase.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["_meta", "flags"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference"
+    },
+    "_meta": {
+      "type": "object",
+      "description": "Metadata about this catalog",
+      "required": ["purpose", "schema_version", "last_reviewed", "eviction_policy"],
+      "properties": {
+        "purpose": {
+          "type": "string",
+          "description": "Purpose of this catalog"
+        },
+        "schema_version": {
+          "type": "string",
+          "description": "Schema version"
+        },
+        "last_reviewed": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+          "description": "Date of last review (YYYY-MM-DD)"
+        },
+        "eviction_policy": {
+          "type": "string",
+          "description": "Policy for when to evict old entries"
+        }
+      },
+      "additionalProperties": false
+    },
+    "flags": {
+      "type": "array",
+      "description": "Array of red flag entries",
+      "items": {
+        "type": "object",
+        "required": ["id", "flag_text", "category"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^F[0-9]{3}$",
+            "description": "Unique identifier (F001, F002, etc.)"
+          },
+          "flag_text": {
+            "type": "string",
+            "description": "The red flag thought pattern to watch for"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the red flag (e.g., general_skill_discipline, branch_safety, phase3_atomic_close)"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

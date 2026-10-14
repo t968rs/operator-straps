@@ -1,0 +1,28 @@
+{
+  "name": "harness",
+  "version": "0.1.0",
+  "description": "Skills, agents, hooks and scripts for PR review, commit breakdowns, PR summaries and worktree flow",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "userConfig": {
+    "python": {
+      "type": "file",
+      "title": "Python interpreter",
+      "description": "Interpreter for harness scripts and hooks. Needs jsonschema, referencing and pydantic>=2. HARNESS_PY in project settings env wins over this.",
+      "required": false
+    },
+    "bash_discipline": {
+      "type": "boolean",
+      "title": "Block compound Bash commands",
+      "description": "Deny Bash commands chained with && or ; (one command per call).",
+      "default": true
+    },
+    "inject_rules": {
+      "type": "boolean",
+      "title": "Inject harness rules at session start",
+      "description": "Add rules/HARNESS_RULES.md to the session context on SessionStart.",
+      "default": true
+    }
+  }
+}
