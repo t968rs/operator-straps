@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 from types import ModuleType
 
@@ -83,13 +84,43 @@ def test_frontmatter_checks_agents_but_not_other_markdown(scan: ModuleType) -> N
     assert scan.frontmatter_problem(Path("docs/notes.md"), "# A\n") is None
 
 
-def test_iter_files_filters_and_skips(scan: ModuleType, tmp_path: Path) -> None:
-    for rel in ("a.py", "b.md", "c.png", "node_modules/d.ts", "__pycache__/e.py", "scripts/hpy"):
-        target = tmp_path / rel
+def test_frontmatter_skips_non_markdown_under_agents(scan: ModuleType) -> None:
+    assert scan.frontmatter_problem(Path("agents/helper.py"), "import os\n") is None
+
+
+def _tree(root: Path, *rels: str) -> None:
+    for rel in rels:
+        target = root / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text("x\n", encoding="utf-8")
-    found = [p.relative_to(tmp_path).as_posix() for p in scan.iter_files([tmp_path], [".py", ".md", ".ts"])]
-    assert found == ["a.py", "b.md", "scripts/hpy"]
+
+
+def _found(scan: ModuleType, root: Path) -> list:
+    return [p.relative_to(root).as_posix() for p in scan.iter_files([root], [".py", ".md", ".ts"])]
+
+
+def test_iter_files_filters_and_skips(scan: ModuleType, tmp_path: Path) -> None:
+    _tree(tmp_path, "a.py", "b.md", "c.png", "node_modules/d.ts", "__pycache__/e.py", "scripts/hpy")
+    assert _found(scan, tmp_path) == ["a.py", "b.md", "scripts/hpy"]
+
+
+def test_iter_files_keeps_path_sorted_order(scan: ModuleType, tmp_path: Path) -> None:
+    _tree(tmp_path, "c.md", "b/x.md", "a.md")
+    assert _found(scan, tmp_path) == ["a.md", "b/x.md", "c.md"]
+
+
+def test_iter_files_never_lists_a_skipped_directory(scan: ModuleType, tmp_path: Path, monkeypatch) -> None:
+    _tree(tmp_path, "a.md", "node_modules/pkg/d.ts", ".git/objects/x.py", "src/__pycache__/e.py")
+    listed = []
+    real = os.scandir
+
+    def spy(path="."):
+        listed.append(Path(path).name)
+        return real(path)
+
+    monkeypatch.setattr(os, "scandir", spy)
+    assert _found(scan, tmp_path) == ["a.md"]
+    assert not set(listed) & scan.SKIP_DIRS
 
 
 def test_main_prints_hits_and_exits_zero(scan: ModuleType, tmp_path: Path, capsys) -> None:

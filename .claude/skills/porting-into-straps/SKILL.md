@@ -28,7 +28,7 @@ Then list what the source depends on: imports, by-path loads, skills it invokes,
 | Skill | `plugins/harness/skills/<name>/SKILL.md` (frontmatter `name` + "Use when..." `description`) | `harness:<name>` |
 | Code inside a skill (PowerShell, `python -c`) | Python: `skills/<s>/commands/` when only that skill runs it, `scripts/` when several skills or agents do, logic worth unit tests in `lib/harness_lib/` | `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/<file>.py"` (or `${CLAUDE_PLUGIN_ROOT}/scripts/...`), Bash tool |
 | Agent | `plugins/harness/agents/<id>.md` | `harness:<id>` in every dispatch and table |
-| Hook | `plugins/harness/hooks/<name>.py`; helper modules `_<name>.py` | shell form through `hpy` in `hooks/hooks.json`; deny via JSON `permissionDecision`, exit 0 |
+| Hook | `plugins/harness/hooks/<name>.py`; helper modules `_<name>.py` | shell form through `hpy` in `hooks/hooks.json`; JSON on stdout, exit 0. The block field depends on the event: `PreToolUse` sets `hookSpecificOutput.permissionDecision`, `Stop` sets top-level `decision: "block"` plus `reason`. Keep the source hook's event and field |
 | Library | `plugins/harness/lib/harness_lib/` | imported; reads `active()` inside functions |
 | Test | `tests/<area>/test_<name>.py`, **one level deep** (CI collects `tests/*/test_*.py`) | `make_project` fixture |
 | TS mod | `plugins/<mod>/`: manifest, `tsconfig.json`, `types/`, `.gitignore` from `git-status`; `config.ts` / `root.ts` patterns from `pr-review-watch` | `claude plugin test` |

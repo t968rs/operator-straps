@@ -11,6 +11,7 @@ missing path.
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import sys
 from pathlib import Path
@@ -60,18 +61,27 @@ def rules(contract: ModuleType) -> List[Rule]:
     return banned + list(SMELLS)
 
 
+def walk_files(root: Path) -> List[Path]:
+    """Every file under ``root`` in path-sorted order; skipped directories are pruned, never listed."""
+    found = []
+    for parent, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        found.extend(Path(parent) / name for name in files)
+    return sorted(found)
+
+
 def iter_files(paths: Sequence[Path], suffixes: Sequence[str]) -> Iterator[Path]:
     """Text files under ``paths`` in sorted order, skipping caches and dependency folders."""
     for root in paths:
-        found = [root] if root.is_file() else sorted(p for p in root.rglob("*") if p.is_file())
-        for path in found:
-            if SKIP_DIRS.isdisjoint(path.parts) and (path.suffix in suffixes or path.name == "hpy"):
+        for path in [root] if root.is_file() else walk_files(root):
+            if path.suffix in suffixes or path.name == "hpy":
                 yield path
 
 
 def frontmatter_problem(path: Path, text: str) -> Optional[str]:
     """Why a skill or agent markdown file lacks the ``name`` / ``description`` frontmatter, else None."""
-    if path.name != "SKILL.md" and path.parent.name != "agents":
+    is_agent = path.parent.name == "agents" and path.suffix == ".md"
+    if path.name != "SKILL.md" and not is_agent:
         return None
     match = re.match(r"---\r?\n(.*?)\r?\n---", text, re.DOTALL)
     if match is None:
