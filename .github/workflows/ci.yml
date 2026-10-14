@@ -27,9 +27,11 @@ jobs:
         shell: bash
         run: python -m pytest tests/*/test_*.py -q --junitxml=.artifacts/pytest-junit.xml
       - name: test runtime catalog
+        if: ${{ !cancelled() && hashFiles('.artifacts/pytest-junit.xml') != '' }}
         shell: bash
         run: python tools/ci_test_runtime_catalog.py .artifacts/pytest-junit.xml .artifacts/test-runtime-catalog.json
       - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && hashFiles('.artifacts/test-runtime-catalog.json') != '' }}
         with:
           name: test-runtime-catalog-${{ matrix.os }}
           path: .artifacts/test-runtime-catalog.json
