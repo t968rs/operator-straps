@@ -25,7 +25,14 @@ jobs:
       - run: python -m ruff check plugins tests
       - name: pytest
         shell: bash
-        run: python -m pytest tests/*/test_*.py -q
+        run: python -m pytest tests/*/test_*.py -q --junitxml=.artifacts/pytest-junit.xml
+      - name: test runtime catalog
+        shell: bash
+        run: python tools/ci_test_runtime_catalog.py .artifacts/pytest-junit.xml .artifacts/test-runtime-catalog.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: test-runtime-catalog-${{ matrix.os }}
+          path: .artifacts/test-runtime-catalog.json
       - name: hpy launches under sh
         shell: bash
         run: sh plugins/harness/scripts/hpy -c "import jsonschema, referencing, pydantic, sys; print(sys.version)"
