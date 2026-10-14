@@ -1,0 +1,29 @@
+{
+  "name": "operator-straps",
+  "description": "Agent harness: PR review and commit tooling, guard hooks, run-tracking and session mods",
+  "owner": {
+    "name": "Kevin Gabelman"
+  },
+  "plugins": [
+    {
+      "name": "harness",
+      "source": "./plugins/harness",
+      "description": "Skills, agents, hooks and scripts for PR review, commit breakdowns, PR summaries and worktree flow"
+    },
+    {
+      "name": "pr-review-watch",
+      "source": "./plugins/pr-review-watch",
+      "description": "pr-review / pr-team run tracking: Phase 5 band, engine-measured matrix rows, bubble Stop guard"
+    },
+    {
+      "name": "session-bookmark",
+      "source": "./plugins/session-bookmark",
+      "description": "Compaction bookmark: git state, last prompts and /compact instructions kept in session state and appended to the compacted conversation"
+    },
+    {
+      "name": "git-status",
+      "source": "./plugins/git-status",
+      "description": "Git status line and per-prompt GIT_STATE context"
+    }
+  ]
+}

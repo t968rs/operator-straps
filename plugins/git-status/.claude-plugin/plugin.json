@@ -1,0 +1,9 @@
+{
+  "name": "git-status",
+  "version": "0.1.0",
+  "description": "Git status line and per-prompt GIT_STATE context",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "types": "./types/index.d.ts"
+}
