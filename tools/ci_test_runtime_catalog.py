@@ -7,12 +7,24 @@ from typing import Dict, List, Optional
 from xml.etree import ElementTree
 
 
+def _class_path(file_name: str, class_name: str) -> str:
+    """The ``::``-joined classes in ``class_name`` past the module that ``file_name`` names."""
+    module = file_name[:-3] if file_name.endswith(".py") else file_name
+    module = module.replace("/", ".")
+    if class_name == module:
+        return ""
+    if class_name.startswith(module + "."):
+        class_name = class_name[len(module) + 1:]
+    return class_name.replace(".", "::")
+
+
 def _node_id(case: ElementTree.Element) -> str:
-    file_name = case.attrib.get("file")
+    file_name = case.attrib.get("file", "").replace("\\", "/")
     name = case.attrib.get("name", "unknown")
-    if file_name:
-        return f"{file_name}::{name}"
     class_name = case.attrib.get("classname")
+    if file_name:
+        classes = _class_path(file_name, class_name) if class_name else ""
+        return "::".join(part for part in (file_name, classes, name) if part)
     if class_name:
         return f"{class_name}::{name}"
     return name

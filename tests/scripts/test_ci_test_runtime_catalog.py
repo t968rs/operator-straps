@@ -48,6 +48,29 @@ def test_build_catalog_orders_and_computes_share(script: ModuleType, tmp_path: P
     assert catalog["tests"][2]["share"] == 0.0
 
 
+def test_xunit1_ids_keep_the_class(script: ModuleType, tmp_path: Path) -> None:
+    """Same-named methods in different classes of one file stay distinct, as pytest node ids."""
+    xml = tmp_path / "junit.xml"
+    xml.write_text(
+        """<testsuites><testsuite>
+<testcase classname='tests.test_dup.TestA' name='test_same' file='tests\\test_dup.py' time='0.4'/>
+<testcase classname='tests.test_dup.TestB.TestInner' name='test_same' file='tests\\test_dup.py' time='0.3'/>
+<testcase classname='tests.test_dup.TestB' name='test_same' file='tests\\test_dup.py' time='0.2'/>
+<testcase classname='tests.test_dup' name='test_same' file='tests/test_dup.py' time='0.1'/>
+</testsuite></testsuites>
+""",
+        encoding="utf-8",
+    )
+
+    ids = [test["test"] for test in script.build_catalog(xml)["tests"]]
+    assert ids == [
+        "tests/test_dup.py::TestA::test_same",
+        "tests/test_dup.py::TestB::TestInner::test_same",
+        "tests/test_dup.py::TestB::test_same",
+        "tests/test_dup.py::test_same",
+    ]
+
+
 def test_main_writes_json(script: ModuleType, tmp_path: Path) -> None:
     xml = tmp_path / "junit.xml"
     xml.write_text(
