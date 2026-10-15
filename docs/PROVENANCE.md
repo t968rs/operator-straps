@@ -12,6 +12,7 @@ Additional sources at import time:
 | `plugins/harness/skills/{fold-in-review,agent-permissions}/**` | `t968rs/t968rs_claude` working tree, `skills/` (fold-in-review was untracked there) |
 | `plugins/harness/skills/consumer-contract-audit/{SKILL.md,repo-fixtures.schema.json}` | same; the fpm `repo-fixtures.json` data stays with floodplain_development |
 | `plugins/harness/skills/{merge-commit,searching-sourcegraph}/**` | floodplain `origin/dev` at `107d70a90` (2026-10-14), `.claude/skills/` |
+| `plugins/pytest-scope/hooks/{interpreter,scope}{,.test}.ts` | floodplain `origin/dev` at `107d70a90`, `.claude/mods/fpm-guardrails/hooks/{interpreter,testScope,registry}{,.test}.ts`: the interpreter rewrite and the broad pytest deny; registry guard tracking and the registry lookup stay with floodplain_development |
 
 The import commit is verbatim (paths moved, content unchanged except `.gitignore`). Every later commit is a
 decoupling or packaging change against it.
