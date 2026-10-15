@@ -1,0 +1,17 @@
+{
+  "enabledPlugins": {
+    "harness@operator-straps": true,
+    "pr-review-watch@operator-straps": true,
+    "session-bookmark@operator-straps": true,
+    "git-status@operator-straps": true,
+    "pytest-scope@operator-straps": true
+  },
+  "extraKnownMarketplaces": {
+    "operator-straps": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/t968rs/operator-straps.git"
+      }
+    }
+  }
+}
