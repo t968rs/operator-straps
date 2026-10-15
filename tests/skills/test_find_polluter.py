@@ -80,5 +80,29 @@ def test_existing_target_stops_before_any_test_runs(script: Path, tmp_path: Path
 
 def test_usage_without_arguments(script: Path, tmp_path: Path) -> None:
     done = _run(script, tmp_path)
-    assert done.returncode == 1
+    assert done.returncode == 2
     assert "Usage:" in done.stdout
+
+
+@pytest.mark.parametrize("pattern", ["t/**/*_test.py", "./t/**/*_test.py"])
+def test_double_star_pattern_also_matches_the_top_level(script: Path, tmp_path: Path, pattern: str) -> None:
+    root = _layout(tmp_path, ["t/top_test.py", "t/sub/b c_test.py"])
+    done = _run(script, root, ".polluted", pattern, *_python())
+    assert done.returncode == 1, done.stdout + done.stderr
+    assert "Found 2 test files" in done.stdout
+    assert "Test: ./t/sub/b c_test.py" in done.stdout
+
+
+def test_leading_dot_slash_pattern_is_stripped(script: Path, tmp_path: Path) -> None:
+    root = _layout(tmp_path, ["t/a_test.py", "t/b_test.py"])
+    done = _run(script, root, ".polluted", "./t/*_test.py", *_python())
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "Found 2 test files" in done.stdout
+
+
+def test_pattern_matching_nothing_stops_instead_of_reporting_clean(script: Path, tmp_path: Path) -> None:
+    root = _layout(tmp_path, ["t/a_test.py"])
+    done = _run(script, root, ".polluted", "nope/*_test.py", *_python())
+    assert done.returncode == 2, done.stdout + done.stderr
+    assert "No test files match" in done.stdout
+    assert "No polluter found" not in done.stdout

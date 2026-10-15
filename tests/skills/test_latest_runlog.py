@@ -1,14 +1,14 @@
 """Behavioral tests for the harness check-runlogs skill command ``commands/latest_runlog.py``.
 
 Each test builds a throwaway project with ``make_project``, seeds log files under the configured run-log
-folder and runs ``main`` in-process with ``--repo``.
+folder and runs ``main`` in-process, usually with ``--repo``.
 """
 from __future__ import annotations
 
 import importlib.util
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import pytest
 
@@ -39,6 +39,12 @@ def _run(module, root: Path, capsys, *extra: str):
 
 def _names(lines: List[str]) -> List[str]:
     return [Path(line).name for line in lines]
+
+
+def _snapshot(folder: Path) -> Dict[str, Tuple[int, int]]:
+    """``{relative path: (st_size, st_mtime_ns)}`` for every file under ``folder``."""
+    return {p.relative_to(folder).as_posix(): (p.stat().st_size, p.stat().st_mtime_ns)
+            for p in folder.rglob("*") if p.is_file()}
 
 
 def _symlink(link: Path, target: Path) -> None:
@@ -87,6 +93,14 @@ class TestNewest:
         rc, out, _ = _run(module, root, capsys, "--count", "4")
         assert rc == 0
         assert _names(out) == ["run_2026-10-13_120000.log"]
+
+    @pytest.mark.parametrize("count", ["0", "-3", "two"])
+    def test_count_below_one_is_rejected(self, module, make_project, capsys, count: str) -> None:
+        root = _project(make_project, ["run_2026-10-13_120000.log"])
+        with pytest.raises(SystemExit) as exit_info:
+            module.main(["--repo", str(root), "--count", count])
+        assert exit_info.value.code == 2
+        assert "--count" in capsys.readouterr().err
 
     def test_equal_stamps_break_ties_by_mtime(self, module, make_project, capsys) -> None:
         root = _project(make_project, ["a_2026-10-13_120000.txt", "b_2026-10-13_120000.txt"])
@@ -151,7 +165,9 @@ class TestRepo:
     def test_without_repo_the_cwd_checkout_is_used(self, module, make_project,
                                                   monkeypatch: pytest.MonkeyPatch, capsys) -> None:
         root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt"])
-        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        other = make_project({"runlogs": {"dir": LOGS}},
+                             files={f"{LOGS}/_RUN_TESTS_2026-10-14_120000.txt": "other\n"}, name="other")
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(other))
         monkeypatch.chdir(root / LOGS)
         assert module.main([]) == 0
         assert _names(capsys.readouterr().out.splitlines()) == ["_RUN_TESTS_2026-10-13_120000.txt"]
@@ -166,7 +182,9 @@ class TestFolder:
         assert "problem:" in err and "runlogs.dir" in err
 
     def test_dir_flag_overrides_the_config(self, module, make_project, capsys) -> None:
-        root = make_project(None, files={"other/run_2026-10-13_120000.txt": "x\n"})
+        root = make_project({"runlogs": {"dir": LOGS}},
+                            files={f"{LOGS}/_RUN_TESTS_2026-10-14_120000.txt": "x\n",
+                                   "other/run_2026-10-13_120000.txt": "x\n"})
         rc, out, _ = _run(module, root, capsys, "--dir", "other")
         assert rc == 0
         assert _names(out) == ["run_2026-10-13_120000.txt"]
@@ -223,6 +241,21 @@ class TestFolder:
         assert rc == 0
         assert _names(out) == ["_RUN_TESTS_2026-10-13_120000.txt", "_RUN_TESTS_2026-10-12_120000.txt"]
 
+    def test_walk_follows_a_linked_directory_once(self, module, make_project) -> None:
+        # The walk follows directory links on every platform, so the alias and its target are one directory.
+        root = _project(make_project, ["2026-10-13/_RUN_TESTS_2026-10-13_120000.txt"])
+        _dir_link(root / LOGS / "alias", root / LOGS / "2026-10-13")
+        folder = root / LOGS
+        names = [p.name for p in module.walk(folder, folder.resolve())]
+        assert names.count("_RUN_TESTS_2026-10-13_120000.txt") == 1
+
+    def test_linked_directory_loop_never_aborts_the_scan(self, module, make_project, capsys) -> None:
+        root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt"])
+        _dir_link(root / LOGS / "loop", root / LOGS)
+        rc, out, _ = _run(module, root, capsys, "--count", "5")
+        assert rc == 0
+        assert out == [(root / LOGS / "_RUN_TESTS_2026-10-13_120000.txt").resolve().as_posix()]
+
     def test_symlink_loop_never_aborts_the_scan(self, module, make_project, capsys) -> None:
         root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt"])
         for a, b in (("loop_a", "loop_b"), ("_RUN_TESTS_2026-10-14_000000.txt", "_RUN_TESTS_2026-10-15.txt")):
@@ -232,15 +265,18 @@ class TestFolder:
         assert rc == 0
         assert _names(out) == ["_RUN_TESTS_2026-10-13_120000.txt"]
 
-    @pytest.mark.parametrize("bad", ["unrelated.bin", "_RUN_TESTS_2026-10-14_120000.txt"])
+    @pytest.mark.parametrize("bad, error", [
+        ("_RUN_TESTS_2026-10-14_120000.txt", RuntimeError),
+        ("_RUN_TESTS_2026-10-15_120000.txt", OSError),
+    ])
     def test_entry_that_cannot_resolve_is_skipped(self, module, make_project, monkeypatch: pytest.MonkeyPatch,
-                                                  capsys, bad: str) -> None:
+                                                  capsys, bad: str, error: type) -> None:
         root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt", bad])
         real_resolve = Path.resolve
 
         def resolve(self: Path, strict: bool = False) -> Path:
             if self.name == bad:
-                raise RuntimeError(f"Symlink loop from {self}")
+                raise error(f"cannot resolve {self}")
             return real_resolve(self, strict)
 
         monkeypatch.setattr(Path, "resolve", resolve)
@@ -251,7 +287,6 @@ class TestFolder:
     def test_nothing_is_moved_or_written(self, module, make_project, capsys) -> None:
         names = [f"_RUN_TESTS_2026-10-{d:02d}_120000.txt" for d in range(1, 15)]
         root = _project(make_project, names)
-        before = sorted(p.relative_to(root).as_posix() for p in (root / LOGS).rglob("*"))
+        before = _snapshot(root / LOGS)
         assert _run(module, root, capsys)[0] == 0
-        after = sorted(p.relative_to(root).as_posix() for p in (root / LOGS).rglob("*"))
-        assert after == before
+        assert _snapshot(root / LOGS) == before

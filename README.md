@@ -98,7 +98,7 @@ Create `.claude/harness.json` in the consuming repository. Every key is optional
 | `exclusions` | `null` | clean-tree checks ignore machine-generated files |
 | `auto_approve_python_c` | `false` | `approve_python_c` hook |
 | `worktree_root` | `~/.config/superpowers/worktrees/{repo}` | `d-w`, `parallel2` |
-| `runlogs.dir` | `null` (the skill then needs `--dir`) | `check-runlogs` (newest run log; dated subfolders searched too) |
+| `runlogs.dir` | `null` (the skill then needs `--dir`) | `check-runlogs` (newest run log; every subfolder at any depth, dated archives included, is searched too) |
 | `runlogs.name_pattern` | a name ending in `<YYYY-MM-DD>[_<HHMMSS>].txt` or `.log` | `check-runlogs` (named groups `date`, optional `time`) |
 
 `schemas_dir` (default `.claude/agent-schemas`) pins project copies of the review schemas; anything missing

@@ -4,6 +4,9 @@
 # Example: bash find-polluter.sh 'packages/core/.git' 'src/**/*.test.ts'
 # Example: bash find-polluter.sh '.tmp_output' 'tests/**/test_*.py' python -m pytest -q
 # The test command (default: npm test) runs once per test file, with the file as its last argument.
+# Exit codes: 0 no polluter found (all tests clean), 1 polluter found,
+# 2 could not bisect (unusable input, no test files match, pollution target
+# already present, or test command missing).
 
 set -e
 
@@ -11,7 +14,7 @@ if [ $# -lt 2 ]; then
   echo "Usage: $0 <file_to_check> <test_pattern> [test command...]"
   echo "Example: $0 'packages/core/.git' 'src/**/*.test.ts'"
   echo "Example: $0 '.tmp_output' 'tests/**/test_*.py' python -m pytest -q"
-  exit 1
+  exit 2
 fi
 
 POLLUTION_CHECK="$1"
@@ -43,6 +46,13 @@ fi
 
 echo "Found $TOTAL test files"
 echo ""
+
+# Zero matches would run no test, so a clean verdict would prove nothing
+if [ "$TOTAL" -eq 0 ]; then
+  echo "No test files match: $TEST_PATTERN"
+  echo "Check the pattern is relative to this directory (the project root)."
+  exit 2
+fi
 
 # Every test would be skipped against a target that is already there, so nothing could be bisected
 if [ -e "$POLLUTION_CHECK" ]; then

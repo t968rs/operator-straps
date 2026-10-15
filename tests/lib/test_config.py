@@ -66,7 +66,8 @@ def test_fpm_shaped_config_loads(make_project) -> None:
 @pytest.mark.parametrize("bad", [{"unknown_key": 1}, {"artifacts": {"reviews": "/abs"}},
                                  {"commit_buckets": [{"bucket": "Nope"}]}, {"tests": {"file_pattern": "("}},
                                  {"runlogs": {"dir": "/abs/logs"}}, {"runlogs": {"name_pattern": "("}},
-                                 {"runlogs": {"folder": "logs"}}])
+                                 {"runlogs": {"folder": "logs"}},
+                                 {"runlogs": {"name_pattern": r"run_\d+\.txt"}}])
 def test_invalid_config_raises(make_project, bad: dict) -> None:
     with pytest.raises(ConfigError):
         load_config(make_project(bad))

@@ -91,8 +91,8 @@
       "additionalProperties": false,
       "description": "Where the project's run logs (test-runner or script console output) land; read by check-runlogs.",
       "properties": {
-        "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Run-log folder; dated subfolders under it are searched too. null: check-runlogs needs --dir."},
-        "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a log file name must fully match; named group date (YYYY-MM-DD) required, time (HHMMSS) optional, a date-only name sorts as midnight."}
+        "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Run-log folder; subfolders at any depth (e.g. dated archive folders) are searched too. null: check-runlogs needs --dir."},
+        "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a log file name must fully match; named group date (YYYY-MM-DD) required (checked at config load), time (HHMMSS) optional, a date-only name sorts as midnight."}
       }
     }
   }

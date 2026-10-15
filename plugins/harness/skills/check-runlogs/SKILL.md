@@ -19,8 +19,8 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/latest_runl
 
 - **stdout** is the newest log's absolute path, then the previous one when it exists. stderr is one summary
   line (log count, folder, newest timestamp).
-- The folder is `runlogs.dir` in `.claude/harness.json`; dated subfolders under it (archived logs) are searched
-  too. A file counts as a log when its name fully matches `runlogs.name_pattern` (default: a name ending in
+- The folder is `runlogs.dir` in `.claude/harness.json`; every subfolder at any depth under it (dated archive
+  folders included) is searched too, so a log-named file in any subfolder can count. A file counts as a log when its name fully matches `runlogs.name_pattern` (default: a name ending in
   `<YYYY-MM-DD>[_<HHMMSS>].txt` or `.log`; a date-only name sorts as midnight). The command only reads.
 - When the developer names another folder, add `--dir <path>` (project-relative or absolute).
 - **Exit 1** prints `problem:` lines: relay them and stop. When the problem is an unset `runlogs.dir`, show the

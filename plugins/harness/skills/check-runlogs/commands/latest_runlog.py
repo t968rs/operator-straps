@@ -3,7 +3,8 @@
 Usage: latest_runlog.py [--count N] [--dir PATH] [--repo PATH]
 
 The folder is ``--dir`` (relative to the project root, or absolute), else ``runlogs.dir`` in
-``.claude/harness.json``; dated subfolders under it (archived logs) are searched too. A file counts as a run
+``.claude/harness.json``; subfolders at any depth (e.g. dated archive folders) are searched too, following a
+directory link only when its target lies inside the folder and was not entered yet. A file counts as a run
 log when its name fully matches ``runlogs.name_pattern``: named group ``date`` (YYYY-MM-DD), optional ``time``
 (HHMMSS), both checked as real calendar values. A date-only name sorts as midnight; equal stamps fall back to
 mtime. An explicit ``--repo`` must be a git checkout; without it the project is the cwd's checkout, else
@@ -18,7 +19,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import Iterator, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
@@ -60,13 +61,49 @@ def find_runlogs(folder: Path, pattern: "re.Pattern[str]") -> List[Tuple[SortKey
     of its names gives it, so a link and its target never fill two ``--count`` slots.
     """
     base, best = folder.resolve(), {}
-    for path in folder.rglob("*"):
+    for path in walk(folder, base):
         when = stamp(path.name, pattern)
         target = None if when is None else resolved_log(path, base)
         if target is not None:
             key = (when, target[1], path.as_posix())
             best[target[0]] = max(key, best.get(target[0], key))
     return sorted(((key, path) for path, key in best.items()), reverse=True)
+
+
+def walk(folder: Path, base: Path) -> Iterator[Path]:
+    """Every entry under ``folder``, entering each real directory inside ``base`` once.
+
+    Directory links (symlinks and Windows junctions) are followed only when their target lies inside
+    ``base`` and has not been entered yet, so a link to the folder or an ancestor ends instead of recursing,
+    and a link out of the folder is never walked. A directory that cannot be listed is skipped.
+    """
+    seen, stack = set(), [folder]
+    while stack:
+        current = stack.pop()
+        real = real_dir(current, base)
+        if real is None or real in seen:
+            continue
+        seen.add(real)
+        for child in children(current):
+            yield child
+            stack.append(child)
+
+
+def real_dir(path: Path, base: Path) -> Optional[Path]:
+    """The real path of a directory inside ``base``; None for anything else or unresolvable."""
+    try:
+        resolved = path.resolve()
+        return resolved if resolved.is_relative_to(base) and resolved.is_dir() else None
+    except (OSError, RuntimeError):
+        return None
+
+
+def children(folder: Path) -> List[Path]:
+    """The entries of ``folder``; empty when it cannot be listed (removed mid-scan, no permission)."""
+    try:
+        return list(folder.iterdir())
+    except OSError:
+        return []
 
 
 def resolved_log(path: Path, base: Path) -> Optional[Tuple[Path, int]]:
@@ -95,9 +132,20 @@ def resolve_folder(root: Path, flag: Optional[str], configured: Optional[str]) -
     return folder
 
 
+def positive_int(text: str) -> int:
+    """An argparse type for ``--count``: an integer of at least 1."""
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"not an integer: {text!r}") from None
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
+    return value
+
+
 def parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--count", type=int, default=1, help="print the N newest logs (default 1)")
+    parser.add_argument("--count", type=positive_int, default=1, help="print the N newest logs (default 1)")
     parser.add_argument("--dir", help="run-log folder (default: runlogs.dir in .claude/harness.json)")
     parser.add_argument("--repo", type=Path, help="project checkout (default: the cwd's project)")
     return parser.parse_args(argv)
@@ -124,7 +172,7 @@ def newest(args: argparse.Namespace) -> List[Tuple[SortKey, Path]]:
         raise RunLogError(f"no run log under {folder.as_posix()} matches runlogs.name_pattern")
     print(f"{len(logs)} run logs under {folder.as_posix()}; newest {logs[0][0][0]:%Y-%m-%d %H:%M:%S}",
           file=sys.stderr)
-    return logs[:max(args.count, 1)]
+    return logs[:args.count]
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

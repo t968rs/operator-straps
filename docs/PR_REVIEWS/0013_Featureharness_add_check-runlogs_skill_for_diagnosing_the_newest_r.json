@@ -1,0 +1,407 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 13,
+  "pr_title": "Feature(harness): add check-runlogs skill for diagnosing the newest r…",
+  "branch": "0005-SKILL-check-runlogs",
+  "base_branch": "main",
+  "base_sha": "d310faa7135faee08f65c3556cfed93c917180ff",
+  "head_sha": "fcc44f94a71247233d6ffc1c5527f3947127b5ec",
+  "review_date": "2026-10-15",
+  "verdict": "NOT READY TO MERGE - minor findings pending Phase 5: M4",
+  "stats": {
+    "additions": 1578,
+    "deletions": 7,
+    "files_changed": 20
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0013/pr13_20261015T213312Z/findings/config.json",
+    "docs/_scratch/pr_review/0013/pr13_20261015T213312Z/findings/tests.json",
+    "docs/_scratch/pr_review/0013/pr13_20261015T213312Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0013/pr13_20261015T213312Z/findings/docs.json",
+    "docs/_scratch/pr_review/0013/pr13_20261015T213312Z/findings/overall.json",
+    "docs/_scratch/pr_review/0013/pr13_20261015T213312Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0013/pr13_20261015T213312Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "runlogs block follows the schema conventions: additionalProperties false, relPath/regex $defs reused, dir nullable via oneOf like exclusions and tests.registry.",
+    "Descriptions match latest_runlog.py behavior (full match, required date group, optional time, null dir needs --dir) and the README key table.",
+    "All four config-key touch points are present: defaults.json, schema, config.py RunLogsConfig/builder, README table; tests cover the default, override and invalid shapes.",
+    "test_equal_stamps_break_ties_by_mtime gives the newer-mtime file the alphabetically earlier name, so a path-only tie-break would fail it; it really tests the mtime key.",
+    "test_explicit_non_git_repo_never_falls_back_to_the_session_project points CLAUDE_PROJECT_DIR at a project that has logs, so dropping checked_repo would turn the test red.",
+    "test_find_polluter.py runs the real bash script with the current interpreter as the test command. It covers paths with spaces, a missing runner (exit 2, not 'clean') and a target that already exists, and needs no JS toolchain.",
+    "The stray-name parametrization checks real calendar values (month 13, 25:60:00) and suffix variants (.json, .txt.bak), not just regex shape.",
+    "Every test exercises real logic; there are no mock-chain wiring tests. The Path.resolve monkeypatch is fault injection on a collaborator.",
+    "The new root-separation case seeds a dated log so latest_runlog.py reaches its scan instead of exiting early.",
+    "RunLogsConfig is wired through all four key locations: defaults.json, the schema, the config.py dataclass and builder, and the README table.",
+    "resolved_log keeps the scan contained: it resolves each candidate, requires it to be a regular file under the resolved base, and keys results by real path. A link and its target never take two --count slots, and a log-named link cannot leak a file from outside the folder.",
+    "stamp() validates date and time as real calendar values through strptime and falls back to midnight for date-only names, which matches the module docstring and the schema description.",
+    "checked_repo makes an explicit --repo fail loudly instead of silently falling back to CLAUDE_PROJECT_DIR.",
+    "find-polluter.sh refuses a target that already exists, separates a missing runner (126/127) from a failing test, and reads the file list on fd 3 with read -r, so names with spaces survive and the test command cannot consume the list.",
+    "check-runlogs SKILL.md Step 1 matches latest_runlog.py exactly: stdout carries only absolute resolved paths, stderr one summary line (count, folder, newest stamp), exit 1 with problem: lines, --dir relative or absolute, date-only names sort as midnight.",
+    "The new runlogs keys are documented consistently across README key table, schema descriptions and the skill text; README example JSON stays valid with the added trailing key.",
+    "HARNESS_RULES troubleshooting line names both the upstream skill and the bundled fallback, and strap-debugging's description scopes it to the case where upstream is absent, so the two do not compete.",
+    "root-cause-tracing.md's find-polluter usage (absolute skill-dir path, optional trailing test command defaulting to npm test, file appended last, target must be absent) agrees with find-polluter.sh lines 3-6, 20-24 and 47-52; LICENSE ships beside the MIT-derived files.",
+    "strap-debugging links to condition-based-waiting-example.ts, root-cause-tracing.md and defense-in-depth.md all resolve to files shipped in the skill directory.",
+    "The runlogs key lands in all four required places (defaults.json, schema, config.py dataclass and builder, README table) with load-time tests for absolute dir, bad regex and unknown subkey.",
+    "test_latest_runlog.py is behavioral end to end: real files, real git projects via make_project, real symlinks and junctions, and in-process main() with --repo; no stubs of the code under test.",
+    "Link handling resolves every candidate and dedupes by real path, so escaping links and aliases cannot leak outside files or fill two --count slots.",
+    "check-runlogs keeps the log out of the main context by dispatching a read-only Explore investigator with an explicit model and a fixed reply shape.",
+    "PROVENANCE records every deviation from the vendored systematic-debugging skill, and the MIT LICENSE ships beside it.",
+    "find-polluter.sh fixes are each pinned by a test: spaced paths, missing runner (exit 2), pre-existing target.",
+    "The new runlogs key reaches all four places the project rule requires (defaults.json, schema, RunLogsConfig dataclass and _build, README key table), with invalid-config and default/override tests in tests/lib/test_config.py.",
+    "HARNESS_RULES.md, the strap-debugging frontmatter description and the check-runlogs Step 2 prompt all give the same fallback order (superpowers:systematic-debugging first, then harness:strap-debugging).",
+    "check-runlogs is added to the root-separation contract cases, so the new driver is held to the plugin-root read-only rule from the start.",
+    "The latest_runlog.py docstrings match its behavior: calendar-validated stamps, date-only names sorting as midnight, mtime tie-break, escape-link skipping, one entry per real file, and an explicit --repo that never falls back to CLAUDE_PROJECT_DIR. Each claim has a behavioral test.",
+    "PROVENANCE pins the upstream commit, license and omitted files for strap-debugging, and the LICENSE file sits beside the imported skill.",
+    "latest_runlog.py is read-only and contained: escaping links skipped, aliases deduplicated by real path, invalid calendar stamps rejected, each with a behavioral test on real files.",
+    "runlogs lands in all four required places (defaults, schema, dataclass and builder, README) with invalid-value and override-merge tests.",
+    "test_root_separation gains a check-runlogs case, putting the new driver under the no-writes-outside-the-project contract.",
+    "find-polluter.sh no longer reports false clean runs for a missing runner or pre-existing target, tested as a real subprocess.",
+    "The vendored debugging skill ships with its MIT LICENSE and a PROVENANCE row pinned to an upstream commit."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I2",
+        "name": "Junction to an ancestor sends the run-log scan into unbounded recursion",
+        "file": "plugins/harness/skills/check-runlogs/commands/latest_runlog.py",
+        "files": [
+          "plugins/harness/skills/check-runlogs/commands/latest_runlog.py",
+          "tests/skills/test_latest_runlog.py",
+          "plugins/harness/skills/check-runlogs/SKILL.md",
+          "README.md",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "5-6,55-69,100,127,130-138",
+        "reviewer": "roast, system_shape, overall, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "rglob on 3.11 descends any entry with is_dir(follow_symlinks=False) true, and a Windows junction counts as a plain directory (that is why the alias test works on Windows). A junction to the folder or an ancestor (logs/loop -> logs) recurses until the path is too long or the recursion limit is hit; the OSError or RecursionError escapes the generator, not resolved_log, so main ends in a traceback, not a problem: line. The scan survives file loops only; containment filters what is listed, not what is walked.\n\nAlso (system_shape): The module docstring (lines 5-6), check-runlogs SKILL.md line 22, the README key row for runlogs.dir and the schema description of runlogs.dir all say only dated subfolders (archived logs) are searched. find_runlogs runs folder.rglob('*') (line 63), so any subfolder at any depth is scanned, whatever its name. A log-named file in a non-dated folder such as logs/runs/scratch/ can become the 'newest' log, which none of the four documents warns about.\n\nAlso (overall, runtime): find_runlogs walks folder.rglob('*') (line 63). On Python 3.11 under Windows, rglob descends into junctions (is_symlink() is False for them), so a junction pointing at the run-log folder or an ancestor recurses until scandir raises OSError (reproduced: OSError [WinError 1921] from list(d.rglob('*')) with d/loop -> d). The error is raised by the walk itself, outside resolved_log's try block, and main() catches only RunLogError/ConfigError, so the skill gets a traceback instead of a 'problem:' line. The fcc44f9 commit and the resolved_log docstring promise that link loops never abort the scan; the only loop test (test_symlink_loop_never_aborts_the_scan) covers file symlinks, not a directory loop.\n\nAlso (runtime): find_runlogs walks with folder.rglob('*'). On Python 3.11, pathlib's _iterate_directories swallows only PermissionError. Any other OSError from scandir propagates out of find_runlogs, and main() catches only RunLogError/ConfigError, so the user gets a traceback where a 'problem:' line belongs. Two ways to hit it: a dated subfolder removed or rotated mid-scan raises FileNotFoundError, and a Windows directory junction gets descended anyway (DirEntry.is_dir(follow_symlinks=False) is True for junctions on 3.11). A junction loop recurses until the path gets too long. A junction that points outside the folder also makes the scan list external trees: the files get filtered, but the walk still pays for them. The 'survive link loops' hardening covers only resolve() loops inside resolved_log, not the traversal.\n\nAlso (runtime): parse_args accepts any int for --count, whose help text reads 'print the N newest logs'. newest() then returns logs[:max(args.count, 1)], so --count 0 or --count -3 prints one log with no warning. That contradicts the flag's own contract and hides a caller error.",
+        "fix": [
+          "Walk explicitly (os.walk(followlinks=False) or an os.scandir stack), skipping directories whose resolved path is outside base or already visited; add a test linking LOGS/loop -> LOGS via _dir_link",
+          "At minimum catch OSError and RecursionError around the scan and raise RunLogError",
+          "Reword the four descriptions to 'subfolders at any depth (e.g. dated archive folders) are searched too'.",
+          "Or restrict the recursion to subfolders whose name carries a YYYY-MM-DD date and add a test with a non-dated subfolder.",
+          "Replace rglob with an explicit walk (os.scandir recursion or os.walk) that resolves each directory, skips one already visited or outside base, and swallows OSError per entry; add a test using _dir_link(root / LOGS / 'loop', root / LOGS) that expects the real log printed once and rc 0.",
+          "Minimum: wrap the rglob iteration in try/except (OSError, RecursionError) and raise RunLogError naming the folder, plus the same junction-loop test asserting a 'problem:' line.",
+          "Wrap the rglob loop in find_runlogs in try/except (OSError, RecursionError) and re-raise as RunLogError(f'cannot scan {folder.as_posix()}: {exc}').",
+          "Replace rglob with os.walk(folder, onerror=...) and prune any dirname whose Path.resolve() is outside base or already visited (keep a set of real directory paths). That skips junction loops and out-of-folder junctions on 3.11.",
+          "Reject N < 1 at parse time: use a small positive-int type function for --count that raises argparse.ArgumentTypeError, then slice logs[:args.count]."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "find-polluter.sh reports 'all tests clean' when the pattern matches no test file",
+        "file": "plugins/harness/skills/strap-debugging/find-polluter.sh",
+        "files": [
+          "plugins/harness/skills/strap-debugging/find-polluter.sh",
+          "tests/skills/test_find_polluter.py"
+        ],
+        "lines": "37-45,89-94",
+        "reviewer": "overall, roast, runtime",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "When find returns nothing, TOTAL=0, the loop skips its single empty line, and the script prints 'No polluter found - all tests clean!' with exit 0 (lines 38-45, 89-94). That is the same false clean signal the PR removed for a missing runner (exit 126/127 -> 2): a mistyped pattern, or a '**/' pattern find cannot match, reads as a successful bisection. test_find_polluter.py has no zero-match case.\n\nAlso (roast): With zero matches TOTAL=0, the loop never runs, and the script prints No polluter found - all tests clean! and exits 0. This PR already removed the same false clean result for a missing runner and a pre-existing target; a clean verdict after zero tests proves nothing.\n\nAlso (runtime): When the pattern matches nothing (a typo, an absolute pattern, a pattern meant for another base dir), TOTAL is 0 and the loop body never runs. The script still prints 'No polluter found - all tests clean!' and exits 0, so a pattern mistake looks like a clean bisection result. Every other unusable-input case (target already present, runner missing) exits 2.",
+        "fix": [
+          "After computing TOTAL, add: if [ \"$TOTAL\" -eq 0 ]; then echo \"No test files match: $TEST_PATTERN\"; exit 2; fi  and add a test asserting returncode 2 and no 'No polluter found' for a pattern that matches nothing.",
+          "Exit 2 with a no-test-files-match message when TOTAL is 0, plus a test asserting returncode 2 and no clean verdict",
+          "After computing TOTAL, if it is 0, print 'No test files match: $TEST_PATTERN' and exit 2, before the pollution-target check."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Schema says the date group is required, but config load never checks it",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/skills/check-runlogs/commands/latest_runlog.py",
+          "tests/lib/test_config.py"
+        ],
+        "lines": "93,95",
+        "reviewer": "system_shape, roast, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "harness.schema.json describes runlogs.name_pattern as 'named group date (YYYY-MM-DD) required'. The schema only applies $defs/regex (format: regex, minLength 1), so a pattern with no date group passes load_config. The problem only shows up when check-runlogs runs (compile_pattern, latest_runlog.py lines 38-39). tests.file_pattern and the other regex keys are rejected at load, so this key is less strict than the description suggests.\n\nAlso (roast): The schema description calls the date group required, but only format: regex is enforced; a pattern without it loads cleanly and fails only when check-runlogs runs compile_pattern. Other config errors surface at load_config.\n\nAlso (overall): The schema description says the named group date is required, and README says the same, but the schema only checks format regex; a pattern without (?P<date>...) loads cleanly and fails only when check-runlogs runs (compile_pattern, latest_runlog.py:38-39). Config errors otherwise surface at load time (tests/lib/test_config.py invalid-config cases).",
+        "fix": [
+          "Change the schema description to say check-runlogs, not config load, enforces the date group.",
+          "Or check for the date group in config.py _build (raise ConfigError when the compiled pattern has no 'date' in groupindex) and add {'runlogs': {'name_pattern': 'run_\\d+\\.txt'}} to test_invalid_config_raises.",
+          "Add a schema pattern requiring the named date group and a matching bad case in test_invalid_config_raises",
+          "Check the group in _build and raise ConfigError",
+          "Check the date group in the RunLogsConfig builder in config.py (raise ConfigError) and add {'runlogs': {'name_pattern': 'run_\\d+\\.txt'}} to test_invalid_config_raises.",
+          "Or reword the schema description to say the group is checked when check-runlogs runs."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Docs say 'dated subfolders' are searched; the scan walks every subfolder at any depth",
+        "file": "plugins/harness/skills/check-runlogs/SKILL.md",
+        "files": [
+          "plugins/harness/skills/check-runlogs/SKILL.md",
+          "README.md",
+          "plugins/harness/skills/check-runlogs/commands/latest_runlog.py"
+        ],
+        "lines": "22-23",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "check-runlogs/SKILL.md:22-23, the README key table (README.md:101) and the latest_runlog.py module docstring (lines 5-6) all say 'dated subfolders under it (archived logs) are searched too'. find_runlogs (latest_runlog.py:63) uses folder.rglob('*') with no dated-name filter, so any nested folder (e.g. a per-tool or scratch subfolder holding a log-named file) competes for 'newest'. A developer reading the docs would not expect a non-dated subfolder to supply the log handed to the investigator.",
+        "fix": [
+          "Reword the three places to 'every subfolder under it (dated archives included) is searched too'.",
+          "Or restrict the walk to subfolders whose names parse as dates, and keep the current wording."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Usage error shares exit 1 with 'polluter found'",
+        "file": "plugins/harness/skills/strap-debugging/find-polluter.sh",
+        "files": [
+          "plugins/harness/skills/strap-debugging/find-polluter.sh",
+          "tests/skills/test_find_polluter.py",
+          "plugins/harness/skills/strap-debugging/root-cause-tracing.md"
+        ],
+        "lines": "2-15,85",
+        "reviewer": "runtime, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The missing-arguments branch exits 1, and so does the FOUND POLLUTER branch. The other error paths (target pre-exists, runner exit 126/127) exit 2. A caller that branches on the exit code cannot tell a usage error from a found polluter.\n\nAlso (overall): The script now distinguishes 0 (clean), 1 (polluter found) and 2 (cannot run), but the usage branch also exits 1 (line 14), so a caller keying on the exit code reads a missing argument as a found polluter. test_usage_without_arguments pins the ambiguous 1.\n\nAlso (system_shape): The script now has a three-way exit contract: 0 clean, 2 for refusals (existing target, runner missing), and 1 for a found polluter (line 85). A usage error also exits 1 (line 14), so a caller cannot tell a bad invocation from a found polluter. Neither the script header nor root-cause-tracing.md lines 109-111 documents the exit codes.\n\nAlso (roast): Could-not-bisect cases now exit 2, but a usage error still exits 1, the same code as a found polluter, so a caller cannot tell found-it from called-it-wrong.",
+        "fix": [
+          "Change the usage branch's 'exit 1' to 'exit 2', and add a header comment naming the codes: 0 clean, 1 polluter found, 2 unusable input.",
+          "Change the usage branch to exit 2 and update test_usage_without_arguments to expect 2.",
+          "Or document the exit codes in the header comment and keep usage on a distinct code.",
+          "Make the usage error exit 2 and list the codes in the header comment ('exit 0 clean, 1 polluter found, 2 could not bisect'), then update test_usage_without_arguments to expect 2.",
+          "Exit 2 on the usage branch and update test_usage_without_arguments"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "find-polluter '**/' collapse and './' strip are untested",
+        "file": "tests/skills/test_find_polluter.py",
+        "files": [
+          "tests/skills/test_find_polluter.py",
+          "plugins/harness/skills/strap-debugging/find-polluter.sh"
+        ],
+        "lines": "48-84",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "find-polluter.sh:31-37 documents two pattern rewrites: it strips a leading './', and it collapses '**/' so 'src/**/*.test.ts' also matches files directly under src/. Every test uses the flat pattern 't/*_test.py', so neither rewrite runs and a regression in either would not be caught.\n\nAlso (roast): Every test uses t/*_test.py; nothing covers the ./ strip or the **/ collapse at find-polluter.sh:33-37, the change most likely to regress quietly into Found 0 test files.",
+        "fix": [
+          "Add a test that lays out t/top_test.py and t/sub/b c_test.py, runs with pattern 't/**/*_test.py', and asserts 'Found 2 test files' and the spaced polluter. Add a parametrized case with './t/*_test.py' for the strip.",
+          "Add a test with t/top_test.py and t/sub/deep_test.py and pattern ./t/**/*_test.py, asserting Found 2 test files"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Cwd-resolution test cannot show cwd beats CLAUDE_PROJECT_DIR",
+        "file": "tests/skills/test_latest_runlog.py",
+        "files": [
+          "tests/skills/test_latest_runlog.py",
+          "plugins/harness/skills/check-runlogs/commands/latest_runlog.py"
+        ],
+        "lines": "3-4,151-157",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "latest_runlog.py:9-10 documents that without --repo the cwd's checkout wins and CLAUDE_PROJECT_DIR is only the fallback. test_without_repo_the_cwd_checkout_is_used deletes CLAUDE_PROJECT_DIR, so it would still pass if that precedence were reversed.\n\nAlso (tests): The module docstring says each test 'runs main in-process with --repo', but test_without_repo_the_cwd_checkout_is_used calls module.main([]) without it.",
+        "fix": [
+          "Point CLAUDE_PROJECT_DIR at a second make_project(name='other') whose log is newer, chdir into the first project, and assert only the first project's log is printed.",
+          "Reword it to say each test runs main in-process, usually with --repo."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Directory-link tests pass vacuously on POSIX",
+        "file": "tests/skills/test_latest_runlog.py",
+        "files": [
+          "tests/skills/test_latest_runlog.py",
+          "plugins/harness/skills/check-runlogs/commands/latest_runlog.py"
+        ],
+        "lines": "52-58,197-206,218-224",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "On Python 3.11, Path.rglob descends with entry.is_dir(follow_symlinks=False), so a symlinked directory is never entered on Linux. On the Ubuntu CI leg, _dir_link makes a real symlink, so test_linked_directory_escaping_the_folder_is_skipped and test_linked_directory_alias_lists_each_log_once pass whether or not resolved_log's escape check and find_runlogs' dedup work. They only test those paths on Windows, where the link is a junction and rglob does descend into it.",
+        "fix": [
+          "Assert the precondition before running main: skip with a stated reason when `(root / LOGS).rglob('*')` yields nothing under the linked directory, so the POSIX leg reports a skip instead of a vacuous pass.",
+          "Or mark both tests skipif(os.name != 'nt') with a reason naming rglob's no-follow behaviour; the file-symlink tests already cover escape and dedup on POSIX."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "PROVENANCE row for strap-debugging omits five SKILL.md edits beyond the two it lists",
+        "file": "docs/PROVENANCE.md",
+        "files": [
+          "docs/PROVENANCE.md",
+          "plugins/harness/skills/strap-debugging/SKILL.md",
+          "plugins/harness/skills/strap-debugging/find-polluter.sh"
+        ],
+        "lines": "16",
+        "reviewer": "docs, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docs/PROVENANCE.md:16 says the import is 'Verbatim except: the SKILL.md frontmatter name/description and \"(when installed)\" on its two superpowers: skill pointers'. Compared with the upstream systematic-debugging/SKILL.md (identical in every locally cached release, 5.0.7 and 5.1.0), the bundled SKILL.md also: drops the Overview opener 'Random fixes waste time and create new bugs...' (upstream line 10, gone before SKILL.md:10); rewrites the Layer 1/Layer 2 env-var probes (SKILL.md:91 and :95; upstream `${IDENTITY:+SET}${IDENTITY:-UNSET}` and `env | grep IDENTITY`, both of which echo the secret value); adds a new Phase 4 step 3 bullet pointing at superpowers:verification-before-completion (SKILL.md:189) that upstream only listed under 'Related skills'; renames 'Ultrathink this' to 'Ultra-think this' (SKILL.md:239); and deletes the trailing 'Related skills' and 'Real-World Impact' sections (after SKILL.md:283). The second 'superpowers: pointer' the row mentions does not exist upstream in that position; it was moved, not annotated. The project rule makes PROVENANCE the map from every imported file back to its source, so a future re-sync against upstream would silently revert the secret-leak fix and the moved pointer.\n\nAlso (system_shape): PROVENANCE.md line 16 lists the ways find-polluter.sh differs from upstream: paths read whole, an optional test command, a stop on 126/127, and refusing an existing target. The head script has more changes that are not listed: a non-zero-exit tally with its 'Note: N of M test files exited non-zero' line (lines 55, 70, 90-92), stdin redirected from /dev/null for each test run (line 65), and the 'To investigate' hints echoing the configured command with a quoted file (lines 83-84). Comparing against the import commit 40a9d58 confirms these lines arrived after the verbatim import.\n\nAlso (roast): Against upstream the script also strips a leading ./ from the pattern, adds a **/-collapsed -path, tallies non-zero test exits, feeds tests stdin from /dev/null and accepts 2+ arguments. None of it is listed, and the list presents itself as complete.",
+        "fix": [
+          "Extend the 'Verbatim except' clause on docs/PROVENANCE.md:16 to list: Overview opener removed; Layer 1/2 env-var probes rewritten so a set secret is never echoed; the verification-before-completion pointer moved from 'Related skills' into Phase 4 step 3; 'Ultrathink' spelled 'Ultra-think'; 'Related skills' and 'Real-World Impact' sections dropped.",
+          "Or restore those SKILL.md passages to upstream text (keeping only the documented exceptions) so the row stays accurate.",
+          "Add to the find-polluter.sh clause in PROVENANCE.md: 'counts and reports test files that exited non-zero, runs each test with stdin from /dev/null, and its investigate hints echo the configured command'.",
+          "Add those deviations to the find-polluter.sh clause of the strap-debugging row"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "--dir override test never sets a config value to override",
+        "file": "tests/skills/test_latest_runlog.py",
+        "files": [
+          "tests/skills/test_latest_runlog.py",
+          "plugins/harness/skills/check-runlogs/commands/latest_runlog.py"
+        ],
+        "lines": "168-172",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_dir_flag_overrides_the_config builds the project with make_project(None), so runlogs.dir is unset and the only folder available is the --dir one. The test name claims --dir beats the configured folder, but the resolve_folder precedence (`rel = flag or configured`, latest_runlog.py:89) could be reversed to `configured or flag` and this test would still pass.",
+        "fix": [
+          "Build the project with {\"runlogs\": {\"dir\": LOGS}} plus a newer log under LOGS (e.g. _RUN_TESTS_2026-10-14_120000.txt) and an older log under other/; run with --dir other and assert the output is only the other/ log."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "The unrelated.bin case of test_entry_that_cannot_resolve_is_skipped cannot fail",
+        "file": "tests/skills/test_latest_runlog.py",
+        "lines": "235-249,251-257",
+        "reviewer": "roast, tests",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "stamp() runs before resolved_log(), and unrelated.bin never matches the name pattern, so the patched Path.resolve is never called for it. The case passes even with the try/except in resolved_log deleted; only the log-named case tests the claim.\n\nAlso (tests): test_nothing_is_moved_or_written snapshots only relative paths, so a regression that rewrites, truncates or touches an existing log (content or mtime) goes unnoticed. The module docstring promises 'nothing is moved or written'. test_root_separation._snapshot already uses (size, mtime_ns) for the same kind of check.",
+        "fix": [
+          "Drop unrelated.bin from the parametrize list",
+          "Replace it with a log-named entry whose resolve raises OSError, so both caught exception types are exercised",
+          "Snapshot `{relative path: (st_size, st_mtime_ns)}` for each file before and after, and assert the two dicts are equal."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 13 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"ec0af99918dac8690a58d26fc38f73e195731aad\",\"headRefName\":\"0005-SKILL-check-runlogs\",\"headRefOid\":\"fcc44f94a71247233d6ffc1c5527f3947127b5ec\",\"last_sha\":\"fcc44f94a71247233d6ffc1c5527f3947127b5ec\",\"mergeCommit\":null,\"number\":13,\"state\":\"OPEN\",\"title\":\"Feature(harness): add check-runlogs skill for diagnosing the newest r…\",\"url\":\"https://github.com/t968rs/operator-straps/pull/13\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0005-SKILL-check-runlogs",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0005-SKILL-check-runlogs",
+        "head_ref_name": "0005-SKILL-check-runlogs",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "ec0af99918dac8690a58d26fc38f73e195731aad",
+        "head_sha": "fcc44f94a71247233d6ffc1c5527f3947127b5ec",
+        "base_ancestor_command": "git merge-base --is-ancestor ec0af99918dac8690a58d26fc38f73e195731aad HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor fcc44f94a71247233d6ffc1c5527f3947127b5ec HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - config.py _runlogs builder compiles runlogs.name_pattern and raises ConfigError without a named 'date' group; test_invalid_config_raises gains run_\\d+\\.txt; schema description notes the check runs at config load; latest_runlog.py compile_pattern keeps its check as a second guard (no edit)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - added parametrized test for 't/**/*_test.py' and './t/**/*_test.py' (top-level plus nested spaced polluter, Found 2) and a './t/*_test.py' strip test; Test coverage for the ./ strip and **/ collapse belongs to the test part; no script change needed"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - rglob replaced by an explicit walk that follows directory links on every platform, so the link escape and alias tests exercise containment and dedup on POSIX too; added test_walk_follows_a_linked_directory_once"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - find_runlogs walks iteratively (walk/real_dir/children): enters each real directory inside base once, skips out-of-folder links and unlistable directories; --count rejects N<1 via positive_int; four descriptions now say subfolders at any depth; added junction/symlink loop test and --count rejection test"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - added test_pattern_matching_nothing_stops_instead_of_reporting_clean asserting exit 2, 'No test files match' and no clean verdict; After the Found count, exit 2 with 'No test files match' when TOTAL is 0, before the pollution-target check"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - PROVENANCE strap-debugging row extended to list the find-polluter.sh deviations (./ strip, **/ collapse, exit 2 on zero matches and usage, non-zero tally, stdin from /dev/null, investigate hints); script cited only, no script edit for this id; SKILL.md deviations from upstream (Overview opener removed, Layer 1/2 env probes rewritten so a set secret is never echoed, verification-before-completion pointer in Phase 4 step 3, 'Ultra-think' spelling, Related skills and Real-World Impact dropped) verified present; no SKILL.md edit made because restoring upstream would revert the secret-leak fix. Resolution is the PROVENANCE.md row update owned by the other fixer."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - latest_runlog.py docstring already reads 'subfolders at any depth (e.g. dated archive folders) are searched too', matching find_runlogs; no edit in this part (SKILL.md and README owned by the other fixer); Reworded check-runlogs SKILL.md and the README runlogs.dir key row to say every subfolder at any depth (dated archives included) is searched, matching the rglob walk."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - test_without_repo_the_cwd_checkout_is_used now sets CLAUDE_PROJECT_DIR to a second project with a newer log, so reversed precedence fails; module docstring reworded to 'usually with --repo'"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - test_dir_flag_overrides_the_config builds with runlogs.dir set and a newer log under it; --dir other must print only the other/ log"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "fcc44f9 (working-tree snapshot; developer commits) - unrelated.bin case replaced with a log-named entry whose resolve raises OSError (RuntimeError case kept); test_nothing_is_moved_or_written snapshots (st_size, st_mtime_ns) per file via new _snapshot helper"
+    }
+  ]
+}

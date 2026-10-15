@@ -108,7 +108,8 @@ bash "<this skill's directory>/find-polluter.sh" '.tmp_output' 'tests/**/test_*.
 
 Runs tests one-by-one, stops at first polluter. The target must be absent before the run (the script stops
 otherwise), so name the misplaced path, not one that belongs there. The test command after the pattern defaults to `npm test`;
-the file is appended as its last argument. See script for usage.
+the file is appended as its last argument. Exit codes: 0 clean (no polluter found), 1 polluter found, 2 could not
+bisect (usage error, no test files match, target already present, or test command missing). See script for usage.
 
 ## Real Example: Empty projectDir
 

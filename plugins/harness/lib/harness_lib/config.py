@@ -224,8 +224,19 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path]) -> HarnessConf
         exclusions=m["exclusions"], artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
         auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
-        runlogs=RunLogsConfig(m["runlogs"]["dir"], m["runlogs"]["name_pattern"]),
+        runlogs=_runlogs(m["runlogs"]),
     )
+
+
+def _runlogs(r: Dict[str, Any]) -> RunLogsConfig:
+    """``runlogs`` with ``name_pattern`` compiled and checked for the required named group ``date``."""
+    try:
+        pattern = re.compile(r["name_pattern"])
+    except re.error as exc:
+        raise ConfigError(f"runlogs/name_pattern: {exc}") from exc
+    if "date" not in pattern.groupindex:
+        raise ConfigError("runlogs/name_pattern: no named group 'date'")
+    return RunLogsConfig(r["dir"], r["name_pattern"])
 
 
 def _artifacts(a: Dict[str, Any]) -> Artifacts:
