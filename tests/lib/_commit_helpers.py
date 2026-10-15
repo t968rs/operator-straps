@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable, Dict, Optional, Union
 
+from conftest import copy_project, project_factory
 from harness_lib.config import HarnessConfig, activate, load_config
 
 REGISTRY = "scripts/__tests__/__fixtures__/REGISTRY/testRegistry.json"
@@ -35,6 +36,11 @@ def activate_project(make_project: Callable[..., Path], config: Optional[dict] =
     return activate(load_config(make_project(config=config, files=files)))
 
 
-def activate_fpm(make_project: Callable[..., Path], files: Files = None) -> HarnessConfig:
-    """Build and activate a project configured with ``FPM_CONFIG``."""
-    return activate_project(make_project, FPM_CONFIG, files)
+def fpm_template(parent: Path) -> Path:
+    """A ``FPM_CONFIG`` project under ``parent``: the module template ``activate_copy`` copies."""
+    return project_factory(parent)(config=FPM_CONFIG)
+
+
+def activate_copy(template: Path, parent: Path) -> HarnessConfig:
+    """Copy ``template`` under ``parent`` and activate the copy's configuration."""
+    return activate(load_config(copy_project(template, parent)))

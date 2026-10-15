@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Callable, Dict, Iterator, Optional, Union
@@ -59,11 +60,34 @@ def make_project(tmp_path: Path) -> ProjectFactory:
     ``config`` becomes ``.claude/harness.json`` (omitted when None). ``files`` maps repo-relative POSIX
     paths to text or JSON-able data.
     """
+    return project_factory(tmp_path)
+
+
+def _free_dir(parent: Path, name: str) -> Path:
+    """``parent/name``, or ``parent/name-2``, ``-3``, ... when taken."""
+    root, n = parent / name, 2
+    while root.exists():
+        root, n = parent / f"{name}-{n}", n + 1
+    return root
+
+
+def copy_project(template: Path, parent: Path, name: Optional[str] = None) -> Path:
+    """A copy of a module-scoped ``template`` repo under ``parent`` (``.git`` included), named like
+    ``make_project`` names its repos. A copy plus one git call costs about half of a three-call build.
+
+    Copied files keep their mtimes but not their ctimes, so the index is refreshed: without it,
+    non-refreshing plumbing (``git diff-files``) reports every tracked file as modified.
+    """
+    root = Path(shutil.copytree(template, _free_dir(parent, name or template.name)))
+    git(root, "update-index", "-q", "--refresh")
+    return root
+
+
+def project_factory(parent: Path) -> ProjectFactory:
+    """``make_project``'s factory over any ``parent``, for module-scoped templates built once."""
     def _make(config: Optional[dict] = None, files: Optional[Dict[str, Union[str, dict, list]]] = None,
               name: str = "project") -> Path:
-        root, n = tmp_path / name, 2
-        while root.exists():
-            root, n = tmp_path / f"{name}-{n}", n + 1
+        root = _free_dir(parent, name)
         root.mkdir()
         git(root, "init", "-q", "-b", "main")
         written = dict(files or {})

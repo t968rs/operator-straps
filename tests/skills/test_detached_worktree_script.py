@@ -10,12 +10,15 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 from typing import Optional
 
 import pytest
+
+from conftest import copy_project
 
 _GIT_ENV = {
     "GIT_AUTHOR_NAME": "t",
@@ -62,18 +65,17 @@ def module(script_path: Path):
     return mod
 
 
-@pytest.fixture()
-def repos(tmp_path: Path) -> dict:
-    """Origin + clone; origin ``dev`` is one commit ahead of the clone's ``dev``; clone HEAD is a feature."""
-    origin = tmp_path / "origin.git"
-    seed = tmp_path / "seed"
-    work = tmp_path / "work"
-    _git(tmp_path, "init", "-q", "--bare", "-b", "main", str(origin))
-    _git(tmp_path, "init", "-q", "-b", "main", str(seed))
+def _build_repos(parent: Path) -> dict:
+    """``origin.git`` and its clone ``work`` under ``parent`` as ``repos`` describes; the three SHAs."""
+    origin = parent / "origin.git"
+    seed = parent / "seed"
+    work = parent / "work"
+    _git(parent, "init", "-q", "--bare", "-b", "main", str(origin))
+    _git(parent, "init", "-q", "-b", "main", str(seed))
     main_sha = _commit(seed, "a")
     _git(seed, "remote", "add", "origin", str(origin))
     _git(seed, "push", "-q", "origin", "main", "main:dev")
-    _git(tmp_path, "clone", "-q", str(origin), str(work))
+    _git(parent, "clone", "-q", str(origin), str(work))
     _git(work, "branch", "-q", "dev", "origin/dev")
     _git(seed, "checkout", "-q", "-b", "dev")
     dev_sha = _commit(seed, "b")
@@ -81,7 +83,27 @@ def repos(tmp_path: Path) -> dict:
     _git(work, "checkout", "-q", "-b", "feature")
     head_sha = _commit(work, "c")
     _configure(work, {"integration_branches": ["dev", "main"]})
-    return {"work": work, "root": tmp_path / "wts", "main": main_sha, "dev": dev_sha, "head": head_sha}
+    return {"main": main_sha, "dev": dev_sha, "head": head_sha}
+
+
+@pytest.fixture(scope="module")
+def repos_template(tmp_path_factory: pytest.TempPathFactory) -> tuple:
+    """The origin and clone built once per module; ``repos`` copies them and never writes here."""
+    parent = tmp_path_factory.mktemp("repos_template")
+    return parent, _build_repos(parent)
+
+
+@pytest.fixture()
+def repos(repos_template: tuple, tmp_path: Path) -> dict:
+    """Origin + clone; origin ``dev`` is one commit ahead of the clone's ``dev``; clone HEAD is a feature.
+
+    Both are copies of the template, with the clone's ``origin`` re-pointed at the copied bare repo.
+    """
+    template, shas = repos_template
+    origin = Path(shutil.copytree(template / "origin.git", tmp_path / "origin.git"))
+    work = copy_project(template / "work", tmp_path)
+    _git(work, "remote", "set-url", "origin", str(origin))
+    return {"work": work, "root": tmp_path / "wts", **shas}
 
 
 def _run(script_path: Path, repos: dict, *args: str) -> subprocess.CompletedProcess:

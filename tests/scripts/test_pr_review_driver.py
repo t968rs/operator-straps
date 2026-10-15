@@ -1,7 +1,8 @@
 """Behavioral tests for the plugin's scripts/pr_review.py (the pr-review capture-to-closeout driver).
 
-The script is loaded by absolute path from the plugin. Each test builds a throwaway project with
-``make_project``: ``.claude/harness.json`` (``_CONFIG``: base branch, scratch directory, exclusions file,
+The script is loaded by absolute path from the plugin. Each test gets a throwaway project: a copy of
+the module's ``pr_template``, or its own ``_make_pr`` build when it needs other files or configuration.
+The project holds ``.claude/harness.json`` (``_CONFIG``: base branch, scratch directory, exclusions file,
 test registry, structural guard suite, a domain pointer), the vendored exclusions fixture
 (``fixtures/pr_review_exclusions.json``), a one-entry test registry and the base files on ``dev`` (with
 ``origin/dev`` pointing at it), then branch ``1234-demo`` carrying the PR's commit. Schemas and the lens
@@ -30,6 +31,7 @@ from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
 import pytest
 
+from conftest import copy_project, project_factory
 from harness_lib import review_merge as rmg
 from harness_lib import review_models as rm
 
@@ -171,10 +173,20 @@ def _make_pr(make_project, extra: Optional[Dict[str, str]] = None, config: Optio
     return repo, _git(repo, "rev-parse", "HEAD")
 
 
+@pytest.fixture(scope="module")
+def pr_template(tmp_path_factory: pytest.TempPathFactory) -> Tuple[Path, str]:
+    """The default PR built once per module; ``pr_repo`` clones it and never writes to it."""
+    return _make_pr(project_factory(tmp_path_factory.mktemp("pr_template")))
+
+
 @pytest.fixture()
-def pr_repo(make_project) -> Tuple[Path, str]:
-    """The default three-bucket small PR (runtime, tests, docs) plus an excluded offline report."""
-    return _make_pr(make_project)
+def pr_repo(tmp_path: Path, pr_template: Tuple[Path, str]) -> Tuple[Path, str]:
+    """The default three-bucket small PR (runtime, tests, docs) plus an excluded offline report.
+
+    A copy of the template, so refs, index and working tree match a fresh ``_make_pr`` without its nine
+    git calls.
+    """
+    return copy_project(pr_template[0], tmp_path), pr_template[1]
 
 
 def _gh_stub(head: str, state: str = "OPEN") -> Tuple[List[Sequence[str]], object]:

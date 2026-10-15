@@ -14,7 +14,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from _commit_helpers import REGISTRY, activate_fpm, activate_project  # noqa: E402
+from _commit_helpers import REGISTRY, activate_copy, activate_project, fpm_template  # noqa: E402
 from harness_lib.branch_commits import BranchCommitDocument, Bucket  # noqa: E402
 from harness_lib.commit_grouping import (  # noqa: E402
     CapturedPath,
@@ -31,10 +31,15 @@ from harness_lib.commit_grouping import (  # noqa: E402
 from harness_lib.commit_txt import entry_from_message  # noqa: E402
 
 
+@pytest.fixture(scope="module")
+def _fpm_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return fpm_template(tmp_path_factory.mktemp("fpm"))
+
+
 @pytest.fixture(autouse=True)
-def _fpm_project(make_project: Callable[..., Path]) -> None:
-    """Every test starts with the floodplain-shaped project active."""
-    activate_fpm(make_project)
+def _fpm_project(_fpm_template: Path, tmp_path: Path) -> None:
+    """Every test starts with a copy of the floodplain-shaped project active."""
+    activate_copy(_fpm_template, tmp_path)
 
 
 def _caps(*paths: str) -> List[CapturedPath]:

@@ -1,9 +1,10 @@
 """Behavioral tests for the plugin's ``scripts/branch_commit_msg.py`` (capture + build driver).
 
-The script is loaded by absolute path (``scripts/`` is not on ``sys.path``). Git-backed tests build an
-upstream project with ``make_project`` (floodplain-shaped ``harness.json``, base branch ``main``) and a
-clone carrying branch work, then activate the clone's configuration. The script's git capture runs
-through ``harness_lib.branch_capture``, so these tests also guard its working-tree mode.
+The script is loaded by absolute path (``scripts/`` is not on ``sys.path``). Git-backed tests get an
+upstream project (floodplain-shaped ``harness.json``, base branch ``main``) and a clone carrying branch
+work, both copied from a module template built once, then activate the clone's configuration. The
+script's git capture runs through ``harness_lib.branch_capture``, so these tests also guard its
+working-tree mode.
 """
 from __future__ import annotations
 
@@ -20,7 +21,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from _commit_helpers import FPM_CONFIG, REGISTRY, activate_fpm  # noqa: E402
+from _commit_helpers import FPM_CONFIG, REGISTRY, activate_copy, fpm_template  # noqa: E402
+from conftest import copy_project, project_factory  # noqa: E402
 from harness_lib import commit_diff  # noqa: E402
 from harness_lib.branch_commits import BranchCommitDocument, Bucket, CommitEntry  # noqa: E402
 from harness_lib.config import activate, active, load_config  # noqa: E402
@@ -53,10 +55,15 @@ def script(plugin_root: Path) -> ModuleType:
     return module
 
 
+@pytest.fixture(scope="module")
+def _fpm_template(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return fpm_template(tmp_path_factory.mktemp("fpm"))
+
+
 @pytest.fixture(autouse=True)
-def _fpm_project(make_project: Callable[..., Path]) -> None:
-    """Tests without a clone run against the floodplain-shaped project."""
-    activate_fpm(make_project)
+def _fpm_project(_fpm_template: Path, tmp_path: Path) -> None:
+    """Tests without a clone run against a copy of the floodplain-shaped project."""
+    activate_copy(_fpm_template, tmp_path)
 
 
 def _git(cwd: Path, *args: str) -> str:
@@ -83,19 +90,38 @@ def _clone(upstream: Path, tmp_path: Path) -> Path:
     return clone
 
 
-@pytest.fixture()
-def work(make_project: Callable[..., Path], tmp_path: Path) -> Tuple[Path, str]:
-    """Clone of an upstream ``main`` with branch ``9999-demo`` holding committed, unstaged and untracked work.
-
-    Returns (work tree, upstream main SHA).
-    """
-    upstream = make_project(config=FPM_CONFIG, files=dict(_BASE_FILES), name="upstream")
-    base = _git(upstream, "rev-parse", "HEAD")
-    clone = _clone(upstream, tmp_path)
+def _build_work(parent: Path) -> str:
+    """``parent/upstream`` and its clone ``parent/work`` as ``work`` describes; the upstream main SHA."""
+    upstream = project_factory(parent)(config=FPM_CONFIG, files=dict(_BASE_FILES), name="upstream")
+    clone = parent / "work"
+    _git(parent, "clone", str(upstream), str(clone))
+    _git(clone, "checkout", "-b", "9999-demo")
     _write(clone, "scripts/fpm/io/a.py", "changed\n")
     _git(clone, "commit", "-am", "wip")
     _git(clone, "mv", "docs/old.md", "docs/new.md")
     _write(clone, "scripts/__tests__/test_a.py")
+    return _git(upstream, "rev-parse", "HEAD")
+
+
+@pytest.fixture(scope="module")
+def work_template(tmp_path_factory: pytest.TempPathFactory) -> Tuple[Path, str]:
+    """The upstream and clone built once per module; ``work`` copies them and never writes here."""
+    parent = tmp_path_factory.mktemp("work_template")
+    return parent, _build_work(parent)
+
+
+@pytest.fixture()
+def work(work_template: Tuple[Path, str], tmp_path: Path) -> Tuple[Path, str]:
+    """Clone of an upstream ``main`` with branch ``9999-demo`` holding committed, unstaged and untracked work.
+
+    Both repos are copies of the template, with the clone's ``origin`` re-pointed at the copied upstream;
+    the clone's configuration is activated. Returns (work tree, upstream main SHA).
+    """
+    template, base = work_template
+    upstream = copy_project(template / "upstream", tmp_path)
+    clone = copy_project(template / "work", tmp_path)
+    _git(clone, "remote", "set-url", "origin", str(upstream))
+    activate(load_config(clone))
     return clone, base
 
 

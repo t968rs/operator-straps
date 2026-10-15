@@ -1,12 +1,12 @@
 """Behavioral tests for the harness plugin's ``scripts/pr_sum.py`` (pr-sum capture / diff / build driver).
 
-The script is loaded by absolute path from the plugin. Git-backed tests build a throwaway upstream project
-(``make_project``, base branch ``main``, a ``harness.json`` that moves the summaries directory and the test
-root) and a clone whose branch carries the PR's commits; the clone's configuration is activated before each
-test. ``gh`` is bypassed by constructing ``PrMeta`` directly. The script is the only end-to-end caller of
-harness_lib.pr_summary (``render_summary`` through ``build``) and of the head-mode capture in
-harness_lib.branch_capture (``capture_paths`` and ``diff_section`` against a commit), so both modules are
-exercised here as well.
+The script is loaded by absolute path from the plugin. Git-backed tests get a throwaway upstream project
+(base branch ``main``, a ``harness.json`` that moves the summaries directory and the test root) and a clone
+whose branch carries the PR's commits, both copied from a module template built once; the clone's
+configuration is activated before each test. ``gh`` is bypassed by constructing ``PrMeta`` directly. The
+script is the only end-to-end caller of harness_lib.pr_summary (``render_summary`` through ``build``) and
+of the head-mode capture in harness_lib.branch_capture (``capture_paths`` and ``diff_section`` against a
+commit), so both modules are exercised here as well.
 """
 from __future__ import annotations
 
@@ -21,6 +21,7 @@ from typing import Callable, Dict, Iterator, Optional, Sequence, Tuple
 
 import pytest
 
+from conftest import copy_project, project_factory
 from harness_lib import branch_capture, pr_capture
 from harness_lib.commit_diff import DiffStat
 from harness_lib.commit_grouping import CapturedPath
@@ -79,24 +80,17 @@ def _commit(clone: Path, files: Dict[str, str], message: str) -> str:
     return _git(clone, "rev-parse", "HEAD")
 
 
-@pytest.fixture()
-def pr_repo(tmp_path: Path, make_project: Callable[..., Path]) -> Tuple[Path, str, str]:
-    """Clone with PR branch ``1234-demo``: an edit, a pure move, a 30-line artifact; plus an uncommitted edit.
-
-    The base also carries an unchanged binary ``assets/logo.bin`` and the ``_CONFIG`` ``harness.json``. The
-    upstream holds the PR head under ``refs/pull/1234/head`` and no branch for it. The clone's configuration
-    is activated. Returns (clone, upstream main SHA, PR head SHA).
-    """
+def _build_pr(parent: Path) -> Tuple[str, str]:
+    """``parent/upstream`` and its clone ``parent/work`` as ``pr_repo`` describes; (base SHA, head SHA)."""
     files = {"src/pkg/a.py": "x\n", "docs/old/b.md": "x\n", "README.md": "x\n"}
-    upstream = make_project(config=_CONFIG, files=files, name="upstream")
+    upstream = project_factory(parent)(config=_CONFIG, files=files, name="upstream")
     (upstream / "assets").mkdir()
     (upstream / "assets" / "logo.bin").write_bytes(_BINARY)
     _git(upstream, "add", "-A")
     _git(upstream, "commit", "-m", "base")
     base = _git(upstream, "rev-parse", "HEAD")
-    clone = tmp_path / "work"
-    _git(tmp_path, "clone", str(upstream), str(clone))
-    activate(load_config(clone))
+    clone = parent / "work"
+    _git(parent, "clone", str(upstream), str(clone))
     _git(clone, "checkout", "-b", "1234-demo")
     _write(clone, "src/pkg/a.py", "changed\n")
     _git(clone, "commit", "-am", "Feature(a): change a")
@@ -109,6 +103,30 @@ def pr_repo(tmp_path: Path, make_project: Callable[..., Path]) -> Tuple[Path, st
     _git(upstream, "fetch", str(clone), "1234-demo")
     _git(upstream, "update-ref", "refs/pull/1234/head", head)
     _write(clone, "src/pkg/a.py", "uncommitted\n")
+    return base, head
+
+
+@pytest.fixture(scope="module")
+def pr_template(tmp_path_factory: pytest.TempPathFactory) -> Tuple[Path, str, str]:
+    """The upstream and clone built once per module; ``pr_repo`` copies them and never writes here."""
+    parent = tmp_path_factory.mktemp("pr_sum_template")
+    return (parent, *_build_pr(parent))
+
+
+@pytest.fixture()
+def pr_repo(tmp_path: Path, pr_template: Tuple[Path, str, str]) -> Tuple[Path, str, str]:
+    """Clone with PR branch ``1234-demo``: an edit, a pure move, a 30-line artifact; plus an uncommitted edit.
+
+    The base also carries an unchanged binary ``assets/logo.bin`` and the ``_CONFIG`` ``harness.json``. The
+    upstream holds the PR head under ``refs/pull/1234/head`` and no branch for it. Both are copies of the
+    template, with the clone's ``origin`` re-pointed at the copied upstream; the clone's configuration is
+    activated. Returns (clone, upstream main SHA, PR head SHA).
+    """
+    template, base, head = pr_template
+    upstream = copy_project(template / "upstream", tmp_path)
+    clone = copy_project(template / "work", tmp_path)
+    _git(clone, "remote", "set-url", "origin", str(upstream))
+    activate(load_config(clone))
     return clone, base, head
 
 
