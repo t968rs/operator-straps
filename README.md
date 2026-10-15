@@ -7,7 +7,7 @@ project-specific (artifact folders, test layout, guard suites, commit buckets, b
 
 | Plugin | What it adds |
 |---|---|
-| `harness` | Skills, agents, hooks and scripts: `pr-review`, `pr-team`, `c-msg`, `branch-commit-msg`, `pr-sum`, `d-w`, `check-runlogs` and more |
+| `harness` | Skills, agents, hooks and scripts: `pr-review`, `pr-team`, `c-msg`, `branch-commit-msg`, `pr-sum`, `d-w`, `check-runlogs`, `strap-debugging` and more |
 | `pr-review-watch` | Run tracking for `pr-review` / `pr-team`: Phase 5 band, `PHASE5_PENDING=` prompt line, bubble Stop guard, matrix rows |
 | `git-status` | Git status line and a per-prompt `GIT_STATE` context line |
 | `session-bookmark` | Compaction bookmark: git state, last prompts and `/compact` instructions survive a compaction |

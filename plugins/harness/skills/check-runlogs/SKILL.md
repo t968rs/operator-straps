@@ -39,9 +39,10 @@ Previous run log: <second path, or none>
 Project root: <absolute project root>
 Question: <question>
 
-Load the superpowers:systematic-debugging skill and apply its Phases 1-3 (root cause investigation, pattern
-analysis, hypothesis) to this run. If that skill is not available, follow the steps below as written. Diagnose
-only: propose no patch and change nothing, because the fix belongs to the main session.
+Load the superpowers:systematic-debugging skill; if it is not available, load harness:strap-debugging (the same
+process). Apply its Phases 1-3 (root cause investigation, pattern analysis, hypothesis) to this run, through
+the steps below. Diagnose only: propose no patch and change nothing, because the fix belongs to the main
+session.
 
 1. The log may be large. Grep it first (Traceback, Error, FAILED, failed, ERROR, assert, Exception,
    warnings, the summary line), then Read around each hit with offset and limit.
