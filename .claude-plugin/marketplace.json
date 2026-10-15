@@ -24,6 +24,11 @@
       "name": "git-status",
       "source": "./plugins/git-status",
       "description": "Git status line and per-prompt GIT_STATE context"
+    },
+    {
+      "name": "pytest-scope",
+      "source": "./plugins/pytest-scope",
+      "description": "Routes bare pytest through the project interpreter and requires a test file or node-id per pytest run"
     }
   ]
 }

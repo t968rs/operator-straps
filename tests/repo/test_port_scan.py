@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import importlib.util
 import os
+import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
 
@@ -132,6 +134,17 @@ def test_main_prints_hits_and_exits_zero(scan: ModuleType, tmp_path: Path, capsy
     assert "SKILL.md:1: [no YAML frontmatter" in out
     assert "SKILL.md:2: [banned: project interpreter variable]" in out
     assert "2 hit(s) in 1 file(s)" in err
+
+
+def test_main_survives_a_narrow_console_encoding(tmp_path: Path) -> None:
+    skill = tmp_path / "skills" / "s" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text("# S\nRun \"$FPM_PY\" x.py ❌\n", encoding="utf-8")
+    env = {**os.environ, "PYTHONIOENCODING": "cp1252"}
+    done = subprocess.run([sys.executable, str(SCRIPT), str(tmp_path)], capture_output=True, text=True,
+                          encoding="cp1252", env=env)
+    assert done.returncode == 0, done.stderr
+    assert "SKILL.md:2: [banned: project interpreter variable]" in done.stdout
 
 
 @pytest.mark.parametrize("argv,code", [([], 2), (["--help"], 0), (["no/such/path"], 2)])

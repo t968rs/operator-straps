@@ -11,9 +11,11 @@ project-specific (artifact folders, test layout, guard suites, commit buckets, b
 | `pr-review-watch` | Run tracking for `pr-review` / `pr-team`: Phase 5 band, `PHASE5_PENDING=` prompt line, bubble Stop guard, matrix rows |
 | `git-status` | Git status line and a per-prompt `GIT_STATE` context line |
 | `session-bookmark` | Compaction bookmark: git state, last prompts and `/compact` instructions survive a compaction |
+| `pytest-scope` | Bare `pytest` rewritten to the configured project interpreter; pytest runs that name no test file denied |
 
-The mods (`pr-review-watch`, `git-status`, `session-bookmark`) are independent of each other. `pr-review-watch`
-stays inactive in any project without `.claude/harness.json`.
+The mods (`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`) are independent of each other.
+`pr-review-watch` stays inactive in any project without `.claude/harness.json`. `pytest-scope` does nothing
+until one of its options is set.
 
 ## Install
 
@@ -23,7 +25,16 @@ claude plugin install harness@operator-straps
 claude plugin install pr-review-watch@operator-straps
 claude plugin install git-status@operator-straps
 claude plugin install session-bookmark@operator-straps
+claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
 ```
+
+Installing from `/plugin` inside a session opens a dialog for each unset option instead; the CLI install takes
+`--config KEY=VALUE`. `pytest-scope` options (see `plugins/pytest-scope/README.md`):
+
+| Option | Default | Meaning |
+|---|---|---|
+| `python` | unset | Absolute path of the interpreter bare `pytest` runs under. Unset: no rewrite |
+| `require_test_file` | `false` | Deny pytest calls with no test path or a directory path |
 
 `harness` options (`claude plugin configure harness`):
 
