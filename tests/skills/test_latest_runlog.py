@@ -119,6 +119,27 @@ class TestNameFilter:
         assert "problem:" in err and "date" in err
 
 
+class TestRepo:
+    def test_explicit_non_git_repo_never_falls_back_to_the_session_project(
+            self, module, make_project, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+        session = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt"])
+        plain = tmp_path / "plain"
+        plain.mkdir()
+        monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(session))
+        rc, out, err = _run(module, plain, capsys)
+        assert rc == 1
+        assert out == []
+        assert "problem:" in err and "not a git repository" in err
+
+    def test_without_repo_the_cwd_checkout_is_used(self, module, make_project,
+                                                  monkeypatch: pytest.MonkeyPatch, capsys) -> None:
+        root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt"])
+        monkeypatch.delenv("CLAUDE_PROJECT_DIR", raising=False)
+        monkeypatch.chdir(root / LOGS)
+        assert module.main([]) == 0
+        assert _names(capsys.readouterr().out.splitlines()) == ["_RUN_TESTS_2026-10-13_120000.txt"]
+
+
 class TestFolder:
     def test_unset_dir_is_a_problem_naming_the_key(self, module, make_project, capsys) -> None:
         root = make_project(None, files={f"{LOGS}/_RUN_TESTS_2026-10-13_120000.txt": "x\n"})

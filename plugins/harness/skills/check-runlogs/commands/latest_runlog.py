@@ -6,12 +6,15 @@ The folder is ``--dir`` (relative to the project root, or absolute), else ``runl
 ``.claude/harness.json``; dated subfolders under it (archived logs) are searched too. A file counts as a run
 log when its name fully matches ``runlogs.name_pattern``: named group ``date`` (YYYY-MM-DD), optional ``time``
 (HHMMSS), both checked as real calendar values. A date-only name sorts as midnight; equal stamps fall back to
-mtime. stdout carries only paths; stderr carries one summary line. Read-only: nothing is moved or written.
+mtime. An explicit ``--repo`` must be a git checkout; without it the project is the cwd's checkout, else
+``CLAUDE_PROJECT_DIR``. stdout carries only paths; stderr carries one summary line. Read-only: nothing is
+moved or written.
 """
 from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -74,15 +77,25 @@ def parse_args(argv: Optional[Sequence[str]]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--count", type=int, default=1, help="print the N newest logs (default 1)")
     parser.add_argument("--dir", help="run-log folder (default: runlogs.dir in .claude/harness.json)")
-    parser.add_argument("--repo", type=Path, default=Path.cwd(), help="project checkout (default: cwd)")
+    parser.add_argument("--repo", type=Path, help="project checkout (default: the cwd's project)")
     return parser.parse_args(argv)
+
+
+def checked_repo(repo: Optional[Path]) -> Optional[Path]:
+    """An explicit ``--repo`` must be a git checkout, so it never falls back to ``CLAUDE_PROJECT_DIR``."""
+    if repo is None:
+        return None
+    argv = ["git", "-C", str(repo), "rev-parse", "--show-toplevel"]
+    if not repo.is_dir() or subprocess.run(argv, capture_output=True).returncode != 0:
+        raise RunLogError(f"not a git repository: {repo.as_posix()}")
+    return repo
 
 
 def newest(args: argparse.Namespace) -> List[Tuple[SortKey, Path]]:
     """The ``--count`` newest run logs; raises ``RunLogError`` when there are none."""
     from harness_lib.config import activate, load_config
     from harness_lib.project import project_root
-    cfg = activate(load_config(project_root(args.repo)))
+    cfg = activate(load_config(project_root(checked_repo(args.repo))))
     folder = resolve_folder(cfg.project_root, args.dir, cfg.runlogs.dir)
     logs = find_runlogs(folder, compile_pattern(cfg.runlogs.name_pattern))
     if not logs:
