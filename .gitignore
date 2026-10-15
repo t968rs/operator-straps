@@ -9,6 +9,7 @@ docs/_commit_messages/
 __pycache__/
 *.py[codz]
 *$py.class
+docs/_scratch/
 
 # C extensions
 *.so
