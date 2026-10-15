@@ -85,6 +85,15 @@
       }
     },
     "auto_approve_python_c": {"type": "boolean", "description": "Auto-approve `python -c` Bash commands in this project."},
-    "worktree_root": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}], "description": "Directory linked worktrees are created under; a leading ~ expands and {repo} is the main checkout's folder name. null: ~/.config/superpowers/worktrees/{repo}."}
+    "worktree_root": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}], "description": "Directory linked worktrees are created under; a leading ~ expands and {repo} is the main checkout's folder name. null: ~/.config/superpowers/worktrees/{repo}."},
+    "runlogs": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Where the project's run logs (test-runner or script console output) land; read by check-runlogs.",
+      "properties": {
+        "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Run-log folder; dated subfolders under it are searched too. null: check-runlogs needs --dir."},
+        "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a log file name must fully match; named group date (YYYY-MM-DD) required, time (HHMMSS) optional, a date-only name sorts as midnight."}
+      }
+    }
   }
 }

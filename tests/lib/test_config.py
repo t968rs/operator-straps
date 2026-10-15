@@ -64,7 +64,9 @@ def test_fpm_shaped_config_loads(make_project) -> None:
 
 
 @pytest.mark.parametrize("bad", [{"unknown_key": 1}, {"artifacts": {"reviews": "/abs"}},
-                                 {"commit_buckets": [{"bucket": "Nope"}]}, {"tests": {"file_pattern": "("}}])
+                                 {"commit_buckets": [{"bucket": "Nope"}]}, {"tests": {"file_pattern": "("}},
+                                 {"runlogs": {"dir": "/abs/logs"}}, {"runlogs": {"name_pattern": "("}},
+                                 {"runlogs": {"folder": "logs"}}])
 def test_invalid_config_raises(make_project, bad: dict) -> None:
     with pytest.raises(ConfigError):
         load_config(make_project(bad))
@@ -134,6 +136,17 @@ def test_local_test_pattern_default_and_override(make_project) -> None:
     assert not re.search(default, "tests/test_thing.py")
     cfg = load_config(make_project({"review": {"local_test_pattern": "_arc\\.py$"}}))
     assert cfg.review.local_test_pattern == "_arc\\.py$"
+
+
+def test_runlogs_default_and_override(make_project) -> None:
+    default = load_config(make_project()).runlogs
+    assert default.dir is None
+    assert re.fullmatch(default.name_pattern, "_RUN_TESTS_2026-10-13_120000.txt")["time"] == "120000"
+    assert re.fullmatch(default.name_pattern, "_RUN_TESTS_2026-10-13.txt")["date"] == "2026-10-13"
+    assert re.fullmatch(default.name_pattern, "_RUN_TESTS_2026-10-13_notes.txt") is None
+    override = load_config(make_project({"runlogs": {"dir": "logs/runs"}}, name="p2")).runlogs
+    assert override.dir == "logs/runs"
+    assert override.name_pattern == default.name_pattern
 
 
 def test_worktree_root_default_expands_home_and_repo(make_project, monkeypatch: pytest.MonkeyPatch,

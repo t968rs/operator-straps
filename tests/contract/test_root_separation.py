@@ -73,6 +73,14 @@ def _merge_body_args(root: Path) -> List[str]:
     return ["skills/merge-commit/commands/merge_body.py", "--repo", str(root)]
 
 
+def _runlog_args(root: Path) -> List[str]:
+    """Seed one dated log so ``latest_runlog.py`` gets past its no-log exit."""
+    folder = root / "logs" / "runs"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "run_2026-10-13_120000.txt").write_text("1 passed\n", encoding="utf-8")
+    return ["skills/check-runlogs/commands/latest_runlog.py", "--repo", str(root), "--dir", "logs/runs"]
+
+
 CASES = {
     "merge-commit": lambda r, t: (_merge_body_args(r), None),
     "commit capture --save": lambda r, t: (["scripts/branch_commit_msg.py", "--repo", str(r), "capture",
@@ -80,6 +88,7 @@ CASES = {
     "pr_review config": lambda r, t: (["scripts/pr_review.py", "--repo", str(r), "config"], None),
     "phase4 second run": lambda r, t: (["skills/pr-review/commands/phase4_branch_safety.py", "--second-run",
                                         "7"], None),
+    "check-runlogs": lambda r, t: (_runlog_args(r), None),
     "d-w": lambda r, t: (["skills/d-w/commands/new_worktree.py", "--repo", str(r), "--root",
                           str(t / "trees")], None),
     "session rules hook": lambda r, t: (["hooks/session_rules.py"], {"cwd": str(r), "source": "startup"}),

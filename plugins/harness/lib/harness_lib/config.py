@@ -84,6 +84,14 @@ class BucketRule:
 
 
 @dataclass(frozen=True)
+class RunLogsConfig:
+    """Where the project's run logs land and how a log file name carries its timestamp."""
+
+    dir: Optional[str]
+    name_pattern: str
+
+
+@dataclass(frozen=True)
 class HarnessConfig:
     """Merged, validated harness configuration for one project root."""
 
@@ -103,6 +111,7 @@ class HarnessConfig:
     commit_buckets: Tuple[BucketRule, ...]
     auto_approve_python_c: bool
     worktree_root: Optional[str]
+    runlogs: RunLogsConfig
 
     def path(self, rel: str) -> Path:
         """Absolute path of a project-relative POSIX path."""
@@ -215,6 +224,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path]) -> HarnessConf
         exclusions=m["exclusions"], artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
         auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
+        runlogs=RunLogsConfig(m["runlogs"]["dir"], m["runlogs"]["name_pattern"]),
     )
 
 

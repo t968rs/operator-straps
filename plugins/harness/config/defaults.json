@@ -42,5 +42,9 @@
     {"bucket": "Docs", "prefixes": ["docs/"], "names": [], "suffixes": []}
   ],
   "auto_approve_python_c": false,
-  "worktree_root": null
+  "worktree_root": null,
+  "runlogs": {
+    "dir": null,
+    "name_pattern": "(?:.*\\D)?(?P<date>\\d{4}-\\d{2}-\\d{2})(?:_(?P<time>\\d{6}))?\\.(?:txt|log)"
+  }
 }
