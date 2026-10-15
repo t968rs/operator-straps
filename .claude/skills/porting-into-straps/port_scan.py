@@ -113,6 +113,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if missing:
         print("port_scan: no such path: " + ", ".join(str(p) for p in missing), file=sys.stderr)
         return 2
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="backslashreplace")  # a cp1252 console cannot encode every source line
     contract = load_contract()
     active = rules(contract)
     total, files = 0, 0

@@ -65,7 +65,16 @@ def _review_payload(root: Path) -> dict:
             "tool_input": {"file_path": str(target)}, "tool_response": {}}
 
 
+def _merge_body_args(root: Path) -> List[str]:
+    """Seed the feature branch's commit-message TXT so ``merge_body.py`` reaches its write."""
+    folder = root / "docs" / "_commit_messages"
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "feature.txt").write_text("Feature(x): y\n", encoding="utf-8")
+    return ["skills/merge-commit/commands/merge_body.py", "--repo", str(root)]
+
+
 CASES = {
+    "merge-commit": lambda r, t: (_merge_body_args(r), None),
     "commit capture --save": lambda r, t: (["scripts/branch_commit_msg.py", "--repo", str(r), "capture",
                                             "--save", "--no-fetch"], None),
     "pr_review config": lambda r, t: (["scripts/pr_review.py", "--repo", str(r), "config"], None),
@@ -96,6 +105,15 @@ def test_commit_capture_lands_in_the_project(project: Path) -> None:
     done = _run([str(script), "--repo", str(project), "capture", "--save", "--no-fetch"], project)
     assert done.returncode == 0, done.stderr
     written = Path(done.stdout.strip().removeprefix("wrote ").strip())
+    assert written.is_file()
+    assert written.resolve().is_relative_to(project.resolve())
+
+
+def test_merge_body_lands_in_the_project(project: Path) -> None:
+    script, _ = CASES["merge-commit"](project, project)
+    done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project)
+    assert done.returncode == 0, done.stderr
+    written = Path(done.stdout.strip())
     assert written.is_file()
     assert written.resolve().is_relative_to(project.resolve())
 
