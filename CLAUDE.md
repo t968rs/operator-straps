@@ -35,6 +35,9 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   `python -m pytest tests/<area>/test_<name>.py -q`. Tests build consuming projects with the `make_project`
   fixture (`tests/conftest.py`); no test reads a real project checkout.
 - Mods: `claude plugin test plugins/<mod>`; manifests: `claude plugin validate --strict <dir>`.
+- `.claude/settings.json` enables the published marketplace (GitHub `t968rs/operator-straps`), so this repo's own
+  sessions run the pushed default branch, not the checkout. Exercise local plugin edits before merge with
+  `claude --plugin-dir plugins/<name>` or a local marketplace (`claude plugin marketplace add ./`).
 - Lint: `python -m ruff check plugins tests` (line length 110, E501 on).
 - CI (`.github/workflows/ci.yml`) runs pytest and ruff on Ubuntu and Windows, plus strict validation and the mod
   tests.

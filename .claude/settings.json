@@ -9,8 +9,8 @@
   "extraKnownMarketplaces": {
     "operator-straps": {
       "source": {
-        "source": "git",
-        "url": "https://github.com/t968rs/operator-straps.git"
+        "source": "github",
+        "repo": "t968rs/operator-straps"
       }
     }
   }

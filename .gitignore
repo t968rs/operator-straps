@@ -3,7 +3,7 @@
 .idea/
 docs/_commit_messages/
 .artifacts/
-
+docs/PR_SUMMARIES/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

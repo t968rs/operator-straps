@@ -8,7 +8,7 @@
   "base_sha": "0cd5e6a06609d6cac597e0c96c803cc7be6c3e16",
   "head_sha": "99bf18479c250a2f44a807be45f083fdfb7ce845",
   "review_date": "2026-10-15",
-  "verdict": "NOT READY TO MERGE - minor findings pending Phase 5: M1",
+  "verdict": "READY TO MERGE - 1 of 1 findings resolved, 0 bubbled",
   "stats": {
     "additions": 17,
     "deletions": 0,
@@ -74,6 +74,47 @@
         "result": "SKIPPED (no CICD/test-infra paths in PR)"
       }
     },
-    "pre_fix_time": "pending - to be populated in Phase 4"
-  }
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0004-install-self",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0004-install-self",
+        "head_ref_name": "0004-install-self",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "99bf18479c250a2f44a807be45f083fdfb7ce845",
+        "head_sha": "3dce5e965f64460f958f08d6e9d24d7fc2ebd766",
+        "base_ancestor_command": "git merge-base --is-ancestor 99bf18479c250a2f44a807be45f083fdfb7ce845 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 3dce5e965f64460f958f08d6e9d24d7fc2ebd766 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "3dce5e9 (working-tree snapshot; developer commits) - Marketplace source switched to the github form matching the README; README install section and CLAUDE.md Tests note that the repo runs the published marketplace and how to exercise local plugin edits (--plugin-dir or local marketplace)"
+    }
+  ]
 }
