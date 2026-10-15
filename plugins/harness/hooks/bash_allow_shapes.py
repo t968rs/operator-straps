@@ -21,6 +21,11 @@ Every sub-command must match a ``Bash(...)`` allow rule from the session project
 A rule or builtin only matches a single command (``harness_lib.shell_scan``): a sub-command that still
 holds a separator, newline, background ``&`` or substitution is decomposed again or refused.
 When all pass the hook emits an ``allow`` decision; otherwise it stays silent. It never blocks.
+
+A ``"<python>" -m pytest ARGS`` command (the form the ``pytest-scope`` mod rewrites bare pytest into) counts
+as allowlisted when ``<python>`` is that mod's configured ``python`` option (user settings ``pluginConfigs``)
+and the bare form (``pytest ARGS``, ``py.test ARGS``, ``python -m pytest ARGS``, ``python3 -m pytest ARGS``)
+matches an allow rule: the rewrite never widens what the rules already allow.
 """
 from __future__ import annotations
 
@@ -29,15 +34,17 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _allow_settings import load_allow_patterns, settings_files  # noqa: E402
+from _allow_settings import configured_interpreters, load_allow_patterns, settings_files  # noqa: E402
 from harness_lib.shell_scan import is_single_command  # noqa: E402
 
-__all__ = ["extract_subcommands", "is_allowed", "load_allow_patterns", "settings_files"]
+__all__ = [
+    "command_subcommands", "extract_subcommands", "is_allowed", "load_allow_patterns", "settings_files",
+]
 
 SAFE_BUILTINS = {"[", "[[", "test", ":", "true", "false", "pwd"}
 SUBST_PLACEHOLDER = "__SUBST__"
@@ -48,6 +55,8 @@ _EXIT_PROBE_TRAILER_RE = re.compile(
     r"""\s*;\s*(?:[A-Za-z_]\w*=\$\?|echo\s+(?:"[^"]*"|'[^']*'|\$\?|\S+))\s*$""")
 _LEADING_ASSIGN_RE = re.compile(r"""^\s*([A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*))\s*;\s*""")
 _TILDE_RE = re.compile(r"""(^|(?<=["'\s]))~(?=/)""")
+_ROUTED_PYTEST_RE = re.compile(r'^"([^"]+)"\s+-m\s+pytest(?=\s|$)(.*)$', re.DOTALL)
+_BARE_PYTEST_FORMS = ("pytest", "py.test", "python -m pytest", "python3 -m pytest")
 
 
 def main() -> int:
@@ -56,11 +65,12 @@ def main() -> int:
     except (json.JSONDecodeError, UnicodeDecodeError):
         return 0
     cmd = (payload.get("tool_input") or {}).get("command", "") if isinstance(payload, dict) else ""
-    subs = extract_subcommands(cmd) if isinstance(cmd, str) and cmd else None
+    interpreters = configured_interpreters()
+    subs = command_subcommands(cmd, interpreters) if isinstance(cmd, str) and cmd else None
     if subs is None:
         return 0
     patterns = load_allow_patterns(payload, "Bash")
-    if all(is_allowed(s, patterns) for s in subs):
+    if all(is_allowed(s, patterns, interpreters) for s in subs):
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse", "permissionDecision": "allow",
             "permissionDecisionReason": (
@@ -71,6 +81,14 @@ def main() -> int:
 
 
 # --- shape extraction -------------------------------------------------------------------------------------
+
+
+def command_subcommands(cmd: str, interpreters: Sequence[str]) -> Optional[List[str]]:
+    """``extract_subcommands``, plus a plain routed-pytest command as its own sub-command."""
+    subs = extract_subcommands(cmd)
+    if subs is None and interpreters and _ROUTED_PYTEST_RE.match(cmd.strip()):
+        return [cmd.strip()]
+    return subs
 
 
 def extract_subcommands(cmd: str) -> Optional[List[str]]:
@@ -252,7 +270,7 @@ def _strip_substitutions(s: str) -> str:
 # --- allowlist matching -----------------------------------------------------------------------------------
 
 
-def is_allowed(subcmd: str, patterns: List[str]) -> bool:
+def is_allowed(subcmd: str, patterns: List[str], interpreters: Sequence[str] = ()) -> bool:
     """True when ``subcmd`` is a safe builtin, an assignment, allowlisted, or a shape of allowed parts."""
     s = subcmd.strip()
     if not s:
@@ -266,10 +284,24 @@ def is_allowed(subcmd: str, patterns: List[str]) -> bool:
     if is_single_command(s, allow_redirects=True):
         if head in SAFE_BUILTINS or re.match(r"^[A-Za-z_]\w*=\S*\s*$", s):
             return True
-        if any(_glob_match(s, p) for p in patterns):
+        if any(_glob_match(s, p) for p in patterns) or _routed_pytest_allowed(s, patterns, interpreters):
             return True
     nested = extract_subcommands(s)
-    return nested is not None and all(is_allowed(x, patterns) for x in nested)
+    return nested is not None and all(is_allowed(x, patterns, interpreters) for x in nested)
+
+
+def _routed_pytest_allowed(cmd: str, patterns: List[str], interpreters: Sequence[str]) -> bool:
+    """True for ``"<python>" -m pytest ARGS`` with a configured ``<python>`` whose bare form is allowed."""
+    m = _ROUTED_PYTEST_RE.match(cmd)
+    if m is None or _interpreter_key(m.group(1)) not in {_interpreter_key(i) for i in interpreters}:
+        return False
+    bare = [f"{form}{m.group(2)}" for form in _BARE_PYTEST_FORMS]
+    return any(_glob_match(b, p) for b in bare for p in patterns)
+
+
+def _interpreter_key(path: str) -> str:
+    """Comparison key of an interpreter path: forward slashes, case-folded."""
+    return path.strip().replace("\\", "/").casefold()
 
 
 def _strip_inline_env(cmd: str) -> str:

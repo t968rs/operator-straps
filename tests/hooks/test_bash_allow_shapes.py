@@ -164,3 +164,96 @@ def test_bad_settings_and_payload_never_crash(make_project, tmp_path: Path) -> N
     assert _run(root, "for f in a; do echo $f; done", tmp_path / "nouser").returncode == 0
     done = subprocess.run([sys.executable, str(HOOK)], input="nope", capture_output=True, text=True)
     assert done.returncode == 0 and done.stdout == ""
+
+
+# --- pytest routed through the pytest-scope interpreter ---------------------------------------------------
+
+PY = "C:/py/envs/proj/python.exe"
+
+
+@pytest.mark.parametrize("rules", [["pytest *"], ["python -m pytest *"], ["py.test *"]])
+def test_routed_pytest_is_allowed_when_the_bare_form_is(hook: ModuleType, rules: List[str]) -> None:
+    assert hook.is_allowed(f'"{PY}" -m pytest tests/test_a.py -q', rules, [PY])
+
+
+def test_routed_pytest_without_arguments_matches_a_bare_rule(hook: ModuleType) -> None:
+    assert hook.is_allowed(f'"{PY}" -m pytest', ["pytest"], [PY])
+
+
+@pytest.mark.parametrize("cmd, rules, interpreters", [
+    (f'"{PY}" -m pytest a.py', ["pytest *"], []),
+    (f'"{PY}" -m pytest a.py', ["ruff *"], [PY]),
+    ('"C:/evil/python.exe" -m pytest a.py', ["pytest *"], [PY]),
+    (f'"{PY}" -m pytestx a.py', ["pytest*"], [PY]),
+    (f'"{PY}" -m pip install x', ["pytest *"], [PY]),
+    (f'{PY} -m pytest a.py', ["pytest *"], [PY]),
+])
+def test_routed_pytest_needs_the_configured_interpreter_and_a_bare_rule(
+        hook: ModuleType, cmd: str, rules: List[str], interpreters: List[str]) -> None:
+    assert not hook.is_allowed(cmd, rules, interpreters)
+
+
+def test_routed_interpreter_matches_case_and_slash_insensitively(hook: ModuleType) -> None:
+    assert hook.is_allowed(f'"{PY}" -m pytest a.py', ["pytest *"], [r"c:\PY\envs\proj\python.exe"])
+
+
+@pytest.mark.parametrize("cmd", [
+    f'"{PY}" -m pytest a.py; rm -rf x',
+    f'"{PY}" -m pytest a.py && rm -rf x',
+    f'"{PY}" -m pytest $(rm -rf x)',
+    f'"{PY}" -m pytest a.py\nrm -rf x',
+    f'"{PY}" -m pytest a.py & rm -rf x',
+])
+def test_routed_pytest_with_a_second_command_is_not_approved(hook: ModuleType, cmd: str) -> None:
+    subs = hook.command_subcommands(cmd, [PY])
+    assert subs is None or not all(hook.is_allowed(s, ["pytest *"], [PY]) for s in subs)
+
+
+def test_a_plain_routed_command_is_its_own_subcommand(hook: ModuleType) -> None:
+    cmd = f'"{PY}" -m pytest a.py -q'
+    assert hook.command_subcommands(cmd, [PY]) == [cmd]
+    assert hook.command_subcommands(cmd, []) is None
+    assert hook.command_subcommands("git status", [PY]) is None
+
+
+def test_routed_pipeline_stages_are_each_checked(hook: ModuleType) -> None:
+    cmd = f'"{PY}" -m pytest a.py 2>&1 | tail -5'
+    subs = hook.command_subcommands(cmd, [PY])
+    assert subs is not None
+    assert all(hook.is_allowed(s, ["pytest *", "tail *"], [PY]) for s in subs)
+    assert not all(hook.is_allowed(s, ["pytest *"], [PY]) for s in subs)
+
+
+def _plugin_config(user: Path, key: str, python: str) -> None:
+    user.mkdir(parents=True, exist_ok=True)
+    body = {"pluginConfigs": {key: {"options": {"python": python}}}}
+    (user / "settings.json").write_text(json.dumps(body), encoding="utf-8")
+
+
+@pytest.mark.parametrize("key", ["pytest-scope@operator-straps", "pytest-scope@inline", "pytest-scope"])
+def test_configured_interpreter_from_user_plugin_configs_is_approved(
+        make_project, tmp_path: Path, key: str) -> None:
+    root = make_project(files={".claude/settings.json": _settings("Bash(pytest *)")})
+    user = tmp_path / "user"
+    _plugin_config(user, key, r"C:\py\envs\proj\python.exe")
+    done = _run(root, f'"{PY}" -m pytest tests/test_a.py -q', user)
+    assert done.returncode == 0, done.stderr
+    assert json.loads(done.stdout)["hookSpecificOutput"]["permissionDecision"] == "allow"
+
+
+def test_other_plugins_python_option_is_not_the_pytest_interpreter(make_project, tmp_path: Path) -> None:
+    root = make_project(files={".claude/settings.json": _settings("Bash(pytest *)")})
+    user = tmp_path / "user"
+    _plugin_config(user, "harness@operator-straps", PY)
+    done = _run(root, f'"{PY}" -m pytest tests/test_a.py', user)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout == ""
+
+
+def test_routed_pytest_without_a_bare_rule_stays_silent(make_project, tmp_path: Path) -> None:
+    root = make_project(files={".claude/settings.json": _settings("Bash(git status)")})
+    user = tmp_path / "user"
+    _plugin_config(user, "pytest-scope@operator-straps", PY)
+    done = _run(root, f'"{PY}" -m pytest tests/test_a.py', user)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout == ""

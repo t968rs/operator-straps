@@ -40,9 +40,12 @@ dependencies. With `python` set, a bare pytest invocation that opens a simple Ba
 - The model sees a one-line `[pytest-scope] bare pytest rewritten ...` note beside the result.
 - Only the Bash tool is rewritten.
 
-**Permissions.** `tool.call` runs before the permission rules, so the rules judge the rewritten text. Allow
-it in the project's settings, for example `Bash("C:/path/to/env/python.exe" -m pytest *)`, or every
-rewritten call prompts.
+**Permissions.** `tool.call` runs before the permission rules, so the rules judge the rewritten text. With
+the `harness` plugin installed, its `bash_allow_shapes` hook approves `"<python>" -m pytest ARGS` when
+`<python>` is this option's value and the bare form (`pytest ARGS`, `python -m pytest ARGS`) matches an
+existing `Bash(...)` allow rule, so the rewrite never needs a wider rule than the bare call had. Without the
+harness, allow the rewritten form in the project's settings, for example
+`Bash("C:/path/to/env/python.exe" -m pytest *)`, or every rewritten call prompts.
 
 ## 2. Test-file requirement (`hooks/scope.ts`)
 

@@ -10,7 +10,7 @@
     "python": {
       "type": "file",
       "title": "Project Python interpreter",
-      "description": "Absolute path to the interpreter bare pytest should run under (for example a venv or conda env python.exe). Leave empty to turn the rewrite off. The project must allow \"<this path>\" -m pytest in its Bash permission rules.",
+      "description": "Absolute path to the interpreter bare pytest should run under (for example a venv or conda env python.exe). Leave empty to turn the rewrite off. The harness plugin approves the rewritten call when the bare pytest call is allowed; without it, allow \"<this path>\" -m pytest in the Bash permission rules.",
       "required": false
     },
     "require_test_file": {

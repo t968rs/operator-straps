@@ -19,10 +19,9 @@ _SETTINGS_NAMES = ("settings.json", "settings.local.json")
 
 def settings_files(payload: Dict[str, Any]) -> List[Path]:
     """Project then user settings files whose ``permissions.allow`` rules apply to this call."""
-    user = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
     project = _project_dir(payload)
-    dirs = [user] if project is None else [project / ".claude", user]
-    return [d / name for d in dirs for name in _SETTINGS_NAMES]
+    own = [] if project is None else [project / ".claude" / name for name in _SETTINGS_NAMES]
+    return own + _user_settings_files()
 
 
 def load_allow_patterns(payload: Dict[str, Any], tool: str) -> List[str]:
@@ -35,6 +34,38 @@ def load_allow_patterns(payload: Dict[str, Any], tool: str) -> List[str]:
             if m:
                 patterns.setdefault(m.group(1))
     return list(patterns)
+
+
+def configured_interpreters(plugin: str = "pytest-scope") -> List[str]:
+    """``python`` option values of ``plugin`` from the user settings ``pluginConfigs``, any marketplace.
+
+    The key is ``<plugin>@<marketplace>`` for an installed plugin and ``<plugin>`` or ``<plugin>@inline`` for
+    a ``--plugin-dir`` one. ``pluginConfigs`` lives in user (or managed) settings only.
+    """
+    found: List[str] = []
+    for path in _user_settings_files():
+        for key, entry in _plugin_configs(path).items():
+            if key != plugin and not key.startswith(f"{plugin}@"):
+                continue
+            options = entry.get("options") if isinstance(entry, dict) else None
+            value = options.get("python") if isinstance(options, dict) else None
+            if isinstance(value, str) and value.strip():
+                found.append(value.strip())
+    return found
+
+
+def _user_settings_files() -> List[Path]:
+    user = Path(os.environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude")
+    return [user / name for name in _SETTINGS_NAMES]
+
+
+def _plugin_configs(path: Path) -> Dict[str, Any]:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return {}
+    configs = data.get("pluginConfigs") if isinstance(data, dict) else None
+    return configs if isinstance(configs, dict) else {}
 
 
 def _project_dir(payload: Dict[str, Any]) -> Optional[Path]:
