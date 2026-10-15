@@ -53,12 +53,17 @@ def stamp(name: str, pattern: "re.Pattern[str]") -> Optional[datetime]:
 
 
 def find_runlogs(folder: Path, pattern: "re.Pattern[str]") -> List[Tuple[SortKey, Path]]:
-    """Every run log under ``folder`` (subfolders included), newest first."""
-    found = []
+    """Every run log under ``folder`` (subfolders included), newest first.
+
+    A link (file or directory) whose target lies outside ``folder`` is skipped, so a log-named link cannot
+    hand the reader a file from elsewhere on the machine.
+    """
+    base, found = folder.resolve(), []
     for path in folder.rglob("*"):
         when = stamp(path.name, pattern)
-        if when is not None and path.is_file():
-            found.append(((when, path.stat().st_mtime_ns, path.as_posix()), path.resolve()))
+        resolved = path.resolve()
+        if when is not None and path.is_file() and resolved.is_relative_to(base):
+            found.append(((when, path.stat().st_mtime_ns, path.as_posix()), resolved))
     return sorted(found, reverse=True)
 
 

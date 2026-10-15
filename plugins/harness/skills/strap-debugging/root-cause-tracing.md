@@ -98,13 +98,16 @@ npm test 2>&1 | grep 'DEBUG git init'
 
 If something appears during tests but you don't know which test:
 
-Use the bisection script `find-polluter.sh` in this directory:
+Use the bisection script `find-polluter.sh` in this skill's directory (the folder holding this file), run
+from the project root with its absolute path:
 
 ```bash
-bash ./find-polluter.sh '.git' 'src/**/*.test.ts'
+bash "<this skill's directory>/find-polluter.sh" '.git' 'src/**/*.test.ts'
+bash "<this skill's directory>/find-polluter.sh" '.tmp_output' 'tests/**/test_*.py' python -m pytest -q
 ```
 
-Runs tests one-by-one, stops at first polluter. See script for usage.
+Runs tests one-by-one, stops at first polluter. The test command after the pattern defaults to `npm test`;
+the file is appended as its last argument. See script for usage.
 
 ## Real Example: Empty projectDir
 

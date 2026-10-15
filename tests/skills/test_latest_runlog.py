@@ -41,6 +41,23 @@ def _names(lines: List[str]) -> List[str]:
     return [Path(line).name for line in lines]
 
 
+def _symlink(link: Path, target: Path) -> None:
+    """Create ``link`` -> ``target``, or skip where the platform refuses (Windows without the privilege)."""
+    try:
+        link.symlink_to(target)
+    except OSError as exc:
+        pytest.skip(f"symlinks unavailable: {exc}")
+
+
+def _dir_link(link: Path, target: Path) -> None:
+    """Link directory ``link`` -> ``target``: a junction on Windows (no privilege needed), else a symlink."""
+    if os.name == "nt":
+        import _winapi
+        _winapi.CreateJunction(str(target), str(link))
+    else:
+        link.symlink_to(target, target_is_directory=True)
+
+
 class TestNewest:
     def test_prints_only_the_newest_path(self, module, make_project, capsys) -> None:
         root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt", "_RUN_TESTS_2026-10-14_090000.txt",
@@ -166,6 +183,35 @@ class TestFolder:
         assert rc == 1
         assert out == []
         assert "problem:" in err and "no run log" in err
+
+    def test_symlink_escaping_the_folder_is_skipped(self, module, make_project, tmp_path: Path,
+                                                    capsys) -> None:
+        root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt"])
+        outside = tmp_path / "secret.txt"
+        outside.write_text("not a log\n", encoding="utf-8")
+        _symlink(root / LOGS / "_RUN_TESTS_2026-10-14_120000.txt", outside)
+        rc, out, _ = _run(module, root, capsys, "--count", "5")
+        assert rc == 0
+        assert _names(out) == ["_RUN_TESTS_2026-10-13_120000.txt"]
+
+    def test_linked_directory_escaping_the_folder_is_skipped(self, module, make_project, tmp_path: Path,
+                                                             capsys) -> None:
+        root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt"])
+        outside = tmp_path / "elsewhere"
+        outside.mkdir()
+        (outside / "_RUN_TESTS_2026-10-14_120000.txt").write_text("not this project's\n", encoding="utf-8")
+        _dir_link(root / LOGS / "2026-10-14", outside)
+        rc, out, _ = _run(module, root, capsys, "--count", "5")
+        assert rc == 0
+        assert _names(out) == ["_RUN_TESTS_2026-10-13_120000.txt"]
+
+    def test_symlink_inside_the_folder_is_kept(self, module, make_project, capsys) -> None:
+        root = _project(make_project, ["2026-10-13/_RUN_TESTS_2026-10-13_120000.txt"])
+        _symlink(root / LOGS / "_RUN_TESTS_2026-10-14_120000.txt",
+                 root / LOGS / "2026-10-13" / "_RUN_TESTS_2026-10-13_120000.txt")
+        rc, out, _ = _run(module, root, capsys)
+        assert rc == 0
+        assert out == [(root / LOGS / "2026-10-13" / "_RUN_TESTS_2026-10-13_120000.txt").resolve().as_posix()]
 
     def test_nothing_is_moved_or_written(self, module, make_project, capsys) -> None:
         names = [f"_RUN_TESTS_2026-10-{d:02d}_120000.txt" for d in range(1, 15)]

@@ -1,21 +1,31 @@
 #!/usr/bin/env bash
 # Bisection script to find which test creates unwanted files/state
-# Usage: ./find-polluter.sh <file_or_dir_to_check> <test_pattern>
-# Example: ./find-polluter.sh '.git' 'src/**/*.test.ts'
+# Usage: bash find-polluter.sh <file_or_dir_to_check> <test_pattern> [test command...]
+# Example: bash find-polluter.sh '.git' 'src/**/*.test.ts'
+# Example: bash find-polluter.sh '.tmp_output' 'tests/**/test_*.py' python -m pytest -q
+# The test command (default: npm test) runs once per test file, with the file as its last argument.
 
 set -e
 
-if [ $# -ne 2 ]; then
-  echo "Usage: $0 <file_to_check> <test_pattern>"
+if [ $# -lt 2 ]; then
+  echo "Usage: $0 <file_to_check> <test_pattern> [test command...]"
   echo "Example: $0 '.git' 'src/**/*.test.ts'"
+  echo "Example: $0 '.tmp_output' 'tests/**/test_*.py' python -m pytest -q"
   exit 1
 fi
 
 POLLUTION_CHECK="$1"
 TEST_PATTERN="$2"
+shift 2
+if [ $# -gt 0 ]; then
+  TEST_CMD=("$@")
+else
+  TEST_CMD=(npm test)
+fi
 
 echo "🔍 Searching for test that creates: $POLLUTION_CHECK"
 echo "Test pattern: $TEST_PATTERN"
+echo "Test command: ${TEST_CMD[*]} <file>"
 echo ""
 
 # Get list of test files (find . emits ./-prefixed paths, so accept the
@@ -35,7 +45,10 @@ echo "Found $TOTAL test files"
 echo ""
 
 COUNT=0
-for TEST_FILE in $TEST_FILES; do
+FAILED=0
+# One path per line, read whole: names with spaces or glob characters stay intact.
+while IFS= read -r -u 3 TEST_FILE; do
+  [ -n "$TEST_FILE" ] || continue
   COUNT=$((COUNT + 1))
 
   # Skip if pollution already exists
@@ -47,8 +60,14 @@ for TEST_FILE in $TEST_FILES; do
 
   echo "[$COUNT/$TOTAL] Testing: $TEST_FILE"
 
-  # Run the test
-  npm test "$TEST_FILE" > /dev/null 2>&1 || true
+  # Run the test; a failing test is expected, a missing runner is not
+  STATUS=0
+  "${TEST_CMD[@]}" "$TEST_FILE" < /dev/null > /dev/null 2>&1 || STATUS=$?
+  if [ "$STATUS" -eq 126 ] || [ "$STATUS" -eq 127 ]; then
+    echo "Test command could not run (exit $STATUS): ${TEST_CMD[*]}"
+    exit 2
+  fi
+  [ "$STATUS" -eq 0 ] || FAILED=$((FAILED + 1))
 
   # Check if pollution appeared
   if [ -e "$POLLUTION_CHECK" ]; then
@@ -61,12 +80,15 @@ for TEST_FILE in $TEST_FILES; do
     ls -la "$POLLUTION_CHECK"
     echo ""
     echo "To investigate:"
-    echo "  npm test $TEST_FILE    # Run just this test"
-    echo "  cat $TEST_FILE         # Review test code"
+    echo "  ${TEST_CMD[*]} \"$TEST_FILE\"    # Run just this test"
+    echo "  cat \"$TEST_FILE\"         # Review test code"
     exit 1
   fi
-done
+done 3<<< "$TEST_FILES"
 
 echo ""
+if [ "$FAILED" -gt 0 ]; then
+  echo "Note: $FAILED of $COUNT test files exited non-zero."
+fi
 echo "✅ No polluter found - all tests clean!"
 exit 0
