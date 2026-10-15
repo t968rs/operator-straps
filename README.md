@@ -28,6 +28,12 @@ claude plugin install session-bookmark@operator-straps
 claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
 ```
 
+This repository enables its own plugins in `.claude/settings.json` from the published marketplace (the same
+`t968rs/operator-straps` GitHub source as above), so sessions here run the cached copy from the pushed default
+branch, not the checkout. Edits under `plugins/` take effect only after merge, version bump and
+`claude plugin marketplace update operator-straps`; to exercise them before that, run
+`claude --plugin-dir plugins/<name>` or add the checkout as a local marketplace (`claude plugin marketplace add ./`).
+
 Installing from `/plugin` inside a session opens a dialog for each unset option instead; the CLI install takes
 `--config KEY=VALUE`. `pytest-scope` options (see `plugins/pytest-scope/README.md`):
 

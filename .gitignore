@@ -3,12 +3,13 @@
 .idea/
 docs/_commit_messages/
 .artifacts/
-
+docs/PR_SUMMARIES/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
 *$py.class
+docs/_scratch/
 
 # C extensions
 *.so
