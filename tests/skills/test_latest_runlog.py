@@ -205,13 +205,48 @@ class TestFolder:
         assert rc == 0
         assert _names(out) == ["_RUN_TESTS_2026-10-13_120000.txt"]
 
-    def test_symlink_inside_the_folder_is_kept(self, module, make_project, capsys) -> None:
-        root = _project(make_project, ["2026-10-13/_RUN_TESTS_2026-10-13_120000.txt"])
+    def test_symlink_inside_the_folder_is_kept_once(self, module, make_project, capsys) -> None:
+        root = _project(make_project, ["2026-10-13/_RUN_TESTS_2026-10-13_120000.txt",
+                                       "_RUN_TESTS_2026-10-12_120000.txt"])
         _symlink(root / LOGS / "_RUN_TESTS_2026-10-14_120000.txt",
                  root / LOGS / "2026-10-13" / "_RUN_TESTS_2026-10-13_120000.txt")
-        rc, out, _ = _run(module, root, capsys)
+        rc, out, _ = _run(module, root, capsys, "--count", "2")
         assert rc == 0
-        assert out == [(root / LOGS / "2026-10-13" / "_RUN_TESTS_2026-10-13_120000.txt").resolve().as_posix()]
+        assert out == [(root / LOGS / "2026-10-13" / "_RUN_TESTS_2026-10-13_120000.txt").resolve().as_posix(),
+                       (root / LOGS / "_RUN_TESTS_2026-10-12_120000.txt").resolve().as_posix()]
+
+    def test_linked_directory_alias_lists_each_log_once(self, module, make_project, capsys) -> None:
+        root = _project(make_project, ["2026-10-13/_RUN_TESTS_2026-10-13_120000.txt",
+                                       "_RUN_TESTS_2026-10-12_120000.txt"])
+        _dir_link(root / LOGS / "alias", root / LOGS / "2026-10-13")
+        rc, out, _ = _run(module, root, capsys, "--count", "2")
+        assert rc == 0
+        assert _names(out) == ["_RUN_TESTS_2026-10-13_120000.txt", "_RUN_TESTS_2026-10-12_120000.txt"]
+
+    def test_symlink_loop_never_aborts_the_scan(self, module, make_project, capsys) -> None:
+        root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt"])
+        for a, b in (("loop_a", "loop_b"), ("_RUN_TESTS_2026-10-14_000000.txt", "_RUN_TESTS_2026-10-15.txt")):
+            _symlink(root / LOGS / a, root / LOGS / b)
+            _symlink(root / LOGS / b, root / LOGS / a)
+        rc, out, _ = _run(module, root, capsys, "--count", "5")
+        assert rc == 0
+        assert _names(out) == ["_RUN_TESTS_2026-10-13_120000.txt"]
+
+    @pytest.mark.parametrize("bad", ["unrelated.bin", "_RUN_TESTS_2026-10-14_120000.txt"])
+    def test_entry_that_cannot_resolve_is_skipped(self, module, make_project, monkeypatch: pytest.MonkeyPatch,
+                                                  capsys, bad: str) -> None:
+        root = _project(make_project, ["_RUN_TESTS_2026-10-13_120000.txt", bad])
+        real_resolve = Path.resolve
+
+        def resolve(self: Path, strict: bool = False) -> Path:
+            if self.name == bad:
+                raise RuntimeError(f"Symlink loop from {self}")
+            return real_resolve(self, strict)
+
+        monkeypatch.setattr(Path, "resolve", resolve)
+        rc, out, _ = _run(module, root, capsys, "--count", "5")
+        assert rc == 0
+        assert _names(out) == ["_RUN_TESTS_2026-10-13_120000.txt"]
 
     def test_nothing_is_moved_or_written(self, module, make_project, capsys) -> None:
         names = [f"_RUN_TESTS_2026-10-{d:02d}_120000.txt" for d in range(1, 15)]

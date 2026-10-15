@@ -69,6 +69,15 @@ def test_missing_test_command_stops_instead_of_reporting_clean(script: Path, tmp
     assert "no-such-test-runner-xyz" in done.stdout + done.stderr
 
 
+def test_existing_target_stops_before_any_test_runs(script: Path, tmp_path: Path) -> None:
+    root = _layout(tmp_path, ["t/a_test.py", "t/b c_test.py", ".polluted"])
+    done = _run(script, root, ".polluted", "t/*_test.py", *_python())
+    assert done.returncode == 2, done.stdout + done.stderr
+    assert "already exists" in done.stdout
+    assert "No polluter found" not in done.stdout
+    assert "Testing:" not in done.stdout
+
+
 def test_usage_without_arguments(script: Path, tmp_path: Path) -> None:
     done = _run(script, tmp_path)
     assert done.returncode == 1

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bisection script to find which test creates unwanted files/state
 # Usage: bash find-polluter.sh <file_or_dir_to_check> <test_pattern> [test command...]
-# Example: bash find-polluter.sh '.git' 'src/**/*.test.ts'
+# Example: bash find-polluter.sh 'packages/core/.git' 'src/**/*.test.ts'
 # Example: bash find-polluter.sh '.tmp_output' 'tests/**/test_*.py' python -m pytest -q
 # The test command (default: npm test) runs once per test file, with the file as its last argument.
 
@@ -9,7 +9,7 @@ set -e
 
 if [ $# -lt 2 ]; then
   echo "Usage: $0 <file_to_check> <test_pattern> [test command...]"
-  echo "Example: $0 '.git' 'src/**/*.test.ts'"
+  echo "Example: $0 'packages/core/.git' 'src/**/*.test.ts'"
   echo "Example: $0 '.tmp_output' 'tests/**/test_*.py' python -m pytest -q"
   exit 1
 fi
@@ -44,19 +44,19 @@ fi
 echo "Found $TOTAL test files"
 echo ""
 
+# Every test would be skipped against a target that is already there, so nothing could be bisected
+if [ -e "$POLLUTION_CHECK" ]; then
+  echo "Pollution target already exists before any test ran: $POLLUTION_CHECK"
+  echo "Remove it, or run from a clean disposable workspace where it is absent, then rerun."
+  exit 2
+fi
+
 COUNT=0
 FAILED=0
 # One path per line, read whole: names with spaces or glob characters stay intact.
 while IFS= read -r -u 3 TEST_FILE; do
   [ -n "$TEST_FILE" ] || continue
   COUNT=$((COUNT + 1))
-
-  # Skip if pollution already exists
-  if [ -e "$POLLUTION_CHECK" ]; then
-    echo "⚠️  Pollution already exists before test $COUNT/$TOTAL"
-    echo "   Skipping: $TEST_FILE"
-    continue
-  fi
 
   echo "[$COUNT/$TOTAL] Testing: $TEST_FILE"
 

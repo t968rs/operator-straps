@@ -56,15 +56,32 @@ def find_runlogs(folder: Path, pattern: "re.Pattern[str]") -> List[Tuple[SortKey
     """Every run log under ``folder`` (subfolders included), newest first.
 
     A link (file or directory) whose target lies outside ``folder`` is skipped, so a log-named link cannot
-    hand the reader a file from elsewhere on the machine.
+    hand the reader a file from elsewhere on the machine. Each file is listed once, under the newest key any
+    of its names gives it, so a link and its target never fill two ``--count`` slots.
     """
-    base, found = folder.resolve(), []
+    base, best = folder.resolve(), {}
     for path in folder.rglob("*"):
         when = stamp(path.name, pattern)
+        target = None if when is None else resolved_log(path, base)
+        if target is not None:
+            key = (when, target[1], path.as_posix())
+            best[target[0]] = max(key, best.get(target[0], key))
+    return sorted(((key, path) for path, key in best.items()), reverse=True)
+
+
+def resolved_log(path: Path, base: Path) -> Optional[Tuple[Path, int]]:
+    """``(real path, mtime_ns)`` of a regular file inside ``base``; None for anything else or unreadable.
+
+    A symlink loop raises ``RuntimeError`` from ``resolve`` on Python 3.11 and ``OSError`` later; either
+    skips the entry rather than aborting the scan.
+    """
+    try:
         resolved = path.resolve()
-        if when is not None and path.is_file() and resolved.is_relative_to(base):
-            found.append(((when, path.stat().st_mtime_ns, path.as_posix()), resolved))
-    return sorted(found, reverse=True)
+        if not resolved.is_relative_to(base) or not resolved.is_file():
+            return None
+        return resolved, resolved.stat().st_mtime_ns
+    except (OSError, RuntimeError):
+        return None
 
 
 def resolve_folder(root: Path, flag: Optional[str], configured: Optional[str]) -> Path:

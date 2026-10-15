@@ -102,11 +102,12 @@ Use the bisection script `find-polluter.sh` in this skill's directory (the folde
 from the project root with its absolute path:
 
 ```bash
-bash "<this skill's directory>/find-polluter.sh" '.git' 'src/**/*.test.ts'
+bash "<this skill's directory>/find-polluter.sh" 'packages/core/.git' 'src/**/*.test.ts'
 bash "<this skill's directory>/find-polluter.sh" '.tmp_output' 'tests/**/test_*.py' python -m pytest -q
 ```
 
-Runs tests one-by-one, stops at first polluter. The test command after the pattern defaults to `npm test`;
+Runs tests one-by-one, stops at first polluter. The target must be absent before the run (the script stops
+otherwise), so name the misplaced path, not one that belongs there. The test command after the pattern defaults to `npm test`;
 the file is appended as its last argument. See script for usage.
 
 ## Real Example: Empty projectDir
