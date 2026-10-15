@@ -6,7 +6,11 @@ TXT files and runs ``main`` in-process with ``--repo``.
 from __future__ import annotations
 
 import importlib.util
+import os
+import subprocess
+import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Dict, Optional
 
 import pytest
@@ -44,6 +48,18 @@ class TestOutput:
         assert target.is_file()
         assert out.strip() == target.resolve().as_posix()
         assert "Feature(x): y" not in out
+
+    def test_prints_a_non_ascii_path_on_a_narrow_console(self, make_project, plugin_root: Path) -> None:
+        config = {"artifacts": {"commit_messages": "notes/漢"}}
+        root = _project(make_project, "b1", {"notes/漢/b1.txt": "m\n"}, config)
+        script = plugin_root / "skills" / "merge-commit" / "commands" / "merge_body.py"
+        env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PROJECT_DIR"}
+        env["PYTHONIOENCODING"] = "cp1252"
+        argv = [sys.executable, str(script), "--repo", str(root)]
+        done = subprocess.run(argv, capture_output=True, env=env)
+        assert done.returncode == 0, done.stderr.decode("utf-8", "replace")
+        target = root / "notes" / "漢" / "merge-body-b1.md"
+        assert done.stdout.decode("utf-8").strip() == target.resolve().as_posix()
 
     def test_uses_configured_dir_with_trailing_slash(self, module, make_project) -> None:
         config = {"artifacts": {"commit_messages": "notes/commits/"}}
@@ -90,10 +106,40 @@ class TestSelection:
         text = (root / "docs" / "_commit_messages" / "merge-body-b1.md").read_text(encoding="utf-8")
         assert "`other.txt`" in text
 
-    def test_slash_branch_is_sanitized_for_match_and_output(self, module, make_project) -> None:
+    def test_flat_sanitized_name_matches_a_slash_branch(self, module, make_project) -> None:
         root = _project(make_project, "feat/x", {"docs/_commit_messages/feat_x.txt": "a\n"})
         assert _run(module, root) == 0
         assert (root / "docs" / "_commit_messages" / "merge-body-feat_x.md").is_file()
+
+    def test_slash_branch_reads_the_producers_nested_files(self, module, make_project) -> None:
+        files = {"docs/_commit_messages/feat/x_pending.txt": "p\n", "docs/_commit_messages/feat/x.txt": "a\n",
+                 "docs/_commit_messages/feat/y.txt": "o\n"}
+        root = _project(make_project, "feat/x", files)
+        assert _run(module, root) == 0
+        text = (root / "docs" / "_commit_messages" / "merge-body-feat_x.md").read_text(encoding="utf-8")
+        assert "feat/y.txt" not in text
+        assert text.index("- `feat/x.txt`") < text.index("- `feat/x_pending.txt`")
+        assert "### `feat/x.txt`" in text
+
+    def test_all_flag_includes_nested_files(self, module, make_project) -> None:
+        root = _project(make_project, "b1", {"docs/_commit_messages/feat/y.txt": "o\n"})
+        assert _run(module, root, "--all") == 0
+        text = (root / "docs" / "_commit_messages" / "merge-body-b1.md").read_text(encoding="utf-8")
+        assert "- `feat/y.txt`" in text
+
+    def test_utf8_branch_matches_under_a_narrow_locale(self, module, make_project,
+                                                       monkeypatch: pytest.MonkeyPatch) -> None:
+        root = _project(make_project, "café", {"docs/_commit_messages/café.txt": "a\n"})
+        real_run = subprocess.run
+
+        def cp1252_locale_run(*args, **kwargs):
+            if kwargs.get("text") and "encoding" not in kwargs:
+                kwargs["encoding"] = "cp1252"
+            return real_run(*args, **kwargs)
+
+        monkeypatch.setattr(module, "subprocess", SimpleNamespace(run=cp1252_locale_run))
+        assert _run(module, root) == 0
+        assert (root / "docs" / "_commit_messages" / "merge-body-café.md").is_file()
 
 
 class TestBody:

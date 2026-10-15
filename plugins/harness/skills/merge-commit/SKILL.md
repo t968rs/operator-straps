@@ -23,12 +23,14 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_body.
   `.txt` files, or no file for the current branch. Report them verbatim and stop.
 
 When the only problem is "no .txt file for branch", ask the developer before rerunning with `--all`, which takes
-every `.txt` in the directory, including other branches' files.
+every `.txt` under the directory, including other branches' files.
 
 ## What it builds
 
-- **Sources:** `*.txt` whose stem contains the current branch name, both sanitized (`\ / : * ? " < > |` become
-  `_`), sorted by filename. Generated `.md` files are never inputs.
+- **Sources:** `*.txt` at any depth under the directory whose relative name without `.txt` contains the
+  current branch name, both sanitized (`\ / : * ? " < > |` become `_`), sorted by relative name. A slash branch
+  `feat/x` matches the producers' nested `feat/x.txt` and `feat/x_pending.txt`, and a flat `feat_x.txt`. Files
+  are listed by relative name. Generated `.md` files are never inputs.
 - **Output:** `<commit_messages>/merge-body-<sanitized-branch>.md`, UTF-8, overwritten when present.
 - **Layout:**
 
