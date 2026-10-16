@@ -1,4 +1,8 @@
-"""Behavior of .claude/skills/porting-into-straps/port_scan.py, the pre-port decoupling worklist."""
+"""Behavior of .claude/skills/porting-into-straps/port_scan.py, the pre-port decoupling worklist.
+
+The scanner loads tests/contract/test_no_repo_literals.py through load_contract(), so this module
+depends on that file's BANNED list.
+"""
 from __future__ import annotations
 
 import importlib.util

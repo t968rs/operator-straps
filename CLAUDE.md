@@ -38,9 +38,17 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 - `.claude/settings.json` enables the published marketplace (GitHub `t968rs/operator-straps`), so this repo's own
   sessions run the pushed default branch, not the checkout. Exercise local plugin edits before merge with
   `claude --plugin-dir plugins/<name>` or a local marketplace (`claude plugin marketplace add ./`).
-- Lint: `python -m ruff check plugins tests` (line length 110, E501 on).
+- Lint: `python -m ruff check plugins tests tools` (line length 110, E501 on).
 - CI (`.github/workflows/ci.yml`) runs pytest and ruff on Ubuntu and Windows, plus strict validation and the mod
-  tests.
+  tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
+  changed, when its import closure holds a changed file, when its source names a changed or deleted file (the
+  basename, or a `.py` file's bare module name), or when it walks the tree. A data file under `plugins/` or
+  `tools/` counts as a change to each `.py` file there that names it. Ruff files and the plugin jobs are
+  selected from the same diff. Shared files such as `tests/conftest.py` and deleted `.py` files force
+  everything; pushes to `main` run it all. A test that reaches a file by a route the script cannot see (a path
+  built at runtime) must spell that file name out in its source: otherwise the pull request skips it and only
+  the full run after the merge to `main` catches the break.
+  Preview a diff with `python tools/select_tests.py --base main`.
 
 ## Code style
 
