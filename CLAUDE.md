@@ -40,7 +40,11 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   `claude --plugin-dir plugins/<name>` or a local marketplace (`claude plugin marketplace add ./`).
 - Lint: `python -m ruff check plugins tests` (line length 110, E501 on).
 - CI (`.github/workflows/ci.yml`) runs pytest and ruff on Ubuntu and Windows, plus strict validation and the mod
-  tests.
+  tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py` (a test's imports,
+  the scripts it names, tree-walking tests, then shared files such as `tests/conftest.py` that force
+  everything); pushes to `main` run it all. A test that reaches code by a route the script cannot see (a path
+  built at runtime) gets the file name spelled out in its source, or the full suite is the backstop.
+  Preview a diff with `python tools/select_tests.py --base main`.
 
 ## Code style
 
