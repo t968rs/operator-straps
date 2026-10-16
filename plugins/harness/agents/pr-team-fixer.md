@@ -429,8 +429,10 @@ Per the verdict re-evaluation rule:
 
 Write `<runtime_dir>/proposed_resolutions.json` containing the proposed
 `post_review_resolutions[]` array (one entry per fixer's FIXED id, with evidence
-synthesized from the per-fixer EVIDENCE claims). This sidecar is the input to the
-shim's Step 7 atomic Edit (main session responsibility). Do NOT attempt to Edit
+synthesized from the per-fixer EVIDENCE claims). Each entry is an `{id, status, evidence}`
+object (`date` optional, default today): the input shape of
+`scripts/review_edit.py <JSON_PATH> resolve-file`. This sidecar is the input to the
+shim's Step 7 atomic Edit (main session responsibility; one batch write). Do NOT attempt to Edit
 the consolidated JSON from the closer context — the shim owns that Edit and
 performs it after validating the fixer EVIDENCE claims against file diffs.
 

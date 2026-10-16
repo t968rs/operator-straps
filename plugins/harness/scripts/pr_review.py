@@ -270,7 +270,7 @@ def _write_text(path: Path, text: str) -> None:
 
 def _write_json(path: Path, data: object) -> None:
     """Write ``data`` as indented UTF-8 JSON, atomically."""
-    _write_text(path, review_edit.dumps_review(data))  # type: ignore[arg-type]
+    _write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
 
 
 def _rel(repo: Path, path: Path) -> str:
@@ -868,14 +868,15 @@ def _cmd_amend(repo: Path, args: argparse.Namespace) -> int:
 
 
 def commit_review(repo: Path, path: Path, doc: Mapping[str, object]) -> List[str]:
-    """Validate ``doc`` in process (raise on problems), replace ``path`` atomically, run the hook.
+    """Validate and write ``doc`` through ``review_edit.save_review`` (raise on problems; the file's LF / CRLF
+    style kept), then run the hook.
 
     Returns the hook problem (a nonzero exit) as a list; the hook's informational stderr is echoed.
     """
-    problems = rmg.validate_review(doc, repo)
-    if problems:
-        raise CaptureError(problems)
-    _write_json(path, doc)
+    try:
+        review_edit.save_review(path, doc, repo)
+    except ValueError as exc:
+        raise CaptureError([line for line in str(exc).splitlines() if line.strip()]) from exc
     rc, err = run_hook(repo, path)
     if rc != 0:
         return [f"schema hook exited {rc} on {_rel(repo, path)}: {' | '.join(err.strip().splitlines())}"]

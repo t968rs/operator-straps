@@ -23,12 +23,17 @@ One editor (or a tight pair) per schema root field:
                                             ``set_issue_field``
 ``strengths``                               ``add_strength``, ``set_strengths``
 ``bubble_up``                               ``add_bubble_up``, ``drop_bubble_up``
-``post_review_resolutions``                 ``resolve`` (``snapshot_evidence`` builds the evidence text)
+``post_review_resolutions``                 ``resolve``, ``resolve_all`` (``snapshot_evidence`` builds the
+                                            evidence text)
 ``verification_log``                        ``set_verification_phase``
 =========================================== =================================================================
 
-``post_review_resolutions`` is append-only history: ``resolve`` replaces the latest entry for its id in place
-or appends one, never reordering or dropping other entries.
+``post_review_resolutions`` is append-only history: ``resolve`` appends an entry, never replacing, reordering
+or dropping an existing one; the latest entry per id is the one ``review_merge.compute_verdict`` reads.
+
+Issue ids and dispositions move together: ``regrade_issue`` renames the id in ``bubbles``, ``bubble_up`` and
+``post_review_resolutions`` too, ``merge_issue_ids`` refuses to drop an id that carries a disposition, and
+``add_issue`` numbers past every id a disposition names, so a retired id is never reissued.
 """
 from __future__ import annotations
 
@@ -49,6 +54,9 @@ RESOLUTION_STATUSES = ("RESOLVED", "DOWNGRADED_TO_MINOR", "DOWNGRADED_TO_IMPORTA
 BUBBLE_CLASSIFICATIONS = ("architectural_ambiguity", "out_of_scope", "needs_follow_up", "fixer_failed")
 VERIFICATION_PHASES = ("skipped", "dispatch_time", "pre_fix_time")
 _SHA = re.compile(r"^(?:[0-9a-f]{7,40}|[0-9a-f]{64})$")
+# Evidence SHAs stay within the schema hook's ``^[0-9a-f]{7,40}( |$)`` rule, so the Phase 5 sentinel clears.
+_EVIDENCE_SHA = re.compile(r"^[0-9a-f]{7,40}$")
+_EVIDENCE_LEAD = re.compile(r"^[0-9a-f]{7,40}( |$)")
 _DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _VERDICT = re.compile(r"^(READY TO MERGE|NOT READY TO MERGE)")
 _ISSUE_ID = re.compile(r"^[CIM][0-9]+$")
@@ -84,7 +92,8 @@ def save_review(path: Union[str, Path], doc: Mapping[str, object], repo: Optiona
     """Validate ``doc`` and write it to ``path`` atomically, keeping the file's line-ending style.
 
     ``repo`` names the project whose schema governs (default: the active project). An invalid document raises
-    ``ValueError`` with one problem per line and leaves the file untouched.
+    ``ValueError`` with one problem per line and leaves the file untouched. A failed write or replace (for
+    example a Windows file lock) removes the ``.tmp`` file and re-raises the ``OSError``.
     """
     problems = rmg.validate_review(doc, repo)
     if problems:
@@ -93,8 +102,12 @@ def save_review(path: Union[str, Path], doc: Mapping[str, object], repo: Optiona
     data = dumps_review(doc, _newline_of(target)).encode("utf-8")
     target.parent.mkdir(parents=True, exist_ok=True)
     tmp = target.with_name(target.name + ".tmp")
-    tmp.write_bytes(data)
-    os.replace(tmp, target)
+    try:
+        tmp.write_bytes(data)
+        os.replace(tmp, target)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 # --- helpers ------------------------------------------------------------------------------------------------
@@ -170,9 +183,9 @@ def set_review_date(doc: Mapping[str, object], date: str) -> Doc:
 
 
 def set_stats(doc: Mapping[str, object], additions: int, deletions: int, files_changed: int) -> Doc:
-    """``stats`` from three non-negative counts."""
+    """``stats`` from three non-negative integer counts (``bool`` refused)."""
     counts = {"additions": additions, "deletions": deletions, "files_changed": files_changed}
-    if any(not isinstance(v, int) or v < 0 for v in counts.values()):
+    if any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in counts.values()):
         raise ValueError(f"stats must be non-negative integers: {counts}")
     return _with(doc, stats=counts)
 
@@ -188,12 +201,17 @@ def recompute_verdict(doc: Mapping[str, object]) -> Doc:
 
 
 def set_verdict(doc: Mapping[str, object], text: str) -> Doc:
-    """``verdict`` set to ``text``; a READY verdict is refused while any issue is undispositioned."""
+    """``verdict`` set to ``text``; a READY verdict is refused while any issue is undispositioned or while
+    ``recompute_verdict`` is not READY (a bubbled but unclosed critical / important issue blocks it)."""
     if not _VERDICT.match(text):
         raise ValueError("verdict must start with READY TO MERGE or NOT READY TO MERGE")
-    pending = rmg.undispositioned_ids(doc) if text.startswith("READY") else []
-    if pending:
-        raise ValueError(f"READY verdict refused; undispositioned: {', '.join(pending)}")
+    if text.startswith("READY"):
+        pending = rmg.undispositioned_ids(doc)
+        if pending:
+            raise ValueError(f"READY verdict refused; undispositioned: {', '.join(pending)}")
+        computed = str(recompute_verdict(doc)["verdict"])
+        if not computed.startswith("READY TO MERGE"):
+            raise ValueError(f"READY verdict refused; computed verdict: {computed}")
     return _with(doc, verdict=text)
 
 
@@ -255,24 +273,53 @@ def _with_issues(doc: Mapping[str, object], flat: Sequence[Dict[str, object]]) -
     return _with(doc, issues=rmg.issues_by_severity(flat))
 
 
+def _disposed_ids(doc: Mapping[str, object]) -> List[str]:
+    """Ids named by any ``post_review_resolutions``, ``bubbles`` or ``bubble_up`` entry."""
+    return sorted(rmg._named_ids(doc.get("post_review_resolutions") or [],  # type: ignore[arg-type]
+                                 doc.get("bubbles") or [], doc.get("bubble_up") or []))  # type: ignore[arg-type]
+
+
 def add_issue(doc: Mapping[str, object], severity: str, issue: Mapping[str, object]) -> Doc:
-    """``issue`` (no ``id``) appended to the ``severity`` tier under the next free id of that tier."""
+    """``issue`` (no ``id``) appended to the ``severity`` tier under the next id of that tier free of both
+    issues and dispositions."""
     if "id" in issue:
         raise ValueError("add_issue assigns the id; drop it from the issue")
     tier = rmg._tier_name(severity)
     letter = tier[0].upper()
-    numbers = [int(i[1:]) for i in _issue_ids(doc) if i[0] == letter]
+    taken = [*_issue_ids(doc), *_disposed_ids(doc)]
+    numbers = [int(i[1:]) for i in taken if _ISSUE_ID.match(i) and i[0] == letter]
     new = {"id": f"{letter}{max(numbers, default=0) + 1}", **copy.deepcopy(dict(issue))}
     return _with_issues(doc, [*_flat_issues(doc), new])
 
 
+def _renamed_dispositions(doc: Mapping[str, object], old: str, new: str) -> Dict[str, object]:
+    """The disposition fields present in ``doc`` with ``old`` renamed to ``new``, entry order kept."""
+    out: Dict[str, object] = {}
+    if "bubbles" in doc:
+        out["bubbles"] = [new if str(b) == old else b for b in doc["bubbles"] or []]  # type: ignore[union-attr]
+    for name in ("bubble_up", "post_review_resolutions"):
+        if name in doc:
+            out[name] = [{**e, "id": new} if str(e["id"]) == old else e
+                         for e in doc[name] or []]  # type: ignore[union-attr]
+    return out
+
+
 def regrade_issue(doc: Mapping[str, object], issue_id: str, severity: str) -> Doc:
-    """``issue_id`` moved to ``severity`` under a new id (``review_merge.regrade``)."""
-    return _with_issues(doc, rmg.regrade(_flat_issues(doc), issue_id, severity))
+    """``issue_id`` moved to ``severity`` under a new id (``review_merge.regrade``); its ``bubbles``,
+    ``bubble_up`` and ``post_review_resolutions`` entries follow it to the new id."""
+    before = set(_issue_ids(doc))
+    out = _with_issues(doc, rmg.regrade(_flat_issues(doc), issue_id, severity))
+    new_id = next(i for i in _issue_ids(out) if i not in before)
+    return _with(out, **_renamed_dispositions(out, issue_id, new_id))
 
 
 def merge_issue_ids(doc: Mapping[str, object], keep: str, drop: Sequence[str]) -> Doc:
-    """``drop`` ids folded into ``keep`` (``review_merge.merge_ids``)."""
+    """``drop`` ids folded into ``keep`` (``review_merge.merge_ids``); refused while a ``drop`` id carries a
+    resolution or bubble, so no disposition is orphaned or transferred to ``keep``."""
+    held = [d for d in drop if d in _disposed_ids(doc)]
+    if held:
+        raise ValueError(f"merge refused; {', '.join(held)} carries a resolution or bubble "
+                         "(merge before dispositioning)")
     return _with_issues(doc, rmg.merge_ids(_flat_issues(doc), keep, drop))
 
 
@@ -319,17 +366,20 @@ def drop_bubble_up(doc: Mapping[str, object], issue_id: str) -> Doc:
 
 
 def snapshot_evidence(sha: str, text: str) -> str:
-    """Evidence in the ``<sha> (working-tree snapshot; developer commits) - <text>`` convention."""
-    if not _SHA.match(sha):
-        raise ValueError(f"evidence sha must be 7-40 (or 64) lowercase hex characters: {sha!r}")
+    """Evidence in the ``<sha> (working-tree snapshot; developer commits) - <text>`` convention; ``sha`` is
+    7-40 lowercase hex (the schema hook's evidence rule) and ``text`` must not be blank."""
+    if not _EVIDENCE_SHA.match(sha):
+        raise ValueError(f"evidence sha must be 7-40 lowercase hex characters: {sha!r}")
+    if not text.strip():
+        raise ValueError("evidence text must not be blank (a rationale or a description of the change)")
     return f"{sha} {rmg.EVIDENCE_NOTE} - {text.strip()}"
 
 
 def resolve(doc: Mapping[str, object], issue_id: str, status: str, evidence: str,
             date: Optional[str] = None) -> Doc:
-    """A ``post_review_resolutions`` entry for ``issue_id`` (date default: today).
+    """A ``post_review_resolutions`` entry for ``issue_id`` (date default: today), always appended.
 
-    The latest existing entry for the id is replaced in place, else the entry is appended. Every status needs
+    Earlier entries for the id stay as history; the latest one decides the verdict. Every status needs
     non-blank evidence; for ``CLOSED_NO_ACTION`` it is the rationale.
     """
     _require_issue(doc, issue_id)
@@ -340,12 +390,32 @@ def resolve(doc: Mapping[str, object], issue_id: str, status: str, evidence: str
         raise ValueError(f"{issue_id}: {status} requires {kind}")
     entry = {"id": issue_id, "status": status, "date": _check_date(date or _today()), "evidence": evidence}
     entries = list(doc.get("post_review_resolutions") or [])  # type: ignore[call-overload]
-    at = [n for n, e in enumerate(entries) if str(e["id"]) == issue_id]
-    if at:
-        entries[at[-1]] = entry
-    else:
-        entries.append(entry)
-    return _with(doc, post_review_resolutions=entries)
+    return _with(doc, post_review_resolutions=[*entries, entry])
+
+
+def _proposed_evidence(entry: Mapping[str, object], sha: Optional[str]) -> str:
+    """Evidence of a proposed entry; with ``sha``, text not already led by a SHA takes the snapshot form."""
+    text = str(entry.get("evidence") or "")
+    return snapshot_evidence(sha, text) if sha and not _EVIDENCE_LEAD.match(text) else text
+
+
+def resolve_all(doc: Mapping[str, object], entries: Sequence[Mapping[str, object]],
+                sha: Optional[str] = None) -> Doc:
+    """Every proposed ``{id, status, evidence[, date]}`` entry applied through ``resolve`` in order, then the
+    verdict recomputed; any bad entry raises ``ValueError`` naming its position, so nothing partial results.
+
+    With ``sha``, evidence not already starting with a SHA takes the ``snapshot_evidence`` form.
+    """
+    out = _with(doc)
+    for n, entry in enumerate(entries, 1):
+        if not isinstance(entry, Mapping) or not {"id", "status"} <= set(entry):
+            raise ValueError(f"entry {n}: needs id, status and evidence")
+        try:
+            date = str(entry["date"]) if entry.get("date") else None
+            out = resolve(out, str(entry["id"]), str(entry["status"]), _proposed_evidence(entry, sha), date)
+        except ValueError as exc:
+            raise ValueError(f"entry {n} ({entry['id']}): {exc}") from exc
+    return recompute_verdict(out)
 
 
 # --- verification_log ---------------------------------------------------------------------------------------

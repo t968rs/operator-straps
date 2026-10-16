@@ -1,7 +1,7 @@
 # PR Review Operating Rules
 
 Standing developer rules for `pr-review` runs in this repo; `pr-team` follows every section except "Phase 5 flow",
-whose dispatch order its own Step 4.5 defines, and applies the rules that name a `pr_review.py` subcommand by hand.
+whose dispatch order its own Step 4.5 defines, and applies the rules that name a `pr_review.py` subcommand through `scripts/review_edit.py` (`harness_lib.review_edit`), never by hand.
 Where a rule here names a step order, it overrides the literal order in `pr-review/SKILL.md`.
 
 ## Review JSON fields
@@ -40,9 +40,13 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   `build` exits 1. After a hand edit by the developer, the next script write recomputes it.
 - **JSON string values that describe `"` or `\`** (mojibake, shell quoting, regex) use escape-sequence text, never the
   rendered glyph. The agent never hand-edits the review JSON; every agent write goes through a `pr_review.py`
-  subcommand, which validates the whole document before replacing it. An edit no subcommand covers (a single
-  resolution, a reviewer, a strength, metadata) goes through `scripts/review_edit.py <review JSON> <edit>`
-  (`harness_lib.review_edit`: one editor per root field, validated byte-stable write), never `python -c`.
+  subcommand, which validates the whole document before replacing it. Resolutions, defers, bubbles, regrades and
+  merges always go through `closeout`, `bubble` and `amend`, which check the evidence and write the verdict. An edit
+  no subcommand covers (a reviewer, a strength, `shas`, `review-date`, `stats`) goes through
+  `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" <review JSON> --recompute
+  <subcommand> ...` (`harness_lib.review_edit`: one editor per root field, validated byte-stable write), never
+  `python -c`. The agent never runs its `verdict --text`, and runs `resolve-file` only as the `pr-team` shim's
+  closeout step; any other field (PR title, issue text, verification log) is surfaced to the developer.
 - **Folder glob:** only true PR reviews live at the top of the project's review directory (`artifacts.reviews`
   in `.claude/harness.json`) as `NNNN_*.json`. Audits and notes use a subfolder or a non-digit prefix
   (`AUDIT_NNNN_*.json`).

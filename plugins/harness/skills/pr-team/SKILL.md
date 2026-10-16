@@ -58,7 +58,9 @@ section below). A project that tracks `state_dir` lists `<state_dir>/pr-team/_ru
 file instead.
 
 - Review-JSON field semantics, sentinel handling and finding-grading rules live in
-  `${CLAUDE_PLUGIN_ROOT}/skills/pr-review/operating_rules.md`; the shim and both agents follow them.
+  `${CLAUDE_PLUGIN_ROOT}/skills/pr-review/operating_rules.md`; the shim and both agents follow them. A rule
+  that names a `pr_review.py` subcommand applies here through `scripts/review_edit.py`
+  (`harness_lib.review_edit`, see the Edit step below), never by hand.
 
 ## When to Use
 
@@ -438,13 +440,17 @@ per-fixer EVIDENCE claims, validates them against the consolidated tree's file d
 (confirmable via `git diff`), then performs ONE atomic Edit to the consolidated JSON:
 inserting `post_review_resolutions[]` (from the closer's proposal) and replacing the
 `verdict` field with the recomputed value. The edit goes through `harness_lib.review_edit`
-(one `resolve` per proposed entry, then `recompute_verdict`, written once by `save_review`,
-which validates and keeps the file's formatting), from the CLI as
-`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" <JSON_PATH> --recompute resolve <ID> <STATUS> "<text>" [--sha <head>]`;
-never an inline `python -c` or a hand edit, and never verdict wording copied from another review.
-On a write refusal (schema validation error, READY verdict with undispositioned ids) or
-evidence not found in the diff, the shim halts with a STOP rather than continuing
-to QA.
+(`resolve_all`: one `resolve` per proposed entry, then `recompute_verdict`, written once by
+`save_review`, which validates and writes the canonical 2-space form, keeping the line endings
+of the file), from the CLI as one batch command over the sidecar:
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" <JSON_PATH> resolve-file <runtime_dir>/proposed_resolutions.json --sha <HEAD short sha>`.
+`--sha` is mandatory here: evidence not already starting with a SHA becomes
+`<sha> (working-tree snapshot; developer commits) - <text>`, the form the Phase 5 sentinel
+needs. Never an inline `python -c`, a hand edit, or one `resolve` call per entry (each call
+is its own write), and never verdict wording copied from another review.
+One bad entry (unknown id, bad status, blank evidence) or a refused write (schema validation
+error, issue-count mismatch) writes nothing; the shim halts with a STOP rather than continuing
+to QA, as it does when evidence is not found in the diff.
 
 **QA step:** After the Edit succeeds, the shim validates the updated consolidated
 JSON for two properties:
