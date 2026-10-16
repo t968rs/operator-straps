@@ -1,0 +1,485 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 19,
+  "pr_title": "Add per-field PR review editors and improve review resolution handling",
+  "branch": "12-featureharness_lib-review",
+  "base_branch": "main",
+  "base_sha": "83db618aec0f319d63dac1d6f6702f6da773e077",
+  "head_sha": "4017c9f814d180b7165ea4e1baf062620e7fa184",
+  "review_date": "2026-10-16",
+  "verdict": "READY TO MERGE - 16 of 16 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1646,
+    "deletions": 15,
+    "files_changed": 13
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)",
+    "external_review (external)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0019/pr19_20261016T205358Z/findings/tests.json",
+    "docs/_scratch/pr_review/0019/pr19_20261016T205358Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0019/pr19_20261016T205358Z/findings/docs.json",
+    "docs/_scratch/pr_review/0019/pr19_20261016T205358Z/findings/roast.json",
+    "docs/_scratch/pr_review/0019/pr19_20261016T205358Z/findings/external_review.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every test is behavioral: real editors run on a real fixture document and the CLI runs as a real subprocess, with no mocks, so there are no mock-chain wiring tests.",
+    "The byte-stable round trip runs over an LF and a CRLF fixture. test_corpus_mixes_line_endings guards that mix, and the fixture-local .gitattributes (*.json -text) keeps checkout from normalizing it.",
+    "The fixtures contain a non-ASCII em dash, so the ensure_ascii=False canonical form is exercised byte for byte.",
+    "Refusal paths assert the file is left untouched (save_review, CLI verdict, CLI check, resolve-file), and CRLF is checked to survive a CLI edit.",
+    "test_verdict_refuses_ready_over_bubbled_important hits the second READY guard (computed verdict) on its own, separate from the undispositioned guard.",
+    "Every editor returns a deep copy and writes once through save_review: validation runs before any file is touched, and the write is an atomic tmp + os.replace that removes the tmp file if the write fails.",
+    "regrade_issue carries bubbles, bubble_up and post_review_resolutions over to the new id, and merge_issue_ids refuses to drop an id that has a disposition, so neither edit leaves orphan dispositions behind.",
+    "resolve_all applies the whole batch and only then recomputes; any bad entry raises with its position, so nothing is written.",
+    "commit_review and load_review in pr_review.py now go through the same validated, line-ending-preserving I/O, and errors are translated into CaptureError cleanly.",
+    "snapshot_evidence keeps evidence SHAs inside the hook's 7-40 hex rule, so sentinel clearing stays consistent with Layer 3.",
+    "SKILL.md Step 7 describes resolve_all accurately: one resolve per entry, a single recompute, one validated save_review write that keeps the line endings, and no write when any entry or the validation fails.",
+    "The --sha snapshot-evidence rule in SKILL.md matches snapshot_evidence and _EVIDENCE_LEAD exactly, so SHA-led evidence is not double-prefixed and the Phase 5 sentinel form is produced.",
+    "operating_rules keeps the verdict-is-derived rule intact by barring agents from `verdict --text` and naming which fields stay with the developer.",
+    "Every editor returns a deep copy, and a parametrized test pins non-mutation for all 24 editors, so callers can safely compose edits and write once.",
+    "save_review reuses review_merge.validate_review and writes atomically through a .tmp file that is removed when the replace fails; pr_review.commit_review now shares the same gate and serializer.",
+    "resolve_all is all-or-nothing, and its errors name the failing entry; the CLI test proves a bad third entry leaves the file byte-identical.",
+    "The CRLF fixture is protected by `*.json -text`, and the corpus test asserts that both line-ending styles are present, so the byte-stable round-trip claim is actually tested on every platform.",
+    "regrade_issue carries bubbles, bubble_up and resolutions to the new id, and merge_issue_ids refuses to drop a dispositioned id, closing the orphan-disposition hole instead of documenting it.",
+    "The tests are behavioral throughout: real fixtures, real schema validation, and the CLI run as a subprocess; there are no stubbed collaborators."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "pr-team Edit step now writes compute_verdict, which QA check D rejects whenever a minor id is bubbled",
+        "file": "plugins/harness/skills/pr-team/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-team/SKILL.md",
+          "plugins/harness/skills/pr-team/commands/qa_review_json.py",
+          "plugins/harness/agents/pr-team-fixer.md",
+          "plugins/harness/lib/harness_lib/review_edit.py",
+          "plugins/harness/agents/pr-team-orchestrator.md"
+        ],
+        "lines": "437-453,522-523",
+        "reviewer": "docs, roast, external_review",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md Step 7 routes the closeout write through `review_edit.py resolve-file`, whose `resolve_all` ends in `recompute_verdict` -> `review_merge.compute_verdict`. That function returns `NOT READY TO MERGE - minor findings pending Phase 5: <ids>` for any minor id that is neither closed nor in the JSON `bubbles`/`bubble_up`. The pr-team flow never writes `bubbles`/`bubble_up` into the review JSON (bubble-ups live only in the `<runtime_dir>/bubble_ups.json` sidecar; no pr-team doc or agent writes the JSON fields), so a deferred, out-of-scope or fixer_failed minor stays undispositioned. QA check D (`qa_review_json.py:432-460`, documented at SKILL.md:522-523) expects prefix `READY TO MERGE` whenever no critical/important id is open, and a verdict starting `NOT READY TO MERGE` does not start with `READY TO MERGE`, so D fails and the skill halts with QA_FAIL and no `.complete` sentinel in the common case of a run that bubbles any minor finding. Before this PR the closer Step 6 rule (no minor tier) produced the verdict the shim wrote, which matched D.\n\nAlso (roast): Step 7 routes the closeout through `resolve-file`, which ends in `resolve_all` -> `recompute_verdict` -> `review_merge.compute_verdict`. That function returns `NOT READY TO MERGE - minor findings pending Phase 5: <ids>` for any minor id that is neither closed nor in the document `bubbles` / `bubble_up`. pr-team does not keep bubbles there: they live in `<runtime_dir>/bubble_ups.json`, and the orchestrator writes `bubble_up: []` (pr-team-orchestrator.md:302-303). The pr-team verdict rule (pr-team-fixer.md:415-428, qa_review_json.py:432-459 `check_d_verdict`) only counts unresolved critical and important ids. So any run with a deferred bubble-up minor or a FAILed minor fixer writes `NOT READY TO MERGE - minor ...`. QA D expects the prefix `READY TO MERGE` and fails, and the TERMINAL verdict from the closer disagrees with the file. Two verdict rules in one pipeline, and the new one gets to write.\n\nAlso (external_review): Copilot (pullrequestreview-5553575586): The new batch writer disagrees with the next QA step for partial closeouts. Resolving I1 and M1 while leaving minor M2 pending produces `NOT READY TO MERGE - minor findings pending Phase 5: M2` (also asserted in `test_cli_resolve_file_writes_once`). However, `commands/qa_review_json.py:432-461` requires READY whenever no critical or important finding remains open. The workflow explicitly continues after fixer failures, so this case reaches QA_FAIL and cannot write `.complete`. Update QA to use the shared verdict rules, including minor dispositions and the latest resolution per ID, and cover this partial-closeout case.",
+        "fix": [
+          "Before `resolve-file`, have the shim mirror every remaining sidecar bubble into the JSON through `review_edit.py <JSON> bubble <ID>` and `bubble-up <ID> <classification> <reason>` (or a batch over bubble_ups.json), so compute_verdict treats them as settled; document it in SKILL.md Step 7 and the fixer Step 7 sidecar contract.",
+          "Align `check_d_verdict` with `review_merge.compute_verdict` (call it, reading the bubble_ups sidecar for bubbled ids) and update SKILL.md:522-523 to say D compares against the same function the Edit step writes.",
+          "Have Step 7 move the bubbled ids from the sidecar into the review in the same write, e.g. a `resolve-file --bubble-ups <runtime_dir>/bubble_ups.json` option that applies `add_bubble` / `add_bubble_up` for each sidecar item before `recompute_verdict`, so `compute_verdict` treats them as settled; document it in SKILL.md Step 7.",
+          "Or align pr-team with the shared rule: make `qa_review_json.check_d_verdict` and pr-team-fixer.md Step 6 compute the verdict with `review_merge.compute_verdict` (and write bubbles into the review), so one function decides the verdict everywhere.",
+          "The new batch writer disagrees with the next QA step for partial closeouts. Resolving I1 and M1 while leaving minor M2 pending produces `NOT READY TO MERGE - minor findings pending Phase 5: M2` (also asserted in `test_cli_resolve_file_writes_once`). However, `commands/qa_review_json.py:432-461` requires READY whenever no critical or important finding remains open. The workflow explicitly continues after fixer failures, so this case reaches QA_FAIL and cannot write `.complete`. Update QA to use the shared verdict rules, including minor dispositions and the latest resolution per ID, and cover this partial-closeout case."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Closer Step 6 verdict rule and TERMINAL verdict now disagree with the verdict review_edit writes",
+        "file": "plugins/harness/agents/pr-team-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-team-fixer.md",
+          "plugins/harness/skills/pr-team/SKILL.md"
+        ],
+        "lines": "415-426",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "pr-team-fixer.md Step 6 (415-426) still has the closer compute its own verdict (dash-separated wording `NOT READY TO MERGE -- <blockers>` / `READY TO MERGE -- <summary>`, no minor tier), reported in the CLOSEOUT `TERMINAL: ... | verdict: <new prefix>` line, which SKILL.md:525 re-emits verbatim on QA PASS. After this PR the written verdict comes from `resolve_all` -> `compute_verdict` (`NOT READY TO MERGE - critical: ...`, `- minor findings pending Phase 5: ...`, `READY TO MERGE - R of T findings resolved, B bubbled`), so the user-facing terminal line can say READY while the JSON says NOT READY. The new SKILL.md:449-450 forbids verdict wording copied from elsewhere, yet the closer still composes its own.",
+        "fix": [
+          "Replace fixer Step 6 with a pointer: the verdict is derived by `review_edit.py resolve-file` (`review_merge.compute_verdict`); the closer reports only `resolved=<R> bubbled=<B>`, and the shim fills `verdict:` in the final terminal line from the `wrote <file>: verdict: <v>` line resolve-file prints.",
+          "Keep Step 6 but mark its wording advisory, and change SKILL.md:525 so the QA-PASS terminal line prints the verdict stored in the JSON, not the closer value."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Re-run idempotency claim is false under append-only resolve",
+        "file": "plugins/harness/agents/pr-team-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-team-fixer.md",
+          "plugins/harness/skills/pr-team/SKILL.md",
+          "plugins/harness/lib/harness_lib/review_edit.py"
+        ],
+        "lines": "494-497",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "pr-team-fixer.md:496-497 says re-adding the same `post_review_resolutions[]` entries is a no-op, and SKILL.md Stop recovery (line 676) relies on re-reading the JSON to resume. `review_edit.resolve` always appends (earlier entries stay as history), so a second `resolve-file` over the same sidecar (a re-dispatch after QA_FAIL or a repeated Step 7) duplicates every entry instead of being a no-op. The PR introduced the append semantics and the batch command but left the idempotency contract unchanged.",
+        "fix": [
+          "Reword fixer.md:496-497: re-running `resolve-file` appends duplicate history entries; the closer drops from proposed_resolutions.json any id whose latest JSON entry already has the same status, and SKILL.md Step 7 runs `resolve-file` at most once per sidecar.",
+          "Make `resolve_all` skip an entry whose id already has a latest entry with the same status and evidence, and document that as the idempotency rule."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "merge_issue_ids lets a closed keep id silently close an open dropped finding",
+        "file": "plugins/harness/lib/harness_lib/review_edit.py",
+        "lines": "316-323",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "merge_issue_ids (review_edit.py:316-323) refuses only when a dropped id has a disposition. If keep already has a RESOLVED / CLOSED_NO_ACTION resolution or a bubble, the open dropped finding is folded into it and takes on that closed state with no evidence. Example: C1 is resolved and C2 is open. `merge C1 C2` removes C2 and recompute gives READY TO MERGE, though C2's fix was never made. The docstring says 'no disposition is orphaned or transferred', but keep's disposition does effectively spread to the dropped content.",
+        "fix": [
+          "Refuse the merge while keep is settled (closed or bubbled), with a message telling the user to merge before dispositioning, mirroring the existing drop-side check.",
+          "Or append a reopening entry for keep, so the merged issue needs a fresh disposition."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "resolve-file is append-only but pr-team recovery promises idempotent re-adds",
+        "file": "plugins/harness/lib/harness_lib/review_edit.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_edit.py",
+          "plugins/harness/agents/pr-team-fixer.md",
+          "plugins/harness/skills/pr-team/SKILL.md",
+          "plugins/harness/skills/pr-team/commands/qa_review_json.py"
+        ],
+        "lines": "378-418",
+        "reviewer": "roast, external_review",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "`resolve` always appends (review_edit.py:378-393), and `resolve_all` (402-418) has no already-closed skip. pr_review.py has one: `closeout` skips closed ids and `--resolved` refuses them. pr-team-fixer.md:494-497 still says a CLOSEOUT re-dispatch is safe because `re-adding the same post_review_resolutions[] entries is a no-op`. SKILL.md re-enters from Step 6 after FORK / STOP, which leads back to Step 7. If the shim replays `resolve-file` against the same sidecar after a write that already landed (a QA_FAIL retry, a FORK resume), every resolution gets a duplicate entry with a new date. The verdict survives this, but the ledger does not, and the doc promises the opposite.\n\nAlso (roast): SKILL.md:446-449 makes `--sha` mandatory, so `_proposed_evidence` (review_edit.py:396-399) rewrites every non-SHA evidence string, CLOSED_NO_ACTION rationales included, to `<sha> (working-tree snapshot; developer commits) - <text>`. QA check C2a (qa_review_json.py:295-313) catches auto-generated CLOSED_NO_ACTION entries with `^\\s*bubbled\b` and `^\\s*classification\\s*:`, both anchored at the start of the evidence. After the prefix, a closer that writes `bubbled - out_of_scope` as a close rationale gets past two of the three patterns. The guard still runs; it just checks the wrong position now.\n\nAlso (external_review): Copilot (pullrequestreview-5553575586): Reject non-string proposal evidence instead of coercing it. A sidecar entry with `evidence: true` or a non-empty list/object becomes a nonblank string here, so `resolve-file --sha ...` accepts it and closes the finding. Schema validation cannot detect the malformed evidence after conversion. Require a string before adding the snapshot prefix, and test that malformed evidence leaves the review unchanged.",
+        "fix": [
+          "In `resolve_all`, skip an entry whose id already has the same status as its latest resolution (or refuse it with `entry N (ID): already <STATUS>`), matching the closeout behavior of pr_review.py; add a test that runs resolve-file twice and asserts one entry per id.",
+          "Or rewrite pr-team-fixer.md:494-497 and SKILL.md Step 7 to say resolve-file appends history and must run exactly once per closeout; a resume re-runs it only for ids not yet closed in the JSON.",
+          "In `check_c2a_no_auto_closed_no_action`, strip a leading `^[0-9a-f]{7,40} \\(working-tree snapshot; developer commits\\) - ` from the evidence before matching the patterns.",
+          "Or drop the `^` anchors from the two `_AUTO_CNA_PATTERNS` that use them, so they match after the snapshot prefix.",
+          "Reject non-string proposal evidence instead of coercing it. A sidecar entry with `evidence: true` or a non-empty list/object becomes a nonblank string here, so `resolve-file --sha ...` accepts it and closes the finding. Schema validation cannot detect the malformed evidence after conversion. Require a string before adding the snapshot prefix, and test that malformed evidence leaves the review unchanged."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Disposition edits keep a stale READY verdict that compute_verdict would reject",
+        "file": "plugins/harness/scripts/review_edit.py",
+        "files": [
+          "plugins/harness/scripts/review_edit.py",
+          "plugins/harness/lib/harness_lib/review_edit.py"
+        ],
+        "lines": "171-188",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "run() writes the edited document with its old verdict unless --recompute is passed, and save_review / validate_review never compare the verdict with the dispositions. So on a review whose verdict is READY TO MERGE, `resolve C1 DOWNGRADED_TO_MINOR` (the latest entry reopens C1), `clear-bubble`, `drop-bubble-up` or `regrade M2 important` all save a READY verdict that recompute_verdict would turn into NOT READY. set_verdict refuses that READY text when it is typed (the 'guard READY verdicts' commit), but these edits can write the same state without being typed. The CLI docstring also says the verdict is 'derived, never typed', yet resolve (unlike resolve_all) does not recompute it.\n\nAlso (runtime): The `verdict` subparser (review_edit.py:118) has no --recompute parent, but the top-level --recompute flag still parses before it. `FILE --recompute verdict --text T` runs set_verdict (including its READY guard) and then run() overwrites the result with recompute_verdict (lines 178-179). The developer's override is lost and the CLI still exits 0. The docstring says --recompute does not apply to `verdict`, but the code neither rejects the combination nor warns about it, unlike the explicit rejection for `check`.\n\nAlso (roast): The `verdict` subparser gets no `--recompute` parent, but the top-level `--recompute` still parses before it. `FILE --recompute verdict --text \"NOT READY TO MERGE - hold\"` sets the text the developer typed and then `run()` (review_edit.py:178-179) recomputes it away, exits 0, and reports a verdict nobody typed. operating_rules teaches `FILE --recompute <subcommand>` as the standard form, so this argument order is the one people will copy.",
+        "fix": [
+          "In run(), after the edit: when out['verdict'] starts with READY and recompute_verdict(out) does not, either recompute automatically or raise ValueError naming the computed verdict.",
+          "Or make every disposition-changing subcommand (resolve, bubble, clear-bubble, bubble-up, drop-bubble-up, regrade, merge) recompute by default, as resolve-file already does.",
+          "In run(), raise ValueError when args.recompute and args.command == 'verdict' and args.text is not None ('--recompute conflicts with verdict --text'), next to the existing check rejection.",
+          "In `run()`, reject `args.recompute` when `args.command == \"verdict\"` the same way `check` is rejected (review_edit.py:175-176), and note it in the module docstring at lines 27-30."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "operating_rules contradicts itself on how pr-team applies pr_review.py-subcommand rules",
+        "file": "plugins/harness/skills/pr-review/operating_rules.md",
+        "files": [
+          "plugins/harness/skills/pr-review/operating_rules.md",
+          "plugins/harness/skills/pr-team/SKILL.md",
+          "plugins/harness/scripts/review_edit.py"
+        ],
+        "lines": "3-4,41-49",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Line 4 (and pr-team SKILL.md:60-63) says pr-team applies every rule naming a `pr_review.py` subcommand through `scripts/review_edit.py`. The Review JSON bullet (41-49) then says every agent write goes through a `pr_review.py` subcommand, that resolutions, defers, bubbles, regrades and merges always go through `closeout`, `bubble` and `amend`, and that `review_edit.py` is only for fields no subcommand covers plus the shim `resolve-file`. Both cannot hold for pr-team, and no mapping says which review_edit subcommand stands in for `bubble` (`bubble` + `bubble-up`), `amend --regrade` (`regrade`), amend merges (`merge`) or `closeout --closed/--resolved/--deferred`; rules naming `fold`, `waves` or `build` have no review_edit equivalent at all. The Folding section also says `amend` does not run after `build`, so the always-through-amend rule has no post-build path for regrades.\n\nAlso (roast): operating_rules.md:4 says pr-team applies every rule that names a `pr_review.py` subcommand through `scripts/review_edit.py`. Lines 43-49 of the same file say resolutions, defers, bubbles, regrades and merges always go through `closeout`, `bubble` and `amend`, and that `resolve-file` runs only as the closeout step of the pr-team shim. review_edit has no one-write equivalent of `bubble` (bubbles plus bubble_up) or `closeout --deferred` (RESOLVED plus bubble_up). It also skips the changed-files evidence check that closeout runs. pr-team keeps bubbles in a sidecar anyway, not the review JSON. An agent following line 4 for a defer or bubble makes two unvalidated writes; an agent following lines 43-49 has no sanctioned pr-team path at all.\n\nAlso (docs): operating_rules.md line 4 runs to about 190 characters while the rest of the file wraps near 118 columns.",
+        "fix": [
+          "Scope the bullet: in `pr-review`, resolutions, defers, bubbles, regrades and merges go through closeout, bubble and amend; in `pr-team`, through review_edit.py `resolve-file`, `bubble`/`bubble-up`, `regrade` and `merge`; add a short subcommand mapping and state that rules naming fold/waves/build do not apply to pr-team.",
+          "Narrow line 4 and SKILL.md:60-63 to: the pr-team closeout write goes through `review_edit.py resolve-file`, and keep pr-team on pr_review.py for bubble/amend.",
+          "Rewrite operating_rules.md:3-4 to name the actual mapping: pr-team writes resolutions only through `review_edit.py resolve-file` at Step 7, bubbles live in the bubble_ups sidecar, and only the fields listed at lines 45-47 (reviewer, strength, shas, review-date, stats) use other review_edit subcommands; mirror that wording in pr-team SKILL.md:61-63.",
+          "Rewrap operating_rules.md line 4 at the ~118-column width the file uses."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "Test pins reissue of a retired id, contradicting the module contract",
+        "file": "tests/lib/test_review_edit.py",
+        "files": [
+          "tests/lib/test_review_edit.py",
+          "plugins/harness/lib/harness_lib/review_edit.py"
+        ],
+        "lines": "57,176,189-199,212",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_regrade_carries_dispositions regrades M2 to I2 (its bubbles, bubble_up and resolution entries are renamed to I2), then asserts add_issue issues the next minor as M2 (line 199). The review_edit module docstring (review_edit.py:34-36) promises that add_issue numbers past every disposition id 'so a retired id is never reissued'. Once regrade_issue renames the dispositions, nothing records M2 any more, so the new finding takes the id that PR comments, earlier review markdown and fixer prompts already used for a different issue. The test locks in the behavior the docstring rules out.\n\nAlso (tests): Line 197 calls red.recompute_verdict(regraded) and discards the result. Its only effect is to fail on an orphan-id ValueError; it never checks the verdict after regrade. The expected value is 'NOT READY TO MERGE - important: I1, I2' (M1 closed, I2 has only a DOWNGRADED_TO_MINOR entry).\n\nAlso (tests): _NEW_ISSUE is defined at line 57, yet the same dict literal is written out again at lines 176, 198 and 212.",
+        "fix": [
+          "Keep the contract: have add_issue (or regrade_issue) also skip ids retired by regrade or merge (for example, number past the highest id ever issued per tier, which can be derived from issues plus dispositions plus regraded-from ids), and change line 199 to expect ['M1', 'M3'].",
+          "Narrow the contract instead: reword review_edit.py:34-36 to 'never reissues an id that a disposition still names', and add a comment at line 198-199 saying the regraded-away M2 is reused on purpose.",
+          "Replace line 197 with: assert red.recompute_verdict(regraded)[\"verdict\"] == \"NOT READY TO MERGE - important: I1, I2\"",
+          "Replace the inline literals at lines 176, 198 and 212 with _NEW_ISSUE and drop the local `new`."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Sidecar shape sentence omits the CLOSED_NO_ACTION entries the closer also proposes",
+        "file": "plugins/harness/agents/pr-team-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-team-fixer.md",
+          "plugins/harness/skills/pr-team/SKILL.md"
+        ],
+        "lines": "360,430-435",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "fixer.md Step 7 (430-435) says proposed_resolutions.json holds one entry per fixer FIXED id, but Step 5 also builds `CLOSED_NO_ACTION` entries for `USER_CLOSED_IDS`; read literally, user closes never reach `resolve-file`. With the now-mandatory `--sha`, those rationales also get the `<sha> (working-tree snapshot; developer commits) - ...` prefix although no code changed.\n\nAlso (docs): fixer.md:360 tells the closer to write `date: <UTC YYYY-MM-DD>` from `date -u`, while the new Step 7 text (432) says `date` is optional with default today; `review_edit._today()` uses the local `datetime.date.today()`, which differs from UTC near midnight.",
+        "fix": [
+          "Change Step 7 to: one entry per validated FIXED id (status RESOLVED) plus one per USER_CLOSED_IDS id (status CLOSED_NO_ACTION, evidence = the user rationale); note in SKILL.md Step 7 that `--sha` prefixes CLOSED_NO_ACTION rationales too.",
+          "In Step 7 write: `date` from Step 5 (UTC); when omitted, resolve-file uses the local date. Or drop the default-today clause so the closer always supplies the UTC date."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Module docstring claims a retired id is never reissued; regrade and merge retire ids that get reused",
+        "file": "plugins/harness/lib/harness_lib/review_edit.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_edit.py",
+          "tests/lib/test_review_edit.py"
+        ],
+        "lines": "34-36,282-292",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "review_edit.py:34-36 says add_issue 'numbers past every id a disposition names, so a retired id is never reissued'. Two cases break it. regrade_issue moves every disposition of the old id to the new id, and merge_issue_ids only drops ids that have no disposition. In both cases the retired id is left with no disposition naming it. add_issue (taken = issue ids plus disposition ids) and rmg.regrade (issue ids only) can then reissue it. Example: regrade the highest I3 to minor, then add_issue('important') returns I3 again.\n\nAlso (roast): review_edit.py:34-36 says `add_issue` numbers past every id a disposition names, `so a retired id is never reissued`. `regrade_issue` moves the dispositions of an issue to its new id, which frees the old one, and `merge_issue_ids` drops only undispositioned ids. Both leave the old id free. test_review_edit.py:189-199 regrades M2 to I2 and then asserts `add_issue` hands out M2 again. The docstring and the test cannot both be right; here the test wins.",
+        "fix": [
+          "Reword the docstring to the actual guarantee: add_issue avoids every id currently named by an issue or a disposition.",
+          "Or keep a record of retired ids (for example from regrade / merge) and number past them as well.",
+          "Reword review_edit.py:36 to: `add_issue` numbers past every id an issue or a disposition still names, so a new issue never inherits an existing disposition."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "recompute_verdict drops the pending-pre_fix_time hold that pr_review applies",
+        "file": "plugins/harness/lib/harness_lib/review_edit.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_edit.py",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "196-200",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "When pre_fix_time is still pending, pr_review.recomputed_verdict (scripts/pr_review.py:1140-1147) replaces a READY result with 'NOT READY TO MERGE - Phase 4 first run failed: ...'. review_edit.recompute_verdict (review_edit.py:196-200) calls compute_verdict directly. On a pending review, `--recompute` or `verdict --recompute` therefore either computes READY, which save_review then rejects with the confusing 'pre_fix_time is still pending' problem, or overwrites the held 'Phase 4 first run failed' verdict with a plain NOT READY line. The same rule now has two implementations that disagree.",
+        "fix": [
+          "Apply the same hold inside review_edit.recompute_verdict: if verification_log.pre_fix_time == rmg.PENDING and the result is READY, use the NOT READY 'Phase 4 first run failed' form. Then have pr_review.recomputed_verdict call review_edit.recompute_verdict so only one implementation remains."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Batch closeout leaves closed findings in the transient `bubbles` list.",
+        "file": "plugins/harness/lib/harness_lib/review_edit.py",
+        "lines": "418",
+        "reviewer": "external_review",
+        "fix_kind": "judgment",
+        "summary": "Copilot (pullrequestreview-5553575586): Batch closeout leaves closed findings in the transient `bubbles` list. Resolving or explicitly closing an already-bubbled ID updates the verdict but still lists that finding as awaiting a developer decision. `operating_rules.md:9-12` distinguishes this list from the permanent `bubble_up` ledger, and `review_merge.apply_closeout` already removes closed IDs. Remove IDs whose latest resolution is `RESOLVED` or `CLOSED_NO_ACTION` before recomputing the verdict, while preserving `bubble_up`. Add a regression case for resolving an already-bubbled finding.",
+        "fix": [
+          "Batch closeout leaves closed findings in the transient `bubbles` list. Resolving or explicitly closing an already-bubbled ID updates the verdict but still lists that finding as awaiting a developer decision. `operating_rules.md:9-12` distinguishes this list from the permanent `bubble_up` ledger, and `review_merge.apply_closeout` already removes closed IDs. Remove IDs whose latest resolution is `RESOLVED` or `CLOSED_NO_ACTION` before recomputing the verdict, while preserving `bubble_up`. Add a regression case for resolving an already-bubbled finding."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "resolve-file --sha is documented mandatory but parsed optional",
+        "file": "plugins/harness/scripts/review_edit.py",
+        "files": [
+          "plugins/harness/scripts/review_edit.py",
+          "plugins/harness/skills/pr-team/SKILL.md"
+        ],
+        "lines": "12-15,117",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:447 says `--sha` is mandatory for the Step 7 batch because the Phase 5 sentinel needs SHA-led evidence. The parser (review_edit.py:117) makes it optional, and the CLI docstring shows `[--sha SHA]`. Without it, prose evidence from the fixer sidecar is written verbatim, the `^[0-9a-f]{7,40}( |$)` rule of the hook never matches, and the sentinel stays armed. A rule only the docs enforce gets skipped sooner or later.",
+        "fix": [
+          "Make it `batch.add_argument(\"--sha\", required=True)` and change the docstring line to `FILE resolve-file PROPOSED_JSON --sha SHA`.",
+          "Or keep it optional and have `resolve_all` refuse a RESOLVED entry whose evidence does not match `_EVIDENCE_LEAD` when no sha is given."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Non-mutation check skips the outer editor of composed params",
+        "file": "tests/lib/test_review_edit.py",
+        "lines": "71,79-80,87-89,93-98",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The clear_bubble, drop_bubble_up and set_verification_phase_skipped params (lines 71, 79-80, 87-89) wrap the named editor around an intermediate copy. test_editors_do_not_mutate only compares the fixture doc, so it checks add_bubble, add_bubble_up and the dispatch_time call, never the editor each param is named after.",
+        "fix": [
+          "Give each param a seeding step and an editor: pytest.param(seed, edit, id=...); in the test, seeded = seed(doc); before = copy.deepcopy(seeded); out = edit(seeded); assert seeded == before."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Documented refusals and cleanup paths left untested",
+        "file": "tests/lib/test_review_edit.py",
+        "lines": "127-132",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Some documented behaviors of review_edit have no test here: set_stats refusing bool (test_set_stats covers only -1 and '1'); save_review removing the .tmp file and leaving the target untouched when the write or replace raises OSError; add_strength refusing a blank string; add_bubble_up refusing a reason over 200 characters.",
+        "fix": [
+          "Add red.set_stats(doc, True, 2, 3) to the ValueError cases in test_set_stats; add a test that monkeypatches os.replace in harness_lib.review_edit to raise OSError, then asserts pytest.raises(OSError), that target.with_name(target.name + '.tmp') does not exist and that the target bytes are unchanged; add the blank-strength and 201-character-reason refusals."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "History test's verdict assertion cannot detect a latest-wins regression",
+        "file": "tests/lib/test_review_edit.py",
+        "files": [
+          "tests/lib/test_review_edit.py",
+          "plugins/harness/lib/harness_lib/review_edit.py"
+        ],
+        "lines": "233-239",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_resolve_appends_history checks the verdict after M1 gets DOWNGRADED_TO_MINOR and then CLOSED_NO_ACTION, but I1 is still open, so the verdict is 'important: I1' whether compute_verdict reads the first or the latest M1 entry. That leaves the contract at review_edit.py:32 ('the latest entry per id is the one compute_verdict reads') unchecked by this file's end-to-end path through resolve.",
+        "fix": [
+          "Resolve I1 before recomputing (out = red.resolve(out, 'I1', 'RESOLVED', 'bound', '2026-10-03')) and assert the verdict is 'READY TO MERGE - 3 of 3 findings resolved, 0 bubbled'. Reading the earlier DOWNGRADED_TO_MINOR entry would instead give 'minor findings pending Phase 5: M1'."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 19 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":4,\"first_sha\":\"715e5461b4f5944bc749b1ee3791072133ae60ad\",\"headRefName\":\"12-featureharness_lib-review\",\"headRefOid\":\"4017c9f814d180b7165ea4e1baf062620e7fa184\",\"last_sha\":\"4017c9f814d180b7165ea4e1baf062620e7fa184\",\"mergeCommit\":null,\"number\":19,\"state\":\"OPEN\",\"title\":\"Add per-field PR review editors and improve review resolution handling\",\"url\":\"https://github.com/t968rs/operator-straps/pull/19\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "12-featureharness_lib-review",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "12-featureharness_lib-review",
+        "head_ref_name": "12-featureharness_lib-review",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "715e5461b4f5944bc749b1ee3791072133ae60ad",
+        "head_sha": "4017c9f814d180b7165ea4e1baf062620e7fa184",
+        "base_ancestor_command": "git merge-base --is-ancestor 715e5461b4f5944bc749b1ee3791072133ae60ad HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 4017c9f814d180b7165ea4e1baf062620e7fa184 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - Fixer Step 6 no longer composes a verdict (points at resolve-file / compute_verdict); closer TERMINAL drops verdict:, and the QA-PASS terminal line takes verdict from the resolve-file 'wrote <file>: verdict: <v>' output"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - resolve_all skips an entry whose id's latest resolution already has the same status; fixer stop-recovery and SKILL.md Step 7 / Stop recovery document that idempotency rule"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - resolve_all skips same-status re-adds (test: resolve-file twice keeps one entry per id); non-string proposal evidence refused with review unchanged (tested); C2a strips the snapshot evidence lead before matching; docs reworded"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - run() refuses top-level --recompute with verdict and refuses any edit leaving a READY verdict that recompute_verdict rejects (naming the computed verdict); docstring updated; tests added. Lib cited only: the guard lives in the CLI run() and recompute_verdict already exists"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - operating_rules.md top rewrapped and rewritten with the pr-team mapping (resolutions + bubble_up only via resolve-file --bubble-ups at Step 7; other review_edit subcommands only for uncovered fields; fold/waves/build/bubble/amend/closeout rules do not apply); Review JSON bullet scoped per skill; SKILL.md mirrored. scripts/review_edit.py cited only: its subcommands already match the mapping"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - resolve_all mirrors the bubble_ups sidecar into bubble_up (mirror_bubble_ups, idempotent in-place replace) via new resolve-file --bubble-ups; check_d_verdict now calls review_merge.compute_verdict (latest resolution, bubbles, bubble_up); SKILL.md Step 7/D, fixer Step 7 and orchestrator bubble_up text updated; partial-closeout tests added"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - cited only: test_regrade_carries_dispositions already pins the actual guarantee (a freed id such as M2 is reissued); the docstring reword lives in review_edit.py; module docstring narrowed: add_issue numbers past every id an issue or a disposition still names; an id freed by regrade or merge can be issued again"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - _EDITORS params now carry (seed, edit); test_editors_do_not_mutate deep-copies the seeded doc and checks the named editor leaves it unchanged"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - added set_stats bool refusal, failed os.replace cleanup test (no .tmp, target bytes unchanged), blank add_strength refusal and 201-character bubble_up reason refusal"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - test_resolve_appends_history resolves I1 and asserts READY 3 of 3, so reading the earlier DOWNGRADED_TO_MINOR M1 entry would fail; cited only: the latest-wins contract docstring at review_edit.py stays accurate; the fix is the test-side I1 resolve owned by the other part"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - recompute_verdict holds READY as PHASE4_HOLD while pre_fix_time is pending; pr_review.recomputed_verdict and hold_ready_verdict now delegate to review_edit; regression test added"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - resolve_all drops ids whose latest resolution is RESOLVED / CLOSED_NO_ACTION from bubbles before recomputing (bubble_up kept); regression test for an already-bubbled finding"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - merge_issue_ids refuses while keep is settled (closed or bubbled), mirroring the drop-side check; test updated to a non-settled keep plus parametrized refusal cases"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - contract narrowed in the module docstring; test asserts the post-regrade verdict, comments the deliberate M2 reuse, and uses _NEW_ISSUE instead of inline literals"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - fixer.md Step 7 now lists one RESOLVED entry per validated FIXED id plus one CLOSED_NO_ACTION entry per USER_CLOSED_IDS id; every entry carries the UTC date from Step 5; SKILL.md Step 7 notes the --sha prefix also applies to CLOSED_NO_ACTION rationales."
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "4017c9f (working-tree snapshot; developer commits) - resolve-file --sha made required (batch.add_argument required=True); docstring shows --sha SHA without brackets; SKILL.md Step 7 notes the parser rejects the batch without --sha."
+    }
+  ]
+}
