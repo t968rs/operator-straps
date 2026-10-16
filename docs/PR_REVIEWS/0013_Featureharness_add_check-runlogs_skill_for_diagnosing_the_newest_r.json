@@ -8,7 +8,7 @@
   "base_sha": "d310faa7135faee08f65c3556cfed93c917180ff",
   "head_sha": "fcc44f94a71247233d6ffc1c5527f3947127b5ec",
   "review_date": "2026-10-15",
-  "verdict": "NOT READY TO MERGE - minor findings pending Phase 5: M4",
+  "verdict": "READY TO MERGE - 11 of 11 findings resolved, 0 bubbled",
   "stats": {
     "additions": 1578,
     "deletions": 7,
@@ -402,6 +402,12 @@
       "status": "RESOLVED",
       "date": "2026-10-15",
       "evidence": "fcc44f9 (working-tree snapshot; developer commits) - unrelated.bin case replaced with a log-named entry whose resolve raises OSError (RuntimeError case kept); test_nothing_is_moved_or_written snapshots (st_size, st_mtime_ns) per file via new _snapshot helper"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-15",
+      "evidence": "0b7aa83 (working-tree snapshot; developer commits) - usage error exits 2 and the header documents exit codes 0/1/2; fixer w1_fix_2 made the edit, rejected only for touching the test file outside its set (outside fixer waves)"
     }
   ]
 }

@@ -40,7 +40,7 @@ const result = getResult();
 expect(result).toBeDefined();
 
 // ✅ AFTER: Waiting for condition
-await waitFor(() => getResult() !== undefined);
+await waitFor(() => getResult() !== undefined, 'result');
 const result = getResult();
 expect(result).toBeDefined();
 ```
@@ -79,7 +79,7 @@ async function waitFor<T>(
 }
 ```
 
-See `condition-based-waiting-example.ts` in this directory for complete implementation with domain-specific helpers (`waitForEvent`, `waitForEventCount`, `waitForEventMatch`) from actual debugging session.
+Domain helpers wrap this one function, e.g. `waitFor(() => events.find(e => e.type === 'DONE'), 'DONE event')`. When a helper waits for an event that may already have fired, record the event count before the action and wait for an event past it, so an earlier occurrence cannot satisfy the wait.
 
 ## Common Mistakes
 
@@ -96,7 +96,7 @@ See `condition-based-waiting-example.ts` in this directory for complete implemen
 
 ```typescript
 // Tool ticks every 100ms - need 2 ticks to verify partial output
-await waitForEvent(manager, 'TOOL_STARTED'); // First: wait for condition
+await waitFor(() => events.find(e => e.type === 'TOOL_STARTED'), 'TOOL_STARTED'); // First: wait for condition
 await new Promise(r => setTimeout(r, 200));   // Then: wait for timed behavior
 // 200ms = 2 ticks at 100ms intervals - documented and justified
 ```
