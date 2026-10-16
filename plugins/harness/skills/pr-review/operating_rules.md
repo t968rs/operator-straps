@@ -40,7 +40,9 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   `build` exits 1. After a hand edit by the developer, the next script write recomputes it.
 - **JSON string values that describe `"` or `\`** (mojibake, shell quoting, regex) use escape-sequence text, never the
   rendered glyph. The agent never hand-edits the review JSON; every agent write goes through a `pr_review.py`
-  subcommand, which validates the whole document before replacing it.
+  subcommand, which validates the whole document before replacing it. An edit no subcommand covers (a single
+  resolution, a reviewer, a strength, metadata) goes through `scripts/review_edit.py <review JSON> <edit>`
+  (`harness_lib.review_edit`: one editor per root field, validated byte-stable write), never `python -c`.
 - **Folder glob:** only true PR reviews live at the top of the project's review directory (`artifacts.reviews`
   in `.claude/harness.json`) as `NNNN_*.json`. Audits and notes use a subfolder or a non-digit prefix
   (`AUDIT_NNNN_*.json`).

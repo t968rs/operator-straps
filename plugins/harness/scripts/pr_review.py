@@ -121,6 +121,7 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
+from harness_lib import review_edit  # noqa: E402
 from harness_lib import review_merge as rmg  # noqa: E402
 from harness_lib import review_models as rm  # noqa: E402
 from harness_lib import review_plan as rp  # noqa: E402
@@ -269,7 +270,7 @@ def _write_text(path: Path, text: str) -> None:
 
 def _write_json(path: Path, data: object) -> None:
     """Write ``data`` as indented UTF-8 JSON, atomically."""
-    _write_text(path, json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    _write_text(path, review_edit.dumps_review(data))  # type: ignore[arg-type]
 
 
 def _rel(repo: Path, path: Path) -> str:
@@ -888,7 +889,10 @@ def load_review(repo: Path, plan: Mapping[str, object]) -> Tuple[Path, Dict[str,
     if not plan.get("review_path"):
         raise CaptureError(["no review recorded for this run; run build first"])
     path = repo / str(plan["review_path"])
-    return path, _read_json(path)
+    try:
+        return path, review_edit.load_review(path)
+    except (OSError, ValueError) as exc:
+        raise CaptureError([f"cannot read {path} ({exc})"]) from exc
 
 
 def all_issues(doc: Mapping[str, object]) -> List[Dict[str, object]]:

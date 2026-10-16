@@ -437,8 +437,13 @@ re-invocation the closer re-reads the JSON to discover what's resolved and resum
 per-fixer EVIDENCE claims, validates them against the consolidated tree's file diffs
 (confirmable via `git diff`), then performs ONE atomic Edit to the consolidated JSON:
 inserting `post_review_resolutions[]` (from the closer's proposal) and replacing the
-`verdict` field with the recomputed value. On Edit failure (schema validation error,
-evidence not found in diff, etc.), the shim halts with a STOP rather than continuing
+`verdict` field with the recomputed value. The edit goes through `harness_lib.review_edit`
+(one `resolve` per proposed entry, then `recompute_verdict`, written once by `save_review`,
+which validates and keeps the file's formatting), from the CLI as
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" <JSON_PATH> --recompute resolve <ID> <STATUS> "<text>" [--sha <head>]`;
+never an inline `python -c` or a hand edit, and never verdict wording copied from another review.
+On a write refusal (schema validation error, READY verdict with undispositioned ids) or
+evidence not found in the diff, the shim halts with a STOP rather than continuing
 to QA.
 
 **QA step:** After the Edit succeeds, the shim validates the updated consolidated
