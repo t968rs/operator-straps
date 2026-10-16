@@ -121,6 +121,7 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
+from harness_lib import review_edit  # noqa: E402
 from harness_lib import review_merge as rmg  # noqa: E402
 from harness_lib import review_models as rm  # noqa: E402
 from harness_lib import review_plan as rp  # noqa: E402
@@ -867,14 +868,15 @@ def _cmd_amend(repo: Path, args: argparse.Namespace) -> int:
 
 
 def commit_review(repo: Path, path: Path, doc: Mapping[str, object]) -> List[str]:
-    """Validate ``doc`` in process (raise on problems), replace ``path`` atomically, run the hook.
+    """Validate and write ``doc`` through ``review_edit.save_review`` (raise on problems; the file's LF / CRLF
+    style kept), then run the hook.
 
     Returns the hook problem (a nonzero exit) as a list; the hook's informational stderr is echoed.
     """
-    problems = rmg.validate_review(doc, repo)
-    if problems:
-        raise CaptureError(problems)
-    _write_json(path, doc)
+    try:
+        review_edit.save_review(path, doc, repo)
+    except ValueError as exc:
+        raise CaptureError([line for line in str(exc).splitlines() if line.strip()]) from exc
     rc, err = run_hook(repo, path)
     if rc != 0:
         return [f"schema hook exited {rc} on {_rel(repo, path)}: {' | '.join(err.strip().splitlines())}"]
@@ -888,7 +890,10 @@ def load_review(repo: Path, plan: Mapping[str, object]) -> Tuple[Path, Dict[str,
     if not plan.get("review_path"):
         raise CaptureError(["no review recorded for this run; run build first"])
     path = repo / str(plan["review_path"])
-    return path, _read_json(path)
+    try:
+        return path, review_edit.load_review(path)
+    except (OSError, ValueError) as exc:
+        raise CaptureError([f"cannot read {path} ({exc})"]) from exc
 
 
 def all_issues(doc: Mapping[str, object]) -> List[Dict[str, object]]:
@@ -1133,13 +1138,9 @@ def _cmd_fold(repo: Path, args: argparse.Namespace) -> int:
 
 
 def recomputed_verdict(doc: Mapping[str, object]) -> str:
-    """``compute_verdict`` over the review's issues and dispositions; a pending ``pre_fix_time`` holds
-    READY."""
-    out = {"verdict": rmg.compute_verdict(doc["issues"], doc.get("post_review_resolutions") or [],  # type: ignore
-                                          doc.get("bubbles") or [], doc.get("bubble_up") or [])}  # type: ignore
-    if (doc.get("verification_log") or {}).get("pre_fix_time") == rmg.PENDING:  # type: ignore[union-attr]
-        hold_ready_verdict(out, "pre_fix_time pending")
-    return str(out["verdict"])
+    """``review_edit.recompute_verdict`` over the review's issues and dispositions; a pending
+    ``pre_fix_time`` holds READY."""
+    return str(review_edit.recompute_verdict(doc)["verdict"])
 
 
 def appended_review(doc: Mapping[str, object], added: Sequence[Dict[str, object]], credit: str,
@@ -1338,7 +1339,7 @@ def hold_ready_verdict(doc: Dict[str, object], reason: str) -> None:
     This override is a fifth verdict form, applied here rather than in ``review_merge.compute_verdict``.
     """
     if str(doc.get("verdict") or "").startswith("READY TO MERGE"):
-        doc["verdict"] = f"NOT READY TO MERGE - Phase 4 first run failed: {reason}"
+        doc["verdict"] = review_edit.PHASE4_HOLD.format(reason=reason)
 
 
 def _counts(doc: Mapping[str, object]) -> str:

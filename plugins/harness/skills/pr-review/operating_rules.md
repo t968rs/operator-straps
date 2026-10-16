@@ -1,7 +1,11 @@
 # PR Review Operating Rules
 
-Standing developer rules for `pr-review` runs in this repo; `pr-team` follows every section except "Phase 5 flow",
-whose dispatch order its own Step 4.5 defines, and applies the rules that name a `pr_review.py` subcommand by hand.
+Standing developer rules for `pr-review` runs in this repo. `pr-team` follows every section except "Phase 5 flow",
+whose dispatch order its own Step 4.5 defines. `pr-team` does not run `pr_review.py`: it writes resolutions and the
+`bubble_up` ledger only through `scripts/review_edit.py <JSON> resolve-file ... --bubble-ups ...` at its Step 7 (its
+bubbles live in the `<runtime_dir>/bubble_ups.json` sidecar until then), and uses other `review_edit.py`
+subcommands only for the fields the "Review JSON fields" section lists as uncovered; rules naming `fold`, `waves`,
+`build`, `bubble`, `amend` or `closeout` do not apply to it.
 Where a rule here names a step order, it overrides the literal order in `pr-review/SKILL.md`.
 
 ## Review JSON fields
@@ -39,8 +43,15 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   is still written, but a READY verdict becomes `NOT READY TO MERGE - Phase 4 first run failed: <reason>` and
   `build` exits 1. After a hand edit by the developer, the next script write recomputes it.
 - **JSON string values that describe `"` or `\`** (mojibake, shell quoting, regex) use escape-sequence text, never the
-  rendered glyph. The agent never hand-edits the review JSON; every agent write goes through a `pr_review.py`
-  subcommand, which validates the whole document before replacing it.
+  rendered glyph. The agent never hand-edits the review JSON. In `pr-review`, every agent write goes through a
+  `pr_review.py` subcommand, which validates the whole document before replacing it, and resolutions, defers,
+  bubbles, regrades and merges always go through `closeout`, `bubble` and `amend`, which check the evidence and
+  write the verdict; in `pr-team` they go through `review_edit.py resolve-file` alone (see the top of this file).
+  An edit no subcommand covers (a reviewer, a strength, `shas`, `review-date`, `stats`) goes through
+  `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" <review JSON> --recompute
+  <subcommand> ...` (`harness_lib.review_edit`: one editor per root field, validated byte-stable write), never
+  `python -c`. The agent never runs its `verdict --text`, and runs `resolve-file` only as the `pr-team` shim's
+  closeout step; any other field (PR title, issue text, verification log) is surfaced to the developer.
 - **Folder glob:** only true PR reviews live at the top of the project's review directory (`artifacts.reviews`
   in `.claude/harness.json`) as `NNNN_*.json`. Audits and notes use a subfolder or a non-digit prefix
   (`AUDIT_NNNN_*.json`).

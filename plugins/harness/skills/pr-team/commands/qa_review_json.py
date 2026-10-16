@@ -23,7 +23,7 @@ Check inventory:
     A4  terminals rows validate against terminals.schema.json
     B1-B3  reviewer counts cross-checks
     C1-C5 (C2a, C2b subsets)  closer / fixer cross-checks
-    D  post_review_resolutions status enum
+    D  verdict prefix vs review_merge.compute_verdict
 """
 from __future__ import annotations
 
@@ -44,6 +44,12 @@ try:
 except ImportError:
     print("FATAL: jsonschema + referencing packages required (pip install jsonschema)", file=sys.stderr)
     sys.exit(2)
+
+_LIB = Path(__file__).resolve().parents[3] / "lib"
+if str(_LIB) not in sys.path:
+    sys.path.insert(0, str(_LIB))
+
+from harness_lib import review_merge as rmg  # noqa: E402
 
 CheckResult = Tuple[bool, str]
 _TERMINALS_SCHEMA_DIR = Path(__file__).resolve().parent.parent
@@ -297,6 +303,8 @@ _AUTO_CNA_PATTERNS = (
     re.compile(r"^\s*bubbled\b", re.IGNORECASE),
     re.compile(r"^\s*classification\s*:", re.IGNORECASE),
 )
+# The `resolve-file --sha` snapshot lead; stripped so the anchored patterns test the rationale itself.
+_SNAPSHOT_LEAD = re.compile(r"^[0-9a-f]{7,40} \(working-tree snapshot; developer commits\) - ")
 
 
 def check_c2a_no_auto_closed_no_action(json_doc: Dict[str, Any]) -> CheckResult:
@@ -305,7 +313,7 @@ def check_c2a_no_auto_closed_no_action(json_doc: Dict[str, Any]) -> CheckResult:
     for r in json_doc.get("post_review_resolutions", []):
         if r.get("status") != "CLOSED_NO_ACTION":
             continue
-        evidence = r.get("evidence", "")
+        evidence = _SNAPSHOT_LEAD.sub("", str(r.get("evidence", "")), count=1)
         if any(pat.search(evidence) for pat in _AUTO_CNA_PATTERNS):
             bad.append((r.get("id", "<no-id>"), evidence[:80]))
     if bad:
@@ -430,35 +438,19 @@ def check_c5_evidence_coverage(rows: List[Dict[str, Any]]) -> CheckResult:
 
 
 def check_d_verdict(json_doc: Dict[str, Any]) -> CheckResult:
-    """D1-D5. Recompute verdict from issues + post_review_resolutions; compare."""
-    issues_by_sev = json_doc.get("issues", {})
-    res = json_doc.get("post_review_resolutions", [])
-    closed_statuses = {"RESOLVED", "CLOSED_NO_ACTION"}
-    closed_ids = {r["id"] for r in res if r.get("status") in closed_statuses}
-    unresolved_c = [
-        i["id"] for i in issues_by_sev.get("critical", [])
-        if i.get("id") not in closed_ids
-    ]
-    unresolved_i = [
-        i["id"] for i in issues_by_sev.get("important", [])
-        if i.get("id") not in closed_ids
-    ]
-    if unresolved_c or unresolved_i:
-        expected = "NOT READY TO MERGE"
-    else:
-        expected = "READY TO MERGE"
-    verdict = json_doc.get("verdict", "")
+    """D. Verdict prefix equals that of ``review_merge.compute_verdict`` (the function the Step 7
+    ``resolve-file`` write uses) over issues, the latest resolution per id, ``bubbles`` and ``bubble_up``."""
+    try:
+        computed = rmg.compute_verdict(json_doc.get("issues", {}),
+                                       json_doc.get("post_review_resolutions") or [],
+                                       json_doc.get("bubbles") or [], json_doc.get("bubble_up") or [])
+    except (ValueError, KeyError, TypeError) as exc:
+        return False, f"D FAIL: verdict not computable: {exc}"
+    expected = "NOT READY TO MERGE" if computed.startswith("NOT READY TO MERGE") else "READY TO MERGE"
+    verdict = str(json_doc.get("verdict", ""))
     if verdict.startswith(expected):
-        msg = (
-            f"D PASS: verdict prefix '{expected}' matches re-eval "
-            f"(uC={len(unresolved_c)}, uI={len(unresolved_i)})"
-        )
-        return True, msg
-    msg = (
-        f"D FAIL: expected verdict prefix '{expected}' "
-        f"(uC={unresolved_c}, uI={unresolved_i}) but got: {verdict[:60]!r}"
-    )
-    return False, msg
+        return True, f"D PASS: verdict prefix '{expected}' matches re-eval ({computed})"
+    return False, f"D FAIL: expected verdict prefix '{expected}' ({computed}) but got: {verdict[:60]!r}"
 
 
 # Main

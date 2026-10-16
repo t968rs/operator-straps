@@ -300,8 +300,10 @@ entry).
 
 Build against the schema. Required fields: `pr, title, branch, base_branch, base_sha,
 head_sha, review_date, reviewers, stats, verdict, strengths, issues, bubble_up`. **At MODE=CONSOLIDATE
-write time, `bubble_up` is initialized as the empty array `[]`** — fixer subagents in MODE=PLAN populate
-it with classified bubbled items; MODE=CLOSEOUT does NOT touch this field (resolved items go into
+write time, `bubble_up` is initialized as the empty array `[]`** — fixer subagents in MODE=PLAN record
+classified bubbled items in the `<runtime_dir>/bubble_ups.json` sidecar, and the shim's Step 7 write
+(`review_edit.py resolve-file --bubble-ups`) mirrors that sidecar into this field so the derived verdict
+counts them as dispositioned; MODE=CLOSEOUT does NOT touch this field (resolved items go into
 `post_review_resolutions[]`, unresolved items stay in `issues.*` AND are surfaced via the BUBBLED return-contract
 array per the pr-team skill's `return_contract.md`).
 
