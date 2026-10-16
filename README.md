@@ -7,7 +7,7 @@ project-specific (artifact folders, test layout, guard suites, commit buckets, b
 
 | Plugin | What it adds |
 |---|---|
-| `harness` | Skills, agents, hooks and scripts: `pr-review`, `pr-team`, `c-msg`, `branch-commit-msg`, `pr-sum`, `d-w` and more |
+| `harness` | Skills, agents, hooks and scripts: `pr-review`, `pr-team`, `c-msg`, `branch-commit-msg`, `pr-sum`, `d-w`, `check-runlogs`, `strap-debugging` and more |
 | `pr-review-watch` | Run tracking for `pr-review` / `pr-team`: Phase 5 band, `PHASE5_PENDING=` prompt line, bubble Stop guard, matrix rows |
 | `git-status` | Git status line and a per-prompt `GIT_STATE` context line |
 | `session-bookmark` | Compaction bookmark: git state, last prompts and `/compact` instructions survive a compaction |
@@ -81,7 +81,8 @@ Create `.claude/harness.json` in the consuming repository. Every key is optional
     {"bucket": "Test", "prefixes": ["src/tests/"]}
   ],
   "auto_approve_python_c": true,
-  "worktree_root": "~/worktrees/{repo}"
+  "worktree_root": "~/worktrees/{repo}",
+  "runlogs": {"dir": "logs/test_runs"}
 }
 ```
 
@@ -97,6 +98,8 @@ Create `.claude/harness.json` in the consuming repository. Every key is optional
 | `exclusions` | `null` | clean-tree checks ignore machine-generated files |
 | `auto_approve_python_c` | `false` | `approve_python_c` hook |
 | `worktree_root` | `~/.config/superpowers/worktrees/{repo}` | `d-w`, `parallel2` |
+| `runlogs.dir` | `null` (the skill then needs `--dir`) | `check-runlogs` (newest run log; every subfolder at any depth, dated archives included, is searched too) |
+| `runlogs.name_pattern` | a name ending in `<YYYY-MM-DD>[_<HHMMSS>].txt` or `.log` | `check-runlogs` (named groups `date`, optional `time`) |
 
 `schemas_dir` (default `.claude/agent-schemas`) pins project copies of the review schemas; anything missing
 there falls back to the plugin's `schemas/`.
