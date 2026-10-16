@@ -76,8 +76,16 @@ def test_arguments_and_exit_code_pass_through(plugin_root: Path) -> None:
     assert done.returncode == 7
 
 
-def test_no_dependency_warning_with_full_interpreter(plugin_root: Path) -> None:
-    pytest.importorskip("jsonschema")
-    pytest.importorskip("pydantic")
-    done = _run(plugin_root, {"HARNESS_PY": _posix(sys.executable)}, "-c", "pass")
+def test_launch_never_probes_schema_libraries(plugin_root: Path, tmp_path: Path) -> None:
+    log = tmp_path / "calls.log"
+    shim = tmp_path / "python"
+    body = f'#!/bin/sh\necho "$@" >> "{_posix(str(log))}"\nexec "{_posix(sys.executable)}" "$@"\n'
+    shim.write_text(body, encoding="utf-8", newline="\n")
+    shim.chmod(0o755)
+    done = _run(plugin_root, {"HARNESS_PY": _posix(str(shim))}, "-c", "raise SystemExit(5)")
+    assert done.returncode == 5, done.stderr
     assert "WARNING" not in done.stderr
+    calls = log.read_text(encoding="utf-8")
+    for name in ("jsonschema", "referencing", "pydantic"):
+        assert name not in calls
+    assert len(calls.splitlines()) == 2, calls  # the start probe, then the exec

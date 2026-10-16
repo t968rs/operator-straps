@@ -6,7 +6,8 @@
 #   $CLAUDE_PLUGIN_OPTION_PYTHON   plugin userConfig "python" (per user)
 #   python, py -3                  PATH fallback
 # python3 is deliberately absent: on Windows it is usually the Microsoft Store alias stub.
-# A missing jsonschema / referencing / pydantic only warns: hooks that need them say so themselves.
+# No dependency probe here: an import costs several hundred ms per launch. Hooks and scripts that need
+# jsonschema / referencing / pydantic report their absence themselves.
 
 probe() {
     [ -n "$1" ] || return 1
@@ -28,10 +29,6 @@ pick() {
 if ! pick; then
     echo "hpy: no usable Python (set HARNESS_PY or the harness plugin's python option)" >&2
     exit 127
-fi
-
-if ! "$PY" ${PYFLAG:+"$PYFLAG"} -c "import jsonschema, referencing, pydantic" >/dev/null 2>&1; then
-    echo "hpy: WARNING: $PY lacks jsonschema/referencing/pydantic; schema checks will not run" >&2
 fi
 
 exec "$PY" ${PYFLAG:+"$PYFLAG"} "$@"
