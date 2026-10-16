@@ -58,7 +58,12 @@ section below). A project that tracks `state_dir` lists `<state_dir>/pr-team/_ru
 file instead.
 
 - Review-JSON field semantics, sentinel handling and finding-grading rules live in
-  `${CLAUDE_PLUGIN_ROOT}/skills/pr-review/operating_rules.md`; the shim and both agents follow them.
+  `${CLAUDE_PLUGIN_ROOT}/skills/pr-review/operating_rules.md`; the shim and both agents follow them. pr-team
+  does not run `pr_review.py`: resolutions and the `bubble_up` ledger are written only by the Step 7
+  `scripts/review_edit.py resolve-file ... --bubble-ups ...` batch (`harness_lib.review_edit`, see the Edit
+  step below; bubbles stay in the `bubble_ups.json` sidecar until then), other `review_edit.py` subcommands
+  serve only the fields operating_rules lists as uncovered (reviewer, strength, shas, review-date, stats), and
+  rules naming `fold`, `waves`, `build`, `bubble`, `amend` or `closeout` do not apply. Never by hand.
 
 ## When to Use
 
@@ -422,8 +427,8 @@ fixer-FAILed>]`, `edited: 1` (schema-enforced via conditional allOf), `notes:
 <TERMINAL summary line for user>`.
 
 Expected return: a `DONE` block whose `NOTES:` field carries the TERMINAL line
-(`Phase 5 [done] | resolved=<R> bubbled=<B> | verdict: <new> |
-next: QA`). The `BUBBLED:` array (first-class field, not parsed from NOTES) is
+(`Phase 5 [done] | resolved=<R> bubbled=<B> | next: QA`). The closer composes no
+verdict; the Step 7 write derives it. The `BUBBLED:` array (first-class field, not parsed from NOTES) is
 the source of truth for unresolved IDs — the NOTES summary line is for human
 display.
 
@@ -436,10 +441,27 @@ re-invocation the closer re-reads the JSON to discover what's resolved and resum
 (from Step 6's closer dispatch). For each proposed resolution, the shim reads the
 per-fixer EVIDENCE claims, validates them against the consolidated tree's file diffs
 (confirmable via `git diff`), then performs ONE atomic Edit to the consolidated JSON:
-inserting `post_review_resolutions[]` (from the closer's proposal) and replacing the
-`verdict` field with the recomputed value. On Edit failure (schema validation error,
-evidence not found in diff, etc.), the shim halts with a STOP rather than continuing
-to QA.
+mirroring the bubble_ups sidecar into the `bubble_up` ledger, inserting
+`post_review_resolutions[]` (from the closer's proposal) and replacing the
+`verdict` field with the recomputed value. The edit goes through `harness_lib.review_edit`
+(`resolve_all`: `mirror_bubble_ups` over the sidecar items, one `resolve` per proposed entry, then
+`recompute_verdict`, written once by
+`save_review`, which validates and writes the canonical 2-space form, keeping the line endings
+of the file), from the CLI as one batch command over the sidecars:
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" <JSON_PATH> resolve-file <runtime_dir>/proposed_resolutions.json --sha <HEAD short sha> --bubble-ups <runtime_dir>/bubble_ups.json`.
+`--sha` is mandatory here (the parser rejects the batch without it): evidence not already starting with a SHA becomes
+`<sha> (working-tree snapshot; developer commits) - <text>`, the form the Phase 5 sentinel
+needs. The prefix applies to `CLOSED_NO_ACTION` rationales in the same batch too, since they ride the same proposed sidecar. `--bubble-ups` goes on whenever the fixer-planner wrote the sidecar: a bubbled or
+fixer_failed id then counts as dispositioned, so `review_merge.compute_verdict` (the one verdict rule,
+also QA check D's) does not hold the verdict at `minor findings pending Phase 5`.
+Never an inline `python -c`, a hand edit, or one `resolve` call per entry (each call
+is its own write), and never verdict wording copied from another review.
+One bad entry (unknown id, bad status, blank or non-string evidence, malformed bubble-up item) or a
+refused write (schema validation error, issue-count mismatch) writes nothing; the shim halts with a
+STOP rather than continuing to QA, as it does when evidence is not found in the diff.
+Re-running the command over the same sidecars (a QA_FAIL retry, a FORK resume) appends nothing: an
+entry whose id already has a latest resolution of the same status is skipped, and a mirrored
+`bubble_up` entry is replaced in place.
 
 **QA step:** After the Edit succeeds, the shim validates the updated consolidated
 JSON for two properties:
@@ -508,10 +530,13 @@ below; the qa_review_json.py module docstring documents CLI usage only):
   Direct field comparison; no regex parsing.
 - **C5**: per-id evidence coverage — for every closer FIXED id, the closer
   `evidence` object MUST contain a matching key with a non-empty claim string.
-- **D**: verdict prefix matches the verdict re-evaluation rule given the
-  current `issues` × `post_review_resolutions` state.
+- **D**: verdict prefix (`READY TO MERGE` / `NOT READY TO MERGE`) matches
+  `review_merge.compute_verdict` over the JSON's `issues`, `post_review_resolutions`
+  (latest entry per id), `bubbles` and `bubble_up`: the same function the Edit step writes with.
 
-**On QA PASS:** the shim emits the final terminal line verbatim from Step 6 and writes
+**On QA PASS:** the shim emits the Step 6 closer TERMINAL line with `| verdict: <v>` inserted before
+`| next:`, `<v>` copied from the `wrote <file>: verdict: <v>` line `resolve-file` printed (the verdict
+stored in the JSON, never a closer-composed one), and writes
 a `<runtime_dir>/.complete` sentinel. Cleanup of older `_runtime/*` dirs sweeps on
 next invocation.
 
@@ -662,7 +687,7 @@ are kept (forensics for failed runs).
 | Step 3 STOP             | Re-invoke from scratch (Phase 4 first-run failure means JSON may not exist)                                                                                                    |
 | Step 4 STOP             | Re-dispatch shim from Step 4 (orchestrator's JSON is preserved; only fixer-PLAN re-runs)                                                                                       |
 | Step 5 FAIL (per agent) | Fixer FAIL ids added to bubble_ups sidecar (classification: fixer_failed); stay UNRESOLVED and surface in closer BUBBLED array for user decision. Skill continues. Not a halt. |
-| Step 6 FORK_*           | User decides; re-dispatch shim from Step 6 with choice. Closer re-reads JSON to resume.                                                                                        |
+| Step 6 FORK_*           | User decides; re-dispatch shim from Step 6 with choice. Closer re-reads JSON to resume; a repeated Step 7 `resolve-file` skips ids whose latest resolution already has the proposed status. |
 | Step 6 STOP             | Re-dispatch shim from Step 4 (Phase 4 second-run failed mid-fix-loop)                                                                                                          |
 | Step 7 QA_FAIL          | Manual JSON inspection; re-invoke skill from scratch only if user wants a fresh run.                                                                                           |
 

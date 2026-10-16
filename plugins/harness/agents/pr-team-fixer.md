@@ -412,25 +412,30 @@ USER_CLOSED_IDS input names specific IDs to close.
       dispatch_plan_fix.json; alternatively edit the file directly.
     - The runtime dir is the source of truth; git is not the recovery surface.
 
-## Step 6 — Recompute verdict
+## Step 6 — Verdict (derived by the shim's write, not composed here)
 
-Per the verdict re-evaluation rule:
-
-- `unresolved = {issue.id : id in issue_ids AND (id not in resolution_ids OR
-  resolution[id].status not in {RESOLVED, CLOSED_NO_ACTION})}`
-- Note: DOWNGRADED_TO_* does NOT count as resolved.
-- If any critical id in `unresolved` → `NOT READY TO MERGE — <enumerate critical
-  blockers>`
-- Else if any important id in `unresolved` → `NOT READY TO MERGE — <enumerate
-  important blockers>`
-- Else → `READY TO MERGE — <one-line summary referencing the resolution count>`
+The closer does NOT compose a verdict. The shim's Step 7 write
+(`scripts/review_edit.py <JSON_PATH> resolve-file ... --bubble-ups ...`) derives it with
+`review_merge.compute_verdict` over the latest resolution per id plus the `bubble_up` ledger
+(mirrored from the bubble_ups sidecar in the same write): unresolved critical, else unresolved
+important, else any undispositioned id, else `READY TO MERGE - <R> of <T> findings resolved, <B> bubbled`.
+DOWNGRADED_TO_* does NOT count as resolved. The closer reports only the counts
+(`resolved=<R> bubbled=<B>`); the shim fills `verdict:` in the final terminal line from the
+`wrote <file>: verdict: <v>` line `resolve-file` prints.
 
 ## Step 7 — Compose proposed_resolutions sidecar
 
 Write `<runtime_dir>/proposed_resolutions.json` containing the proposed
-`post_review_resolutions[]` array (one entry per fixer's FIXED id, with evidence
-synthesized from the per-fixer EVIDENCE claims). This sidecar is the input to the
-shim's Step 7 atomic Edit (main session responsibility). Do NOT attempt to Edit
+`post_review_resolutions[]` array: one `{id, status: RESOLVED, date, evidence}` entry per
+validated FIXED id (evidence synthesized from the per-fixer EVIDENCE claims), plus one
+`{id, status: CLOSED_NO_ACTION, date, evidence}` entry per id named in `USER_CLOSED_IDS`
+(evidence is the user's rationale, or the Step 5 default). Every entry carries `date` set to
+the UTC `YYYY-MM-DD` produced in Step 5, so `resolve-file` never falls back to the local date.
+Each entry is the input shape of `scripts/review_edit.py <JSON_PATH> resolve-file`. This sidecar, together with the
+bubble_ups sidecar (passed as `--bubble-ups`, mirrored into the JSON `bubble_up` ledger in
+the same write), is the input to the
+shim's Step 7 atomic Edit (main session responsibility; one batch write). `evidence` is
+always a string; a non-string value makes the whole write refuse. Do NOT attempt to Edit
 the consolidated JSON from the closer context — the shim owns that Edit and
 performs it after validating the fixer EVIDENCE claims against file diffs.
 
@@ -445,7 +450,7 @@ FIXED: <comma-separated ids that landed in proposed_resolutions.json as status:R
 BUBBLED: <comma-separated bubble-up ids (all unresolved) + fixer-FAILed ids>
 EDITED: 1
 OUTPUT: <runtime_dir>/proposed_resolutions.json
-NOTES: TERMINAL: Phase 5 [done] | resolved=<R count> bubbled=<B count> | verdict: <new prefix> | next: QA
+NOTES: TERMINAL: Phase 5 [done] | resolved=<R count> bubbled=<B count> | next: QA
 ---
 ```
 
@@ -491,5 +496,8 @@ PR pending).
   Step 4 of skill protocol. PLAN re-runs fresh.
 - CLOSEOUT STOP (orphan check) → manual JSON repair; re-dispatch shim from Step 6.
 - CLOSEOUT FORK → user resolves; re-dispatch shim from Step 6. CLOSEOUT re-reads
-  the JSON to discover what's already resolved (idempotency: re-adding the same
-  `post_review_resolutions[]` entries is a no-op).
+  the JSON to discover what's already resolved. `post_review_resolutions[]` is
+  append-only history; the idempotency comes from `resolve-file`
+  (`review_edit.resolve_all`), which skips a proposed entry whose id already has a
+  latest resolution of the same status and replaces (never duplicates) a mirrored
+  `bubble_up` entry, so re-running Step 7 over the same sidecars appends nothing.
