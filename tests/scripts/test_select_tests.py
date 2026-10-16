@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Dict, Iterator, List
+from typing import Dict, Iterator, List, Optional
 
 import pytest
 
@@ -35,6 +36,8 @@ TREE: Dict[str, str] = {
     "tests/hooks/test_guard.py": "HOOK = 'plugins/harness/hooks/guard.py'\n",
     "tests/contract/test_walk.py": "def t(root):\n    return list(root.rglob('*.md'))\n",
     "docs/notes.md": "notes\n",
+    "tools/other.py": "T = 1\n",
+    "scratch/other.py": "S = 1\n",
 }
 
 
@@ -61,8 +64,8 @@ def tree(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def _tests(sel: ModuleType, root: Path, *changed: str, deleted: List[str] = ()) -> List[str]:
-    out = sel.plan(root, list(changed), list(deleted))
+def _tests(sel: ModuleType, root: Path, *changed: str, deleted: Optional[List[str]] = None) -> List[str]:
+    out = sel.plan(root, list(changed), list(deleted or []))
     assert out.pytest == "subset", (out.pytest, out.reasons)
     return out.tests
 
@@ -132,6 +135,44 @@ def test_deleted_python_file_forces_full(sel: ModuleType, tree: Path) -> None:
     assert out.pytest == "full"
 
 
+def test_deleted_file_outside_docs_reaches_the_tree_walk(sel: ModuleType, tree: Path) -> None:
+    got = _tests(sel, tree, deleted=["plugins/harness/skills/demo/SKILL.md"])
+    assert got == ["tests/contract/test_walk.py"]
+
+
+def test_deleted_file_named_by_a_test_selects_it(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {"tests/hooks/test_fixture.py": "FIXTURE = 'fixtures/sample.json'\n"})
+    got = _tests(sel, tree, "docs/notes.md", deleted=["tests/hooks/fixtures/sample.json"])
+    assert "tests/hooks/test_fixture.py" in got
+
+
+def test_data_file_selects_tests_of_the_module_that_reads_it(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        "plugins/harness/lib/harness_lib/solo.py": "PATH = 'defaults.json'\n",
+        "plugins/harness/config/defaults.json": "{}\n",
+    })
+    got = _tests(sel, tree, "plugins/harness/config/defaults.json")
+    assert "tests/lib/test_solo.py" in got
+    assert "tests/lib/test_helped.py" in got
+    assert "tests/lib/test_mid.py" not in got
+
+
+def test_relative_imports_are_followed(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        "plugins/harness/lib/harness_lib/rel_pkg.py": "from . import solo\n",
+        "plugins/harness/lib/harness_lib/rel_mod.py": "from .base import Y\n",
+        "tests/lib/test_rel.py": "import harness_lib.rel_pkg\nimport harness_lib.rel_mod\n",
+    })
+    assert "tests/lib/test_rel.py" in _tests(sel, tree, "plugins/harness/lib/harness_lib/solo.py")
+    assert "tests/lib/test_rel.py" in _tests(sel, tree, "plugins/harness/lib/harness_lib/base.py")
+
+
+def test_pyproject_without_pythonpath_falls_back_to_defaults(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {"pyproject.toml": "[tool.pytest.ini_options]\ntestpaths = [\"tests\"]\n"})
+    assert sel.pythonpath_roots(tree) == list(sel.DEFAULT_PYTHONPATH)
+    assert "tests/lib/test_solo.py" in _tests(sel, tree, "plugins/harness/lib/harness_lib/solo.py")
+
+
 def test_unsafe_path_characters_force_full(sel: ModuleType, tree: Path) -> None:
     out = sel.plan(tree, ["docs/with space.md"], [])
     assert out.pytest == "full"
@@ -145,9 +186,10 @@ def test_syntax_error_in_a_test_forces_full(sel: ModuleType, tree: Path) -> None
 
 
 def test_ruff_lists_changed_python_under_linted_roots(sel: ModuleType, tree: Path) -> None:
-    out = sel.plan(tree, ["plugins/harness/hooks/guard.py", "tools/other.py", "docs/notes.md"], [])
+    changed = ["plugins/harness/hooks/guard.py", "tools/other.py", "scratch/other.py", "docs/notes.md"]
+    out = sel.plan(tree, changed, [])
     assert out.ruff == "subset"
-    assert out.ruff_files == ["plugins/harness/hooks/guard.py"]
+    assert out.ruff_files == ["plugins/harness/hooks/guard.py", "tools/other.py"]
 
 
 def test_ruff_skipped_without_python_changes(sel: ModuleType, tree: Path) -> None:
@@ -174,16 +216,18 @@ def test_changed_files_reads_the_merge_base_diff(sel: ModuleType, tree: Path) ->
     assert deleted == ["docs/notes.md"]
 
 
-def _cli(root: Path, *args: str, env_out: Path = None) -> subprocess.CompletedProcess:
+def _cli(root: Path, *args: str, env_out: Optional[Path] = None) -> subprocess.CompletedProcess:
+    """Run the script without the runner's ``GITHUB_OUTPUT``; ``env_out`` sets it explicitly."""
     cmd = [sys.executable, str(_SCRIPT), "--root", str(root), *args]
-    env = None
+    env = {k: v for k, v in os.environ.items() if k != "GITHUB_OUTPUT"}
     if env_out is not None:
-        import os
-        env = {**os.environ, "GITHUB_OUTPUT": str(env_out)}
+        env["GITHUB_OUTPUT"] = str(env_out)
     return subprocess.run(cmd, capture_output=True, text=True, env=env)
 
 
-def test_cli_full_flag_writes_lists_and_github_outputs(tree: Path, tmp_path_factory) -> None:
+def test_cli_full_flag_writes_lists_and_github_outputs(
+    sel: ModuleType, tree: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
     out_dir = tmp_path_factory.mktemp("out")
     gh = out_dir / "gh_output.txt"
     done = _cli(tree, "--full", "--out-dir", str(out_dir), env_out=gh)
@@ -191,9 +235,14 @@ def test_cli_full_flag_writes_lists_and_github_outputs(tree: Path, tmp_path_fact
     outputs = dict(line.split("=", 1) for line in gh.read_text(encoding="utf-8").splitlines())
     assert outputs["pytest"] == "full" and outputs["ruff"] == "full" and outputs["plugins"] == "true"
     assert json.loads(done.stdout)["pytest"] == "full"
+    listed = (out_dir / "selected-tests.txt").read_text(encoding="utf-8").splitlines()
+    assert listed == sel.list_tests(tree)
+    assert (out_dir / "ruff-files.txt").read_text(encoding="utf-8") == ""
 
 
-def test_cli_subset_writes_the_selected_test_list(tree: Path, tmp_path_factory) -> None:
+def test_cli_subset_writes_the_selected_test_list(
+    tree: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
     git(tree, "init", "-q", "-b", "main")
     git(tree, "add", "-A")
     git(tree, "commit", "-q", "-m", "base")
@@ -210,7 +259,27 @@ def test_cli_subset_writes_the_selected_test_list(tree: Path, tmp_path_factory) 
     assert "tests/lib/test_mid.py" not in listed
 
 
-def test_real_repo_has_no_unparsable_or_unresolvable_test(sel: ModuleType) -> None:
-    out = sel.plan(REPO_ROOT, ["plugins/harness/lib/harness_lib/shell_scan.py"], [])
+def test_cli_unreadable_diff_runs_everything(tree: Path, tmp_path_factory: pytest.TempPathFactory) -> None:
+    git(tree, "init", "-q", "-b", "main")
+    git(tree, "add", "-A")
+    git(tree, "commit", "-q", "-m", "base")
+    done = _cli(tree, "--base", "no-such-ref", "--out-dir", str(tmp_path_factory.mktemp("out")))
+    assert done.returncode == 0, done.stderr
+    result = json.loads(done.stdout)
+    assert result["pytest"] == "full"
+    assert "diff unreadable" in result["reasons"][0]
+
+
+def test_cli_without_base_or_full_is_a_usage_error(
+    tree: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    done = _cli(tree, "--out-dir", str(tmp_path_factory.mktemp("out")))
+    assert done.returncode == 2
+    assert "--base is required" in done.stderr
+
+
+def test_real_repo_has_no_unparsable_test(sel: ModuleType) -> None:
+    every = sel.list_tests(REPO_ROOT)
+    out = sel.plan(REPO_ROOT, every, [])
     assert out.pytest == "subset", out.reasons
-    assert "tests/lib/test_shell_scan.py" in out.tests
+    assert out.tests == every

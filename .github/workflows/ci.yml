@@ -47,14 +47,16 @@ jobs:
           RUFF_MODE: ${{ steps.select.outputs.ruff }}
         run: |
           if [ "$RUFF_MODE" = "full" ]; then
-            python -m ruff check plugins tests
+            python -m ruff check plugins tests tools
           else
             xargs python -m ruff check < .artifacts/ruff-files.txt
           fi
       - name: pytest
         if: ${{ steps.select.outputs.pytest != 'none' }}
         shell: bash
-        run: python -m pytest $(cat .artifacts/selected-tests.txt) -q --junitxml=.artifacts/pytest-junit.xml
+        run: |
+          mapfile -t targets < .artifacts/selected-tests.txt
+          python -m pytest "${targets[@]}" -q --junitxml=.artifacts/pytest-junit.xml
       - name: test runtime catalog
         if: ${{ !cancelled() && hashFiles('.artifacts/pytest-junit.xml') != '' }}
         shell: bash
@@ -76,6 +78,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
       - name: select work from the diff
         id: select
         env:
@@ -83,9 +88,9 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           if [ "$EVENT" = "pull_request" ]; then
-            python3 tools/select_tests.py --base "origin/$BASE_REF"
+            python tools/select_tests.py --base "origin/$BASE_REF"
           else
-            python3 tools/select_tests.py --full
+            python tools/select_tests.py --full
           fi
       - if: ${{ steps.select.outputs.plugins == 'true' }}
         uses: actions/setup-node@v4

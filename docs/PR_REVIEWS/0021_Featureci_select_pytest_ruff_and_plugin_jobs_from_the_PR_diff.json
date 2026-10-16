@@ -1,0 +1,394 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 21,
+  "pr_title": "Feature(ci): select pytest, ruff and plugin jobs from the PR diff",
+  "branch": "0007-diff-based-CI",
+  "base_branch": "main",
+  "base_sha": "12227d97673800b360a8d0343c28938342b51f70",
+  "head_sha": "3bd9442f47d9fb385c43ca76532cba4dccaa9944",
+  "review_date": "2026-10-16",
+  "verdict": "READY TO MERGE - 13 of 13 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 563,
+    "deletions": 6,
+    "files_changed": 4
+  },
+  "reviewers": [
+    "cicd (sonnet)",
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (sonnet)",
+    "roast (opus)",
+    "copilot_review (external)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0021/pr21_20261016T224514Z/findings/cicd.json",
+    "docs/_scratch/pr_review/0021/pr21_20261016T224514Z/findings/tests.json",
+    "docs/_scratch/pr_review/0021/pr21_20261016T224514Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0021/pr21_20261016T224514Z/findings/docs.json",
+    "docs/_scratch/pr_review/0021/pr21_20261016T224514Z/findings/roast.json",
+    "docs/_scratch/pr_review/0021/pr21_20261016T224514Z/findings/copilot_review.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "github.base_ref and event_name reach the shell through env, not inline expression interpolation, so no script injection from a branch name.",
+    "Every job and matrix leg still runs on every PR and only its steps are skipped, so required status checks keep reporting success.",
+    "fetch-depth: 0 plus origin/$BASE_REF with a three-dot diff yields the PR's own changes; the selector falls back to a full plan if the diff cannot be read.",
+    "Pushes to main and any change to ci.yml, conftest, pyproject or requirements-dev select the full suite, so the gate is not weakened on the default branch.",
+    "The workflow's output names (pytest, ruff, plugins) and artifact files (selected-tests.txt, ruff-files.txt) match what tools/select_tests.py writes; ruff subset mode cannot receive an empty file list.",
+    "Behavioral tests on real temp trees and real git repos; no stubs or mock-chain wiring.",
+    "Import tests are discriminating: test_helped resolves only via the same-directory rule, test_drv only via named-script closure, and the negative asserts (test_mid not selected) prove narrowing.",
+    "The CLI subset test checks for no CR bytes in selected-tests.txt, guarding the bash $(cat) contract the workflow relies on.",
+    "The module fixture registers the script in sys.modules before exec, which dataclasses need under postponed annotations, and cleans up after.",
+    "Full-run triggers (shared files, deleted .py, unsafe characters, syntax error) each have their own test.",
+    "Fail-safe design: every undecidable case (parse errors, unsafe path characters, deleted .py, shared files, unreadable diff) falls back to the full suite and writes the reason.",
+    "Import closure handles relative imports, package parents' __init__, nested imports and from-imports of submodules, with a per-file cache.",
+    "Docstring matches the code for the rules it describes (outputs, GITHUB_OUTPUT keys, FULL_TRIGGERS, SAFE_PATH, default out dir); functions are short and use Optional/typing as required.",
+    "--no-renames turns renames into delete plus add, so a moved .py file correctly forces a full run.",
+    "Claims match tools/select_tests.py and ci.yml: PRs call --base, pushes to main call --full, the full-trigger files include tests/conftest.py, and --base main is a valid preview (output goes to the gitignored .artifacts/).",
+    "The advice for runtime-built paths is actionable and ends with the full-suite backstop; the preview command is copyable.",
+    "Fail-safe design: shared files, .py deletions, odd path characters, unparsable sources and unreadable diffs all escalate to the full plan instead of guessing.",
+    "Merge-base diff with --no-renames turns renames into delete+add, so a renamed .py module correctly forces the full suite.",
+    "Step-level `if:` gating keeps every job reporting success, so required checks survive skipped work.",
+    "Tests are behavioral against a synthetic tree and real git, including an LF-only output check for the bash `$(cat ...)` split and a real-repo smoke test that catches unparsable tests.",
+    "Import closure follows conftest, path-loaded scripts and transitive imports with a shared cache, keeping the per-test cost reasonable."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "Deleted non-Python files never reach the mention or tree-walk rules",
+        "file": "tools/select_tests.py",
+        "files": [
+          "tools/select_tests.py",
+          "tests/scripts/test_select_tests.py",
+          "plugins/harness/lib/harness_lib/config.py"
+        ],
+        "lines": "5-19,187-200,221-235",
+        "reviewer": "roast, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plan() computes paths = changed | deleted, but passes only `changed` to affected_tests() (tools/select_tests.py:227). The mention rule (_why, line 162) and the tree-walk gate (`non_docs`, line 190) therefore ignore deletions. A PR that only deletes a non-.py file outside docs/ (a schema JSON, a fixture, an agent .md, defaults.json) passes _full_reason (only .py deletions force full), selects zero tests, and goes green with pytest skipped; a test that names the deleted file is not selected even when other edits are present. The module docstring (lines 12-15) promises selection when a test names a changed file and when 'any path outside docs/ changed'; a deletion is a change. The suite has no deletion case besides the .py one, so nothing catches this. Deleting things is apparently free, as long as nobody looks.\n\nAlso (runtime): The import closure holds only .py files, and a changed non-.py file selects a test only when the test text spells its basename (mentions). plugins/harness/lib/harness_lib/config.py:18-19 loads config/defaults.json and config/harness.schema.json through _CONFIG_DIR, so tests that reach them through load_config or the make_project fixture (hooks, scripts, skills, lib tests) do not name them. Changing a default value or the schema selects only test_config.py and the mirror test, while every other consumer is skipped. This contradicts the module docstring claim 'A wrong guess costs CI time, never coverage' (lines 17-19). The same gap applies to any other data file a .py module reads by path (hooks.json, templates, prompts under plugins/).\n\nAlso (runtime): plan() passes only `changed` to affected_tests (line 227); deleted non-.py paths feed only the plugins flag and the unsafe-path check. A deleted fixture, SKILL.md or JSON file that a test names or checks for existence selects nothing. If the diff is otherwise docs-only, non_docs (line 190) is False and tree-walking tests (rglob/glob/iterdir) are not selected either, contradicting the docstring rule 'any path outside docs/ changed' (line 15). Only deleted .py files trigger a full run (lines 208-210).",
+        "fix": [
+          "Call affected_tests(root, paths) in plan(): the closure check still only matches files that exist, while mention and non_docs now see deletions; add a test that deletes plugins/harness/skills/demo/SKILL.md (and one that deletes a file named by a test) and asserts the walk test and the naming test are selected.",
+          "Alternatively, force the full suite for any deleted path outside docs/ in _full_reason, and document that rule in the docstring and CLAUDE.md.",
+          "For each changed non-.py file under plugins/ or tools/, find the .py files under plugins/ and tools/ whose source mentions its basename and treat those .py files as changed, so tests that import them are selected through the closure.",
+          "Add a conservative rule: a changed non-.py file under plugins/harness/config/ (or any non-.py under plugins/ not named by a test) selects everything via _full_reason.",
+          "Call affected_tests(root, sorted(set(changed) | set(deleted))) so mentions() and non_docs see deleted paths; deleted paths are never in the closure, which is harmless.",
+          "Alternatively treat any deleted file outside docs/ as a full trigger in _full_reason."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "test_port_scan reaches the contract test by a runtime path the selector cannot see",
+        "file": "tests/repo/test_port_scan.py",
+        "files": [
+          "tests/repo/test_port_scan.py",
+          "tools/select_tests.py",
+          "CLAUDE.md"
+        ],
+        "lines": "1,15-41",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "tests/repo/test_port_scan.py exercises tests/contract/test_no_repo_literals.py through scan.load_contract() (port_scan.py builds the path at runtime: REPO_ROOT / 'tests' / 'contract' / 'test_no_repo_literals.py'), and test_rules_carry_every_contract_ban (lines 36-41) depends on the shape of contract.BANNED. The test source never names test_no_repo_literals, does not walk the tree, and port_scan.py lives under .claude/, which path_loadable() (tools/select_tests.py:168-179) does not index. A PR that changes only the ban list's structure runs test_no_repo_literals.py and skips test_port_scan.py. This is exactly the case the new CLAUDE.md rule (lines 45-46) says must spell the file name out, and the PR ships with a live violation of its own rule.",
+        "fix": [
+          "Name the dependency in tests/repo/test_port_scan.py source, e.g. extend the module docstring: 'loads tests/contract/test_no_repo_literals.py through load_contract()'.",
+          "Optionally extend test_real_repo_has_no_unparsable_or_unresolvable_test with a case changing tests/contract/test_no_repo_literals.py and asserting tests/repo/test_port_scan.py is selected, so the guard fails when the mention disappears."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "CLI subset test inherits the runner's GITHUB_OUTPUT",
+        "file": "tests/scripts/test_select_tests.py",
+        "files": [
+          "tests/scripts/test_select_tests.py",
+          "tools/select_tests.py"
+        ],
+        "lines": "163-210,213-216",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "_cli passes env=None unless env_out is set, so the child process inherits GITHUB_OUTPUT. GitHub Actions sets that variable for every step, so test_cli_subset (line 196) makes select_tests.py append pytest/ruff/plugins lines to the real step output file when pytest runs in CI. The test is not hermetic, and it behaves differently on a runner than locally.\n\nAlso (tests): select_tests.main catches CalledProcessError/OSError from changed_files and returns a full plan (tools/select_tests.py:280-283). That is the safety net the module docstring promises ('a diff that cannot be read'), and CI depends on it when the base ref is missing. No test covers it, nor --base being omitted, nor relative imports, nor the pythonpath fallback to defaults.\n\nAlso (tests): test_real_repo_has_no_unparsable_or_unresolvable_test can only fail on a parse error (Unresolvable is raised only by _raw_imports) or a missing shell_scan test mention. _module_files silently ignores unresolved imports, so an unresolvable import never fails it. The test also hard-codes shell_scan.py, so renaming that module breaks it for an unrelated reason.",
+        "fix": [
+          "In _cli, always build env from os.environ with GITHUB_OUTPUT removed, then add it back only when env_out is given.",
+          "Add a CLI test with --base pointing at a nonexistent ref in a git repo, asserting rc 0, pytest == 'full' and the reason mentioning 'diff unreadable'.",
+          "Add a test for a relative import (from . import x / from .mod import y) and for a pyproject.toml missing the pythonpath key.",
+          "Rename to ..._has_no_unparsable_test, or pick a stable fixture file; optionally assert plan() over every tests/ file as changed returns subset or full without raising."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Detect test dependencies through imported configuration sources",
+        "file": "tools/select_tests.py",
+        "reviewer": "copilot_review",
+        "fix_kind": "judgment",
+        "summary": "Filename checks inspected only a test's own source, so data files named by imported helpers were missed: a CrossCuttingLensCatalog.json-only change skipped test_review_plan.py and a defaults.json-only change skipped test_project.py. The bot reviewed commit 3bd9442; the data_readers rule added by the C1 fix in this run treats a .py file that names a changed data file as changed, and a probe of both scenarios now selects those tests.",
+        "fix": [
+          "Already resolved in the working tree by the C1 fix (data_readers); close with that rationale"
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Include deleted paths when selecting affected tests",
+        "file": "tools/select_tests.py",
+        "reviewer": "copilot_review",
+        "fix_kind": "judgment",
+        "summary": "Non-Python deletions never reached affected_tests: deleting tests/fixtures/pr1558_issues.json skipped test_review_merge.py, deleting the canonical prompt template skipped its guard and deleting hpy skipped its behavioral tests. The bot reviewed commit 3bd9442; the C1 fix in this run passes the combined changed and deleted paths to test selection, and a probe of all three deletions now selects the named tests.",
+        "fix": [
+          "Already resolved in the working tree by the C1 fix (plan passes changed and deleted paths); close with that rationale"
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "plugins job runs the selector on the runner's unpinned system python3",
+        "file": ".github/workflows/ci.yml",
+        "files": [
+          ".github/workflows/ci.yml",
+          "tools/select_tests.py"
+        ],
+        "lines": "79-89",
+        "reviewer": "cicd",
+        "fix_kind": "mechanical",
+        "summary": "The plugins job calls python3 tools/select_tests.py with no setup-python step, while the python job pins 3.11. tools/select_tests.py imports tomllib at module top, which exists only on Python 3.11+. On ubuntu-latest (24.04, Python 3.12) this works today. If the label moves or is pinned to an older image, the selector fails with ImportError and the job goes red instead of falling back to a full run. The selector's own fallbacks cannot catch an import error.",
+        "fix": [
+          "Add actions/setup-python@v5 with python-version 3.11 before the select step in the plugins job and call python instead of python3, matching the python job."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Selection rules summary omits two rules and the ruff/plugin job scope",
+        "file": "CLAUDE.md",
+        "files": [
+          "CLAUDE.md",
+          "tools/select_tests.py"
+        ],
+        "lines": "43-47",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "CLAUDE.md:43-47 lists the selection order as imports, named scripts, tree-walking tests, then shared files. tools/select_tests.py:5-19 also selects a test that changed itself and a test whose source names a changed file (basename or bare module name, which is the rule the 'file name spelled out' advice relies on). The same script also selects ruff files and the plugin validation job, which the sentence does not say. The statement is not wrong, only incomplete, and the 'spelled out' advice is not tied to the rule that makes it work.",
+        "fix": [
+          "Reword to: a test runs when it changed, when its import closure holds a changed file, when its source names a changed file, or when it walks the tree; ruff and the plugin jobs are selected the same way from the diff. Shared files force the full run."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Full-flag CLI test name claims list files it never checks",
+        "file": "tests/scripts/test_select_tests.py",
+        "lines": "64,177-182,186-193",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_cli_full_flag_writes_lists_and_github_outputs only asserts the GITHUB_OUTPUT lines and the stdout JSON. It never reads selected-tests.txt or ruff-files.txt, so the 'writes lists' claim is untested for --full (the full list must equal list_tests).\n\nAlso (tests): _tests has an unused 'deleted: List[str] = ()' parameter (tuple default, never passed); _cli declares 'env_out: Path = None' where the project style is Optional[X]; 'import os' sits inside _cli; tmp_path_factory is unannotated.",
+        "fix": [
+          "Assert selected-tests.txt lines equal sel.list_tests(tree) and ruff-files.txt is empty, or drop 'lists' from the name.",
+          "Drop the deleted parameter, use Optional[Path], move 'import os' to the module imports, annotate tmp_path_factory as pytest.TempPathFactory."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Ruff negative case is vacuous",
+        "file": "tests/scripts/test_select_tests.py",
+        "lines": "147-150",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_ruff_lists_changed_python_under_linted_roots passes tools/other.py to prove tools/ is not linted, but that file does not exist in TREE. _ruff also filters on is_file(), so the assertion would hold even if tools/ were added to LINT_ROOTS. The negative branch is not exercised.",
+        "fix": [
+          "Add tools/other.py to TREE (or _write it inside the test) so only the LINT_ROOTS prefix check can exclude it."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "The selector that decides what gets linted is never linted itself",
+        "file": "tools/select_tests.py",
+        "files": [
+          "tools/select_tests.py",
+          ".github/workflows/ci.yml",
+          "CLAUDE.md",
+          "tests/scripts/test_select_tests.py"
+        ],
+        "lines": "47,215-218",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "LINT_ROOTS is ('plugins/', 'tests/') (tools/select_tests.py:47) and the full ruff run is `ruff check plugins tests` (ci.yml:48), so tools/select_tests.py and tools/ci_test_runtime_catalog.py, both now load-bearing CI code, escape ruff on every run; test_ruff_lists_changed_python_under_linted_roots (tests/scripts/test_select_tests.py:147-150) asserts the exclusion. The gatekeeper has an exemption from the gate.",
+        "fix": [
+          "Add 'tools/' to LINT_ROOTS, run `python -m ruff check plugins tests tools` in ci.yml and in the CLAUDE.md Lint line, and update the test to expect tools/other.py in ruff_files (run ruff once over tools/ first to clear any existing hits)."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "OSError from test selection is reported as an unreadable diff",
+        "file": "tools/select_tests.py",
+        "lines": "280-283",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "main() wraps plan() (which also reads the tree: list_tests, path_loadable, read_text at line 194) in `except (CalledProcessError, OSError)` and labels the result 'diff unreadable, running everything'. A filesystem error while reading a test file is reported as a diff problem, misleading CI log readers. The fallback to a full run is correct; only the message is wrong.",
+        "fix": [
+          "Wrap only changed_files() in the try block and let plan() wrap OSError into Unresolvable, or reword the reason to 'selection failed, running everything'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Docstring promises 'never coverage'; the backstop only runs after merge",
+        "file": "tools/select_tests.py",
+        "files": [
+          "tools/select_tests.py",
+          "CLAUDE.md",
+          ".github/workflows/ci.yml"
+        ],
+        "lines": "19",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "tools/select_tests.py:19 says 'A wrong guess costs CI time, never coverage.' That holds for the Unresolvable escalations, not for under-selection: a test that reaches a file through a runtime-built path (CLAUDE.md:45-46 admits this case) is silently skipped on the PR. CLAUDE.md calls 'the full suite' the backstop, but ci.yml only runs it on push to main (ci.yml:3-6, 11), so the coverage arrives after the merge it was supposed to gate. The docs describe a safety net; the workflow puts it after the fall.",
+        "fix": [
+          "Reword tools/select_tests.py:19 and CLAUDE.md:45-46 to state the real contract: under-selection is possible for runtime-built paths, and the push-to-main full run catches it post-merge.",
+          "Or close the gap: escalate to the full suite when a changed path outside docs/ is matched by no test (no closure hit, no mention, no tree walk), and/or add a full run on a merge_group or scheduled trigger so the backstop precedes or bounds the merge."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Preserve spaces in unusual-path full-suite fallback",
+        "file": ".github/workflows/ci.yml",
+        "reviewer": "copilot_review",
+        "fix_kind": "mechanical",
+        "summary": "The unusual-path fallback selects the full suite, but the pytest step expands $(cat .artifacts/selected-tests.txt) unquoted, so a test filename containing a space is split into two arguments and collection fails instead of running the suite. The repo has no such filename today, so the blast radius is a latent workflow failure, not a current one.",
+        "fix": [
+          "Read the list into an array and pass it quoted: mapfile -t targets < .artifacts/selected-tests.txt, then python -m pytest \"${targets[@]}\" ...",
+          "Use xargs -d '\\n' to pass the lines as separate arguments"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 21 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"3bd9442f47d9fb385c43ca76532cba4dccaa9944\",\"headRefName\":\"0007-diff-based-CI\",\"headRefOid\":\"3bd9442f47d9fb385c43ca76532cba4dccaa9944\",\"last_sha\":\"3bd9442f47d9fb385c43ca76532cba4dccaa9944\",\"mergeCommit\":null,\"number\":21,\"state\":\"OPEN\",\"title\":\"Feature(ci): select pytest, ruff and plugin jobs from the PR diff\",\"url\":\"https://github.com/t968rs/operator-straps/pull/21\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0007-diff-based-CI",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0007-diff-based-CI",
+        "head_ref_name": "0007-diff-based-CI",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "3bd9442f47d9fb385c43ca76532cba4dccaa9944",
+        "head_sha": "3bd9442f47d9fb385c43ca76532cba4dccaa9944",
+        "base_ancestor_command": "git merge-base --is-ancestor 3bd9442f47d9fb385c43ca76532cba4dccaa9944 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 3bd9442f47d9fb385c43ca76532cba4dccaa9944 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - CLAUDE.md CI bullet now lists every selection rule (test changed, import closure, names a changed file by basename or module name, tree walk), ties the spell-it-out advice to the mention rule, and says ruff files and plugin jobs come from the same diff; select_tests.py needed no edit, its docstring already lists all four rules and the ruff/plugin outputs"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - CLAUDE.md Lint line now runs ruff over plugins tests tools (tools/ checked clean first); added tools/ to LINT_ROOTS and widened the ci.yml full ruff run to plugins tests tools; ruff over tools/ was already clean; Ruff test now expects tools/other.py in ruff_files, matching LINT_ROOTS including tools/ (set by the other part's fixer); ruff check over tools/ already passes. Test file 31 passed."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - Reworded the select_tests.py docstring and CLAUDE.md: escalations cost only CI time, but under-selection via runtime-built paths is possible and only the push-to-main full run catches it after the merge; ci.yml needed no edit (reword option chosen, triggers unchanged)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - cited only: CLAUDE.md already requires spelling the file name out for runtime-built paths; the fix belongs in test_port_scan.py (other part); selector needs no change; the named contract dependency is spelled out in test_port_scan.py source by the other part's fixer; Module docstring of test_port_scan.py now names the dependency on tests/contract/test_no_repo_literals.py through load_contract()"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - _cli always strips GITHUB_OUTPUT from the inherited env and sets it only for env_out; added tests for an unreadable --base (full, 'diff unreadable'), missing --base (usage error), relative imports and a pyproject without pythonpath; renamed the real-repo guard to test_real_repo_has_no_unparsable_test and made it plan over every test file instead of hard-coding shell_scan; select_tests.py needed no edit, its diff-unreadable fallback already behaves as documented"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - plan() passes changed|deleted to affected_tests so mentions and the tree-walk gate see deletions; new data_readers() treats .py files under plugins/ and tools/ that name a changed or deleted non-.py file there as changed, so defaults.json/schema edits reach every config consumer; docstring updated; tests added for a deleted SKILL.md, a deleted fixture named by a test, and a data file read by a module; config.py needed no edit, it already spells defaults.json and harness.schema.json"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - plugins job pins Python 3.11 via actions/setup-python@v5 before the select step and calls python instead of python3"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - OSError during selection now reports 'selection failed, running everything'; CalledProcessError keeps 'diff unreadable' so the existing test still matches"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - test_cli_full_flag_writes_lists_and_github_outputs now asserts selected-tests.txt equals sel.list_tests(tree) and ruff-files.txt is empty; _tests deleted default changed from tuple to Optional[List[str]] = None; tmp_path_factory annotated as pytest.TempPathFactory on the CLI tests. env_out was already Optional[Path] and import os was already module-level, so no change there."
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - Added tools/other.py to TREE and scratch/other.py as a non-linted negative case, so only the LINT_ROOTS prefix check can exclude the negative file; the ruff test now lists scratch/other.py as excluded."
+    },
+    {
+      "id": "I3",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - closed, no action: already resolved by the C1 fix: data_readers treats a .py file naming a changed data file as changed; probed CrossCuttingLensCatalog.json and defaults.json now select test_review_plan.py and test_project.py (bot reviewed 3bd9442, before the fix)"
+    },
+    {
+      "id": "I4",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - closed, no action: already resolved by the C1 fix: plan passes changed and deleted paths to affected_tests; probed deletions of pr1558_issues.json, hpy and the canonical prompt template now select test_review_merge.py, test_hpy.py and the template guard (bot reviewed 3bd9442, before the fix)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "3bd9442 (working-tree snapshot; developer commits) - ci.yml pytest step now reads selected-tests.txt with mapfile and passes the quoted array, so a test filename with a space stays one argument; verified with a two-line list including a spaced name, YAML parses (outside fixer waves)"
+    }
+  ]
+}

@@ -9,14 +9,19 @@ A test file is selected when any of these holds:
   ``.py`` file under ``plugins/`` or ``tools/`` whose basename the test spells out (a script loaded by
   path), and follows imports resolved against the ``pythonpath`` entries of ``pyproject.toml`` plus the
   importing file's own directory;
-- its source names a changed file: the basename, or for a ``.py`` file the bare module name. This covers
-  hooks and scripts that tests load by path instead of by import;
+- its source names a changed or deleted file: the basename, or for a ``.py`` file the bare module name. This
+  covers hooks and scripts that tests load by path instead of by import;
 - its source walks the tree (``rglob``, ``glob``, ``iterdir``, ``os.walk``) and any path outside ``docs/``
-  changed.
+  changed or was deleted.
+
+A changed or deleted non-``.py`` file under ``plugins/`` or ``tools/`` also counts as a change to every
+``.py`` file there whose source names its basename (a module that reads the data file by path).
 
 Anything the rules cannot judge selects everything: a shared file (conftest, pyproject, the workflow, this
 script), a deleted ``.py`` file, a path with characters outside ``[A-Za-z0-9_./-]``, a test or helper that
-does not parse, or a diff that cannot be read. A wrong guess costs CI time, never coverage.
+does not parse, or a diff that cannot be read. Those escalations cost CI time, never coverage. Under-selection
+remains possible: a test that reaches a file through a path built at runtime, without spelling the file name
+out, is skipped on the pull request, and only the full run on push to ``main`` catches it after the merge.
 
 Writes ``selected-tests.txt`` and ``ruff-files.txt`` (one path per line) under ``--out-dir`` (default
 ``<root>/.artifacts``), prints the plan as JSON and, when ``GITHUB_OUTPUT`` is set, appends
@@ -44,7 +49,7 @@ FULL_TRIGGERS = frozenset({
     "tools/select_tests.py",
 })
 SAFE_PATH = re.compile(r"^[A-Za-z0-9_./-]+$")
-LINT_ROOTS = ("plugins/", "tests/")
+LINT_ROOTS = ("plugins/", "tests/", "tools/")
 PLUGIN_PREFIXES = ("plugins/", ".claude-plugin/")
 TREE_WALK = re.compile(r"\brglob\(|\.glob\(|\biterdir\(|\bos\.walk\(")
 DEFAULT_PYTHONPATH = ("plugins/harness/lib", "tests")
@@ -184,9 +189,23 @@ def named_scripts(text: str, index: Dict[str, List[str]]) -> List[str]:
     return [rel for name, rels in index.items() if name in text for rel in rels]
 
 
+def data_readers(root: Path, changed: Sequence[str], index: Dict[str, List[str]]) -> List[str]:
+    """Indexed ``.py`` files whose source names a changed non-``.py`` file under ``plugins/``/``tools/``."""
+    data = [c for c in changed if not c.endswith(".py") and c.startswith(("plugins/", "tools/"))]
+    if not data:
+        return []
+    readers: List[str] = []
+    for rel in sorted(r for rels in index.values() for r in rels):
+        text = (root / rel).read_text(encoding="utf-8", errors="replace")
+        if any(mentions(text, d) for d in data):
+            readers.append(rel)
+    return readers
+
+
 def affected_tests(root: Path, changed: Sequence[str]) -> Tuple[List[str], List[str]]:
     """``(selected test files, one reason line each)``; raises Unresolvable when a file does not parse."""
     roots, cache, index = pythonpath_roots(root), {}, path_loadable(root)
+    changed = [*changed, *data_readers(root, changed, index)]
     non_docs = any(not c.startswith("docs/") for c in changed)
     chosen: List[str] = []
     reasons: List[str] = []
@@ -224,7 +243,7 @@ def plan(root: Path, changed: Sequence[str], deleted: Sequence[str]) -> Plan:
     reason = _full_reason(paths, deleted)
     if reason is None:
         try:
-            tests, why = affected_tests(root, changed)
+            tests, why = affected_tests(root, paths)
         except Unresolvable as exc:
             reason = str(exc)
     if reason is not None:
@@ -279,8 +298,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     else:
         try:
             result = plan(root, *changed_files(root, args.base, args.head))
-        except (subprocess.CalledProcessError, OSError) as exc:
+        except subprocess.CalledProcessError as exc:
             result = _full_plan(root, f"diff unreadable, running everything: {exc}")
+        except OSError as exc:
+            result = _full_plan(root, f"selection failed, running everything: {exc}")
     _write_outputs(args.out_dir or root / ".artifacts", result)
     print(json.dumps(asdict(result), indent=2))
     return 0
