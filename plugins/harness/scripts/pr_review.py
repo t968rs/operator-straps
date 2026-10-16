@@ -121,11 +121,35 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-try:
-    import pydantic  # noqa: F401  (availability probe: the review models need it)
-except ImportError:
-    print("pr_review: pydantic>=2 is required for the review models (pip install pydantic)", file=sys.stderr)
-    sys.exit(2)
+#: (module, v2-only attribute or None, pip requirement): the review models need pydantic>=2, the review
+#: schema validation needs jsonschema and referencing. referencing comes first because jsonschema imports
+#: it, so a missing referencing is named as itself.
+_REQUIRED_MODULES: Tuple[Tuple[str, Optional[str], str], ...] = (
+    ("pydantic", "model_validator", "pydantic>=2"),
+    ("referencing", None, "referencing"),
+    ("jsonschema", None, "jsonschema"),
+)
+
+
+def _missing_requirement() -> Optional[str]:
+    """Return the pip requirement of the first review dependency that does not import, else None."""
+    import importlib
+
+    for module, attr, requirement in _REQUIRED_MODULES:
+        try:
+            loaded = importlib.import_module(module)
+        except ImportError:
+            return requirement
+        if attr is not None and not hasattr(loaded, attr):
+            return requirement
+    return None
+
+
+_MISSING = _missing_requirement()
+if _MISSING is not None:
+    print(f"problem: {_MISSING} is not installed; pr_review needs it (pip install '{_MISSING}')",
+          file=sys.stderr)
+    sys.exit(1)
 
 from harness_lib import review_edit  # noqa: E402
 from harness_lib import review_merge as rmg  # noqa: E402

@@ -56,7 +56,8 @@ Every hook and script runs through `plugins/harness/scripts/hpy`, which picks th
 `HARNESS_PY` (project settings `env`), then the `python` option, then `python`, then `py -3`. It skips the Windows
 Store `python3` stub. It does not probe for `jsonschema` / `referencing` / `pydantic`; the code that needs them
 reports a missing module itself: the schema hook stands down with a one-line warning, and `pr-review` /
-`pr-team` (whose driver models reviews in pydantic) exit with a message naming it. Commit, summary and
+`pr-team` (whose driver models reviews in pydantic and validates them with jsonschema / referencing) check all
+three before any subcommand runs and exit 1 with one `problem:` line naming the first one missing. Commit, summary and
 worktree tooling need only the standard library.
 
 ## Configure a project
