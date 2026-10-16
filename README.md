@@ -54,9 +54,10 @@ Installing from `/plugin` inside a session opens a dialog for each unset option 
 
 Every hook and script runs through `plugins/harness/scripts/hpy`, which picks the first interpreter that starts:
 `HARNESS_PY` (project settings `env`), then the `python` option, then `python`, then `py -3`. It skips the Windows
-Store `python3` stub. Without `jsonschema` / `referencing` / `pydantic` it warns on every call: the schema hook
-stands down, and `pr-review` / `pr-team` (whose driver models reviews in pydantic) cannot run. Commit, summary
-and worktree tooling need only the standard library.
+Store `python3` stub. It does not probe for `jsonschema` / `referencing` / `pydantic`; the code that needs them
+reports a missing module itself: the schema hook stands down with a one-line warning, and `pr-review` /
+`pr-team` (whose driver models reviews in pydantic) exit with a message naming it. Commit, summary and
+worktree tooling need only the standard library.
 
 ## Configure a project
 

@@ -121,6 +121,12 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
+try:
+    import pydantic  # noqa: F401  (availability probe: the review models need it)
+except ImportError:
+    print("pr_review: pydantic>=2 is required for the review models (pip install pydantic)", file=sys.stderr)
+    sys.exit(2)
+
 from harness_lib import review_edit  # noqa: E402
 from harness_lib import review_merge as rmg  # noqa: E402
 from harness_lib import review_models as rm  # noqa: E402
