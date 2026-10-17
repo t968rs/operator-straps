@@ -34,6 +34,7 @@ import pytest
 from conftest import copy_project, project_factory
 from harness_lib import review_merge as rmg
 from harness_lib import review_models as rm
+from harness_lib.config import activate, load_config
 
 _FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 _SCRIPT = Path("scripts") / "pr_review.py"
@@ -966,6 +967,103 @@ class TestWavesAndCloseout:
 def _waves(clone: Path) -> List[List[Dict[str, object]]]:
     """The run's planned waves."""
     return json.loads((rm.run_dir(_PR, clone) / "waves.json").read_text(encoding="utf-8"))["waves"]
+
+
+_DEFER_TESTS = {"registry": "tests/registry.json", "timings": "reports/timings.json",
+                "fixer_test_seconds": 60, "defer_flags": ["properties.super_slow"]}
+_DEFER_CONFIG = {**_CONFIG, "tests": _DEFER_TESTS}
+_DEFER_REGISTRY = {"tests": [
+    {"file": "tests/test_a.py", "properties": {"test_target_paths": ["src/pkg/a.py"]}},
+    {"file": "tests/test_slow.py", "properties": {"test_target_paths": ["src/pkg/"]}},
+    {"file": "tests/test_flagged.py",
+     "properties": {"super_slow": True, "test_target_paths": ["src/pkg/a.py"]}},
+]}
+# test_slow.py crosses the ceiling only summed (50 + 40 > 60); test_flagged.py is fast but flagged.
+_TIMINGS = {"tests": [{"file": "tests/test_a.py", "duration": 0.5},
+                      {"file": "tests/test_slow.py", "duration": 50.0},
+                      {"file": "tests/test_slow.py", "duration": 40.0},
+                      {"file": "tests/test_flagged.py", "duration": 1.0}]}
+
+
+def _defer_pr(make_project) -> Tuple[Path, str]:
+    """A PR whose registry targets ``src/pkg/a.py`` with a fast, a measured-slow and a flagged test."""
+    extra = {"tests/test_slow.py": "def test_slow():\n    assert True\n",
+             "tests/test_flagged.py": "def test_flagged():\n    assert True\n"}
+    base = {"tests/registry.json": _DEFER_REGISTRY, "reports/timings.json": _TIMINGS}
+    return _make_pr(make_project, extra, _DEFER_CONFIG, base)
+
+
+def _run_lines(text: str) -> List[str]:
+    """Lines of ``text`` that carry a pytest run command."""
+    return [line for line in text.splitlines() if " -m pytest " in line]
+
+
+class TestDeferredTests:
+    def test_fixer_brief_lists_slow_and_flagged_tests_as_deferred(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+    ) -> None:
+        clone, head = _defer_pr(make_project)
+        _built(script, monkeypatch, clone, head)
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        brief = _brief(clone, "w1_fix_1", "fix_briefs")
+        tests = brief.split("## Files and tests", 1)[1].split("## Rules", 1)[0]
+        runs = _run_lines(tests)
+        assert runs and all("tests/test_a.py" in line for line in runs)
+        assert "- deferred, do not run: `tests/test_slow.py` (measured 90 s > 60 s)" in tests
+        assert "- deferred, do not run: `tests/test_flagged.py` (properties.super_slow)" in tests
+
+    def test_fixer_rules_forbid_deferred_tests(self, script: ModuleType) -> None:
+        rules = _normalized("\n".join(script._fixer_rules()))
+        assert "Never run a test marked deferred" in rules
+
+    def test_closeout_prints_deferred_tests_the_fixes_reach(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, head = _defer_pr(make_project)
+        _built(script, monkeypatch, clone, head)
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        _write(clone, "src/pkg/a.py", "def f0():\n    return 0\n")
+        rm.record_fixes(_PR, "w1_fix_1", [{"id": "M1", "what": "tidied a", "files": ["src/pkg/a.py"]}],
+                        repo=clone)
+        capsys.readouterr()
+        assert _run(script, clone, "closeout", "--pr", str(_PR)) == 0
+        out = capsys.readouterr().out
+        assert "deferred tests: 2 file(s) the fixes reach; run them before commit:" in out
+        [run] = _run_lines(out)
+        assert "tests/test_flagged.py" in run and "tests/test_slow.py" in run
+        assert "tests/test_a.py" not in run
+
+    def test_closeout_prints_nothing_when_no_deferred_test_is_reached(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, head = _defer_pr(make_project)
+        _built(script, monkeypatch, clone, head, [_finding("docs/a.md")])
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        _write(clone, "docs/a.md", "# A\n\nfixed\n")
+        rm.record_fixes(_PR, "w1_fix_1", [{"id": "M1", "what": "w", "files": ["docs/a.md"]}], repo=clone)
+        capsys.readouterr()
+        assert _run(script, clone, "closeout", "--pr", str(_PR)) == 0
+        assert "deferred tests" not in capsys.readouterr().out
+
+    @pytest.mark.parametrize("timings", [None, "{not json", {"tests": [{"file": "tests/test_slow.py"}]},
+                                         {"tests": [{"file": "tests/test_slow.py", "duration": "90"}]}])
+    def test_unusable_timings_defer_by_flags_only(self, script: ModuleType, make_project,
+                                                  timings: object) -> None:
+        files: Dict[str, object] = {"tests/registry.json": _DEFER_REGISTRY}
+        if timings is not None:
+            files["reports/timings.json"] = timings
+        repo = make_project(_DEFER_CONFIG, files)
+        activate(load_config(repo))
+        assert script.defer_reasons(repo) == {"tests/test_flagged.py": "properties.super_slow"}
+
+    def test_no_ceiling_ignores_timings(self, script: ModuleType, make_project) -> None:
+        config = {**_CONFIG, "tests": {**_DEFER_TESTS, "fixer_test_seconds": None, "defer_flags": []}}
+        files = {"tests/registry.json": _DEFER_REGISTRY, "reports/timings.json": _TIMINGS}
+        repo = make_project(config, files)
+        activate(load_config(repo))
+        assert script.defer_reasons(repo) == {}
 
 
 class TestFollowUpWaves:

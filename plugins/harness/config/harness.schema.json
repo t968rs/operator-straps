@@ -41,7 +41,10 @@
         "roots": {"$ref": "#/$defs/relPaths", "description": "Test tree prefixes (with trailing slash)."},
         "file_pattern": {"$ref": "#/$defs/regex", "description": "Regex a repo-relative POSIX path must match to count as a test file."},
         "registry": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Test registry JSON; null means none."},
-        "registry_names": {"$ref": "#/$defs/strings", "description": "File names that count as registry files for review bucketing."}
+        "registry_names": {"$ref": "#/$defs/strings", "description": "File names that count as registry files for review bucketing."},
+        "timings": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Test timing report JSON: rows under tests with file (repo-relative) and duration (seconds), summed per file; null means none."},
+        "fixer_test_seconds": {"oneOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "null"}], "description": "pr-review fixers defer a registered test whose summed timings exceed this many seconds; null disables the runtime rule."},
+        "defer_flags": {"$ref": "#/$defs/strings", "description": "Dotted paths into a registry entry (e.g. properties.super_slow); a test whose value at any of them is true is deferred out of fixer runs."}
       }
     },
     "review": {

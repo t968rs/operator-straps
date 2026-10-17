@@ -95,6 +95,9 @@ Create `.claude/harness.json` in the consuming repository. Every key is optional
 | `state_dir` | `.claude/state/harness` | Phase 5 sentinels, pr-team runtime (gitignore it) |
 | `artifacts.*` | `docs/PR_REVIEWS`, `docs/PLANS`, ... | review, plan, summary and commit-message output |
 | `tests.*` | `tests/`, common test-file pattern | review bucketing, commit grouping |
+| `tests.timings` | `null` | pr-review fixer briefs: a JSON report whose `tests` rows carry `file` and `duration` (seconds), summed per file |
+| `tests.fixer_test_seconds` | `null` (no runtime rule) | pr-review fixer briefs: a registered test summing over this many seconds in `tests.timings` is deferred (listed, not run; `closeout` prints it) |
+| `tests.defer_flags` | `[]` | pr-review fixer briefs: dotted registry-entry paths (e.g. `properties.super_slow`); `true` at any of them defers the test |
 | `review.*` | empty | Phase 1 guard suites, lens catalog, reviewer-brief rule pointers |
 | `commit_buckets` | generic `src/`, `tests/`, `docs/` rules | `c-msg`, `branch-commit-msg` grouping |
 | `exclusions` | `null` | clean-tree checks ignore machine-generated files |

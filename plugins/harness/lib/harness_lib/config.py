@@ -39,12 +39,16 @@ class Artifacts:
 
 @dataclass(frozen=True)
 class TestsConfig:
-    """Where the project's tests live and how a path is recognized as one."""
+    """Where the project's tests live, how a path is recognized as one, and which registered tests
+    pr-review fixers defer (measured slower than ``fixer_test_seconds`` in ``timings``, or flagged)."""
 
     roots: Tuple[str, ...]
     file_pattern: str
     registry: Optional[str]
     registry_names: Tuple[str, ...]
+    timings: Optional[str]
+    fixer_test_seconds: Optional[float]
+    defer_flags: Tuple[str, ...]
 
     def is_test_path(self, path: str) -> bool:
         """Return True for a repo-relative POSIX path under a test root or matching ``file_pattern``."""
@@ -245,7 +249,9 @@ def _artifacts(a: Dict[str, Any]) -> Artifacts:
 
 
 def _tests(t: Dict[str, Any]) -> TestsConfig:
-    return TestsConfig(tuple(t["roots"]), t["file_pattern"], t["registry"], tuple(t["registry_names"]))
+    ceiling = t["fixer_test_seconds"]
+    return TestsConfig(tuple(t["roots"]), t["file_pattern"], t["registry"], tuple(t["registry_names"]),
+                       t["timings"], None if ceiling is None else float(ceiling), tuple(t["defer_flags"]))
 
 
 def _review(r: Dict[str, Any]) -> ReviewConfig:

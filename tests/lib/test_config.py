@@ -139,6 +139,23 @@ def test_local_test_pattern_default_and_override(make_project) -> None:
     assert cfg.review.local_test_pattern == "_arc\\.py$"
 
 
+def test_fixer_test_deferral_default_and_override(make_project) -> None:
+    default = load_config(make_project()).tests
+    assert (default.timings, default.fixer_test_seconds, default.defer_flags) == (None, None, ())
+    tests = {"timings": "reports/timings.json", "fixer_test_seconds": 90,
+             "defer_flags": ["properties.super_slow"]}
+    cfg = load_config(make_project({"tests": tests}, name="p2")).tests
+    assert (cfg.timings, cfg.fixer_test_seconds, cfg.defer_flags) == (
+        "reports/timings.json", 90.0, ("properties.super_slow",))
+
+
+@pytest.mark.parametrize("bad", [{"fixer_test_seconds": 0}, {"fixer_test_seconds": "60"},
+                                 {"timings": "/abs/t.json"}, {"defer_flags": [""]}])
+def test_fixer_test_deferral_rejects_bad_values(make_project, bad: dict) -> None:
+    with pytest.raises(ConfigError):
+        load_config(make_project({"tests": bad}))
+
+
 def test_runlogs_default_and_override(make_project) -> None:
     default = load_config(make_project()).runlogs
     assert default.dir is None
