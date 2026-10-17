@@ -2,6 +2,8 @@
 
 The script is loaded by absolute path from the plugin. Each test gets a throwaway project: a copy of
 the module's ``pr_template``, or its own ``_make_pr`` build when it needs other files or configuration.
+Unit-level tests of driver functions (``defer_reasons``, ``ceiling_line``, config) build a bare project with
+``make_project`` and activate its config directly.
 The project holds ``.claude/harness.json`` (``_CONFIG``: base branch, scratch directory, exclusions file,
 test registry, structural guard suite, a domain pointer), the vendored exclusions fixture
 (``fixtures/pr_review_exclusions.json``), a one-entry test registry and the base files on ``dev`` (with
@@ -985,11 +987,14 @@ _TIMINGS = {"tests": [{"file": "tests/test_a.py", "duration": 0.5},
                       {"file": "tests/test_flagged.py", "duration": 1.0}]}
 
 
-def _defer_pr(make_project) -> Tuple[Path, str]:
-    """A PR whose registry targets ``src/pkg/a.py`` with a fast, a measured-slow and a flagged test."""
+def _defer_pr(make_project, timings: bool = True) -> Tuple[Path, str]:
+    """A PR whose registry targets ``src/pkg/a.py`` with a fast, a measured-slow and a flagged test;
+    ``timings`` False leaves the configured ``reports/timings.json`` out."""
     extra = {"tests/test_slow.py": "def test_slow():\n    assert True\n",
              "tests/test_flagged.py": "def test_flagged():\n    assert True\n"}
-    base = {"tests/registry.json": _DEFER_REGISTRY, "reports/timings.json": _TIMINGS}
+    base: Dict[str, object] = {"tests/registry.json": _DEFER_REGISTRY}
+    if timings:
+        base["reports/timings.json"] = _TIMINGS
     return _make_pr(make_project, extra, _DEFER_CONFIG, base)
 
 
@@ -1012,10 +1017,6 @@ class TestDeferredTests:
         assert "- deferred, do not run: `tests/test_slow.py` (measured 90 s > 60 s)" in tests
         assert "- deferred, do not run: `tests/test_flagged.py` (properties.super_slow)" in tests
 
-    def test_fixer_rules_forbid_deferred_tests(self, script: ModuleType) -> None:
-        rules = _normalized("\n".join(script._fixer_rules()))
-        assert "Never run a test marked deferred" in rules
-
     def test_closeout_prints_deferred_tests_the_fixes_reach(
             self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
             capsys: pytest.CaptureFixture,
@@ -1029,7 +1030,10 @@ class TestDeferredTests:
         capsys.readouterr()
         assert _run(script, clone, "closeout", "--pr", str(_PR)) == 0
         out = capsys.readouterr().out
-        assert "deferred tests: 2 file(s) the fixes reach; run them before commit:" in out
+        assert ("deferred tests: 2 file(s) the changes since build_head reach; run them before commit:"
+                in out)
+        assert "  - tests/test_flagged.py (properties.super_slow)" in out
+        assert "  - tests/test_slow.py (measured 90 s > 60 s)" in out
         [run] = _run_lines(out)
         assert "tests/test_flagged.py" in run and "tests/test_slow.py" in run
         assert "tests/test_a.py" not in run
@@ -1048,7 +1052,9 @@ class TestDeferredTests:
         assert "deferred tests" not in capsys.readouterr().out
 
     @pytest.mark.parametrize("timings", [None, "{not json", {"tests": [{"file": "tests/test_slow.py"}]},
-                                         {"tests": [{"file": "tests/test_slow.py", "duration": "90"}]}])
+                                         {"tests": [{"file": "tests/test_slow.py", "duration": "90"}]},
+                                         {"tests": [{"file": "tests/test_slow.py", "duration": True}]},
+                                         [{"file": "tests/test_slow.py", "duration": 90}]])
     def test_unusable_timings_defer_by_flags_only(self, script: ModuleType, make_project,
                                                   timings: object) -> None:
         files: Dict[str, object] = {"tests/registry.json": _DEFER_REGISTRY}
@@ -1057,13 +1063,39 @@ class TestDeferredTests:
         repo = make_project(_DEFER_CONFIG, files)
         activate(load_config(repo))
         assert script.defer_reasons(repo) == {"tests/test_flagged.py": "properties.super_slow"}
+        assert script.ceiling_line(repo) == ("deferral: tests.timings reports/timings.json missing or "
+                                             "unusable; runtime ceiling inactive (flags only)")
 
-    def test_no_ceiling_ignores_timings(self, script: ModuleType, make_project) -> None:
-        config = {**_CONFIG, "tests": {**_DEFER_TESTS, "fixer_test_seconds": None, "defer_flags": []}}
+    @pytest.mark.parametrize("flags, expected", [
+        ([], {}), (["properties.super_slow"], {"tests/test_flagged.py": "properties.super_slow"})])
+    def test_no_ceiling_ignores_timings(self, script: ModuleType, make_project, flags: List[str],
+                                        expected: Dict[str, str]) -> None:
+        config = {**_CONFIG, "tests": {**_DEFER_TESTS, "fixer_test_seconds": None, "defer_flags": flags}}
         files = {"tests/registry.json": _DEFER_REGISTRY, "reports/timings.json": _TIMINGS}
         repo = make_project(config, files)
         activate(load_config(repo))
-        assert script.defer_reasons(repo) == {}
+        assert script.defer_reasons(repo) == expected
+        assert script.ceiling_line(repo) is None
+
+    def test_measured_reason_keeps_the_fraction(self, script: ModuleType, make_project) -> None:
+        timings = {"tests": [{"file": "tests/test_slow.py", "duration": 60.4}]}
+        repo = make_project(_DEFER_CONFIG, {"tests/registry.json": _DEFER_REGISTRY,
+                                            "reports/timings.json": timings})
+        activate(load_config(repo))
+        assert script.defer_reasons(repo)["tests/test_slow.py"] == "measured 60.4 s > 60 s"
+        assert script.ceiling_line(repo) is None
+
+    def test_waves_reports_an_inactive_ceiling(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, head = _defer_pr(make_project, timings=False)
+        _built(script, monkeypatch, clone, head)
+        capsys.readouterr()
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        out = capsys.readouterr().out
+        assert "deferral: tests.timings reports/timings.json missing or unusable" in out
+        assert "(measured " not in _brief(clone, "w1_fix_1", "fix_briefs")
 
 
 class TestFollowUpWaves:
@@ -1267,6 +1299,7 @@ class TestPathsAndScope:
         assert "`fixer_failed`" in rules and "naming the test" in rules
         assert "outside the file set" in rules and "`out_of_scope`" in rules
         assert "`no_change` list" in rules and "list edited files under `files`" in rules
+        assert "Never run a test marked deferred" in rules
 
 
 _URL = f"https://github.com/o/r/pull/{_PR}#pullrequestreview-77"

@@ -95,8 +95,8 @@ Create `.claude/harness.json` in the consuming repository. Every key is optional
 | `state_dir` | `.claude/state/harness` | Phase 5 sentinels, pr-team runtime (gitignore it) |
 | `artifacts.*` | `docs/PR_REVIEWS`, `docs/PLANS`, ... | review, plan, summary and commit-message output |
 | `tests.*` | `tests/`, common test-file pattern | review bucketing, commit grouping |
-| `tests.timings` | `null` | pr-review fixer briefs: a JSON report whose `tests` rows carry `file` and `duration` (seconds), summed per file |
-| `tests.fixer_test_seconds` | `null` (no runtime rule) | pr-review fixer briefs: a registered test summing over this many seconds in `tests.timings` is deferred (listed, not run; `closeout` prints it) |
+| `tests.timings` | `null` | pr-review fixer briefs: a JSON report whose `tests` rows carry `file` (repo-relative POSIX, spelled exactly as the registry entry's `file`) and `duration` (seconds), summed per file; missing or unreadable means no runtime deferral. Stock pytest JSON reports key rows by nodeid with per-phase durations and do not match |
+| `tests.fixer_test_seconds` | `null` (no runtime rule) | pr-review fixer briefs: a registered test summing over this many seconds in `tests.timings` is deferred (listed, not run; `closeout` prints it). With `tests.timings` missing or unusable, the ceiling is inactive and `waves` prints a `deferral:` notice |
 | `tests.defer_flags` | `[]` | pr-review fixer briefs: dotted registry-entry paths (e.g. `properties.super_slow`); `true` at any of them defers the test |
 | `review.*` | empty | Phase 1 guard suites, lens catalog, reviewer-brief rule pointers |
 | `commit_buckets` | generic `src/`, `tests/`, `docs/` rules | `c-msg`, `branch-commit-msg` grouping |

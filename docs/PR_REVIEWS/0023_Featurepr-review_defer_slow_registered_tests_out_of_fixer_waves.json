@@ -1,0 +1,375 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 23,
+  "pr_title": "Feature(pr-review): defer slow registered tests out of fixer waves",
+  "branch": "0008-agent-test-limitations",
+  "base_branch": "main",
+  "base_sha": "c7dd7b59fc5f00badd7c011c1db575bf8735315f",
+  "head_sha": "5a2ff5ac73416250175a17076d92e8fb348d11b6",
+  "review_date": "2026-10-16",
+  "verdict": "READY TO MERGE - 12 of 12 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 241,
+    "deletions": 29,
+    "files_changed": 11
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)",
+    "copilot_review (external)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0023/pr23_20261017T051150Z/findings/config.json",
+    "docs/_scratch/pr_review/0023/pr23_20261017T051150Z/findings/tests.json",
+    "docs/_scratch/pr_review/0023/pr23_20261017T051150Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0023/pr23_20261017T051150Z/findings/docs.json",
+    "docs/_scratch/pr_review/0023/pr23_20261017T051150Z/findings/roast.json",
+    "docs/_scratch/pr_review/0023/pr23_20261017T051150Z/findings/copilot_review.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The three new tests.* keys (timings, fixer_test_seconds, defer_flags) match defaults.json, the TestsConfig dataclass and builder in config.py, and the README key table, so the four-place contract holds.",
+    "fixer_test_seconds uses exclusiveMinimum 0 with a null escape, and the schema's number type rejects booleans, which fits the builder's float() conversion and the documented null means no runtime rule.",
+    "Schema descriptions agree with the README rows and the dataclass docstring, and the path-valued key reuses the relPath definition that rejects absolute paths.",
+    "_TIMINGS splits test_slow.py into 50 s + 40 s rows, each under the 60 s ceiling, so the brief test pins summing per file rather than per-row comparison.",
+    "The no-reach closeout test edits only docs/a.md after build while the PR itself changed src/pkg/a.py, proving deferred tests are scoped to what the fixes touched, not to the PR diff.",
+    "All new driver tests run the real waves/closeout CLI or the real defer_reasons over a real registry and timings file; no helper under test is stubbed.",
+    "`[run] = _run_lines(out)` asserts exactly one combined pytest command at closeout, and the brief test checks every run line names only the fast test.",
+    "test_config covers default, override (including float coercion) and four schema rejections for the three new tests keys.",
+    "The new tests.timings / fixer_test_seconds / defer_flags keys land in all four required places (defaults.json, harness.schema.json, the TestsConfig dataclass and _tests builder, the README key table), and the schema's exclusiveMinimum keeps the float() conversion safe.",
+    "file_seconds degrades to an empty map when the timings report is missing, unreadable or malformed, and rejects boolean durations, so a bad report never blocks wave planning.",
+    "Splitting _registry_rows out of registry_entries lets defer_reasons read the raw entries for flag lookup while existing callers keep the same (file, targets) tuples.",
+    "The fixer rule text ('Never run a test marked deferred ... closeout lists it') matches SKILL.md and operating_rules.md, and pytest_command keeps one place that builds both the per-test and the batched closeout commands.",
+    "The new config keys land in all four places CLAUDE.md requires (defaults.json, harness.schema.json, TestsConfig/_tests, README key table) with matching defaults (null, null, []).",
+    "The brief marker text 'deferred, do not run' is spelled identically in pr_review.py _tests_block, pr-fixer.md and SKILL.md Rule 2, so the fixer agent can match it literally.",
+    "pr-fixer.md states the deferred test stays in the file set and is editable, matching waves (deferral only changes the brief's test line, not the widened file set).",
+    "Step 8 instructs carrying the deferred block verbatim into the terminal summary, so unrun slow tests cannot silently disappear from the developer's view.",
+    "The three new tests.* keys land in all four places CLAUDE.md requires (defaults.json, schema, TestsConfig builder, README table) with matching null/[] defaults and schema guards (exclusiveMinimum, relPath, non-empty strings) that test_config.py exercises.",
+    "Splitting _registry_rows out of registry_entries lets defer_reasons read flags without changing registry_entries' contract for widened_waves and tests_for.",
+    "Driver tests are behavioral end to end: real registry and timings files through waves and closeout, a summed-over-the-ceiling case (50 + 40 > 60), a flagged-but-fast case, and a negative closeout case.",
+    "Deferred tests stay in the file set and the brief names each one with its reason, so a fixer can still edit a slow test without being invited to run it.",
+    "pytest_command centralizes the run-command string so brief lines and the closeout command cannot drift."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "A configured runtime ceiling switches itself off without a word",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "tests/scripts/test_pr_review_driver.py",
+          "README.md"
+        ],
+        "lines": "1547-1561,1572-1585,1726",
+        "reviewer": "roast, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "file_seconds returns {} when tests.timings is missing, unparseable or holds no usable rows, and defer_reasons then defers by flags only; waves prints nothing about it, and test_unusable_timings_defer_by_flags_only pins the silence as the design. The likely trigger is mundane: a generated, gitignored timings report does not exist in a fresh worktree, so a project that set fixer_test_seconds gets fixers running the 20-minute suite the feature exists to keep out, and nobody is told. The feature's whole value rides on a file whose absence is invisible.\n\nAlso (runtime): defer_reasons formats the measured sum with `:.0f` and the ceiling with `:g` (line 1582). A file that sums to 30.4 s against a 30 s ceiling is deferred with the reason 'measured 30 s > 30 s'. A fractional ceiling gives similar output, e.g. 0.6 s against 0.5 s prints 'measured 1 s > 0.5 s'. This reason goes into fixer briefs and the closeout block, so it reads as a contradiction.\n\nAlso (roast): The comparison is strict on floats but the reason rounds with :.0f, so 60.4 s against a 60 s ceiling renders `measured 60 s > 60 s`, which reads like an off-by-one in the deferral rule.",
+        "fix": [
+          "In _cmd_waves, when tests.fixer_test_seconds is set and file_seconds(repo) is empty, print one line such as `deferral: tests.timings <path> missing or unusable; runtime ceiling inactive (flags only)` next to the held line, and add a driver test asserting it.",
+          "Treat a configured fixer_test_seconds with a missing or unreadable tests.timings report as a CaptureError from waves naming the path, so the developer regenerates the report or nulls the ceiling.",
+          "Format the measured value with the same precision as the ceiling, e.g. `f\"measured {seconds[test]:.1f} s > {ceiling:g} s\"`.",
+          "Format the measured value with `{seconds[test]:.1f}` (or `:g`) in defer_reasons and update the driver test's expected `(measured 90 s > 60 s)` string accordingly."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "No-ceiling test drops defer_flags, so flags-only deferral is never covered",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "files": [
+          "tests/scripts/test_pr_review_driver.py",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "3-4,1048-1066",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_no_ceiling_ignores_timings sets both fixer_test_seconds=None and defer_flags=[] and asserts {}. An early `if ceiling is None: return {}` in defer_reasons (pr_review.py:1572-1585) would still pass, silently disabling deferral for projects that configure only defer_flags (the shape most projects without a timings report will use). No other test exercises the flag branch with ceiling None; test_unusable_timings_defer_by_flags_only always runs with ceiling 60.\n\nAlso (tests): file_seconds rejects a bool duration (`not isinstance(duration, bool)`, pr_review.py:1559) and _read_json raises on a non-object top level, which file_seconds catches (pr_review.py:1551-1554). Neither a `\"duration\": true` row nor a top-level JSON list is in the parameter set, so removing either guard (a bool counting as 1.0 s, or an uncaught error on a list report) stays green.\n\nAlso (tests): Lines 3-4 state each test gets a copy of pr_template or its own _make_pr build. The new test_unusable_timings_defer_by_flags_only and test_no_ceiling_ignores_timings build bare projects with make_project and call activate(load_config(...)) directly (as TestConfigCommand already did), contradicting the stated contract.",
+        "fix": [
+          "Keep defer_flags from _DEFER_TESTS (override only fixer_test_seconds=None) and assert script.defer_reasons(repo) == {\"tests/test_flagged.py\": \"properties.super_slow\"}: test_slow.py (90 s measured) staying absent proves timings are ignored, test_flagged.py present proves flags still apply.",
+          "Add a second parametrized case (ceiling None, flags kept) alongside the existing empty-flags case.",
+          "Add `{\"tests\": [{\"file\": \"tests/test_slow.py\", \"duration\": True}]}` and `[{\"file\": \"tests/test_slow.py\", \"duration\": 90}]` to the `timings` parametrize list.",
+          "Extend the module docstring: unit-level tests of driver functions (defer_reasons, config) build a bare project with make_project and activate its config directly."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README tests.timings row omits the path-matching rule and silent no-op cases",
+        "file": "README.md",
+        "lines": "98-99",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md line 98 says the timings report's tests rows carry file and duration, summed per file, but defer_reasons matches seconds.get(test) by exact string against the registry entry's file, so a timings file spelled differently (absolute, backslashes, pytest nodeid) defers nothing without any message; file_seconds also swallows a missing or unreadable report (CaptureError -> {}), so a configured fixer_test_seconds silently has no effect. The schema description says repo-relative; the README, the one place users configure from, does not. Stock pytest JSON reports key rows by nodeid with per-phase durations, so the non-standard shape is easy to miss.",
+        "fix": [
+          "Amend README.md line 98 to: 'a JSON report whose `tests` rows carry `file` (repo-relative POSIX, spelled as in the registry) and `duration` (seconds), summed per file; missing or unreadable means no runtime deferral'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "'It stays in the file set' is not always true",
+        "file": "plugins/harness/agents/pr-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-fixer.md",
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "46-48",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "_tests_block lists tests_for every path in the fixer's file set, including paths widened in because a fix option names them, but review_merge._widening adds only registry tests targeting the part files. A deferred test reached only through a named path is listed as `deferred, do not run` yet is not in the file set, while pr-fixer.md and SKILL.md promise it is editable; a fixer that edits it trips closeout's file-set validation.",
+        "fix": [
+          "Reword pr-fixer.md lines 46-48 and SKILL.md line 774 to 'editable when the file set lists it'.",
+          "Or widen review_merge._widening to add registry tests targeting the named fix paths too, so the claim holds."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Module docstring omits the deferred-test behavior of waves and closeout and the new tests.* keys",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "48-69,84-89",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The pr_review.py module docstring is the CLI contract. The `waves` entry (lines 48-56) does not say fixer briefs mark deferred tests 'do not run'. The `closeout` entry (lines 60-69) still ends at 'print the canonical Phase 5 line', but _cmd_closeout (1833-1835) now prints a `deferred tests:` block after it. The 'Project and paths' paragraph (84-89) names only `tests.registry` as the source of registry tests and leaves out `tests.timings`, `tests.fixer_test_seconds` and `tests.defer_flags`, which defer_reasons now reads. SKILL.md line 40 already documents the closeout block, so the driver's own docstring is the only place that disagrees.",
+        "fix": [
+          "Add to the `waves` entry: registered tests that defer_reasons selects (summed tests.timings seconds over tests.fixer_test_seconds, or a true tests.defer_flags path) appear in the brief as 'deferred, do not run' with their reason; add to the `closeout` entry: then prints a `deferred tests:` block (each file, its reason, one pytest command) for deferred tests the paths changed since build_head reach; extend the 'Project and paths' sentence to name tests.timings, tests.fixer_test_seconds and tests.defer_flags."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Timing rows match only an exact registry path",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "README.md",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "1556-1560",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "file_seconds keys seconds by row['file'] verbatim and defer_reasons looks them up by the registry's file string. A report keyed per test (`tests/test_x.py::test_y`), written with Windows backslashes, or prefixed `./` never matches, so the ceiling silently never fires; the README calls the rows per-test ('summed per file') without saying the file must equal the registry entry character for character.",
+        "fix": [
+          "Normalize before summing: key = row['file'].replace('\\', '/').split('::', 1)[0], strip a leading './'; add a parametrized case to test_unusable_timings_defer_by_flags_only's neighbour covering a nodeid-style and a backslash row.",
+          "State in the README tests.timings row and the schema description that `file` must equal the registry entry's `file` exactly."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "closeout computes deferred_lines after the commit, so a registry read error can hide the closeout problems",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "1826-1837",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_cmd_closeout calls deferred_lines (1834) after commit_review, after closeout.json is written and after save_plan. deferred_lines reads the registry through _registry_rows -> _read_json, which raises CaptureError on a malformed or non-object registry file. A fixer can edit the registry when a fix option names it, so this can happen. When it does, the review and the closeout marker are already written, the `raise CaptureError(problems)` at 1837 never runs, and stderr shows only the registry error, not the closeout problems that phase5_line just counted. Separately, line 1834 calls changed_paths(repo, build_head) a second time: closeout_review already ran it at 1845, so the three git calls run twice.\n\nAlso (roast): _cmd_closeout writes CLOSEOUT_MARK, saves the plan and prints the Phase 5 line before deferred_lines reads the registry. A registry a fixer broke (it can sit in a file set via a named fix path) makes _read_json raise there, so the run prints `Phase 5 [done]` and then exits non-zero, contradicting SKILL.md Step 8 ('closeout prints it only on exit 0'). It also recomputes changed_paths, two more git calls for data closeout_review already had.",
+        "fix": [
+          "Compute the deferred block before commit_review: have closeout_review return the (changed, created) it already computed, build `deferred = deferred_lines(repo, changed | created)` in _cmd_closeout before the write, and only print it after phase5_line.",
+          "Or wrap the deferred_lines call so that a CaptureError becomes one extra problem appended to `problems` instead of replacing them.",
+          "Compute the deferred lines before _write_json(run / CLOSEOUT_MARK, ...), passing in the `changed` set closeout_review already computed (return it alongside the doc), and print them after the Phase 5 line.",
+          "Wrap the deferred_lines call in try/except CaptureError and print a single `deferred tests: registry unreadable (...)` line instead of raising."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Closeout recomputes deferral from the current timing report instead of retaining what the fixer was told to skip.",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "reviewer": "copilot_review",
+        "fix_kind": "judgment",
+        "summary": "Copilot (pullrequestreview-5556332749): Closeout recomputes deferral from the current timing report instead of retaining what the fixer was told to skip. If a targeted test run replaces that report with only its own results, a runtime-deferred test without a matching defer flag disappears from closeout, even when its target was edited and the test never ran. Persist the deferred tests and reasons when generating waves, preserve them across follow-up waves, and use that saved information at closeout. Add a regression case that replaces the timing report between `waves` and `closeout`.",
+        "fix": [
+          "Closeout recomputes deferral from the current timing report instead of retaining what the fixer was told to skip. If a targeted test run replaces that report with only its own results, a runtime-deferred test without a matching defer flag disappears from closeout, even when its target was edited and the test never ran. Persist the deferred tests and reasons when generating waves, preserve them across follow-up waves, and use that saved information at closeout. Add a regression case that replaces the timing report between `waves` and `closeout`."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "The new closeout command does not shell-quote its test paths.",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "reviewer": "copilot_review",
+        "fix_kind": "judgment",
+        "summary": "Copilot (pullrequestreview-5556332749): The new closeout command does not shell-quote its test paths. For a checkout at `/tmp/my project`, the shell splits each test path into separate arguments, so copying the printed command fails instead of running the deferred suites. Quote each complete path before joining the arguments; this also fixes commands generated for non-deferred tests in fixer briefs.",
+        "fix": [
+          "The new closeout command does not shell-quote its test paths. For a checkout at `/tmp/my project`, the shell splits each test path into separate arguments, so copying the printed command fails instead of running the deferred suites. Quote each complete path before joining the arguments; this also fixes commands generated for non-deferred tests in fixer briefs."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "closeout deferred-tests block: scope and blocked-run output undocumented",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/agents/pr-fixer.md"
+        ],
+        "lines": "40,837-839,872-874",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md line 40 and Step 8 (lines 872-874) say closeout prints the deferred tests 'the fixes reach' and frame the block as following the Phase 5 done line. In pr_review.py _cmd_closeout the block is computed from changed_paths(repo, build_head), i.e. every tracked diff plus untracked file since build_head (developer edits and --resolved work included, not only fixer edits), and it is printed after phase5_line() before CaptureError is raised, so a [blocked] closeout also prints it. Rule 5 (lines 837-839) still says the printed line on exit 1 is only the [blocked] line. An agent following Rule 5 may treat the extra stdout block on a blocked run as unexpected, and the 'fixes reach' wording understates what is listed.\n\nAlso (roast): The closeout row now says it prints 'any deferred tests the fixes reach' and, in the next sentence, that `--deferred` records a developer-confirmed defer of an issue; pr-fixer.md likewise puts 'Pick, do not defer' directly above 'Never run a deferred test'. A reader of the command table can reasonably think `--deferred` controls the slow-test block.",
+        "fix": [
+          "In SKILL.md Rule 5 (around lines 837-839) add that the deferred tests: block follows the [blocked] line too, and in line 40 / Step 8 say the block covers tests reached by every path changed since build_head (commits, working tree, untracked).",
+          "Alternatively change _cmd_closeout in plugins/harness/scripts/pr_review.py to print deferred_lines only when problems is empty, matching the current Step 8 framing, and reword 'the fixes reach' to 'the changes since build_head reach'.",
+          "In SKILL.md line 40 write 'then any slow tests held out of the fix waves (the `deferred tests:` block)', and keep `--deferred` as the issue-defer flag; or add '(unrelated to `--deferred`)' after the block mention."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Deferred-rule pin is a separate one-assert test next to the existing rules pin",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "1016-1018",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_fixer_rules_forbid_deferred_tests is a single substring check on _fixer_rules(); TestPathsAndScope.test_fixer_rules_cover_failed_and_out_of_scope (line 1265) already pins rule text from the same function. Two homes for one contract invites drift.",
+        "fix": [
+          "Move the `Never run a test marked deferred` assertion into test_fixer_rules_cover_failed_and_out_of_scope and delete the standalone test.",
+          "Or assert the rule inside test_fixer_brief_lists_slow_and_flagged_tests_as_deferred against the rendered brief, so the pin checks the brief a fixer actually reads."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Closeout deferral test does not pin the per-test reason lines",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "1026-1034",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_closeout_prints_deferred_tests_the_fixes_reach checks the header and the single combined pytest line but not the `  - tests/test_flagged.py (properties.super_slow)` / `  - tests/test_slow.py (measured 90 s > 60 s)` lines deferred_lines emits (pr_review.py:1882). Dropping or mislabeling the reasons at closeout would go unnoticed, while the fixer-brief test does pin its reason text.",
+        "fix": [
+          "Assert both reason lines are in `out`, e.g. \"  - tests/test_flagged.py (properties.super_slow)\" in out and \"  - tests/test_slow.py (measured 90 s > 60 s)\" in out."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 23 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"5a2ff5ac73416250175a17076d92e8fb348d11b6\",\"headRefName\":\"0008-agent-test-limitations\",\"headRefOid\":\"5a2ff5ac73416250175a17076d92e8fb348d11b6\",\"last_sha\":\"5a2ff5ac73416250175a17076d92e8fb348d11b6\",\"mergeCommit\":null,\"number\":23,\"state\":\"OPEN\",\"title\":\"Feature(pr-review): defer slow registered tests out of fixer waves\",\"url\":\"https://github.com/t968rs/operator-straps/pull/23\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0008-agent-test-limitations",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0008-agent-test-limitations",
+        "head_ref_name": "0008-agent-test-limitations",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "5a2ff5ac73416250175a17076d92e8fb348d11b6",
+        "head_sha": "5a2ff5ac73416250175a17076d92e8fb348d11b6",
+        "base_ancestor_command": "git merge-base --is-ancestor 5a2ff5ac73416250175a17076d92e8fb348d11b6 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 5a2ff5ac73416250175a17076d92e8fb348d11b6 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - _cmd_closeout computes changed_paths once, passes it to closeout_review (now takes the path sets) and builds deferred_lines before commit_review inside the same CaptureError merge, then prints the Phase 5 line and block together after the write; SKILL.md cited only: Step 8's 'prints it only on exit 0' holds again since a registry error now raises before any write"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - SKILL.md command row, Rule 5 and Step 8 say the deferred tests: block covers every path changed since build_head and follows a [blocked] line too, unrelated to --deferred; block header reads 'the changes since build_head reach'; pr-fixer.md rule names slow tests and separates them from deferring an issue"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - moved the 'Never run a test marked deferred' assertion into test_fixer_rules_cover_failed_and_out_of_scope and deleted the standalone test"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - closeout deferral test asserts both per-test reason lines"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - new ceiling_line prints a 'deferral: tests.timings <path> missing or unusable; runtime ceiling inactive (flags only)' notice from waves; measured reason formats with :g (60.4 s > 60 s); README row documents the notice; driver tests cover the notice, its absence and the fractional reason"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - test_no_ceiling_ignores_timings parametrized over empty and kept defer_flags; timings cases add a bool duration and a top-level list; module docstring names the bare make_project unit tests; cited only: the fix is test-only (parametrize cases and docstring in tests/scripts/test_pr_review_driver.py, owned by another fixer); defer_reasons already handles ceiling None with flags"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - _widening now also takes registry tests targeting the fix-named existing paths and adds those paths to the unit's file set, so deferred tests reached only through a named path are editable and listed.; pr-fixer.md deferred-test rule now says editing a deferred test is allowed when the brief's file set lists it; SKILL.md deferred-tests bullet reworded to 'editable when the file set lists it' so the claim matches the widening rule"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - timings description in the schema states a row's file must equal the registry entry's file exactly (forward slashes, no ./ prefix, no ::nodeid suffix).; new timing_file normalizes timing rows (backslashes, ::test id, leading ./) before file_seconds sums them; new parametrized test covers nodeid, backslash and ./ rows; README tests.timings row states that file must equal the registry entry's file exactly (no normalization of backslashes, ./ prefix or nodeid suffix)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - module docstring: waves entry documents deferred-test brief lines and waves.json deferred; closeout entry documents the deferred tests block; Project and paths names tests.timings, tests.fixer_test_seconds, tests.defer_flags"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - waves saves deferred tests and reasons in waves.json 'deferred' (run_deferrals: current plus saved, saved wins, kept across follow-up waves); closeout passes them to deferred_lines; regression test replaces the timing report between save and closeout"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - pytest_command shlex-quotes each absolute test path, fixing closeout and fixer-brief commands for checkouts with spaces; test covers a spaced and a plain path"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-16",
+      "evidence": "5a2ff5a (working-tree snapshot; developer commits) - README tests.timings row now states repo-relative POSIX file spelled as the registry entry, duration in seconds, and that missing or unreadable reports mean no runtime deferral"
+    }
+  ]
+}
