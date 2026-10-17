@@ -37,7 +37,7 @@ roots and registry (`tests.*`), the structural guard suites and brief pointers (
 | `bubble ID --classification C --reason R` | 5 | Adds a bubble, recomputes the verdict |
 | `bubbles` | 5 | Prints fixer bubbles not yet in the review (read-only) |
 | `waves [--ids I3,M2]` | 5 | Plans fix waves, writes fixer briefs, prints `agent=harness:pr-fixer model=<m>` rows per wave |
-| `closeout [--closed M17="rationale" ...] [--deferred I4="decision; tracker" ...]` | 5 | Validates fixer reports against the working tree, writes resolutions and verdict, prints the Phase 5 line. `--deferred` records a developer-confirmed defer |
+| `closeout [--closed M17="rationale" ...] [--deferred I4="decision; tracker" ...]` | 5 | Validates fixer reports against the working tree, writes resolutions and verdict, prints the Phase 5 line, then any slow tests held out of the fix waves that the changes since `build_head` reach (the `deferred tests:` block, unrelated to `--deferred`). `--deferred` records a developer-confirmed defer of an issue |
 | `closeout --resolved I5="what changed"` | 5 | Resolves developer-directed work done outside the fixer waves; one of the issue's files must have changed since `build_head` |
 
 Each successful subcommand writes the run's position to `plan.json` `phase`: `review` (capture, fold before
@@ -769,10 +769,14 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
   `test_target_paths` include one of its issues' files) and the existing repo paths its issues' `fix` options name
   (`a/b/c.ext` tokens), so a fix can carry the test and doc edits it needs. Widened files count in the wave's
   disjointness check and closeout's file-set validation; parts and the split rule are unchanged.
+- **Deferred tests.** A registered test whose summed seconds in the project's `tests.timings` report exceed
+  `tests.fixer_test_seconds`, or whose registry entry is `true` at one of the `tests.defer_flags` paths, is listed
+  in the brief as `deferred, do not run` with its reason. It is editable when the file set lists it, but no fixer runs it;
+  one slow suite would otherwise gate the whole wave and every later one.
 - **Model per fixer:** `haiku` when every issue is `fix_kind: mechanical`, else `opus`.
 - Dispatch each row as `Agent(subagent_type="harness:pr-fixer", model=<row model>, prompt=<row prompt>)`. The fixer reads
-  before it edits, stays inside its brief's file set (new files allowed), runs the brief's tests for each edited file,
-  and records once with `record_fixes`.
+  before it edits, stays inside its brief's file set (new files allowed), runs the brief's test commands for each
+  edited file (never a deferred test), and records once with `record_fixes`.
 
 **Rule 3 — Work up the severity chain inside each fixer.** A fixer brief orders its issues **M → I → C**, so I/C work
 lands on a quality-checked surface. Waves are sized by issue count and file overlap, not by severity tier; do not
@@ -832,7 +836,7 @@ fixer with no fix report (`<fixer>: no fix report; re-dispatch its row`) and an 
 fixer was assigned but never recorded (`<id>: planned for <fixer> but not recorded; rerun waves`) are problems too,
 so the done line requires every planned id dispositioned; a pending `pre_fix_time` refuses `closeout`. Exit 1 lists
 the problems on stderr, and the printed line is `Phase 5 [blocked] | <N> problems | verdict: <v> | next: settle problems,
-rerun closeout`, never the done line. Settle each problem, then rerun `closeout`; Step 8 opens only after a clean exit 0. A `partially fixed` or rejected-entry problem goes to a bare `waves`
+rerun closeout`, never the done line; a `deferred tests:` block (Step 8) can follow the `[blocked]` line too. Settle each problem, then rerun `closeout`; Step 8 opens only after a clean exit 0. A `partially fixed` or rejected-entry problem goes to a bare `waves`
 rerun: after a closeout it counts only the entries closeout accepted, re-plans a split issue for its missing parts
 only and a rejected issue whole; a rejected entry stops raising its problem once its id ends a closeout `RESOLVED` or
 `CLOSED_NO_ACTION` by any path. `waves --ids` (which re-plans the named ids whole) is for bubble answers.
@@ -865,6 +869,10 @@ Mandatory sequence; entry is automatic once Phase 3's atomic close lands:
 8. **Terminal step.** User-facing summary, opening with the line `closeout` printed:
    `Phase 5 [done] | <N> issues resolved | verdict: <v> | next: stop`. `closeout` prints it only on exit 0, with
    every planned fixer reported and every planned id recorded; a `[blocked]` line sends the run back through Rule 5's problem recovery.
+   When the changes since `build_head` (commits, working tree and untracked files: fixer, `--resolved` and developer
+   edits alike) reach deferred tests, `closeout` follows the line, done or blocked, with a `deferred tests:` block
+   (each file, its reason, one command running them all). Carry the block into the summary verbatim: those tests have not run, and
+   they run once, serially, before commit, by the developer or by the main session when the developer asks.
 
 **After a post-build `fold`:** re-entry at Step 1 applies only when the fold follows a completed closeout (after
 Step 8): run Step 1 (the second run re-arms the sentinel), then `waves` for the new ids (it plans only

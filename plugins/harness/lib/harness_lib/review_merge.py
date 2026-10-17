@@ -548,10 +548,11 @@ def registry_tests(files: Iterable[str], registry: Mapping[str, Sequence[str]]) 
 
 def _widening(issue: Issue, files: Sequence[str], registry: Mapping[str, Sequence[str]],
               existing: Set[str]) -> Tuple[str, ...]:
-    """Files a unit's fixer may also edit: tests targeting ``files`` and existing paths the fix names, minus
-    the issue's own files."""
+    """Files a unit's fixer may also edit: tests targeting ``files`` or the existing paths the fix names, and
+    those named paths themselves, minus the issue's own files."""
     own = set(_files(issue))
-    found = [*registry_tests(files, registry), *(p for p in fix_paths(issue) if p in existing)]
+    named = [p for p in fix_paths(issue) if p in existing]
+    found = [*registry_tests([*files, *named], registry), *named]
     return tuple(f for f in _union(found) if f not in own)
 
 

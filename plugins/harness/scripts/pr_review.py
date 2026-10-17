@@ -49,7 +49,10 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<NN
     Plan fix waves over the undispositioned, unheld issues not yet fully recorded (or exactly ``--ids``):
     a partially fixed split issue is re-planned for its unrecorded parts only; fixer-bubbled ids stay out.
     Each fixer's file set adds the registered tests targeting its issues' files and the existing paths
-    their fix options name.
+    their fix options name. Registered tests that ``defer_reasons`` selects (summed ``tests.timings``
+    seconds over ``tests.fixer_test_seconds``, or a true ``tests.defer_flags`` path) appear in the brief as
+    ``deferred, do not run`` with their reason; the deferred tests and reasons are kept in ``waves.json``
+    ``deferred`` and stay deferred across follow-up waves.
     Once a closeout has run (``closeout.json`` in the run), only fix entries closeout accepts count as
     recorded, so an id whose entries it rejected is re-planned. Write ``waves.json`` (with each fixer's
     parts) and the fixer briefs, print one dispatch row per fixer, wave by wave, then the held ids and the
@@ -63,7 +66,9 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<NN
     planned part is recorded), close the named ids, record fixer bubbles, resolve each deferred id as a
     developer-confirmed defer (kept in ``bubble_up``), resolve each ``--resolved`` id (developer-directed
     work outside the fixer waves; one of its files must have changed since ``build_head``), recompute the
-    verdict and print the canonical Phase 5 line. A planned fixer without a fix report, or an undispositioned
+    verdict and print the canonical Phase 5 line, then a ``deferred tests:`` block (each file, its reason,
+    one pytest command) for the deferred tests (those saved in ``waves.json`` plus those deferred now) that
+    the paths changed since ``build_head`` reach. A planned fixer without a fix report, or an undispositioned
     id its planned fixers never recorded, is a problem; so is a pending ``pre_fix_time``. Writes
     ``closeout.json`` (head and problems) to the run, which switches later ``waves`` runs to
     closeout-accepted entries.
@@ -83,7 +88,8 @@ closeout with problems or undispositioned ids; fold after build inside an open p
 
 Project and paths: ``--repo`` names the project (default: the git top level of the working directory); its
 ``.claude/harness.json`` is activated once. Run scratch is ``artifacts.scratch``, reviews go to
-``artifacts.reviews``, registry tests come from ``tests.registry``, the structural guards from ``review.*``,
+``artifacts.reviews``, registry tests come from ``tests.registry`` (deferred by ``tests.timings``,
+``tests.fixer_test_seconds`` and ``tests.defer_flags``), the structural guards from ``review.*``,
 brief pointers from ``review.domain_pointers`` and the lens catalog is the plugin's merged with
 ``review.lenses``. Plugin assets (the Phase 4 script, the schema hook, the catalog, the library) resolve from
 the plugin root; nothing is written under it.
@@ -110,6 +116,7 @@ import json
 import os
 import random
 import re
+import shlex
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -1526,16 +1533,83 @@ def wave_inputs(doc: Mapping[str, object], run: Path, ids: Optional[str],
     return planned, held, done
 
 
-def registry_entries(repo: Path) -> List[Tuple[str, Tuple[str, ...]]]:
-    """(test file, test_target_paths) for every entry of the configured ``tests.registry``; empty without
-    one."""
+def _registry_rows(repo: Path) -> List[Dict[str, object]]:
+    """Entries (objects with a ``file``) of the configured ``tests.registry``; empty without one."""
     rel = active().tests.registry
     path = repo / rel if rel else None
     if path is None or not path.is_file():
         return []
     tests = _read_json(path).get("tests") or []
-    return [(str(e["file"]), tuple((e.get("properties") or {}).get("test_target_paths") or ()))
-            for e in tests if isinstance(e, dict) and "file" in e]  # type: ignore[union-attr]
+    return [e for e in tests if isinstance(e, dict) and "file" in e]  # type: ignore[union-attr]
+
+
+def registry_entries(repo: Path) -> List[Tuple[str, Tuple[str, ...]]]:
+    """(test file, test_target_paths) for every entry of the configured ``tests.registry``; empty without
+    one."""
+    props = ((e, e.get("properties") or {}) for e in _registry_rows(repo))
+    return [(str(e["file"]), tuple(p.get("test_target_paths") or ()))  # type: ignore[union-attr]
+            for e, p in props]
+
+
+def timing_file(name: str) -> str:
+    """A timing row's ``file`` as a registry path: forward slashes, no ``::`` test id, no leading ``./``."""
+    path = name.replace("\\", "/").split("::", 1)[0]
+    while path.startswith("./"):
+        path = path[2:]
+    return path
+
+
+def file_seconds(repo: Path) -> Dict[str, float]:
+    """Seconds per test file summed over the ``tests`` rows (``file``, numeric ``duration``) of the
+    configured ``tests.timings`` report, keyed by ``timing_file``; empty when there is none or it cannot
+    be read."""
+    rel = active().tests.timings
+    try:
+        rows = _read_json(repo / rel).get("tests") if rel else None
+    except CaptureError:
+        return {}
+    seconds: Dict[str, float] = {}
+    for row in rows if isinstance(rows, list) else ():
+        duration = row.get("duration") if isinstance(row, dict) else None
+        if isinstance(row, dict) and isinstance(row.get("file"), str) and \
+                isinstance(duration, (int, float)) and not isinstance(duration, bool):
+            key = timing_file(row["file"])
+            seconds[key] = seconds.get(key, 0.0) + float(duration)
+    return seconds
+
+
+def flag_set(entry: Mapping[str, object], dotted: str) -> bool:
+    """True when the value at the dotted path ``dotted`` of a registry entry is ``true``."""
+    value: object = entry
+    for key in dotted.split("."):
+        value = value.get(key) if isinstance(value, Mapping) else None
+    return value is True
+
+
+def defer_reasons(repo: Path) -> Dict[str, str]:
+    """Registry test files fixers must not run, each with its reason: summed ``tests.timings`` seconds over
+    ``tests.fixer_test_seconds``, else the ``tests.defer_flags`` paths that are true."""
+    tests = active().tests
+    ceiling = tests.fixer_test_seconds
+    seconds = file_seconds(repo) if ceiling is not None else {}
+    reasons: Dict[str, str] = {}
+    for entry in _registry_rows(repo):
+        test, flags = str(entry["file"]), [f for f in tests.defer_flags if flag_set(entry, f)]
+        if ceiling is not None and seconds.get(test, 0.0) > ceiling:
+            reasons[test] = f"measured {seconds[test]:g} s > {ceiling:g} s"
+        elif flags:
+            reasons[test] = ", ".join(flags)
+    return reasons
+
+
+def ceiling_line(repo: Path) -> Optional[str]:
+    """A notice when ``tests.fixer_test_seconds`` is set but ``tests.timings`` yields no durations, so
+    deferral falls back to ``tests.defer_flags`` alone; None otherwise."""
+    tests = active().tests
+    if tests.fixer_test_seconds is None or file_seconds(repo):
+        return None
+    return (f"deferral: tests.timings {tests.timings or '(unset)'} missing or unusable; "
+            "runtime ceiling inactive (flags only)")
 
 
 def tests_for(path: str, entries: Sequence[Tuple[str, Tuple[str, ...]]]) -> List[str]:
@@ -1568,14 +1642,22 @@ def _issue_block(issue: Mapping[str, object], part: Sequence[str]) -> List[str]:
     return lines + [f"- {option}" for option in issue["fix"]] + [""]  # type: ignore[union-attr]
 
 
-def _tests_block(ctx: BriefContext, files: Sequence[str],
-                 entries: Sequence[Tuple[str, Tuple[str, ...]]]) -> List[str]:
-    """Per-file registry tests with their run commands."""
+def pytest_command(repo: str, tests: Sequence[str]) -> str:
+    """One pytest run over the repo-relative ``tests`` through the plugin's ``hpy`` launcher; each absolute
+    test path is shell-quoted, so a checkout path with spaces stays one argument."""
+    paths = " ".join(shlex.quote(f"{repo}/{t}") for t in tests)
+    return f"{hpy_command()} -m pytest {paths} -q -p no:cacheprovider"
+
+
+def _tests_block(ctx: BriefContext, files: Sequence[str], entries: Sequence[Tuple[str, Tuple[str, ...]]],
+                 deferred: Mapping[str, str]) -> List[str]:
+    """Per-file registry tests: run commands, except deferred tests, named with their reason."""
     lines = ["## Files and tests", ""]
     for path in files:
         tests = tests_for(path, entries)
         lines.append(f"- {path}" + ("" if tests else ": no registered test"))
-        lines += [f"  - `{hpy_command()} -m pytest {ctx.repo}/{t} -q -p no:cacheprovider`" for t in tests]
+        lines += [f"  - deferred, do not run: `{t}` ({deferred[t]})" if t in deferred
+                  else f"  - `{pytest_command(ctx.repo, [t])}`" for t in tests]
     return lines
 
 
@@ -1587,9 +1669,10 @@ def _fixer_rules() -> List[str]:
              "edit only the files of your part plus the set's tests and named paths; another fixer owns the "
              "rest. When a fix needs an edit outside the file set, leave it and bubble the id "
              "`out_of_scope`.",
-             "Run the listed tests for every edited file before recording. When a test goes red because of "
-             "an edit and cannot be fixed inside the file set, undo that edit and bubble the id "
-             "`fixer_failed`, naming the test in the reason.",
+             "Run the listed test commands for every edited file before recording. When a test goes red "
+             "because of an edit and cannot be fixed inside the file set, undo that edit and bubble the id "
+             "`fixer_failed`, naming the test in the reason. Never run a test marked deferred: it is too "
+             "slow for a fix wave, and closeout lists it for one run after the waves.",
              "Bubble an issue only when one of these answers yes; otherwise pick the safest option and "
              "fix it:",
              "No git writes (no add, commit, stash, checkout, reset, restore).",
@@ -1613,8 +1696,8 @@ def fixer_part(fixer: Mapping[str, object], issue: Mapping[str, object]) -> List
 
 
 def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[str, Mapping[str, object]],
-                entries: Sequence[Tuple[str, Tuple[str, ...]]]) -> str:
-    """The full fixer brief for one planned fixer."""
+                entries: Sequence[Tuple[str, Tuple[str, ...]]], deferred: Mapping[str, str]) -> str:
+    """The full fixer brief for one planned fixer; ``deferred`` maps the tests it must not run to reasons."""
     agent, files = str(fixer["id"]), list(fixer["files"])  # type: ignore[call-overload]
     lines = [f"# Fixer brief: {agent} - PR #{ctx.pr}", ""]
     lines += [f"- {line}" for line in header_lines(agent, "fixer", ctx.run_id, ctx.pr)]
@@ -1628,7 +1711,7 @@ def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[
     cited = '{"id": "M2", "what": "cited only: why no edit", "no_change": ["src/pkg/y.py"]},'
     bubbled = '{"id": "I3", "classification": "architectural_ambiguity", "reason": "one line"},'
     lists = (("FIXED", (fixed, cited)), ("BUBBLED", (bubbled,)))
-    lines += _tests_block(ctx, files, entries) + [""] + _fixer_rules()
+    lines += _tests_block(ctx, files, entries, deferred) + [""] + _fixer_rules()
     lines += ["", "## Record (once)", "", "```bash", record_heredoc(ctx, call, lists), "```"]
     return "\n".join(lines) + "\n"
 
@@ -1664,21 +1747,40 @@ def _cmd_waves(repo: Path, args: argparse.Namespace) -> int:
     issues, held, done = wave_inputs(doc, run, args.ids, checked)
     store_path = run / "waves.json"
     store = _read_json(store_path) if store_path.is_file() else {"waves": []}
-    entries = registry_entries(repo)
+    entries, deferred = registry_entries(repo), run_deferrals(repo, run)
     waves = widened_waves(repo, issues, held, done, entries, len(store["waves"]) + 1)  # type: ignore[arg-type]
     store["waves"] = list(store["waves"]) + waves  # type: ignore[call-overload]
+    store["deferred"] = deferred
     _write_json(store_path, store)
     ctx, by_id = wave_context(repo, plan), {str(i["id"]): i for i in all_issues(doc)}
     for fixer in (f for wave in waves for f in wave):
-        _write_text(run / "fix_briefs" / f"{fixer['id']}.md", fixer_brief(ctx, fixer, by_id, entries))
+        brief = fixer_brief(ctx, fixer, by_id, entries, deferred)
+        _write_text(run / "fix_briefs" / f"{fixer['id']}.md", brief)
     count = sum(len(w) for w in waves)
     print(f"waves [done] | {len(waves)} wave(s), {count} fixer(s) | run {plan['run_id']}")
     print("\n".join(wave_rows(ctx, run, waves) or ["nothing to plan"]))
     shown = [h for h in held if h in {str(i["id"]) for i in issues}]
     print(f"held: {', '.join(shown) if shown else 'none'}")
+    notice = ceiling_line(repo)
+    if notice:
+        print(notice)
     print("\n".join(pending_lines(pending_bubbles(doc, run))))
     save_plan(run, plan, "fix")
     return 0
+
+
+def saved_deferrals(run: Path) -> Dict[str, str]:
+    """The deferred tests and reasons earlier ``waves`` runs gave fixers (``waves.json`` ``deferred``);
+    empty without one."""
+    path = run / "waves.json"
+    saved = _read_json(path).get("deferred") if path.is_file() else None
+    return {str(k): str(v) for k, v in saved.items()} if isinstance(saved, dict) else {}
+
+
+def run_deferrals(repo: Path, run: Path) -> Dict[str, str]:
+    """``defer_reasons`` now, plus every test an earlier wave of the run deferred (its saved reason wins),
+    so a replaced timing report never un-defers a test a fixer was told to skip."""
+    return {**defer_reasons(repo), **saved_deferrals(run)}
 
 
 def widened_waves(repo: Path, issues: Sequence[Dict[str, object]], held: Sequence[str], done: Sequence[str],
@@ -1767,24 +1869,27 @@ def _cmd_closeout(repo: Path, args: argparse.Namespace) -> int:
     if not plan.get("build_head"):
         raise CaptureError(["no build_head recorded; run build first"])
     head = git_out(repo, "rev-parse", "--short", "HEAD").strip()
-    doc, problems = closeout_review(repo, run, str(plan["build_head"]), head, doc, args)
+    paths = changed_paths(repo, str(plan["build_head"]))
+    doc, problems = closeout_review(run, paths, head, doc, args)
     try:
+        deferred = deferred_lines(repo, run_deferrals(repo, run), set().union(*paths))
         problems += commit_review(repo, path, doc)
     except CaptureError as exc:
         raise CaptureError(exc.problems + problems) from exc
     _write_json(run / CLOSEOUT_MARK, {"head": head, "problems": problems})
     save_plan(run, plan, "fix" if problems or rmg.undispositioned_ids(doc) else "done")
-    print(phase5_line(doc, problems))
+    print("\n".join([phase5_line(doc, problems), *deferred]))
     if problems:
         raise CaptureError(problems)
     return 0
 
 
-def closeout_review(repo: Path, run: Path, base: str, head: str, doc: Mapping[str, object],
+def closeout_review(run: Path, paths: Tuple[Set[str], Set[str]], head: str, doc: Mapping[str, object],
                     args: argparse.Namespace) -> Tuple[Dict[str, object], List[str]]:
     """``apply_closeout`` over the run's fixer reports and the ``--closed`` / ``--deferred`` /
-    ``--resolved`` flags, against the paths changed since ``base``, plus ``unrecorded_problems``."""
-    changed, created = changed_paths(repo, base)
+    ``--resolved`` flags, against ``paths`` (``changed_paths`` since ``build_head``), plus
+    ``unrecorded_problems``."""
+    changed, created = paths
     deferred = parse_closed(args.deferred, "--deferred", "decision; tracker")
     resolved = parse_closed(args.resolved, "--resolved", "what")
     fixes = rm.load_fix_reports(run / "fixes")
@@ -1811,6 +1916,20 @@ def unrecorded_problems(fixers: Sequence[Mapping[str, object]], fixes: Sequence[
             problems += [f"{i}: planned for {fixer['id']} but not recorded; rerun waves"
                          for i in ids if i not in recorded]
     return problems
+
+
+def deferred_lines(repo: Path, reasons: Mapping[str, str], paths: Iterable[str]) -> List[str]:
+    """The deferred registry tests (``reasons``: test file to reason) that ``paths`` (every path changed
+    since ``build_head``: commits, working tree, untracked) reach, each with its reason, and one command
+    running them all; empty when none is reached."""
+    entries = registry_entries(repo)
+    tests = sorted({t for p in paths for t in tests_for(p, entries) if t in reasons})
+    if not tests:
+        return []
+    lines = [f"deferred tests: {len(tests)} file(s) the changes since build_head reach; "
+             "run them before commit:"]
+    lines += [f"  - {t} ({reasons[t]})" for t in tests]
+    return lines + [f"  {pytest_command(repo.as_posix(), tests)}"]
 
 
 def phase5_line(doc: Mapping[str, object], problems: Sequence[str]) -> str:

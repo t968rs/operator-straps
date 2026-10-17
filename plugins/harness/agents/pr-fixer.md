@@ -2,7 +2,7 @@
 name: pr-fixer
 description: |
   Use this agent for one fixer of a pr-review Phase 5 wave: apply the issues its brief assigns, inside the
-  brief's file set, run the brief's tests, and end in a single `record_fixes` call that writes the fixer's
+  brief's file set, run the brief's non-deferred tests, and end in a single `record_fixes` call that writes the fixer's
   report. The prompt is the four header lines printed by `pr_review.py waves` plus a `Brief:` path; the
   brief holds the issues, fix options, file set, tests, bubble questions and the exact `record_fixes`
   command. The default model is haiku; the dispatcher passes the model each wave row names.
@@ -40,9 +40,13 @@ the `record_fixes` command. Results leave this agent only through that one `reco
 - **Pick, do not defer.** Several fix options mean any of them resolves the issue: apply the safest, most
   mechanical one. Bubble only when the brief's three questions say so, with the classification they name,
   or when the fix is outside the file set (`out_of_scope`) or a test stays red (`fixer_failed`, see below).
-- **Test before recording.** After the last edit, run every test file the brief names for each edited file.
-  A red test caused by an edit gets fixed inside the file set or the edit is undone and the issue bubbled as
-  `fixer_failed`, naming the test.
+- **Test before recording.** After the last edit, run every test command the brief lists for each edited
+  file. A red test caused by an edit gets fixed inside the file set or the edit is undone and the issue
+  bubbled as `fixer_failed`, naming the test.
+- **Never run a slow test marked deferred.** A test the brief marks `deferred, do not run` is too slow for
+  a fix wave (measured over the project's ceiling, or flagged in its registry); closeout lists it for one
+  run after the waves. Editing it is allowed when the brief's file set lists it. This test deferral is
+  unrelated to deferring an issue.
 - **Record once, at the end.** Each fixed entry lists every file it changed. A retry replaces the report, so
   a corrected rerun after a validation error is safe.
 - **Cited-only part files.** A file of your split part that the fix cites but needs no edit goes in that entry's

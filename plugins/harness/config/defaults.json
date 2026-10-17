@@ -20,7 +20,10 @@
     "roots": ["tests/"],
     "file_pattern": "(^|/)test_[^/]*\\.py$|(^|/)conftest\\.py$|\\.test\\.(ts|tsx|js)$",
     "registry": null,
-    "registry_names": []
+    "registry_names": [],
+    "timings": null,
+    "fixer_test_seconds": null,
+    "defer_flags": []
   },
   "review": {
     "guard_suite": [],
