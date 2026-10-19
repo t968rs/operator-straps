@@ -97,6 +97,58 @@
         "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Run-log folder; subfolders at any depth (e.g. dated archive folders) are searched too. null: check-runlogs needs --dir."},
         "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a log file name must fully match; named group date (YYYY-MM-DD) required (checked at config load), time (HHMMSS) optional, a date-only name sorts as midnight."}
       }
+    },
+    "todo": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "TODO catalog sync (todo_sync engine, todo-watch mod). Inactive while catalog is null; each rule group is off while the keys it needs are null.",
+      "properties": {
+        "catalog": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Ranked TODO catalog JSON (TodoCatalog shape); null turns the feature off."},
+        "catalog_schema": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project schema rule T1 validates the catalog against (its declared draft); null: the harness catalogs/TodoCatalog.schema.json."},
+        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the summary, the toast and the rendered snapshot."},
+        "snapshots": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Folder render writes dated snapshots into and T2 reads the newest from; null turns T2 and render off."},
+            "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a snapshot file name must fully match; named group date required (checked at config load); newest by date, else mtime."}
+          }
+        },
+        "research": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "catalog": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Research implementation catalog JSON; null turns the S rules and T3-T5 off. The research root is artifacts.research."},
+            "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
+            "anchor_pattern": {"$ref": "#/$defs/regex", "description": "Regex a stub line matches to name its catalog entry; named group id required (checked at config load)."},
+            "ignore_folders": {"$ref": "#/$defs/strings", "description": "Top-level research folders S6 does not require an entry for; the folders holding todo.catalog and snapshots.dir are excluded automatically."}
+          }
+        },
+        "plans": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pairs": {"type": "boolean", "description": "Check ActionPlan / PIP pairs under artifacts.plans (rules P1-P4)."}
+          }
+        },
+        "gh": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repo": {"oneOf": [{"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"}, {"type": "null"}], "description": "owner/name the issue fetch reads; null: the origin remote."},
+            "max_age_hours": {"type": "number", "exclusiveMinimum": 0, "description": "Issue cache age past which G5 warns and the mod toast shows the age."}
+          }
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "disabled": {"type": "array", "items": {"type": "string", "pattern": "^[SPTG][0-9]+$"}, "uniqueItems": true, "description": "Rule ids check skips."},
+            "warn_counts": {"type": "boolean", "description": "Count warn findings toward the drift number."}
+          }
+        },
+        "inject_context": {"type": "boolean", "description": "todo-watch adds a TODO_SYNC drift line to the prompt context when it changes."}
+      }
     }
   }
 }

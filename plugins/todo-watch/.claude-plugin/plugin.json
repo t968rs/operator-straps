@@ -1,0 +1,9 @@
+{
+  "name": "todo-watch",
+  "version": "0.1.0",
+  "description": "TODO catalog summary toast, TODO_SYNC drift context and /todo, backed by the harness todo_sync checks",
+  "author": {
+    "name": "Kevin Gabelman"
+  },
+  "types": "./types/index.d.ts"
+}

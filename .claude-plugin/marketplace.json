@@ -29,6 +29,11 @@
       "name": "pytest-scope",
       "source": "./plugins/pytest-scope",
       "description": "Routes bare pytest through the project interpreter and requires a test file or node-id per pytest run"
+    },
+    {
+      "name": "todo-watch",
+      "source": "./plugins/todo-watch",
+      "description": "TODO catalog summary toast, per-prompt TODO_SYNC drift line and /todo, backed by the harness todo_sync engine"
     }
   ]
 }

@@ -87,6 +87,14 @@ This is a worked specimen (originally produced for Issue #747's CICD-Decompose-c
 
 **Purpose:** Migration audit snapshot from Issue #1210 (PR_REVIEW schema migration to fix: string → array[string]). Not maintained; for historical reference only.
 
+### 7. `TodoSyncReport.schema.json`
+
+**Purpose:** Result of one `todo_sync.py check` run, written atomically to `<state_dir>/todo-sync/report.json` and read by the `todo-watch` mod. Derived data, never committed.
+
+**Key fields:** `schema_version` (const 1), `generated_at`, `rules_run[]`, `rules_skipped[]` (`rule`, `reason`), `drift` (counted findings: every error, plus warns when `todo.rules.warn_counts` is true), `by_rule` (counted findings per rule id), `counts` (`error`, `warn` over all findings), `gh_fetched_at` (issue cache time or null), `findings[]`.
+
+**Finding:** `rule` (`S*` research, `P*` plans, `T*` TODO catalog, `G*` GitHub), `severity` (`error` / `warn`), `counted`, `file` (repo-relative POSIX or null), optional `line`, `subject`, `fix`, and a one-line `message`. `tests/mods/test_todo_watch_report_contract.py` pins every key the mod reads to this schema.
+
 ---
 
 ## Catalog Schemas (`catalogs/`)
@@ -126,6 +134,18 @@ Top-level fields: `catalog_date`, `issue_number`, `issue_title`, `deprecation_no
 Per-workflow entry: `file` (repo-relative path), `has_force_node24` (boolean), `actions[]`.
 
 Per-action entry: `name` (uses: reference), `line` (1-indexed), `nodejs_version_target`, `current_status` (`compatible_with_force` / `will_auto_migrate` / `outdated` / `up_to_date`), `resolution` (enum), `rationale`, optional `recommended_change`.
+
+### `catalogs/TodoCatalog.schema.json`
+
+**Applies to:** The ranked repository TODO catalog named by `todo.catalog` in `.claude/harness.json`, checked by `todo_sync.py` and summarized by the `todo-watch` mod. Rule T1 validates against it only when `todo.catalog_schema` is null; a project that keeps its own schema beside the data names it there instead.
+
+**Base relationship:** Standalone, closed (`additionalProperties: false`) at every level. Draft 2020-12.
+
+Top-level fields (required): `generated`, `generated_from` (`description`, `head_sha`, optional `branch`), `ranking_method` (formula text, `impact_weights`, `loe_points`, `blast_factors`, `unblock_bonus`, `tie_breakers`, `impact_definitions`, `severity_scale`), `counts`, `items[]`, `trackers[]`, `close_candidates[]`; optional `$schema`.
+
+Per-item fields: `id` (`TODO-NNN`, equal to `rank`; both are display labels that change on every re-rank), `title`, `kind`, `status` (`OPEN` / `PARTIAL` / `NEEDS_DECISION` / `BLOCKED`; no terminal status: finished work leaves the file), `needs_decision` + `decision_question`, `tracker`, `sources[]` (`gh_issue` / `impl_stub` / `research_folder`), `gh_issues[]`, `related_gh_issues[]`, `catalog_entry_ids[]`, `summary`, `proposed_change`, optional `code_snippet`, `files[]`, `blast_radius`, `loe`, `impact`, `severity`, `priority` (`score`, `components`), `depends_on[]`, `unblocks[]`, `why_ranked`.
+
+Cross-record rules the schema cannot express are `todo_sync` rules T6-T10: unique ids equal to `TODO-<rank>`, ranks 1..n, `priority.score` and order recomputed from `ranking_method`, mutual `depends_on` / `unblocks`, tracker membership, and `counts` tallies.
 
 ---
 

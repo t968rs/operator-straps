@@ -1,0 +1,104 @@
+/**
+ * The harness keys the watch reads from `<project>/.claude/harness.json`, merged over copies of the harness
+ * plugin's `config/defaults.json` values: an installed mod sits in its own plugin cache folder and cannot
+ * read that file. `tests/mods/test_todo_watch_config_mirror.py` pins the copies. Pure: no `$`.
+ */
+
+export const DEFAULT_STATE_DIR = '.claude/state/harness'
+export const DEFAULT_RESEARCH = 'docs/RESEARCH'
+export const DEFAULT_PLANS = 'docs/PLANS'
+export const DEFAULT_CATALOG: string | null = null
+export const DEFAULT_CATALOG_SCHEMA: string | null = null
+export const DEFAULT_TOP_N = 10
+export const DEFAULT_SNAPSHOTS_DIR: string | null = null
+export const DEFAULT_RESEARCH_CATALOG: string | null = null
+export const DEFAULT_GH_MAX_AGE_HOURS = 24
+export const DEFAULT_INJECT_CONTEXT = true
+
+/** Project-relative (or absolute) POSIX paths and the TODO settings the watch reads; null: not configured. */
+export type TodoWatchConfig = {
+  stateDir: string
+  researchDir: string
+  plansDir: string
+  catalog: string | null
+  catalogSchema: string | null
+  topN: number
+  snapshotsDir: string | null
+  researchCatalog: string | null
+  ghMaxAgeHours: number
+  injectContext: boolean
+}
+
+type Json = Readonly<Record<string, unknown>>
+
+const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
+
+/** Forward slashes, no surrounding blanks, no trailing slash. */
+export const cleanPath = (p: string): string => p.trim().replace(/\\/g, '/').replace(/\/+$/, '')
+
+/** A non-blank string value, cleaned; else the fallback. */
+const pathOr = (v: unknown, fallback: string): string =>
+  typeof v === 'string' && cleanPath(v) !== '' ? cleanPath(v) : fallback
+
+/** A non-blank string value, cleaned; null when the value is null; else the fallback. */
+const optionalPathOr = (v: unknown, fallback: string | null): string | null => {
+  if (v === null) return null
+  return typeof v === 'string' && cleanPath(v) !== '' ? cleanPath(v) : fallback
+}
+
+/** A positive whole number; else the fallback. */
+const countOr = (v: unknown, fallback: number): number =>
+  typeof v === 'number' && Number.isInteger(v) && v > 0 ? v : fallback
+
+/** A finite number at or above zero; else the fallback. */
+const hoursOr = (v: unknown, fallback: number): number =>
+  typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : fallback
+
+const objectAt = (data: Json, key: string): Json => (isObject(data[key]) ? (data[key] as Json) : {})
+
+const parse = (text: string): Json => {
+  try {
+    const data: unknown = JSON.parse(text)
+    return isObject(data) ? data : {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * The watch's view of a `harness.json` text: each key it reads replaces its default, objects merge key by
+ * key. Malformed JSON or a wrong-typed value keeps the default (the harness hooks report it).
+ */
+export const readConfig = (text: string): TodoWatchConfig => {
+  const data = parse(text)
+  const artifacts = objectAt(data, 'artifacts')
+  const todo = objectAt(data, 'todo')
+  const inject = todo.inject_context
+  return {
+    stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
+    researchDir: pathOr(artifacts.research, DEFAULT_RESEARCH),
+    plansDir: pathOr(artifacts.plans, DEFAULT_PLANS),
+    catalog: optionalPathOr(todo.catalog, DEFAULT_CATALOG),
+    catalogSchema: optionalPathOr(todo.catalog_schema, DEFAULT_CATALOG_SCHEMA),
+    topN: countOr(todo.top_n, DEFAULT_TOP_N),
+    snapshotsDir: optionalPathOr(objectAt(todo, 'snapshots').dir, DEFAULT_SNAPSHOTS_DIR),
+    researchCatalog: optionalPathOr(objectAt(todo, 'research').catalog, DEFAULT_RESEARCH_CATALOG),
+    ghMaxAgeHours: hoursOr(objectAt(todo, 'gh').max_age_hours, DEFAULT_GH_MAX_AGE_HOURS),
+    injectContext: typeof inject === 'boolean' ? inject : DEFAULT_INJECT_CONTEXT,
+  }
+}
+
+/** Whether the watch runs at all: a TODO catalog is configured. */
+export const isActive = (c: TodoWatchConfig): boolean => c.catalog !== null
+
+/** Whether a path is absolute: POSIX, drive or UNC. */
+export const isAbsolute = (path: string): boolean => /^([A-Za-z]:)?[\\/]/.test(path)
+
+/**
+ * A configured path against the project root: a relative one is joined to it, an absolute one is kept, as
+ * harness_lib's `cfg.path()` does.
+ */
+export const under = (root: string, path: string): string => (isAbsolute(path) ? path : `${root}/${path}`)
+
+/** `<state_dir>/todo-sync`: the runner pointer and the sync report live here. */
+export const syncDirOf = (c: TodoWatchConfig): string => `${c.stateDir}/todo-sync`

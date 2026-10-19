@@ -1,0 +1,1006 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+  "title": "TodoCatalog",
+  "description": "One ranked, de-duplicated TODO list for a repository, built from open GitHub issues, the open or partial remaining items of research implementation stubs and the open items of research folders. Each item is one unit of work and lists every source it absorbs. Tracker issues are recorded under trackers, and issues whose work has already landed (LIKELY_RESOLVED) or whose target no longer exists (STALE) are recorded under close_candidates instead of items; an issue whose work has only partly landed is an item with status PARTIAL. Item order and rank follow the deterministic formula recorded in ranking_method. This schema checks each record on its own; the cross-record rules it cannot express are checked by the harness todo_sync rules T6-T10: item ids are unique and equal TODO-<rank>, ranks run 1..n in ranking order, priority.score and rank follow ranking_method, depends_on and unblocks are mutual inverses, every tracker field names a tracker in trackers, child_todo_ids lists exactly the items pointing at that tracker, and counts tally the items.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "generated",
+    "generated_from",
+    "ranking_method",
+    "counts",
+    "items",
+    "trackers",
+    "close_candidates"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Relative path to this schema."
+    },
+    "generated": {
+      "type": "string",
+      "format": "date",
+      "description": "Date the list was generated (YYYY-MM-DD)."
+    },
+    "generated_from": {
+      "description": "Inputs and repository state the list was built from.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "description",
+        "head_sha"
+      ],
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "What the list was built from."
+        },
+        "head_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$",
+          "description": "Commit the source triage was verified against."
+        },
+        "branch": {
+          "type": "string",
+          "description": "Branch checked out at head_sha."
+        }
+      }
+    },
+    "ranking_method": {
+      "$ref": "#/$defs/ranking_method"
+    },
+    "counts": {
+      "$ref": "#/$defs/counts"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/item"
+      },
+      "description": "Ranked work items, ordered by rank (TODO-001 first)."
+    },
+    "trackers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tracker"
+      },
+      "description": "Open tracker issues that roll up child issues instead of carrying work."
+    },
+    "close_candidates": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/close_candidate"
+      },
+      "description": "Open issues whose work has landed or whose target no longer exists."
+    }
+  },
+  "$defs": {
+    "todo_id": {
+      "type": "string",
+      "pattern": "^TODO-[0-9]{3}$",
+      "description": "Item id, TODO-NNN, numbered by rank."
+    },
+    "gh_number": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "GitHub issue number in the repository's issue tracker."
+    },
+    "loe_size": {
+      "type": "string",
+      "enum": [
+        "XS",
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "description": "Level-of-effort size; ranking_method.loe_points maps each size to points."
+    },
+    "blast_level": {
+      "type": "string",
+      "enum": [
+        "S",
+        "M",
+        "L",
+        "XL"
+      ],
+      "description": "Blast-radius level: how much code or output a change can affect; ranking_method.blast_factors maps each level to a cost factor."
+    },
+    "impact": {
+      "type": "string",
+      "enum": [
+        "silent_wrong_output",
+        "data_correctness",
+        "runtime_failure",
+        "dev_velocity",
+        "maintainability",
+        "docs_tooling"
+      ],
+      "description": "Impact class of the defect or gap; ranking_method.impact_definitions states when each class applies and ranking_method.impact_weights maps each class to a value weight."
+    },
+    "ranking_method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "cost",
+        "score",
+        "impact_weights",
+        "loe_points",
+        "blast_factors",
+        "unblock_bonus",
+        "tie_breakers",
+        "impact_definitions",
+        "severity_scale"
+      ],
+      "properties": {
+        "value": {
+          "type": "string",
+          "description": "Formula for an item's value: severity times the impact weight."
+        },
+        "cost": {
+          "type": "string",
+          "description": "Formula for an item's cost: LoE points times the blast factor."
+        },
+        "score": {
+          "type": "string",
+          "description": "Formula for the priority score from value, cost and the unblock bonus."
+        },
+        "impact_weights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "silent_wrong_output",
+            "data_correctness",
+            "runtime_failure",
+            "dev_velocity",
+            "maintainability",
+            "docs_tooling"
+          ],
+          "properties": {
+            "silent_wrong_output": {
+              "type": "number",
+              "description": "Value weight for the silent_wrong_output impact class."
+            },
+            "data_correctness": {
+              "type": "number",
+              "description": "Value weight for the data_correctness impact class."
+            },
+            "runtime_failure": {
+              "type": "number",
+              "description": "Value weight for the runtime_failure impact class."
+            },
+            "dev_velocity": {
+              "type": "number",
+              "description": "Value weight for the dev_velocity impact class."
+            },
+            "maintainability": {
+              "type": "number",
+              "description": "Value weight for the maintainability impact class."
+            },
+            "docs_tooling": {
+              "type": "number",
+              "description": "Value weight for the docs_tooling impact class."
+            }
+          },
+          "description": "Value weight per impact class."
+        },
+        "loe_points": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ],
+          "properties": {
+            "XS": {
+              "type": "number",
+              "description": "Cost points for LoE size XS."
+            },
+            "S": {
+              "type": "number",
+              "description": "Cost points for LoE size S."
+            },
+            "M": {
+              "type": "number",
+              "description": "Cost points for LoE size M."
+            },
+            "L": {
+              "type": "number",
+              "description": "Cost points for LoE size L."
+            },
+            "XL": {
+              "type": "number",
+              "description": "Cost points for LoE size XL."
+            }
+          },
+          "description": "Cost points per LoE size."
+        },
+        "blast_factors": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "S",
+            "M",
+            "L",
+            "XL"
+          ],
+          "properties": {
+            "S": {
+              "type": "number",
+              "description": "Cost multiplier for blast-radius level S."
+            },
+            "M": {
+              "type": "number",
+              "description": "Cost multiplier for blast-radius level M."
+            },
+            "L": {
+              "type": "number",
+              "description": "Cost multiplier for blast-radius level L."
+            },
+            "XL": {
+              "type": "number",
+              "description": "Cost multiplier for blast-radius level XL."
+            }
+          },
+          "description": "Cost multiplier per blast-radius level."
+        },
+        "unblock_bonus": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Fractional score bonus applied when an item unblocks at least one other item."
+        },
+        "tie_breakers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Ordered keys that separate items with equal (4-decimal) scores. Each key is computed from the item's own fields: severity (higher first), LoE points (lower first), then the primary source sources[0] (type in the order gh_issue, impl_stub, research_folder; ref as issue number for gh_issue, else the path in code-point order; item text in code-point order), then title in code-point order.",
+          "minItems": 1
+        },
+        "impact_definitions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "silent_wrong_output",
+            "data_correctness",
+            "runtime_failure",
+            "dev_velocity",
+            "maintainability",
+            "docs_tooling"
+          ],
+          "properties": {
+            "silent_wrong_output": {
+              "type": "string",
+              "minLength": 1,
+              "description": "When an item belongs to the silent_wrong_output impact class."
+            },
+            "data_correctness": {
+              "type": "string",
+              "minLength": 1,
+              "description": "When an item belongs to the data_correctness impact class."
+            },
+            "runtime_failure": {
+              "type": "string",
+              "minLength": 1,
+              "description": "When an item belongs to the runtime_failure impact class."
+            },
+            "dev_velocity": {
+              "type": "string",
+              "minLength": 1,
+              "description": "When an item belongs to the dev_velocity impact class."
+            },
+            "maintainability": {
+              "type": "string",
+              "minLength": 1,
+              "description": "When an item belongs to the maintainability impact class."
+            },
+            "docs_tooling": {
+              "type": "string",
+              "minLength": 1,
+              "description": "When an item belongs to the docs_tooling impact class."
+            }
+          },
+          "description": "One-line meaning of each impact class, the rule items are classified by."
+        },
+        "severity_scale": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "properties": {
+            "1": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Meaning of severity 1."
+            },
+            "2": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Meaning of severity 2."
+            },
+            "3": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Meaning of severity 3."
+            },
+            "4": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Meaning of severity 4."
+            },
+            "5": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Meaning of severity 5."
+            }
+          },
+          "description": "Meaning of each item severity level, keyed \"1\" to \"5\"."
+        },
+        "notes": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Where severity, impact, LoE and blast radius come from for each source type."
+        }
+      },
+      "description": "The deterministic formula and constants that order items."
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "items",
+        "needs_decision",
+        "trackers",
+        "close_candidates",
+        "by_status",
+        "by_impact",
+        "by_loe",
+        "sources_absorbed",
+        "merged_items"
+      ],
+      "properties": {
+        "items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of items."
+        },
+        "needs_decision": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of items with needs_decision true."
+        },
+        "trackers": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of trackers."
+        },
+        "close_candidates": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of close_candidates."
+        },
+        "by_status": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "Item count per status; keys are item statuses.",
+          "propertyNames": {
+            "$ref": "#/$defs/item_status"
+          }
+        },
+        "by_impact": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "Item count per impact class; keys are impact classes.",
+          "propertyNames": {
+            "$ref": "#/$defs/impact"
+          }
+        },
+        "by_loe": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "description": "Item count per LoE size, with every size present.",
+          "propertyNames": {
+            "$ref": "#/$defs/loe_size"
+          },
+          "required": [
+            "XS",
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        },
+        "sources_absorbed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "gh_issue",
+            "impl_stub",
+            "research_folder"
+          ],
+          "properties": {
+            "gh_issue": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Distinct gh_issue source records absorbed."
+            },
+            "impl_stub": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Distinct impl_stub source records absorbed."
+            },
+            "research_folder": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Distinct research_folder source records absorbed."
+            }
+          },
+          "description": "Number of distinct source records absorbed into items, per source type; a source record split across two items counts once."
+        },
+        "merged_items": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Items that absorb more than one source record."
+        }
+      },
+      "description": "Tallies over items, trackers and close_candidates."
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "ref"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "gh_issue",
+            "impl_stub",
+            "research_folder"
+          ],
+          "description": "Kind of source record."
+        },
+        "ref": {
+          "type": "string",
+          "description": "'#<number>' for gh_issue; the repo-relative stub path for impl_stub; the repo-relative research folder path for research_folder."
+        },
+        "item": {
+          "type": "string",
+          "description": "Title of the absorbed remaining/open item inside the stub or folder."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "GitHub issue URL; present for gh_issue sources."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "gh_issue"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "ref": {
+                "pattern": "^#[0-9]+$"
+              }
+            },
+            "required": [
+              "url"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "impl_stub"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "ref": {
+                "pattern": "^(?![/\\\\])(?![A-Za-z]:).+\\.md$"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "research_folder"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "ref": {
+                "pattern": "^(?![/\\\\])(?![A-Za-z]:)[^\\\\]+$"
+              }
+            },
+            "required": [
+              "item"
+            ]
+          }
+        }
+      ]
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "rank",
+        "title",
+        "kind",
+        "status",
+        "needs_decision",
+        "decision_question",
+        "tracker",
+        "sources",
+        "gh_issues",
+        "related_gh_issues",
+        "catalog_entry_ids",
+        "summary",
+        "proposed_change",
+        "files",
+        "blast_radius",
+        "loe",
+        "impact",
+        "severity",
+        "priority",
+        "depends_on",
+        "unblocks",
+        "why_ranked"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/todo_id",
+          "description": "TODO-NNN, numbered by rank."
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1-based position in ranking order; equals the number in id."
+        },
+        "title": {
+          "type": "string",
+          "description": "One-line statement of the work."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "bug",
+            "feature",
+            "refactor",
+            "test",
+            "cicd",
+            "docs",
+            "skill"
+          ],
+          "description": "Category of work."
+        },
+        "status": {
+          "$ref": "#/$defs/item_status",
+          "description": "NEEDS_DECISION when the next step is the decision itself; PARTIAL items can also carry needs_decision true."
+        },
+        "needs_decision": {
+          "type": "boolean",
+          "description": "True when a design decision is open; decision_question then states it."
+        },
+        "decision_question": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The open decision: a non-empty string when needs_decision is true, null otherwise."
+        },
+        "tracker": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Tracker issue (see trackers) this item rolls up to, or null."
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/source"
+          },
+          "description": "Every source record this item absorbs; the first is the primary source.",
+          "uniqueItems": true
+        },
+        "gh_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/gh_number"
+          },
+          "description": "GitHub issues this item resolves.",
+          "uniqueItems": true
+        },
+        "related_gh_issues": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/gh_number"
+          },
+          "description": "Open issues the sources cross-reference that this item does not resolve.",
+          "uniqueItems": true
+        },
+        "catalog_entry_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+          },
+          "description": "ResearchImplementationCatalog entry ids covering this work.",
+          "uniqueItems": true
+        },
+        "summary": {
+          "type": "string",
+          "description": "Verified current state of the problem, with path:line evidence."
+        },
+        "proposed_change": {
+          "type": "string",
+          "description": "The change that resolves the item."
+        },
+        "code_snippet": {
+          "type": "string",
+          "pattern": "^[^\\n]+:[0-9]+[^\\n]*\\n",
+          "description": "Excerpt whose first line is a path:line header."
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Repo-relative paths the change touches or reads as evidence.",
+          "uniqueItems": true
+        },
+        "blast_radius": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "level",
+            "reasoning",
+            "consumers"
+          ],
+          "properties": {
+            "level": {
+              "$ref": "#/$defs/blast_level",
+              "description": "Blast-radius level used for the cost factor."
+            },
+            "reasoning": {
+              "type": "string",
+              "description": "Why the level was chosen."
+            },
+            "consumers": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Modules, tools or artifacts that consume the changed code."
+            }
+          },
+          "description": "How far the change reaches and who consumes the changed code."
+        },
+        "loe": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "size",
+            "reasoning"
+          ],
+          "properties": {
+            "size": {
+              "$ref": "#/$defs/loe_size",
+              "description": "LoE size used for cost points."
+            },
+            "reasoning": {
+              "type": "string",
+              "description": "Why the size was chosen."
+            }
+          },
+          "description": "Level of effort."
+        },
+        "impact": {
+          "$ref": "#/$defs/impact",
+          "description": "Impact class used for the value weight."
+        },
+        "severity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "1 (cosmetic or hygiene) to 5 (crashes or corrupts a production tool path); see ranking_method.severity_scale."
+        },
+        "priority": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "score",
+            "components"
+          ],
+          "properties": {
+            "score": {
+              "type": "number",
+              "minimum": 0,
+              "description": "base_score times (1 + unblock_bonus), rounded to 4 decimals; items sort on it."
+            },
+            "components": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "impact_weight",
+                "value",
+                "loe_points",
+                "blast_factor",
+                "cost",
+                "base_score",
+                "unblock_bonus"
+              ],
+              "properties": {
+                "impact_weight": {
+                  "type": "number",
+                  "description": "ranking_method.impact_weights entry for the item's impact."
+                },
+                "value": {
+                  "type": "number",
+                  "description": "severity times impact_weight."
+                },
+                "loe_points": {
+                  "type": "number",
+                  "description": "ranking_method.loe_points entry for the item's LoE size."
+                },
+                "blast_factor": {
+                  "type": "number",
+                  "description": "ranking_method.blast_factors entry for the item's blast-radius level."
+                },
+                "cost": {
+                  "type": "number",
+                  "description": "loe_points times blast_factor."
+                },
+                "base_score": {
+                  "type": "number",
+                  "description": "value divided by the square root of cost."
+                },
+                "unblock_bonus": {
+                  "type": "number",
+                  "description": "ranking_method.unblock_bonus when unblocks is non-empty, otherwise 0."
+                }
+              },
+              "description": "Intermediate values of the ranking_method formula for this item."
+            }
+          },
+          "description": "Score and the components it was computed from (see ranking_method)."
+        },
+        "depends_on": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/todo_id"
+          },
+          "description": "Items that must land before this one. Inverse of unblocks: X lists Y in depends_on exactly when Y lists X in unblocks.",
+          "uniqueItems": true
+        },
+        "unblocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/todo_id"
+          },
+          "description": "Items that list this one in depends_on (the inverse of depends_on), sorted; a non-empty list earns the unblock bonus.",
+          "uniqueItems": true
+        },
+        "why_ranked": {
+          "type": "string",
+          "description": "One sentence explaining the rank from the score components."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "needs_decision": {
+                "const": true
+              }
+            },
+            "required": [
+              "needs_decision"
+            ]
+          },
+          "then": {
+            "properties": {
+              "decision_question": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "decision_question"
+            ]
+          },
+          "else": {
+            "properties": {
+              "decision_question": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "NEEDS_DECISION"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "properties": {
+              "needs_decision": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tracker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "title",
+        "url",
+        "children",
+        "child_todo_ids",
+        "status_note",
+        "recommended_action"
+      ],
+      "properties": {
+        "number": {
+          "$ref": "#/$defs/gh_number",
+          "description": "Tracker issue number."
+        },
+        "title": {
+          "type": "string",
+          "description": "Verbatim GitHub issue title."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "GitHub issue URL."
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/gh_number"
+          },
+          "description": "Child issues the tracker lists.",
+          "uniqueItems": true
+        },
+        "child_todo_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/todo_id"
+          },
+          "description": "Items whose tracker field points at this tracker.",
+          "uniqueItems": true
+        },
+        "status_note": {
+          "type": "string",
+          "description": "Verified state of the tracker's children: which have landed, which remain open, and what the tracker still adds."
+        },
+        "recommended_action": {
+          "type": "string",
+          "description": "What to do with the tracker issue itself (keep, retitle or close)."
+        }
+      }
+    },
+    "close_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "title",
+        "url",
+        "current_state",
+        "evidence",
+        "recommended_action",
+        "related_todo_ids"
+      ],
+      "properties": {
+        "number": {
+          "$ref": "#/$defs/gh_number",
+          "description": "Issue number."
+        },
+        "title": {
+          "type": "string",
+          "description": "Verbatim GitHub issue title."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "GitHub issue URL."
+        },
+        "current_state": {
+          "type": "string",
+          "enum": [
+            "LIKELY_RESOLVED",
+            "STALE"
+          ],
+          "description": "LIKELY_RESOLVED when the requested work has landed; STALE when the issue's target no longer exists."
+        },
+        "evidence": {
+          "type": "string",
+          "description": "Commands run and path:line results that support current_state, preceded by any context the GitHub title omits."
+        },
+        "recommended_action": {
+          "type": "string",
+          "description": "How to close or retitle the issue, with what to cite."
+        },
+        "related_todo_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/todo_id"
+          },
+          "description": "Every item whose gh_issues or related_gh_issues names this issue, sorted: items carrying related or residual work. They do not gate closing the issue unless recommended_action says so.",
+          "uniqueItems": true
+        }
+      }
+    },
+    "item_status": {
+      "type": "string",
+      "enum": [
+        "OPEN",
+        "PARTIAL",
+        "NEEDS_DECISION",
+        "BLOCKED"
+      ],
+      "description": "Item status. NEEDS_DECISION when the next step is the decision itself; PARTIAL items can also carry needs_decision true; BLOCKED when an external precondition is unmet."
+    }
+  }
+}

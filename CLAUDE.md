@@ -1,7 +1,8 @@
 # operator-straps
 
-Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) plus four TypeScript mods
-(`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`). Layout and install: `README.md`.
+Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) plus five TypeScript mods
+(`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`). Layout and install:
+`README.md`.
 
 ## Rules for changes
 
@@ -13,8 +14,8 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   `tests/contract/test_root_separation.py` enforces it.
 - **A new config key** touches four places together: `plugins/harness/config/defaults.json`,
   `config/harness.schema.json`, the dataclass and builder in `lib/harness_lib/config.py`, and the README key
-  table. When `pr-review-watch` reads the key, also mirror it in `plugins/pr-review-watch/hooks/config.ts`
-  (`tests/mods/test_pr_review_watch_config_mirror.py` checks the mirror).
+  table. When a mod reads the key, also mirror its default in that mod's `hooks/config.ts`
+  (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `pr-review-watch` and `todo-watch` have one).
 - **Drivers activate, library code reads.** Scripts, hooks and skill commands call
   `activate(load_config(project_root(...)))` once; library modules read `active()` inside functions, never at
   import time. Hooks resolve the project from the payload `cwd`.

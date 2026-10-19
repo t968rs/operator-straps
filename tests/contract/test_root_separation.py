@@ -81,7 +81,26 @@ def _runlog_args(root: Path) -> List[str]:
     return ["skills/check-runlogs/commands/latest_runlog.py", "--repo", str(root), "--dir", "logs/runs"]
 
 
+def _todo_project(root: Path) -> Path:
+    """Turn the case project into a configured todo_sync project (catalogs, stub, plans, snapshot)."""
+    sys.path.insert(0, str(REPO_ROOT / "tests" / "lib"))
+    from _todo_helpers import config, todo_files
+    for rel, body in {**todo_files(), ".claude/harness.json": config(base_branch="main")}.items():
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(body if isinstance(body, str) else json.dumps(body), encoding="utf-8")
+    return root
+
+
+def _todo_args(root: Path, *args: str) -> List[str]:
+    return ["scripts/todo_sync.py", "--project", str(_todo_project(root)), *args]
+
+
 CASES = {
+    "todo_sync check": lambda r, t: (_todo_args(r, "check"), None),
+    "todo_sync render": lambda r, t: (_todo_args(r, "render", "--date", "2026-10-21"), None),
+    "todo_sync session hook": lambda r, t: (["hooks/todo_sync_session.py"],
+                                            {"cwd": str(_todo_project(r)), "source": "startup"}),
     "merge-commit": lambda r, t: (_merge_body_args(r), None),
     "commit capture --save": lambda r, t: (["scripts/branch_commit_msg.py", "--repo", str(r), "capture",
                                             "--save", "--no-fetch"], None),
@@ -125,6 +144,16 @@ def test_merge_body_lands_in_the_project(project: Path) -> None:
     written = Path(done.stdout.strip())
     assert written.is_file()
     assert written.resolve().is_relative_to(project.resolve())
+
+
+@pytest.mark.parametrize("name", ["todo_sync check", "todo_sync render", "todo_sync session hook"])
+def test_todo_sync_output_lands_in_the_project(name: str, project: Path, tmp_path: Path) -> None:
+    script, payload = CASES[name](project, tmp_path)
+    done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project, payload)
+    assert done.returncode == 0, done.stderr
+    written = {p for p in project.rglob("*") if p.is_file() and p.suffix in (".json", ".md")
+               and ("todo-sync" in p.parts or p.name.startswith("TODO_Snapshot_2026_1021"))}
+    assert written and all(p.resolve().is_relative_to(project.resolve()) for p in written)
 
 
 def test_snapshot_notices_a_new_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

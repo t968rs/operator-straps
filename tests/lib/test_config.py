@@ -167,6 +167,56 @@ def test_runlogs_default_and_override(make_project) -> None:
     assert override.name_pattern == default.name_pattern
 
 
+def test_todo_defaults_leave_the_feature_off(make_project) -> None:
+    todo = load_config(make_project()).todo
+    assert (todo.catalog, todo.catalog_schema, todo.top_n, todo.inject_context) == (None, None, 10, True)
+    assert (todo.snapshots.dir, todo.research.catalog, todo.research.stub_name) == (None, None, None)
+    assert re.fullmatch(todo.snapshots.name_pattern, "TODO_Snapshot_2026_1017.md")["date"] == "2026_1017"
+    anchor = re.match(todo.research.anchor_pattern, "catalog_entry: docs/R/Catalog.json#alpha-loader")
+    assert anchor["id"] == "alpha-loader"
+    assert (todo.research.ignore_folders, todo.plans_pairs, todo.gh_repo, todo.gh_max_age_hours) == (
+        (), True, None, 24.0)
+    assert (todo.rules_disabled, todo.rules_warn_counts) == ((), False)
+    assert todo.enabled is False
+
+
+def test_todo_override_merges_key_by_key(make_project) -> None:
+    block = {"catalog": "docs/R/ToDo.json", "top_n": 5, "research": {"catalog": "docs/R/Cat.json",
+             "stub_name": "_IMPL_TODO.md", "ignore_folders": ["Old"]}, "gh": {"max_age_hours": 6},
+             "rules": {"disabled": ["S6"], "warn_counts": True}, "plans": {"pairs": False}}
+    todo = load_config(make_project({"todo": block})).todo
+    assert (todo.catalog, todo.top_n, todo.enabled) == ("docs/R/ToDo.json", 5, True)
+    assert (todo.research.catalog, todo.research.stub_name, todo.research.ignore_folders) == (
+        "docs/R/Cat.json", "_IMPL_TODO.md", ("Old",))
+    assert todo.research.anchor_pattern.startswith("^catalog_entry:")
+    assert (todo.gh_max_age_hours, todo.rules_disabled, todo.rules_warn_counts, todo.plans_pairs) == (
+        6.0, ("S6",), True, False)
+
+
+@pytest.mark.parametrize("bad", [{"catalog": "/abs/ToDo.json"}, {"top_n": 0}, {"colour": 1},
+                                 {"snapshots": {"name_pattern": r"TODO_\d+\.md"}},
+                                 {"research": {"anchor_pattern": r"^catalog_entry:\s*\S+$"}},
+                                 {"research": {"anchor_pattern": "("}}, {"gh": {"max_age_hours": 0}},
+                                 {"rules": {"disabled": ["X1"]}}])
+def test_todo_rejects_bad_values(make_project, bad: dict) -> None:
+    with pytest.raises(ConfigError):
+        load_config(make_project({"todo": bad}))
+
+
+def test_alternate_config_path_replaces_the_project_file(make_project, tmp_path: Path) -> None:
+    root = make_project({"base_branch": "dev"})
+    alt = tmp_path / "scratch.json"
+    alt.write_text(json.dumps({"todo": {"catalog": "docs/T.json"}}), encoding="utf-8")
+    cfg = load_config(root, config_path=alt)
+    assert (cfg.source, cfg.project_root) == (alt.resolve(), root.resolve())
+    assert cfg.todo.catalog == "docs/T.json" and cfg.base_branch is None
+
+
+def test_alternate_config_path_must_exist(make_project, tmp_path: Path) -> None:
+    with pytest.raises(ConfigError, match="not found"):
+        load_config(make_project(), config_path=tmp_path / "missing.json")
+
+
 def test_worktree_root_default_expands_home_and_repo(make_project, monkeypatch: pytest.MonkeyPatch,
                                                      tmp_path: Path) -> None:
     monkeypatch.setenv("HOME", str(tmp_path))

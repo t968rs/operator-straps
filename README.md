@@ -12,10 +12,13 @@ project-specific (artifact folders, test layout, guard suites, commit buckets, b
 | `git-status` | Git status line and a per-prompt `GIT_STATE` context line |
 | `session-bookmark` | Compaction bookmark: git state, last prompts and `/compact` instructions survive a compaction |
 | `pytest-scope` | Bare `pytest` rewritten to the configured project interpreter; pytest runs that name no test file denied |
+| `todo-watch` | TODO catalog summary toast, a per-prompt `TODO_SYNC` drift line and `/todo`; drift checks run through the harness `todo_sync` engine |
 
-The mods (`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`) are independent of each other.
-`pr-review-watch` stays inactive in any project without `.claude/harness.json`. `pytest-scope` does nothing
-until one of its options is set.
+The mods (`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`) are independent of
+each other. `pr-review-watch` stays inactive in any project without `.claude/harness.json`, and `todo-watch` in
+any project whose `harness.json` sets no `todo.catalog`; `todo-watch` runs drift checks only while the `harness`
+plugin is installed (its SessionStart hook writes the runner pointer). `pytest-scope` does nothing until one of
+its options is set.
 
 ## Install
 
@@ -26,6 +29,7 @@ claude plugin install pr-review-watch@operator-straps
 claude plugin install git-status@operator-straps
 claude plugin install session-bookmark@operator-straps
 claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
+claude plugin install todo-watch@operator-straps
 ```
 
 This repository enables its own plugins in `.claude/settings.json` from the published marketplace (the same
@@ -105,6 +109,21 @@ Create `.claude/harness.json` in the consuming repository. Every key is optional
 | `worktree_root` | `~/.config/superpowers/worktrees/{repo}` | `d-w`, `parallel2` |
 | `runlogs.dir` | `null` (the skill then needs `--dir`) | `check-runlogs` (newest run log; every subfolder at any depth, dated archives included, is searched too) |
 | `runlogs.name_pattern` | a name ending in `<YYYY-MM-DD>[_<HHMMSS>].txt` or `.log` | `check-runlogs` (named groups `date`, optional `time`) |
+| `todo.catalog` | `null` (feature off) | `todo_sync.py`, its SessionStart hook, `todo-watch` (ranked TODO catalog JSON) |
+| `todo.catalog_schema` | `null` (harness `catalogs/TodoCatalog.schema.json`) | rule T1 (validated under the schema's own draft) |
+| `todo.top_n` | `10` | `todo-watch` summary and toast, `todo_sync.py render` |
+| `todo.snapshots.dir` | `null` (T2 and `render` off) | rule T2, `todo_sync.py render` |
+| `todo.snapshots.name_pattern` | `TODO_Snapshot_<YYYY_MMDD>.md` | rule T2 (named group `date`; newest by date, else mtime) |
+| `todo.research.catalog` | `null` (S rules, T3-T5 off) | research catalog JSON; the research root is `artifacts.research` |
+| `todo.research.stub_name` | `null` (S1-S4 off) | stub file name under the research root |
+| `todo.research.anchor_pattern` | `catalog_entry: <path>#<id>` | rules S1, S4 (named group `id`) |
+| `todo.research.ignore_folders` | `[]` | rule S6 (the folders holding `todo.catalog` and `todo.snapshots.dir` are excluded automatically) |
+| `todo.plans.pairs` | `true` | rules P1-P4 over `artifacts.plans` |
+| `todo.gh.repo` | `null` (the `origin` remote) | issue fetch (Phase 3) |
+| `todo.gh.max_age_hours` | `24` | rule G5, `todo-watch` toast age suffix |
+| `todo.rules.disabled` | `[]` | `todo_sync.py check` skips these rule ids |
+| `todo.rules.warn_counts` | `false` | warn findings count toward the drift number |
+| `todo.inject_context` | `true` | `todo-watch` per-prompt `TODO_SYNC` line |
 
 `schemas_dir` (default `.claude/agent-schemas`) pins project copies of the review schemas; anything missing
 there falls back to the plugin's `schemas/`.

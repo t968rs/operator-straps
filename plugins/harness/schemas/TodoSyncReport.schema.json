@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/TodoSyncReport.schema.json",
+  "title": "TodoSyncReport",
+  "description": "Result of one todo_sync.py check run, written atomically to <state_dir>/todo-sync/report.json and read by the todo-watch mod. Derived data: never committed, rewritten by every check.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "rules_run", "rules_skipped", "drift", "by_rule", "counts",
+               "gh_fetched_at", "findings"],
+  "properties": {
+    "schema_version": {"const": 1, "description": "Report contract version; bumped on a breaking change."},
+    "generated_at": {"type": "string", "format": "date-time", "description": "UTC time the check finished (ISO 8601)."},
+    "elapsed_ms": {"type": "number", "minimum": 0, "description": "Wall time of the check run."},
+    "rules_run": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/rule_id"},
+      "uniqueItems": true,
+      "description": "Rule ids evaluated, in catalog order."
+    },
+    "rules_skipped": {
+      "type": "array",
+      "description": "Rule ids not evaluated, each with the reason (config key null, disabled, limited by --rules, input missing).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule", "reason"],
+        "properties": {
+          "rule": {"$ref": "#/$defs/rule_id"},
+          "reason": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "drift": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of counted findings: every error, plus every warn when todo.rules.warn_counts is true."
+    },
+    "by_rule": {
+      "type": "object",
+      "propertyNames": {"$ref": "#/$defs/rule_id"},
+      "additionalProperties": {"type": "integer", "minimum": 1},
+      "description": "Counted findings per rule id; rules with none are absent. Values sum to drift."
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["error", "warn"],
+      "properties": {
+        "error": {"type": "integer", "minimum": 0},
+        "warn": {"type": "integer", "minimum": 0}
+      },
+      "description": "All findings per severity, counted or not."
+    },
+    "gh_fetched_at": {
+      "type": ["string", "null"],
+      "description": "fetched_at of the issue cache the G rules read (ISO 8601); null when no cache was read."
+    },
+    "findings": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/finding"},
+      "description": "Every finding, errors first, then by rule id and file."
+    }
+  },
+  "$defs": {
+    "rule_id": {"type": "string", "pattern": "^[SPTG][0-9]+$", "description": "Sync rule id (S research, P plans, T TODO catalog, G GitHub)."},
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule", "severity", "counted", "file", "message"],
+      "properties": {
+        "rule": {"$ref": "#/$defs/rule_id"},
+        "severity": {"enum": ["error", "warn"]},
+        "counted": {"type": "boolean", "description": "Whether this finding is part of drift."},
+        "file": {"type": ["string", "null"], "description": "Repo-relative POSIX path the finding is about; null when it has none."},
+        "line": {"type": ["integer", "null"], "minimum": 1, "description": "1-based line in file, when known."},
+        "subject": {"type": ["string", "null"], "description": "Record the finding is about: an item id, entry id, plan item id or issue number."},
+        "message": {"type": "string", "minLength": 1, "description": "One-line reason."},
+        "fix": {"type": ["string", "null"], "description": "Suggested fix, one line."}
+      }
+    }
+  }
+}

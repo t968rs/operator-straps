@@ -24,3 +24,18 @@ def ts_optional_string(source: str, name: str) -> Optional[str]:
     match = re.search(rf"export const {name}(?::[^=]+)? = (?:'([^']*)'|(null))", source)
     assert match is not None, f"{name} not found"
     return match.group(1)
+
+
+def ts_number(source: str, name: str) -> float:
+    """The literal of ``export const <name>[: type] = <number>`` (``_`` digit separators allowed)."""
+    pattern = rf"export const {name}(?::[^=]+)? = (-?[0-9][0-9_]*(?:\.[0-9]+)?)\s*$"
+    match = re.search(pattern, source, re.MULTILINE)
+    assert match is not None, f"{name} not found"
+    return float(match.group(1).replace("_", ""))
+
+
+def ts_boolean(source: str, name: str) -> bool:
+    """The literal of ``export const <name>[: type] = true`` or ``= false``."""
+    match = re.search(rf"export const {name}(?::[^=]+)? = (true|false)\s*$", source, re.MULTILINE)
+    assert match is not None, f"{name} not found"
+    return match.group(1) == "true"
