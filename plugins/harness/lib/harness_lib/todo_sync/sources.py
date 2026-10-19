@@ -189,7 +189,7 @@ class Sources:
 
     @property
     def research(self) -> JsonFile:
-        """The research catalog (``todo.research.catalog``)."""
+        """The research catalog (``todo.research.catalog``, under ``todo.folder``)."""
         return self._memo("research", lambda: read_json(self.root, self.cfg.todo.research.catalog))
 
     @property
@@ -216,7 +216,7 @@ class Sources:
 
     def stub_files(self) -> List[str]:
         """Repo-relative paths of every ``stub_name`` file under the research root."""
-        name = self.cfg.todo.research.stub_name
+        name = self.cfg.todo.stub_name
         return self._memo("stub_files", lambda: sorted(
             self.rel(p) for p in self.research_root.rglob(name) if p.is_file()))
 

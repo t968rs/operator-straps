@@ -27,7 +27,7 @@ describe('resolveWatch', () => {
 
   test('the nearest harness.json wins', async ($, on) => {
     const w = world(on, { cwd: '/repo/sub' })
-    w.setFile('/repo/sub/.claude/harness.json', JSON.stringify({ todo: { catalog: null } }))
+    w.setFile('/repo/sub/.claude/harness.json', JSON.stringify({ todo: { folder: null } }))
     await start($, w)
     expect([w.toasts, w.commands, w.runs]).toEqual([[], [], []])
   })
@@ -42,10 +42,10 @@ describe('resolveWatch', () => {
     expect(asked('/repo/.claude/harness.json')).toBeGreaterThan(2)
   })
 
-  test('turning todo.catalog off mid-session stands the watch down', async ($, on) => {
+  test('turning todo.folder off mid-session stands the watch down', async ($, on) => {
     const w = world(on)
     await start($, w)
-    w.setFile('/repo/.claude/harness.json', JSON.stringify({ ...CONFIG, todo: { catalog: null } }))
+    w.setFile('/repo/.claude/harness.json', JSON.stringify({ ...CONFIG, todo: { folder: null } }))
     expect(await prompt($, w)).toEqual([])
     expect(await runTodo($)).toBe('todo-watch: TODO state unavailable.')
   })

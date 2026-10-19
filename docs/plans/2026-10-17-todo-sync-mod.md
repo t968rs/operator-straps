@@ -291,17 +291,23 @@ the dataclass and builder in `lib/harness_lib/config.py` (beside `Artifacts`, `c
 key table. Defaults are generic so `tests/contract/test_no_repo_literals.py` stays green; a project with no
 `todo` object gets an inactive feature.
 
+Revised 2026-10-19 (developer request, D16): one key, `todo.folder`, turns the feature on, and every other
+`todo` path is a name relative to it with a conventional default. The whole consumer block is
+`"todo": {"folder": "docs/RESEARCH/_TODO"}`. `config.py` resolves the names to project-relative paths once, so
+the rules read resolved paths; the mod's `config.ts` resolves them the same way.
+
 | Key | Default | Used by |
 |---|---|---|
-| `todo.catalog` | `null` (feature off) | everything; mod mirror |
-| `todo.catalog_schema` | `null` (harness `TodoCatalog.schema.json`) | T1 |
+| `todo.folder` | `null` (feature off) | everything; mod mirror |
+| `todo.catalog` | `RepoToDo.json` | everything; mod mirror |
+| `todo.catalog_schema` | `RepoToDo.schema.json`, used when present (else, or `null`: harness `TodoCatalog.schema.json`) | T1; mod mirror |
+| `todo.stub_name` | `_IMPL_TODO.md` (`null`: S1-S4 off) | S1-S4 |
 | `todo.top_n` | `10` | summary, snapshot; mod mirror |
-| `todo.snapshots.dir` | `null` | T2, `render` |
+| `todo.snapshots.dir` | `Snapshots` (`null`: T2 and `render` off) | T2, `render`; mod mirror |
 | `todo.snapshots.name_pattern` | `TODO_Snapshot_(?P<date>\d{4}_?\d{2}_?\d{2})\.md` | T2 (newest by `date`, else mtime) |
-| `todo.research.catalog` | `null` | S*, T3-T5 |
-| `todo.research.stub_name` | `null` | S1-S4 |
+| `todo.research.catalog` | `ResearchImplementationCatalog.json`, used when present (absent or `null`: S*, T3-T5 off) | S*, T3-T5; mod mirror |
 | `todo.research.anchor_pattern` | `^catalog_entry:\s*\S+#(?P<id>[a-z0-9-]+)\s*$` | S1, S4 |
-| `todo.research.ignore_folders` | `[]` (the folders holding `todo.snapshots.dir` and `todo.catalog` are excluded automatically) | S6 |
+| `todo.research.ignore_folders` | `[]` (the folders holding the snapshots and the catalog are excluded automatically) | S6 |
 | `todo.plans.pairs` | `true` | P* (paths from `artifacts.plans`) |
 | `todo.gh.repo` | `null` (the `origin` remote) | `fetch` |
 | `todo.gh.max_age_hours` | `24` | G5; mod toast suffix; mod mirror |
@@ -309,10 +315,9 @@ key table. Defaults are generic so `tests/contract/test_no_repo_literals.py` sta
 | `todo.rules.warn_counts` | `false` | drift number |
 | `todo.inject_context` | `true` | mod M2; mod mirror |
 
-The consumer's block would set `catalog`, `catalog_schema` (`docs/RESEARCH/RepoToDo.schema.json`),
-`snapshots.dir`, `research.catalog`, `research.stub_name` and `research.ignore_folders` (empty today: its only
-uncovered folder, `TODO/`, is excluded automatically); `artifacts.research` already exists (`plugins/harness/config/defaults.json`) and
-stays the research root.
+The consumer's block sets only `folder` (`docs/RESEARCH/_TODO`, where its catalog, schema and research catalog
+live since 2026-10-19); the folder holding them is excluded from S6 automatically, and `artifacts.research`
+(`plugins/harness/config/defaults.json`) stays the research root.
 
 ### Mod state
 
@@ -400,6 +405,7 @@ MVP (Phases 0-2): about 5-6 days. Full plan through Phase 4: about 8-9 days.
 | D12 | Status ownership between the two catalogs | Research catalog owns implementation status of research entries; TODO catalog owns ranking and its own workflow status; T5 flags contradictions |
 | D13 | Schema home | Harness `schemas/catalogs/TodoCatalog.schema.json`, adopted from the consumer's shipped shape; a project that keeps its schema beside the data (the consumer's `docs/RESEARCH/RepoToDo.schema.json`) names it in `todo.catalog_schema`, which T1 prefers |
 | D14 | Consumer pytest gate | Keep `test_research_impl_catalog.py` as is; harness S1-S3 mirror it rather than replace it |
+| D16 | How much a project configures | Settled 2026-10-19 (developer request): `todo.folder` alone turns the feature on; the catalog, catalog schema, research catalog and snapshots folder are names under it with defaults (`RepoToDo.json`, `RepoToDo.schema.json`, `ResearchImplementationCatalog.json`, `Snapshots`), and `stub_name` (`_IMPL_TODO.md`) moved from `todo.research` to `todo`. The two optional files are used only when present, so a project without a research catalog or its own schema needs no `null` keys. Setup stays in `harness.json` (no plugin install option): the engine, the hook and the Action read only that file |
 | D15 | Source of truth after bootstrap; where ranking lives | Settled in the kickoff (2026-10-19): the ranked catalog is the source of truth once it exists; the bootstrap generator's per-item override tables are not ported. The deterministic recompute of `priority.score` and `rank` is rule T10 inside `check` (the smaller change: no new subcommand, and drift shows up in the same report and toast). Discovering items stays agent work |
 
 ### Departures recorded during the Phase 0-2 build

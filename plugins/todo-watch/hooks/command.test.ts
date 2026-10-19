@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { COMMAND, COMMAND_DESCRIPTION } from './command'
-import { CATALOG_LINE, prompt, runTodo, start, world } from './testWorld'
+import { CATALOG_LINE, CATALOG_REL, prompt, runTodo, start, TODO_DIR, world } from './testWorld'
 
 describe('/todo', () => {
   test('registered once at session start in an active project', async ($, on) => {
@@ -40,7 +40,7 @@ describe('/todo', () => {
   })
 
   test('top_n limits the table', async ($, on) => {
-    const w = world(on, { config: { todo: { catalog: 'docs/RESEARCH/todo.json', top_n: 1 } } })
+    const w = world(on, { config: { todo: { folder: TODO_DIR, top_n: 1 } } })
     await start($, w)
     const text = await runTodo($)
     expect(text).toContain('| 1 | TODO-001 |')
@@ -51,7 +51,7 @@ describe('/todo', () => {
     const w = world(on, { hasRunner: false })
     await start($, w)
     await prompt($, w)
-    w.setFile('/repo/docs/RESEARCH/todo.json', JSON.stringify({ counts: { items: 1 }, items: [] }))
+    w.setFile(`/repo/${CATALOG_REL}`, JSON.stringify({ counts: { items: 1 }, items: [] }))
     expect((await runTodo($)).split('\n\n')).toEqual(['TODO 1', 'sync checks unavailable'])
   })
 

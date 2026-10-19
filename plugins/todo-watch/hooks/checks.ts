@@ -17,7 +17,7 @@ import { resolveWatch, type Watch } from './watch'
 /**
  * Engine glue for todo-watch: the catalog summary toast, the runner pointer, gated and coalesced check
  * runs, the sync report (re-read only when its mtime moved), drift toasts and the TODO_SYNC prompt line.
- * Active only in a project whose `.claude/harness.json` sets `todo.catalog` (./watch). Every host failure
+ * Active only in a project whose `.claude/harness.json` sets `todo.folder` (./watch). Every host failure
  * degrades to showing nothing; no hook throws into a tool call, a prompt or a turn. Functions taking `$`
  * are function declarations: the engine follows `$` past an import only into one.
  */

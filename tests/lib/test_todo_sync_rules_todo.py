@@ -45,7 +45,7 @@ def test_t1_prefers_the_project_schema(make_project) -> None:
     files["schemas/Todo.schema.json"] = {"$schema": "http://json-schema.org/draft-07/schema#",
                                          "type": "object", "required": ["owner"]}
     cfg = config()
-    cfg["todo"]["catalog_schema"] = "schemas/Todo.schema.json"
+    cfg["todo"]["catalog_schema"] = "../../../schemas/Todo.schema.json"
     [f] = rule_findings(build(make_project, files, cfg), "T1")
     assert "owner" in f.message
 

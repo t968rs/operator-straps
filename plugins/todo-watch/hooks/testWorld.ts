@@ -12,14 +12,14 @@ import { mock } from 'claude-code/testing'
 export const NOW = 1_800_000_000_000
 export const SCRIPT = '/plugins/harness/scripts/todo_sync.py'
 export const PYTHON = '/usr/bin/python3'
-export const CATALOG_REL = 'docs/RESEARCH/todo.json'
-export const RESEARCH_CATALOG_REL = 'docs/RESEARCH/catalog.json'
-export const SNAPSHOTS_REL = 'docs/RESEARCH/TODO'
+export const TODO_DIR = 'docs/RESEARCH/_TODO'
+export const CATALOG_REL = `${TODO_DIR}/RepoToDo.json`
+export const RESEARCH_CATALOG_REL = `${TODO_DIR}/ResearchImplementationCatalog.json`
+export const SNAPSHOTS_REL = `${TODO_DIR}/Snapshots`
 export const SYNC_REL = '.claude/state/harness/todo-sync'
 
-export const CONFIG = {
-  todo: { catalog: CATALOG_REL, research: { catalog: RESEARCH_CATALOG_REL }, snapshots: { dir: SNAPSHOTS_REL } },
-}
+/** The whole `todo` block a project needs: every other path takes its default under the folder. */
+export const CONFIG = { todo: { folder: TODO_DIR } }
 
 /** How the engine's check run ends. */
 export type EngineMode = 'ok' | 'timeout' | 'fail'

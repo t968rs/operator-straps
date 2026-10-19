@@ -7,6 +7,7 @@ scalars replace. Validation uses ``jsonschema`` when it imports, else a top-leve
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 import subprocess
 from dataclasses import dataclass
@@ -105,20 +106,25 @@ class TodoSnapshots:
 
 @dataclass(frozen=True)
 class TodoResearch:
-    """The research catalog, its stub file name and the stub line naming a catalog entry."""
+    """The research catalog and the stub line naming a catalog entry."""
 
     catalog: Optional[str]
-    stub_name: Optional[str]
     anchor_pattern: str
     ignore_folders: Tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class TodoConfig:
-    """TODO catalog sync: the catalog and the artifacts the todo_sync rules compare it with."""
+    """TODO catalog sync: the catalog and the artifacts the todo_sync rules compare it with.
 
+    Paths are project-relative POSIX, resolved from ``todo.folder``; each is None while the feature is off
+    (``folder`` null), its key is null, or (``catalog_schema``, ``research.catalog``) its file is absent.
+    """
+
+    folder: Optional[str]
     catalog: Optional[str]
     catalog_schema: Optional[str]
+    stub_name: Optional[str]
     top_n: int
     snapshots: TodoSnapshots
     research: TodoResearch
@@ -131,8 +137,8 @@ class TodoConfig:
 
     @property
     def enabled(self) -> bool:
-        """True once a catalog is configured."""
-        return self.catalog is not None
+        """True once ``todo.folder`` is configured."""
+        return self.folder is not None
 
 
 @dataclass(frozen=True)
@@ -274,7 +280,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path]) -> HarnessConf
         exclusions=m["exclusions"], artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
         auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
-        runlogs=_runlogs(m["runlogs"]), todo=_todo(m["todo"]),
+        runlogs=_runlogs(m["runlogs"]), todo=_todo(m["todo"], root),
     )
 
 
@@ -294,16 +300,30 @@ def _runlogs(r: Dict[str, Any]) -> RunLogsConfig:
     return RunLogsConfig(r["dir"], r["name_pattern"])
 
 
-def _todo(t: Dict[str, Any]) -> TodoConfig:
-    """``todo`` with the snapshot and anchor patterns checked for their named groups."""
+def _in_folder(folder: Optional[str], name: Optional[str]) -> Optional[str]:
+    """``name`` joined to ``folder`` and normalized (``..`` folds); None when either is None."""
+    if folder is None or name is None:
+        return None
+    return posixpath.normpath(posixpath.join(folder, name.replace("\\", "/")))
+
+
+def _if_present(root: Path, rel: Optional[str]) -> Optional[str]:
+    """``rel`` when that project file exists, else None."""
+    return rel if rel is not None and (root / rel).is_file() else None
+
+
+def _todo(t: Dict[str, Any], root: Path) -> TodoConfig:
+    """``todo`` with every path resolved under ``folder`` and both patterns checked for their named groups."""
     snaps, research = t["snapshots"], t["research"]
     _require_group(snaps["name_pattern"], "date", "todo/snapshots/name_pattern")
     _require_group(research["anchor_pattern"], "id", "todo/research/anchor_pattern")
+    folder = t["folder"].replace("\\", "/").rstrip("/") if t["folder"] is not None else None
     return TodoConfig(
-        catalog=t["catalog"], catalog_schema=t["catalog_schema"], top_n=int(t["top_n"]),
-        snapshots=TodoSnapshots(snaps["dir"], snaps["name_pattern"]),
-        research=TodoResearch(research["catalog"], research["stub_name"], research["anchor_pattern"],
-                              tuple(research["ignore_folders"])),
+        folder=folder, catalog=_in_folder(folder, t["catalog"]),
+        catalog_schema=_if_present(root, _in_folder(folder, t["catalog_schema"])), stub_name=t["stub_name"],
+        top_n=int(t["top_n"]), snapshots=TodoSnapshots(_in_folder(folder, snaps["dir"]), snaps["name_pattern"]),
+        research=TodoResearch(_if_present(root, _in_folder(folder, research["catalog"])),
+                              research["anchor_pattern"], tuple(research["ignore_folders"])),
         plans_pairs=bool(t["plans"]["pairs"]), gh_repo=t["gh"]["repo"],
         gh_max_age_hours=float(t["gh"]["max_age_hours"]), rules_disabled=tuple(t["rules"]["disabled"]),
         rules_warn_counts=bool(t["rules"]["warn_counts"]), inject_context=bool(t["inject_context"]),

@@ -8,7 +8,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _todo_helpers import RESEARCH_REL, STUB_REL, build, config, rule_findings, stub_text, todo_files  # noqa: E402
+from _todo_helpers import (RESEARCH_REL, STUB_REL, TODO_DIR, build, config, rule_findings, stub_text,  # noqa: E402
+                           todo_files)
 
 RULES = ["S1", "S2", "S3", "S4", "S5", "S6"]
 
@@ -108,14 +109,14 @@ def test_s6_ignore_folders(make_project, ignore: str) -> None:
     files = todo_files()
     files["docs/RESEARCH/Gamma/notes.md"] = "g\n"
     cfg = config()
-    cfg["todo"]["research"]["ignore_folders"] = [ignore]
+    cfg["todo"]["research"] = {"ignore_folders": [ignore]}
     assert rule_findings(build(make_project, files, cfg), "S6") == []
 
 
 def test_s6_catalog_and_snapshot_folders_are_excluded(make_project) -> None:
     files = todo_files()
     cfg = config()
-    cfg["todo"]["snapshots"]["dir"] = "docs/RESEARCH/Snaps/dated"
+    cfg["todo"]["snapshots"] = {"dir": "../Snaps/dated"}
     files["docs/RESEARCH/Snaps/dated/keep.md"] = "x\n"
     assert rule_findings(build(make_project, files, cfg), "S6") == []
 
@@ -130,14 +131,29 @@ def test_unreadable_research_catalog_is_one_finding(make_project) -> None:
     assert skipped["S2"] == skipped["T3"] == "research catalog unreadable"
 
 
-@pytest.mark.parametrize("key,rules", [
-    ("stub_name", ["S1", "S2", "S3", "S4"]),
-    ("catalog", ["S1", "S2", "S3", "S4", "S5", "S6", "T3", "T4", "T5"]),
-])
-def test_null_keys_gate_rules(make_project, key: str, rules) -> None:
+RESEARCH_GATED = ["S1", "S2", "S3", "S4", "S5", "S6", "T3", "T4", "T5"]
+NO_RESEARCH = "no research catalog (todo.research.catalog)"
+
+
+def test_null_stub_name_gates_s1_to_s4(make_project) -> None:
     from harness_lib.todo_sync import check
-    cfg = config()
-    cfg["todo"]["research"][key] = None
-    report = check(build(make_project, cfg=cfg))
+    report = check(build(make_project, cfg=config({"folder": TODO_DIR, "stub_name": None})))
     skipped = dict(report.rules_skipped)
-    assert all(skipped[r] == f"todo.research.{key} is null" for r in rules)
+    assert all(skipped[r] == "todo.stub_name is null" for r in ["S1", "S2", "S3", "S4"])
+
+
+def test_null_research_catalog_gates_its_rules(make_project) -> None:
+    from harness_lib.todo_sync import check
+    report = check(build(make_project, cfg=config({"folder": TODO_DIR, "research": {"catalog": None}})))
+    skipped = dict(report.rules_skipped)
+    assert all(skipped[r] == NO_RESEARCH for r in RESEARCH_GATED)
+
+
+def test_absent_research_catalog_gates_its_rules(make_project) -> None:
+    from harness_lib.todo_sync import check
+    files = todo_files()
+    del files[RESEARCH_REL]
+    report = check(build(make_project, files))
+    skipped = dict(report.rules_skipped)
+    assert all(skipped[r] == NO_RESEARCH for r in RESEARCH_GATED)
+    assert "T1" in report.rules_run

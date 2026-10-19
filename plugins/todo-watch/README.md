@@ -12,12 +12,14 @@ fails a tool call, a prompt or a turn on its own error.
 
 ## Activation and configuration
 
-The watch is active only in a project whose `.claude/harness.json` reads and sets `todo.catalog` to a
-non-blank path. Candidates for the project root are the session cwd and each folder above it, nearest
-first (a subfolder or a linked worktree finds its checkout's file), then `CLAUDE_PROJECT_DIR`; the first
-that holds `.claude/harness.json` is the root. Finding the root spawns no process. With `todo.catalog`
-null, or no harness file, the mod registers no command, toasts nothing and spawns nothing. Configured paths
-are joined to the root unless absolute.
+The watch is active only in a project whose `.claude/harness.json` reads and sets `todo.folder` to a
+non-blank path; that one key is the whole setup (`"todo": {"folder": "docs/RESEARCH/_TODO"}`). Candidates for
+the project root are the session cwd and each folder above it, nearest first (a subfolder or a linked
+worktree finds its checkout's file), then `CLAUDE_PROJECT_DIR`; the first that holds `.claude/harness.json`
+is the root. Finding the root spawns no process. With `todo.folder` null, or no harness file, the mod
+registers no command, toasts nothing and spawns nothing. The TODO paths are resolved under `todo.folder`
+(`..` folds), as harness_lib resolves them; the folder and `artifacts.*` are joined to the root unless
+absolute.
 
 An installed mod lives in its own plugin cache folder and cannot read the harness plugin's
 `config/defaults.json`, so `hooks/config.ts` carries copies of the values it needs and merges the
@@ -29,11 +31,12 @@ value keeps the default):
 | `state_dir` | `.claude/state/harness` | `<state_dir>/todo-sync/runner.json` (runner pointer) and `report.json` (sync report) |
 | `artifacts.research` | `docs/RESEARCH` | watched folder (writes under it re-check) |
 | `artifacts.plans` | `docs/PLANS` | watched folder |
-| `todo.catalog` | `null` | the TODO catalog the summary reads; watched file; null turns the mod off |
-| `todo.catalog_schema` | `null` | watched file |
+| `todo.folder` | `null` | where the TODO files live; null turns the mod off |
+| `todo.catalog` | `RepoToDo.json` (under the folder) | the TODO catalog the summary reads; watched file |
+| `todo.catalog_schema` | `RepoToDo.schema.json` (under the folder) | watched file; null: not watched |
 | `todo.top_n` | `10` | rows in the `/todo` table |
-| `todo.snapshots.dir` | `null` | watched folder |
-| `todo.research.catalog` | `null` | watched file |
+| `todo.snapshots.dir` | `Snapshots` (under the folder) | watched folder; null: not watched |
+| `todo.research.catalog` | `ResearchImplementationCatalog.json` (under the folder) | watched file; null: not watched |
 | `todo.gh.max_age_hours` | `24` | `gh <age> old` suffix once the issue cache in the report is older |
 | `todo.inject_context` | `true` | whether prompts carry the `TODO_SYNC` line |
 
@@ -46,11 +49,11 @@ without `config.ts` following.
 |---|------|----------|
 | M1 | TODO state is visible when a session starts | One toast at `session.start`, from the catalog: `TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001` (`counts.items`, `counts.by_status` `OPEN` / `PARTIAL` / `BLOCKED`, `counts.needs_decision`, the rank-1 id; zero segments other than the total are left out). The start toast never carries drift: a report older than the session start is never shown. |
 | M2 | The model sees drift without anyone pasting it | `TODO_SYNC drift=4 G2=1 P1=1 S5=1` on `prompt.submit` (rule ids sorted by letter, then number), attached only when it changed since the line last attached, and again after `/clear`, a resume or a main compaction. No line before a report newer than the session start; `TODO_SYNC unavailable` once when checks are unavailable. |
-| M3 | Changing a watched file re-checks within the turn | After a `Write`, `Edit`, `MultiEdit` or `NotebookEdit` call (`file_path`, or `notebook_path`) on a watched path (equal to `todo.catalog`, `todo.catalog_schema` or `todo.research.catalog`, or under `artifacts.research`, `artifacts.plans` or `todo.snapshots.dir`; backslashes and a project-relative spelling accepted, case-insensitive on a Windows-style root), one check runs. After `Bash` / `PowerShell`, which name no path, the watched files and folders (and the folders' top-level entries) are stat-ed; a check runs only when one mtime is newer than the last check start (else the last report). Any other call spawns nothing. |
+| M3 | Changing a watched file re-checks within the turn | After a `Write`, `Edit`, `MultiEdit` or `NotebookEdit` call (`file_path`, or `notebook_path`) on a watched path (equal to the resolved TODO catalog, catalog schema or research catalog, or under `artifacts.research`, `artifacts.plans` or the snapshots folder; backslashes and a project-relative spelling accepted, case-insensitive on a Windows-style root), one check runs. After `Bash` / `PowerShell`, which name no path, the watched files and folders (and the folders' top-level entries) are stat-ed; a check runs only when one mtime is newer than the last check start (else the last report). Any other call spawns nothing. |
 | M3b | Edits made outside the session are re-checked too | The same mtime probe on `prompt.submit` and on the main `turn.complete`. |
 | M4 | New drift is noticed, old drift does not nag | A toast only when a new report's drift rises above the last toasted drift (`TODO sync drift 4 (+2): P1=1 S5=3`), and once when it reaches zero from non-zero (`TODO sync clean`). |
 | M5 | Full detail on demand | `/todo` prints the summary line (with ` · 4 out of sync`, ` · sync clean` and ` · gh 3d old` once a fresh report says so), the top-N table (`Rank \| Id \| Status \| Score \| Title`), then `sync drift N: <rules>` and each finding as `rule severity file:line subject: message (fix)`, or `sync clean`, `sync checks unavailable`, or `no report yet`. |
-| M6 | The summary needs no engine | The mod reads `todo.catalog` itself; the catalog and the report are re-read only when their mtime moved (`$.fs.stat`). |
+| M6 | The summary needs no engine | The mod reads the TODO catalog itself; the catalog and the report are re-read only when their mtime moved (`$.fs.stat`). |
 
 ### Check runs
 

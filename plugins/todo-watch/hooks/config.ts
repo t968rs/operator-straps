@@ -7,19 +7,24 @@
 export const DEFAULT_STATE_DIR = '.claude/state/harness'
 export const DEFAULT_RESEARCH = 'docs/RESEARCH'
 export const DEFAULT_PLANS = 'docs/PLANS'
-export const DEFAULT_CATALOG: string | null = null
-export const DEFAULT_CATALOG_SCHEMA: string | null = null
+export const DEFAULT_FOLDER: string | null = null
+export const DEFAULT_CATALOG = 'RepoToDo.json'
+export const DEFAULT_CATALOG_SCHEMA: string | null = 'RepoToDo.schema.json'
 export const DEFAULT_TOP_N = 10
-export const DEFAULT_SNAPSHOTS_DIR: string | null = null
-export const DEFAULT_RESEARCH_CATALOG: string | null = null
+export const DEFAULT_SNAPSHOTS_DIR: string | null = 'Snapshots'
+export const DEFAULT_RESEARCH_CATALOG: string | null = 'ResearchImplementationCatalog.json'
 export const DEFAULT_GH_MAX_AGE_HOURS = 24
 export const DEFAULT_INJECT_CONTEXT = true
 
-/** Project-relative (or absolute) POSIX paths and the TODO settings the watch reads; null: not configured. */
+/**
+ * Project-relative (or absolute) POSIX paths and the TODO settings the watch reads. The TODO paths are
+ * resolved under `todo.folder` as harness_lib does; each is null while the folder is unset or its key is null.
+ */
 export type TodoWatchConfig = {
   stateDir: string
   researchDir: string
   plansDir: string
+  folder: string | null
   catalog: string | null
   catalogSchema: string | null
   topN: number
@@ -56,6 +61,23 @@ const hoursOr = (v: unknown, fallback: number): number =>
 
 const objectAt = (data: Json, key: string): Json => (isObject(data[key]) ? (data[key] as Json) : {})
 
+/**
+ * `name` joined to `folder` with `.` and `..` segments folded, as Python's `posixpath.normpath`; null when
+ * either is null.
+ */
+export const inFolder = (folder: string | null, name: string | null): string | null => {
+  if (folder === null || name === null) return null
+  const joined = `${folder}/${cleanPath(name)}`
+  const out: string[] = []
+  for (const seg of joined.split('/')) {
+    if (seg === '' || seg === '.') continue
+    if (seg === '..' && out.length > 0 && out[out.length - 1] !== '..') out.pop()
+    else out.push(seg)
+  }
+  const body = out.join('/') || '.'
+  return joined.startsWith('/') ? `/${body}` : body
+}
+
 const parse = (text: string): Json => {
   try {
     const data: unknown = JSON.parse(text)
@@ -74,21 +96,23 @@ export const readConfig = (text: string): TodoWatchConfig => {
   const artifacts = objectAt(data, 'artifacts')
   const todo = objectAt(data, 'todo')
   const inject = todo.inject_context
+  const folder = optionalPathOr(todo.folder, DEFAULT_FOLDER)
   return {
     stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
     researchDir: pathOr(artifacts.research, DEFAULT_RESEARCH),
     plansDir: pathOr(artifacts.plans, DEFAULT_PLANS),
-    catalog: optionalPathOr(todo.catalog, DEFAULT_CATALOG),
-    catalogSchema: optionalPathOr(todo.catalog_schema, DEFAULT_CATALOG_SCHEMA),
+    folder,
+    catalog: inFolder(folder, pathOr(todo.catalog, DEFAULT_CATALOG)),
+    catalogSchema: inFolder(folder, optionalPathOr(todo.catalog_schema, DEFAULT_CATALOG_SCHEMA)),
     topN: countOr(todo.top_n, DEFAULT_TOP_N),
-    snapshotsDir: optionalPathOr(objectAt(todo, 'snapshots').dir, DEFAULT_SNAPSHOTS_DIR),
-    researchCatalog: optionalPathOr(objectAt(todo, 'research').catalog, DEFAULT_RESEARCH_CATALOG),
+    snapshotsDir: inFolder(folder, optionalPathOr(objectAt(todo, 'snapshots').dir, DEFAULT_SNAPSHOTS_DIR)),
+    researchCatalog: inFolder(folder, optionalPathOr(objectAt(todo, 'research').catalog, DEFAULT_RESEARCH_CATALOG)),
     ghMaxAgeHours: hoursOr(objectAt(todo, 'gh').max_age_hours, DEFAULT_GH_MAX_AGE_HOURS),
     injectContext: typeof inject === 'boolean' ? inject : DEFAULT_INJECT_CONTEXT,
   }
 }
 
-/** Whether the watch runs at all: a TODO catalog is configured. */
+/** Whether the watch runs at all: `todo.folder` is configured (the catalog path follows from it). */
 export const isActive = (c: TodoWatchConfig): boolean => c.catalog !== null
 
 /** Whether a path is absolute: POSIX, drive or UNC. */

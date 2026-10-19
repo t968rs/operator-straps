@@ -5,7 +5,7 @@ write the runner pointer.
     Run the rule catalog and write the report (``TodoSyncReport.schema.json``) atomically to ``--out`` or
     ``<state_dir>/todo-sync/report.json``. ``summary`` prints one ``todo-sync drift=...`` line, ``json``
     the report, ``markdown`` a findings table. Exit 0, or 1 when a finding reaches the ``--fail-on``
-    severity (``error``: any error; ``warn``: any warn or error). With ``todo.catalog`` null the check is
+    severity (``error``: any error; ``warn``: any warn or error). With ``todo.folder`` null the check is
     inactive: one line, exit 0, nothing written.
 ``render [--date YYYY-MM-DD]``
     Write ``<todo.snapshots.dir>/TODO_Snapshot_<YYYY>_<MMDD>.md`` (header line, title, top-N table) and
@@ -35,7 +35,7 @@ from harness_lib.todo_sync import (TodoSyncError, check, render_snapshot, report
                                    write_report, write_runner)
 from harness_lib.todo_sync.report import Report, format_markdown, format_summary  # noqa: E402
 
-INACTIVE = "todo sync inactive (todo.catalog is null)"
+INACTIVE = "todo sync inactive (todo.folder is null)"
 #: ``--fail-on`` thresholds, lowest severity first.
 FAIL_LEVELS = ("warn", "error")
 

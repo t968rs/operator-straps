@@ -2,7 +2,7 @@
 """SessionStart hook: write the todo_sync runner pointer (``<state_dir>/todo-sync/runner.json``).
 
 The todo-watch mod reads the pointer to run ``scripts/todo_sync.py check`` with this session's interpreter.
-The project comes from the payload ``cwd``. With ``todo.catalog`` null the hook writes nothing. It never
+The project comes from the payload ``cwd``. With ``todo.folder`` null the hook writes nothing. It never
 runs a check, prints nothing and fails open: any error (unreadable payload or config, unwritable state
 directory) exits 0 silently.
 """

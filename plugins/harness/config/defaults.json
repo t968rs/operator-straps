@@ -51,16 +51,17 @@
     "name_pattern": "(?:.*\\D)?(?P<date>\\d{4}-\\d{2}-\\d{2})(?:_(?P<time>\\d{6}))?\\.(?:txt|log)"
   },
   "todo": {
-    "catalog": null,
-    "catalog_schema": null,
+    "folder": null,
+    "catalog": "RepoToDo.json",
+    "catalog_schema": "RepoToDo.schema.json",
+    "stub_name": "_IMPL_TODO.md",
     "top_n": 10,
     "snapshots": {
-      "dir": null,
+      "dir": "Snapshots",
       "name_pattern": "TODO_Snapshot_(?P<date>\\d{4}_?\\d{2}_?\\d{2})\\.md"
     },
     "research": {
-      "catalog": null,
-      "stub_name": null,
+      "catalog": "ResearchImplementationCatalog.json",
       "anchor_pattern": "^catalog_entry:\\s*\\S+#(?P<id>[a-z0-9-]+)\\s*$",
       "ignore_folders": []
     },

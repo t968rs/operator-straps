@@ -8,8 +8,8 @@ import {
   CHECK_TIMEOUT_MS, isWatchedPath, normalPath, parseReport, parseRunner, pathOfCall, reportTimeMs,
 } from './checks'
 import {
-  CATALOG_LINE, CATALOG_REL, checkRuns, CONFIG, NOW, prompt, PYTHON, reportText, runTodo, SCRIPT, start,
-  SYNC_REL, turnEnd, world, type World,
+  CATALOG_LINE, CATALOG_REL, checkRuns, CONFIG, NOW, prompt, PYTHON, RESEARCH_CATALOG_REL, reportText, runTodo,
+  SCRIPT, SNAPSHOTS_REL, start, SYNC_REL, turnEnd, world, type World,
 } from './testWorld'
 
 const HOUR = 3_600_000
@@ -89,7 +89,7 @@ const watchAt = (root: string): Watch => ({ root, cfg: readConfig(JSON.stringify
 describe('isWatchedPath', () => {
   test('watched files and anything under a watched folder', async () => {
     const w = watchAt('/repo')
-    expect(isWatchedPath(w, '/repo/docs/RESEARCH/todo.json')).toBe(true)
+    expect(isWatchedPath(w, `/repo/${CATALOG_REL}`)).toBe(true)
     expect(isWatchedPath(w, '/repo/docs/RESEARCH/FBS/_IMPL_TODO.md')).toBe(true)
     expect(isWatchedPath(w, '/repo/docs/PLANS/1_ActionPlan.json')).toBe(true)
     expect(isWatchedPath(w, '/repo/src/a.py')).toBe(false)
@@ -101,7 +101,7 @@ describe('isWatchedPath', () => {
   test('relative paths are project-relative; dot segments fold', async () => {
     const w = watchAt('/repo')
     expect(isWatchedPath(w, 'docs/PLANS/x.md')).toBe(true)
-    expect(isWatchedPath(w, './docs/RESEARCH/todo.json')).toBe(true)
+    expect(isWatchedPath(w, `./${CATALOG_REL}`)).toBe(true)
     expect(isWatchedPath(w, '/repo/src/../docs/PLANS/x.md')).toBe(true)
     expect(isWatchedPath(w, 'src/x.md')).toBe(false)
   })
@@ -336,7 +336,7 @@ describe('M3b: edits made outside the session', () => {
     await prompt($, w)
     expect(checkRuns(w).length).toBe(1)
     await w.clock.advance(1000)
-    w.touch(`${w.root}/docs/RESEARCH/catalog.json`)
+    w.touch(`${w.root}/${RESEARCH_CATALOG_REL}`)
     await prompt($, w)
     expect(checkRuns(w).length).toBe(2)
     await prompt($, w)
@@ -347,7 +347,7 @@ describe('M3b: edits made outside the session', () => {
     const w = world(on)
     await start($, w)
     await w.clock.advance(1000)
-    w.touch(`${w.root}/docs/RESEARCH/TODO/TODO_Snapshot_2026_1017.md`)
+    w.touch(`${w.root}/${SNAPSHOTS_REL}/TODO_Snapshot_2026_1017.md`)
     await turnEnd($, w)
     expect(checkRuns(w).length).toBe(2)
   })
@@ -429,7 +429,7 @@ describe('the runner pointer', () => {
 
 describe('inactive', () => {
   for (const [label, config] of [
-    ['todo.catalog null', { todo: { catalog: null } }],
+    ['todo.folder null', { todo: { folder: null } }],
     ['no harness.json', null],
   ] as const) {
     test(`${label}: no command, no toast, no process, no context`, async ($, on) => {
@@ -453,7 +453,7 @@ describe('project roots', () => {
       await start($, w)
       expect(w.toasts).toEqual([CATALOG_LINE])
       await write($, w, `${root}/docs/PLANS/a.md`.replace(/\//g, '\\'))
-      await write($, w, 'docs/RESEARCH/todo.json')
+      await write($, w, CATALOG_REL)
       await write($, w, `${root}/src/a.py`)
       expect(checkRuns(w).map(argv => argv[4])).toEqual([root, root, root])
     })

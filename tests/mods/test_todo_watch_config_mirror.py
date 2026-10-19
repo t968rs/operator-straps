@@ -26,6 +26,7 @@ _MIRRORED: Dict[Tuple[str, ...], Tuple[str, Reader]] = {
     ("state_dir",): ("DEFAULT_STATE_DIR", ts_optional_string),
     ("artifacts", "research"): ("DEFAULT_RESEARCH", ts_optional_string),
     ("artifacts", "plans"): ("DEFAULT_PLANS", ts_optional_string),
+    ("todo", "folder"): ("DEFAULT_FOLDER", ts_optional_string),
     ("todo", "catalog"): ("DEFAULT_CATALOG", ts_optional_string),
     ("todo", "catalog_schema"): ("DEFAULT_CATALOG_SCHEMA", ts_optional_string),
     ("todo", "top_n"): ("DEFAULT_TOP_N", ts_number),
@@ -64,19 +65,39 @@ def test_every_mirrored_key_is_pinned(config_ts: str) -> None:
     assert exported == {name for name, _ in _MIRRORED.values()}
 
 
+_FOLDER = "docs/RESEARCH/_TODO"
+
+#: config.ts constant -> TodoConfig path the harness resolves it to under ``todo.folder``
+_RESOLVED: Dict[str, Callable[[Any], Value]] = {
+    "DEFAULT_CATALOG": lambda t: t.catalog,
+    "DEFAULT_CATALOG_SCHEMA": lambda t: t.catalog_schema,
+    "DEFAULT_SNAPSHOTS_DIR": lambda t: t.snapshots.dir,
+    "DEFAULT_RESEARCH_CATALOG": lambda t: t.research.catalog,
+}
+
+
+def _ts(config_ts: str, name: str) -> Value:
+    readers = {n: reader for n, reader in _MIRRORED.values()}
+    return readers[name](config_ts, name)
+
+
 def test_mirrored_defaults_equal_an_unconfigured_project(make_project, config_ts: str) -> None:
     cfg = activate(load_config(make_project(config={})))
     loaded: Dict[str, Value] = {
         "DEFAULT_STATE_DIR": cfg.state_dir,
         "DEFAULT_RESEARCH": cfg.artifacts.research,
         "DEFAULT_PLANS": cfg.artifacts.plans,
-        "DEFAULT_CATALOG": cfg.todo.catalog,
-        "DEFAULT_CATALOG_SCHEMA": cfg.todo.catalog_schema,
+        "DEFAULT_FOLDER": cfg.todo.folder,
         "DEFAULT_TOP_N": cfg.todo.top_n,
-        "DEFAULT_SNAPSHOTS_DIR": cfg.todo.snapshots.dir,
-        "DEFAULT_RESEARCH_CATALOG": cfg.todo.research.catalog,
         "DEFAULT_GH_MAX_AGE_HOURS": cfg.todo.gh_max_age_hours,
         "DEFAULT_INJECT_CONTEXT": cfg.todo.inject_context,
     }
-    readers = {name: reader for name, reader in _MIRRORED.values()}
-    assert {name: readers[name](config_ts, name) for name in loaded} == loaded
+    assert {name: _ts(config_ts, name) for name in loaded} == loaded
+
+
+def test_mirrored_names_resolve_under_the_folder_as_the_harness_does(make_project, config_ts: str) -> None:
+    optional = ("DEFAULT_CATALOG_SCHEMA", "DEFAULT_RESEARCH_CATALOG")
+    files = {f"{_FOLDER}/{_ts(config_ts, n)}": "{}" for n in optional}
+    todo = activate(load_config(make_project(config={"todo": {"folder": _FOLDER}}, files=files))).todo
+    resolved = {name: get(todo) for name, get in _RESOLVED.items()}
+    assert resolved == {name: f"{_FOLDER}/{_ts(config_ts, name)}" for name in _RESOLVED}

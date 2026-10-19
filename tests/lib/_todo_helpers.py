@@ -13,20 +13,18 @@ from typing import Any, Dict, List, Optional
 from conftest import FIXTURES
 from harness_lib.config import HarnessConfig, load_config
 
-CATALOG_REL = "docs/RESEARCH/TODO/TodoCatalog.json"
-SNAP_DIR = "docs/RESEARCH/TODO"
+TODO_DIR = "docs/RESEARCH/_TODO"
+CATALOG_REL = f"{TODO_DIR}/RepoToDo.json"
+SNAP_DIR = f"{TODO_DIR}/Snapshots"
 SNAP_REL = f"{SNAP_DIR}/TODO_Snapshot_2026_1019.md"
-RESEARCH_REL = "docs/RESEARCH/ResearchCatalog.json"
+RESEARCH_REL = f"{TODO_DIR}/ResearchImplementationCatalog.json"
 STUB_REL = "docs/RESEARCH/Alpha/_IMPL_TODO.md"
 PLAN_REL = "docs/PLANS/0001_Sample_ActionPlan.json"
 PIP_REL = "docs/PLANS/0001_Sample_PIP.md"
 MIN_CATALOG = json.loads((FIXTURES / "todo_sync" / "TodoCatalog.min.json").read_text(encoding="utf-8"))
 
-TODO_BLOCK = {
-    "catalog": CATALOG_REL,
-    "snapshots": {"dir": SNAP_DIR},
-    "research": {"catalog": RESEARCH_REL, "stub_name": "_IMPL_TODO.md"},
-}
+#: The whole block a consuming project needs: every other path takes its default under the folder.
+TODO_BLOCK = {"folder": TODO_DIR}
 
 RESEARCH = {"entries": [
     {"id": "alpha-loader", "status": "PARTIALLY_IMPLEMENTED", "loe": "M (1-3 days)", "stub_path": STUB_REL,

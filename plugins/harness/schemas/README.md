@@ -137,7 +137,7 @@ Per-action entry: `name` (uses: reference), `line` (1-indexed), `nodejs_version_
 
 ### `catalogs/TodoCatalog.schema.json`
 
-**Applies to:** The ranked repository TODO catalog named by `todo.catalog` in `.claude/harness.json`, checked by `todo_sync.py` and summarized by the `todo-watch` mod. Rule T1 validates against it only when `todo.catalog_schema` is null; a project that keeps its own schema beside the data names it there instead.
+**Applies to:** The ranked repository TODO catalog (`<todo.folder>/RepoToDo.json` unless `todo.catalog` names another file under the folder), checked by `todo_sync.py` and summarized by the `todo-watch` mod. Rule T1 validates against it when the project keeps no schema beside the data (`<todo.folder>/RepoToDo.schema.json`, or the file `todo.catalog_schema` names), or when `todo.catalog_schema` is null.
 
 **Base relationship:** Standalone, closed (`additionalProperties: false`) at every level. Draft 2020-12.
 

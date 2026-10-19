@@ -116,7 +116,7 @@ def test_unknown_rule_is_a_problem(clean: Path) -> None:
 def test_inactive_project_writes_nothing(make_project) -> None:
     root = make_project({})
     done = _run(["check"], root)
-    assert (done.returncode, done.stdout.strip()) == (0, "todo sync inactive (todo.catalog is null)")
+    assert (done.returncode, done.stdout.strip()) == (0, "todo sync inactive (todo.folder is null)")
     assert not (root / ".claude" / "state").exists()
 
 
@@ -156,9 +156,19 @@ def test_render_then_t2_is_clean(make_project) -> None:
     assert _report(root)["findings"] == [], check.stdout
 
 
+def test_render_creates_the_default_snapshots_folder(make_project) -> None:
+    files = todo_files()
+    del files[SNAP_REL]
+    root = make_project(config(), files=files)
+    done = _run(["render", "--date", "2026-10-21"], root)
+    assert done.returncode == 0, done.stderr
+    assert Path(done.stdout.strip()) == root / SNAP_DIR / "TODO_Snapshot_2026_1021.md"
+    assert _run(["check", "--rules", "T2"], root).returncode == 0 and _report(root)["findings"] == []
+
+
 def test_render_refuses_a_name_the_pattern_rejects(make_project) -> None:
     cfg = config()
-    cfg["todo"]["snapshots"]["name_pattern"] = r"Snap_(?P<date>\d{8})\.md"
+    cfg["todo"]["snapshots"] = {"name_pattern": r"Snap_(?P<date>\d{8})\.md"}
     done = _run(["render", "--date", "2026-10-21"], make_project(cfg, files=todo_files()))
     assert done.returncode == 2 and "does not match" in done.stderr
 

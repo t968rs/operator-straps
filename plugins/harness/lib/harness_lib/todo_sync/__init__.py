@@ -69,9 +69,9 @@ def _config_gate(cfg: HarnessConfig, need: str) -> Optional[str]:
     """Why ``need`` is switched off in the configuration, or None."""
     todo = cfg.todo
     gates = {
-        "todo": None if todo.catalog else "todo.catalog is null",
-        "research": None if todo.research.catalog else "todo.research.catalog is null",
-        "stub_name": None if todo.research.stub_name else "todo.research.stub_name is null",
+        "todo": None if todo.catalog else "todo.folder is null",
+        "research": None if todo.research.catalog else "no research catalog (todo.research.catalog)",
+        "stub_name": None if todo.stub_name else "todo.stub_name is null",
         "plans": None if todo.plans_pairs else "todo.plans.pairs is false",
         "snapshots": None if todo.snapshots.dir else "todo.snapshots.dir is null",
     }
@@ -85,7 +85,7 @@ def _input(src: Sources, need: str) -> Optional[JsonFile]:
 def _gate(spec: RuleSpec, src: Sources, selected: Optional[frozenset]) -> Tuple[Optional[str], List[Finding]]:
     """``(skip reason, findings)``: a skip reason, or the one finding reporting an unreadable input."""
     if not src.cfg.todo.enabled:
-        return "todo.catalog is null", []
+        return "todo.folder is null", []
     if selected is not None and spec.id not in selected:
         return "not selected", []
     if spec.id in src.cfg.todo.rules_disabled:
@@ -162,7 +162,7 @@ def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
     """Write the dated top-N snapshot into ``todo.snapshots.dir`` and return its path."""
     todo = cfg.todo
     if not todo.catalog or not todo.snapshots.dir:
-        raise TodoSyncError("render needs todo.catalog and todo.snapshots.dir")
+        raise TodoSyncError("render needs todo.folder and a non-null todo.snapshots.dir")
     name = snapshot_name(date)
     if not re.fullmatch(todo.snapshots.name_pattern, name):
         raise TodoSyncError(f"{name} does not match todo.snapshots.name_pattern "

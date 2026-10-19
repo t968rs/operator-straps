@@ -37,7 +37,7 @@ async function rootAndConfig($: EngineInterface): Promise<{ root: string; text: 
 }
 
 /**
- * The watch for the session's project: active only when `.claude/harness.json` reads and `todo.catalog` is
+ * The watch for the session's project: active only when `.claude/harness.json` reads and `todo.folder` is
  * a non-blank string; undefined otherwise. Never throws, never spawns a process. A function declaration:
  * the engine follows `$` past an import only into one.
  */

@@ -101,16 +101,18 @@
     "todo": {
       "type": "object",
       "additionalProperties": false,
-      "description": "TODO catalog sync (todo_sync engine, todo-watch mod). Inactive while catalog is null; each rule group is off while the keys it needs are null.",
+      "description": "TODO catalog sync (todo_sync engine, todo-watch mod). Inactive while folder is null. Every other path is relative to folder ('..' allowed); a rule group is off while a file it needs is absent or its key is null.",
       "properties": {
-        "catalog": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Ranked TODO catalog JSON (TodoCatalog shape); null turns the feature off."},
-        "catalog_schema": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project schema rule T1 validates the catalog against (its declared draft); null: the harness catalogs/TodoCatalog.schema.json."},
+        "folder": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project-relative folder holding the TODO catalog and its companions; setting it turns the feature on. null: off."},
+        "catalog": {"$ref": "#/$defs/relPath", "description": "Ranked TODO catalog JSON (TodoCatalog shape), relative to folder."},
+        "catalog_schema": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project schema rule T1 validates the catalog against (its declared draft), relative to folder; used when the file exists, else (or when null) the harness catalogs/TodoCatalog.schema.json."},
+        "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
         "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the summary, the toast and the rendered snapshot."},
         "snapshots": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Folder render writes dated snapshots into and T2 reads the newest from; null turns T2 and render off."},
+            "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Folder render writes dated snapshots into and T2 reads the newest from, relative to folder; null turns T2 and render off."},
             "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a snapshot file name must fully match; named group date required (checked at config load); newest by date, else mtime."}
           }
         },
@@ -118,10 +120,9 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "catalog": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Research implementation catalog JSON; null turns the S rules and T3-T5 off. The research root is artifacts.research."},
-            "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
+            "catalog": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Research implementation catalog JSON, relative to folder; used when the file exists, else (or when null) the S rules and T3-T5 are off. The research root is artifacts.research."},
             "anchor_pattern": {"$ref": "#/$defs/regex", "description": "Regex a stub line matches to name its catalog entry; named group id required (checked at config load)."},
-            "ignore_folders": {"$ref": "#/$defs/strings", "description": "Top-level research folders S6 does not require an entry for; the folders holding todo.catalog and snapshots.dir are excluded automatically."}
+            "ignore_folders": {"$ref": "#/$defs/strings", "description": "Top-level research folders S6 does not require an entry for; the folders holding the catalog and the snapshots are excluded automatically."}
           }
         },
         "plans": {
