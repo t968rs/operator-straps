@@ -188,7 +188,8 @@ def test_todo_folder_alone_derives_every_path(make_project) -> None:
     files = {f"{TODO_DIR}/RepoToDo.schema.json": "{}", f"{TODO_DIR}/ResearchImplementationCatalog.json": "{}"}
     todo = load_config(make_project({"todo": {"folder": TODO_DIR}}, files=files)).todo
     assert (todo.folder, todo.enabled, todo.stub_name) == (TODO_DIR, True, "_IMPL_TODO.md")
-    assert (todo.catalog, todo.catalog_schema) == (f"{TODO_DIR}/RepoToDo.json", f"{TODO_DIR}/RepoToDo.schema.json")
+    assert (todo.catalog, todo.catalog_schema) == (
+        f"{TODO_DIR}/RepoToDo.json", f"{TODO_DIR}/RepoToDo.schema.json")
     assert (todo.snapshots.dir, todo.research.catalog) == (
         f"{TODO_DIR}/Snapshots", f"{TODO_DIR}/ResearchImplementationCatalog.json")
 
@@ -204,8 +205,10 @@ def test_todo_names_resolve_against_the_folder(make_project) -> None:
              "research": {"catalog": "Cat.json"}, "catalog_schema": None, "stub_name": "STUB.md"}
     files = {"docs/T/Cat.json": "{}", "docs/T/RepoToDo.schema.json": "{}"}
     todo = load_config(make_project({"todo": block}, files=files)).todo
-    assert (todo.folder, todo.catalog, todo.snapshots.dir) == ("docs/T", "docs/T/lists/ToDo.json", "docs/Snaps")
-    assert (todo.research.catalog, todo.catalog_schema, todo.stub_name) == ("docs/T/Cat.json", None, "STUB.md")
+    assert (todo.folder, todo.catalog, todo.snapshots.dir) == (
+        "docs/T", "docs/T/lists/ToDo.json", "docs/Snaps")
+    assert (todo.research.catalog, todo.catalog_schema, todo.stub_name) == (
+        "docs/T/Cat.json", None, "STUB.md")
 
 
 def test_todo_null_snapshots_dir_turns_snapshots_off(make_project) -> None:
@@ -225,8 +228,8 @@ def test_todo_override_merges_key_by_key(make_project) -> None:
         6.0, ("S6",), True, False)
 
 
-@pytest.mark.parametrize("bad", [{"folder": "/abs/todo"}, {"folder": "C:/todo"}, {"catalog": "/abs/ToDo.json"},
-                                 {"catalog": None}, {"stub_name": "a/b.md"},
+@pytest.mark.parametrize("bad", [{"folder": "/abs/todo"}, {"folder": "C:/todo"},
+                                 {"catalog": "/abs/ToDo.json"}, {"catalog": None}, {"stub_name": "a/b.md"},
                                  {"research": {"stub_name": "_IMPL_TODO.md"}}])
 def test_todo_rejects_bad_paths(make_project, bad: dict) -> None:
     with pytest.raises(ConfigError):
