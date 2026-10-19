@@ -49,6 +49,17 @@ def test_s1_terminal_entry_with_missing_stub_file(make_project) -> None:
     assert "does not exist" in f.message
 
 
+@pytest.mark.parametrize("stub_path", ["../outside/_IMPL_TODO.md", "/abs/_IMPL_TODO.md", "C:/x/_IMPL_TODO.md"])
+def test_s1_stub_path_off_the_root_is_reported_not_read(make_project, stub_path: str) -> None:
+    files = todo_files()
+    _entry(files)["stub_path"] = stub_path
+    cfg = build(make_project, files)
+    [f] = rule_findings(cfg, "S1")
+    assert (f.file, f.subject) == (RESEARCH_REL, "alpha-loader")
+    assert "leaves the project root" in f.message
+    assert rule_findings(cfg, "S3") == [] and rule_findings(cfg, "S4") == []
+
+
 def test_s1_leaves_missing_non_terminal_stub_to_s3(make_project) -> None:
     files = todo_files()
     del files[STUB_REL]

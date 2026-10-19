@@ -18,9 +18,9 @@ export const DEFAULT_INJECT_CONTEXT = true
 
 /**
  * Project-relative POSIX paths and the TODO settings the watch reads; an absolute path is rejected by the
- * harness schema (`relPath`), so the harness hooks leave sync checks unavailable. The TODO paths are
- * resolved under `todo.folder` as harness_lib does; each is null while the folder is unset, its key is null,
- * or it climbs above the project root.
+ * harness schema (`relPath`), and a rooted `todo.folder` leaves the watch inactive. The TODO paths are
+ * resolved under `todo.folder` as harness_lib does; each is null while the folder is unset or rooted, its key
+ * is null, or it climbs above the project root.
  */
 export type TodoWatchConfig = {
   stateDir: string
@@ -87,6 +87,12 @@ export const inFolder = (folder: string | null, name: string | null): string | n
 export const insideRoot = (path: string | null): string | null =>
   path === null || path === '..' || path.startsWith('../') ? null : path
 
+/**
+ * Whether a cleaned path is rooted or drive-prefixed (`/x`, `C:/x`, `C:x`): the harness schema rejects such a
+ * `todo.folder`, so the watch stays inactive rather than reading files outside the project.
+ */
+const isRooted = (path: string): boolean => /^(\/|[A-Za-z]:)/.test(path)
+
 /** `inFolder` with the project-root check applied to the result. */
 const todoPath = (folder: string | null, name: string | null): string | null => insideRoot(inFolder(folder, name))
 
@@ -109,7 +115,7 @@ export const readConfig = (text: string): TodoWatchConfig => {
   const todo = objectAt(data, 'todo')
   const inject = todo.inject_context
   const named = optionalPathOr(todo.folder, DEFAULT_FOLDER)
-  const folder = insideRoot(inFolder(named, '.')) === null ? null : named
+  const folder = named !== null && !isRooted(named) && insideRoot(inFolder(named, '.')) !== null ? named : null
   return {
     stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
     researchDir: pathOr(artifacts.research, DEFAULT_RESEARCH),

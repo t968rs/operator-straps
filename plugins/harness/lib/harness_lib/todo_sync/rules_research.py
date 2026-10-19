@@ -17,6 +17,11 @@ def _stub_path(entry: Dict[str, Any]) -> Optional[str]:
     return posix(value) if isinstance(value, str) and value else None
 
 
+def _escapes(rel: str) -> bool:
+    """Whether ``rel`` is rooted, drive-prefixed or holds a ``..`` segment: a path off the project root."""
+    return rel.startswith("/") or rel[1:2] == ":" or ".." in rel.split("/")
+
+
 def _terminal(entry: Dict[str, Any]) -> bool:
     return entry.get("status") in TERMINAL_RESEARCH
 
@@ -27,11 +32,16 @@ def _entry_finding(src: Sources, rule: str, entry: Dict[str, Any], message: str,
 
 
 def s1_stub_anchor(src: Sources) -> List[Finding]:
-    """S1: an entry's stub exists (terminal entries; S3 covers the rest) and its anchor names the entry."""
+    """S1: an entry's stub lies in the project, exists (terminal entries; S3 covers the rest) and its anchor
+    names the entry. A stub_path off the project root is reported here and never read."""
     out: List[Finding] = []
     for entry in src.entries():
         rel = _stub_path(entry)
         if rel is None:
+            continue
+        if _escapes(rel):
+            out.append(_entry_finding(src, "S1", entry, f"stub_path {rel} leaves the project root",
+                                      "Make stub_path project-relative, without '..' segments."))
             continue
         stub = src.stub(rel)
         if not stub.exists:
@@ -75,7 +85,7 @@ def s3_non_terminal_stub(src: Sources) -> List[Finding]:
         if rel is None:
             out.append(_entry_finding(src, "S3", entry, f"status {status} but stub_path is null",
                                       "Write the stub and set stub_path."))
-        elif not src.stub(rel).exists:
+        elif not _escapes(rel) and not src.stub(rel).exists:
             out.append(_entry_finding(src, "S3", entry, f"status {status} but stub_path {rel} does not exist",
                                       "Write the stub, or fix stub_path."))
     return out
@@ -86,7 +96,7 @@ def s4_stub_header(src: Sources) -> List[Finding]:
     out: List[Finding] = []
     for entry in src.entries():
         rel = _stub_path(entry)
-        stub = src.stub(rel) if rel else None
+        stub = src.stub(rel) if rel and not _escapes(rel) else None
         if stub is None or not stub.exists or stub.error:
             continue
         for name in ("status", "loe"):

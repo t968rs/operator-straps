@@ -8,7 +8,7 @@
   "base_sha": "cadc13f5f868367feb5622f16abdc6c46669f1a9",
   "head_sha": "4480520964518ea929e71317ac935d9ed39cfe2d",
   "review_date": "2026-10-19",
-  "verdict": "READY TO MERGE - 41 of 41 findings resolved, 0 bubbled",
+  "verdict": "READY TO MERGE - 44 of 44 findings resolved, 0 bubbled",
   "stats": {
     "additions": 7658,
     "deletions": 22,
@@ -24,7 +24,8 @@
     "overall (opus)",
     "system_shape (opus)",
     "roast (opus)",
-    "ci_mod_tests (tests)"
+    "ci_mod_tests (tests)",
+    "copilot_review (external)"
   ],
   "scoped_review_files": [
     "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/cicd.json",
@@ -36,7 +37,8 @@
     "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/overall.json",
     "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/system_shape.json",
     "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/roast.json",
-    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/ci_mod_tests.json"
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/ci_mod_tests.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/copilot_review.json"
   ],
   "bubbles": [],
   "strengths": [
@@ -788,6 +790,41 @@
           "Have testWorld.ts record the options of each process.run (e.g. a runOptions array next to runs), then in this test start a world, run one check, and assert that the check run carries timeoutMs equal to CHECK_TIMEOUT_MS. Keep the constant assertion if the 20 s value is a pinned contract.",
           "Record the opts argument in the testWorld process.run hook and assert timeoutMs === CHECK_TIMEOUT_MS on the check run."
         ]
+      },
+      {
+        "id": "M33",
+        "name": "This adds the install command, but the main README's “What you can do” table still lists only the four existing companio",
+        "file": "README.md",
+        "reviewer": "copilot_review",
+        "fix_kind": "judgment",
+        "summary": "Copilot (pullrequestreview-5576789866): This adds the install command, but the main README's “What you can do” table still lists only the four existing companion mods. The new `todo-watch` behavior and activation are therefore absent from the primary user-facing plugin overview; add a row there as part of registering this plugin.",
+        "fix": [
+          "This adds the install command, but the main README's “What you can do” table still lists only the four existing companion mods. The new `todo-watch` behavior and activation are therefore absent from the primary user-facing plugin overview; add a row there as part of registering this plugin."
+        ]
+      },
+      {
+        "id": "M34",
+        "name": "The research catalog is project data, but `_stub_path` accepts `../...` and `read_stub(root, rel)` then opens that path",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/rules_research.py",
+        "lines": "18",
+        "reviewer": "copilot_review",
+        "fix_kind": "judgment",
+        "summary": "Copilot (pullrequestreview-5576789866): The research catalog is project data, but `_stub_path` accepts `../...` and `read_stub(root, rel)` then opens that path without checking it remains under `root` (the catalog schema's `impl_stub` pattern likewise permits traversal). A catalog entry can therefore make a normal check read and parse files outside the consuming repository, contrary to the engine's project-relative path contract. Reject traversal paths in the schema and/or validate before calling `src.stub`.",
+        "fix": [
+          "The research catalog is project data, but `_stub_path` accepts `../...` and `read_stub(root, rel)` then opens that path without checking it remains under `root` (the catalog schema's `impl_stub` pattern likewise permits traversal). A catalog entry can therefore make a normal check read and parse files outside the consuming repository, contrary to the engine's project-relative path contract. Reject traversal paths in the schema and/or validate before calling `src.stub`."
+        ]
+      },
+      {
+        "id": "M35",
+        "name": "The mod accepts an absolute `todo.folder` even though the harness schema rejects it, because `inFolder` preserves the ab",
+        "file": "plugins/todo-watch/hooks/config.ts",
+        "lines": "112",
+        "reviewer": "copilot_review",
+        "fix_kind": "judgment",
+        "summary": "Copilot (pullrequestreview-5576789866): The mod accepts an absolute `todo.folder` even though the harness schema rejects it, because `inFolder` preserves the absolute path and `insideRoot` only checks `..`. `under()` then reads the catalog and other TODO data outside the project root, so an invalid project config can expose arbitrary external files through the toast, context, or `/todo`; reject rooted and drive-prefixed folder values before activating the watch.",
+        "fix": [
+          "The mod accepts an absolute `todo.folder` even though the harness schema rejects it, because `inFolder` preserves the absolute path and `insideRoot` only checks `..`. `under()` then reads the catalog and other TODO data outside the project root, so an invalid project config can expose arbitrary external files through the toast, context, or `/todo`; reject rooted and drive-prefixed folder values before activating the watch."
+        ]
       }
     ]
   },
@@ -1087,6 +1124,24 @@
       "status": "RESOLVED",
       "date": "2026-10-19",
       "evidence": "4480520 (working-tree snapshot; developer commits) - _utc_now writes generated_at with milliseconds (isoformat timespec milliseconds, +00:00 as Z), so a report landing in the start second is no longer dropped; testWorld.reportText truncates generated_at to whole seconds as the engine's _utc_now does; the same-second regression test belongs to checks.test.ts, the other fixer's part; checks.ts gates fresh reports on startGateMs (session start floored to the whole second) in refreshReport; the change was already in the working tree when this fixer ran, verified against the issue and not re-applied"
+    },
+    {
+      "id": "M33",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "f0da104 (working-tree snapshot; developer commits) - Added a todo-watch row to the README 'What you can do' table and its todo.folder activation line beside the other companion-plugin activation notes"
+    },
+    {
+      "id": "M34",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "f0da104 (working-tree snapshot; developer commits) - Added _escapes(): a rooted, drive-prefixed or '..' stub_path gets an S1 'leaves the project root' finding and is never passed to src.stub; S3 and S4 skip such paths"
+    },
+    {
+      "id": "M35",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "f0da104 (working-tree snapshot; developer commits) - readConfig rejects a rooted or drive-prefixed todo.folder (new isRooted check) so the watch stays inactive and under() never reads outside the root; TodoWatchConfig doc updated (plugins/todo-watch/README.md Activation text still says an absolute folder shows 'sync checks unavailable', outside this file set)"
     }
   ]
 }

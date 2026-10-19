@@ -74,6 +74,14 @@ describe('readConfig', () => {
     })
     expect(readConfig(text)).toEqual({ ...FOLDER_ONLY, catalogSchema: null, snapshotsDir: null, researchCatalog: null })
   })
+
+  test('a rooted, drive-prefixed or climbing folder leaves the watch inactive', async () => {
+    for (const folder of ['/abs/_TODO', 'C:/repo/_TODO', 'C:\\repo\\_TODO', '../_TODO', 'docs/../..']) {
+      const config = readConfig(JSON.stringify({ todo: { folder } }))
+      expect(config).toEqual(DEFAULTS)
+      expect(isActive(config)).toBe(false)
+    }
+  })
 })
 
 describe('inFolder', () => {

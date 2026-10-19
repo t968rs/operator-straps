@@ -20,7 +20,8 @@ nested inside its checkout, finds the checkout's file), then `CLAUDE_PROJECT_DIR
 harness file, the mod registers no command, toasts nothing and spawns nothing. The TODO paths are resolved
 under `todo.folder` (`..` folds), as harness_lib resolves them. The folder and `artifacts.*` are
 project-relative: they are joined to the root, and an absolute value is not supported. The harness schema
-rejects it (`relPath`), so the engine writes no runner pointer and the mod shows `sync checks unavailable`.
+rejects it (`relPath`), and a rooted or drive-prefixed `todo.folder` leaves the mod inactive, as a null one
+does, so it never reads files outside the project.
 
 An installed mod lives in its own plugin cache folder and cannot read the harness plugin's
 `config/defaults.json`, so `hooks/config.ts` carries copies of the values it needs and merges the
