@@ -1,4 +1,7 @@
-"""Plan rules P1-P4: ActionPlan items against their PIP sections, red and green per rule."""
+"""Plan rules P1-P4: ActionPlan items against their PIP sections, red and green per rule.
+
+The project is built on copies of ``TodoCatalog.min.json`` through ``_todo_helpers``.
+"""
 from __future__ import annotations
 
 import sys
@@ -72,7 +75,8 @@ def test_unparseable_plan_is_one_p_error(make_project) -> None:
     assert [(f.rule, f.file, f.severity) for f in report.findings] == [("P1", PLAN_REL, "error")]
 
 
-@pytest.mark.parametrize("evidence", [None, "Done in PR #12.", "see ab12"])
+@pytest.mark.parametrize("evidence", [None, "Done in PR #12.", "see ab12", "rendered 20261019",
+                                      "https://github.com/o/r/actions/runs/11234567890"])
 def test_p2_complete_without_sha(make_project, evidence) -> None:
     files = todo_files()
     _item(files, 0)["evidence"] = evidence

@@ -1,7 +1,7 @@
 """The ``scripts/todo_sync.py`` driver: check, render and runner subcommands, exit codes, output formats.
 
 Each case runs the script as a subprocess against a ``make_project`` tree built by
-``tests/lib/_todo_helpers.py``.
+``tests/lib/_todo_helpers.py``, which copies the ``TodoCatalog.min.json`` fixture into the project.
 """
 from __future__ import annotations
 

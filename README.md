@@ -95,7 +95,7 @@ Create `.claude/harness.json` in the consuming repository. Every key is optional
 
 TODO sync needs only `todo.folder`. With it set, the catalog is `<folder>/RepoToDo.json`, snapshots go to
 `<folder>/Snapshots`, and `<folder>/RepoToDo.schema.json` and `<folder>/ResearchImplementationCatalog.json` are
-used when they exist; stubs are `_IMPL_TODO.md` files under `artifacts.research`. Set a key below only to depart
+used when they exist (a name set explicitly must exist); stubs are `_IMPL_TODO.md` files under `artifacts.research`. Set a key below only to depart
 from that layout.
 
 | Key | Default | Used by |
@@ -115,19 +115,19 @@ from that layout.
 | `worktree_root` | `~/.config/superpowers/worktrees/{repo}` | `d-w`, `parallel2` |
 | `runlogs.dir` | `null` (the skill then needs `--dir`) | `check-runlogs` (newest run log; every subfolder at any depth, dated archives included, is searched too) |
 | `runlogs.name_pattern` | a name ending in `<YYYY-MM-DD>[_<HHMMSS>].txt` or `.log` | `check-runlogs` (named groups `date`, optional `time`) |
-| `todo.folder` | `null` (feature off) | the one key a project sets to turn TODO sync on: the project-relative folder holding the TODO catalog and its companions. Every `todo` path below is relative to it (`..` allowed) |
+| `todo.folder` | `null` (feature off) | the one key a project sets to turn TODO sync on: the project-relative folder holding the TODO catalog and its companions. Every `todo` path below is relative to it (`..` allowed; a path that climbs above the project root fails config load) |
 | `todo.catalog` | `RepoToDo.json` | `todo_sync.py`, its SessionStart hook, `todo-watch` (ranked TODO catalog JSON) |
-| `todo.catalog_schema` | `RepoToDo.schema.json` (used when present, else the harness `catalogs/TodoCatalog.schema.json`) | rule T1 (validated under the schema's own draft); `null` always uses the harness copy |
+| `todo.catalog_schema` | `RepoToDo.schema.json` (used when present, else the harness `catalogs/TodoCatalog.schema.json`) | rule T1 (validated under the schema's own draft); `null` always uses the harness copy; a name the project sets must exist (config load fails) |
 | `todo.stub_name` | `_IMPL_TODO.md` (`null`: S1-S4 off) | stub file name under the research root (`artifacts.research`) |
-| `todo.top_n` | `10` | `todo-watch` summary and toast, `todo_sync.py render` |
+| `todo.top_n` | `10` | `todo-watch` `/todo` table, `todo_sync.py render` |
 | `todo.snapshots.dir` | `Snapshots` (`null`: T2 and `render` off) | rule T2, `todo_sync.py render` (creates the folder) |
 | `todo.snapshots.name_pattern` | `TODO_Snapshot_<YYYY_MMDD>.md` | rule T2 (named group `date`; newest by date, else mtime) |
-| `todo.research.catalog` | `ResearchImplementationCatalog.json` (used when present; absent or `null`: S rules, T3-T5 off) | research catalog JSON |
+| `todo.research.catalog` | `ResearchImplementationCatalog.json` (used when present; absent or `null`: S rules, T3-T5 off) | research catalog JSON; a name the project sets must exist (config load fails) |
 | `todo.research.anchor_pattern` | `catalog_entry: <path>#<id>` | rules S1, S4 (named group `id`) |
 | `todo.research.ignore_folders` | `[]` | rule S6 (the folders holding the catalog and the snapshots are excluded automatically) |
 | `todo.plans.pairs` | `true` | rules P1-P4 over `artifacts.plans` |
 | `todo.gh.repo` | `null` (the `origin` remote) | issue fetch (Phase 3) |
-| `todo.gh.max_age_hours` | `24` | rule G5, `todo-watch` toast age suffix |
+| `todo.gh.max_age_hours` | `24` | rule G5 (Phase 3), `todo-watch` `/todo` summary age suffix |
 | `todo.rules.disabled` | `[]` | `todo_sync.py check` skips these rule ids |
 | `todo.rules.warn_counts` | `false` | warn findings count toward the drift number |
 | `todo.inject_context` | `true` | `todo-watch` per-prompt `TODO_SYNC` line |

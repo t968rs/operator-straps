@@ -6,7 +6,9 @@ write the runner pointer.
     ``<state_dir>/todo-sync/report.json``. ``summary`` prints one ``todo-sync drift=...`` line, ``json``
     the report, ``markdown`` a findings table. Exit 0, or 1 when a finding reaches the ``--fail-on``
     severity (``error``: any error; ``warn``: any warn or error). With ``todo.folder`` null the check is
-    inactive: one line, exit 0, nothing written.
+    inactive: one line, exit 0, nothing written. A ``--rules`` run marks each left-out rule ``not selected``
+    in ``rules_skipped``; the todo-watch mod ignores such a subset report instead of reading its drift as
+    the whole project's.
 ``render [--date YYYY-MM-DD]``
     Write ``<todo.snapshots.dir>/TODO_Snapshot_<YYYY>_<MMDD>.md`` (header line, title, top-N table) and
     print its path.

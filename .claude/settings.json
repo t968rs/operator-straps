@@ -4,7 +4,8 @@
     "pr-review-watch@operator-straps": true,
     "session-bookmark@operator-straps": true,
     "git-status@operator-straps": true,
-    "pytest-scope@operator-straps": true
+    "pytest-scope@operator-straps": true,
+    "todo-watch@operator-straps": true
   },
   "extraKnownMarketplaces": {
     "operator-straps": {

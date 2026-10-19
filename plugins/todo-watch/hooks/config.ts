@@ -17,8 +17,10 @@ export const DEFAULT_GH_MAX_AGE_HOURS = 24
 export const DEFAULT_INJECT_CONTEXT = true
 
 /**
- * Project-relative (or absolute) POSIX paths and the TODO settings the watch reads. The TODO paths are
- * resolved under `todo.folder` as harness_lib does; each is null while the folder is unset or its key is null.
+ * Project-relative POSIX paths and the TODO settings the watch reads; an absolute path is rejected by the
+ * harness schema (`relPath`), so the harness hooks leave sync checks unavailable. The TODO paths are
+ * resolved under `todo.folder` as harness_lib does; each is null while the folder is unset, its key is null,
+ * or it climbs above the project root.
  */
 export type TodoWatchConfig = {
   stateDir: string
@@ -78,6 +80,16 @@ export const inFolder = (folder: string | null, name: string | null): string | n
   return joined.startsWith('/') ? `/${body}` : body
 }
 
+/**
+ * A resolved TODO path, or null when it climbs above the project root (`..` or `../...`): harness_lib refuses
+ * such a path at config load, so the watch treats it as unset.
+ */
+export const insideRoot = (path: string | null): string | null =>
+  path === null || path === '..' || path.startsWith('../') ? null : path
+
+/** `inFolder` with the project-root check applied to the result. */
+const todoPath = (folder: string | null, name: string | null): string | null => insideRoot(inFolder(folder, name))
+
 const parse = (text: string): Json => {
   try {
     const data: unknown = JSON.parse(text)
@@ -96,17 +108,18 @@ export const readConfig = (text: string): TodoWatchConfig => {
   const artifacts = objectAt(data, 'artifacts')
   const todo = objectAt(data, 'todo')
   const inject = todo.inject_context
-  const folder = optionalPathOr(todo.folder, DEFAULT_FOLDER)
+  const named = optionalPathOr(todo.folder, DEFAULT_FOLDER)
+  const folder = insideRoot(inFolder(named, '.')) === null ? null : named
   return {
     stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
     researchDir: pathOr(artifacts.research, DEFAULT_RESEARCH),
     plansDir: pathOr(artifacts.plans, DEFAULT_PLANS),
     folder,
-    catalog: inFolder(folder, pathOr(todo.catalog, DEFAULT_CATALOG)),
-    catalogSchema: inFolder(folder, optionalPathOr(todo.catalog_schema, DEFAULT_CATALOG_SCHEMA)),
+    catalog: todoPath(folder, pathOr(todo.catalog, DEFAULT_CATALOG)),
+    catalogSchema: todoPath(folder, optionalPathOr(todo.catalog_schema, DEFAULT_CATALOG_SCHEMA)),
     topN: countOr(todo.top_n, DEFAULT_TOP_N),
-    snapshotsDir: inFolder(folder, optionalPathOr(objectAt(todo, 'snapshots').dir, DEFAULT_SNAPSHOTS_DIR)),
-    researchCatalog: inFolder(folder, optionalPathOr(objectAt(todo, 'research').catalog, DEFAULT_RESEARCH_CATALOG)),
+    snapshotsDir: todoPath(folder, optionalPathOr(objectAt(todo, 'snapshots').dir, DEFAULT_SNAPSHOTS_DIR)),
+    researchCatalog: todoPath(folder, optionalPathOr(objectAt(todo, 'research').catalog, DEFAULT_RESEARCH_CATALOG)),
     ghMaxAgeHours: hoursOr(objectAt(todo, 'gh').max_age_hours, DEFAULT_GH_MAX_AGE_HOURS),
     injectContext: typeof inject === 'boolean' ? inject : DEFAULT_INJECT_CONTEXT,
   }

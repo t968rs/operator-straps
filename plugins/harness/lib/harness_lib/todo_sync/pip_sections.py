@@ -12,7 +12,7 @@ from typing import List, Optional, Tuple
 
 _HEADING = re.compile(r"^ {0,3}(#{1,6})\s+(.*?)(?:\s+#+)?\s*$")
 _BOX = re.compile(r"^\s*[-*+]\s+\[([ xX])\]")
-_FENCE = re.compile(r"^\s*(```|~~~)")
+_FENCE = re.compile(r"^\s*(`{3,}|~{3,})")
 _KEY_STRIP = "`*_[]# "
 _TASK_WORD = re.compile(r"^task\s+", re.IGNORECASE)
 
@@ -55,16 +55,28 @@ class Section:
         return tuple(b for b in self.boxes if not b.checked)
 
 
+def _next_fence(fence: Optional[str], line: str) -> Optional[str]:
+    """The open fence marker after ``line``. Only a bare run of the opening character, at least as long
+    as the opening marker, closes the block; any other fence line inside it is content."""
+    marker = _FENCE.match(line)
+    if marker is None:
+        return fence
+    run = marker.group(1)
+    if fence is None:
+        return run
+    closes = run[0] == fence[0] and len(run) >= len(fence) and not line[marker.end():].strip()
+    return None if closes else fence
+
+
 def parse_pip(text: str) -> PipDoc:
     """Headings and checkboxes of ``text``, skipping fenced code blocks."""
     headings: List[Heading] = []
     boxes: List[Checkbox] = []
-    fenced = False
+    fence: Optional[str] = None
     for n, line in enumerate(text.splitlines(), 1):
-        if _FENCE.match(line):
-            fenced = not fenced
-            continue
-        if fenced:
+        was_fenced = fence is not None
+        fence = _next_fence(fence, line)
+        if was_fenced or fence is not None:
             continue
         heading = _HEADING.match(line)
         if heading:
@@ -105,7 +117,8 @@ def _matches(heading: Heading, key: str) -> bool:
 
 
 def find_section(doc: PipDoc, key: str) -> Optional[Section]:
-    """The first section whose heading starts with ``key`` (at a boundary) or whose slug equals it."""
+    """The first section whose heading starts with ``key`` (at a boundary) or whose slug equals it or
+    starts with it and a hyphen."""
     for i, heading in enumerate(doc.headings):
         if not _matches(heading, key):
             continue

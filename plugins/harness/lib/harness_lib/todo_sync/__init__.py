@@ -140,7 +140,7 @@ def check(cfg: HarnessConfig, rules: Optional[Iterable[str]] = None) -> Report:
 
 
 def _utc_now() -> str:
-    return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return dt.datetime.now(dt.timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 def report_path(cfg: HarnessConfig) -> Path:
@@ -154,7 +154,8 @@ def runner_path(cfg: HarnessConfig) -> Path:
 
 
 def snapshot_name(date: dt.date) -> str:
-    """``TODO_Snapshot_<YYYY>_<MMDD>.md`` for ``date``."""
+    """``TODO_Snapshot_<YYYY>_<MMDD>.md`` for ``date``; render writes this fixed name, so
+    ``todo.snapshots.name_pattern`` must also fully match it or render refuses."""
     return f"TODO_Snapshot_{date:%Y}_{date:%m%d}.md"
 
 

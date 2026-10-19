@@ -49,8 +49,10 @@ def t1_schema(src: Sources) -> List[Finding]:
     try:
         schema = _schema(src)
     except (OSError, ValueError) as exc:
-        return [Finding("T1", "error", posix(src.cfg.todo.catalog_schema or HARNESS_SCHEMA),
-                        f"catalog schema unreadable: {exc}")]
+        if src.cfg.todo.catalog_schema:
+            return [Finding("T1", "error", posix(src.cfg.todo.catalog_schema),
+                            f"catalog schema unreadable: {exc}")]
+        return [Finding("T1", "error", None, f"harness schema {HARNESS_SCHEMA} unreadable: {exc}")]
     cls = jsonschema.validators.validator_for(schema, default=jsonschema.Draft202012Validator)
     validator = cls(schema, format_checker=jsonschema.FormatChecker())
     errors = sorted(validator.iter_errors(src.todo.data), key=lambda e: [str(p) for p in e.absolute_path])
@@ -61,7 +63,10 @@ def t1_schema(src: Sources) -> List[Finding]:
 
 
 def t2_snapshot(src: Sources) -> List[Finding]:
-    """T2 (warn): the newest snapshot's header hash equals the hash of the current top-N rows."""
+    """T2 (warn): the newest snapshot's header hash equals the hash of the current top-N rows.
+
+    Catalog-side drift only (D10): the table body under the header is never compared.
+    """
     folder = posix(src.cfg.todo.snapshots.dir)
     snap = src.snapshot()
     fix = "Run todo_sync.py render."
@@ -91,7 +96,9 @@ def t3_links_resolve(src: Sources) -> List[Finding]:
                 out.append(Finding("T3", "error", src.todo.rel, f"catalog entry {entry_id} not in "
                                    f"{src.research.rel}", subject=item_id, fix="Fix or drop the entry id."))
         for source in item.get("sources") or []:
-            ref = source.get("ref") if isinstance(source, dict) else None
+            if not isinstance(source, dict):
+                continue
+            ref = source.get("ref")
             if source.get("type") in ("research_folder", "impl_stub") and isinstance(ref, str):
                 if not src.cfg.path(ref).exists():
                     out.append(Finding("T3", "error", src.todo.rel, f"{source['type']} source {ref} does "
@@ -101,10 +108,11 @@ def t3_links_resolve(src: Sources) -> List[Finding]:
 
 def t4_entries_referenced(src: Sources) -> List[Finding]:
     """T4 (warn): every non-terminal research entry is referenced by some item's ``catalog_entry_ids``."""
-    cited = {e for item in src.items() for e in item.get("catalog_entry_ids") or []}
+    cited = {str(e) for item in src.items() for e in item.get("catalog_entry_ids") or []}
     return [Finding("T4", "warn", src.research.rel, f"{e.get('status')} entry referenced by no TODO item",
                     subject=str(e.get("id")), fix="Add a TODO item citing it, or update its status.")
-            for e in src.entries() if e.get("status") not in TERMINAL_RESEARCH and e.get("id") not in cited]
+            for e in src.entries()
+            if e.get("status") not in TERMINAL_RESEARCH and str(e.get("id")) not in cited]
 
 
 def t5_live_entries(src: Sources) -> List[Finding]:
@@ -220,7 +228,7 @@ def _t10_scores(src: Sources, method: Any) -> List[Finding]:
     for item in src.items():
         try:
             drift = _score_drift(item, method)
-        except (RankingError, TypeError, KeyError) as exc:
+        except (RankingError, TypeError, KeyError, ValueError, ZeroDivisionError) as exc:
             drift = [f"cannot score: {exc}"]
         if drift:
             out.append(Finding("T10", "error", src.todo.rel, "priority differs from ranking_method: "
@@ -229,11 +237,23 @@ def _t10_scores(src: Sources, method: Any) -> List[Finding]:
     return out
 
 
+def _stored_ranks(items: List[Dict[str, Any]]) -> Dict[str, List[Any]]:
+    """Stored ranks per ``str`` id, in item order; a duplicated id keeps one rank per copy."""
+    queues: Dict[str, List[Any]] = {}
+    for item in items:
+        queues.setdefault(str(item.get("id")), []).append(item.get("rank"))
+    return queues
+
+
 def _t10_ranks(src: Sources, method: Any) -> List[Finding]:
-    ranks = {str(i.get("id")): i.get("rank") for i in src.items()}
-    return [Finding("T10", "error", src.todo.rel, f"rank {ranks[item_id]}, recomputed order puts it at {pos}",
-                    subject=item_id, fix="Re-rank the items by score and tie breakers.")
-            for pos, item_id in enumerate(expected_order(src.items(), method), 1) if ranks[item_id] != pos]
+    queues, out = _stored_ranks(src.items()), []
+    for pos, item_id in enumerate(expected_order(src.items(), method), 1):
+        rank = queues[item_id].pop(0)
+        if rank != pos:
+            msg = f"rank {rank}, recomputed order puts it at {pos}"
+            out.append(Finding("T10", "error", src.todo.rel, msg, subject=item_id,
+                               fix="Re-rank the items by score and tie breakers."))
+    return out
 
 
 def t10_ranking(src: Sources) -> List[Finding]:

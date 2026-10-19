@@ -19,7 +19,7 @@ from harness_lib.todo_sync.pip_sections import PipDoc, parse_pip
 TERMINAL_RESEARCH = frozenset({"FULLY_IMPLEMENTED", "NOT_APPLICABLE"})
 PLAN_SUFFIX = "_ActionPlan.json"
 PIP_SUFFIX = "_PIP.md"
-HEADER = re.compile(r"^<!-- todo-snapshot source=(?P<source>\S+) top=(?P<top>\d+) "
+HEADER = re.compile(r"^<!-- todo-snapshot source=(?P<source>.+?) top=(?P<top>\d+) "
                     r"rows_sha256=(?P<sha>[0-9a-f]{64}) rendered=(?P<rendered>\d{4}-\d{2}-\d{2}) -->$")
 _STATUS = re.compile(r"^status:(.*)$")
 _LOE = re.compile(r"^loe:(.*)$")

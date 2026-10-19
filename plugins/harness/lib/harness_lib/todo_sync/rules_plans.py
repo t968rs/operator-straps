@@ -14,7 +14,9 @@ from harness_lib.todo_sync.sources import PlanPair, Sources, posix
 
 DONE = frozenset({"COMPLETE", "CLOSED_NO_ACTION"})
 OPEN = frozenset({"PENDING", "IN_PROGRESS"})
-SHA = re.compile(r"\b[0-9a-f]{7,40}\b", re.IGNORECASE)
+# A run of 7-40 hex characters with at least one letter: all-digit tokens (CI run ids, dates, ticket
+# numbers) are not commit SHAs.
+SHA = re.compile(r"\b(?=[0-9]*[a-f])[0-9a-f]{7,40}\b", re.IGNORECASE)
 
 
 def _plan_items(src: Sources, rule: str, pair: PlanPair,
@@ -71,7 +73,8 @@ def p1_checkboxes(src: Sources) -> List[Finding]:
 
 
 def _names_sha(item: Dict[str, Any]) -> bool:
-    """True when ``evidence`` or any ``verification_references`` string carries a 7-40 hex SHA."""
+    """True when ``evidence`` or any ``verification_references`` string carries a 7-40 hex SHA with at
+    least one hex letter."""
     refs = item.get("verification_references")
     texts = [item.get("evidence"), *(refs if isinstance(refs, list) else [])]
     return any(isinstance(t, str) and SHA.search(t) for t in texts)

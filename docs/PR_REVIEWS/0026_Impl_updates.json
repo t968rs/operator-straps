@@ -1,0 +1,1092 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 26,
+  "pr_title": "Impl updates",
+  "branch": "_IMPL_Updates",
+  "base_branch": "main",
+  "base_sha": "cadc13f5f868367feb5622f16abdc6c46669f1a9",
+  "head_sha": "4480520964518ea929e71317ac935d9ed39cfe2d",
+  "review_date": "2026-10-19",
+  "verdict": "READY TO MERGE - 41 of 41 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 7658,
+    "deletions": 22,
+    "files_changed": 62
+  },
+  "reviewers": [
+    "cicd (sonnet)",
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "multi_artifact (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "ci_mod_tests (tests)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/cicd.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/config.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/tests.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/docs.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/multi_artifact.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/overall.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/roast.json",
+    "docs/_scratch/pr_review/0026/pr26_20261019T173906Z/findings/ci_mod_tests.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The mod test loop adds plugins/todo-watch, which exists with a manifest, hooks and *.test.ts files, so the new mod is covered by the same claude plugin test step as the other four.",
+    "The strict-validate step already globs plugins/*/, and select_tests.py sets plugins=true for any plugins/ path, so todo-watch needs no other CI wiring.",
+    "TodoSyncReport.schema.json matches Report.to_dict field for field (required set, nullable file/line/subject/fix, by_rule minimum 1 with zero-count rules left out, errors-first ordering).",
+    "The new todo config block follows the four-place rule: the schema, defaults.json, the TodoConfig dataclass/_todo builder and the README key table all agree on keys and defaults, and the todo-watch config.ts mirror reproduces the normpath folding.",
+    "TodoCatalog encodes the per-record invariants it can (needs_decision/decision_question if-then-else, NEEDS_DECISION forcing needs_decision, per-source-type ref patterns and required url/item) and says which cross-record rules move to the engine.",
+    "Both $id values follow the schemas README convention, and named-group requirements on the regex keys are checked at config load (_require_group).",
+    "Rule tests are red/green per rule against one in-sync project (_todo_helpers.todo_files) and mutate a single input each, so each failure points at one rule and one cause.",
+    "todo-watch hook tests run the real mod through a fake world (testWorld.ts: files, clock, engine, toasts). They test behavior, not wiring of stubbed collaborators.",
+    "Cross-language contract tests pin config.ts defaults to defaults.json and to the folder resolution in the harness, and pin checks.ts report keys to TodoSyncReport.schema.json. Silent drift between the TypeScript mod and the Python engine is caught.",
+    "Driver tests run scripts/todo_sync.py as a subprocess and validate every written report against the published schema, which covers exit codes for --fail-on error/warn on clean, warn-only and error trees.",
+    "Catalog and report schema rejection cases are parametrized with readable ids, and the fixture is checked to validate under the 2020-12 schema.",
+    "_gate and Sources.claim report an unreadable input once, as an error finding, and every other rule that needs it records a skip reason instead of repeating the error.",
+    "write_atomic writes to a temp file in the same directory, swaps it in with os.replace and removes the temp on any failure, so the mod never reads a half-written report.",
+    "config.ts inFolder copies posixpath.normpath's '..' folding, so the mod resolves todo.* paths exactly as harness_lib does, and test_todo_watch_config_mirror.py pins the copied defaults.",
+    "The todo-watch scheduler runs one check at a time, owes one rerun for changes made during a run, and fails open at every host call.",
+    "_require_group replaces the duplicated pattern-group check, and both new todo patterns are validated at config load.",
+    "The README key table lists all 16 `todo.*` keys with defaults that match defaults.json, completing the four-places config rule.",
+    "The todo-watch README report-field list matches checks.ts REPORT_KEYS / FINDING_KEYS and TodoSyncReport.schema.json exactly.",
+    "The TodoSyncReport section in the schemas README matches the schema required set and the drift / by_rule / counts semantics.",
+    "The design doc departures table records each build divergence (P2 SHA source, `--fail-on warn`, root resolution, start toast) with its reason.",
+    "The CLAUDE.md mirror rule now covers any mod, and both mirror tests exist.",
+    "Both schemas declare $id in the canonical https://github.com/t968rs/operator-straps/plugins/harness/schemas/<path> form from the schemas README and use only internal #/$defs refs, so neither depends on sibling-path or bare-token resolution.",
+    "Every if/then in the TodoCatalog allOf blocks guards its const with required, so the source-type and needs_decision/status conditionals cannot fire vacuously on a missing key. No enum in the base is contradicted by a branch.",
+    "The report rule_id pattern ^[SPTG][0-9]+$ covers every rule id the engine registers (S1-S6, P1-P4, T1-T10), and the T6-T10 split cited in the catalog description matches the rules_todo.py functions one for one.",
+    "Both schemas are closed at every object level with additionalProperties false, and the report by_rule minimum 1 matches Report.by_rule omitting zero-count rules.",
+    "Unreadable inputs give one finding, then later rules skip with a reason, and malformed records become findings, never tracebacks.",
+    "Report keys and mirrored defaults, both literal and as resolved under todo.folder, are pinned by contract tests across Python and TypeScript.",
+    "T10 recomputes score and rank from the catalog ranking_method, and the fixture reproduces every stored score.",
+    "D16 lands in all four config places plus the mod mirror. The departures table records each build deviation with its reason.",
+    "All 16 todo.* keys are in the four places CLAUDE.md requires, and the mod mirror is pinned both by literal and by the folder-resolved paths (test_todo_watch_config_mirror.py).",
+    "The CLAUDE.md mirror rule was generalized to any mod hooks/config.ts in the same PR that adds the second mirror.",
+    "The design doc departures table gives a reason for each build deviation (P2 SHA source, --fail-on warn, P1 heading match, T10 order, root rule, toast timing).",
+    "Root-separation coverage extends to all three new writers, and the new hook is pinned in test_hooks_json_paths.py.",
+    "The contract and mirror tests name checks.ts, config.ts and defaults.json literally, so tools/select_tests.py selects them.",
+    "Unreadable inputs go through Sources.claim: one error finding per broken file, later rules skip with a reason, and _run turns a malformed record into a finding instead of a traceback.",
+    "Cross-language contracts are pinned from both sides: the config mirror test checks the TS defaults against defaults.json and against the paths harness_lib resolves under todo.folder, and the report contract test ties the checks.ts key lists to TodoSyncReport.schema.json.",
+    "Rule tests are red/green per rule on real make_project trees built from one in-sync fixture, with no mocking of the code under test.",
+    "Mod pacing (single-flight with an owed rerun, clock.after(0) so no tool result waits) is exercised with held engine runs, and every hook fails open.",
+    "The design doc carries a departure table that records each build-time deviation with its reason, so the shipped code matches the documented design."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I2",
+        "name": "todo paths may resolve outside the project root",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+          "plugins/todo-watch/hooks/config.ts"
+        ],
+        "lines": "104,106,115",
+        "reviewer": "config, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The todo description allows .. in every path, and relPath only bans a leading slash or drive letter. So todo.folder = ../x, or snapshots.dir = ../../x under a one-level folder, normalizes to a path above the project root. config.py _in_folder (303-307) folds .. with posixpath.normpath and never checks the result, and render_snapshot writes there (todo_sync/__init__.py:177 via cfg.path). That breaks the rule that data goes to the project, and the TodoSyncError docstring promise that a render target is refused is never enforced.\n\nAlso (config): The todo object description says a rule group switches off while a file it needs is absent. With folder set and the catalog file missing, _gate (todo_sync/__init__.py:96-102) reports an error finding (file not found, sources.py:99-100) on the first T rule and skips the rest as unreadable. That is reasonable behavior, but the description says the opposite.\n\nAlso (system_shape): harness.schema.json:104 says a rule group is off while a file it needs is absent. That holds only for catalog_schema and research.catalog (config._if_present). A missing TODO catalog is a T1 error (__init__._gate) and the other T rules skip as catalog unreadable. A missing snapshots folder makes T2 warn (rules_todo.t2_snapshot).",
+        "fix": [
+          "In config.py _todo/_in_folder, raise ConfigError when a resolved path (folder included) is .. or starts with ../, and change the schema description to say .. may not climb above the project root; apply the same check in plugins/todo-watch/hooks/config.ts inFolder.",
+          "Leave config loading as it is, but have render_snapshot raise TodoSyncError for a snapshots.dir that resolves outside cfg.project_root, and document that in the snapshots.dir description.",
+          "Reword it to: a rule group is off while its key is null or (catalog_schema, research.catalog) its file is absent; a missing catalog is a T1 error.",
+          "Reword: the catalog schema and research catalog are used only when present; a missing TODO catalog is a T1 error and a missing snapshot a T2 warn; a null key switches its group off."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Seconds-truncated generated_at drops the first report after session start",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+          "plugins/todo-watch/hooks/checks.ts",
+          "plugins/todo-watch/hooks/testWorld.ts"
+        ],
+        "lines": "138-143",
+        "reviewer": "overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_utc_now writes whole seconds, but checks.ts keeps a report only when Date.parse(generated_at) >= session.startedAtMs (ms). A first check finishing in the same wall second as the start is discarded, and reportMtime is already stored so it is never re-read: no drift toast, no TODO_SYNC line, /todo says no report yet until a watched file changes. testWorld writes ms-precision ISO times, so the mod tests miss it.\n\nAlso (roast): _utc_now() writes generated_at as %Y-%m-%dT%H:%M:%SZ (whole seconds). checks.ts refreshReport discards any report whose reportTimeMs (Date.parse(generated_at)) is below session.startedAtMs, which has millisecond precision. Whenever a leftover runner.json is found at session.start (every session after the first), the first check is scheduled immediately; if it finishes within the same wall-clock second as the start, its timestamp truncates to before startedAtMs and the report is ignored. session.reportMtime is already set at that point, so later non-forced re-reads skip it too: no first drift toast, no TODO_SYNC line, and /todo says \"no report yet\" until a watched file changes. The mock world hides this because testWorld.reportText uses toISOString() (millisecond precision) and the mock clock stands still. The engine and the mod disagree on clock resolution, and only the test agrees with the mod.",
+        "fix": [
+          "Write generated_at with milliseconds (isoformat(timespec=\"milliseconds\"), +00:00 as Z).",
+          "Or floor startedAtMs to the second in checks.ts, or skip the start gate on the forced re-read after the mod's own run; add a test with a seconds-truncated generated_at.",
+          "Emit milliseconds: dt.datetime.now(dt.timezone.utc).isoformat(timespec=\"milliseconds\").replace(\"+00:00\", \"Z\") (still a valid date-time for the report schema).",
+          "Or, in checks.ts refreshReport, compare against Math.floor(startedAtMs / 1000) * 1000.",
+          "In both cases make testWorld.reportText truncate to whole seconds as the engine does, and add a test where the report lands in the same second as the start, so the test can fail."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "T10 rank pass keys ids two different ways and can crash the rule",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+          "plugins/harness/lib/harness_lib/todo_sync/ranking.py"
+        ],
+        "lines": "218-229,232-236",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_t10_ranks builds `ranks` keyed by `str(i.get('id'))`, but `expected_order` (ranking.py:85) returns the raw `i.get('id', '')`. For an item with no id the lookup is `ranks['']` (the key is 'None'). A null or non-string id fails the same way. The KeyError escapes t10_ranking, and `_run` swaps every T10 score finding for one 'rule could not run: KeyError' line. Duplicate ids also collapse in the `ranks` dict, so each copy is compared against the last copy's rank. T10's own 'cannot score' guard (line 246) shows graceful degradation was intended, and a malformed catalog is exactly when these findings matter.\n\nAlso (runtime): _t10_scores catches only (RankingError, TypeError, KeyError). If a ranking_method table holds 0 for loe_points or blast_factors, `math.sqrt(cost)` is 0 and the division raises ZeroDivisionError. A negative cost raises ValueError (math domain). Both escape to `_run`, which replaces every T10 finding with one 'rule could not run' line instead of a per-item 'cannot score'.\n\nAlso (roast): _t10_ranks builds ranks with str(i.get(\"id\")) (the string None for a missing id), while expected_order returns i.get(\"id\", \"\") (an empty string). One item without an id raises KeyError, and _run collapses every T10 score and rank finding into a single rule could not run: KeyError.",
+        "fix": [
+          "Key both sides the same way: return `str(i.get('id'))` from `expected_order` (ranking.py:85), and use `ranks.get(item_id)` in `_t10_ranks`.",
+          "Or build `_t10_ranks` from positions (zip the expected order with the items' ranks) so it never looks up by id.",
+          "Add ZeroDivisionError and ValueError to the except tuple at rules_todo.py:223.",
+          "Or have ranking.score raise RankingError when cost <= 0.",
+          "Use one key function in both places (str(i.get(\"id\")) in expected_order), or skip id-less items in _t10_ranks."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Snapshot header with a spaced catalog path fails to parse in T2",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/sources.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/sources.py",
+          "plugins/harness/lib/harness_lib/todo_sync/report.py"
+        ],
+        "lines": "22-23",
+        "reviewer": "overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "snapshot_header writes source=<catalog path> unquoted, while HEADER parses source with \\S+. relPath allows spaces, so a todo.folder such as docs/My TODO makes every rendered snapshot read back headerless: T2 warns right after render and --fail-on warn fails.\n\nAlso (roast): render writes source=<todo.catalog> verbatim, but HEADER parses it with a non-whitespace-only group before top=. With a todo.folder such as docs/My TODO, T2 reports the freshly rendered snapshot as snapshot not produced by render (no header) forever.",
+        "fix": [
+          "Use source=(?P<source>.+?) top= in HEADER and add a render-then-T2 test with a spaced folder.",
+          "Or quote or percent-encode the source.",
+          "Relax the group to a lazy any-character match: source=(?P<source>.+?) top=.",
+          "Or percent-encode spaces in snapshot_header and decode them in parse_header."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "ranking_method tables accept values the score formula cannot use",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/ranking.py",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py"
+        ],
+        "lines": "163-186,201-220,234-249,766-770",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "loe_points, blast_factors and impact_weights values are plain type number. A T1-valid catalog with a 0 LoE point or blast factor raises ZeroDivisionError in ranking.score (value / sqrt(cost)), and a negative one raises a math-domain ValueError. _t10_scores only catches RankingError/TypeError/KeyError, so T10 collapses to a generic rule-could-not-run finding. A negative impact weight gives a negative score that priority.score (minimum 0, line 768) rejects, so the schema contradicts itself.",
+        "fix": [
+          "Add exclusiveMinimum 0 to every loe_points and blast_factors property (lines 201-220, 234-249) and minimum 0 to every impact_weights property (lines 163-186)."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "Subset check runs overwrite the report the mod treats as whole-project drift",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/todo-watch/hooks/checks.ts",
+          "plugins/harness/schemas/TodoSyncReport.schema.json",
+          "docs/plans/2026-10-17-todo-sync-mod.md"
+        ],
+        "lines": "89-91",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "_check always writes args.out or report_path(cfg), even when --rules limits the run. The mod reads <state_dir>/todo-sync/report.json whenever its mtime moves and treats its drift as the drift of the whole project. A manual check --rules T2, or the consumer pytest gate the design Risks table recommends (check --rules S1,S2,S3 --fail-on error), replaces the full report with a partial one. The mod then shows a smaller drift, can raise a false TODO sync clean toast, and tells the model drift=0 on the next prompt. Nothing in the report or in parseReport tells a subset run from a full one.",
+        "fix": [
+          "Write the default report path only for a full run: with --rules, write only when --out is given (or require --out).",
+          "Or add a top-level selected flag (or the requested rule set) to TodoSyncReport, bump the contract, and have parseReport ignore reports where a rule was skipped as not selected."
+        ]
+      },
+      {
+        "id": "I9",
+        "name": "Report contract test pins FINDING_KEYS and SEVERITIES, which the parser never reads",
+        "file": "plugins/todo-watch/hooks/checks.ts",
+        "files": [
+          "plugins/todo-watch/hooks/checks.ts",
+          "tests/mods/test_todo_watch_report_contract.py",
+          "plugins/harness/schemas/README.md",
+          "plugins/todo-watch/README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py"
+        ],
+        "lines": "39-44,46,78-86,89-99",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "test_todo_watch_report_contract.py checks FINDING_KEYS and SEVERITIES against the schema, and the schemas README (line 96) says this pins every key the mod reads. checks.ts never uses either constant: findingOf (89-99) reads file/subject/fix/line by literal name and hardcodes the error/warn check (93). If a finding key is renamed or a severity added, the constant gets updated, the test passes, and the parser keeps the stale literal.\n\nAlso (system_shape): write_runner (todo_sync/__init__.py:180-188) writes schema_version 1 and python/script/project/report. parseRunner (checks.ts:46,78-86) requires RUNNER_SCHEMA_VERSION 1 and python/script/project. Only the Python side is tested (test_todo_sync.py::test_runner_pointer). If either side drifts, the mod quietly shows sync checks unavailable.",
+        "fix": [
+          "Make findingOf use the constants (severity check via SEVERITIES.includes, optional keys via FINDING_KEYS).",
+          "Or drop the two unused constants and their tests, and narrow the README claims to REPORT_KEYS, COUNT_KEYS, FINDING_REQUIRED and REPORT_SCHEMA_VERSION.",
+          "Extend the report contract test so RUNNER_SCHEMA_VERSION and the keys parseRunner reads are checked against what write_runner emits."
+        ]
+      },
+      {
+        "id": "I10",
+        "name": "todo-watch C:/repo root cases fail on the Linux CI mod-test job",
+        "file": "plugins/todo-watch/hooks/watch.ts",
+        "files": [
+          "plugins/todo-watch/hooks/watch.ts",
+          "plugins/todo-watch/hooks/root.ts",
+          "plugins/todo-watch/hooks/testWorld.ts",
+          "plugins/todo-watch/hooks/checks.test.ts",
+          "plugins/todo-watch/hooks/watch.test.ts"
+        ],
+        "lines": "15-34",
+        "reviewer": "ci_mod_tests",
+        "fix_kind": "judgment",
+        "summary": "CI job 'plugin validate + mod tests' (ubuntu-latest, run 39295286933) fails 2 of 88 todo-watch tests that pass on a Windows host: checks.test.ts 'project roots > C:/repo: start toast, watched writes in either slash style, the project argument' and watch.test.ts 'resolveWatch > a Windows-style cwd and project dir with backslashes'. Both expect the start toast and receive none, so the watch never finds C:/repo/.claude/harness.json. Both go through the no-git ancestor walk in watch.ts findRoot ($.fs.read(configPathOf(root)) over rootCandidates of a drive-letter cwd); the /repo variants pass. The testWorld mocks answer every fs call, so a likely cause is the engine resolving a drive-letter path against the POSIX working directory before the mock handler sees it (the mock key no longer matches), or a host-dependent step in root.ts candidates. pr-review-watch's C:/repo mock-world tests resolve the root through a mocked git call rather than fs reads, which may be why they pass on Linux.",
+        "fix": [
+          "Reproduce on POSIX (log the e.path the testWorld fs.read handler receives for the C:/repo case), then make the root walk and the mock agree on the spelling the engine delivers: for example key testWorld files by a host-independent normal form, or normalize the drive-letter candidate in root.ts/watch.ts before $.fs.read, keeping the Windows behavior pinned.",
+          "If the engine's POSIX host cannot represent a drive-letter path at all, run the C:/repo cases only where the host is Windows-style (detect it from the mocked or real environment), keep the /repo cases unconditional, and record the limitation in plugins/todo-watch/README.md."
+        ]
+      },
+      {
+        "id": "I11",
+        "name": "PR test selection skips several todo_sync suites when the TodoCatalog.min.json fixture changes",
+        "file": "tests/scripts/test_todo_sync.py",
+        "files": [
+          "tests/scripts/test_todo_sync.py",
+          "tests/lib/test_todo_sync_rules_plans.py",
+          "tests/lib/test_todo_sync_rules_research.py",
+          "tests/lib/_todo_helpers.py",
+          "tools/select_tests.py"
+        ],
+        "lines": "1-4",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "tests/fixtures/todo_sync/TodoCatalog.min.json reaches tests/scripts/test_todo_sync.py, tests/lib/test_todo_sync_rules_plans.py and tests/lib/test_todo_sync_rules_research.py only through tests/lib/_todo_helpers.py (MIN_CATALOG at line 24). tools/select_tests.py only maps data files under plugins/ or tools/ to their readers (data_readers), the fixture is not in any import closure, and these three modules neither name the fixture nor walk the tree. So a PR that edits only the fixture skips them, even though test_todo_sync.py depends on it heavily: test_check_summary_and_report expects drift=0 across all 20 rules (T9 counts, T10 scores, T2 snapshot sha), and test_render_then_t2_is_clean checks the \"tracker #101\" and \"none\" rows. This is the gap the project CLAUDE.md warns about (a file reached by a route the script cannot see must be named in the test source). test_todo_sync_rules_todo.py avoids it by naming the fixture in its docstring.",
+        "fix": [
+          "Name TodoCatalog.min.json in the module docstring of each of the three files, the way test_todo_sync_rules_todo.py line 1 does (e.g. \"The project is built on copies of TodoCatalog.min.json through _todo_helpers.\").",
+          "Or extend tools/select_tests.py so a changed non-.py file under tests/ counts as a change to every tests/**/_*.py helper that names its basename, the same way data_readers works for plugins/ and tools/."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Marketplace description for todo-watch differs from its plugin.json",
+        "file": ".claude-plugin/marketplace.json",
+        "files": [
+          ".claude-plugin/marketplace.json",
+          "plugins/todo-watch/.claude-plugin/plugin.json"
+        ],
+        "lines": "33-37",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "Every other marketplace row copies its plugin.json description exactly. The todo-watch row (drift line ... todo_sync engine) differs from plugins/todo-watch/.claude-plugin/plugin.json:4 (drift context ... todo_sync checks).",
+        "fix": [
+          "Use one string in both files."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "README says this repo enables its own plugins, but settings.json leaves out todo-watch",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          ".claude/settings.json"
+        ],
+        "lines": "35",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "README.md:35 says this repository enables its own plugins in .claude/settings.json. The fifth mod was added, but enabledPlugins still lists only the original five entries (harness plus four mods).",
+        "fix": [
+          "Enable todo-watch@operator-straps in .claude/settings.json.",
+          "Or reword README.md:35 to name the enabled plugins."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "README key table credits the todo-watch toast with the gh age suffix and top_n",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/config/harness.schema.json",
+          "docs/plans/2026-10-17-todo-sync-mod.md"
+        ],
+        "lines": "122,130",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:130 says `todo.gh.max_age_hours` drives a toast age suffix, and :122 says `todo.top_n` drives the toast. The start toast is `formatSummary(summary)` with no sync suffix (checks.ts:387). The `gh <age> old` suffix is built only for `/todo` (checks.ts:457, summary.ts:209), and the toast shows only the rank-1 id. The mod README (lines 37, 40) and design departures (line 430) agree with the code. The harness.schema.json descriptions repeat the toast claim.\n\nAlso (overall): README and the schema description tie todo.gh.max_age_hours to a toast suffix. The code adds gh Nd old only on the /todo summary line, and the start toast is catalog-only (as the departures table says).\n\nAlso (system_shape): README.md:130 and harness.schema.json:140 say the mod toast shows the issue cache age; README.md:122 and harness.schema.json:110 say top_n sets the toast rows. In checks.ts the start toast is catalog-only (formatSummary with no sync suffix), drift toasts carry no age, and ghAgeText runs only in todoText (/todo). The mod README and the design departure row correctly put both on /todo.",
+        "fix": [
+          "README.md:122 -> `/todo` table, `todo_sync.py render`; :130 -> rule G5, `/todo` summary age suffix. Make the same edit to the `top_n` / `gh.max_age_hours` descriptions in harness.schema.json.",
+          "Reword both to: rule G5 (Phase 3), todo-watch /todo age suffix.",
+          "README.md:122 -> /todo table and render; :130 -> G5 (Phase 3) and the /todo summary age suffix; reword harness.schema.json:110 and :140 to match."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Design doc still uses the pre-D16 key names and gate",
+        "file": "docs/plans/2026-10-17-todo-sync-mod.md",
+        "files": [
+          "docs/plans/2026-10-17-todo-sync-mod.md",
+          "docs/plans/2026-10-19-todo-sync-kickoff.md",
+          "CLAUDE.md"
+        ],
+        "lines": "6,63,105,128,130,261,265-266,268,274,283,289,364,367,370-371,415",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "After D16 (line 408), the doc still names `todo.research.stub_name` at line 63 and in the Built row at line 415, and gates on `todo.catalog` at lines 266, 274 and 367. The code gates on `todo.folder` (todo_sync_session.py:34, watch.ts:40-48), and `todo.catalog` is not nullable. The same stale gate is in kickoff line 94.\n\nAlso (docs): Files to add (line 261) lists one `rules.py`, and Testing (line 364) lists one `test_todo_sync_rules.py`. The build ships `rules_plans.py`, `rules_research.py`, `rules_todo.py` and `ranking.py`, with tests split to match. The departures table has no row for this, although the kickoff requires every departure to be recorded.\n\nAlso (docs): This PR adds a line to the CLAUDE.md opening paragraph, so every later line moves down by one. The design doc citations still point at the merge base: `CLAUDE.md:8-10` (now 9-11), `:14-17` (now 15-18), `:18-20`, `:26-27`, `:11-13`, `:34-36`, `:37`, `:48-50`, `:56-57`, and `:3-4` (now 3-5).\n\nAlso (overall): The design says the hook and watch key on todo.catalog being null or set (lines 266, 274, 367), and cites todo.research.stub_name (415). The kickoff says With todo.catalog null it does nothing (94). D16 made todo.folder the switch and moved stub_name. Line 261 lists one rules.py, but the build has three rules_* modules, and the departures table does not record that.\n\nAlso (system_shape): After D16 (todo.folder is the switch, stub_name moved to todo, catalog can no longer be null), the doc still says todo.research.stub_name (63, 415), stand down / active when todo.catalog is null or set (266, 274, 367), and harness schema used only when catalog_schema is null (268), though it is also used when the file is absent. Two departures are missing: one rules.py (261), but the build has rules_research/rules_plans/rules_todo plus ranking.py; and M3 (105) gates on report.json mtime, but probeWatched compares against the last check start.\n\nAlso (roast): After D16 moved stub_name to todo.stub_name and made todo.folder the only activation key, the design still has: the departure row todo.research.stub_name (line 415); active only when todo.catalog is set (line 274); the hook test silent when todo.catalog is null (line 367); and Files-to-add/Testing rows naming a single rules.py and test_todo_sync_rules.py with every rule, while the build split them into rules_research/rules_plans/rules_todo and per-group test files without a departure row. Kickoff acceptance 4 also still says With todo.catalog null.",
+        "fix": [
+          "Use `todo.stub_name` at lines 63 and 415, and `todo.folder` null/set at lines 266, 274 and 367. Add a D16 note to the kickoff Acceptance section.",
+          "Add a departures row for the rules split and `ranking.py` (T10), or edit lines 261 and 364 to list the built files.",
+          "Shift each citation after line 4 by +1 (and `3-4` to `3-5`), or cite rule names instead of line numbers.",
+          "Use todo.folder and todo.stub_name there, and add a departures row for the rules_* split.",
+          "Fix the stale key names at lines 63, 266, 268, 274, 367 and 415; add departure rows for the rules module split and the M3 probe basis.",
+          "Replace those todo.catalog / todo.research.stub_name mentions with todo.folder / todo.stub_name, and add one departure row for the rules module split."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "snapshots.name_pattern does not say the render file name is fixed",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py"
+        ],
+        "lines": "116",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "render always writes TODO_Snapshot_YYYY_MMDD.md (snapshot_name, todo_sync/__init__.py:156-158) and refuses (167-169) when name_pattern does not fully match that name. The description presents name_pattern as freely configurable, so a project that changes it finds render broken and T2 never satisfied.",
+        "fix": [
+          "Add to the description: must also match the fixed render name TODO_Snapshot_YYYY_MMDD.md, or render refuses."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "gh keys describe rule G5 and an issue fetch that do not exist yet",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py"
+        ],
+        "lines": "139-140,145",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "gh.max_age_hours says G5 warns past this cache age, and gh.repo names the issue fetch. But RULES/RULE_IDS (todo_sync/__init__.py:51-64) hold no G rule, and check() always passes gh_fetched_at=None. rules.disabled (pattern ^[SPTG][0-9]+$) also accepts G5 without complaint, while --rules G5 raises unknown rule id. The README marks the fetch as Phase 3; the schema does not.",
+        "fix": [
+          "Append (Phase 3; no G rule runs yet) to the gh.repo and gh.max_age_hours descriptions, as README.md:129 does.",
+          "Or narrow the rules.disabled item pattern to ^[SPT][0-9]+$ until the G rules land."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "An explicit catalog_schema or research.catalog with a typo is silently ignored",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/config.py",
+          "README.md",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "244-246,249-264",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "_if_present turns any absent file into None, whether the key was defaulted or set by the project. A mistyped todo.research.catalog quietly turns off S1-S6 and T3-T5; the skip reason only shows in rules_skipped, which /todo never prints. A mistyped todo.catalog_schema silently validates T1 against the harness schema instead. Used-when-present makes sense for the defaults, but for an explicit setting it hides the mistake.",
+        "fix": [
+          "Apply the when-present fallback only to defaulted names: compare against the override dict of the project, and raise ConfigError (or emit a T1 / S-group error finding) when an explicitly named file is missing."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Fence toggle ignores the fence marker, contradicting the module docstring",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/pip_sections.py",
+        "lines": "15,62-68",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says lines inside fenced code blocks are neither headings nor checkboxes. parse_pip flips `fenced` on any line starting with ``` or ~~~. A ~~~ line inside a ``` block, or a shorter inner fence, closes the block early. The rest of the block is then read as headings and boxes, which can split a P1 section or add phantom boxes.",
+        "fix": [
+          "Record the opening marker's character and length, and close only on a line that uses the same character at least that many times."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "find_section docstring leaves out the slug-prefix match",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/pip_sections.py",
+        "lines": "107-108",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The docstring says find_section matches a heading whose text starts with the key or whose slug equals it. `_matches` also accepts a slug that starts with the key followed by '-' (line 104). So key 'task-3' matches a heading slugged 'task-3-foo', which the docstring does not cover.",
+        "fix": [
+          "Extend the find_section docstring: '... or whose slug equals it or starts with it and a hyphen'."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "P2 accepts any 7+ digit number as a commit SHA",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py",
+          "tests/lib/test_todo_sync_rules_plans.py"
+        ],
+        "lines": "17,73-77",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "The SHA pattern (7-40 hex characters at word boundaries) also matches all-decimal tokens: a GitHub Actions run URL (.../actions/runs/11234567890), a date such as 20261019, or a ticket number. verification_references often hold CI run links, so a COMPLETE item with no commit SHA passes P2. The rule exists to require a commit, and it accepts a build number instead.",
+        "fix": [
+          "Require at least one hex letter with a lookahead, for example (?=[0-9a-f]*[a-f]) before the 7-40 hex run. A short SHA with no letter in it becomes a P2 error, which costs little.",
+          "Or also accept /commit/<sha> URLs explicitly and reject tokens that follow /runs/."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "T1 schema-unreadable finding puts a plugin-relative path in the report repo-relative file field",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+          "plugins/harness/schemas/TodoSyncReport.schema.json"
+        ],
+        "lines": "52-53",
+        "reviewer": "multi_artifact",
+        "fix_kind": "mechanical",
+        "summary": "TodoSyncReport.schema.json:74 defines finding.file as a repo-relative POSIX path. When todo.catalog_schema is null, rules_todo.py:52 reports file=posix(HARNESS_SCHEMA), which is catalogs/TodoCatalog.schema.json. That path is relative to the plugin schemas directory and names no file in the consuming repository, so the todo-watch mod and the markdown table (report.py:119-122) point at a path that does not exist.",
+        "fix": [
+          "Report file=None (or the catalog rel path) when the harness schema is the one that failed, and put the plugin schema path in the message.",
+          "Or widen the file description at TodoSyncReport.schema.json:74 to allow plugin-schema paths, and say how a consumer tells the two apart."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "T2 ignores the snapshot body (kickoff seed not met as written)",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+          "docs/plans/2026-10-17-todo-sync-mod.md",
+          "docs/plans/2026-10-19-todo-sync-kickoff.md"
+        ],
+        "lines": "63-77",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "Kickoff acceptance 2 seeds a reordered top-10 table. T2 compares only the header hash and top with the catalog, so table edits under an intact header pass. The departures table does not say so.",
+        "fix": [
+          "Record that T2 detects catalog-side drift only (D10).",
+          "Or have T2 also check the table rows against the header."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "T3 calls source.get on a non-object source",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+        "lines": "93-98",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Line 94 guards `ref` with `isinstance(source, dict)`, but line 95 then calls `source.get('type')` anyway. A string or null entry in `sources` raises AttributeError, and `_run` turns all of T3 into one 'rule could not run' finding, dropping the catalog_entry_ids checks for every item.\n\nAlso (overall): ref is guarded with isinstance(source, dict) but source.get(\"type\") is not, so one malformed source raises and _run replaces all T3 results with one rule could not run finding.",
+        "fix": [
+          "Skip non-dict sources first: `if not isinstance(source, dict): continue`, then read type and ref.",
+          "Skip non-dict sources before reading type and ref."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "T4 compares raw research ids where T3 and T5 compare stringified ones",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+        "lines": "102-107",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_entry_ids (used by T3 and T5) keys entries by `str(e.get('id'))`, and S1 compares anchors against `str(entry.get('id'))`. T4 tests the raw `e.get('id') not in cited`. The TodoCatalog schema makes catalog_entry_ids strings, so a research catalog with numeric ids passes T3 and T5 while T4 warns that every non-terminal entry is unreferenced.",
+        "fix": [
+          "Use `str(e.get('id')) not in cited` at rules_todo.py:107 (and build `cited` from `str(...)` values)."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Schemas README catalog intro still calls CICDActionAudit the only standalone catalog",
+        "file": "plugins/harness/schemas/README.md",
+        "lines": "102,235-241,247",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Line 102 calls `CICDActionAudit` the only standalone catalog and says standalone catalogs keep `catalog_date` / `summary`. The new `TodoCatalog` (lines 138-148) is standalone, has neither field, and skips the `.catalog.` sub-namespace (line 247). The Catalog JSON rules (lines 235-241) assume SymbolCatalog.base and `categories[]`.",
+        "fix": [
+          "Name TodoCatalog as standalone at line 102, with its own `generated` / `counts` shape; limit lines 235-241 to SymbolCatalog variants; note the naming exception at line 247."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Schemas README says COMPLETE needs a SHA in evidence, but P2 also accepts verification_references",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py"
+        ],
+        "lines": "215",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/schemas/README.md:215 says COMPLETE always carries commit SHA(s) in evidence. P2 (rules_plans._names_sha) also accepts a SHA in verification_references. That was a recorded decision (design row 418), but the README was not updated, so the harness now states two rules for the same artifact (the update protocol is at README line 251).",
+        "fix": [
+          "README.md:215 -> COMPLETE carries commit SHA(s) in evidence or verification_references (todo_sync rule P2)."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "finding.subject description omits subject kinds the T rules emit",
+        "file": "plugins/harness/schemas/TodoSyncReport.schema.json",
+        "files": [
+          "plugins/harness/schemas/TodoSyncReport.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py"
+        ],
+        "lines": "76",
+        "reviewer": "multi_artifact",
+        "fix_kind": "mechanical",
+        "summary": "TodoSyncReport.schema.json:76 lists subject as an item id, entry id, plan item id or issue number. T8 emits #<tracker number> (rules_todo.py:174) and T9 emits counts.<key> (rules_todo.py:201). The second is none of the listed kinds, and the # prefix is not stated, so a consumer that parses subject by the documented kinds misreads both.",
+        "fix": [
+          "Extend the subject description to cover #<n> for issues and trackers and counts.<key> for catalog tallies, or give T9 subject=None and keep the key in the message."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Catalog description overstates which cross-record rules T6-T10 check",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/ranking.py"
+        ],
+        "lines": "5,139-150,258-265,831,990",
+        "reviewer": "config, multi_artifact",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The top-level description says T6-T10 check that counts tally the items, but t9_counts (rules_todo.py:188) leaves sources_absorbed and merged_items unchecked. No rule checks close_candidates[].related_todo_ids (every item whose gh_issues or related_gh_issues names the issue, line 990), and no rule checks the sorted promises on unblocks (831) and related_todo_ids.\n\nAlso (multi_artifact): TodoCatalog.schema.json:5 says the cross-record rules the schema cannot express are checked by T6-T10, including counts tally the items. At the head, T9 (rules_todo.py:187-202) skips counts.sources_absorbed and counts.merged_items, and its own docstring at line 188 says so. No rule checks close_candidates[].related_todo_ids, which line 990 defines as every item whose gh_issues or related_gh_issues names the issue, sorted. No rule checks that unblocks is sorted (line 831) either. A catalog can pass check with those invariants broken while the schema text says they are enforced. The README repeats the claim at line 148.\n\nAlso (multi_artifact): TodoCatalog.schema.json:5 says item order and rank follow the formula recorded in ranking_method, and value/cost/score/tie_breakers (lines 139-150, 258-265) are free strings. ranking.py:33-41 reads only impact_weights, loe_points, blast_factors and unblock_bonus. score() and sort_key() (ranking.py:50-80) hardcode the formula and tie-break order. A catalog that records a different score formula or tie_breakers order still validates under T1, and then T10 flags every item against a formula the file never states.",
+        "fix": [
+          "Change the line 5 description to name what stays unchecked (sources_absorbed, merged_items, related_todo_ids, sort order), or add those checks to T7/T9.",
+          "Narrow the line 5 description (and README line 148) to what T6-T10 enforce, and name the unchecked invariants: sources_absorbed, merged_items, related_todo_ids membership, sort order.",
+          "Or extend T9 to tally sources_absorbed and merged_items, and add a T rule for close_candidates[].related_todo_ids and sorted unblocks/related_todo_ids.",
+          "State in the descriptions of value, cost, score and tie_breakers that these are human-readable records, and that todo_sync always applies the fixed formula and the order given in the tie_breakers description.",
+          "Or pin them with const values that match ranking.py, so a catalog stating a different formula fails T1."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "todo_id pattern caps a valid catalog at 999 items",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py"
+        ],
+        "lines": "80-84",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "todo_id is ^TODO-[0-9]{3}$, while T6 (rules_todo.py:134) expects TODO-{pos:03d}, which gives TODO-1000 at rank 1000. T1 rejects that id, so no catalog with more than 999 items can pass both rules.",
+        "fix": [
+          "Change the pattern to ^TODO-[0-9]{3,}$ and the description to TODO-NNN with at least three digits."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "tie_breakers reads as configurable but the engine ignores it",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/ranking.py"
+        ],
+        "lines": "258-265",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "ranking_method.tie_breakers is a required array of free strings with minItems 1, described as the ordered keys that separate items. ranking.sort_key (ranking.py:72-80) hard-codes the order and never reads the array, so editing it changes nothing and T10 then flags every rank that follows the edited order.",
+        "fix": [
+          "Say in the description that the engine fixes the order and the array only records it for readers.",
+          "Or pin it with a const/enum listing the fixed keys."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "uri and date-time format checks depend on undeclared optional packages",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/schemas/TodoSyncReport.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py"
+        ],
+        "lines": "495-499,912-916,964-968",
+        "reviewer": "multi_artifact",
+        "fix_kind": "judgment",
+        "summary": "TodoCatalog uses format uri for source.url, tracker.url and close_candidate.url (lines 497, 914, 966), and TodoSyncReport uses date-time for generated_at (line 12). The jsonschema FormatChecker enforces uri only when rfc3987 or rfc3986-validator is installed, and date-time only with rfc3339-validator. Nothing in the repo declares them, and the allowed dependency list excludes them. T1 (rules_todo.py:55) therefore accepts a malformed URL on an interpreter without them and rejects it on one with them, which is the case locally. The only always-enforced format is date.",
+        "fix": [
+          "Add explicit patterns beside the formats (for example a ^https:// pattern on the url fields and an ISO 8601 pattern on generated_at) so validation does not depend on the environment.",
+          "Or document in the schema README that uri/date-time are advisory and drop them from the contract."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "impl_stub ref accepts backslashes; research_folder ref does not",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py",
+          "tests/schemas/test_todo_catalog_schema.py"
+        ],
+        "lines": "536-540,558-562",
+        "reviewer": "config, multi_artifact",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Both refs are described as repo-relative paths. The research_folder pattern (line 560) ends in a character class that excludes backslash, but the impl_stub pattern (line 538) uses .+ before the .md suffix, so it accepts a Windows-style backslash-separated stub path that the POSIX resolution in T3 then misses.\n\nAlso (multi_artifact): The two path-ref variants of $defs/source disagree. The research_folder ref pattern (line 560) ends in a negated backslash class, which bans backslashes. The impl_stub ref pattern (line 538) ends in .+ then .md, so a Windows-style ref with backslash separators passes T1. T3 (rules_todo.py:96) then resolves it with cfg.path(ref).exists(), which succeeds on Windows and fails on Linux CI. The same catalog gives different drift on each OS, and the ref breaks the repo-relative POSIX contract that the report and the other source type rely on.",
+        "fix": [
+          "In the impl_stub ref pattern at line 538, replace the .+ before the .md suffix with the backslash-excluding character class line 560 uses.",
+          "Replace the impl_stub ref tail .+ at line 538 with the same negated-backslash class the research_folder pattern uses at line 560, keeping the .md suffix, and add a backslash-ref rejecting case to tests/schemas/test_todo_catalog_schema.py."
+        ]
+      },
+      {
+        "id": "M23",
+        "name": "todo-watch README says absolute paths work, but the harness rejects them",
+        "file": "plugins/todo-watch/README.md",
+        "files": [
+          "plugins/todo-watch/README.md",
+          "plugins/todo-watch/hooks/config.ts"
+        ],
+        "lines": "20-22",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README:20-22 says paths resolve as harness_lib does and that the folder and `artifacts.*` are joined to the root unless absolute. harness.schema.json types `todo.folder`, `state_dir` and `artifacts.*` as `relPath`, which rejects absolute values. The mod accepts them (config.ts:20,125), but the hook load_config raises ConfigError, which the hook swallows (todo_sync_session.py:41-42). No runner pointer is written, so the mod shows `sync checks unavailable`.",
+        "fix": [
+          "State that the paths are project-relative and that an absolute value leaves sync checks unavailable; fix the matching wording in config.ts:20.",
+          "Or make readConfig treat an absolute `todo.folder` as inactive."
+        ]
+      },
+      {
+        "id": "M24",
+        "name": "Shell and IDE edits to research stubs never trip the mtime probe",
+        "file": "plugins/todo-watch/hooks/checks.ts",
+        "files": [
+          "plugins/todo-watch/hooks/checks.ts",
+          "docs/plans/2026-10-17-todo-sync-mod.md",
+          "plugins/todo-watch/README.md"
+        ],
+        "lines": "338-355",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "newestWatchedMtime stats only the watched files, the watched folders and their top-level entries. Stubs live at <research>/<DOMAIN>/_IMPL_TODO.md, so a stub edited in place (the S4 stub-status-line case in the kickoff acceptance list) moves no mtime the probe sees, and the M3b promise that edits made outside the session are re-checked does not hold for them. The mod README lists this as a known limitation, but the design departure table does not record it.",
+        "fix": [
+          "Also stat the stub_path values from the research catalog (the mod can read it as it reads the TODO catalog), or list one more level under artifacts.research.",
+          "At minimum, add the departure to the table in docs/plans/2026-10-17-todo-sync-mod.md."
+        ]
+      },
+      {
+        "id": "M25",
+        "name": "Root-rule docstring promises linked-worktree behavior the ancestor walk cannot give",
+        "file": "plugins/todo-watch/hooks/root.ts",
+        "files": [
+          "plugins/todo-watch/hooks/root.ts",
+          "plugins/todo-watch/README.md"
+        ],
+        "lines": "1-6",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "root.ts (and the mod README) say a subfolder or a linked worktree finds the file of its checkout. Walking up from a linked worktree reaches the main checkout only when the worktree sits inside it. The convention in this repo puts worktrees under ~/.config/superpowers/worktrees, so they find only their own tracked harness.json or fall back to CLAUDE_PROJECT_DIR. In that fallback the mod watches the main checkout while the harness hook (git top level) resolves the worktree.",
+        "fix": [
+          "Reword to: a subfolder (or a worktree nested inside the checkout) finds the checkout file; list the out-of-tree worktree fallback under Known limitations."
+        ]
+      },
+      {
+        "id": "M26",
+        "name": "_todo_project inserts tests/lib into sys.path on every call",
+        "file": "tests/contract/test_root_separation.py",
+        "lines": "84-92",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_root_separation.py:86 runs sys.path.insert(0, ...) each time a todo case lambda runs: three CASES, called from two parametrized tests. Each call adds another duplicate entry to sys.path for the rest of the session. The other todo test modules do the insert once, at import time.",
+        "fix": [
+          "Move the insert and the from _todo_helpers import config, todo_files line to module level, as in tests/hooks/test_todo_sync_session.py lines 11-13, or guard it with if path not in sys.path."
+        ]
+      },
+      {
+        "id": "M27",
+        "name": "Root-separation todo_sync test: the is_relative_to check cannot fail",
+        "file": "tests/contract/test_root_separation.py",
+        "lines": "149-156",
+        "reviewer": "tests, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_todo_sync_output_lands_in_the_project builds written from project.rglob(\"*\"), so every path in it is under the project by construction, and all(p.resolve().is_relative_to(project...)) is always true. Only the non-empty check on written can fail. The filter is also loose: any .json/.md under a todo-sync part counts, so the test does not show that the expected file (report.json, runner.json or the dated snapshot) landed.\n\nAlso (overall): The all(...) check over project.rglob results is always true. Only rc and non-empty carry signal, and the expected outputs are not named.\n\nAlso (roast): written comes from project.rglob(...), so all(p.resolve().is_relative_to(project.resolve())) is true by construction. The test only proves that some todo-sync or snapshot file exists, not that report.json, runner.json or the snapshot landed at their expected paths.",
+        "fix": [
+          "Replace the set with the exact path each case should produce (report.json for check, Snapshots/TODO_Snapshot_2026_1021.md for render, runner.json for the hook) and assert expected.is_file(). Drop the tautological is_relative_to clause, or apply it to the path the script prints on stdout as test_merge_body_lands_in_the_project does.",
+          "Assert the exact report.json, dated snapshot and runner.json paths per case.",
+          "Assert the exact expected path per case (<state_dir>/todo-sync/report.json, .../runner.json, <folder>/Snapshots/TODO_Snapshot_2026_1021.md) instead of the rglob tautology."
+        ]
+      },
+      {
+        "id": "M28",
+        "name": "test_tie_breaks_on_severity_then_loe_then_source never varies LoE",
+        "file": "tests/lib/test_todo_sync_ranking.py",
+        "lines": "43-52",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The name claims the order severity, then LoE, then source. The body changes only the source type (gh_issue vs impl_stub), the source ref (docs/A/... vs docs/RESEARCH/Alpha/...) and finally severity. b is a deep copy of items[1], so its loe.size stays M throughout, and the LoE tie-break (and its rank above the source keys) is never exercised.",
+        "fix": [
+          "After the severity step, reset b[\"severity\"] to a[\"severity\"], set b[\"loe\"][\"size\"] to \"L\", then assert sort_key(a, method, 1.0) < sort_key(b, method, 1.0). b still has the lower source ref here, so this proves that LoE outranks the source keys."
+        ]
+      },
+      {
+        "id": "M29",
+        "name": "Nullable-fields contract test leaves out line",
+        "file": "tests/mods/test_todo_watch_report_contract.py",
+        "files": [
+          "tests/mods/test_todo_watch_report_contract.py",
+          "plugins/harness/schemas/TodoSyncReport.schema.json"
+        ],
+        "lines": "64-69",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_nullable_fields_the_mod_defaults (docstring line 65) lists file, subject, fix and gh_fetched_at. But the schema also makes finding.line nullable (TodoSyncReport.schema.json:75), and the mod defaults a missing line to null (checks.test.ts:74 expects line: null). If the schema made line non-nullable, this contract test would not notice.",
+        "fix": [
+          "Add \"line\" to the loop tuple at line 67 and to the docstring at line 65."
+        ]
+      },
+      {
+        "id": "M30",
+        "name": "Schema-reject case id closed-item mislabels an additionalProperties case",
+        "file": "tests/schemas/test_todo_catalog_schema.py",
+        "lines": "60-69",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The third mutation adds notes to items[0]. The item def (TodoCatalog.schema.json:570-572) rejects it only because of additionalProperties: false. Nothing about a closed item is involved (closed statuses are covered by terminal-status), so the id misleads anyone reading a failure.",
+        "fix": [
+          "Rename the id to \"unknown-item-key\"."
+        ]
+      },
+      {
+        "id": "M31",
+        "name": "PROVENANCE row maps the todo_table.py port to the wrong files",
+        "file": "docs/PROVENANCE.md",
+        "files": [
+          "docs/PROVENANCE.md",
+          "plugins/harness/lib/harness_lib/todo_sync/report.py"
+        ],
+        "lines": "17",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The row covers `todo_sync/{ranking,rules*}.py` and cites `todo_table.py: the top-N table`, but that table lives in `todo_sync/report.py` (`aligned_table`, `snapshot_markdown`, report.py:145-178), which no row names. `rules*` also takes in `rules_plans.py` / `rules_research.py`, which come from none of the cited scripts. This breaks the CLAUDE.md rule that PROVENANCE maps every imported file.\n\nAlso (overall): The row credits todo_table.py for the top-N table, which lives in todo_sync/report.py, but lists only {ranking,rules*}.py.\n\nAlso (system_shape): docs/PROVENANCE.md:17 names todo_table.py (the top-N table) as a source but maps it only to todo_sync/{ranking,rules*}.py and the schema. The ported table code (aligned_table, snapshot_markdown, gh_cell) is in todo_sync/report.py, which no row covers.",
+        "fix": [
+          "Use `todo_sync/{ranking,rules_todo,report}.py` in the path cell (add `sources.py` if `top_items` / `rows_sha256` came from todo_table.py).",
+          "Keep `rules*`, add `report.py`, and mark `rules_plans.py` / `rules_research.py` as original.",
+          "List todo_sync/{ranking,report,rules*}.py.",
+          "Change the path cell to plugins/harness/lib/harness_lib/todo_sync/{ranking,report,rules*}.py."
+        ]
+      },
+      {
+        "id": "M32",
+        "name": "\"the check run is capped\" pins a constant, not the timeout passed to process.run",
+        "file": "plugins/todo-watch/hooks/checks.test.ts",
+        "files": [
+          "plugins/todo-watch/hooks/checks.test.ts",
+          "plugins/todo-watch/hooks/testWorld.ts",
+          "plugins/todo-watch/hooks/checks.ts"
+        ],
+        "lines": "327-329",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "checks.test.ts:327-329 only checks that CHECK_TIMEOUT_MS is 20_000. The behavior it is named for is checks.ts:300 passing { timeoutMs: CHECK_TIMEOUT_MS } to process.run. Drop that option, or pass a different value, and the test still passes. The process.run hook in testWorld.ts (lines 146-149) records only e.argv, so no test sees the options.\n\nAlso (roast): expect(CHECK_TIMEOUT_MS).toBe(20_000) repeats the literal. It never checks that runEngine passes timeoutMs to $.process.run, so dropping the option from the call would still pass.",
+        "fix": [
+          "Have testWorld.ts record the options of each process.run (e.g. a runOptions array next to runs), then in this test start a world, run one check, and assert that the check run carries timeoutMs equal to CHECK_TIMEOUT_MS. Keep the constant assertion if the 20 s value is a pinned contract.",
+          "Record the opts argument in the testWorld process.run hook and assert timeoutMs === CHECK_TIMEOUT_MS on the check run."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 26 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":4,\"first_sha\":\"83be2462504bde948e145f7ccf236cff4a85995e\",\"headRefName\":\"_IMPL_Updates\",\"headRefOid\":\"4480520964518ea929e71317ac935d9ed39cfe2d\",\"last_sha\":\"4480520964518ea929e71317ac935d9ed39cfe2d\",\"mergeCommit\":null,\"number\":26,\"state\":\"OPEN\",\"title\":\"Impl updates\",\"url\":\"https://github.com/t968rs/operator-straps/pull/26\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "_IMPL_Updates",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "_IMPL_Updates",
+        "head_ref_name": "_IMPL_Updates",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "83be2462504bde948e145f7ccf236cff4a85995e",
+        "head_sha": "4480520964518ea929e71317ac935d9ed39cfe2d",
+        "base_ancestor_command": "git merge-base --is-ancestor 83be2462504bde948e145f7ccf236cff4a85995e HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 4480520964518ea929e71317ac935d9ed39cfe2d HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - config._todo gets the project's own todo block; an explicitly named catalog_schema or research.catalog that is missing raises ConfigError, defaulted names stay used-when-present; schema descriptions and README key table say so"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - TodoCatalog description narrowed to what T6-T10 check and names the unchecked invariants (sources_absorbed, merged_items, related_todo_ids membership, unblocks/related_todo_ids sort order); value/cost/score/tie_breakers described as human-readable records with the fixed formula todo_sync applies; schemas README matches. rules_todo.py and ranking.py cited only: code already matches the narrowed text"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - config raises ConfigError when todo.folder or any resolved todo path is .. or starts with ../; config.ts readConfig treats such a path as unset (insideRoot); todo description reworded (no climb above root, null key switches a group off, defaulted catalog_schema/research.catalog used when present, missing catalog a T1 error, missing snapshot a T2 warn). todo_sync/__init__.py cited only: config load now refuses an out-of-root snapshots.dir before render_snapshot sees it"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - parseReport ignores a report whose rules_skipped carries the 'not selected' reason (SUBSET_REASON), so a check --rules run never shows as whole-project drift; documented in the driver docstring, the report schema's rules_skipped description and the plan Risks row; checks.test.ts covers it"
+    },
+    {
+      "id": "I9",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - findingOf reads every key through field() typed by FINDING_KEYS and checks severity via SEVERITIES; parseRunner reads RUNNER_KEYS; contract test checks the field() keys equal FINDING_KEYS, SEVERITIES use, SUBSET_REASON against the engine, and RUNNER_SCHEMA_VERSION/RUNNER_KEYS against write_runner output; both READMEs updated. todo_sync/__init__.py cited only: write_runner already emits what parseRunner needs"
+    },
+    {
+      "id": "I10",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - testWorld keyOf drops everything up to and including a drive letter, so a drive-letter path the POSIX engine resolves against the plugin folder keys like /repo (pytest-scope precedent); passes on Windows, Linux run not reproducible here. watch.ts, root.ts and both test files cited only: the root walk is correct, the mock key was the mismatch"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - parse_pip tracks the opening fence marker; only a bare run of the same character at least as long closes the block (new test file covers it)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - find_section docstring now covers the slug match that starts with the key and a hyphen"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - SHA pattern requires at least one hex letter via lookahead; P2 test adds an all-digit date and a CI run URL as non-SHA evidence"
+    },
+    {
+      "id": "M31",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - cited only: the top-N table code in report.py is correct as is; the fix is the PROVENANCE path cell, owned by another fixer; PROVENANCE row for todo_sync ranking/rules now lists report.py (aligned_table, snapshot_markdown, gh_cell) in the path cell and states rules_plans.py and rules_research.py are original, not ported from the cited scripts"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - HEADER parses source with a lazy any-character group before top=, so a spaced catalog path round-trips; new round-trip test covers a spaced folder"
+    },
+    {
+      "id": "M26",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - _todo_project no longer inserts tests/lib into sys.path per call; the path insert and the _todo_helpers import moved to module level"
+    },
+    {
+      "id": "M27",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - todo_sync output test asserts the exact report.json, runner.json and dated snapshot path per case (TODO_OUTPUTS) and drops the tautological is_relative_to and rglob check"
+    },
+    {
+      "id": "M30",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - renamed the notes-on-item mutation id from closed-item to unknown-item-key"
+    },
+    {
+      "id": "I11",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - module docstrings of test_todo_sync.py and test_todo_sync_rules_research.py name TodoCatalog.min.json as the copied fixture; tools/select_tests.py data_readers: a changed non-.py file under tests/ now selects every tests/**/_*.py helper that names its basename, so a TodoCatalog.min.json change reaches _todo_helpers.py and its importers; _todo_helpers.py cited only, it already names the fixture literally at line 24; test_todo_sync_rules_plans.py: module docstring names TodoCatalog.min.json through _todo_helpers so select_tests reaches this file on fixture changes"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - marketplace todo-watch description set to the plugin.json string; plugins/todo-watch/.claude-plugin/plugin.json cited as the source of the string, no edit needed"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - kickoff Acceptance 4 now gates on todo.folder unset (D16) instead of todo.catalog null; CLAUDE.md cited only, it names no stale key and its line citations are the design doc's concern; design doc: todo.research.stub_name -> todo.stub_name; todo.catalog null/set gates -> todo.folder (hook, watch, Testing row); CLAUDE.md citations shifted for the added opening line; rules.py row lists the rules_* and ranking.py modules; Testing rules row lists the split test files; departures rows added for the rules split and the M3 probe basis"
+    },
+    {
+      "id": "M28",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - After the severity step, reset b severity to a severity, set b loe size to L, and assert a sorts before b so LoE is exercised above the source keys"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - Enabled todo-watch@operator-straps in .claude/settings.json; README.md:35 cited only, accurate once all plugins are enabled"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - Recorded T2 as catalog-side drift only (D10) in the departures table, annotated kickoff acceptance 2's T2 seed, and noted it in the T2 docstring"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - Added a ^https://\\S+$ pattern beside format uri on the three url fields and an ISO 8601 pattern (optional fraction) beside format date-time on generated_at; schema departure row updated; rules_todo.py cited only, T1's FormatChecker call needs no change once the schemas carry patterns"
+    },
+    {
+      "id": "M24",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - newestWatchedMtime lists one level deeper under artifacts.research (new newestListed helper) so in-place stub edits trip the probe; mod test added; README and plan departure table updated"
+    },
+    {
+      "id": "M32",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - testWorld records each process.run init in w.inits; the capped test now starts a world and asserts the check run's timeoutMs equals CHECK_TIMEOUT_MS (constant pin kept); checks.ts cited only, runEngine already passes timeoutMs"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - snapshot_name docstring states render writes the fixed TODO_Snapshot_YYYY_MMDD.md name and name_pattern must also fully match it; harness.schema.json: name_pattern description states render writes the fixed TODO_Snapshot_YYYY_MMDD.md name and the pattern must also fully match it"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - cited only: RULES and check() hold no G rule, so no code edit; the gh.repo, gh.max_age_hours and rules.disabled schema text is the other part's edit; harness.schema.json: gh.repo and gh.max_age_hours descriptions marked Phase 3 with no G rule running yet"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - cited only: sort_key fixes the order in code; the tie_breakers description edit is the other part's; tie_breakers description now states that editing the array changes nothing in the ranking (the fixed order is applied by the engine)"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - expected_order keys ids with str(i.get('id')) to match _t10_ranks; score raises RankingError when loe_points x blast_factors is not positive so _t10_scores reports a per-item cannot score; T10 rank pass compares per-id rank queues in expected order (duplicate ids keep one rank per copy) and the score except tuple adds ValueError and ZeroDivisionError"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - score raises RankingError on a non-positive cost (defence for the zero or negative loe/blast values); the schema minimum bounds are the other part's edit; fix lives in the schema part (loe_points, blast_factors, impact_weights bounds); rules_todo.py cited for the RankingError path only, no edit; impact_weights properties gain minimum 0; loe_points and blast_factors properties gain exclusiveMinimum 0"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - harness.schema.json: top_n now says /todo summary table and rendered snapshot (start toast shows only rank-1 id); gh.max_age_hours says G5 (Phase 3) and the /todo summary line shows the age, not the start toast; design doc M1 and config table no longer put the gh age suffix on the start toast (it shows on /todo); max_age_hours row now says /todo summary age suffix; README key table: todo.top_n now credits the /todo table and render (not the toast); todo.gh.max_age_hours now credits rule G5 (Phase 3) and the /todo summary age suffix (not the toast)"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - schemas/README.md: CICDActionAudit and TodoCatalog both named standalone with their own shapes; Catalog JSON rules scoped to SymbolCatalog variants; TodoCatalog naming exception noted under Conventions"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - schemas/README.md: COMPLETE carries commit SHA(s) in evidence or verification_references (todo_sync rule P2); cited only: P2 (_names_sha) already accepts a SHA in evidence or verification_references; the README wording fix is in the other part"
+    },
+    {
+      "id": "M23",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - config.ts header: paths are project-relative; an absolute value is rejected by the harness schema (relPath) and leaves sync checks unavailable; README activation paragraph now states the folder and artifacts.* are project-relative, absolute values are unsupported, and the mod then shows sync checks unavailable; config.ts wording is the other fixer's part"
+    },
+    {
+      "id": "M25",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - root.ts header: subfolder or worktree nested inside the checkout finds the checkout file; out-of-tree worktree falls back to its own tracked file or CLAUDE_PROJECT_DIR, noted as a known limitation; README root paragraph reworded to subfolder or nested worktree; out-of-tree worktree fallback added under Known limitations; root.ts docstring is the other fixer's part"
+    },
+    {
+      "id": "M29",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - nullable-fields contract test: added line to the docstring and the loop tuple; schema edit not needed: finding.line is already nullable at TodoSyncReport.schema.json:75; the test tuple and docstring fix is the other fixer's part"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - T1 unreadable finding reports file=None for the harness schema and names the plugin schema path in the message; catalog_schema path kept otherwise; finding.file description now names the T1 harness-fallback exception (plugin-relative catalogs/TodoCatalog.schema.json, not a consuming-repo file); the rules_todo.py half is owned by the other fixer"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - T3 skips non-dict sources before reading type and ref"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - T4 builds cited from str() values and compares str(entry id), matching T3 and T5"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - T9 finding sets subject=None; the counts key stays in the message, so subject holds only the documented kinds; finding.subject description now lists '#<n>' for tracker or issue numbers and 'counts.<key>' for catalog tallies (T9)"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - todo_id pattern changed to ^TODO-[0-9]{3,}$ with a description that allows four digits from rank 1000; rules_todo.py has no todo_id pattern; T6 TODO-{pos:03d} already yields TODO-1000 at rank 1000. Pattern fix (^TODO-[0-9]{3,}$) is in the schema part owned by another fixer; no edit here."
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - impl_stub ref pattern tail changed from .+ to the backslash-excluding class [^\\]+ before the .md suffix, matching research_folder; rules_todo.py T3 resolves refs with cfg.path(ref) and holds no ref pattern; the impl_stub ref pattern now uses the backslash-excluding class (same as research_folder) in the schema part owned by another fixer; no edit here.; impl_stub ref pattern already excludes backslashes (schema line 554 uses [^\\]+\\.md$, matching research_folder line 576); added backslash-ref rejecting case backslash-stub-ref to test_catalog_schema_rejects; schema and rules_todo.py cited, no edit"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-19",
+      "evidence": "4480520 (working-tree snapshot; developer commits) - _utc_now writes generated_at with milliseconds (isoformat timespec milliseconds, +00:00 as Z), so a report landing in the start second is no longer dropped; testWorld.reportText truncates generated_at to whole seconds as the engine's _utc_now does; the same-second regression test belongs to checks.test.ts, the other fixer's part; checks.ts gates fresh reports on startGateMs (session start floored to the whole second) in refreshReport; the change was already in the working tree when this fixer ran, verified against the issue and not re-applied"
+    }
+  ]
+}

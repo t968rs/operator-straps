@@ -1,4 +1,7 @@
-"""Research rules S1-S6: catalog entries against their stubs and folders, red and green per rule."""
+"""Research rules S1-S6: catalog entries against their stubs and folders, red and green per rule.
+
+The project is built on copies of ``TodoCatalog.min.json`` through ``_todo_helpers``.
+"""
 from __future__ import annotations
 
 import sys

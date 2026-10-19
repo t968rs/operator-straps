@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
   "title": "TodoCatalog",
-  "description": "One ranked, de-duplicated TODO list for a repository, built from open GitHub issues, the open or partial remaining items of research implementation stubs and the open items of research folders. Each item is one unit of work and lists every source it absorbs. Tracker issues are recorded under trackers, and issues whose work has already landed (LIKELY_RESOLVED) or whose target no longer exists (STALE) are recorded under close_candidates instead of items; an issue whose work has only partly landed is an item with status PARTIAL. Item order and rank follow the deterministic formula recorded in ranking_method. This schema checks each record on its own; the cross-record rules it cannot express are checked by the harness todo_sync rules T6-T10: item ids are unique and equal TODO-<rank>, ranks run 1..n in ranking order, priority.score and rank follow ranking_method, depends_on and unblocks are mutual inverses, every tracker field names a tracker in trackers, child_todo_ids lists exactly the items pointing at that tracker, and counts tally the items.",
+  "description": "One ranked, de-duplicated TODO list for a repository, built from open GitHub issues, the open or partial remaining items of research implementation stubs and the open items of research folders. Each item is one unit of work and lists every source it absorbs. Tracker issues are recorded under trackers, and issues whose work has already landed (LIKELY_RESOLVED) or whose target no longer exists (STALE) are recorded under close_candidates instead of items; an issue whose work has only partly landed is an item with status PARTIAL. Item order and rank follow the deterministic formula todo_sync applies with the numeric tables of ranking_method (impact_weights, loe_points, blast_factors, unblock_bonus); its value, cost, score and tie_breakers strings are human-readable records only. This schema checks each record on its own; the harness todo_sync rules T6-T10 check these cross-record rules: item ids are unique and equal TODO-<rank>, ranks run 1..n in ranking order, priority.score and rank follow the fixed formula, depends_on and unblocks are mutual inverses naming existing ids, every tracker field names a tracker in trackers, child_todo_ids lists exactly the items pointing at that tracker, and counts other than sources_absorbed and merged_items tally the items. No rule checks counts.sources_absorbed, counts.merged_items, close_candidates[].related_todo_ids membership, or the sort order of unblocks and related_todo_ids.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -79,8 +79,8 @@
   "$defs": {
     "todo_id": {
       "type": "string",
-      "pattern": "^TODO-[0-9]{3}$",
-      "description": "Item id, TODO-NNN, numbered by rank."
+      "pattern": "^TODO-[0-9]{3,}$",
+      "description": "Item id, TODO-NNN with at least three digits, numbered by rank (TODO-001 for rank 1; a fourth digit appears from rank 1000)."
     },
     "gh_number": {
       "type": "integer",
@@ -138,15 +138,15 @@
       "properties": {
         "value": {
           "type": "string",
-          "description": "Formula for an item's value: severity times the impact weight."
+          "description": "Human-readable record of an item's value formula: severity times the impact weight. todo_sync always applies that fixed formula; this text is not parsed."
         },
         "cost": {
           "type": "string",
-          "description": "Formula for an item's cost: LoE points times the blast factor."
+          "description": "Human-readable record of an item's cost formula: LoE points times the blast factor. todo_sync always applies that fixed formula; this text is not parsed."
         },
         "score": {
           "type": "string",
-          "description": "Formula for the priority score from value, cost and the unblock bonus."
+          "description": "Human-readable record of the priority score formula from value, cost and the unblock bonus. todo_sync always applies the fixed formula value / sqrt(cost), times (1 + unblock_bonus) when unblocks is non-empty, rounded to 4 decimals; this text is not parsed."
         },
         "impact_weights": {
           "type": "object",
@@ -162,26 +162,32 @@
           "properties": {
             "silent_wrong_output": {
               "type": "number",
+              "minimum": 0,
               "description": "Value weight for the silent_wrong_output impact class."
             },
             "data_correctness": {
               "type": "number",
+              "minimum": 0,
               "description": "Value weight for the data_correctness impact class."
             },
             "runtime_failure": {
               "type": "number",
+              "minimum": 0,
               "description": "Value weight for the runtime_failure impact class."
             },
             "dev_velocity": {
               "type": "number",
+              "minimum": 0,
               "description": "Value weight for the dev_velocity impact class."
             },
             "maintainability": {
               "type": "number",
+              "minimum": 0,
               "description": "Value weight for the maintainability impact class."
             },
             "docs_tooling": {
               "type": "number",
+              "minimum": 0,
               "description": "Value weight for the docs_tooling impact class."
             }
           },
@@ -200,22 +206,27 @@
           "properties": {
             "XS": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost points for LoE size XS."
             },
             "S": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost points for LoE size S."
             },
             "M": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost points for LoE size M."
             },
             "L": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost points for LoE size L."
             },
             "XL": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost points for LoE size XL."
             }
           },
@@ -233,18 +244,22 @@
           "properties": {
             "S": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost multiplier for blast-radius level S."
             },
             "M": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost multiplier for blast-radius level M."
             },
             "L": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost multiplier for blast-radius level L."
             },
             "XL": {
               "type": "number",
+              "exclusiveMinimum": 0,
               "description": "Cost multiplier for blast-radius level XL."
             }
           },
@@ -260,7 +275,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Ordered keys that separate items with equal (4-decimal) scores. Each key is computed from the item's own fields: severity (higher first), LoE points (lower first), then the primary source sources[0] (type in the order gh_issue, impl_stub, research_folder; ref as issue number for gh_issue, else the path in code-point order; item text in code-point order), then title in code-point order.",
+          "description": "Human-readable record of the ordered keys that separate items with equal (4-decimal) scores; todo_sync always applies the fixed order below and does not parse these strings, so editing this array changes nothing in the ranking. Each key is computed from the item's own fields: severity (higher first), LoE points (lower first), then the primary source sources[0] (type in the order gh_issue, impl_stub, research_folder; ref as issue number for gh_issue, else the path in code-point order; item text in code-point order), then title in code-point order.",
           "minItems": 1
         },
         "impact_definitions": {
@@ -495,6 +510,7 @@
         "url": {
           "type": "string",
           "format": "uri",
+          "pattern": "^https://\\S+$",
           "description": "GitHub issue URL; present for gh_issue sources."
         }
       },
@@ -535,7 +551,7 @@
           "then": {
             "properties": {
               "ref": {
-                "pattern": "^(?![/\\\\])(?![A-Za-z]:).+\\.md$"
+                "pattern": "^(?![/\\\\])(?![A-Za-z]:)[^\\\\]+\\.md$"
               }
             },
             "required": [
@@ -912,6 +928,7 @@
         "url": {
           "type": "string",
           "format": "uri",
+          "pattern": "^https://\\S+$",
           "description": "GitHub issue URL."
         },
         "children": {
@@ -964,6 +981,7 @@
         "url": {
           "type": "string",
           "format": "uri",
+          "pattern": "^https://\\S+$",
           "description": "GitHub issue URL."
         },
         "current_state": {

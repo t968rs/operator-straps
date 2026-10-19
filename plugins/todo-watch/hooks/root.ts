@@ -1,8 +1,9 @@
 /**
  * The project-root rule: the watch is active only in a project holding `.claude/harness.json`. Candidates
- * are the session cwd and each folder above it (nearest first: a subfolder or a linked worktree finds its
- * checkout's file), then CLAUDE_PROJECT_DIR; the first that holds the file is the root. No process is
- * spawned to find it. Pure: the `$` probe lives in watch.ts.
+ * are the session cwd and each folder above it (nearest first: a subfolder, or a worktree nested inside its
+ * checkout, finds the checkout's file), then CLAUDE_PROJECT_DIR; the first that holds the file is the root.
+ * A worktree outside the checkout finds only its own tracked file or falls back to CLAUDE_PROJECT_DIR (a
+ * known limitation). No process is spawned to find it. Pure: the `$` probe lives in watch.ts.
  */
 
 export const HARNESS_CONFIG_REL = '.claude/harness.json'

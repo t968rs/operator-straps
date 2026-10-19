@@ -54,6 +54,8 @@ def score(item: Dict[str, Any], method: RankingMethod) -> Tuple[float, Dict[str,
     points = _lookup(method.loe_points, (item.get("loe") or {}).get("size"), "loe_points")
     factor = _lookup(method.blast_factors, (item.get("blast_radius") or {}).get("level"), "blast_factors")
     cost = points * factor
+    if cost <= 0:
+        raise RankingError(f"loe_points x blast_factors is {cost}, the score needs a positive cost")
     base = value / math.sqrt(cost)
     bonus = method.unblock_bonus if item.get("unblocks") else 0.0
     components = {"impact_weight": weight, "value": round(value, 4), "loe_points": points,
@@ -81,6 +83,6 @@ def sort_key(item: Dict[str, Any], method: RankingMethod, value: float) -> Tuple
 
 
 def expected_order(items: List[Dict[str, Any]], method: RankingMethod) -> List[str]:
-    """Item ids in the order the recomputed scores and tie breakers put them."""
-    keyed = [(sort_key(i, method, score(i, method)[0]), i.get("id", "")) for i in items]
+    """Item ids in the order the recomputed scores and tie breakers put them; ids are keyed as ``str``."""
+    keyed = [(sort_key(i, method, score(i, method)[0]), str(i.get("id"))) for i in items]
     return [item_id for _, item_id in sorted(keyed, key=lambda pair: pair[0])]

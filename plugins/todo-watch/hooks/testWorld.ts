@@ -2,10 +2,11 @@
  * The mocked world beneath todo-watch for the hook tests (never imported by ./register): files by path,
  * the harness engine behind `$.process.run`, toasts, command registrations and the tools a call reaches.
  * The plugin test sandbox reads no repository file, so every `$` call the mod makes is answered here.
- * Paths are keyed without a drive letter and case-folded, so `C:/repo` and `/repo` roots share one world.
+ * Paths are keyed without a drive letter (or the host prefix the engine resolves one onto) and case-folded,
+ * so `C:/repo` and `/repo` roots share one world on a Windows or a POSIX host (`keyOf`).
  */
 
-import type { FsEntry, On, ProcessRunResult } from 'claude-code'
+import type { FsEntry, On, ProcessRunInit, ProcessRunResult } from 'claude-code'
 import type { Engine, MockClock } from 'claude-code/testing'
 import { mock } from 'claude-code/testing'
 
@@ -48,6 +49,8 @@ export type World = {
   reads: string[]
   /** Every `$.process.run` argv. */
   runs: string[][]
+  /** Every `$.process.run` init (timeout, env), index for index with `runs`. */
+  inits: Array<ProcessRunInit | undefined>
   toasts: string[]
   commands: string[]
   descriptions: string[]
@@ -66,7 +69,14 @@ export type World = {
   onBash: () => void
 }
 
-export const keyOf = (p: string): string => p.replace(/\\/g, '/').replace(/^[A-Za-z]:/, '').toLowerCase()
+/**
+ * A path's host-independent key: forward slashes, case-folded, everything up to and including a drive letter
+ * dropped. On Windows the engine resolves a drive-less path (`/repo`) onto the current drive (`E:/repo`); on
+ * Linux it resolves a drive-letter path (`C:/repo`) against the plugin folder (`/.../todo-watch/C:/repo`).
+ * Both spellings key as `/repo`, so the mocked files answer the path the hook asked for on either host.
+ */
+export const keyOf = (p: string): string =>
+  p.replace(/\\/g, '/').replace(/^(?:[^]*?\/)?[A-Za-z]:(?=\/|$)/, '').toLowerCase()
 const ran = (stdout: string, exitCode = 0): ProcessRunResult => ({
   exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false,
 })
@@ -82,10 +92,14 @@ export const catalogText = (items = 89): string =>
 
 export const CATALOG_LINE = 'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001'
 
-/** A TodoSyncReport as the engine writes it. */
+/**
+ * A TodoSyncReport as the engine writes it, with generated_at floored to whole seconds: the coarsest stamp the
+ * mod accepts (an engine writing seconds only), which the start gate must still let through.
+ */
 export const reportText = (generatedMs: number, drift: number, byRule: Record<string, number>): string =>
   JSON.stringify({
-    schema_version: 1, generated_at: new Date(generatedMs).toISOString(), rules_run: Object.keys(byRule),
+    schema_version: 1, generated_at: new Date(Math.floor(generatedMs / 1000) * 1000).toISOString(),
+    rules_run: Object.keys(byRule),
     rules_skipped: [], drift, by_rule: byRule, counts: { error: drift, warn: 0 }, gh_fetched_at: null,
     findings: Object.keys(byRule).map(rule => ({
       rule, severity: 'error', counted: true, file: 'docs/PLANS/a_PIP.md', line: 3, subject: 'X-1',
@@ -145,6 +159,7 @@ async function check(w: World): Promise<{ value: ProcessRunResult } | { deny: st
 function engineHooks(on: On, w: World): void {
   on('process.run', async (_$, e) => {
     w.runs.push([...e.argv])
+    w.inits.push(e.init)
     return e.argv[2] === 'check' ? check(w) : { value: ran('', 128) }
   })
   on('ui.toast', (_$, e) => {
@@ -197,7 +212,7 @@ export function world(on: On, opts: WorldOpts = {}): World {
   const root = opts.root ?? '/repo'
   const files = new Map<string, Rec>()
   const w: World = {
-    root, files, reads: [], runs: [], toasts: [], commands: [], descriptions: [], isRegisterRefused: false,
+    root, files, reads: [], runs: [], inits: [], toasts: [], commands: [], descriptions: [], isRegisterRefused: false,
     held: [],
     clock: mock.clock(on, { now: NOW }),
     engine: { mode: 'ok', drift: 0, byRule: {}, isHeld: false, reports: 0 },

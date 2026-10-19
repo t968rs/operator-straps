@@ -88,10 +88,11 @@ edit the real one):
    - a stub `status:` line changed (S rule)
    - an ActionPlan item set COMPLETE without a SHA (P rule)
    - a `RepoToDo.json` item edited so its score no longer matches `ranking_method` (T rule)
-   - the snapshot's top-10 table out of order (T2)
+   - the snapshot's top-10 table out of order (T2; catalog-side drift only, per D10: reorder the catalog's
+     top-N items under an existing snapshot, since T2 never reads the table body)
 3. `check --fail-on error` exits 1 on that seeded drift and 0 when it is clean.
 4. At session start the mod shows one toast with counts and top-N and no drift section. After a watched write it
-   updates. It toasts again only when drift rises or reaches zero. With `todo.catalog` null it does nothing.
+   updates. It toasts again only when drift rises or reaches zero. With `todo.folder` unset it does nothing (D16: `todo.folder` is the activation key).
 5. A Write outside watched paths spawns no process (pinned by a mod test).
 6. CI-equivalent runs are green: the named Python test files, the mod tests, strict validation, ruff.
 

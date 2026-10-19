@@ -50,6 +50,9 @@ def test_tie_breaks_on_severity_then_loe_then_source(doc) -> None:
     assert sort_key(b, method, 1.0) < sort_key(a, method, 1.0)
     b["severity"] = 1
     assert sort_key(a, method, 1.0) < sort_key(b, method, 1.0)
+    b["severity"] = a["severity"]
+    b["loe"]["size"] = "L"
+    assert sort_key(a, method, 1.0) < sort_key(b, method, 1.0)
 
 
 def test_gh_refs_compare_numerically(doc) -> None:

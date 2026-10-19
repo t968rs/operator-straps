@@ -5,7 +5,7 @@ import { describe, expect, test } from 'claude-code/testing'
 import type { Watch } from './watch'
 import { readConfig } from './config'
 import {
-  CHECK_TIMEOUT_MS, isWatchedPath, normalPath, parseReport, parseRunner, pathOfCall, reportTimeMs,
+  CHECK_TIMEOUT_MS, isWatchedPath, normalPath, parseReport, parseRunner, pathOfCall, reportTimeMs, startGateMs,
 } from './checks'
 import {
   CATALOG_LINE, CATALOG_REL, checkRuns, CONFIG, NOW, prompt, PYTHON, RESEARCH_CATALOG_REL, reportText, runTodo,
@@ -73,6 +73,13 @@ describe('parseReport', () => {
     expect(r?.findings).toEqual([
       { rule: 'T6', severity: 'warn', counted: false, file: null, line: null, subject: null, message: 'm', fix: null },
     ])
+  })
+
+  test('a check --rules report covers a subset of the rules and is ignored', async () => {
+    const good = JSON.parse(reportText(NOW, 0, {})) as Record<string, unknown>
+    const skipped = (reason: string) => JSON.stringify({ ...good, rules_skipped: [{ rule: 'T2', reason }] })
+    expect(parseReport(skipped('not selected'), 1)).toBeUndefined()
+    expect(parseReport(skipped('disabled'), 1)?.drift).toBe(0)
   })
 
   test('an unparsable generated_at falls back to the mtime', async () => {
@@ -168,6 +175,17 @@ describe('M1: the session start toast', () => {
     expect((await runTodo($)).split('\n\n')[0]).toBe(CATALOG_LINE)
     await w.clock.settle()
     expect(checkRuns(w)).toEqual([[PYTHON, SCRIPT, 'check', '--project', '/repo']])
+    expect((await runTodo($)).split('\n\n')[0]).toBe(`${CATALOG_LINE} · 2 out of sync`)
+  })
+
+  test('a report stamped in whole seconds within the start second is fresh', async ($, on) => {
+    expect(startGateMs(NOW + 999)).toBe(NOW)
+    const w = world(on)
+    w.engine.mode = 'fail'
+    await w.clock.advance(500)
+    await start($, w)
+    w.setFile(`${w.root}/${SYNC_REL}/report.json`, reportText(NOW, 2, { P1: 2 }), NOW + 501)
+    await prompt($, w)
     expect((await runTodo($)).split('\n\n')[0]).toBe(`${CATALOG_LINE} · 2 out of sync`)
   })
 
@@ -324,8 +342,13 @@ describe('M3: tool calls', () => {
     expect(checkRuns(w).length).toBe(3)
   })
 
-  test('the check run is capped', async () => {
+  test('the check run is capped', async ($, on) => {
     expect(CHECK_TIMEOUT_MS).toBe(20_000)
+    const w = world(on)
+    await start($, w)
+    expect(checkRuns(w).length).toBe(1)
+    const index = w.runs.findIndex(argv => argv[2] === 'check')
+    expect(w.inits[index]?.timeoutMs).toBe(CHECK_TIMEOUT_MS)
   })
 })
 
@@ -349,6 +372,18 @@ describe('M3b: edits made outside the session', () => {
     await w.clock.advance(1000)
     w.touch(`${w.root}/${SNAPSHOTS_REL}/TODO_Snapshot_2026_1017.md`)
     await turnEnd($, w)
+    expect(checkRuns(w).length).toBe(2)
+  })
+
+  test('an in-place stub edit one level under the research folder trips the probe', async ($, on) => {
+    const w = world(on)
+    const stub = `${w.root}/docs/RESEARCH/HYDRO/_IMPL_TODO.md`
+    w.setFile(stub, 'status: OPEN', NOW - HOUR)
+    await start($, w)
+    expect(checkRuns(w).length).toBe(1)
+    await w.clock.advance(1000)
+    w.touch(stub)
+    await prompt($, w)
     expect(checkRuns(w).length).toBe(2)
   })
 })

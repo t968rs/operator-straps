@@ -9,7 +9,9 @@
                "gh_fetched_at", "findings"],
   "properties": {
     "schema_version": {"const": 1, "description": "Report contract version; bumped on a breaking change."},
-    "generated_at": {"type": "string", "format": "date-time", "description": "UTC time the check finished (ISO 8601)."},
+    "generated_at": {"type": "string", "format": "date-time",
+                     "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$",
+                     "description": "UTC time the check finished (ISO 8601). The pattern enforces the shape where no date-time format checker is installed."},
     "elapsed_ms": {"type": "number", "minimum": 0, "description": "Wall time of the check run."},
     "rules_run": {
       "type": "array",
@@ -19,7 +21,7 @@
     },
     "rules_skipped": {
       "type": "array",
-      "description": "Rule ids not evaluated, each with the reason (config key null, disabled, limited by --rules, input missing).",
+      "description": "Rule ids not evaluated, each with the reason (config key null, disabled, limited by --rules, input missing). A rule left out by --rules has the reason 'not selected': such a report covers a subset of the rules, and the todo-watch mod ignores it rather than read its drift as the whole project's.",
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -71,9 +73,9 @@
         "rule": {"$ref": "#/$defs/rule_id"},
         "severity": {"enum": ["error", "warn"]},
         "counted": {"type": "boolean", "description": "Whether this finding is part of drift."},
-        "file": {"type": ["string", "null"], "description": "Repo-relative POSIX path the finding is about; null when it has none."},
+        "file": {"type": ["string", "null"], "description": "Repo-relative POSIX path the finding is about; null when it has none. The one exception is a T1 finding on the harness fallback schema (todo.catalog_schema unset), which names the plugin-relative catalogs/TodoCatalog.schema.json; that path is not a consuming-repo file, so consumers treat a file that is not in the repo as a plugin schema reference and read the message."},
         "line": {"type": ["integer", "null"], "minimum": 1, "description": "1-based line in file, when known."},
-        "subject": {"type": ["string", "null"], "description": "Record the finding is about: an item id, entry id, plan item id or issue number."},
+        "subject": {"type": ["string", "null"], "description": "Record the finding is about: an item id, entry id, plan item id, '#<n>' for a tracker or issue number, or 'counts.<key>' for a catalog tally (the T9 rules); null when none applies."},
         "message": {"type": "string", "minLength": 1, "description": "One-line reason."},
         "fix": {"type": ["string", "null"], "description": "Suggested fix, one line."}
       }

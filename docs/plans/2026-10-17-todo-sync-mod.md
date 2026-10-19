@@ -3,7 +3,7 @@
 Design report for a new mod-based plugin that (1) summarizes a project's local TODO catalog and flags JSON/Markdown
 pairs that drifted apart, and (2) keeps GitHub issue state and the repo's TODO JSON reconciled. The motivating
 consumer is a project whose research catalog, plan pairs and issue tracker have already drifted (evidence below).
-Nothing here names that project in plugin code: every path is a `.claude/harness.json` key (`CLAUDE.md:8-10`).
+Nothing here names that project in plugin code: every path is a `.claude/harness.json` key (`CLAUDE.md:9-11`).
 
 ## Summary
 
@@ -60,7 +60,7 @@ The drift that remains, and the drift that hand refreshes keep reintroducing, is
 | TODO catalog schema | `docs/RESEARCH/RepoToDo.schema.json` (`todo.catalog_schema`) | developer | todo_sync (T1) | the catalog shape; harness `TodoCatalog` v0 adopts it |
 | TODO snapshot | `docs/RESEARCH/TODO/TODO_Snapshot_<YYYY_MMDD>.md` (`todo.snapshots.dir`) | `todo_sync.py render` | humans | nothing (derived; dated top-N view) |
 | Research catalog | `docs/RESEARCH/ResearchImplementationCatalog.json` (`todo.research.catalog`) | agent, developer | consumer pytest, todo_sync | research entry implementation status, files to touch |
-| Research stubs | `docs/RESEARCH/<DOMAIN>/_IMPL_TODO.md` (`todo.research.stub_name`) | agent | consumer pytest, todo_sync | nothing beyond the catalog (stub mirrors topic/status/loe, `FBS/_IMPL_TODO.md:5-8`) |
+| Research stubs | `docs/RESEARCH/<DOMAIN>/_IMPL_TODO.md` (`todo.stub_name`) | agent | consumer pytest, todo_sync | nothing beyond the catalog (stub mirrors topic/status/loe, `FBS/_IMPL_TODO.md:5-8`) |
 | Action plans | `<artifacts.plans>/*_ActionPlan.json` | agent | harness schema hook, todo_sync | item status and evidence (schema README: "JSON is the source of truth") |
 | PIP Markdown | `<artifacts.plans>/*_PIP.md` | agent | humans, todo_sync | nothing beyond the plan JSON (checkboxes mirror item status) |
 | Issue mapping file | `docs/RESEARCH/ResearchImplementationCatalog_GitHubIssues.json` | one-shot, 2026-05-15 | nobody live | nothing (retire) |
@@ -100,7 +100,7 @@ file, a missing harness config, a refused process run or a malformed report degr
 
 | # | Rule the developer wants visible or enforced | Behavior | Platform surface (cited) |
 |---|---|---|---|
-| M1 | TODO state is visible when a session starts | One toast built from `counts.by_status` and `counts.needs_decision`: `TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001 · 4 out of sync` (`gh 3d old` suffix when the issue cache is past `todo.gh.max_age_hours`). The drift part appears only once a `report.json` newer than the session start has landed; before that the toast is the catalog-only summary, never stale drift and never `sync checks unavailable` while the pointer lookup is still pending (ordering contract under M6) | `session.start` (`plugins/pr-review-watch/hooks/tracker.ts:477`); `$.ui.toast(text)` (`tracker.ts:231`) |
+| M1 | TODO state is visible when a session starts | One toast built from `counts.by_status` and `counts.needs_decision`: `TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001 · 4 out of sync` (the `gh 3d old` suffix when the issue cache is past `todo.gh.max_age_hours` shows on `/todo`, not in this toast). The drift part appears only once a `report.json` newer than the session start has landed; before that the toast is the catalog-only summary, never stale drift and never `sync checks unavailable` while the pointer lookup is still pending (ordering contract under M6) | `session.start` (`plugins/pr-review-watch/hooks/tracker.ts:477`); `$.ui.toast(text)` (`tracker.ts:231`) |
 | M2 | The model sees drift without anyone pasting it | `TODO_SYNC drift=4 P1=1 S5=1 T2=1 G2=1` added to the prompt context, only when it changed since the line last attached; re-forced after `/clear`, resume or main compaction | `prompt.submit` with `context` (`plugins/pr-review-watch/hooks/phase5Scan.ts:62,70-96`); resets (`phase5Scan.ts:98-107`) |
 | M3 | Changing a watched file re-checks within the turn | Tool filter `Bash`, `PowerShell`, `Write`, `Edit`, `MultiEdit`, `NotebookEdit` (the `git-status` set). For `Write` / `Edit` / `MultiEdit` / `NotebookEdit`, gate on `file_path` (`notebook_path` for `NotebookEdit`) under a watched path. For `Bash` / `PowerShell`, which carry no path (the consumer's `RepoToDo.json` is written by a generator script), stat the watched files after the call returns (`$.fs.stat`; the `$.fs.list` entry `mtimeMs` for watched directories) and gate on any mtime newer than `report.json`. Either gate schedules one check run (single-flight, coalesced) through the runner pointer; never delays the tool result | `tool.call` with a tool filter (`plugins/git-status/hooks/status.ts:37,358`); `file_path` on Write/Edit (`status.test.ts:523-528`); `$.process.run` (`tracker.ts:83`); `$.clock.after(0, ...)` (`status.ts:281-287`); pacing pattern (`status.ts:183-272`) |
 | M3b | Edits made outside the session (an IDE save) are re-checked too | On `prompt.submit` and `turn.complete`, run the same watched-file mtime versus `report.json` comparison and schedule the same coalesced check run when it trips | `prompt.submit` / `turn.complete` handlers; `$.fs.stat` (`phase5Scan.ts:33`) |
@@ -125,9 +125,9 @@ Surfaces deliberately left out of the MVP:
 
 | Criterion | Rules in TypeScript inside the mod | Rules in Python (`harness_lib.todo_sync`), mod runs them |
 |---|---|---|
-| One implementation for session, pytest, CI and Action | No: a GitHub Action and the consumer's pytest cannot run a mod | Yes: the script is stdlib plus `jsonschema` (already allowed, `CLAUDE.md:56-57`) |
+| One implementation for session, pytest, CI and Action | No: a GitHub Action and the consumer's pytest cannot run a mod | Yes: the script is stdlib plus `jsonschema` (already allowed, `CLAUDE.md:57-58`) |
 | Schema validation of `RepoToDo.json` | Hand-rolled; the mod cannot read harness `schemas/` (an installed mod sits in its own cache, `plugins/pr-review-watch/hooks/config.ts:1-5`) | `jsonschema` against `schema_path(...)`, project pin first |
-| Test realism | Mod test sandbox cannot read repository files (`plugins/pr-review-watch/README.md:160`); every file is mocked | `make_project` builds real throwaway projects (`CLAUDE.md:34-36`) |
+| Test realism | Mod test sandbox cannot read repository files (`plugins/pr-review-watch/README.md:160`); every file is mocked | `make_project` builds real throwaway projects (`CLAUDE.md:35-37`) |
 | Latency | In-process, near zero | One interpreter start per check run; bounded by gating on watched paths and coalescing |
 | Locating code at runtime | Not needed | Solved by the runner pointer written by the harness SessionStart hook (`sys.executable` of the `hpy`-resolved interpreter plus the script's absolute path) |
 
@@ -258,20 +258,21 @@ rule checks the mapping file in the meantime.
 |---|---|
 | `plugins/harness/lib/harness_lib/todo_sync/__init__.py` | public API: `check(cfg) -> Report`, `render_snapshot(cfg, date)`, `fetch_issues(cfg)`, `reconcile(cfg) -> Proposals` |
 | `plugins/harness/lib/harness_lib/todo_sync/sources.py` | loaders for TODO catalog, research catalog, stubs, plan pairs, issue cache (frozen dataclasses) |
-| `plugins/harness/lib/harness_lib/todo_sync/rules.py` | one function per rule id, each `(Sources) -> List[Finding]`, under 50 lines |
+| `plugins/harness/lib/harness_lib/todo_sync/rules_research.py`, `rules_plans.py`, `rules_todo.py` | one function per rule id, each `(Sources) -> List[Finding]`, under 50 lines; split by source (research catalog and stubs, plan pairs, TODO catalog), see the departures table |
+| `plugins/harness/lib/harness_lib/todo_sync/ranking.py` | the score formula and the fixed tie-break order that rule T10 recomputes (`rules_todo.py` calls it) |
 | `plugins/harness/lib/harness_lib/todo_sync/pip_sections.py` | PIP parser: heading -> section key, checkbox states |
 | `plugins/harness/lib/harness_lib/todo_sync/gh.py` | one `gh issue list --state all --limit N --json number,state,stateReason,title,labels,closedAt,updatedAt` call |
 | `plugins/harness/lib/harness_lib/todo_sync/report.py` | report model, JSON writer (atomic replace), Markdown formatter for the Action |
-| `plugins/harness/scripts/todo_sync.py` | driver: `check [--gh-live] [--format json|markdown] [--out] [--rules <ids>] [--fail-on error]`, `render`, `fetch`, `reconcile`, `runner`; `--rules` limits the run to the comma-separated rule ids (for example `S1,S2,S3`); exit 0 when no finding meets the `--fail-on` threshold, 1 when at least one does, and always 0 without `--fail-on` (further levels such as `warn` only if the report grows severities beyond `error` / `warn`); `activate(load_config(project_root(...)))` once (`CLAUDE.md:18-20`) |
-| `plugins/harness/hooks/todo_sync_session.py` | SessionStart: write `runner.json` and return (no `check` run in the hook, so session start pays only one interpreter start, as the existing `session_rules.py` entry with no `timeout` key does); stand down silently when `todo.catalog` is null; registered in `plugins/harness/hooks/hooks.json` (`CLAUDE.md:26-27`). The mod schedules the first check (M6 ordering contract) |
+| `plugins/harness/scripts/todo_sync.py` | driver: `check [--gh-live] [--format json|markdown] [--out] [--rules <ids>] [--fail-on error]`, `render`, `fetch`, `reconcile`, `runner`; `--rules` limits the run to the comma-separated rule ids (for example `S1,S2,S3`); exit 0 when no finding meets the `--fail-on` threshold, 1 when at least one does, and always 0 without `--fail-on` (further levels such as `warn` only if the report grows severities beyond `error` / `warn`); `activate(load_config(project_root(...)))` once (`CLAUDE.md:19-21`) |
+| `plugins/harness/hooks/todo_sync_session.py` | SessionStart: write `runner.json` and return (no `check` run in the hook, so session start pays only one interpreter start, as the existing `session_rules.py` entry with no `timeout` key does); stand down silently when `todo.folder` is null; registered in `plugins/harness/hooks/hooks.json` (`CLAUDE.md:27-28`). The mod schedules the first check (M6 ordering contract) |
 | `plugins/harness/skills/todo-sync/SKILL.md` | `harness:todo-sync`: fetch, check, reconcile; applies JSON proposals, prints `gh` commands, re-renders the snapshot |
-| `plugins/harness/schemas/catalogs/TodoCatalog.schema.json` | the TODO catalog shape, adopted from the consumer's shipped `RepoToDo.schema.json` (standalone catalog, like `CICDActionAudit`; PascalCase, schemas README "Conventions"); used by T1 only when `todo.catalog_schema` is null |
+| `plugins/harness/schemas/catalogs/TodoCatalog.schema.json` | the TODO catalog shape, adopted from the consumer's shipped `RepoToDo.schema.json` (standalone catalog, like `CICDActionAudit`; PascalCase, schemas README "Conventions"); used by T1 only when `todo.catalog_schema` is null or its file is absent |
 | `plugins/harness/schemas/TodoSyncReport.schema.json` | report contract the mod reads |
 | `plugins/todo-watch/.claude-plugin/plugin.json` | manifest with `"types": "./types/index.d.ts"` (`plugins/git-status/.claude-plugin/plugin.json:8`) |
 | `plugins/todo-watch/hooks/hooks.json` | `{ "modules": ["./register.ts"] }` (`plugins/git-status/hooks/hooks.json:1`) |
 | `plugins/todo-watch/hooks/register.ts` | wires `registerSummary`, `registerChecks`, `registerContext`, `registerCommand` (shape of `plugins/pr-review-watch/hooks/register.ts:7-11`) |
 | `plugins/todo-watch/hooks/config.ts` | mirrored defaults + `readConfig(text)` (pattern `plugins/pr-review-watch/hooks/config.ts:7-56`) |
-| `plugins/todo-watch/hooks/root.ts`, `watch.ts` | project resolution; active only when `.claude/harness.json` reads and `todo.catalog` is set (pattern `plugins/pr-review-watch/hooks/watch.ts:45-54`) |
+| `plugins/todo-watch/hooks/root.ts`, `watch.ts` | project resolution; active only when `.claude/harness.json` reads and `todo.folder` is set (pattern `plugins/pr-review-watch/hooks/watch.ts:45-54`) |
 | `plugins/todo-watch/hooks/summary.ts` | pure: TODO JSON text -> counts and top-N; toast and context-line formatting |
 | `plugins/todo-watch/hooks/checks.ts` | runner pointer read, gated and coalesced `$.process.run`, report read with mtime gate |
 | `plugins/todo-watch/hooks/command.ts` | `/todo` |
@@ -280,13 +281,13 @@ rule checks the mapping file in the meantime.
 | `plugins/todo-watch/{tsconfig.json,.gitignore,README.md}` | as the other mods (`.gitignore` ignores the generated `.claude-plugin/types/`) |
 
 Edits: `.claude-plugin/marketplace.json` (new plugin row), `.github/workflows/ci.yml:109` (add
-`plugins/todo-watch` to the mod-test loop), `README.md:8-16,20-29` (plugin table, install line), `CLAUDE.md:3-4`
-(mod count) and `CLAUDE.md:14-17` (generalize the mirror rule from `pr-review-watch` to "any mod that reads
+`plugins/todo-watch` to the mod-test loop), `README.md:8-16,20-29` (plugin table, install line), `CLAUDE.md:3-5`
+(mod count) and `CLAUDE.md:15-18` (generalize the mirror rule from `pr-review-watch` to "any mod that reads
 the key"), `plugins/harness/schemas/README.md` (two new schema sections, same PR per its update protocol).
 
 ### Config keys (`.claude/harness.json`, new `todo` object)
 
-Each key lands in the four places `CLAUDE.md:14-17` names: `config/defaults.json`, `config/harness.schema.json`,
+Each key lands in the four places `CLAUDE.md:15-18` names: `config/defaults.json`, `config/harness.schema.json`,
 the dataclass and builder in `lib/harness_lib/config.py` (beside `Artifacts`, `config.py:28-37`), and the README
 key table. Defaults are generic so `tests/contract/test_no_repo_literals.py` stays green; a project with no
 `todo` object gets an inactive feature.
@@ -310,7 +311,7 @@ the rules read resolved paths; the mod's `config.ts` resolves them the same way.
 | `todo.research.ignore_folders` | `[]` (the folders holding the snapshots and the catalog are excluded automatically) | S6 |
 | `todo.plans.pairs` | `true` | P* (paths from `artifacts.plans`) |
 | `todo.gh.repo` | `null` (the `origin` remote) | `fetch` |
-| `todo.gh.max_age_hours` | `24` | G5; mod toast suffix; mod mirror |
+| `todo.gh.max_age_hours` | `24` | G5; `/todo` summary age suffix; mod mirror |
 | `todo.rules.disabled` | `[]` | `check` |
 | `todo.rules.warn_counts` | `false` | drift number |
 | `todo.inject_context` | `true` | mod M2; mod mirror |
@@ -361,14 +362,14 @@ file through `todo.catalog_schema`, so the harness copy and the consumer file ca
 
 | Layer | Test file | Proves |
 |---|---|---|
-| Rules | `tests/lib/test_todo_sync_rules.py` | each rule id red and green on a `make_project` tree (stubs, catalogs, plan pairs, snapshot, issue cache) |
+| Rules | `tests/lib/test_todo_sync_rules.py` (end-to-end `check`), plus `test_todo_sync_rules_research.py`, `test_todo_sync_rules_plans.py`, `test_todo_sync_rules_todo.py` and `test_todo_sync_ranking.py` per rule module (see the departures table) | each rule id red and green on a `make_project` tree (stubs, catalogs, plan pairs, snapshot, issue cache) |
 | PIP parser | `tests/lib/test_todo_sync_pip_sections.py` | heading-to-section mapping, nested checkboxes, `[x]` / `[X]` |
 | Driver | `tests/scripts/test_todo_sync.py` | subcommands, exit codes (`check` exits 1 on error findings only with `--fail-on error`), Markdown output |
-| Hook | `tests/hooks/test_todo_sync_session.py` | runner pointer written under `state_dir`, nothing written under the plugin root (`CLAUDE.md:11-13`), silent when `todo.catalog` is null, no `check` run from the hook |
+| Hook | `tests/hooks/test_todo_sync_session.py` | runner pointer written under `state_dir`, nothing written under the plugin root (`CLAUDE.md:12-14`), silent when `todo.folder` is null, no `check` run from the hook |
 | Schemas | `tests/schemas/test_todo_catalog_schema.py` | fixtures validate; README section present |
 | Mirror | `tests/mods/test_todo_watch_config_mirror.py` | mirrored defaults equal `defaults.json` (pattern `tests/mods/test_pr_review_watch_config_mirror.py:22-58`) |
-| Report contract | `tests/mods/test_todo_watch_report_contract.py` | the keys `checks.ts` reads exist in `TodoSyncReport.schema.json`; names `checks.ts` literally so `tools/select_tests.py` selects it (`CLAUDE.md:48-50`) |
-| Mod | `plugins/todo-watch/hooks/*.test.ts` via the mod test runner (`CLAUDE.md:37`) | toast at start shows no drift part until a report newer than the session start lands; toast only on rise and at zero; context line on change and after `/clear`; Write outside watched paths spawns nothing; Bash that leaves watched mtimes unchanged spawns nothing, Bash that moves one schedules a run; an IDE-side mtime change trips M3b on `prompt.submit`; process timeout fails open; pointer that appears after `session.start` is picked up on the first `prompt.submit` and the first check runs; no runner pointer after that retry shows `sync checks unavailable`; `C:\` and `/repo` paths (mock world pattern `plugins/pr-review-watch/hooks/band.test.tsx:19-45`) |
+| Report contract | `tests/mods/test_todo_watch_report_contract.py` | the keys `checks.ts` reads exist in `TodoSyncReport.schema.json`; names `checks.ts` literally so `tools/select_tests.py` selects it (`CLAUDE.md:49-51`) |
+| Mod | `plugins/todo-watch/hooks/*.test.ts` via the mod test runner (`CLAUDE.md:38`) | toast at start shows no drift part until a report newer than the session start lands; toast only on rise and at zero; context line on change and after `/clear`; Write outside watched paths spawns nothing; Bash that leaves watched mtimes unchanged spawns nothing, Bash that moves one schedules a run; an IDE-side mtime change trips M3b on `prompt.submit`; process timeout fails open; pointer that appears after `session.start` is picked up on the first `prompt.submit` and the first check runs; no runner pointer after that retry shows `sync checks unavailable`; `C:\` and `/repo` paths (mock world pattern `plugins/pr-review-watch/hooks/band.test.tsx:19-45`) |
 | Strict validation | CI `plugins` job (`.github/workflows/ci.yml:100-109`) | manifest and hooks module load |
 
 Consumer side (its own PRs): the existing pytest gate stays; the Action is exercised by `workflow_dispatch`
@@ -412,7 +413,7 @@ MVP (Phases 0-2): about 5-6 days. Full plan through Phase 4: about 8-9 days.
 
 | Where | Design said | Built | Why |
 |---|---|---|---|
-| `catalogs/TodoCatalog.schema.json` source refs | harness copy differs from the consumer schema only in dialect (D13) | also generalizes the `impl_stub` / `research_folder` `ref` patterns from a fixed `docs/RESEARCH/...` prefix to any repo-relative path, and the top-level description to name rules T6-T10 | the research root (`artifacts.research`) and stub name (`todo.research.stub_name`) are configurable, so a fixed prefix in the shared schema would reject other layouts; T3 checks that the refs exist |
+| `catalogs/TodoCatalog.schema.json` source refs | harness copy differs from the consumer schema only in dialect (D13) | also generalizes the `impl_stub` / `research_folder` `ref` patterns from a fixed `docs/RESEARCH/...` prefix to any repo-relative path, and the top-level description to name rules T6-T10; the three `url` fields add a `^https://\S+$` pattern beside `format: uri` | the `uri` format is enforced only when an optional URI checker package is installed, so the pattern keeps T1 identical across interpreters; the research root (`artifacts.research`) and stub name (`todo.stub_name`, moved from `todo.research` by D16) are configurable, so a fixed prefix in the shared schema would reject other layouts; T3 checks that the refs exist |
 | `todo_sync.py` | no alternate config path | global `--config PATH` reads a harness.json other than `<project>/.claude/harness.json` | acceptance runs against a scratch config without editing the consumer's real one |
 | `todo_sync.py check` stdout | `--format json\|markdown` | adds `summary` (the default: one line `todo-sync drift=<n> error=<e> warn=<w> rules=<k> elapsed_ms=<ms>`); the report file is always written (`--out` overrides the path) | the mod ignores stdout and reads `report.json`; a person running the script wants one line |
 | P2 SHA source | `evidence` only | `evidence` or any `verification_references` string (developer decision, 2026-10-19) | the ActionPlan schema names `verification_references` the home of durable proof; on the consumer 24 of 54 P2 hits had the SHA there. A 7-40 hex token cannot tell a tree SHA from a commit SHA |
@@ -423,14 +424,18 @@ MVP (Phases 0-2): about 5-6 days. Full plan through Phase 4: about 8-9 days.
 | S1 / S3 overlap | both report a missing stub | S3 reports a missing stub for non-terminal entries; S1 only for terminal ones | one file, one finding |
 | Unreadable inputs | not specified | the first rule needing an unreadable file reports one error, later rules skip with `<label> unreadable`; a rule that raises on malformed input yields `rule could not run: ...` | no traceback reaches the report |
 | T2 | hash compare | also stale when the header's `top` differs from `todo.top_n` | a changed `top_n` changes the canonical rows |
+| T2 scope (kickoff acceptance 2, "top-10 table out of order") | snapshot table drift is caught | T2 detects catalog-side drift only: it compares the header's `top` and `rows_sha256` with the current catalog, never the table body, so a hand edit to the rows under an intact header passes; the seed is met by reordering the catalog's top-N items, or by editing or dropping the header | D10 makes the header hash the staleness basis; the snapshot is a rendered view and `render` rewrites the table from the catalog |
 | T4 | catalog links plus the open-issue coverage | catalog-link half only in Phase 1 | the issue cache arrives in Phase 3 |
 | T10 order | rank equals the position under score plus tie breakers | ordered by the recomputed score, so a score edit also reports the rank shift it causes; an item that cannot be scored skips the rank comparison | a rank check against stored scores would hide the shift |
 | Runner pointer | `sys.executable` plus script path | `{schema_version, python, script, project, report, written_at}`; `project` and `report` with forward slashes | the mod needs the project argument and the report path without re-reading `harness.json` |
 | todo-watch root | git top level of the session cwd, as pr-review-watch | nearest folder at or above the cwd holding `.claude/harness.json`, then `CLAUDE_PROJECT_DIR`; no `git` process | "a Write outside watched paths spawns no process" and "inactive spawns nothing" hold literally; a nested `harness.json` below the checkout root would win where harness_lib picks git's top level |
 | todo-watch start toast | toast carries the drift part once a fresh report landed | the start toast is always catalog-only; the first fresh report with drift toasts once as a rise (M4); the `out of sync` / `sync clean` / `gh Nd old` suffixes show on the `/todo` summary line | one toast at start, never stale drift |
 | todo-watch pacing | single-flight with an owed rerun, git-status gap | single-flight with an owed rerun, no minimum gap; the report is re-read after the mod's own run even when its mtime did not tick | a coarse file clock may not move between two runs |
+| todo-watch mtime probe (M3b) | the watched-file mtime comparison re-checks edits made outside the session | stats the watched files and folders, lists each watched folder's top-level entries, and lists one level deeper under `artifacts.research`; a shell or IDE change below that depth trips the probe only when it moves a listed entry | research stubs live at `<research>/<DOMAIN>/<stub>`, so the extra level covers the in-place stub edit (kickoff acceptance 2, S rule) without walking the whole tree on every prompt |
 | todo-watch rule order | examples list `G2` last | context line and toasts sort rule ids by letter, then number | deterministic order |
 | todo-watch modules | separate `registerSummary` / `registerContext` | both live in `checks.ts`; one `session.start` hook in `register.ts` | the plugin validator refuses a second unmatched `session.start` hook |
+| todo-watch M3 probe basis | a watched-file mtime newer than `report.json` schedules the check (M3) | the `Bash` / `PowerShell` probe compares each watched mtime against the last check start the mod recorded (`checks.ts:400`), falling back to the `report.json` mtime only before any check has run this session | the mod already holds its own check start; no extra stat of `report.json` is needed for the comparison |
+| Rules module split (D16 era) | one `rules.py` with one function per rule id; one `test_todo_sync_rules.py` | `rules_research.py`, `rules_plans.py` and `rules_todo.py` hold the rule functions by source, `ranking.py` holds the T10 score and fixed tie-break order; tests split to match (`test_todo_sync_rules_research.py`, `test_todo_sync_rules_plans.py`, `test_todo_sync_rules_todo.py`, `test_todo_sync_ranking.py`), with `test_todo_sync_rules.py` kept for the end-to-end `check` | one module per source groups the rules by the input they read; `rules_todo.py` imports `ranking.py` for T10 |
 
 ## Risks
 
@@ -439,7 +444,7 @@ MVP (Phases 0-2): about 5-6 days. Full plan through Phase 4: about 8-9 days.
 | Toast fatigue | Toast at session start, on drift rise and at zero; everything else behind `/todo` |
 | Interpreter start latency on Windows after each watched write | Gate on watched paths in TypeScript before spawning; single-flight with an owed rerun (`status.ts:252-272` pattern); `$.clock.after(0, ...)` so the tool result is not delayed; time cap on the run |
 | Runner pointer goes stale after a plugin update (versioned cache path) | Rewritten every SessionStart; the mod checks `$.fs.exists` on the script before running it |
-| Duplicate S1-S3 logic (consumer pytest and harness) diverges | Accepted for the MVP: the consumer test keeps its own literal regex pinning the catalog path (D14; `test_research_impl_catalog.py:32-34`), stricter than the harness default `\S+#`. Optionally the consumer sets `todo.research.anchor_pattern` to the same literal. A later consumer PR can have its test call `todo_sync.py check --rules S1,S2,S3 --fail-on error` so only one copy of the logic remains |
+| Duplicate S1-S3 logic (consumer pytest and harness) diverges | Accepted for the MVP: the consumer test keeps its own literal regex pinning the catalog path (D14; `test_research_impl_catalog.py:32-34`), stricter than the harness default `\S+#`. Optionally the consumer sets `todo.research.anchor_pattern` to the same literal. A later consumer PR can have its test call `todo_sync.py check --rules S1,S2,S3 --fail-on error` so only one copy of the logic remains (that subset run marks the other rules `not selected` in `rules_skipped`, so `todo-watch` ignores its report rather than show its partial drift) |
 | Two catalogs both claim a status | D12 ownership split plus T5 |
 | Harness `TodoCatalog.schema.json` v0 and the consumer's shipped closed `RepoToDo.schema.json` diverge | The harness schema follows the shipped consumer schema, and T1 validates against the consumer's file through `todo.catalog_schema` (D13) |
 | Item ids renumber on every regeneration | Ids never leave the JSON; no issue-body marker (Linking) |

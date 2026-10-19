@@ -35,15 +35,23 @@ export const REPORT_KEYS = [
 ] as const
 /** `counts` keys the mod reads. */
 export const COUNT_KEYS = ['error', 'warn'] as const
-/** Finding keys the mod reads. */
+/** Finding keys the mod reads; `findingOf` reads each through `field`, which accepts no other key. */
 export const FINDING_KEYS = [
   'rule', 'severity', 'counted', 'file', 'line', 'subject', 'message', 'fix',
 ] as const
 /** Finding keys that must be present; the rest default to null. */
 export const FINDING_REQUIRED = ['rule', 'severity', 'counted', 'file', 'message'] as const
+/** Finding severities the mod accepts; a finding with another one is skipped. */
 export const SEVERITIES = ['error', 'warn'] as const
+/**
+ * `rules_skipped` reason of a rule left out by `check --rules`: a report carrying it covers a subset of the
+ * rules, not the whole project, and is ignored.
+ */
+export const SUBSET_REASON = 'not selected'
 /** Runner pointer `schema_version` the mod reads. */
 export const RUNNER_SCHEMA_VERSION = 1
+/** Runner pointer keys that must be non-blank; `report` is optional. */
+export const RUNNER_KEYS = ['python', 'script', 'project'] as const
 
 /** Longest a check run may take before it is killed and fails open, in milliseconds. */
 export const CHECK_TIMEOUT_MS = 20_000
@@ -78,35 +86,51 @@ const parseJson = (text: string): unknown => {
 export const parseRunner = (text: string): Runner | undefined => {
   const data = parseJson(text)
   if (!isObject(data) || data.schema_version !== RUNNER_SCHEMA_VERSION) return undefined
-  const python = nonBlank(data.python)
-  const script = nonBlank(data.script)
-  const project = nonBlank(data.project)
+  const [python, script, project] = RUNNER_KEYS.map(k => nonBlank(data[k]))
   if (python === undefined || script === undefined || project === undefined) return undefined
   return { python, script, project, report: nonBlank(data.report) }
 }
 
+type FindingKey = (typeof FINDING_KEYS)[number]
+type Severity = (typeof SEVERITIES)[number]
+
+/** A finding's value at one of `FINDING_KEYS`. */
+const field = (v: Json, key: FindingKey): unknown => v[key]
+
+const isSeverity = (v: unknown): v is Severity => SEVERITIES.some(s => s === v)
+
 /** One finding; undefined when a required key is missing or mistyped. */
 const findingOf = (v: unknown): SyncFinding | undefined => {
   if (!isObject(v) || !FINDING_REQUIRED.every(k => k in v)) return undefined
-  const { rule, severity, counted, message } = v
+  const [rule, severity, counted, message] = [field(v, 'rule'), field(v, 'severity'), field(v, 'counted'),
+    field(v, 'message')]
   if (typeof rule !== 'string' || typeof message !== 'string' || typeof counted !== 'boolean') return undefined
-  if (severity !== 'error' && severity !== 'warn') return undefined
-  const line = isCount(v.line) && v.line > 0 ? v.line : null
+  if (!isSeverity(severity)) return undefined
+  const line = field(v, 'line')
   return {
-    rule, severity, counted, message, line,
-    file: stringOrNull(v.file), subject: stringOrNull(v.subject), fix: stringOrNull(v.fix),
+    rule, severity, counted, message, line: isCount(line) && line > 0 ? line : null,
+    file: stringOrNull(field(v, 'file')), subject: stringOrNull(field(v, 'subject')),
+    fix: stringOrNull(field(v, 'fix')),
   }
 }
+
+/** Whether a report's `rules_skipped` marks a `check --rules` run (`SUBSET_REASON`). */
+const isSubsetRun = (skipped: unknown): boolean =>
+  Array.isArray(skipped) && skipped.some(s => isObject(s) && s.reason === SUBSET_REASON)
 
 /** Counted findings per rule id, positive whole numbers only. */
 const byRuleOf = (v: Json): Record<string, number> =>
   Object.fromEntries(Object.entries(v).filter(([, n]) => isCount(n) && n > 0)) as Record<string, number>
 
-/** A TodoSyncReport text as the mod reads it; undefined when malformed or of another version. */
+/**
+ * A TodoSyncReport text as the mod reads it; undefined when malformed, of another version, or written by a
+ * `check --rules` run (its drift covers only the selected rules).
+ */
 export const parseReport = (text: string, mtimeMs: number): SyncReport | undefined => {
   const data = parseJson(text)
   if (!isObject(data) || !REPORT_KEYS.every(k => k in data)) return undefined
   if (data.schema_version !== REPORT_SCHEMA_VERSION || typeof data.generated_at !== 'string') return undefined
+  if (isSubsetRun(data.rules_skipped)) return undefined
   const { drift, by_rule: byRule, counts, findings } = data
   if (!isCount(drift) || !isObject(byRule) || !isObject(counts) || !Array.isArray(findings)) return undefined
   return {
@@ -277,8 +301,14 @@ async function applyReport($: Dollar, report: SyncReport): Promise<void> {
 }
 
 /**
+ * The session start floored to the whole second: the earliest `generated_at` a fresh report may carry, as
+ * an engine that writes whole seconds stamps a check finishing in the start's own second before the start.
+ */
+export const startGateMs = (startedAtMs: number): number => Math.floor(startedAtMs / 1000) * 1000
+
+/**
  * Re-reads the report when its mtime moved (always after a check run of the mod's own, `isForced`, as a
- * coarse file clock may not move between two runs); one older than the session start is ignored.
+ * coarse file clock may not move between two runs); one older than the session start's second is ignored.
  */
 async function refreshReport($: Dollar, w: Watch, isForced = false): Promise<void> {
   const path = reportPathOf(w)
@@ -287,7 +317,7 @@ async function refreshReport($: Dollar, w: Watch, isForced = false): Promise<voi
   session.reportMtime = mtime
   const text = await readText($, path)
   const report = text === undefined ? undefined : parseReport(text, mtime)
-  if (report === undefined || reportTimeMs(report) < (session.startedAtMs ?? 0)) return
+  if (report === undefined || reportTimeMs(report) < startGateMs(session.startedAtMs ?? 0)) return
   await applyReport($, report)
 }
 
@@ -335,14 +365,31 @@ function finishCycle($: Dollar): void {
   requestCheck($)
 }
 
-/** The newest mtime among the watched files, the watched folders and their top-level entries. */
+/** The newest mtime among the entries of `dir`, and of its subfolders' entries `depth` levels further down. */
+async function newestListed($: Dollar, dir: string, depth: number): Promise<number> {
+  let newest = Number.NEGATIVE_INFINITY
+  for (const entry of await $.fs.list(dir).catch(() => [])) {
+    newest = Math.max(newest, entry.mtimeMs)
+    if (depth > 0 && entry.kind === 'dir') {
+      newest = Math.max(newest, await newestListed($, `${dir}/${entry.name}`, depth - 1))
+    }
+  }
+  return newest
+}
+
+/**
+ * The newest mtime among the watched files, the watched folders and their top-level entries; under the
+ * research folder one level deeper too, where the `<DOMAIN>/<stub>` files live, so an in-place stub edit
+ * outside the session trips the probe.
+ */
 async function newestWatchedMtime($: Dollar, w: Watch): Promise<number> {
   let newest = Number.NEGATIVE_INFINITY
   for (const path of [...watchedFiles(w), ...watchedDirs(w)]) {
     newest = Math.max(newest, (await mtimeOf($, path)) ?? newest)
   }
+  const research = under(w.root, w.cfg.researchDir)
   for (const dir of watchedDirs(w)) {
-    for (const entry of await $.fs.list(dir).catch(() => [])) newest = Math.max(newest, entry.mtimeMs)
+    newest = Math.max(newest, await newestListed($, dir, dir === research ? 1 : 0))
   }
   return newest
 }

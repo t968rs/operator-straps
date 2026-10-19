@@ -63,10 +63,11 @@ def test_catalog_schema_is_draft_2020_12() -> None:
     lambda d: d["items"][0].update(notes="free text"),
     lambda d: d["items"][2].update(decision_question=None),
     lambda d: d["items"][1]["sources"][0].update(ref="/abs/_IMPL_TODO.md"),
+    lambda d: d["items"][1]["sources"][0].update(ref="docs\\plans\\_IMPL_TODO.md"),
     lambda d: d["close_candidates"][0].update(current_state="OPEN"),
     lambda d: d.pop("trackers"),
-], ids=["id-pattern", "terminal-status", "closed-item", "decision-question", "abs-stub-ref", "close-state",
-        "trackers-required"])
+], ids=["id-pattern", "terminal-status", "unknown-item-key", "decision-question", "abs-stub-ref",
+        "backslash-stub-ref", "close-state", "trackers-required"])
 def test_catalog_schema_rejects(catalog: Dict[str, Any], mutate) -> None:
     bad = copy.deepcopy(catalog)
     mutate(bad)
