@@ -15,7 +15,7 @@ SHELL_FORM = re.compile(
     r'"\$\{CLAUDE_PLUGIN_ROOT\}/hooks/(?P<name>[A-Za-z0-9_]+\.py)"$')
 
 EXPECTED: Dict[Tuple[str, str], List[str]] = {
-    ("SessionStart", ""): ["session_rules.py"],
+    ("SessionStart", ""): ["session_rules.py", "todo_sync_session.py"],
     ("PreToolUse", "Bash"): ["bash_discipline.py", "bash_allow_shapes.py", "approve_python_c.py"],
     ("PreToolUse", "PowerShell"): ["powershell_allow_shapes.py"],
     ("PostToolUse", "Write|Edit|Bash"): ["validate_pr_json_schema.py"],

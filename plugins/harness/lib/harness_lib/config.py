@@ -7,6 +7,7 @@ scalars replace. Validation uses ``jsonschema`` when it imports, else a top-leve
 from __future__ import annotations
 
 import json
+import posixpath
 import re
 import subprocess
 from dataclasses import dataclass
@@ -96,6 +97,53 @@ class RunLogsConfig:
 
 
 @dataclass(frozen=True)
+class TodoSnapshots:
+    """Where dated TODO snapshots live and how a snapshot file name carries its date."""
+
+    dir: Optional[str]
+    name_pattern: str
+
+
+@dataclass(frozen=True)
+class TodoResearch:
+    """The research catalog and the stub line naming a catalog entry."""
+
+    catalog: Optional[str]
+    anchor_pattern: str
+    ignore_folders: Tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TodoConfig:
+    """TODO catalog sync: the catalog and the artifacts the todo_sync rules compare it with.
+
+    Paths are project-relative POSIX, resolved from ``todo.folder``, and never climb above the project root;
+    each is None while the feature is off (``folder`` null) or its key is null. ``catalog_schema`` and
+    ``research.catalog`` left at their defaults are also None while their file is absent; a name the project
+    sets explicitly must exist (``ConfigError`` otherwise).
+    """
+
+    folder: Optional[str]
+    catalog: Optional[str]
+    catalog_schema: Optional[str]
+    stub_name: Optional[str]
+    top_n: int
+    snapshots: TodoSnapshots
+    research: TodoResearch
+    plans_pairs: bool
+    gh_repo: Optional[str]
+    gh_max_age_hours: float
+    rules_disabled: Tuple[str, ...]
+    rules_warn_counts: bool
+    inject_context: bool
+
+    @property
+    def enabled(self) -> bool:
+        """True once ``todo.folder`` is configured."""
+        return self.folder is not None
+
+
+@dataclass(frozen=True)
 class HarnessConfig:
     """Merged, validated harness configuration for one project root."""
 
@@ -116,6 +164,7 @@ class HarnessConfig:
     auto_approve_python_c: bool
     worktree_root: Optional[str]
     runlogs: RunLogsConfig
+    todo: TodoConfig
 
     def path(self, rel: str) -> Path:
         """Absolute path of a project-relative POSIX path."""
@@ -165,14 +214,19 @@ def deactivate() -> None:
     _ACTIVE = None
 
 
-def load_config(project_root: Path) -> HarnessConfig:
-    """Load ``<project_root>/.claude/harness.json`` over the plugin defaults and validate the result."""
+def load_config(project_root: Path, config_path: Optional[Path] = None) -> HarnessConfig:
+    """Load ``<project_root>/.claude/harness.json`` over the plugin defaults and validate the result.
+
+    ``config_path`` names an alternate file read in place of the project's own (it must exist).
+    """
     root = Path(project_root).resolve()
-    source = root / CONFIG_REL
+    source = root / CONFIG_REL if config_path is None else Path(config_path).resolve()
+    if config_path is not None and not source.is_file():
+        raise ConfigError(f"{source}: not found")
     override = _read_json(source) if source.is_file() else {}
     _validate(override, source)
     merged = deep_merge(_read_json(DEFAULTS_PATH), override)
-    return _build(merged, root, source if source.is_file() else None)
+    return _build(merged, root, source if source.is_file() else None, override)
 
 
 def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
@@ -220,7 +274,8 @@ def _validate_minimal(data: Dict[str, Any], schema: Dict[str, Any], source: Path
             raise ConfigError(f"{source}: tests/file_pattern: {exc}") from exc
 
 
-def _build(m: Dict[str, Any], root: Path, source: Optional[Path]) -> HarnessConfig:
+def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
+           override: Optional[Dict[str, Any]] = None) -> HarnessConfig:
     return HarnessConfig(
         project_root=root, source=source, harness_version=m["harness_version"], base_branch=m["base_branch"],
         integration_branches=tuple(m["integration_branches"]), skills_dir=m["skills_dir"],
@@ -228,19 +283,79 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path]) -> HarnessConf
         exclusions=m["exclusions"], artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
         auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
-        runlogs=_runlogs(m["runlogs"]),
+        runlogs=_runlogs(m["runlogs"]), todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
     )
+
+
+def _require_group(pattern: str, group: str, where: str) -> None:
+    """Raise ConfigError unless ``pattern`` compiles and has the named group ``group``."""
+    try:
+        compiled = re.compile(pattern)
+    except re.error as exc:
+        raise ConfigError(f"{where}: {exc}") from exc
+    if group not in compiled.groupindex:
+        raise ConfigError(f"{where}: no named group '{group}'")
 
 
 def _runlogs(r: Dict[str, Any]) -> RunLogsConfig:
     """``runlogs`` with ``name_pattern`` compiled and checked for the required named group ``date``."""
-    try:
-        pattern = re.compile(r["name_pattern"])
-    except re.error as exc:
-        raise ConfigError(f"runlogs/name_pattern: {exc}") from exc
-    if "date" not in pattern.groupindex:
-        raise ConfigError("runlogs/name_pattern: no named group 'date'")
+    _require_group(r["name_pattern"], "date", "runlogs/name_pattern")
     return RunLogsConfig(r["dir"], r["name_pattern"])
+
+
+def _inside_root(rel: str, where: str) -> str:
+    """``rel`` unless it climbs above the project root (``..`` or ``../...``); ConfigError then."""
+    if rel == ".." or rel.startswith("../"):
+        raise ConfigError(f"{where}: {rel} resolves above the project root")
+    return rel
+
+
+def _in_folder(folder: Optional[str], name: Optional[str], where: str) -> Optional[str]:
+    """``name`` joined to ``folder`` and normalized (``..`` folds); None when either is None.
+
+    Raises ConfigError when the result climbs above the project root.
+    """
+    if folder is None or name is None:
+        return None
+    return _inside_root(posixpath.normpath(posixpath.join(folder, name.replace("\\", "/"))), where)
+
+
+def _if_present(root: Path, rel: Optional[str], explicit: bool, where: str) -> Optional[str]:
+    """``rel`` when that project file exists; else None for a defaulted name, ConfigError for an explicit."""
+    if rel is None or (root / rel).is_file():
+        return rel
+    if explicit:
+        raise ConfigError(f"{where}: {rel} not found")
+    return None
+
+
+def _todo(t: Dict[str, Any], root: Path, explicit: Dict[str, Any]) -> TodoConfig:
+    """``todo`` with every path resolved under ``folder`` and both patterns checked for their named groups.
+
+    ``explicit`` is the project's own ``todo`` block: a file it names must exist, a defaulted one may not.
+    """
+    snaps, research = t["snapshots"], t["research"]
+    _require_group(snaps["name_pattern"], "date", "todo/snapshots/name_pattern")
+    _require_group(research["anchor_pattern"], "id", "todo/research/anchor_pattern")
+    folder = t["folder"].replace("\\", "/").rstrip("/") if t["folder"] is not None else None
+    if folder is not None:
+        _inside_root(posixpath.normpath(folder), "todo/folder")
+    schema = _if_present(root, _in_folder(folder, t["catalog_schema"], "todo/catalog_schema"),
+                         explicit.get("catalog_schema") is not None, "todo/catalog_schema")
+    research_catalog = _if_present(root, _in_folder(folder, research["catalog"], "todo/research/catalog"),
+                                   (explicit.get("research") or {}).get("catalog") is not None,
+                                   "todo/research/catalog")
+    return TodoConfig(
+        folder=folder, catalog=_in_folder(folder, t["catalog"], "todo/catalog"),
+        catalog_schema=schema, stub_name=t["stub_name"], top_n=int(t["top_n"]),
+        snapshots=TodoSnapshots(_in_folder(folder, snaps["dir"], "todo/snapshots/dir"),
+                                snaps["name_pattern"]),
+        research=TodoResearch(research_catalog, research["anchor_pattern"],
+                              tuple(research["ignore_folders"])),
+        plans_pairs=bool(t["plans"]["pairs"]), gh_repo=t["gh"]["repo"],
+        gh_max_age_hours=float(t["gh"]["max_age_hours"]), rules_disabled=tuple(t["rules"]["disabled"]),
+        rules_warn_counts=bool(t["rules"]["warn_counts"]), inject_context=bool(t["inject_context"]),
+    )
 
 
 def _artifacts(a: Dict[str, Any]) -> Artifacts:

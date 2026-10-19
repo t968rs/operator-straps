@@ -15,7 +15,8 @@ A test file is selected when any of these holds:
   changed or was deleted.
 
 A changed or deleted non-``.py`` file under ``plugins/`` or ``tools/`` also counts as a change to every
-``.py`` file there whose source names its basename (a module that reads the data file by path).
+``.py`` file there whose source names its basename (a module that reads the data file by path). The same
+holds for a non-``.py`` file under ``tests/`` and every ``_``-prefixed helper module under ``tests/``.
 
 Anything the rules cannot judge selects everything: a shared file (conftest, pyproject, the workflow, this
 script), a deleted ``.py`` file, a path with characters outside ``[A-Za-z0-9_./-]``, a test or helper that
@@ -189,17 +190,35 @@ def named_scripts(text: str, index: Dict[str, List[str]]) -> List[str]:
     return [rel for name, rels in index.items() if name in text for rel in rels]
 
 
-def data_readers(root: Path, changed: Sequence[str], index: Dict[str, List[str]]) -> List[str]:
-    """Indexed ``.py`` files whose source names a changed non-``.py`` file under ``plugins/``/``tools/``."""
-    data = [c for c in changed if not c.endswith(".py") and c.startswith(("plugins/", "tools/"))]
-    if not data:
+def helper_files(root: Path) -> List[str]:
+    """Repo paths of the ``_``-prefixed helper modules under ``tests/``, which test files import by name."""
+    base = root / "tests"
+    if not base.is_dir():
         return []
-    readers: List[str] = []
-    for rel in sorted(r for rels in index.values() for r in rels):
+    return sorted(p.relative_to(root).as_posix() for p in base.rglob("_*.py")
+                  if not any(part in SKIP_DIRS for part in p.relative_to(base).parts))
+
+
+def _readers_of(root: Path, data: Sequence[str], rels: Sequence[str]) -> List[str]:
+    """The files in ``rels`` whose source names one of the changed ``data`` files."""
+    found: List[str] = []
+    if not data:
+        return found
+    for rel in rels:
         text = (root / rel).read_text(encoding="utf-8", errors="replace")
         if any(mentions(text, d) for d in data):
-            readers.append(rel)
-    return readers
+            found.append(rel)
+    return found
+
+
+def data_readers(root: Path, changed: Sequence[str], index: Dict[str, List[str]]) -> List[str]:
+    """Indexed ``.py`` files whose source names a changed non-``.py`` file under ``plugins/``/``tools/``, and
+    test helpers whose source names a changed non-``.py`` file under ``tests/``."""
+    data = [c for c in changed if not c.endswith(".py")]
+    script_data = [c for c in data if c.startswith(("plugins/", "tools/"))]
+    helper_data = [c for c in data if c.startswith("tests/")]
+    scripts = sorted(r for rels in index.values() for r in rels)
+    return [*_readers_of(root, script_data, scripts), *_readers_of(root, helper_data, helper_files(root))]
 
 
 def affected_tests(root: Path, changed: Sequence[str]) -> Tuple[List[str], List[str]]:

@@ -87,11 +87,19 @@ This is a worked specimen (originally produced for Issue #747's CICD-Decompose-c
 
 **Purpose:** Migration audit snapshot from Issue #1210 (PR_REVIEW schema migration to fix: string → array[string]). Not maintained; for historical reference only.
 
+### 7. `TodoSyncReport.schema.json`
+
+**Purpose:** Result of one `todo_sync.py check` run, written atomically to `<state_dir>/todo-sync/report.json` and read by the `todo-watch` mod. Derived data, never committed.
+
+**Key fields:** `schema_version` (const 1), `generated_at`, `rules_run[]`, `rules_skipped[]` (`rule`, `reason`), `drift` (counted findings: every error, plus warns when `todo.rules.warn_counts` is true), `by_rule` (counted findings per rule id), `counts` (`error`, `warn` over all findings), `gh_fetched_at` (issue cache time or null), `findings[]`.
+
+**Finding:** `rule` (`S*` research, `P*` plans, `T*` TODO catalog, `G*` GitHub), `severity` (`error` / `warn`), `counted`, `file` (repo-relative POSIX or null), optional `line`, `subject`, `fix`, and a one-line `message`. `tests/mods/test_todo_watch_report_contract.py` pins every key the mod reads to this schema and checks that the mod's finding parser reads those keys and the severity enum through the pinned constants. A `--rules` run marks each left-out rule `not selected` in `rules_skipped`; the mod ignores such a subset report.
+
 ---
 
 ## Catalog Schemas (`catalogs/`)
 
-Structured catalogs for symbol-level analysis. Most catalog variants — `Decompose`, `ConsumerAudit`, and any future symbol-flavored variant — extend the common `SymbolCatalog.base` via `allOf` + `$ref`, so they share scaffolding (categories, summary, per-entry shape) while carrying purpose-specific fields. A small number of catalogs (currently `CICDActionAudit`) describe non-symbol artifacts and are intentionally standalone — they keep the same documentation conventions (`catalog_date`, `summary`, sibling-path refs) but do not inherit `SymbolCatalog.base`. Each variant's section below states whether it extends the base. Sibling-schema references use bare relative paths — no leading `./`, no `$id`-by-bare-token.
+Structured catalogs for symbol-level analysis. Most catalog variants — `Decompose`, `ConsumerAudit`, and any future symbol-flavored variant — extend the common `SymbolCatalog.base` via `allOf` + `$ref`, so they share scaffolding (categories, summary, per-entry shape) while carrying purpose-specific fields. A small number of catalogs (`CICDActionAudit` and `TodoCatalog`) describe non-symbol artifacts and are intentionally standalone — they do not inherit `SymbolCatalog.base`. `CICDActionAudit` keeps the `catalog_date` / `summary` shape; `TodoCatalog` uses its own `generated` / `counts` shape and has neither field. Both keep sibling-path refs. Each variant's section below states whether it extends the base. Sibling-schema references use bare relative paths — no leading `./`, no `$id`-by-bare-token.
 
 ### `catalogs/SymbolCatalog.base.schema.json`
 
@@ -126,6 +134,18 @@ Top-level fields: `catalog_date`, `issue_number`, `issue_title`, `deprecation_no
 Per-workflow entry: `file` (repo-relative path), `has_force_node24` (boolean), `actions[]`.
 
 Per-action entry: `name` (uses: reference), `line` (1-indexed), `nodejs_version_target`, `current_status` (`compatible_with_force` / `will_auto_migrate` / `outdated` / `up_to_date`), `resolution` (enum), `rationale`, optional `recommended_change`.
+
+### `catalogs/TodoCatalog.schema.json`
+
+**Applies to:** The ranked repository TODO catalog (`<todo.folder>/RepoToDo.json` unless `todo.catalog` names another file under the folder), checked by `todo_sync.py` and summarized by the `todo-watch` mod. Rule T1 validates against it when the project keeps no schema beside the data (`<todo.folder>/RepoToDo.schema.json`, or the file `todo.catalog_schema` names), or when `todo.catalog_schema` is null.
+
+**Base relationship:** Standalone, closed (`additionalProperties: false`) at every level. Draft 2020-12.
+
+Top-level fields (required): `generated`, `generated_from` (`description`, `head_sha`, optional `branch`), `ranking_method` (formula text, `impact_weights`, `loe_points`, `blast_factors`, `unblock_bonus`, `tie_breakers`, `impact_definitions`, `severity_scale`), `counts`, `items[]`, `trackers[]`, `close_candidates[]`; optional `$schema`.
+
+Per-item fields: `id` (`TODO-NNN`, equal to `rank`; both are display labels that change on every re-rank), `title`, `kind`, `status` (`OPEN` / `PARTIAL` / `NEEDS_DECISION` / `BLOCKED`; no terminal status: finished work leaves the file), `needs_decision` + `decision_question`, `tracker`, `sources[]` (`gh_issue` / `impl_stub` / `research_folder`), `gh_issues[]`, `related_gh_issues[]`, `catalog_entry_ids[]`, `summary`, `proposed_change`, optional `code_snippet`, `files[]`, `blast_radius`, `loe`, `impact`, `severity`, `priority` (`score`, `components`), `depends_on[]`, `unblocks[]`, `why_ranked`.
+
+Cross-record rules the schema cannot express that `todo_sync` rules T6-T10 check: unique ids equal to `TODO-<rank>`, ranks 1..n, `priority.score` and order recomputed with the fixed formula from the numeric `ranking_method` tables, mutual `depends_on` / `unblocks`, tracker membership, and `counts` tallies other than `sources_absorbed` and `merged_items`. Unchecked: `counts.sources_absorbed`, `counts.merged_items`, `close_candidates[].related_todo_ids` membership, and the sort order of `unblocks` and `related_todo_ids`. The `ranking_method` formula strings (`value`, `cost`, `score`, `tie_breakers`) are human-readable records; `todo_sync` never parses them.
 
 ---
 
@@ -192,7 +212,7 @@ Catalogs are spec/plan-time artifacts — they inform the ActionPlan but don't r
 - Linked to valid plan-level source docs (`source_document` and `documentation`) and PR linkage docs (`pr_attributes[].review_doc` / `pr_attributes[].pip_document`)
 - Every issue from the review has a corresponding item
 - JSON is the source of truth for TODO and progress state; if execution deviates, JSON must be updated before completion claims
-- `status: COMPLETE` always carries commit SHA(s) in `evidence`
+- `status: COMPLETE` always carries commit SHA(s) in `evidence` or `verification_references` (todo_sync rule P2)
 - `status: CLOSED_NO_ACTION` always carries rationale
 - `verification_references[]` should carry durable proof pointers (commit SHA, command, CI run, artifact path, or anchor)
 - `markdown_section` should point to the Markdown section that expands the JSON item's evidence/details
@@ -212,7 +232,9 @@ Catalogs are spec/plan-time artifacts — they inform the ActionPlan but don't r
 - Worktree paths use absolute `git -C <path>` form
 - Checkboxes use `- [ ]` markdown
 
-### Catalog JSON (any variant)
+### Catalog JSON (SymbolCatalog variants)
+
+Applies to the symbol-flavored variants only. Standalone catalogs (`CICDActionAudit`, `TodoCatalog`) do not extend the base and are not covered by these rules; `TodoCatalog` is checked by todo_sync rules T6-T10.
 
 - Validates against the relevant variant schema (which `allOf`-includes `SymbolCatalog.base.schema.json`)
 - `categories[].id` values are referenced by `category_id` on every entry
@@ -224,7 +246,7 @@ Catalogs are spec/plan-time artifacts — they inform the ActionPlan but don't r
 
 ## Conventions
 
-- **Naming:** `PascalCase.schema.json` for new schemas. Variant catalogs use a sub-namespace (`<Purpose>.catalog.schema.json`).
+- **Naming:** `PascalCase.schema.json` for new schemas. Variant catalogs use a sub-namespace (`<Purpose>.catalog.schema.json`). Naming exception: `TodoCatalog.schema.json` is standalone and has no `.catalog.` sub-namespace, named for the artifact it describes.
 - **`$ref` form:** Bare relative paths between sibling schemas (e.g., `"$ref": "SymbolCatalog.base.schema.json"`). No leading `./`. No `$id`-by-bare-token.
 - **`$id` form:** when declared, `https://github.com/t968rs/operator-straps/plugins/harness/schemas/<path relative to this directory>`. Never a `file:///` path or a consuming project's URL.
 - **Schema dialect:** `https://json-schema.org/draft/2020-12/schema` for new schemas. PR_REVIEW.schema.json is on draft-2020-12 as of PR #1216. ActionPlan.schema.json and prAttributes.schema.json remain on draft-07 pending separate migrations.

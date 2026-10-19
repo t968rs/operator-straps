@@ -4,7 +4,8 @@
     "SessionStart": [
       {
         "hooks": [
-          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/session_rules.py\""}
+          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/session_rules.py\""},
+          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/todo_sync_session.py\""}
         ]
       }
     ],

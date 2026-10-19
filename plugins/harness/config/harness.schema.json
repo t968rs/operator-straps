@@ -97,6 +97,59 @@
         "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Run-log folder; subfolders at any depth (e.g. dated archive folders) are searched too. null: check-runlogs needs --dir."},
         "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a log file name must fully match; named group date (YYYY-MM-DD) required (checked at config load), time (HHMMSS) optional, a date-only name sorts as midnight."}
       }
+    },
+    "todo": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "TODO catalog sync (todo_sync engine, todo-watch mod). Inactive while folder is null. Every other path is relative to folder ('..' allowed, but no path may climb above the project root: config load fails). A null key switches its rule group off. catalog_schema and research.catalog at their defaults are used only when present; a name the project sets must exist (config load fails). A missing TODO catalog is a T1 error and a missing snapshot a T2 warn.",
+      "properties": {
+        "folder": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project-relative folder holding the TODO catalog and its companions, inside the project root; setting it turns the feature on. null: off."},
+        "catalog": {"$ref": "#/$defs/relPath", "description": "Ranked TODO catalog JSON (TodoCatalog shape), relative to folder."},
+        "catalog_schema": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project schema rule T1 validates the catalog against (its declared draft), relative to folder; the default name is used when the file exists, else (or when null) the harness catalogs/TodoCatalog.schema.json. A name set here must exist."},
+        "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
+        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the /todo summary table and the rendered snapshot. The start toast shows only the rank-1 id."},
+        "snapshots": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Folder render writes dated snapshots into and T2 reads the newest from, relative to folder; null turns T2 and render off."},
+            "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a snapshot file name must fully match; named group date required (checked at config load); newest by date, else mtime. render always writes TODO_Snapshot_YYYY_MMDD.md (fixed name), so this pattern must also fully match that name or render refuses."}
+          }
+        },
+        "research": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "catalog": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Research implementation catalog JSON, relative to folder; the default name is used when the file exists, else (or when null) the S rules and T3-T5 are off. A name set here must exist. The research root is artifacts.research."},
+            "anchor_pattern": {"$ref": "#/$defs/regex", "description": "Regex a stub line matches to name its catalog entry; named group id required (checked at config load)."},
+            "ignore_folders": {"$ref": "#/$defs/strings", "description": "Top-level research folders S6 does not require an entry for; the folders holding the catalog and the snapshots are excluded automatically."}
+          }
+        },
+        "plans": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "pairs": {"type": "boolean", "description": "Check ActionPlan / PIP pairs under artifacts.plans (rules P1-P4)."}
+          }
+        },
+        "gh": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "repo": {"oneOf": [{"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"}, {"type": "null"}], "description": "owner/name the issue fetch reads; null: the origin remote. Phase 3: the fetch is not built yet, so no rule reads it today."},
+            "max_age_hours": {"type": "number", "exclusiveMinimum": 0, "description": "Issue cache age past which G5 warns (Phase 3; no G rule runs yet) and the /todo summary line shows the age. The start toast does not show it."}
+          }
+        },
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "disabled": {"type": "array", "items": {"type": "string", "pattern": "^[SPTG][0-9]+$"}, "uniqueItems": true, "description": "Rule ids check skips."},
+            "warn_counts": {"type": "boolean", "description": "Count warn findings toward the drift number."}
+          }
+        },
+        "inject_context": {"type": "boolean", "description": "todo-watch adds a TODO_SYNC drift line to the prompt context when it changes."}
+      }
     }
   }
 }

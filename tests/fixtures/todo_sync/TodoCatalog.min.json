@@ -1,0 +1,276 @@
+{
+  "$schema": "TodoCatalog.schema.json",
+  "generated": "2026-10-19",
+  "generated_from": {
+    "description": "Test fixture.",
+    "head_sha": "0123abc",
+    "branch": "main"
+  },
+  "ranking_method": {
+    "value": "severity * impact_weight",
+    "cost": "loe_points * blast_factor",
+    "score": "value / sqrt(cost), multiplied by (1 + unblock_bonus) when the item unblocks at least one item",
+    "impact_weights": {
+      "silent_wrong_output": 1.5,
+      "data_correctness": 1.4,
+      "runtime_failure": 1.3,
+      "dev_velocity": 1.0,
+      "maintainability": 0.8,
+      "docs_tooling": 0.6
+    },
+    "loe_points": {
+      "XS": 1,
+      "S": 2,
+      "M": 4,
+      "L": 8,
+      "XL": 16
+    },
+    "blast_factors": {
+      "S": 1.0,
+      "M": 1.2,
+      "L": 1.5,
+      "XL": 2.0
+    },
+    "unblock_bonus": 0.15,
+    "tie_breakers": [
+      "higher severity",
+      "lower LoE points",
+      "primary source type, where the primary source is sources[0]: gh_issue, then impl_stub, then research_folder",
+      "primary source ref: issue number ascending for gh_issue, otherwise the ref path in code-point order",
+      "primary source item text in code-point order (absent item sorts first)",
+      "title in code-point order"
+    ],
+    "impact_definitions": {
+      "silent_wrong_output": "A shipped tool path completes without error or warning and publishes a value or feature that is wrong under an established rule.",
+      "data_correctness": "Output or reference data can be wrong or ungoverned, but the correct value still needs a rule or decision to define it, a guard or validation is missing, or the wrong value already surfaces with a warning or error.",
+      "runtime_failure": "A tool or library path raises or aborts on an input it accepts.",
+      "dev_velocity": "Tests, CI or developer tooling are slower, noisier or less trustworthy than they need to be; no tool output changes.",
+      "maintainability": "Structure, duplication, dead code, missing tests or latent defects that no current production path reaches; no tool output changes.",
+      "docs_tooling": "Documentation, research records, configuration or agent tooling outside the shipped tool paths."
+    },
+    "severity_scale": {
+      "1": "Cosmetic or hygiene: renames, dead code, stale docs, a test gap for working or accepted behavior, or hardening of a check that tests already cover.",
+      "2": "Debt with a concrete cost, a latent defect that no current path reaches, a missing guard, or a defect that needs a rare or optional input.",
+      "3": "A wrong or failing result on a supported but uncommon input, or a defect a warning already surfaces.",
+      "4": "Wrong published output on a common input of a production tool path, or a failure that blocks a supported workflow.",
+      "5": "Crashes or corrupts a production tool path on its normal inputs."
+    },
+    "notes": "GitHub-issue items carry severity, impact, LoE and blast radius from the verified issue triage. _IMPL_TODO stub items and research-folder items carry LoE and blast radius from their source; their impact and severity are assigned in this catalog. Merged items take the largest LoE and blast radius among their sources unless the item states a combined LoE. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order and separate every item, so ids and ranks are reproducible from the item fields alone."
+  },
+  "counts": {
+    "items": 3,
+    "needs_decision": 1,
+    "trackers": 1,
+    "close_candidates": 1,
+    "by_status": {
+      "NEEDS_DECISION": 1,
+      "OPEN": 1,
+      "PARTIAL": 1
+    },
+    "by_impact": {
+      "docs_tooling": 1,
+      "maintainability": 1,
+      "silent_wrong_output": 1
+    },
+    "by_loe": {
+      "XS": 0,
+      "S": 1,
+      "M": 1,
+      "L": 1,
+      "XL": 0
+    },
+    "sources_absorbed": {
+      "gh_issue": 1,
+      "impl_stub": 1,
+      "research_folder": 1
+    },
+    "merged_items": 0
+  },
+  "items": [
+    {
+      "id": "TODO-001",
+      "rank": 1,
+      "title": "Parser drops the last row",
+      "kind": "bug",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#11",
+          "url": "https://github.com/example/widgets/issues/11"
+        }
+      ],
+      "gh_issues": [
+        11
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Summary of Parser drops the last row.",
+      "proposed_change": "Change for Parser drops the last row.",
+      "files": [],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One module.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Small."
+      },
+      "impact": "silent_wrong_output",
+      "severity": 4,
+      "priority": {
+        "score": 4.879,
+        "components": {
+          "impact_weight": 1.5,
+          "value": 6.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 4.2426,
+          "unblock_bonus": 0.15
+        }
+      },
+      "depends_on": [],
+      "unblocks": [
+        "TODO-002"
+      ],
+      "why_ranked": "Computed from ranking_method."
+    },
+    {
+      "id": "TODO-002",
+      "rank": 2,
+      "title": "Split the loader module",
+      "kind": "refactor",
+      "status": "PARTIAL",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": 101,
+      "sources": [
+        {
+          "type": "impl_stub",
+          "ref": "docs/RESEARCH/Alpha/_IMPL_TODO.md",
+          "item": "Split the loader"
+        }
+      ],
+      "gh_issues": [],
+      "related_gh_issues": [
+        102
+      ],
+      "catalog_entry_ids": [
+        "alpha-loader"
+      ],
+      "summary": "Summary of Split the loader module.",
+      "proposed_change": "Change for Split the loader module.",
+      "files": [],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "One module.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Small."
+      },
+      "impact": "maintainability",
+      "severity": 2,
+      "priority": {
+        "score": 0.7303,
+        "components": {
+          "impact_weight": 0.8,
+          "value": 1.6,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.7303,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [
+        "TODO-001"
+      ],
+      "unblocks": [],
+      "why_ranked": "Computed from ranking_method."
+    },
+    {
+      "id": "TODO-003",
+      "rank": 3,
+      "title": "Choose a cache format",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "JSON or SQLite?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "research_folder",
+          "ref": "docs/RESEARCH/Beta",
+          "item": "Cache format"
+        }
+      ],
+      "gh_issues": [],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Summary of Choose a cache format.",
+      "proposed_change": "Change for Choose a cache format.",
+      "files": [],
+      "blast_radius": {
+        "level": "L",
+        "reasoning": "One module.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "Small."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.3464,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 8,
+          "blast_factor": 1.5,
+          "cost": 12.0,
+          "base_score": 0.3464,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Computed from ranking_method."
+    }
+  ],
+  "trackers": [
+    {
+      "number": 101,
+      "title": "Loader tracker",
+      "url": "https://github.com/example/widgets/issues/101",
+      "children": [
+        103
+      ],
+      "child_todo_ids": [
+        "TODO-002"
+      ],
+      "status_note": "One child open.",
+      "recommended_action": "Keep open."
+    }
+  ],
+  "close_candidates": [
+    {
+      "number": 102,
+      "title": "Old loader crash",
+      "url": "https://github.com/example/widgets/issues/102",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "Fixed in abc1234.",
+      "recommended_action": "Close as completed.",
+      "related_todo_ids": [
+        "TODO-002"
+      ]
+    }
+  ]
+}

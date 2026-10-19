@@ -49,5 +49,25 @@
   "runlogs": {
     "dir": null,
     "name_pattern": "(?:.*\\D)?(?P<date>\\d{4}-\\d{2}-\\d{2})(?:_(?P<time>\\d{6}))?\\.(?:txt|log)"
+  },
+  "todo": {
+    "folder": null,
+    "catalog": "RepoToDo.json",
+    "catalog_schema": "RepoToDo.schema.json",
+    "stub_name": "_IMPL_TODO.md",
+    "top_n": 10,
+    "snapshots": {
+      "dir": "Snapshots",
+      "name_pattern": "TODO_Snapshot_(?P<date>\\d{4}_?\\d{2}_?\\d{2})\\.md"
+    },
+    "research": {
+      "catalog": "ResearchImplementationCatalog.json",
+      "anchor_pattern": "^catalog_entry:\\s*\\S+#(?P<id>[a-z0-9-]+)\\s*$",
+      "ignore_folders": []
+    },
+    "plans": {"pairs": true},
+    "gh": {"repo": null, "max_age_hours": 24},
+    "rules": {"disabled": [], "warn_counts": false},
+    "inject_context": true
   }
 }
