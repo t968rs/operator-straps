@@ -1,32 +1,102 @@
+# `operator-straps`
+
 [![ci](https://github.com/t968rs/operator-straps/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/t968rs/operator-straps/actions/workflows/ci.yml)
-# `operator-straps` 
 
-A Claude Code plugin marketplace that carries an agent harness: PR review and fix waves, commit and PR-summary
-drafting, guard hooks, worktree flow, and session mods. A project opts in with one config file; everything
-project-specific (artifact folders, test layout, guard suites, commit buckets, base branch) lives there.
+**Give Claude Code a repeatable process for reviewing PRs, applying fixes, and preparing changes for handoff.**
 
-| Plugin | What it adds |
-|---|---|
-| `harness` | Skills, agents, hooks and scripts: `pr-review`, `pr-team`, `c-msg`, `branch-commit-msg`, `pr-sum`, `d-w`, `check-runlogs`, `strap-debugging` and more |
-| `pr-review-watch` | Run tracking for `pr-review` / `pr-team`: Phase 5 band, `PHASE5_PENDING=` prompt line, bubble Stop guard, matrix rows |
-| `git-status` | Git status line and a per-prompt `GIT_STATE` context line |
-| `session-bookmark` | Compaction bookmark: git state, last prompts and `/compact` instructions survive a compaction |
-| `pytest-scope` | Bare `pytest` rewritten to the configured project interpreter; pytest runs that name no test file denied |
+Install the workflows you need: review a PR with multiple agents, carry findings through fix waves and closeout,
+draft commit messages and PR summaries from the diff, or start work in an isolated worktree. Add optional plugins
+to track review progress, keep Git state visible, preserve context through compaction, and scope pytest runs.
 
-The mods (`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`) are independent of each other.
-`pr-review-watch` stays inactive in any project without `.claude/harness.json`. `pytest-scope` does nothing
-until one of its options is set.
+[Choose a workflow](#what-you-can-do) · [Install](#install) · [Configure a project](#configure-a-project)
+
+## What you can do
+
+| Your goal | Use | What you get |
+|---|---|---|
+| Review a PR and work through its findings | `harness`: `pr-review` or `pr-team` | Multiple reviewers, a consolidated review, branch checks before fixes, and fix waves with recorded resolutions. `pr-team` keeps finding details out of the main session's context. |
+| Draft a commit message or organize a branch's changes | `harness`: `c-msg`, `branch-commit-msg` | A message for the pending change, or a proposed breakdown into commits, saved in your project's artifact folders. |
+| Explain a PR to the next reviewer | `harness`: `pr-sum`, `pr-sum-viz` | A summary grounded in PR metadata and the diff; choose `pr-sum-viz` for diagrams. |
+| Start a task in an isolated checkout | `harness`: `d-w` | A detached-HEAD worktree cut from HEAD, an integration branch, or another ref. |
+| See where an agent-driven review stands | `pr-review-watch` | A review progress band, pending-fix context, reviewer usage records, and a Stop guard for unrecorded escalated issues. |
+| Keep the current branch and working tree in view | `git-status` | A Git status line, with Git state checked on each prompt and changed state added as `GIT_STATE` context. |
+| Carry working context through compaction | `session-bookmark` | Git state, recent prompts, and your `/compact` instructions added to the compacted conversation. |
+| Run targeted tests with the intended Python | `pytest-scope` | Optional rewriting of bare `pytest` to your chosen interpreter and rejection of runs without an explicit test file or node ID. |
+
+## Agent process standardization
+
+The `harness` plugin packages the procedure as skills, scripts, agents, and hooks. You configure the project's
+test layout, guard suites, base branch, and output folders once in `.claude/harness.json`; subsequent runs
+use the same process with those project settings.
+
+For example, a PR review follows five phases:
+
+```mermaid
+flowchart LR
+    accTitle: Agent process standardization for PR review
+    accDescr: Project configuration supplies guards, branch rules, and output paths to a shared five-phase process. Capture and guards lead to reviewers, consolidated findings, branch verification, then fix waves and closeout. The review and resolutions are saved in the consuming project.
+    config["Project configuration<br/>.claude/harness.json"]
+    capture["1 · Capture<br/>PR facts + guards"]
+    review["2 · Review<br/>Scoped reviewers"]
+    findings["3 · Consolidate<br/>Findings + verdict"]
+    safety["4 · Verify branch<br/>Before code changes"]
+    fixes["5 · Fix + close out<br/>Waves + resolutions"]
+    artifacts["Project artifacts<br/>Review + resolution record"]
+
+    capture --> review --> findings --> safety --> fixes
+    config -. "guard suites" .-> capture
+    config -. "branch rules" .-> safety
+    config -. "output paths" .-> artifacts
+    findings --> artifacts
+    fixes --> artifacts
+
+    classDef settings fill:#eef2ff,stroke:#6366f1,color:#1e1b4b
+    classDef process fill:#f0fdfa,stroke:#0f766e,color:#134e4a
+    classDef gate fill:#fff7ed,stroke:#c2410c,color:#7c2d12
+    classDef result fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+    class config settings
+    class capture,review,findings,fixes process
+    class safety gate
+    class artifacts result
+```
+
+Skills define the steps, scripts validate structured review artifacts, and hooks check workflow conditions.
+Branch safety is checked immediately before fixes. Ambiguous issues are escalated for your decision, and
+closeout records how findings were handled. Review data stays in your project; plugin code stays in its cache.
+
+The companion plugins are installed separately and are independent of one another.
+`pr-review-watch` is active only in projects with `.claude/harness.json`.
+`pytest-scope` takes effect only when one of its options is set.
 
 ## Install
 
-```
+For the review, commit, summary, and worktree workflows, install `harness`:
+
+```sh
 claude plugin marketplace add t968rs/operator-straps
 claude plugin install harness@operator-straps
+```
+
+Add any companion plugins you want:
+
+```sh
 claude plugin install pr-review-watch@operator-straps
 claude plugin install git-status@operator-straps
 claude plugin install session-bookmark@operator-straps
 claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
 ```
+
+After configuring your project below, open Claude Code in that repository and invoke a workflow, for example:
+
+```text
+/harness:pr-review 123
+/harness:c-msg
+/harness:pr-sum 123
+/harness:d-w HEAD
+```
+
+Replace `123` with your PR number. `pr-review` carries findings into fixes and closeout, so use it when you
+want the full review-and-fix workflow. `c-msg` and `pr-sum` save drafts in the configured artifact folders.
 
 This repository enables its own plugins in `.claude/settings.json` from the published marketplace (the same
 `t968rs/operator-straps` GitHub source as above), so sessions here run the cached copy from the pushed default
