@@ -45,7 +45,8 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
   changed, when its import closure holds a changed file, when its source names a changed or deleted file (the
   basename, or a `.py` file's bare module name), or when it walks the tree. A data file under `plugins/` or
-  `tools/` counts as a change to each `.py` file there that names it. Ruff files and the plugin jobs are
+  `tools/` counts as a change to each `.py` file there that names it in a code string literal (docstrings and
+  comments do not count, so a module that reads a data file must spell its name in code). Ruff files and the plugin jobs are
   selected from the same diff. Shared files such as `tests/conftest.py` and deleted `.py` files force
   everything; pushes to `main` run it all. A test that reaches a file by a route the script cannot see (a path
   built at runtime) must spell that file name out in its source: otherwise the pull request skips it and only

@@ -157,6 +157,27 @@ def test_data_file_selects_tests_of_the_module_that_reads_it(sel: ModuleType, tr
     assert "tests/lib/test_mid.py" not in got
 
 
+@pytest.mark.parametrize("source", [
+    '"""Reads nothing; the plugin dir holds ``defaults.json``."""\nZ = 1\n',
+    "# defaults.json lives beside this module\nZ = 1\n",
+])
+def test_data_file_named_only_in_prose_selects_nothing(sel: ModuleType, tree: Path, source: str) -> None:
+    _write(tree, {
+        "plugins/harness/lib/harness_lib/solo.py": source,
+        "plugins/harness/config/defaults.json": "{}\n",
+    })
+    got = _tests(sel, tree, "plugins/harness/config/defaults.json")
+    assert got == ["tests/contract/test_walk.py"]
+
+
+def test_data_file_built_in_an_fstring_selects_its_reader(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        "plugins/harness/lib/harness_lib/solo.py": 'def p(root):\n    return f"{root}/defaults.json"\n',
+        "plugins/harness/config/defaults.json": "{}\n",
+    })
+    assert "tests/lib/test_solo.py" in _tests(sel, tree, "plugins/harness/config/defaults.json")
+
+
 def test_relative_imports_are_followed(sel: ModuleType, tree: Path) -> None:
     _write(tree, {
         "plugins/harness/lib/harness_lib/rel_pkg.py": "from . import solo\n",

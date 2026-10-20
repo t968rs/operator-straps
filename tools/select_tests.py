@@ -15,8 +15,10 @@ A test file is selected when any of these holds:
   changed or was deleted.
 
 A changed or deleted non-``.py`` file under ``plugins/`` or ``tools/`` also counts as a change to every
-``.py`` file there whose source names its basename (a module that reads the data file by path). The same
-holds for a non-``.py`` file under ``tests/`` and every ``_``-prefixed helper module under ``tests/``.
+``.py`` file there whose code names its basename in a string literal (a module that reads the data file by
+path); docstrings and comments do not count, since a module that only describes ``plugin.json`` would
+otherwise pull every importer of it into the run. The same holds for a non-``.py`` file under ``tests/`` and
+every ``_``-prefixed helper module under ``tests/``.
 
 Anything the rules cannot judge selects everything: a shared file (conftest, pyproject, the workflow, this
 script), a deleted ``.py`` file, a path with characters outside ``[A-Za-z0-9_./-]``, a test or helper that
@@ -199,13 +201,36 @@ def helper_files(root: Path) -> List[str]:
                   if not any(part in SKIP_DIRS for part in p.relative_to(base).parts))
 
 
+def _docstrings(tree: ast.AST) -> Set[int]:
+    """``id`` of every docstring constant: the first statement of a module, class or function body."""
+    found: Set[int] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)) and node.body:
+            first = node.body[0]
+            if isinstance(first, ast.Expr) and isinstance(first.value, ast.Constant):
+                found.add(id(first.value))
+    return found
+
+
+def code_strings(text: str) -> str:
+    """The string literals of a module's code, one per line; docstrings and comments are prose, not reads.
+    A module that does not parse keeps its raw text, so it can only be over-selected."""
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return text
+    prose = _docstrings(tree)
+    return "\n".join(n.value for n in ast.walk(tree)
+                     if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in prose)
+
+
 def _readers_of(root: Path, data: Sequence[str], rels: Sequence[str]) -> List[str]:
-    """The files in ``rels`` whose source names one of the changed ``data`` files."""
+    """The files in ``rels`` whose code names one of the changed ``data`` files in a string literal."""
     found: List[str] = []
     if not data:
         return found
     for rel in rels:
-        text = (root / rel).read_text(encoding="utf-8", errors="replace")
+        text = code_strings((root / rel).read_text(encoding="utf-8", errors="replace"))
         if any(mentions(text, d) for d in data):
             found.append(rel)
     return found
