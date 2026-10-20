@@ -278,6 +278,51 @@ class TestCapture:
         assert (typed.status, typed.added, typed.deleted, typed.binary) == ("M", 0, 0, True)
 
 
+class TestCaptureSource:
+    def test_local_head_includes_unpushed_commits(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        local = _commit(clone, {"src/pkg/c.py": "c\n"}, "Feature(c): add c")
+        facts = script.capture_pr(clone, _meta(script, head), fetch=False, local=True)
+        assert (facts.head_sha, facts.head_source, facts.working_tree) == (local, "local", False)
+        assert "src/pkg/c.py" in [f.path for f in facts.files]
+        assert facts.commits[-1].endswith("Feature(c): add c")
+        remote = script.capture_pr(clone, _meta(script, head), fetch=False)
+        assert (remote.head_sha, remote.head_source, remote.working_tree) == (head, "remote", False)
+        assert "src/pkg/c.py" not in [f.path for f in remote.files]
+
+    def test_off_the_pr_branch_falls_back_to_the_pr_head(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "main")
+        facts = script.capture_pr(clone, _meta(script, head), fetch=False, local=True, working_tree=True)
+        assert (facts.head_sha, facts.head_source, facts.working_tree) == (head, "remote", False)
+
+    def test_working_tree_adds_staged_unstaged_and_untracked(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _write(clone, "README.md", "staged\n")
+        _git(clone, "add", "--", "README.md")
+        _write(clone, "src/pkg/new.py", "one\ntwo\n")
+        (clone / "assets" / "new.bin").write_bytes(_BINARY)
+        facts = script.capture_pr(clone, _meta(script, head), fetch=False, local=True, working_tree=True)
+        assert (facts.head_sha, facts.head_source, facts.working_tree) == (head, "local", True)
+        rows = {f.path: (f.status, f.added, f.deleted, f.binary, f.untracked) for f in facts.files}
+        assert rows["README.md"] == ("M", 1, 1, False, False)
+        assert rows["src/pkg/a.py"] == ("M", 1, 1, False, False)
+        assert rows["src/pkg/new.py"] == ("A", 2, 0, False, True)
+        assert rows["assets/new.bin"] == ("A", 0, 0, True, True)
+        patches = pr_capture.file_patches(clone, facts, facts.files)
+        assert "+uncommitted" in patches["src/pkg/a.py"]
+        assert "+staged" in patches["README.md"]
+        assert patches["src/pkg/new.py"] == "+one\n+two"
+        assert patches["assets/new.bin"] == branch_capture.BINARY_BODY
+
+
 class TestCaptureCommand:
     def _run(
             self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, clone: Path, head: str, out: Path,
@@ -312,6 +357,23 @@ class TestCaptureCommand:
         assert self._run(script, monkeypatch, clone, head, out) == 0
         assert active().project_root == clone.resolve()
         assert json.loads(out.read_text(encoding="utf-8"))["facts"]["base"] == "main"
+
+    @pytest.mark.parametrize("flags, expected", [
+        ((), ("local", True)),
+        (("--remote-head",), ("remote", False)),
+        (("--committed-only",), ("local", False)),
+    ])
+    def test_source_defaults_and_overrides(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, flags: Tuple[str, ...], expected: Tuple[str, bool],
+    ) -> None:
+        clone, _, head = pr_repo
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        out = tmp_path / "1234_pr.json"
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--out", str(out), "--repo", str(clone), *flags]
+        assert script.main(argv) == 0
+        facts = json.loads(out.read_text(encoding="utf-8"))["facts"]
+        assert (facts["head_source"], facts["working_tree"]) == expected
 
     def test_rerun_carries_draft_forward(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
@@ -375,7 +437,8 @@ class TestDiff:
             "data/big.json": data,
         }
         head = _commit(clone, files, "Test(a): add test, doc and data")
-        text = script.run_diff(clone, script.capture_payload(clone, _meta(script, head), fetch=False))
+        payload = script.capture_payload(clone, _meta(script, head), fetch=False, working_tree=False)
+        text = script.run_diff(clone, payload)
         assert _headers(text) == [
             "data/big.json", "src/pkg/a.py", "checks/verify_a.py", "docs/c.md", "docs/new/b.md",
         ]

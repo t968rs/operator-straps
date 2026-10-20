@@ -5,6 +5,9 @@
     Everything else is local git: fetch ``pull/N/head`` with ``origin <base>`` (with the merge commit instead
     once merged, so a deleted base branch does not matter), take the merge base of the head with the base tip
     (the merge commit's first parent once merged, ``origin/<base>`` before), and diff merge base..head.
+    While the PR branch is checked out, the head is its local HEAD and the diff runs to the working tree
+    (staged, unstaged and untracked changes); ``--remote-head`` takes the ``gh`` head instead, and
+    ``--committed-only`` stops at the local HEAD. Elsewhere the committed ``gh`` head is used.
     Writes ``<summaries>/<NNNN>_pr.json``: ``{"facts": {...}, "draft": {...}}``. When that file already
     holds a parseable draft, the draft is carried forward: title, summary and sections stay, and
     descriptions stay for paths the PR still lists (new paths get empty slots).
@@ -28,7 +31,7 @@ Every failure exits 1 with one ``problem: ...`` line per defect on stderr.
 Usage::
 
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr N
-        [--no-fetch] [--out FILE] [--repo DIR]
+        [--no-fetch] [--remote-head] [--committed-only] [--out FILE] [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff FILE [--path P ...]
         [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE [--visual]
@@ -107,9 +110,14 @@ def carry_draft(facts: PrFacts, previous: Optional[PrDraft]) -> PrDraft:
 
 def capture_payload(
         repo: Path, meta: PrMeta, fetch: bool = True, previous: Optional[PrDraft] = None,
+        local: bool = True, working_tree: bool = True,
 ) -> Dict[str, object]:
-    """Skeleton for ``meta``: fresh facts and ``previous`` carried forward (an empty draft without one)."""
-    facts = capture_pr(repo, meta, fetch)
+    """Skeleton for ``meta``: fresh facts and ``previous`` carried forward (an empty draft without one).
+
+    By default the facts describe the checked-out PR branch with its uncommitted changes (``capture_pr``
+    falls back to the committed PR head when that branch is not checked out).
+    """
+    facts = capture_pr(repo, meta, fetch, local=local, working_tree=working_tree)
     return skeleton(facts, carry_draft(facts, previous))
 
 
@@ -207,6 +215,14 @@ def _parser() -> argparse.ArgumentParser:
     cap = sub.add_parser("capture", parents=common, help="Write the PR skeleton JSON (facts + draft).")
     cap.add_argument("--pr", type=int, required=True, help="PR number.")
     cap.add_argument("--no-fetch", action="store_true", help="Skip fetching the base side and pull/N/head.")
+    cap.add_argument(
+        "--remote-head", action="store_true",
+        help="Summarize the PR head gh reports, not the checked-out PR branch (implies --committed-only).",
+    )
+    cap.add_argument(
+        "--committed-only", action="store_true",
+        help="Leave out staged, unstaged and untracked changes of the checked-out PR branch.",
+    )
     cap.add_argument("--out", type=Path, help="Skeleton path (default <summaries>/<NNNN>_pr.json).")
     diff = sub.add_parser("diff", parents=common, help="Print the PR diff under the read budgets.")
     diff.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8).")
@@ -242,7 +258,10 @@ def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
     """Run ``capture`` and write the skeleton, carrying an existing draft forward."""
     out = args.out or summaries_dir(repo) / f"{args.pr:04d}_pr.json"
     previous = previous_draft(out)
-    payload = capture_payload(repo, gh_metadata(repo, args.pr), not args.no_fetch, previous)
+    payload = capture_payload(
+        repo, gh_metadata(repo, args.pr), not args.no_fetch, previous,
+        local=not args.remote_head, working_tree=not args.committed_only,
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {out}" + (" (existing draft carried forward)" if previous else ""))
