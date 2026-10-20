@@ -3,7 +3,7 @@
 The mod validates agent usage rows in TypeScript (``plugins/pr-review-watch/hooks/usageRow.ts``), where the
 plugin test sandbox cannot read repository files. This test reads both sides and fails when
 ``plugins/harness/schemas/pr_review_agent_usage.schema.json`` changes its required fields, count fields,
-enums or ``logged_at`` pattern without the mod following.
+enums, ``logged_at`` pattern, nullable strings or non-empty strings without the mod following.
 """
 from __future__ import annotations
 
@@ -54,3 +54,13 @@ def test_model_families_match(schema: dict, usage_row_ts: str) -> None:
 
 def test_logged_at_pattern_matches(schema: dict, usage_row_ts: str) -> None:
     assert ts_string(usage_row_ts, "LOGGED_AT_PATTERN") == schema["properties"]["logged_at"]["pattern"]
+
+
+def test_nullable_strings_match(schema: dict, usage_row_ts: str) -> None:
+    expected = [k for k, p in schema["properties"].items() if p.get("type") == ["string", "null"]]
+    assert ts_string_array(usage_row_ts, "NULLABLE_STRINGS") == expected
+
+
+def test_non_empty_strings_match(schema: dict, usage_row_ts: str) -> None:
+    expected = [k for k, p in schema["properties"].items() if p.get("minLength") == 1]
+    assert ts_string_array(usage_row_ts, "NON_EMPTY") == expected

@@ -60,7 +60,10 @@ export type Run = {
   startedAt: number
 }
 
-/** A matrix row that failed validation or could not be written. */
+/**
+ * A matrix or usage-log row that failed validation or could not be written. `cell` is the matrix cell, or
+ * `<run_id>/<agent_id>` for a usage row.
+ */
 export type LogFailure = { cell: string; reason: string; at: number }
 
 declare module 'claude-code' {

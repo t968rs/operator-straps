@@ -89,9 +89,9 @@ type Row = Readonly<Record<string, unknown>>
 
 const ALLOWED = new Set<string>([...USAGE_REQUIRED, ...USAGE_COUNT_FIELDS])
 const LOGGED_AT = new RegExp(LOGGED_AT_PATTERN)
-const NON_EMPTY = ['run_id', 'agent_id', 'effort', 'signal'] as const
+export const NON_EMPTY = ['run_id', 'agent_id', 'effort', 'signal'] as const
 const STRINGS = ['logged_at', 'skill', 'role', 'model_family', 'notes', ...NON_EMPTY] as const
-const NULLABLE_STRINGS = ['subagent_type', 'model'] as const
+export const NULLABLE_STRINGS = ['subagent_type', 'model'] as const
 const ENUMS: readonly [string, readonly string[]][] = [
   ['skill', USAGE_SKILLS], ['role', USAGE_ROLES], ['model_family', USAGE_MODEL_FAMILIES],
 ]
@@ -120,7 +120,8 @@ const numberProblems = (row: Row): string[] => {
   const out = (['tokens', 'tool_uses'] as const).filter(k => k in row && !isCount(row[k]))
     .map(k => `${k}: not a non-negative integer`)
   const pr = row.pr
-  if ('pr' in row && pr !== null && !(Number.isInteger(pr) && (pr as number) >= 1)) out.push('pr: not a positive integer or null')
+  const isPr = Number.isInteger(pr) && (pr as number) >= 1
+  if ('pr' in row && pr !== null && !isPr) out.push('pr: not a positive integer or null')
   const d = row.duration_s
   if ('duration_s' in row && !(typeof d === 'number' && Number.isFinite(d) && d >= 0)) {
     out.push('duration_s: not a non-negative number')

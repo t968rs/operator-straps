@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/pr_review_agent_usage.schema.json",
   "title": "PR Review Agent Usage",
-  "description": "One row per completed review-agent dispatch (pr-review and pr-team: reviewer, fixer, orchestrator, planner, closer), written by the pr-review-watch mod when the agent returns. Records who ran (role, subagent_type, model), its cost (tokens, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
+  "description": "One row per returned review-agent dispatch (completed or errored; a denied dispatch writes none) (pr-review and pr-team: reviewer, fixer, orchestrator, planner, closer), written by the pr-review-watch mod when the agent returns. Records who ran (role, subagent_type, model), its cost (tokens, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -98,7 +98,7 @@
     "issues_assigned": {
       "type": ["integer", "null"],
       "minimum": 0,
-      "description": "Fixer and closer rows only. Issue ids the fixer was assigned (pr-review: its `issue_ids` in the run's waves.json); null when unknown."
+      "description": "Fixer and closer rows only. Number of issues the fixer was assigned (pr-review: the length of its `issue_ids` in the run's waves.json; pr-team: always null, the block carries no assignment); null when unknown."
     },
     "issues_fixed": {
       "type": ["integer", "null"],

@@ -23,8 +23,9 @@ import { resolveWatch, type Watch } from './watch'
 
 /**
  * Engine glue for pr-review-watch: tracks pr-team / pr-review `Agent` dispatches, folds subagent usage,
- * appends invocation-matrix rows and agent usage rows, and guards Stop on undispositioned bubbled ids. Active only in a project
- * holding `.claude/harness.json` (./watch); its paths and base branch come from that file. Every host
+ * appends invocation-matrix rows and agent usage rows, and guards Stop on undispositioned bubbled
+ * ids. Active only in a project holding `.claude/harness.json` (./watch); its paths and base branch
+ * come from that file. Every host
  * failure degrades to doing nothing; no hook throws into a tool call, a turn or a stop.
  */
 
@@ -298,6 +299,7 @@ const writeRows = ($: Dollar, w: Watch, rows: readonly MatrixRow[], now: number)
 const claimUsage = async ($: Dollar, key: Key, now: number): Promise<[Run, AgentRec] | undefined> => {
   const box: { hit?: [Run, AgentRec] } = {}
   await updateRun($, key.runId, r => {
+    box.hit = undefined
     const a = usageToLog(r, key.agentId)
     if (a === undefined) return r
     box.hit = [r, a]
@@ -306,7 +308,10 @@ const claimUsage = async ($: Dollar, key: Key, now: number): Promise<[Run, Agent
   return box.hit
 }
 
-/** Outcome counts: a pr-review fixer reads its run's waves.json and report, then its block. */
+/**
+ * Outcome counts: closer and pr-team fixers from the return block; a pr-review fixer from its run's
+ * waves.json and fixes/<id>.json, falling back to the block; other roles none.
+ */
 const countsFor = async (
   $: Dollar,
   w: Watch,

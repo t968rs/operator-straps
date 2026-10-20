@@ -136,7 +136,7 @@ from the spec's Row fields tables. Exact values:
 
 - `required`: `["logged_at", "run_id", "pr", "skill", "role", "agent_id", "subagent_type", "model",
   "model_family", "effort", "tokens", "tool_uses", "duration_s", "signal", "notes"]` (this order).
-- `logged_at`: string, `pattern` `^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$`.
+- `logged_at`: string, `pattern` `^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$`.
 - `pr`: `["integer", "null"]`, `minimum` 1. `run_id`, `agent_id`, `effort`, `signal`: string, `minLength` 1.
   `notes`: string. `subagent_type`, `model`: `["string", "null"]`.
 - `skill` enum `["pr-review", "pr-team"]`; `role` enum `["reviewer", "fixer", "orchestrator", "planner",
@@ -193,9 +193,12 @@ Commit in the worktree: `Feature(harness): agent_usage_path key and agent usage 
 - Produces from `config.ts`: `DEFAULT_AGENT_USAGE_PATH = 'docs/_harness/pr_review_agent_usage.jsonl'`,
   `WatchConfig.agentUsagePath: string` (read with `pathOr(data.agent_usage_path, ...)`).
 - Produces in `types/index.d.ts`: `AgentRec.subagentType: string | null` (the dispatch's `subagent_type`)
-  and `AgentRec.usageLoggedAt: number | null` (epoch ms of the usage-row attempt; null before it).
+  `AgentRec.usageLoggedAt: number | null` (epoch ms of the usage-row attempt; null before it), and
+  `AgentRec.launchModel: string | null` (the engine's `resolvedModel` from the async launch result, set by
+  `registerLoop(..., model)`; null otherwise; read only by usage rows as the model fallback).
   `newAgent(d, meta: { model?: string; effort?: string; subagentType?: string })` sets
-  `subagentType: meta.subagentType ?? null, usageLoggedAt: null`; `recovered` sets both to null.
+  `subagentType: meta.subagentType ?? null, usageLoggedAt: null, launchModel: null`; `recovered` sets all
+  three to null.
 
 - [ ] **Step 1: Write the failing Python contract and mirror tests**
 
@@ -271,8 +274,9 @@ Expected: FAIL (module `./usageRow` missing; contract and config expectations un
 - `contract.ts`: `ReturnBlock` gains `edited: number | null`; `fixed` becomes `string[] | null`
   (`f.FIXED === undefined ? null : idList(f.FIXED)`); `edited` from `/^\d+$/` on `f.EDITED`.
 - `config.ts`: constant, field, `readConfig` line.
-- `types/index.d.ts` and `runs.ts`: the two `AgentRec` fields as in Interfaces. The `AgentRec` literal in
-  `matrixRow.test.ts` (its `agent()` helper) gains `subagentType: null, usageLoggedAt: null`.
+- `types/index.d.ts` and `runs.ts`: the three `AgentRec` fields as in Interfaces. The `AgentRec` literals in
+  `matrixRow.test.ts` (its `agent()` helper) and `usageRow.test.ts` gain `subagentType`, `usageLoggedAt` and
+  `launchModel` as needed (`launchModel: null`).
 - `usageRow.ts`: pure (no `$`), header comment naming the schema and the contract test, as `matrixRow.ts`
   does. `model_family` via `modelFamily(agent.model) ?? 'unknown'`; `duration_s` as
   `Math.max(0, Math.round(durationMs)) / 1000` (the matrix rule); `logged_at` via `new Date(loggedAt).toISOString()`.
@@ -372,19 +376,23 @@ Expected: FAIL (no usage file is written).
 - `recordResult` sets `ending`: `'denied'` when `r.deny` is set; `'errored'` when `r.isError === true` or
   the result's status is not `completed` (after the `async_launched` early return); else `'ok'`.
   `recordLoopEnd` sets `'ok'`.
-- `complete($, key, c)`: after `applyCompletion` and `claimMatrix`, call `logUsage($, key, c)` unless
-  `c.ending === 'denied'`.
-- `logUsage($, key, c): Promise<void>`: resolve the watch; claim the agent inside one `updateRun`
+- `complete($, key, c)`: after `applyCompletion` and `claimMatrix`, call `logUsage($, key, c)`.
+- `logUsage($, key, c): Promise<void>`: returns at once when `c.ending === 'denied'` (a denied dispatch
+  never ran); else resolve the watch; claim the agent inside one `updateRun`
   (`usageToLog`, then `markUsageLogged` with `$.clock.now()`), returning early when nothing is claimed;
   counts: role `fixer` on a `pr-review` run -> `preferCounts(reportCounts(<run dir>/waves.json,
   <run dir>/fixes/<agentId>.json, agentId), blockCounts(c.block))` with the run dir from `prReviewRunDir`
   (both texts undefined when it is undefined); role `fixer` or `closer` otherwise -> `blockCounts(c.block)`;
-  else `NO_COUNTS`. Build with `buildUsageRow`, then append through the serialized tail.
+  else `NO_COUNTS`. Model: `c.model ?? claimed.launchModel ?? claimed.model` (the engine's launch model
+  covers background agents that returned no usage). Build with `buildUsageRow`, then append through the
+  serialized tail.
 - Shared append: generalize the write half of `writeRows` into
-  `appendValid<R>($, path, rows, problems: (r: R) => string[], cellOf: (r: R) => string, label: string, now)`
-  returning `LogFailure[]`, with reasons `${label} unreadable; not overwritten` and `${label} write refused`.
-  The matrix calls it with label `matrix` (its failure text stays byte-identical, pinned by the existing
-  test); usage with label `usage log` and `cellOf` = `${run_id}/${agent_id}`. `appendRows` in `matrixRow.ts`
+  `appendValid<R>($, path, rows, check: RowCheck<R>, now)` returning `LogFailure[]`, where
+  `RowCheck<R> = { label: string; problems: (r: R) => string[]; cellOf: (r: R) => string }` (module-private
+  in `tracker.ts`, with `MATRIX_CHECK` and `USAGE_CHECK` constants), with reasons
+  `${check.label} unreadable; not overwritten` and `${check.label} write refused`.
+  The matrix passes `MATRIX_CHECK` (label `matrix`; its failure text stays byte-identical, pinned by the
+  existing test); usage passes `USAGE_CHECK` (label `usage log`, `cellOf` = `${run_id}/${agent_id}`). `appendRows` in `matrixRow.ts`
   widens its row type to `readonly object[]` (no behavior change). `recordFailures` takes a noun
   (`matrix` / `usage`) for its toast: `pr-review-watch: N usage row(s) not appended (...)`.
 - Usage appends ride the same `flushTail` promise chain as matrix flushes, so no two read-modify-writes of

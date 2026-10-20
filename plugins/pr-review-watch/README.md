@@ -128,14 +128,20 @@ Each tracked dispatch that returns appends one row to `<agent_usage_path>`: who 
 cost (`tokens`, `tool_uses`, `duration_s`) and its `signal`. A synchronous result is logged when it
 returns, a background agent when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
 second row. An errored result logs `signal: ERROR` with zero usage; a background turn with no usage logs
-zero usage with `usage not measured` in `notes`; a denied dispatch never ran and logs nothing.
+`tokens: 0` (the tool calls the mod counted and the turn's duration still land) with `usage not measured` in
+`notes`; a denied dispatch never ran and logs nothing. A background loop that is interrupted or dies on an
+API error is not told apart from a normal return: it logs the signal of its return block, `NO_BLOCK` when
+it left none, never `ERROR`.
 
 Fixer and closer rows carry outcome counts. A pr-review fixer reads `issue_ids` in the run's `waves.json`
 and `fixed` / `bubbled` / the distinct edited `files` in `fixes/<agent_id>.json`, falling back to its return
 block's `FIXED` / `BUBBLED` / `EDITED`; pr-team fixers and the closer count from the block, and their
 `issues_assigned` is null. Reviewers a restarted session rebuilds from disk write no usage row. The file
 follows the matrix's write rules: append-only, and a file that exists but cannot be read is never
-rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` and are toasted).
+rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` and are toasted). The log
+takes one row (about 450 bytes) per agent of every role on every run, so it reaches the 4 MiB read limit
+well before the matrix does; past it every row fails as unreadable. Move or archive the file when it nears
+4 MiB; the next row recreates it.
 
 ## State
 
@@ -143,7 +149,7 @@ rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` 
 
 | Key | Meaning |
 |-----|---------|
-| `runs` | Tracked runs by `RUN_ID`: skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (subagent type, usage, signal, counts, matrix and usage row attempt times), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict. |
+| `runs` | Tracked runs by `RUN_ID`: skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (subagent type, background launch model, usage, signal, counts, matrix and usage row attempt times), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict. |
 | `active` | The run dispatched most recently. |
 | `loops` | Background subagent loop id to `[runId, agentId]`. |
 | `failures` | The last 20 rows that failed validation or could not be written. |
@@ -158,7 +164,7 @@ rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` 
 - Workflow-run reviews are not tracked. Their agents raise `tool.call` and `turn.complete` with loop ids that
   no dispatch header names.
 - Appends are a read and a whole-file write, serialized within the session. Two sessions appending to the
-  JSONL at the same moment can lose a row.
+  same JSONL (matrix or usage log) at the same moment can lose a row.
 - A git top level, once answered, is cached per cwd for the life of the hooks module; a worktree moved or
   removed mid-session keeps its old root until a reload. A cwd git fails on is asked again each time.
 - `claude plugin test` covers Windows path spellings through the host's own `C:\...` paths; Linux runs only
@@ -177,7 +183,8 @@ tsc -p <tsconfig>   # the tsconfig in the header of the engine's claude-code.d.t
 `schemas/pr_review_invocation_test_matrix.schema.json`; `tests/mods/test_pr_review_watch_usage_contract.py`
 pins `USAGE_REQUIRED`, `USAGE_COUNT_FIELDS`, `USAGE_ROLES`, `USAGE_COUNTED_ROLES`, `USAGE_SKILLS`,
 `USAGE_MODEL_FAMILIES` and `LOGGED_AT_PATTERN` to `schemas/pr_review_agent_usage.schema.json`;
-`tests/mods/test_pr_review_watch_config_mirror.py` pins the mirrored defaults. The plugin test sandbox cannot read repository files.
+`tests/mods/test_pr_review_watch_config_mirror.py` pins the mirrored defaults. The plugin test sandbox
+cannot read repository files.
 
 ## Loading
 

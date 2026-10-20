@@ -5,8 +5,8 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import { OWNER_NOTE } from './tracker'
 
 /**
- * Engine-level behavior of the tracker: what reaches the matrix JSONL, the ownership marker and the
- * Stop decision. Files, git, env and the Agent tool sit beneath the plugin, answered from memory.
+ * Engine-level behavior of the tracker: what reaches the matrix and agent usage JSONL files, the
+ * ownership marker and the Stop decision. Files, git, env and the Agent tool sit beneath the plugin, answered from memory.
  */
 
 const ROOT = '/repo'
@@ -127,6 +127,7 @@ describe('Agent hook', () => {
     expect(r.context ?? []).toEqual([])
     expect(seen.agentCalls).toBe(1)
     expect(seen.files.has(MATRIX)).toBe(false)
+    expect(seen.files.has(USAGE)).toBe(false)
   })
 
   test('pr-review reviewer results carry the ownership note', async ($, on) => {
@@ -406,15 +407,7 @@ describe('recovery of a claimed, unlogged pr-team run', () => {
     expect(seen.files.has(MATRIX)).toBe(false)
   })
 
-  test('a review JSON written after the run started logs its rows', async ($, on) => {
-    const seen = world(on, () => completed('hi'))
-    claimedRun(seen)
-    seen.files.set(REVIEW, { text: JSON.stringify({ verdict: 'READY TO MERGE', issues: {} }), mtimeMs: RUN_START + 60_000 })
-    await start($)
-    expect(matrixRows(seen).map(r => r.cell)).toEqual(['pr1526_r1'])
-  })
-
-  test("a recovered run's rebuilt reviewers write no usage rows", async ($, on) => {
+  test('a review JSON written after the run started logs its matrix rows and no usage rows', async ($, on) => {
     const seen = world(on, () => completed('hi'))
     claimedRun(seen)
     seen.files.set(REVIEW, { text: JSON.stringify({ verdict: 'READY TO MERGE', issues: {} }), mtimeMs: RUN_START + 60_000 })
@@ -589,6 +582,7 @@ describe('harness project', () => {
     writeReview(seen, open)
     await mainTurnEnd($, 't')
     expect(seen.files.has(MATRIX)).toBe(false)
+    expect(seen.files.has(USAGE)).toBe(false)
     expect((await $.classic.Stop({ stop_hook_active: false, last_assistant_message: 'bubble' })).block).toBeUndefined()
     expect(seen.git.filter(argv => !argv.includes('--show-toplevel'))).toEqual([])
   })

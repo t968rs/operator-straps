@@ -1,0 +1,503 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 37,
+  "pr_title": "0016 agent jsonl",
+  "branch": "0016-agent-jsonl",
+  "base_branch": "main",
+  "base_sha": "d9707cd407b07e9f9635ca3738ca7f25610b277b",
+  "head_sha": "29de96a735b4465763e7e51259857502a3e61d37",
+  "review_date": "2026-10-20",
+  "verdict": "READY TO MERGE - 17 of 17 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1598,
+    "deletions": 57,
+    "files_changed": 29
+  },
+  "reviewers": [
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0037/pr37_20261020T222900Z/findings/config.json",
+    "docs/_scratch/pr_review/0037/pr37_20261020T222900Z/findings/tests.json",
+    "docs/_scratch/pr_review/0037/pr37_20261020T222900Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0037/pr37_20261020T222900Z/findings/docs.json",
+    "docs/_scratch/pr_review/0037/pr37_20261020T222900Z/findings/overall.json",
+    "docs/_scratch/pr_review/0037/pr37_20261020T222900Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0037/pr37_20261020T222900Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "New config key agent_usage_path lands in all four required places (defaults.json:9, harness.schema.json:23 with the relPath ref, config.py:162/287, README key table:184) plus the mod mirror in pr-review-watch/hooks/config.ts:54.",
+    "The if/then/else on role cleanly makes the four outcome counts required on fixer and closer rows and forbidden elsewhere, and additionalProperties:false keeps the row closed; tests/schemas/test_pr_review_agent_usage_schema.py exercises both branches.",
+    "Every field description in the usage schema (notes suffixes, signal NO_BLOCK/ERROR, effort default, model_family unknown, duration_s ms/1000, tokens 0 when unmeasured) agrees with buildUsageRow in usageRow.ts.",
+    "Schema follows the existing matrix-schema conventions (draft-07, repo $id, JSONL description) and its required list, enums and logged_at pattern are pinned to the TS validator by tests/mods/test_pr_review_watch_usage_contract.py.",
+    "usageRow.test.ts pins USAGE_MODEL_FAMILIES to contract MODEL_FAMILIES plus 'unknown', and the Python contract test pins the same constant to the schema enum, so family drift fails on both sides.",
+    "tracker.test.ts usage tests are behavioral through the engine fakes. They cover the background-launch timing, a denied dispatch writing no row versus an errored one logging ERROR, parallel appends, retries, a config-relocated path, and an unreadable file left untouched.",
+    "runs.test.ts usage-claim tests check the claim-once rule and that a re-dispatch resets usageLoggedAt. That is the guard against double rows.",
+    "The schema test's _row fixture matches the TS buildUsageRow output in usageRow.test.ts field for field, which ties the two validators to one example.",
+    "No mock-chain tests: every new test exercises real logic with fake collaborators beneath the plugin.",
+    "claimUsage marks usageLoggedAt inside one atom update before any I/O, so a duplicate fold (sync result plus loop end, or overlapping hooks) can never append the same usage row twice.",
+    "appendValid generalizes the matrix writer without weakening its guarantee: an existing-but-unreadable JSONL file is still never overwritten, and failures carry a per-file label.",
+    "validateUsageRow mirrors the schema faithfully, including the if/then/else rule that counts are required (nullable) on fixer/closer rows and forbidden elsewhere, with constants pinned by tests/mods/test_pr_review_watch_usage_contract.py.",
+    "Counts keep null-means-unknown semantics end to end (ReturnBlock.fixed became nullable, preferCounts falls back field by field), and waves.json/fixes/<id>.json parsing matches pr_review.py's actual layout and the unique w<N>_fix_<k> fixer ids.",
+    "Model attribution prefers the engine-resolved id, then the background launch's resolvedModel, then the requested alias, so background agents with no loop usage still log the model that ran.",
+    "The pr-review-watch README's new Agent usage rows section matches the code on the load-bearing rules: row on return, not on verdict; retry is a second row; denied writes none; errored logs ERROR; the pr-review fixer report-then-block fallback; and the exact `usage log unreadable; not overwritten` failure text from appendValid.",
+    "The config key lands in every documented place (defaults.json, harness.schema.json, config.py, root README key table, config.ts mirror, both README tables), and the commit_buckets Artifact suffix the spec called for is in defaults.json.",
+    "The spec is explicitly frozen and points to the plan as source of truth, and the plan's Review Focus names the concrete risk cases (parallel fixers, unknown family, FAIL block with report bubbles, unreadable file, retry), each tied to a named test.",
+    "Version bumps (harness 0.12.0, pr-review-watch 0.3.0) and the plugin/marketplace description change match the plan exactly.",
+    "Claim-then-write inside one runs-atom update (claimUsage) plus the shared flushTail chain gives exactly one row per completion, and the parallel-fixer test proves it end to end.",
+    "appendValid generalizes the matrix writer without changing a byte of the matrix failure text or flush timing, matching the spec's anti-goal.",
+    "Null-means-unknown is carried consistently: ReturnBlock.fixed becomes null when FIXED is absent, preferCounts fills field by field, and the schema plus TS validator both require the four counts on fixer/closer rows only.",
+    "launchModel closes a real gap: a background agent whose loop reports no usage logs the engine-resolved model rather than the requested alias.",
+    "The new config key lands in all four places plus the config.ts mirror and its mirror test, as CLAUDE.md requires; the commit-bucket suffix is pinned by a test.",
+    "Tracker tests are behavioral against the fake engine world (files, toasts, unreadable paths), covering deny/error/background/retry/recovery paths without stubbing the code under test.",
+    "The four-place config key rule plus the mod mirror is honored in lockstep: defaults.json, harness.schema.json, HarnessConfig/_build, root README key table, config.ts DEFAULT_AGENT_USAGE_PATH and the config mirror test all agree on docs/_harness/pr_review_agent_usage.jsonl.",
+    "test_pr_review_watch_usage_contract.py pins not only required/enums/pattern but the conditional shape (then.required and properties minus required == USAGE_COUNT_FIELDS), so the TS validator cannot silently drift from the schema's role gate.",
+    "Null-means-unknown is stated identically in the spec, schema descriptions, README Agent usage rows section and usageRow.ts (blockCounts/reportCounts/preferCounts), and ReturnBlock.fixed was changed to null-when-absent to make that claim true.",
+    "Matrix failure text and flush timing stay byte-identical (label 'matrix', recordFailures noun), matching the spec's anti-goal of no matrix change, while both files share one serialized flushTail.",
+    "README claims about denied/errored/unmeasured dispatches (R7 and the Agent usage rows section) match recordResult's ending derivation and notesFor exactly, and each has a behavioral tracker test.",
+    "appendValid factors out the matrix writer without changing its failure text ('matrix unreadable; not overwritten', 'matrix write refused'), so the existing matrix tests still pin the old wording byte for byte.",
+    "The usage claim happens in one atom update (usageToLog + markUsageLogged), and the append rides the shared flushTail, so parallel fixer returns cannot interleave a read-modify-write; a tracker test checks this with Promise.all.",
+    "Null means unknown throughout: ReturnBlock.fixed became nullable, so a missing FIXED line no longer turns into a confident zero, and preferCounts merges report and block field by field.",
+    "The schema and the TS validator are pinned to each other by a Python contract test (required, count fields as the conditional rest, roles, counted roles, skills, families, logged_at pattern), plus a standalone jsonschema test covering both valid and rejected rows.",
+    "launchModel fixes a real gap: a background agent whose loop reports no usage now logs the model the engine resolved instead of the requested alias, and a test covers it.",
+    "The config key was added in all required places: defaults, schema, dataclass/builder, both README tables, the config.ts mirror and the mirror test, plus the Artifact bucket suffix with a test pinning it."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Inactive-watch and untracked-dispatch tests do not assert the usage log stays unwritten",
+        "file": "plugins/pr-review-watch/hooks/tracker.test.ts",
+        "files": [
+          "plugins/pr-review-watch/hooks/tracker.test.ts",
+          "plugins/pr-review-watch/hooks/tracker.ts"
+        ],
+        "lines": "124-130,582-594",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The usage log is a new writer that fires on every tracked return, before any verdict, so it is the path most likely to leak when the watch is off. 'without .claude/harness.json the watch stays inactive' (lines 582-594) asserts that MATRIX is absent, that there are no git calls and that Stop does not block, but never checks USAGE. 'untracked dispatches pass through untouched' (lines 124-130) also checks only MATRIX. logUsage is gated today by resolveWatch (plugins/pr-review-watch/hooks/tracker.ts:329-330) and by claimUsage finding no run, but no test pins either gate. A refactor that resolves the usage path before the gate, or that logs untracked dispatches, would pass the suite.",
+        "fix": [
+          "Add `expect(seen.files.has(USAGE)).toBe(false)` after line 591 in the inactive-watch test and after line 129 in the untracked-dispatch test."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Root README still calls the mod's output reviewer usage records",
+        "file": "README.md",
+        "lines": "21",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:21 (feature table) describes pr-review-watch as producing 'reviewer usage records'. After this PR it writes a usage row for every review-agent role (reviewer, fixer, orchestrator, planner, closer) to agent_usage_path, as the new key row at README.md:184 and the updated plugin/marketplace descriptions say. The feature row now understates the mod.\n\nAlso (system_shape): README.md:21 describes pr-review-watch as producing 'reviewer usage records'. After this PR it also writes one usage row per fixer, orchestrator, planner and closer dispatch to agent_usage_path (the same README's key table at line 184 says 'one usage row per review-agent dispatch'), so the two rows of the same file disagree on scope.",
+        "fix": [
+          "Change 'reviewer usage records' on README.md:21 to 'reviewer matrix rows and per-agent usage rows' (or 'review-agent usage records').",
+          "README.md line 21: replace 'reviewer usage records' with 'reviewer matrix rows and a per-agent usage log (every review-agent dispatch)'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Plan (declared source of truth) drifts from the head",
+        "file": "docs/superpowers/plans/2026-10-20-agent-usage-jsonl.md",
+        "files": [
+          "docs/superpowers/plans/2026-10-20-agent-usage-jsonl.md",
+          "plugins/pr-review-watch/README.md",
+          "plugins/pr-review-watch/types/index.d.ts",
+          "plugins/pr-review-watch/hooks/tracker.ts",
+          "plugins/harness/schemas/pr_review_agent_usage.schema.json"
+        ],
+        "lines": "139,195-198,274-275,375-389",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The plan says it is the source of truth after the spec froze, but three of its 'exact' interfaces differ from the code at the head: (1) Task 2 Interfaces (lines 195-198) gives AgentRec two new fields, but types/index.d.ts:40 and runs.ts newAgent/recovered also add `launchModel`, set by a new `registerLoop(..., model)` parameter in tracker.ts and used by logUsage as the model fallback for background agents; Task 3 never mentions it. (2) Task 1 Step 4 (line 139) gives the logged_at pattern as `(\\.[0-9]+)?`; the schema (pr_review_agent_usage.schema.json:28) and LOGGED_AT_PATTERN use `([.][0-9]+)?`. (3) Task 3 Step 3 (lines 383-385) specifies `appendValid<R>($, path, rows, problems, cellOf, label, now)`; the code takes one `RowCheck<R>` object (`label`, `problems`, `cellOf`). The README State row (line 146) likewise lists agent fields without the launch model.\n\nAlso (overall): The frozen spec hands authority to the plan, but the plan's Interfaces omit AgentRec.launchModel (added in types/index.d.ts and set by registerLoop), specify appendValid with positional problems/cellOf/label arguments where the code takes a RowCheck object, and place the denied gate in complete() where the code puts it in logUsage. Behavior matches the intent; the record of it does not.\n\nAlso (system_shape): The spec hands authority to the plan, but the plan no longer matches the code in three places: (1) Task 1 Step 4 gives the 'exact' logged_at pattern as `(\\.[0-9]+)?` while the schema, LOGGED_AT_PATTERN and the contract test all use `([.][0-9]+)?` (equivalent regex, different text, so anyone re-deriving the schema from the plan breaks test_logged_at_pattern_matches); (2) Task 2 Interfaces / Step 5 say AgentRec gains two fields (subagentType, usageLoggedAt) but types/index.d.ts, runs.ts and every AgentRec literal carry a third, launchModel, which logUsage relies on for the background-launch model; (3) Task 3 Step 3 specifies appendValid with positional problems/cellOf/label args, while tracker.ts takes a RowCheck object (MATRIX_CHECK / USAGE_CHECK).\n\nAlso (roast): The plan calls itself the source of truth, but its Interfaces sections no longer match the code. The code adds `AgentRec.launchModel` (types/index.d.ts:36-40, set in runs.ts:30,165 and tracker.ts:196-202), which Task 2 does not list; Task 2 says newAgent/recovered set only `subagentType` and `usageLoggedAt`. The code takes a `RowCheck<R>` object in `appendValid($, path, rows, check, now)` (tracker.ts:260-289), where Task 3 specifies separate `problems`/`cellOf`/`label` parameters. The code also has a test for the launch model on background agents (tracker.test.ts 'a background agent with no usage logs the model the engine launched') that the Task 3 test list leaves out. Finally, the code writes the logged_at pattern as `([.][0-9]+)?` where Task 1 has `(\\.[0-9]+)?`. The spec is frozen, so the plan is the only document that can record these choices.",
+        "fix": [
+          "Update the plan: add `AgentRec.launchModel: string | null` (engine model from the async launch result) to Task 2 Interfaces and the model fallback order `c.model ?? launchModel ?? model` to Task 3 logUsage; change the line 139 pattern to `([.][0-9]+)?`; describe appendValid as taking a `RowCheck<R>` object. Optionally add 'launch model' to the README State `runs` row.",
+          "Update Task 2 Interfaces to list `AgentRec.launchModel: string | null` and its use in logUsage, and Task 3 Step 3 to describe `appendValid($, path, rows, check: RowCheck<R>, now)` and the denied early return inside logUsage.",
+          "Update the plan: Task 1 Step 4 pattern to `([.][0-9]+)?`; Task 2 Interfaces and Step 5 to list AgentRec.launchModel (set by registerLoop from the async_launched resolvedModel, null otherwise) and the matrixRow.test.ts helper gaining it; Task 3 Step 3 to describe appendValid($, path, rows, check: RowCheck<R>, now) with RowCheck = {label, problems, cellOf}.",
+          "Update the plan's Task 2 Interfaces (add `launchModel: string | null`, set by registerLoop and read only by usage rows), the Task 3 shared-append bullet (RowCheck shape), the Task 3 test list (the launch-model test) and the Task 1 logged_at pattern so they match the code."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Schema description says 'completed' dispatch but errored dispatches also get rows",
+        "file": "plugins/harness/schemas/pr_review_agent_usage.schema.json",
+        "files": [
+          "plugins/harness/schemas/pr_review_agent_usage.schema.json",
+          "plugins/pr-review-watch/hooks/usageRow.ts"
+        ],
+        "lines": "5",
+        "reviewer": "config, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The top-level description (line 5) scopes the log to 'one row per completed review-agent dispatch'. The same schema defines signal `ERROR` for an errored Agent result (line 92) and the notes suffix '; usage not measured; agent errored' (line 96), and buildUsageRow in plugins/pr-review-watch/hooks/usageRow.ts:75 writes those rows. A reader of the contract alone would assume errored dispatches are absent from the log and could miscount runs or cost.\n\nAlso (roast): The top-level description of pr_review_agent_usage.schema.json:5 says 'One row per completed review-agent dispatch'. The writer also logs errored Agent results (signal ERROR, tracker.ts:218 / usageRow.ts:69,75), and the schema's own `signal` and `notes` descriptions document that case. The pr-review-watch README's R7 row was already reworded to 'Every returned review-agent dispatch'; the schema description was left saying 'completed'.",
+        "fix": [
+          "Reword line 5 to 'One row per returned review-agent dispatch, errored results included (pr-review and pr-team: ...)', matching README R7 ('Every returned review-agent dispatch').",
+          "Change 'completed' to 'returned (completed or errored; a denied dispatch writes none)' in the schema's top-level description."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "issues_assigned described as 'Issue ids' but the field is a count, and pr-team is always null",
+        "file": "plugins/harness/schemas/pr_review_agent_usage.schema.json",
+        "files": [
+          "plugins/harness/schemas/pr_review_agent_usage.schema.json",
+          "plugins/pr-review-watch/hooks/usageRow.ts"
+        ],
+        "lines": "101",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "Line 101 says 'Issue ids the fixer was assigned' while the type is integer|null; the writer stores `issue_ids.length` (usageRow.ts:178). The description also names only the pr-review source; blockCounts (usageRow.ts:154-155) hard-codes null for every pr-team fixer and closer row, which the sibling count descriptions make explicit for their pr-team source but this one leaves implicit.",
+        "fix": [
+          "Reword to 'Fixer and closer rows only. Number of issues the fixer was assigned (pr-review: the length of its `issue_ids` in the run's waves.json; pr-team: always null, the block carries no assignment); null when unknown.'"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Background no-usage row is not zero usage",
+        "file": "plugins/pr-review-watch/README.md",
+        "files": [
+          "plugins/pr-review-watch/README.md",
+          "plugins/pr-review-watch/hooks/tracker.ts"
+        ],
+        "lines": "124-139",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The Agent usage rows section says a background turn with no usage 'logs zero usage with `usage not measured`'. At the head, recordLoopEnd (plugins/pr-review-watch/hooks/tracker.ts:232-235) still passes the mod-counted tool calls (`toolUses: used`) and the turn's `durationMs`; only `tokens` falls to 0 via usageTokens(undefined). A reader of the log would wrongly treat tool_uses and duration_s on such rows as zeroed. The errored case (tracker.ts:212-214) really is zero on all three, so only the background clause is wrong.\n\nAlso (overall): appendValid rewrites the whole file per append and treats a file over the engine's 4 MiB read limit as unreadable (README line 107). The usage log takes one row (~450 bytes) per agent of every role on every run, so it reaches the cap roughly an order of magnitude sooner than the reviewer-only matrix (~9k rows, a few hundred runs). Past that point every agent return drops its row into `failures` and fires a toast, with nothing in the docs telling the developer why or what to do.",
+        "fix": [
+          "Reword README line 130-131 to: 'a background turn with no usage logs `tokens: 0` (the tool calls the mod counted and the turn's duration still land) with `usage not measured` in `notes`'.",
+          "Document the cap and a rotation step in the 'Agent usage rows' section (move or archive the file when it nears 4 MiB; the next row recreates it).",
+          "Or make the failure reason distinguish 'over the read limit' from other unreadable cases so the toast names the remedy."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "pr-review-watch README state table omits the new launchModel agent field",
+        "file": "plugins/pr-review-watch/README.md",
+        "files": [
+          "plugins/pr-review-watch/README.md",
+          "plugins/pr-review-watch/types/index.d.ts"
+        ],
+        "lines": "146",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The State table's `runs` row was updated to list 'subagent type, usage, signal, counts, matrix and usage row attempt times', but AgentRec also gained launchModel (types/index.d.ts:35-40), persisted in state by registerLoop and read by usage rows. The README describes itself as the state contract summary, so the new persisted field is undocumented there.",
+        "fix": [
+          "README.md line 146: change 'agents (subagent type, usage, signal, counts, matrix and usage row attempt times)' to 'agents (subagent type, background launch model, usage, signal, counts, matrix and usage row attempt times)'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "pr-review-watch README: unwrapped line and singular JSONL limitation",
+        "file": "plugins/pr-review-watch/README.md",
+        "lines": "160-161,180",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The edited contract paragraph leaves line 180 at about 130 characters while the rest of the file wraps near 110. Known limitations (lines 160-161) still say 'Two sessions appending to the JSONL at the same moment can lose a row', but there are now two append targets (matrix and usage log) sharing the same read-plus-whole-file-write path (appendValid).",
+        "fix": [
+          "Rewrap line 180 at the file's width; change 'the JSONL' on line 161 to 'either JSONL (matrix or usage log)'."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "tracker.test.ts module docstring omits the usage log it now covers",
+        "file": "plugins/pr-review-watch/hooks/tracker.test.ts",
+        "lines": "7-10",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The header (lines 7-10) says the file covers 'what reaches the matrix JSONL, the ownership marker and the Stop decision'. The new 'agent usage rows' describe block (lines 237-386) tests a second JSONL, the agent usage log, which the docstring does not mention.",
+        "fix": [
+          "Reword to 'what reaches the matrix and agent usage JSONL files, the ownership marker and the Stop decision'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Recovery usage test duplicates the preceding test",
+        "file": "plugins/pr-review-watch/hooks/tracker.test.ts",
+        "lines": "409-424",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "\"a recovered run's rebuilt reviewers write no usage rows\" (lines 417-424) repeats the setup and matrix assertion of 'a review JSON written after the run started logs its rows' (lines 409-415) line for line. Its only addition is `expect(seen.files.has(USAGE)).toBe(false)`. Two copies of the same scenario will drift apart the next time recovery changes.",
+        "fix": [
+          "Move the USAGE assertion into the test at lines 409-415 (renamed to mention usage rows) and delete lines 417-424."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Module doc comment not rewrapped after edit",
+        "file": "plugins/pr-review-watch/hooks/tracker.ts",
+        "files": [
+          "plugins/pr-review-watch/hooks/tracker.ts",
+          "plugins/pr-review-watch/hooks/usageRow.ts"
+        ],
+        "lines": "26",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module header line was lengthened in place ('appends invocation-matrix rows and agent usage rows, and guards Stop ... Active only in a project') to roughly 128 characters while the surrounding comment lines wrap at about 110; same overflow at usageRow.ts:123 in numberProblems.",
+        "fix": [
+          "Rewrap tracker.ts lines 25-28 at 110 columns; split usageRow.ts:123 into a `const isPr = ...` plus the push."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "An aborted background loop logs as a normal NO_BLOCK row",
+        "file": "plugins/pr-review-watch/hooks/tracker.ts",
+        "files": [
+          "plugins/pr-review-watch/hooks/tracker.ts",
+          "plugins/pr-review-watch/README.md"
+        ],
+        "lines": "52,226-236",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "recordLoopEnd (tracker.ts:226-236) always passes `ending: 'ok'`. The engine's turn.complete event carries `isAborted` and `reason` (the tests build it with both), but TurnEnd (tracker.ts:52) does not read either. A background agent that is interrupted or dies on an API error is therefore logged as an ordinary return with signal NO_BLOCK, while the same failure on a synchronous dispatch logs ERROR with 'agent errored'. Same failure, two labels, depending only on whether the agent ran in the background.",
+        "fix": [
+          "Add `isAborted?: boolean` (and/or `reason`) to TurnEnd and pass `ending: e.isAborted === true ? 'errored' : 'ok'` from recordLoopEnd, with a tracker test for an aborted loop.",
+          "Or keep 'ok' and state in the README's Agent usage rows section that an aborted background loop logs NO_BLOCK, not ERROR."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "countsFor docstring covers one branch of three",
+        "file": "plugins/pr-review-watch/hooks/tracker.ts",
+        "lines": "298-307,309-318",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The docstring says 'a pr-review fixer reads its run's waves.json and report, then its block', but the function also returns block-only counts for the closer and pr-team fixers (line 317) and NO_COUNTS for every other role (line 318). A reader of the doc alone would not know closer rows are counted or that non-fixer roles short-circuit.\n\nAlso (roast): claimUsage (tracker.ts:298-307) sets box.hit only when usageToLog finds the agent and never clears it. If update() re-invokes the updater (a retry, or any engine that calls it more than once), a first pass can claim the agent, a second pass can find it already claimed and return r unchanged, and box.hit still holds the first pass's agent, so the row gets appended twice. That breaks the spec's anti-goal of never writing a usage row twice. claimReviewers (tracker.ts:353-360) avoids this by reassigning `claimed` on every call. Two claim helpers sitting side by side, and only one of them is retry-safe.",
+        "fix": [
+          "Rewrite as: 'Outcome counts: closer and pr-team fixers from the return block; a pr-review fixer from its run's waves.json and fixes/<id>.json, falling back to the block; other roles none.'",
+          "Reset the box at the top of the updater: `box.hit = undefined` before calling usageToLog, as claimReviewers does by reassigning `claimed` on every call.",
+          "Or write the result to a `let hit: [Run, AgentRec] | undefined` that the updater assigns on every call (undefined on a miss)."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Contract test leaves the validator's minLength and nullable field lists unpinned",
+        "file": "plugins/pr-review-watch/hooks/usageRow.ts",
+        "files": [
+          "plugins/pr-review-watch/hooks/usageRow.ts",
+          "tests/mods/test_pr_review_watch_usage_contract.py"
+        ],
+        "lines": "92-94",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "test_pr_review_watch_usage_contract.py pins required fields, count fields, enums and the logged_at pattern, but NON_EMPTY (run_id, agent_id, effort, signal) and NULLABLE_STRINGS (subagent_type, model) in usageRow.ts are hand-copied from the schema's minLength and [\"string\", \"null\"] types. A schema change there (for example minLength on notes, or a nullable effort) passes CI while the mod keeps writing rows the schema rejects, or rejects rows the schema allows.",
+        "fix": [
+          "Export NON_EMPTY and NULLABLE_STRINGS from usageRow.ts and add contract tests: NON_EMPTY == sorted properties with minLength >= 1; NULLABLE_STRINGS == string properties whose type list contains null and that are not count fields."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "LogFailure doc still says matrix-only",
+        "file": "plugins/pr-review-watch/types/index.d.ts",
+        "files": [
+          "plugins/pr-review-watch/types/index.d.ts",
+          "plugins/pr-review-watch/hooks/tracker.ts"
+        ],
+        "lines": "63-64",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "types/index.d.ts:63 documents LogFailure as 'A matrix row that failed validation or could not be written', but tracker.ts appendValid/recordFailures now push usage-log rows into the same failures atom, with `cell` holding `<run_id>/<agent_id>` (USAGE_CHECK.cellOf, tracker.ts:263-265). The type contract no longer matches what the atom holds.\n\nAlso (roast): types/index.d.ts:63 says `LogFailure` is 'A matrix row that failed validation or could not be written'. appendValid now also pushes usage-row failures into the same failures atom, with `cell` set to `<run_id>/<agent_id>` (tracker.ts:264). Anyone who reads the type and expects a matrix cell id in `cell` will get a run/agent pair.",
+        "fix": [
+          "Reword to 'A matrix or usage-log row that failed validation or could not be written; `cell` is the matrix cell or `<run_id>/<agent_id>` for a usage row.'",
+          "Reword the doc to 'A matrix or usage row that failed validation or could not be written; `cell` is the matrix cell, or `<run_id>/<agent_id>` for a usage row.'"
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Usage contract test does not pin nullable and non-empty field sets",
+        "file": "tests/mods/test_pr_review_watch_usage_contract.py",
+        "files": [
+          "tests/mods/test_pr_review_watch_usage_contract.py",
+          "plugins/pr-review-watch/hooks/usageRow.ts"
+        ],
+        "lines": "31-56",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The test pins required fields, count fields, enums and the logged_at pattern. It does not pin validateUsageRow's NULLABLE_STRINGS (`subagent_type`, `model`) or NON_EMPTY (`run_id`, `agent_id`, `effort`, `signal`) in plugins/pr-review-watch/hooks/usageRow.ts:92-94 against the schema's `[\"string\",\"null\"]` types and `minLength: 1` rules. If the schema changes the nullability or minLength of a field, the TS validator goes on accepting or rejecting rows the schema now treats the other way, and nothing fails.",
+        "fix": [
+          "Export NULLABLE_STRINGS and NON_EMPTY as `as const` arrays and add tests that compare them with `[k for k, p in schema['properties'].items() if p.get('type') == ['string', 'null']]` and `[k for k, p in ... if p.get('minLength') == 1]`."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Schema test docstring claims wider count-field coverage than the cases check",
+        "file": "tests/schemas/test_pr_review_agent_usage_schema.py",
+        "lines": "3-5,56-65",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstring (lines 3-5) says the count fields are 'required on fixer and closer rows and rejected on every other role'. test_rejected_rows checks only a fixer row with no counts (line 58) and only a reviewer row that carries one (line 57). No case covers a closer row missing counts, or an orchestrator or planner row carrying counts, so the if/then/else branches for those roles are not pinned directly.",
+        "fix": [
+          "Add rejected params: a closer row without `files_touched`, plus `_row('orchestrator', issues_fixed=1)` and `_row('planner', files_touched=0)`.",
+          "Alternatively, narrow the docstring to the roles actually exercised."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 37 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"dd526a3c5b35f60da37cc45b9cd1c6c78ecb75dc\",\"headRefName\":\"0016-agent-jsonl\",\"headRefOid\":\"29de96a735b4465763e7e51259857502a3e61d37\",\"last_sha\":\"29de96a735b4465763e7e51259857502a3e61d37\",\"mergeCommit\":null,\"number\":37,\"state\":\"OPEN\",\"title\":\"0016 agent jsonl\",\"url\":\"https://github.com/t968rs/operator-straps/pull/37\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0016-agent-jsonl",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0016-agent-jsonl",
+        "head_ref_name": "0016-agent-jsonl",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "?? docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "dd526a3c5b35f60da37cc45b9cd1c6c78ecb75dc",
+        "head_sha": "29de96a735b4465763e7e51259857502a3e61d37",
+        "base_ancestor_command": "git merge-base --is-ancestor dd526a3c5b35f60da37cc45b9cd1c6c78ecb75dc HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 29de96a735b4465763e7e51259857502a3e61d37 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - README Agent usage rows: background no-usage row now says tokens 0 with tool calls and duration still landing; added the 4 MiB cap and a move/archive rotation step"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - tracker.test.ts module docstring now names the matrix and agent usage JSONL files"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - folded the USAGE-absent assertion into the post-start review JSON test (renamed) and deleted the duplicate recovery test"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - README Agent usage rows now states an interrupted or API-errored background loop logs its block signal (NO_BLOCK when none), never ERROR; tracker.ts left as is"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - exported NON_EMPTY and NULLABLE_STRINGS from usageRow.ts; contract test pins them against schema minLength 1 and [string, null] fields"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - added USAGE-absent assertions to the untracked-dispatch and inactive-watch tests; cited only: the usage gates are in tracker.ts logUsage/resolveWatch and claimUsage; the missing USAGE assertions are in tracker.test.ts (other part)"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - cited only: types/index.d.ts AgentRec.launchModel (line 40) and schema logged_at pattern (line 28) already match the code; the plan, README and tracker.ts drift is fixed by the other parts; plan Task 1 logged_at pattern set to ([.][0-9]+)?; Task 2 Interfaces adds AgentRec.launchModel and registerLoop source; Task 3 denied gate moved into logUsage, model fallback order added, appendValid takes RowCheck<R>; tracker.ts launchModel fallback and registerLoop match the code; plan/README/schema drift is fixed in the other parts; README State runs row now lists the background launch model; plan, types, tracker and schema parts are owned by the other fixer"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - schema top-level description now reads 'One row per returned review-agent dispatch (completed or errored; a denied dispatch writes none)'; cited only: buildUsageRow writes ERROR rows (usageRow.ts:69,75); the schema description wording is the other part's edit"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - issues_assigned description now says 'Number of issues the fixer was assigned' (length of issue_ids) and that pr-team is always null; cited only: writer stores issue_ids.length (usageRow.ts:178) and hard-codes null for pr-team (usageRow.ts:154-155); the schema wording is the other part's edit"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - cited only: types/index.d.ts AgentRec.launchModel (line 40) already present; README State row is fixed by the other part; README State runs row lists background launch model on agents (types/index.d.ts is the other part)"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - LogFailure doc now covers matrix or usage-log rows and says cell is <run_id>/<agent_id> for a usage row; cited only: the LogFailure doc lives in types/index.d.ts (other part); tracker.ts holds no LogFailure doc to change"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - README.md feature row now says reviewer matrix rows and a per-agent usage log (every review-agent dispatch) instead of reviewer usage records"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - added rejected params: closer row without files_touched, orchestrator row with issues_fixed, planner row with files_touched"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - rewrapped the module doc comment at tracker.ts:25-29 to 110 columns; split the pr minimum check at usageRow.ts:123 into a const isPr line plus the push (under 110 columns)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - countsFor docstring now lists closer and pr-team block counts, pr-review waves/report with block fallback, and none for other roles; claimUsage resets box.hit on every updater call"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - Known limitations append line reads 'same JSONL (matrix or usage log)'; contract paragraph rewrapped under 112 columns"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "29de96a (working-tree snapshot; developer commits) - NON_EMPTY and NULLABLE_STRINGS exported from usageRow.ts and pinned against the schema by the usage contract test (8 passed) (outside fixer waves)"
+    }
+  ]
+}
