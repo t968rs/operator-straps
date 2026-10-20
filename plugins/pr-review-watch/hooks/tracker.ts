@@ -11,16 +11,21 @@ import { identify, parseReturnBlock, prOfRunId, startedAtOfRunId, type Dispatch 
 import { appendRows, buildRow, validateRow, type MatrixRow } from './matrixRow'
 import { scanPhase5, type HotSentinel } from './phase5Scan'
 import {
-  applyCompletion, applyDispatch, currentRunId, fixerBubbledIds, markLogged, newAgent, planPhase, recoverReviewers,
-  reviewersSettled, reviewersToLog, settle, withDiskPhase, type Completion,
+  applyCompletion, applyDispatch, currentRunId, fixerBubbledIds, markLogged, markUsageLogged, newAgent, planPhase,
+  recoverReviewers, reviewersSettled, reviewersToLog, settle, usageToLog, withDiskPhase, type Completion,
 } from './runs'
 import { blocksSession } from './sentinels'
+import {
+  blockCounts, buildUsageRow, NO_COUNTS, preferCounts, reportCounts, validateUsageRow, type FixerCounts,
+  type UsageRow,
+} from './usageRow'
 import { resolveWatch, type Watch } from './watch'
 
 /**
  * Engine glue for pr-review-watch: tracks pr-team / pr-review `Agent` dispatches, folds subagent usage,
- * appends invocation-matrix rows and guards Stop on undispositioned bubbled ids. Active only in a project
- * holding `.claude/harness.json` (./watch); its paths and base branch come from that file. Every host
+ * appends invocation-matrix rows and agent usage rows, and guards Stop on undispositioned bubbled
+ * ids. Active only in a project holding `.claude/harness.json` (./watch); its paths and base branch
+ * come from that file. Every host
  * failure degrades to doing nothing; no hook throws into a tool call, a turn or a stop.
  */
 
@@ -66,7 +71,7 @@ export const OWNER_NOTE =
 const noop = (): undefined => undefined
 /** Tool calls per subagent loop id, counted for background launches. */
 const toolUses = new Map<string, number>()
-/** Serializes matrix appends: parallel returns never interleave a read-modify-write. */
+/** Serializes matrix and usage appends: parallel returns never interleave a read-modify-write. */
 let flushTail: Promise<unknown> = Promise.resolve()
 
 // ---------------------------------------------------------------------------
@@ -163,7 +168,9 @@ const updateRun = ($: Dollar, runId: string, fn: (run: Run) => Run): Promise<unk
     return cur === undefined ? runs : { ...runs, [runId]: fn(cur) }
   })
 
-const recordDispatch = async ($: Dollar, d: Dispatch, meta: { model?: string; effort?: string }): Promise<void> => {
+type DispatchMeta = { model?: string; effort?: string; subagentType?: string }
+
+const recordDispatch = async ($: Dollar, d: Dispatch, meta: DispatchMeta): Promise<void> => {
   const now = await $.clock.now()
   await update($, runsAtom, runs => applyDispatch(runs, d, newAgent(d, meta), now))
   await update($, activeAtom, () => d.runId)
@@ -181,18 +188,26 @@ const claimMatrix = async ($: Dollar, key: Key, signal: string | undefined): Pro
 const complete = async ($: Dollar, key: Key, c: Completion): Promise<void> => {
   await updateRun($, key.runId, run => applyCompletion(run, key.agentId, c))
   await claimMatrix($, key, c.block?.signal)
+  await logUsage($, key, c)
 }
 
 const textOf = (r: AgentResult): string => (r.content ?? []).map(b => b.text ?? '').join('\n')
 
-const registerLoop = async ($: Dollar, loopId: string, key: Key): Promise<void> => {
+/** Maps the loop to its agent and keeps the model the engine launched it with. */
+const registerLoop = async ($: Dollar, loopId: string, key: Key, model: string | null): Promise<void> => {
   await update($, loopsAtom, loops => ({ ...loops, [loopId]: [key.runId, key.agentId] as [string, string] }))
+  await updateRun($, key.runId, run => {
+    const a = run.agents[key.agentId]
+    return a === undefined ? run : { ...run, agents: { ...run.agents, [key.agentId]: { ...a, launchModel: model } } }
+  })
 }
 
 /** Folds an Agent tool result: usage now when synchronous, a loop registration when backgrounded. */
 const recordResult = async ($: Dollar, key: Key, r: ToolAnswer): Promise<void> => {
   const res = (r.deny === undefined && r.isError !== true ? r.result : undefined) as AgentResult | undefined
-  if (res?.status === 'async_launched' && res.agentId !== undefined) return registerLoop($, res.agentId, key)
+  if (res?.status === 'async_launched' && res.agentId !== undefined) {
+    return registerLoop($, res.agentId, key, res.resolvedModel ?? null)
+  }
   const isDone = res?.status === 'completed'
   await complete($, key, {
     tokens: isDone ? (res.totalTokens ?? 0) : 0,
@@ -201,6 +216,7 @@ const recordResult = async ($: Dollar, key: Key, r: ToolAnswer): Promise<void> =
     model: res?.resolvedModel ?? null,
     block: isDone ? parseReturnBlock(r.text ?? textOf(res)) : undefined,
     isMeasured: isDone,
+    ending: r.deny !== undefined ? 'denied' : isDone ? 'ok' : 'errored',
   })
 }
 
@@ -216,46 +232,123 @@ const recordLoopEnd = async ($: Dollar, loopId: string, e: TurnEnd): Promise<voi
   await update($, loopsAtom, loops => Object.fromEntries(Object.entries(loops).filter(([k]) => k !== loopId)))
   await complete($, { runId: hit[0], agentId: hit[1] }, {
     tokens: usageTokens(e.usage), toolUses: used, durationMs: e.durationMs, model: e.usage?.model ?? null,
-    block: parseReturnBlock(e.answer), isMeasured: e.usage !== undefined,
+    block: parseReturnBlock(e.answer), isMeasured: e.usage !== undefined, ending: 'ok',
   })
 }
 
 // ---------------------------------------------------------------------------
-// Matrix append
+// JSONL append (matrix and usage log)
 
-const recordFailures = async ($: Dollar, failures: readonly LogFailure[]): Promise<void> => {
+/** Keeps the failures and toasts them; `noun` names the row kind (`matrix`, `usage`). */
+const recordFailures = async ($: Dollar, failures: readonly LogFailure[], noun: string): Promise<void> => {
   if (failures.length === 0) return
   await update($, failuresAtom, prev => [...prev, ...failures].slice(-MAX_FAILURES)).catch(noop)
   const first = failures[0]
-  const text = `pr-review-watch: ${failures.length} matrix row(s) not appended (${first?.cell}: ${first?.reason})`
+  const text = `pr-review-watch: ${failures.length} ${noun} row(s) not appended (${first?.cell}: ${first?.reason})`
   await Promise.resolve($.ui.toast(text)).catch(noop)
 }
 
 /**
- * The matrix text to append to: '' when the file is missing, undefined when it exists (or its existence
+ * The JSONL text to append to: '' when the file is missing, undefined when it exists (or its existence
  * is unknown) but cannot be read, so a whole-file write would drop its rows.
  */
-const readMatrix = async ($: Dollar, path: string): Promise<string | undefined> => {
+const readJsonl = async ($: Dollar, path: string): Promise<string | undefined> => {
   const isThere = await $.fs.exists(path).catch(() => true)
   return isThere ? readText($, path) : ''
 }
 
+/** How one JSONL file checks and names its rows; `label` starts the failure reasons. */
+type RowCheck<R> = { label: string; problems: (r: R) => string[]; cellOf: (r: R) => string }
+
+const MATRIX_CHECK: RowCheck<MatrixRow> = { label: 'matrix', problems: validateRow, cellOf: r => r.cell }
+const USAGE_CHECK: RowCheck<UsageRow> = {
+  label: 'usage log', problems: validateUsageRow, cellOf: r => `${r.run_id}/${r.agent_id}`,
+}
+
 /**
- * Appends valid rows; returns the failures (invalid rows, or every row when the matrix cannot be read or
- * the write is refused). An unreadable matrix is never overwritten.
+ * Appends valid rows to `path`; returns the failures (invalid rows, or every row when the file cannot be
+ * read or the write is refused). An unreadable file is never overwritten.
  */
-const writeRows = async ($: Dollar, w: Watch, rows: readonly MatrixRow[], now: number): Promise<LogFailure[]> => {
-  const checked = rows.map(r => ({ r, why: validateRow(r) }))
+const appendValid = async <R extends object>(
+  $: Dollar,
+  path: string,
+  rows: readonly R[],
+  check: RowCheck<R>,
+  now: number,
+): Promise<LogFailure[]> => {
+  const checked = rows.map(r => ({ r, why: check.problems(r) }))
   const good = checked.filter(x => x.why.length === 0).map(x => x.r)
-  const failures = checked.filter(x => x.why.length > 0).map(x => ({ cell: x.r.cell, reason: x.why.join('; '), at: now }))
+  const failures = checked.filter(x => x.why.length > 0)
+    .map(x => ({ cell: check.cellOf(x.r), reason: x.why.join('; '), at: now }))
   if (good.length === 0) return failures
-  const path = under(w.root, w.cfg.matrixPath)
-  const existing = await readMatrix($, path)
+  const existing = await readJsonl($, path)
   const isWritten =
     existing !== undefined && (await $.fs.write(path, appendRows(existing, good)).then(() => true, () => false))
   if (isWritten) return failures
-  const reason = existing === undefined ? 'matrix unreadable; not overwritten' : 'matrix write refused'
-  return [...failures, ...good.map(r => ({ cell: r.cell, reason, at: now }))]
+  const reason = existing === undefined ? `${check.label} unreadable; not overwritten` : `${check.label} write refused`
+  return [...failures, ...good.map(r => ({ cell: check.cellOf(r), reason, at: now }))]
+}
+
+const writeRows = ($: Dollar, w: Watch, rows: readonly MatrixRow[], now: number): Promise<LogFailure[]> =>
+  appendValid($, under(w.root, w.cfg.matrixPath), rows, MATRIX_CHECK, now)
+
+// ---------------------------------------------------------------------------
+// Usage rows
+
+/** Claims the agent's usage row inside one atom update, so a second fold never appends it again. */
+const claimUsage = async ($: Dollar, key: Key, now: number): Promise<[Run, AgentRec] | undefined> => {
+  const box: { hit?: [Run, AgentRec] } = {}
+  await updateRun($, key.runId, r => {
+    box.hit = undefined
+    const a = usageToLog(r, key.agentId)
+    if (a === undefined) return r
+    box.hit = [r, a]
+    return markUsageLogged(r, key.agentId, now)
+  })
+  return box.hit
+}
+
+/**
+ * Outcome counts: closer and pr-team fixers from the return block; a pr-review fixer from its run's
+ * waves.json and fixes/<id>.json, falling back to the block; other roles none.
+ */
+const countsFor = async (
+  $: Dollar,
+  w: Watch,
+  run: Run,
+  agent: AgentRec,
+  c: Completion,
+): Promise<FixerCounts> => {
+  if (agent.role === 'closer' || (agent.role === 'fixer' && run.skill === 'pr-team')) return blockCounts(c.block)
+  if (agent.role !== 'fixer') return NO_COUNTS
+  const dir = await prReviewRunDir($, w, run).catch(noop)
+  const read = (rel: string): Promise<string | undefined> =>
+    dir === undefined ? Promise.resolve(undefined) : readText($, `${dir}/${rel}`)
+  const [waves, report] = await Promise.all([read('waves.json'), read(`fixes/${agent.id}.json`)])
+  return preferCounts(reportCounts(waves, report, agent.id), blockCounts(c.block))
+}
+
+/** One usage row per returned dispatch; a denied dispatch never ran and writes none. */
+const logUsage = async ($: Dollar, key: Key, c: Completion): Promise<void> => {
+  if (c.ending === 'denied') return
+  const w = await resolveWatch($)
+  if (w === undefined) return
+  const now = await $.clock.now()
+  const hit = await claimUsage($, key, now)
+  if (hit === undefined) return
+  const [run, claimed] = hit
+  const counts = await countsFor($, w, run, claimed, c)
+  // The engine's model: this completion's, else the background launch's, else the requested one.
+  const agent = { ...claimed, model: c.model ?? claimed.launchModel ?? claimed.model }
+  const row = buildUsageRow({
+    runId: run.runId, skill: run.skill, pr: run.pr, agent, ending: c.ending, isMeasured: c.isMeasured,
+    loggedAt: now, counts,
+  })
+  const path = under(w.root, w.cfg.agentUsagePath)
+  flushTail = flushTail
+    .then(async () => recordFailures($, await appendValid($, path, [row], USAGE_CHECK, now), 'usage'))
+    .catch(noop)
+  await flushTail
 }
 
 /**
@@ -281,7 +374,7 @@ const flushNow = async ($: Dollar, w: Watch, runId: string): Promise<void> => {
   const devCommit = await devCommitFor($, w)
   const pr = run.pr
   const rows = agents.map(agent => buildRow({ pr, agent, verdictPrefix: prefix, devCommit }))
-  await recordFailures($, await writeRows($, w, rows, now))
+  await recordFailures($, await writeRows($, w, rows, now), 'matrix')
   if (run.runtimeDir === null) return
   const stamp = `logged ${new Date(now).toISOString()}\n`
   await $.fs.write(`${under(w.root, run.runtimeDir)}/${MARKER}`, stamp).catch(noop)
@@ -437,7 +530,7 @@ const registerToolHooks = (on: On): void => {
     const hit = await trackedDispatch($, e.subagent_type, e.prompt)
     if (hit === undefined) return next(e)
     const [d, w] = hit
-    await recordDispatch($, d, { model: e.model, effort: e.effort }).catch(noop)
+    await recordDispatch($, d, { model: e.model, effort: e.effort, subagentType: e.subagent_type }).catch(noop)
     const r = await next(e)
     await recordResult($, { runId: d.runId, agentId: d.agentId }, r).catch(noop)
     await refreshWith($, w).catch(noop)

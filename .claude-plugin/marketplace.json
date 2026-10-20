@@ -13,7 +13,7 @@
     {
       "name": "pr-review-watch",
       "source": "./plugins/pr-review-watch",
-      "description": "pr-review / pr-team run tracking: Phase 5 band, engine-measured matrix rows, bubble Stop guard"
+      "description": "pr-review / pr-team run tracking: Phase 5 band, engine-measured matrix and agent usage rows, bubble Stop guard"
     },
     {
       "name": "session-bookmark",

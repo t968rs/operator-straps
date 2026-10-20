@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  DEFAULT_BASE_BRANCH, DEFAULT_MATRIX_PATH, DEFAULT_REVIEWS, DEFAULT_SCRATCH, DEFAULT_STATE_DIR, readConfig,
-  runtimeBaseOf, sentinelDirOf, under,
+  DEFAULT_AGENT_USAGE_PATH, DEFAULT_BASE_BRANCH, DEFAULT_MATRIX_PATH, DEFAULT_REVIEWS, DEFAULT_SCRATCH,
+  DEFAULT_STATE_DIR, readConfig, runtimeBaseOf, sentinelDirOf, under,
 } from './config'
 import { HARNESS_CONFIG_REL, rootCandidates } from './root'
 
 const DEFAULTS = {
-  stateDir: DEFAULT_STATE_DIR, matrixPath: DEFAULT_MATRIX_PATH, reviewsDir: DEFAULT_REVIEWS,
-  scratchDir: DEFAULT_SCRATCH, baseBranch: DEFAULT_BASE_BRANCH,
+  stateDir: DEFAULT_STATE_DIR, matrixPath: DEFAULT_MATRIX_PATH, agentUsagePath: DEFAULT_AGENT_USAGE_PATH,
+  reviewsDir: DEFAULT_REVIEWS, scratchDir: DEFAULT_SCRATCH, baseBranch: DEFAULT_BASE_BRANCH,
 }
 
 describe('readConfig (harness.json over the mirrored defaults)', () => {
@@ -21,17 +21,19 @@ describe('readConfig (harness.json over the mirrored defaults)', () => {
 
   test('the keys it reads replace the defaults; artifacts merge key by key', async () => {
     const text = JSON.stringify({
-      state_dir: '.state\\harness\\', matrix_path: 'meta/matrix.jsonl', base_branch: 'dev',
-      artifacts: { reviews: 'reviews/' }, tests: { roots: ['t/'] },
+      state_dir: '.state\\harness\\', matrix_path: 'meta/matrix.jsonl', agent_usage_path: 'meta/u.jsonl',
+      base_branch: 'dev', artifacts: { reviews: 'reviews/' }, tests: { roots: ['t/'] },
     })
     expect(readConfig(text)).toEqual({
-      stateDir: '.state/harness', matrixPath: 'meta/matrix.jsonl', reviewsDir: 'reviews',
-      scratchDir: DEFAULT_SCRATCH, baseBranch: 'dev',
+      stateDir: '.state/harness', matrixPath: 'meta/matrix.jsonl', agentUsagePath: 'meta/u.jsonl',
+      reviewsDir: 'reviews', scratchDir: DEFAULT_SCRATCH, baseBranch: 'dev',
     })
   })
 
   test('wrong types and blanks fall back to the defaults', async () => {
-    const text = JSON.stringify({ state_dir: 3, matrix_path: '  ', base_branch: '', artifacts: 'x' })
+    const text = JSON.stringify({
+      state_dir: 3, matrix_path: '  ', agent_usage_path: '  ', base_branch: '', artifacts: 'x',
+    })
     expect(readConfig(text)).toEqual(DEFAULTS)
   })
 

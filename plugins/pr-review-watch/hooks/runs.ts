@@ -12,6 +12,8 @@ export type Completion = {
   model: string | null
   block: ReturnBlock | undefined
   isMeasured: boolean
+  /** `ok`: a result the engine reported; `errored`: an error or unfinished Agent result; `denied`: never ran. */
+  ending: 'ok' | 'errored' | 'denied'
 }
 
 const PHASE_LABEL: Readonly<Record<Phase, string>> = {
@@ -19,9 +21,13 @@ const PHASE_LABEL: Readonly<Record<Phase, string>> = {
   fix: 'fixers', closeout: 'closeout', done: 'done',
 }
 
-export const newAgent = (d: Dispatch, meta: { model?: string; effort?: string }): AgentRec => ({
+export const newAgent = (
+  d: Dispatch,
+  meta: { model?: string; effort?: string; subagentType?: string },
+): AgentRec => ({
   id: d.agentId, role: d.role, model: meta.model ?? null, effort: meta.effort ?? null,
   tokens: 0, toolUses: 0, durationMs: 0, isMeasured: false, signal: null, counts: null, loggedAt: null,
+  subagentType: meta.subagentType ?? null, usageLoggedAt: null, launchModel: null,
 })
 
 const newRun = (d: Dispatch, now: number): Run => ({
@@ -113,6 +119,17 @@ export const markLogged = (run: Run, ids: readonly string[], now: number): Run =
   ),
 })
 
+/** The agent when it has returned and its usage row is not yet attempted; else undefined. */
+export const usageToLog = (run: Run, agentId: string): AgentRec | undefined => {
+  const a = run.agents[agentId]
+  return a !== undefined && a.signal !== null && a.usageLoggedAt === null ? a : undefined
+}
+
+export const markUsageLogged = (run: Run, agentId: string, now: number): Run => {
+  const a = run.agents[agentId]
+  return a === undefined ? run : { ...run, agents: { ...run.agents, [agentId]: { ...a, usageLoggedAt: now } } }
+}
+
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null)
@@ -145,6 +162,7 @@ const recovered = (agent: Record<string, unknown>, row: Record<string, unknown>)
   id: String(agent.id), role: 'reviewer', model: str(agent.model), effort: str(agent.effort),
   tokens: 0, toolUses: 0, durationMs: 0, isMeasured: false,
   signal: str(row.signal) ?? 'NO_BLOCK', counts: countsOf(row.counts), loggedAt: null,
+  subagentType: null, usageLoggedAt: null, launchModel: null,
 })
 
 /** Reviewers rebuilt after a restart: plan `agents[]` that have a reviewer terminals row. */

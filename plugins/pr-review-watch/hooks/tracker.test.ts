@@ -5,8 +5,8 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import { OWNER_NOTE } from './tracker'
 
 /**
- * Engine-level behavior of the tracker: what reaches the matrix JSONL, the ownership marker and the
- * Stop decision. Files, git, env and the Agent tool sit beneath the plugin, answered from memory.
+ * Engine-level behavior of the tracker: what reaches the matrix and agent usage JSONL files, the
+ * ownership marker and the Stop decision. Files, git, env and the Agent tool sit beneath the plugin, answered from memory.
  */
 
 const ROOT = '/repo'
@@ -15,6 +15,7 @@ const RUN = 'pr1526_20261009T120000Z'
 const DIR = `.claude/state/harness/pr-team/_runtime/${RUN}`
 const SENTINELS = `${ROOT}/.claude/state/harness/pr-review`
 const MATRIX = `${ROOT}/docs/_harness/pr_review_invocation_test_matrix.jsonl`
+const USAGE = `${ROOT}/docs/_harness/pr_review_agent_usage.jsonl`
 const REVIEW = `${ROOT}/docs/PR_REVIEWS/1526_watch.json`
 const HARNESS = `${ROOT}/.claude/harness.json`
 const PR_REVIEW_PY = 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py"'
@@ -114,8 +115,10 @@ const writeReview = (seen: Seen, body: Record<string, unknown>): void => {
   seen.files.set(REVIEW, { text: JSON.stringify(body), mtimeMs: NOW + 1 })
 }
 
-const matrixRows = (seen: Seen): Record<string, unknown>[] =>
-  (seen.files.get(MATRIX)?.text ?? '').split('\n').filter(Boolean).map(l => JSON.parse(l) as Record<string, unknown>)
+const jsonlRows = (seen: Seen, path: string): Record<string, unknown>[] =>
+  (seen.files.get(path)?.text ?? '').split('\n').filter(Boolean).map(l => JSON.parse(l) as Record<string, unknown>)
+const matrixRows = (seen: Seen): Record<string, unknown>[] => jsonlRows(seen, MATRIX)
+const usageRows = (seen: Seen): Record<string, unknown>[] => jsonlRows(seen, USAGE)
 
 describe('Agent hook', () => {
   test('untracked dispatches pass through untouched', async ($, on) => {
@@ -124,6 +127,7 @@ describe('Agent hook', () => {
     expect(r.context ?? []).toEqual([])
     expect(seen.agentCalls).toBe(1)
     expect(seen.files.has(MATRIX)).toBe(false)
+    expect(seen.files.has(USAGE)).toBe(false)
   })
 
   test('pr-review reviewer results carry the ownership note', async ($, on) => {
@@ -231,6 +235,157 @@ describe('matrix rows', () => {
   })
 })
 
+describe('agent usage rows', () => {
+  const PR_DIR = `${ROOT}/docs/_scratch/pr_review/1526`
+  const fixerPrompt = (id: string) => `AGENT_ID: ${id}\nAGENT_ROLE: fixer\nRUN_ID: ${RUN}\nPR: 1526`
+  const fixerBlock = (fixed: string, bubbled: string, edited: number) =>
+    `---\nSIGNAL: DONE\nAGENT_ROLE: fixer\nFIXED: ${fixed}\nBUBBLED: ${bubbled}\nEDITED: ${edited}\nOUTPUT: o\n---`
+  const launchedAs = (agentId: string) => ({
+    result: { status: 'async_launched', agentId, description: 'r', prompt: '', outputFile: 'f', resolvedModel: 'claude-sonnet-5-5' },
+    text: 'launched',
+  })
+  const loopEnd = ($: Engine, agentId: string, usage?: Record<string, unknown>) =>
+    $.turn.complete({
+      answer: doneBlock(ZERO), durationMs: 4000, isAborted: false, turnId: `t-${agentId}`, reason: 'answer', agentId,
+      ...(usage === undefined ? {} : { usage }),
+    } as never)
+
+  test('a reviewer row is written on return, before any verdict', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO)))
+    await dispatch($, reviewerPrompt('r1', 'PR: 1526'), 'harness:pr-reviewer')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({
+      run_id: RUN, pr: 1526, skill: 'pr-review', role: 'reviewer', agent_id: 'r1', subagent_type: 'harness:pr-reviewer',
+      model: 'claude-opus-5-5', model_family: 'opus', tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
+    })
+    expect(seen.files.has(MATRIX)).toBe(false)
+  })
+
+  test('pr-review fixer counts come from waves.json and its report', async ($, on) => {
+    const seen = world(on, () => completed('---\nSIGNAL: FAIL\nAGENT_ROLE: fixer\nREASON: r\n---'))
+    seen.files.set(`${PR_DIR}/current`, { text: `${RUN}\n`, mtimeMs: NOW })
+    const waves = { waves: [[{ id: 'w1_fix_1', issue_ids: ['M1', 'I2', 'C3'] }]] }
+    seen.files.set(`${PR_DIR}/${RUN}/waves.json`, { text: JSON.stringify(waves), mtimeMs: NOW })
+    const report = {
+      fixer: 'w1_fix_1', fixed: [{ id: 'M1', what: 'w', files: ['a.py', 'b.py'] }],
+      bubbled: [{ id: 'I2', classification: 'out_of_scope', reason: 'r' }],
+    }
+    seen.files.set(`${PR_DIR}/${RUN}/fixes/w1_fix_1.json`, { text: JSON.stringify(report), mtimeMs: NOW })
+    await dispatch($, fixerPrompt('w1_fix_1'), 'harness:pr-fixer')
+    expect(usageRows(seen)[0]).toMatchObject({
+      role: 'fixer', signal: 'FAIL', issues_assigned: 3, issues_fixed: 1, issues_bubbled: 1, files_touched: 2,
+    })
+  })
+
+  test('a pr-review fixer with no report falls back to its block, then null', async ($, on) => {
+    const seen = world(on, () => completed(fixerBlock('M1', '', 1)))
+    await dispatch($, fixerPrompt('w1_fix_1'), 'harness:pr-fixer')
+    expect(usageRows(seen)[0]).toMatchObject({
+      issues_assigned: null, issues_fixed: 1, issues_bubbled: 0, files_touched: 1,
+    })
+  })
+
+  test('pr-team fixer and closer rows count from their blocks; orchestrator rows carry no counts', async ($, on) => {
+    const seen = world(on, p =>
+      completed(p.includes('MODE=PLAN') ? '---\nSIGNAL: DONE\nAGENT_ROLE: reviewer\nOUTPUT: plan.json\n---'
+        : p.includes('CLOSEOUT') ? fixerBlock('C1,I3', 'M2', 1) : fixerBlock('C1,I3', 'M2', 4)))
+    await dispatch($, `MODE=PLAN\nPR_NUMBER=1526\nRUN_ID=${RUN}\nRUNTIME_DIR=${DIR}`, 'pr-team-orchestrator')
+    await dispatch($, `AGENT_ID: f1\nAGENT_ROLE: fixer\nRUN_ID: ${RUN}\nOUTPUT_FILE: ${DIR}/outputs/f1.json`, 'pr-fixer')
+    await dispatch($, `MODE=CLOSEOUT\nPR_NUMBER=1526\nRUN_ID=${RUN}\nRUNTIME_DIR=${DIR}`, 'pr-team-fixer')
+    const [plan, fixer, closer] = usageRows(seen)
+    expect(plan).toMatchObject({ skill: 'pr-team', role: 'orchestrator', agent_id: 'orchestrator_plan' })
+    expect('issues_fixed' in (plan ?? {})).toBe(false)
+    expect(fixer).toMatchObject({
+      skill: 'pr-team', role: 'fixer', issues_assigned: null, issues_fixed: 2, issues_bubbled: 1, files_touched: 4,
+    })
+    expect(closer).toMatchObject({ role: 'closer', issues_fixed: 2, issues_bubbled: 1, files_touched: 1 })
+  })
+
+  test('a roast slot is a reviewer row with its subagent type', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO)))
+    await dispatch($, reviewerPrompt('r9_roast', `OUTPUT_FILE: ${DIR}/outputs/r9_roast.json`), 'harness:roast-my-code')
+    expect(usageRows(seen)[0]).toMatchObject({
+      skill: 'pr-team', role: 'reviewer', agent_id: 'r9_roast', subagent_type: 'harness:roast-my-code',
+    })
+  })
+
+  test('background launch: the row is written when the loop turn ends', async ($, on) => {
+    const seen = world(on, p => launchedAs(p.includes('AGENT_ID: r1') ? 'loop-1' : 'loop-2'))
+    on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }) as never)
+    await dispatch($, reviewerPrompt('r1'))
+    await dispatch($, reviewerPrompt('r2'))
+    expect(seen.files.has(USAGE)).toBe(false)
+    await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'loop-1' } as never)
+    await loopEnd($, 'loop-1', {
+      input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 30, cache_creation_input_tokens: 40, model: 'claude-sonnet-5-5',
+    })
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ agent_id: 'r1', tokens: 100, tool_uses: 1, duration_s: 4, model_family: 'sonnet' })
+    await loopEnd($, 'loop-2')
+    expect(usageRows(seen)[1]).toMatchObject({ agent_id: 'r2', tokens: 0 })
+    expect(String(usageRows(seen)[1]?.notes)).toMatch(/; usage not measured$/)
+  })
+
+  test('a background agent with no usage logs the model the engine launched, not the requested alias', async ($, on) => {
+    const seen = world(on, () => launchedAs('loop-1'))
+    await dispatch($, reviewerPrompt('r1'))
+    await loopEnd($, 'loop-1')
+    expect(usageRows(seen)[0]).toMatchObject({ model: 'claude-sonnet-5-5', model_family: 'sonnet', tokens: 0 })
+  })
+
+  test('a denied dispatch writes no row; an errored one logs ERROR', async ($, on) => {
+    const seen = world(on, p => (p.includes('AGENT_ID: r1') ? { deny: 'no' } : { result: 'boom', isError: true, text: 'boom' }))
+    await dispatch($, reviewerPrompt('r1'))
+    expect(seen.files.has(USAGE)).toBe(false)
+    await dispatch($, reviewerPrompt('r2'))
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ agent_id: 'r2', signal: 'ERROR', tokens: 0 })
+    expect(String(usageRows(seen)[0]?.notes)).toMatch(/; usage not measured; agent errored$/)
+  })
+
+  test('a model with no family token logs as unknown', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO), 'claude-fable-5-1'))
+    await dispatch($, reviewerPrompt('r1'))
+    expect(usageRows(seen)[0]).toMatchObject({ model: 'claude-fable-5-1', model_family: 'unknown' })
+  })
+
+  test('parallel fixer returns append one row each', async ($, on) => {
+    const seen = world(on, () => completed(fixerBlock('M1', '', 1)))
+    await Promise.all([
+      dispatch($, fixerPrompt('w1_fix_1'), 'harness:pr-fixer'),
+      dispatch($, fixerPrompt('w1_fix_2'), 'harness:pr-fixer'),
+      mainTurnEnd($, 't1'),
+    ])
+    expect(usageRows(seen).map(r => r.agent_id).sort()).toEqual(['w1_fix_1', 'w1_fix_2'])
+  })
+
+  test('a retried dispatch is a second row', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO)))
+    await dispatch($, reviewerPrompt('r1'))
+    await dispatch($, reviewerPrompt('r1'))
+    expect(usageRows(seen).map(r => r.agent_id)).toEqual(['r1', 'r1'])
+  })
+
+  test('rows append after existing rows; an unreadable usage file is untouched and toasted', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO)))
+    seen.files.set(USAGE, { text: '{"run_id":"old"}\n', mtimeMs: 1 })
+    await dispatch($, reviewerPrompt('r1'))
+    expect(usageRows(seen).map(r => r.run_id)).toEqual(['old', RUN])
+    const before = seen.files.get(USAGE)?.text
+    seen.unreadable.add(USAGE)
+    await dispatch($, reviewerPrompt('r2'))
+    expect(seen.files.get(USAGE)?.text).toBe(before)
+    expect(seen.toasts.join('\n')).toContain('usage log unreadable')
+  })
+
+  test('agent_usage_path comes from harness.json', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO)), { config: JSON.stringify({ agent_usage_path: 'meta/u.jsonl' }) })
+    await dispatch($, reviewerPrompt('r1'))
+    expect(jsonlRows(seen, `${ROOT}/meta/u.jsonl`)).toHaveLength(1)
+    expect(seen.files.has(USAGE)).toBe(false)
+  })
+})
+
 describe('recovery of a claimed, unlogged pr-team run', () => {
   /** When RUN (`pr1526_20261009T120000Z`) started. */
   const RUN_START = Date.UTC(2026, 9, 9, 12, 0, 0)
@@ -252,12 +407,13 @@ describe('recovery of a claimed, unlogged pr-team run', () => {
     expect(seen.files.has(MATRIX)).toBe(false)
   })
 
-  test('a review JSON written after the run started logs its rows', async ($, on) => {
+  test('a review JSON written after the run started logs its matrix rows and no usage rows', async ($, on) => {
     const seen = world(on, () => completed('hi'))
     claimedRun(seen)
     seen.files.set(REVIEW, { text: JSON.stringify({ verdict: 'READY TO MERGE', issues: {} }), mtimeMs: RUN_START + 60_000 })
     await start($)
     expect(matrixRows(seen).map(r => r.cell)).toEqual(['pr1526_r1'])
+    expect(seen.files.has(USAGE)).toBe(false)
   })
 })
 
@@ -426,6 +582,7 @@ describe('harness project', () => {
     writeReview(seen, open)
     await mainTurnEnd($, 't')
     expect(seen.files.has(MATRIX)).toBe(false)
+    expect(seen.files.has(USAGE)).toBe(false)
     expect((await $.classic.Stop({ stop_hook_active: false, last_assistant_message: 'bubble' })).block).toBeUndefined()
     expect(seen.git.filter(argv => !argv.includes('--show-toplevel'))).toEqual([])
   })

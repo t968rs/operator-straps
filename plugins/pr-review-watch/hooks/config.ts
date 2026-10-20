@@ -6,6 +6,7 @@
 
 export const DEFAULT_STATE_DIR = '.claude/state/harness'
 export const DEFAULT_MATRIX_PATH = 'docs/_harness/pr_review_invocation_test_matrix.jsonl'
+export const DEFAULT_AGENT_USAGE_PATH = 'docs/_harness/pr_review_agent_usage.jsonl'
 export const DEFAULT_REVIEWS = 'docs/PR_REVIEWS'
 export const DEFAULT_SCRATCH = 'docs/_scratch/pr_review'
 export const DEFAULT_BASE_BRANCH: string | null = null
@@ -14,6 +15,7 @@ export const DEFAULT_BASE_BRANCH: string | null = null
 export type WatchConfig = {
   stateDir: string
   matrixPath: string
+  agentUsagePath: string
   reviewsDir: string
   scratchDir: string
   baseBranch: string | null
@@ -49,6 +51,7 @@ export const readConfig = (text: string): WatchConfig => {
   return {
     stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
     matrixPath: pathOr(data.matrix_path, DEFAULT_MATRIX_PATH),
+    agentUsagePath: pathOr(data.agent_usage_path, DEFAULT_AGENT_USAGE_PATH),
     reviewsDir: pathOr(artifacts.reviews, DEFAULT_REVIEWS),
     scratchDir: pathOr(artifacts.scratch, DEFAULT_SCRATCH),
     baseBranch: typeof base === 'string' && base.trim() !== '' ? base.trim() : DEFAULT_BASE_BRANCH,

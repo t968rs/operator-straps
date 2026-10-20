@@ -7,7 +7,8 @@ const SHA = '0123456789abcdef0123456789abcdef01234567'
 const agent = (over: Partial<AgentRec> = {}): AgentRec => ({
   id: 'r1_config', role: 'reviewer', model: 'claude-opus-5-5', effort: null, tokens: 144385, toolUses: 33,
   durationMs: 321294.4, isMeasured: true, signal: 'DONE',
-  counts: { findings: 3, critical: 0, important: 1, minor: 2 }, loggedAt: null, ...over,
+  counts: { findings: 3, critical: 0, important: 1, minor: 2 }, loggedAt: null, subagentType: null,
+  usageLoggedAt: null, launchModel: null, ...over,
 })
 const row = (over: Partial<AgentRec> = {}) =>
   buildRow({
