@@ -68,6 +68,7 @@
     "plans": {"pairs": true},
     "gh": {"repo": null, "max_age_hours": 24},
     "rules": {"disabled": [], "warn_counts": false},
-    "inject_context": true
+    "inject_context": true,
+    "notice": {"style": "toast", "toast_seconds": 60}
   }
 }

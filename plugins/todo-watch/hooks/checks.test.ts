@@ -3,14 +3,13 @@ import type { Engine } from 'claude-code/testing'
 import { describe, expect, test } from 'claude-code/testing'
 
 import type { Watch } from './watch'
-import { readConfig } from './config'
+import { MAX_TOAST_SECONDS, readConfig } from './config'
 import {
   CHECK_TIMEOUT_MS, isWatchedPath, normalPath, parseReport, parseRunner, pathOfCall, reportTimeMs, startGateMs,
-  LONG_TOAST_MS,
 } from './checks'
 import {
-  CATALOG_LINE, CATALOG_REL, checkRuns, CONFIG, NOW, prompt, PYTHON, RESEARCH_CATALOG_REL, reportText, runTodo,
-  SCRIPT, SNAPSHOTS_REL, start, SYNC_REL, turnEnd, world, type World,
+  BANNER_CONFIG, CATALOG_LINE, CATALOG_REL, checkRuns, CONFIG, NOW, prompt, PYTHON, RESEARCH_CATALOG_REL,
+  reportText, runTodo, SCRIPT, SNAPSHOTS_REL, start, SYNC_REL, TODO_DIR, turnEnd, world, type World,
 } from './testWorld'
 
 const HOUR = 3_600_000
@@ -167,10 +166,22 @@ describe('M1: the session start toast', () => {
     expect(text).not.toContain('sync checks unavailable')
   })
 
-  test('the toast stays the longest the engine allows', async ($, on) => {
+  test('by default a toast that stays the longest the engine allows', async ($, on) => {
     const w = world(on, { hasRunner: false })
     await start($, w)
-    expect(w.toastTimeouts).toEqual([LONG_TOAST_MS])
+    expect([w.toasts, w.toastTimeouts, w.band]).toEqual([[CATALOG_LINE], [MAX_TOAST_SECONDS * 1000], []])
+  })
+
+  test('todo.notice.toast_seconds sets how long the toast stays', async ($, on) => {
+    const w = world(on, { config: { todo: { folder: TODO_DIR, notice: { toast_seconds: 15 } } }, hasRunner: false })
+    await start($, w)
+    expect([w.toasts, w.toastTimeouts]).toEqual([[CATALOG_LINE], [15_000]])
+  })
+
+  test('todo.notice.style banner posts to the band, no toast', async ($, on) => {
+    const w = world(on, { config: BANNER_CONFIG, hasRunner: false })
+    await start($, w)
+    expect([w.band, w.toasts]).toEqual([[CATALOG_LINE], []])
   })
 
   test('the drift part appears once a report newer than the start lands', async ($, on) => {
@@ -227,6 +238,17 @@ describe('M4: drift toasts', () => {
     ])
     expect(checkRuns(w).length).toBe(8)
   })
+
+  for (const [config, surface] of [[CONFIG, 'toasts'], [BANNER_CONFIG, 'band']] as const) {
+    test(`drift notices follow todo.notice.style: ${surface}`, async ($, on) => {
+      const w = world(on, { config })
+      await start($, w)
+      w.engine.drift = 1
+      w.engine.byRule = { P1: 1 }
+      await write($, w, catalogPath(w))
+      expect(w[surface]).toEqual([CATALOG_LINE, 'TODO sync drift 1 (+1): P1=1'])
+    })
+  }
 
   test('a first report with no drift toasts nothing', async ($, on) => {
     const w = world(on)

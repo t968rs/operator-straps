@@ -1,6 +1,6 @@
 {
   "name": "todo-watch",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "TODO summary and drift band above the prompt (kept until dismissed), TODO_SYNC drift context and /todo, backed by the harness todo_sync checks",
   "author": {
     "name": "Kevin Gabelman"

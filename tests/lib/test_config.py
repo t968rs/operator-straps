@@ -181,6 +181,7 @@ def test_todo_defaults_leave_the_feature_off(make_project) -> None:
     assert (todo.research.ignore_folders, todo.plans_pairs, todo.gh_repo, todo.gh_max_age_hours) == (
         (), True, None, 24.0)
     assert (todo.rules_disabled, todo.rules_warn_counts) == ((), False)
+    assert (todo.notice_style, todo.notice_toast_seconds) == ("toast", 60.0)
     assert todo.enabled is False
 
 
@@ -219,13 +220,19 @@ def test_todo_null_snapshots_dir_turns_snapshots_off(make_project) -> None:
 def test_todo_override_merges_key_by_key(make_project) -> None:
     block = {"folder": TODO_DIR, "top_n": 5, "research": {"ignore_folders": ["Old"]},
              "gh": {"max_age_hours": 6}, "rules": {"disabled": ["S6"], "warn_counts": True},
-             "plans": {"pairs": False}}
+             "plans": {"pairs": False}, "notice": {"style": "banner"}}
     todo = load_config(make_project({"todo": block})).todo
     assert (todo.catalog, todo.top_n, todo.enabled) == (f"{TODO_DIR}/RepoToDo.json", 5, True)
     assert todo.research.ignore_folders == ("Old",)
     assert todo.research.anchor_pattern.startswith("^catalog_entry:")
     assert (todo.gh_max_age_hours, todo.rules_disabled, todo.rules_warn_counts, todo.plans_pairs) == (
         6.0, ("S6",), True, False)
+    assert (todo.notice_style, todo.notice_toast_seconds) == ("banner", 60.0)
+
+
+def test_todo_notice_toast_seconds_override(make_project) -> None:
+    todo = load_config(make_project({"todo": {"notice": {"toast_seconds": 12.5}}})).todo
+    assert (todo.notice_style, todo.notice_toast_seconds) == ("toast", 12.5)
 
 
 @pytest.mark.parametrize("bad", [{"folder": "/abs/todo"}, {"folder": "C:/todo"},
@@ -240,7 +247,9 @@ def test_todo_rejects_bad_paths(make_project, bad: dict) -> None:
                                  {"snapshots": {"name_pattern": r"TODO_\d+\.md"}},
                                  {"research": {"anchor_pattern": r"^catalog_entry:\s*\S+$"}},
                                  {"research": {"anchor_pattern": "("}}, {"gh": {"max_age_hours": 0}},
-                                 {"rules": {"disabled": ["X1"]}}])
+                                 {"rules": {"disabled": ["X1"]}}, {"notice": {"style": "popup"}},
+                                 {"notice": {"toast_seconds": 0}}, {"notice": {"toast_seconds": 61}},
+                                 {"notice": {"sticky": True}}])
 def test_todo_rejects_bad_values(make_project, bad: dict) -> None:
     with pytest.raises(ConfigError):
         load_config(make_project({"todo": bad}))

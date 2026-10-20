@@ -2,8 +2,9 @@ import type { EngineInterface, On } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 
 /**
- * The todo-watch band above the prompt: the summary and drift notices, kept until the Dismiss button is
- * pressed (a toast leaves on a timer the engine caps at a minute). Functions taking `$` are function
+ * The todo-watch band above the prompt, used when `todo.notice.style` is `banner`: the summary and drift
+ * notices, kept until the Dismiss button is pressed (a toast leaves on a timer the engine caps at a minute).
+ * Functions taking `$` are function
  * declarations: the engine follows `$` past an import only into one.
  */
 
