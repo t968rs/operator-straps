@@ -64,9 +64,10 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<NN
 [--resolved I4=what ...]``
     Resolve the validated fixes (only ids assigned to the recording fixer; a split issue only when every
     planned part is recorded), close the named ids, record fixer bubbles, resolve each deferred id as a
-    developer-confirmed defer (kept in ``bubble_up``), resolve each ``--resolved`` id (developer-directed
-    work outside the fixer waves; one of its files must have changed since ``build_head``), recompute the
-    verdict and print the canonical Phase 5 line, then a ``deferred tests:`` block (each file, its reason,
+    developer-confirmed defer (kept in ``bubble_up``), resolve each ``--resolved`` id (a fix in the tree no
+    accepted fixer entry records; one of its files must have changed since ``build_head``), recompute the
+    verdict and print the canonical Phase 5 line, a ``hint:`` line per blocked id (partially fixed ones aside)
+    whose files changed (the ``--resolved`` route), then a ``deferred tests:`` block (each file, its reason,
     one pytest command) for the deferred tests (those saved in ``waves.json`` plus those deferred now) that
     the paths changed since ``build_head`` reach. A planned fixer without a fix report, or an undispositioned
     id its planned fixers never recorded, is a problem; so is a pending ``pre_fix_time``. Writes
@@ -1682,7 +1683,12 @@ def _fixer_rules() -> List[str]:
              "Record once with the heredoc below; reply with the block it prints, verbatim, and nothing "
              "else.",
              "A file of your split part that the fix cites but needs no edit goes in an entry's `no_change` "
-             "list, with the reason in `what`; list edited files under `files` only."]
+             "list, with the reason in `what`; list edited files under `files` only.",
+             "When the fix is already present (an earlier wave or the developer made it), edit nothing: "
+             "list the issue's own files (primary or also) in your part or file set that hold it under "
+             "`no_change`, limited to your part's files for a split issue, and write `already present` and "
+             "where in `what`; closeout resolves it once one of those files changed since the build (a split "
+             "issue still needs every part covered), unless another issue's accepted entry edited that file."]
     questions = [f"  {n}. {q}" for n, q in enumerate(BUBBLE_QUESTIONS, start=1)]
     questions.append("  When all three are no, bubble only net-new work beyond Phase 5 scope "
                      "(`needs_follow_up`).")
@@ -1878,7 +1884,8 @@ def _cmd_closeout(repo: Path, args: argparse.Namespace) -> int:
         raise CaptureError(exc.problems + problems) from exc
     _write_json(run / CLOSEOUT_MARK, {"head": head, "problems": problems})
     save_plan(run, plan, "fix" if problems or rmg.undispositioned_ids(doc) else "done")
-    print("\n".join([phase5_line(doc, problems), *deferred]))
+    hints = rmg.resolvable_hints(doc, problems, paths[0])
+    print("\n".join([phase5_line(doc, problems), *hints, *deferred]))
     if problems:
         raise CaptureError(problems)
     return 0
@@ -1903,7 +1910,9 @@ def unrecorded_problems(fixers: Sequence[Mapping[str, object]], fixes: Sequence[
                         doc: Mapping[str, object]) -> List[str]:
     """One problem per planned fixer without a fix report, and per id a reporting fixer was assigned but
     never recorded (no fixed entry, no bubble); only ids still undispositioned in ``doc`` count, so a fixer
-    whose ids a later wave, ``--closed`` or ``bubble`` settled raises nothing."""
+    whose ids a later wave, ``--closed`` or ``bubble`` settled raises nothing. A per-id problem leads with
+    the id (``resolvable_hints`` reads it there); the no-report problem covers several ids, leads with the
+    fixer id and gets no ``hint:`` line, since re-dispatching the row is its route."""
     open_ids = set(rmg.undispositioned_ids(doc))
     reported = {r.fixer for r in fixes}
     recorded = {e.id for r in fixes for e in (*r.fixed, *r.bubbled)}
@@ -2046,7 +2055,8 @@ def _add_fix_commands(sub: argparse._SubParsersAction) -> None:
     close.add_argument("--deferred", action="append", default=[],
                        help="ID=decision; tracker: a developer-confirmed defer (repeatable).")
     close.add_argument("--resolved", action="append", default=[],
-                       help="ID=what: developer-directed work outside the fixer waves (repeatable).")
+                       help="ID=what: a fix in the tree no accepted fixer entry records (developer-directed "
+                            "work or a rejected fixer edit) (repeatable).")
 
 
 class _Parser(argparse.ArgumentParser):

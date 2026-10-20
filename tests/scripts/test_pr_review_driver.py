@@ -1299,6 +1299,8 @@ class TestPathsAndScope:
         assert "`fixer_failed`" in rules and "naming the test" in rules
         assert "outside the file set" in rules and "`out_of_scope`" in rules
         assert "`no_change` list" in rules and "list edited files under `files`" in rules
+        assert "already present" in rules
+        assert "closeout resolves it once one of those files changed since the build" in rules
         assert "Never run a test marked deferred" in rules
 
 
@@ -1684,6 +1686,21 @@ class TestResolvedOutsideWaves:
         short = _git(clone, "rev-parse", "--short", "HEAD")
         assert doc["post_review_resolutions"][-1]["evidence"] == (
             f"{short} (working-tree snapshot; developer commits) - hand fix (outside fixer waves)")
+
+    def test_blocked_closeout_hints_resolved(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
+                                             pr_repo: Tuple[Path, str],
+                                             capsys: pytest.CaptureFixture) -> None:
+        clone, head = pr_repo
+        _built(script, monkeypatch, clone, head)
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        _write(clone, "docs/a.md", "# A\n\nedited\n")
+        _write(clone, "src/pkg/a.py", "def f0():\n    return 0\n")
+        rm.record_fixes(_PR, "w1_fix_1", [{"id": "M1", "what": "w", "files": ["docs/a.md"]}], repo=clone)
+        capsys.readouterr()
+        assert _run(script, clone, "closeout", "--pr", str(_PR)) == 1
+        out = capsys.readouterr().out
+        assert "Phase 5 [blocked]" in out
+        assert 'hint: M1: src/pkg/a.py changed since build' in out and '--resolved M1="what changed"' in out
 
 
 class TestPhase:

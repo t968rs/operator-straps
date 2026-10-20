@@ -1,0 +1,402 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 31,
+  "pr_title": "0011 pr review gaps",
+  "branch": "0011-pr-review-gaps",
+  "base_branch": "main",
+  "base_sha": "511f199fde5f59697db25e46ec8e270fc08765ba",
+  "head_sha": "af42d76528645386eb33f32b74022db297cc765f",
+  "review_date": "2026-10-20",
+  "verdict": "READY TO MERGE - 13 of 13 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 262,
+    "deletions": 66,
+    "files_changed": 9
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0031/pr31_20261020T143250Z/findings/tests.json",
+    "docs/_scratch/pr_review/0031/pr31_20261020T143250Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0031/pr31_20261020T143250Z/findings/docs.json",
+    "docs/_scratch/pr_review/0031/pr31_20261020T143250Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Tests that relied on 'both files changed' (test_every_part_no_change_is_problem and the remaining_parts no_change-only tests) now pass changed=set() explicitly, so they keep testing rejection instead of quietly hitting the new already-present path.",
+    "New closeout tests are behavioral: they call the real apply_closeout/remaining_parts/resolvable_hints with FixReport fixtures and check exact problems, statuses and evidence strings, plus a schema validation.",
+    "test_blocked_closeout_hints_resolved runs the real driver closeout end to end on a git clone; only gh, Phase 4 and the hook interpreter are replaced through the module's own seams.",
+    "checks.test.ts drops the stale LONG_TOAST_MS import, which no longer exists anywhere under plugins/todo-watch.",
+    "Coverage problems now travel as (id, problem) through rejected, so a split issue later settled by --closed or --resolved no longer blocks closeout, with tests for both paths.",
+    "_accepted_files reuses _counts, so waves re-planning and closeout agree on the already-present route.",
+    "Dropping _extra_files and _Planned.extra leaves owned() deriving the split-part allowance from fixer_files and required() alone.",
+    "Already-present resolutions carry an explicit evidence suffix naming the changed files.",
+    "The split-part ownership wording at SKILL.md:823-824 ('the fixer's whole set except the same issue's parts other fixers own') matches _Planned.owned exactly.",
+    "The already-present evidence suffix in SKILL.md:830-831 matches _fixed_evidence's '(already present: <files> changed since build)' text.",
+    "pr-fixer.md's new 'Fix already present' rule mirrors the brief rule pr_review.py:_fixer_rules writes, so the agent definition and the per-run brief do not disagree.",
+    "The hint line format quoted at SKILL.md:845 and its position after the [blocked] line and before the deferred-tests block match _cmd_closeout's print order.",
+    "Coverage problems now join the rejected list, so a same-closeout --resolved or --closed clears them; TestCloseoutLateDisposition pins both paths and the open case.",
+    "_counts is shared by apply_closeout and remaining_parts (_accepted_files), so the waves re-plan and closeout agree on what counts as covered.",
+    "The fixer rule, pr-fixer.md, SKILL.md and operating_rules.md describe the new already-present and --resolved-after-rejection routes in matching terms, and the harness version is bumped to 0.9.0.",
+    "test_blocked_closeout_hints_resolved runs the real driver against a git clone and checks the printed hint, not stubbed wiring.",
+    "Removing _extra_files and _Planned.extra simplifies the split-part bound to one set expression with a docstring that matches it."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Already-present route credits any change to a no_change file, including another issue edit",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "plugins/harness/scripts/pr_review.py",
+          "tests/lib/test_review_merge.py",
+          "plugins/harness/agents/pr-fixer.md"
+        ],
+        "lines": "699-709,767-773,791-801,818-827",
+        "reviewer": "runtime, overall, tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_present_files/_counts resolve an issue whose entries edited nothing once any own file listed under no_change is in changed, whatever changed it. A fixer owning I2 and I3 on a.py that edits a.py for I3 and records I2 as no_change [a.py] because it judged I2 wrong now gets I2 auto-RESOLVED with false already-present evidence. Before this PR that raised the no-fixed-entry problem. The what text is never checked, so the fixer rule at pr_review.py:1687-1689 does not bound the route.\n\nAlso (overall): _Planned.owned (review_merge.py:699-709) now lets a split part list the whole rest of the fixer's file set, other issues' files included, and _own_file_problem (767-773) skips split issues, while _counts (799-801) accepts any non-empty e.files. Trace: M1 split over a.py/b.py; w1_fix_1 owns {M1:[a.py], I1:[t.py]}; entry M1 files=[t.py] (edited for I1), no_change=[a.py]; w1_fix_2 entry M1 no_change=[b.py]. Every check passes, coverage is complete, and M1 is RESOLVED with plain fixed evidence although neither a.py nor b.py changed. Before this PR t.py was an other issue's part, not in _extra_files, so the entry was rejected. It also bypasses the new already-present rule, which requires an own file in `changed`. No test covers the negative case; test_split_part_may_list_another_issues_file only exercises an entry that also edits a.py.\n\nAlso (overall): _present_files (review_merge.py:791-796) counts an own file listed under no_change as proof of a fix whenever it is in `changed`, whoever changed it. Its docstring claims the file is one 'that no entry of this closeout edited', but nothing checks that: if M1 and I2 both live in a.py (one fixer), a fixer that edits a.py for I2 and lists M1's a.py under no_change resolves M1 as already present with no M1 fix. The fixer rule (pr-fixer.md:54-56, pr_review.py:1687-1689) asks for `already present` in `what`, but closeout never reads `what`, so a cited-only entry turns into an already-present resolution too. test_split_issue_already_present_resolves shows this: both entries say 'only cited as context' and M1 still resolves as already present. This removes the guard that test_every_part_no_change_is_problem used to enforce, and the PR rewrote that test (changed=set()) to fit.\n\nAlso (tests): TestCloseoutFixAlreadyPresent only proves a non-own changed file (t.py) is not enough. It never covers the case where the issue's own file changed because a different issue's validated entry edited it in the same closeout. In review_merge._present_files (lines 791-796), any own file listed under no_change that is in `changed` counts as 'already present'. With M1 and M2 both on a.py, an M2 entry editing a.py plus an M1 entry `{\"what\": \"cited only\", \"no_change\": [\"a.py\"]}` resolves M1 as RESOLVED '(already present: a.py changed since build)'. That turns a 'needs no edit / cited only' report into a resolution on unrelated edits, and no test pins either the intended or the actual behavior.\n\nAlso (tests): _present takes `issue: Optional[Dict[str, object]] = None` and documents it as the default M1 on a.py, but all three callers (lines 1099, 1109, 1115) omit it. The parameter is dead.",
+        "fix": [
+          "In _present_files, ignore own files that a validated entry of another issue in this closeout lists under files.",
+          "Require an already-present marker in the no_change entry what text before _counts accepts it.",
+          "Make _counts require an own-file edit: `own = planned.own.get(issue_id, set()); return any(set(e.files) & own for e in entries) or bool(_present_files(...))`, and use the same predicate in _fixed_evidence (818-827) for the already-present note; add a test where a split entry edits only another issue's file and expects the `no fixed entry edited a file` problem.",
+          "Extend _own_file_problem to split issues (an entry that edits files must edit one of the issue's own files, its part or the rest of the issue's planned files).",
+          "In _present_files, drop own files that an accepted entry of another issue lists under `files` in this closeout, so that case falls back to the problem plus the resolvable_hints `--resolved` route, where the developer verifies the fix; fix the docstring to match.",
+          "Require the entry's `what` to contain `already present` (the fixer rule's marker) before _present_files counts its no_change files, and add a test where a cited-only entry with a changed own file stays a problem.",
+          "Add a negative test: review with M1 and M2 on a.py, one fixer, M2 fixed with files=[a.py], M1 with no_change=[a.py] and changed={a.py}; assert M1 keeps the 'no fixed entry edited a file' problem. Then make _present_files ignore files that a validated entry of another issue lists under `files` in this closeout.",
+          "If the sibling-edit resolution is intended, pin it with a test and say so in the apply_closeout docstring and the fixer rule at scripts/pr_review.py:1687-1689.",
+          "Drop the `issue` parameter and build `_review(_issue(\"M1\", \"a.py\"))` directly; update the docstring to match."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "'any problem of an id stops once it resolves' overstates the code",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "plugins/harness/skills/pr-review/operating_rules.md"
+        ],
+        "lines": "842-848",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md now says 'any problem of an id stops once that id ends a closeout RESOLVED or CLOSED_NO_ACTION by any path, the same closeout included'. apply_closeout (review_merge.py:995) drops only the `rejected` list (entry rejections from _check_entry plus coverage problems from _apply_fixed). The problems from _apply_bubbles (_bubble_problem: '<id> (<fixer>): bubbled id not assigned to this fixer' / 'not a planned fixer; <id> not bubbled') and from _apply_resolved ('<id>: none of its files changed since build') sit in the unfiltered `problems` list and keep closeout blocked even when that id is RESOLVED in the same run. The fix reports stay on disk, so rerunning closeout as the doc suggests reproduces the same [blocked] line. The apply_closeout docstring (review_merge.py:962-965, 974) makes the same promise for bubbles, and the code does not keep it.\n\nAlso (docs): SKILL.md:842-844 sends 'a partially fixed or rejected-entry problem' to a bare `waves` rerun. SKILL.md:845-847 then says a `hint:` line means 'rerun closeout --resolved instead of another wave'. resolvable_hints (review_merge.py:1002-1016) emits a hint for every non-partially-fixed problem whose issue has a changed own file. Most rejected entries edited files (outside the set, or a non-own file), so they usually get both instructions. Which one wins is only implied by sentence order. The doc also gives no route for a fix that was already present at build_head (no own file changed): 'no fixed entry edited a file' persists, no hint fires, --resolved fails with 'none of its files changed', and the only exit is --closed.",
+        "fix": [
+          "Narrow the SKILL.md sentence back to what the code does: 'a rejected-entry or partially-fixed problem of an id stops once that id ends a closeout RESOLVED or CLOSED_NO_ACTION by any path, the same closeout included', and match the apply_closeout docstring to it.",
+          "Or make the code keep the promise: have _apply_bubbles return (id, problem) pairs and route them through the same `resolved` filter as `rejected` at review_merge.py:995 (and do the same for _apply_resolved problems of an id that ends up RESOLVED), then add a test where a bubble problem is superseded by a valid entry.",
+          "Rewrite SKILL.md:842-848 so the precedence is explicit: an id named by a `hint:` line goes to `closeout --resolved` after verifying the fix; other partially-fixed or rejected-entry ids go to a bare `waves`. Add one clause: a fix already present at build_head (no file changed) is closed with `--closed ID=\"already fixed before build\"`."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "pr-fixer 'already present' rule omits which no_change files count",
+        "file": "plugins/harness/agents/pr-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-fixer.md",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "54-56",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "pr-fixer.md:54-56 (and the matching brief rule at pr_review.py:1687-1689) tell the fixer to 'list the issue's files that hold it under no_change' and say closeout resolves once one of those files changed. In the code a no_change file outside the fixer's owned set rejects the whole entry (_entry_problem, review_merge.py:678-680). For a split part, another fixer's part file falls outside that set (_Planned.owned). Only the issue's own files (primary or also) count as 'present' (_present_files, review_merge.py:796), so a fix that sits in a widened test or named doc path never resolves. A split issue also still needs every planned part covered. A haiku fixer following the literal text can list another fixer's part file, and the entry is then rejected.",
+        "fix": [
+          "Reword pr-fixer.md:54-56 and pr_review.py:1687-1689 to: 'list the issue's own files (primary or also) in your part or file set that hold it under no_change ...; closeout resolves it once one of those files changed since the build (a split issue still needs every part covered)'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Module docstring still limits a split part extra files to widened files",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "lines": "29-33",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "Line 32 says a part entry may also list its fixer widened files. _Planned.owned (699-709) now allows the whole rest of the fixer file set, other issues files included, minus the same issue planned parts.",
+        "fix": [
+          "Reword line 32: a part entry may also list the rest of its fixer file set, never the same issue parts other fixers own."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "apply_closeout docstring says problems of a closed id are dropped, but bubble and --resolved problems are not",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "lines": "962-965,974,988-995",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The docstring says rejected entries or bubbles for an id that ends closed raise nothing, and now that all problems of such an id are dropped. Only the rejected list (entry and coverage problems) is filtered at line 995. _apply_bubbles (860-876) and _apply_resolved problems stay in problems and still block closeout for an id that ends RESOLVED.",
+        "fix": [
+          "Return (id, problem) pairs from _apply_bubbles and _apply_resolved and add them to rejected.",
+          "Narrow the docstring to entry and coverage problems."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "resolvable_hints recovers ids by parsing problem text, so some blocked ids get no hint",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "1002-1016",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The id is the first token of each problem string. Problems leading with a fixer id (_check_entry line 756, unrecorded_problems pr_review.py:1919) yield no hint for their issue even when its files changed. The pr_review.py:69 docstring promises a hint per blocked id whose files changed but partially fixed ids are excluded.",
+        "fix": [
+          "Pass the problem ids from apply_closeout to resolvable_hints instead of parsing text, and document the partially-fixed exclusion.",
+          "Make every closeout problem lead with the issue id and document that format."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Hint docs and text overstate their scope",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "tests/lib/test_review_merge.py"
+        ],
+        "lines": "69",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "pr_review.py:69 says closeout prints 'a hint: line per blocked id whose files changed', but resolvable_hints (review_merge.py:1002-1016) skips ids whose problem is `partially fixed`. The hint text 'no fixer entry records it' (1013) is wrong in the case the hint targets most, a rejected entry that does list the file. The SKILL.md command table row for closeout (line 40) still lists only the Phase 5 line and the deferred-tests block as output.",
+        "fix": [
+          "pr_review.py:69: 'a ``hint:`` line per blocked id (partially fixed ones aside) whose files changed'; review_merge.py:1013 and the matching test strings: 'no accepted fixer entry records it'; SKILL.md:40: add 'then any `hint:` lines' after 'prints the Phase 5 line'."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Already-present fixer rule says to list the issue files, which rejects a split-issue entry",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "1687-1689",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The rule tells the fixer to list the issue files holding the fix under no_change. For a split issue, owned() excludes other fixers parts, so _entry_problem (review_merge.py:678-680) rejects the whole entry.",
+        "fix": [
+          "Reword: list the files of your part (the issue files when it has no other parts) under no_change."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "--resolved is still described as work outside the fixer waves, though the new hint sends fixer-wave fixes there",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "2053-2054",
+        "reviewer": "runtime, docs",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "pr_review.py:67-68 now calls --resolved a fix in the tree no accepted fixer entry records, and the hint routes rejected fixer work to it. The argparse help (2054), the _apply_resolved docstring (review_merge.py:936) and the evidence suffix outside fixer waves (review_merge.py:946) were left unchanged, so such a fix is recorded as outside the waves.\n\nAlso (docs): SKILL.md:41 and 833-835, operating_rules.md:25-30 and the pr_review.py module docstring (lines 67-68) now describe --resolved as 'a fix in the tree that no accepted fixer entry records (developer-directed work, or a fixer edit closeout rejected)'. The argparse help at pr_review.py:2054 still reads 'developer-directed work outside the fixer waves'. So do the _apply_resolved docstring (review_merge.py:936-937) and the apply_closeout summary (review_merge.py:957). The new closeout hint also sends the operator to --resolved for rejected fixer edits, so `--help` now contradicts that route.",
+        "fix": [
+          "Align help and docstring with pr_review.py:67-68 and use a neutral evidence suffix, updating the test that pins it.",
+          "Change the help at pr_review.py:2054 to 'ID=what: a fix in the tree no accepted fixer entry records (developer-directed work or a rejected fixer edit) (repeatable).' and update review_merge.py:936-937 and 957 to the same wording."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "No documented route for a fix that predates build_head",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/agents/pr-fixer.md",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "826-831",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "pr-fixer.md:54-56 tells a fixer to edit nothing when the fix is already present. If the fix was already in the tree at build (stale finding), no listed file is in `changed`. Closeout then raises 'no fixed entry edited a file (only no_change files)', and no hint fires because resolvable_hints needs a changed file. SKILL.md:829-831 and the fixer rule cover only the changed-since-build case, so the operator is left without a next step. The right route is `closeout --closed ID=...`.",
+        "fix": [
+          "Add to SKILL.md after line 831: 'When the fix predates build_head (no listed file changed), close the id with `closeout --closed <id>=\"already in place at build\"`'; optionally have resolvable_hints emit a `--closed` hint for a no_change-only problem whose files are unchanged."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "pr1616 shape test never reaches the already-present branch",
+        "file": "tests/lib/test_review_merge.py",
+        "lines": "1128-1144",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstring of test_pr1616_shape_resolves says 'wave 3 finds the fix already present'. But M3 resolves through w1_fix_1's entry that edits [code, test], so _fixed_evidence takes the any(e.files) path and the '(already present: ...)' branch never runs. The test only checks the resolved ids. It does not record which closeout path it guards, so a regression in the already-present path would still pass it.",
+        "fix": [
+          "Assert the M3 evidence exactly, e.g. that it ends with '- guard; cited; already there' and does not contain '(already present', so the test pins the cross-issue-file acceptance it actually exercises.",
+          "Or reword the docstring so it says M3 resolves through wave 1's edit and waves 2-3 add no_change coverage."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Hint test pins wording that is false for a rejected entry",
+        "file": "tests/lib/test_review_merge.py",
+        "files": [
+          "tests/lib/test_review_merge.py",
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "tests/scripts/test_pr_review_driver.py"
+        ],
+        "lines": "1172-1177",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_rejected_issue_with_changed_own_file_gets_hint records M1 with files [a.py, z.py]. The entry is rejected only because z.py is outside the bin. The asserted hint still says 'a.py changed since build but no fixer entry records it', yet the fixer entry does record a.py. The resolvable_hints docstring (review_merge.py:1003-1005) says 'no fixer entry closeout accepts', which is accurate. The test locks in the less accurate wording.",
+        "fix": [
+          "Change the hint text in review_merge.resolvable_hints (line 1013) to 'no fixer entry closeout accepts records it' and update both assertions: tests/lib/test_review_merge.py:1176-1177 and tests/scripts/test_pr_review_driver.py:1702."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Fixer-rule assertion for 'already present' does not pin the closeout contract",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "1302",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_fixer_rules_cover_failed_and_out_of_scope only asserts 'already present' in rules. The phrase also appears in the instruction to write `already present` in `what`, so the assertion would still pass if the rule's load-bearing clause were removed: list the issue's files under `no_change`; closeout resolves it once one of those files changed since the build (scripts/pr_review.py:1687-1689).",
+        "fix": [
+          "Assert the contract clause as well, e.g. 'closeout resolves it once one of those files changed since the build' in rules (rules are already whitespace-normalized)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 31 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"153001597a42975c4f4fac0f49343dcf52e24696\",\"headRefName\":\"0011-pr-review-gaps\",\"headRefOid\":\"af42d76528645386eb33f32b74022db297cc765f\",\"last_sha\":\"af42d76528645386eb33f32b74022db297cc765f\",\"mergeCommit\":null,\"number\":31,\"state\":\"OPEN\",\"title\":\"0011 pr review gaps\",\"url\":\"https://github.com/t968rs/operator-straps/pull/31\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0011-pr-review-gaps",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0011-pr-review-gaps",
+        "head_ref_name": "0011-pr-review-gaps",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "153001597a42975c4f4fac0f49343dcf52e24696",
+        "head_sha": "af42d76528645386eb33f32b74022db297cc765f",
+        "base_ancestor_command": "git merge-base --is-ancestor 153001597a42975c4f4fac0f49343dcf52e24696 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor af42d76528645386eb33f32b74022db297cc765f HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - every per-issue closeout problem now leads with its id (unplanned-fixer entry and bubble problems reworded); resolvable_hints and unrecorded_problems docstrings document the format, the partially-fixed exclusion and the fixer-level no-report exception; test pins the hint for an unplanned-fixer problem"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - SKILL.md closeout table row lists the hint: lines after the Phase 5 line; resolvable_hints text now says 'no accepted fixer entry records it'; closeout docstring: hint lines are per blocked id, partially fixed ids aside; test hint string now says 'no accepted fixer entry records it' to match review_merge.resolvable_hints"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - cited only: SKILL.md:41 and Rule 5 already describe --resolved as a fix no accepted fixer entry records; the help, docstring and evidence-suffix parts belong to the other fixer; _apply_resolved and apply_closeout docstrings describe --resolved as a fix in the tree no accepted fixer entry records (developer-directed work or a rejected fixer edit); closeout --resolved argparse help now reads a fix in the tree no accepted fixer entry records (developer-directed work or a rejected fixer edit)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - SKILL.md Rule 5 routes a fix that predates build_head (no listed file changed) to closeout --closed <id>=\"already in place at build\"; pr-fixer.md and review_merge.py cited only (a fixer cannot tell the fix predates the build; optional --closed hint not added)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - _counts and _fixed_evidence require an edit of one of the issue's own files (_edited_own); _apply_fixed drops files another issue's validated entry edited before the already-present check (_sibling_edits); docs, fixer rule and pr-fixer.md updated; tests cover the sibling-edit and split other-issue-file cases; dead _present issue parameter replaced by *others"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - SKILL.md Rule 5 narrowed to rejected-entry and partially-fixed problems, states that bubble/--closed/--deferred/--resolved problems stay, and gives explicit first-match routes (hint -> --resolved, predates build -> --closed, else waves); apply_closeout docstring matches; operating_rules.md cited only (never made the claim)"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - cited only: driver assertion at test_pr_review_driver.py:1702 is a prefix match ('hint: M1: src/pkg/a.py changed since build') that the reworded hint keeps; the hint text edit belongs to the review_merge.py part; Hint text 'no accepted fixer entry records it' is accurate for a rejected entry that lists the file (matches the M5 wording the test part uses); test_rejected_issue_with_changed_own_file_gets_hint asserts 'no accepted fixer entry records it' wording"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - added assertion that fixer rules contain 'closeout resolves it once one of those files changed since the build' (test_fixer_rules_cover_failed_and_out_of_scope)"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - Module docstring: a part's entry may also list the rest of its fixer's file set, never the same issue's parts other fixers own"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - cited only: the already-present rule lives in pr_review.py; review_merge.py _entry_problem needs no edit; already-present brief rule lists only the files of the fixer's part (the issue's own files when unsplit) under no_change"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - already-present rule now names the issue's own files (primary or also) in the fixer's part or file set, limited to the part for a split issue, and states the split-coverage condition; same wording in pr-fixer.md and the pr_review.py brief rule"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - test_pr1616_shape_resolves docstring reworded: M3 resolves through wave 1's any-file edit, wave 3 no_change adds coverage only"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "af42d76 (working-tree snapshot; developer commits) - apply_closeout docstring narrowed to rejected-entry and coverage problems; bubble, closed, deferred and resolved problems stay (edited by w1_fix_1 under I2) (outside fixer waves)"
+    }
+  ]
+}
