@@ -42,7 +42,8 @@ class Reshape:
 
 
 def split_item(catalog: Dict[str, Any], raw_id: str, parts: Sequence[Any]) -> Reshape:
-    """Replace one item of a copy of ``catalog`` with ``parts`` (field overrides of the item), then renumber."""
+    """Replace one item of a copy of ``catalog`` with ``parts`` (field overrides of the item), then
+    renumber."""
     data = copy.deepcopy(catalog)
     items = [i for i in data.get("items") or [] if isinstance(i, dict)]
     orig_id = normalize_id(raw_id)

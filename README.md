@@ -170,7 +170,11 @@ from that layout.
 Finished items leave the catalog through `todo_sync.py retire ID [ID ...] [--dry-run]`: ids follow rank (rule T6),
 so it renumbers the rest, rescores, recounts and rewrites moved ids in the research catalog and stubs, then lists
 what the catalog cannot record by itself (issues to add as close candidates, trackers to revisit, and other files
-naming a TODO id).
+naming a TODO id). `todo_sync.py split ID --spec PATH` replaces one item with the parts in a spec file (field
+overrides laid over a copy of the item) and `todo_sync.py refresh` rescores and re-sorts after hand edits; both
+renumber and rewrite ids the same way. `/harness:todo-edit --retire 1, 3 | --split 001 | --refresh` runs any of
+the three through the `todo-editor` agent, which also writes the split parts, close-candidate evidence and the
+prose that named a moved id.
 
 | Key | Default | Used by |
 |---|---|---|
