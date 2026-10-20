@@ -4,8 +4,9 @@ import type { Run } from '../types'
 import { readReview } from './bubbles'
 import { identify, parseReturnBlock } from './contract'
 import {
-  applyCompletion, applyDispatch, bandText, currentRunId, fixerBubbledIds, markLogged, newAgent, planPhase,
-  prReviewBubbled, recoverReviewers, reviewersSettled, reviewersToLog, settle, withDiskPhase,
+  applyCompletion, applyDispatch, bandText, currentRunId, fixerBubbledIds, markLogged, markUsageLogged, newAgent,
+  planPhase, prReviewBubbled, recoverReviewers, reviewersSettled, reviewersToLog, settle, usageToLog,
+  withDiskPhase,
 } from './runs'
 
 const RUN = 'pr1526_20261009T120000Z'
@@ -23,6 +24,29 @@ const twoReviewers = (): Run => {
   return runs[RUN]!
 }
 
+describe('usage claims', () => {
+  const finished = (): Run => applyCompletion(twoReviewers(), 'r1', {
+    tokens: 1, toolUses: 1, durationMs: 1, model: null, block: done(ZERO), isMeasured: true, ending: 'ok',
+  })
+
+  test('an agent with a signal is claimable once; a running or unknown one never', async () => {
+    const run = finished()
+    expect(usageToLog(run, 'r1')?.id).toBe('r1')
+    expect(usageToLog(run, 'r2')).toBeUndefined()
+    expect(usageToLog(run, 'nope')).toBeUndefined()
+    const marked = markUsageLogged(run, 'r1', 500)
+    expect(marked.agents.r1?.usageLoggedAt).toBe(500)
+    expect(marked.agents.r2?.usageLoggedAt).toBeNull()
+    expect(usageToLog(marked, 'r1')).toBeUndefined()
+  })
+
+  test('dispatching the same id again starts a fresh, unclaimed agent', async () => {
+    const marked = markUsageLogged(finished(), 'r1', 500)
+    const again = applyDispatch({ [RUN]: marked }, slot('r1'), newAgent(slot('r1'), { subagentType: 't' }), 600)
+    expect(again[RUN]?.agents.r1).toMatchObject({ usageLoggedAt: null, signal: null, subagentType: 't' })
+  })
+})
+
 describe('dispatch and completion', () => {
   test('first dispatch creates the run; agents accumulate', async () => {
     const run = twoReviewers()
@@ -37,7 +61,7 @@ describe('dispatch and completion', () => {
   test('completion folds usage, signal and counts; usage accumulates', async () => {
     const c = {
       tokens: 10, toolUses: 2, durationMs: 1500, model: 'claude-opus-5-5',
-      block: done('findings=1 critical=1 important=0 minor=0'), isMeasured: true,
+      block: done('findings=1 critical=1 important=0 minor=0'), isMeasured: true, ending: 'ok' as const,
     }
     const run = applyCompletion(applyCompletion(twoReviewers(), 'r1', c), 'r1', { ...c, block: undefined })
     expect(run.agents.r1).toMatchObject({
@@ -52,7 +76,7 @@ describe('dispatch and completion', () => {
     runs = applyDispatch(runs, closer, newAgent(closer, {}), 200)
     const block = parseReturnBlock('---\nSIGNAL: DONE\nAGENT_ROLE: fixer\nFIXED: C1\nBUBBLED: I2,M3\nEDITED: 1\nOUTPUT: o\n---')
     const run = applyCompletion(runs[RUN]!, 'closer', {
-      tokens: 0, toolUses: 0, durationMs: 0, model: null, block, isMeasured: true,
+      tokens: 0, toolUses: 0, durationMs: 0, model: null, block, isMeasured: true, ending: 'ok' as const,
     })
     expect([run.phase, run.bubbled, run.bubbledFrom]).toEqual(['done', ['I2', 'M3'], 'closer'])
   })
@@ -80,7 +104,7 @@ describe('settle', () => {
 
 describe('logging bookkeeping', () => {
   test('settled only when every reviewer returned; logged agents leave the queue', async () => {
-    const c = { tokens: 1, toolUses: 1, durationMs: 1, model: null, block: done(ZERO), isMeasured: true }
+    const c = { tokens: 1, toolUses: 1, durationMs: 1, model: null, block: done(ZERO), isMeasured: true, ending: 'ok' as const }
     const one = applyCompletion(twoReviewers(), 'r1', c)
     expect(reviewersSettled(one)).toBe(false)
     const both = applyCompletion(one, 'r2', c)
@@ -128,7 +152,7 @@ describe('bandText', () => {
   test('a hot sentinel follows the phase instead of replacing it; fixer progress shows', async () => {
     let runs: Record<string, Run> = { [RUN]: twoReviewers() }
     for (const id of ['w1_fix_1', 'w1_fix_2']) runs = applyDispatch(runs, slot(id, 'fixer'), newAgent(slot(id, 'fixer'), {}), 300)
-    const c = { tokens: 0, toolUses: 0, durationMs: 0, model: null, block: undefined, isMeasured: true }
+    const c = { tokens: 0, toolUses: 0, durationMs: 0, model: null, block: undefined, isMeasured: true, ending: 'ok' as const }
     const fixing = applyCompletion(runs[RUN]!, 'w1_fix_1', c)
     expect(bandText({ run: fixing, phase5: ['1526'], missing: [] })).toBe('PR #1526 · fixers 1/2 · Phase 5 pending')
     expect(bandText({ run: fixing, phase5: [], missing: [] })).toBe('PR #1526 · fixers 1/2')

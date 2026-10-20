@@ -19,13 +19,17 @@ export type Dispatch = {
   phase: Phase
 }
 
-/** A parsed return-contract block; `bubbled` is null when the block has no `BUBBLED:` line. */
+/**
+ * A parsed return-contract block; `fixed` / `bubbled` are null when the block has no `FIXED:` / `BUBBLED:`
+ * line, `edited` when `EDITED:` is absent or not a count.
+ */
 export type ReturnBlock = {
   signal: string
   role: string | null
   counts: Counts | null
-  fixed: string[]
+  fixed: string[] | null
   bubbled: string[] | null
+  edited: number | null
   output: string | null
   notes: string | null
 }
@@ -143,8 +147,9 @@ const toBlock = (f: Readonly<Record<string, string>>): ReturnBlock => ({
   signal: f.SIGNAL ?? '',
   role: f.AGENT_ROLE ?? null,
   counts: parseCounts(f.COUNTS),
-  fixed: idList(f.FIXED ?? ''),
+  fixed: f.FIXED === undefined ? null : idList(f.FIXED),
   bubbled: f.BUBBLED === undefined ? null : idList(f.BUBBLED),
+  edited: /^\d+$/.test(f.EDITED ?? '') ? Number(f.EDITED) : null,
   output: f.OUTPUT ?? null,
   notes: f.NOTES ?? null,
 })

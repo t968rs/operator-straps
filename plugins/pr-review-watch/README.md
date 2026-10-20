@@ -25,6 +25,7 @@ value keeps the default):
 |-----|---------|----------|
 | `state_dir` | `.claude/state/harness` | Phase 5 sentinels in `<state_dir>/pr-review/`, pr-team runs in `<state_dir>/pr-team/_runtime/` |
 | `matrix_path` | `docs/_harness/pr_review_invocation_test_matrix.jsonl` | the invocation matrix rows are appended to |
+| `agent_usage_path` | `docs/_harness/pr_review_agent_usage.jsonl` | the agent usage rows are appended to |
 | `artifacts.reviews` | `docs/PR_REVIEWS` | consolidated review JSON |
 | `artifacts.scratch` | `docs/_scratch/pr_review` | pr-review run folders |
 | `base_branch` | `null` | `dev_commit`'s merge base; null resolves `origin/HEAD`, else `main` |
@@ -42,6 +43,7 @@ without `config.ts` following.
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
 | R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (pr-review-watch auto)`. |
 | R6 | Bubbled issues are dispositioned in the review JSON before stopping | Two triggers, each blocking once (`stop_hook_active` lets the stop through). **State** (pr-team runs): every tracked bubbled id must appear in the run's review JSON `bubbles[]`, `bubble_up[]` or `post_review_resolutions[]` (the `id_handling.disposition_ids` rule). **Keyword** (any active review): when the last assistant message contains "bubble" (any case or inflection), the active review JSON's `bubbles[]` must be populated unless every issue is already dispositioned. |
+| R7 | Every returned review-agent dispatch gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch, written when the agent returns and validated against `pr_review_agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
 
 The keyword trigger checks the **active** review: the tracked run's PR (its review JSON no older than the
 run), or, with no tracked run, the PR of the first hot Phase 5 sentinel that blocks the stopping session.
@@ -119,13 +121,29 @@ but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never r
   state with a PR; otherwise the skill's own append runs. Fixer results (`AGENT_ROLE: fixer`) never carry
   the note, even though their dispatch rows include the `PR:` header.
 
+## Agent usage rows
+
+Each tracked dispatch that returns appends one row to `<agent_usage_path>`: who ran (`role`, `agent_id`,
+`subagent_type`, full `model` and its `model_family`, `unknown` when the id holds no family token), what it
+cost (`tokens`, `tool_uses`, `duration_s`) and its `signal`. A synchronous result is logged when it
+returns, a background agent when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
+second row. An errored result logs `signal: ERROR` with zero usage; a background turn with no usage logs
+zero usage with `usage not measured` in `notes`; a denied dispatch never ran and logs nothing.
+
+Fixer and closer rows carry outcome counts. A pr-review fixer reads `issue_ids` in the run's `waves.json`
+and `fixed` / `bubbled` / the distinct edited `files` in `fixes/<agent_id>.json`, falling back to its return
+block's `FIXED` / `BUBBLED` / `EDITED`; pr-team fixers and the closer count from the block, and their
+`issues_assigned` is null. Reviewers a restarted session rebuilds from disk write no usage row. The file
+follows the matrix's write rules: append-only, and a file that exists but cannot be read is never
+rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` and are toasted).
+
 ## State
 
 `$.state['pr-review-watch']` (contract: `types/index.d.ts`):
 
 | Key | Meaning |
 |-----|---------|
-| `runs` | Tracked runs by `RUN_ID`: skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (usage, signal, counts, row attempt time), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict. |
+| `runs` | Tracked runs by `RUN_ID`: skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (subagent type, usage, signal, counts, matrix and usage row attempt times), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict. |
 | `active` | The run dispatched most recently. |
 | `loops` | Background subagent loop id to `[runId, agentId]`. |
 | `failures` | The last 20 rows that failed validation or could not be written. |
@@ -156,8 +174,10 @@ tsc -p <tsconfig>   # the tsconfig in the header of the engine's claude-code.d.t
 
 `tests/mods/test_pr_review_watch_matrix_contract.py` pins `MATRIX_REQUIRED`, `MATRIX_OPTIONAL`,
 `DISPATCH_SHAPES`, `DEV_COMMIT_PATTERN` and `MODEL_FAMILIES` to the harness plugin's
-`schemas/pr_review_invocation_test_matrix.schema.json`; `tests/mods/test_pr_review_watch_config_mirror.py`
-pins the mirrored defaults. The plugin test sandbox cannot read repository files.
+`schemas/pr_review_invocation_test_matrix.schema.json`; `tests/mods/test_pr_review_watch_usage_contract.py`
+pins `USAGE_REQUIRED`, `USAGE_COUNT_FIELDS`, `USAGE_ROLES`, `USAGE_COUNTED_ROLES`, `USAGE_SKILLS`,
+`USAGE_MODEL_FAMILIES` and `LOGGED_AT_PATTERN` to `schemas/pr_review_agent_usage.schema.json`;
+`tests/mods/test_pr_review_watch_config_mirror.py` pins the mirrored defaults. The plugin test sandbox cannot read repository files.
 
 ## Loading
 

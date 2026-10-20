@@ -89,8 +89,17 @@ describe('parseReturnBlock', () => {
     ].join('\n')
     expect(parseReturnBlock(text)).toEqual({
       signal: 'DONE', role: 'reviewer', counts: { findings: 7, critical: 0, important: 4, minor: 3 },
-      fixed: [], bubbled: null, output: '.claude/state/harness/pr-team/_runtime/x/outputs/r1.json', notes: null,
+      fixed: null, bubbled: null, edited: null, output: '.claude/state/harness/pr-team/_runtime/x/outputs/r1.json',
+      notes: null,
     })
+  })
+
+  test('EDITED is read as a count; a missing FIXED line is null, an empty one is []', async () => {
+    const fixer = parseReturnBlock('---\nSIGNAL: DONE\nAGENT_ROLE: fixer\nFIXED: C1,I3\nBUBBLED:\nEDITED: 4\n---')
+    expect([fixer?.fixed, fixer?.bubbled, fixer?.edited]).toEqual([['C1', 'I3'], [], 4])
+    const odd = parseReturnBlock('---\nSIGNAL: DONE\nFIXED:\nEDITED: x\n---')
+    expect([odd?.fixed, odd?.edited]).toEqual([[], null])
+    expect(parseReturnBlock('---\nSIGNAL: FAIL\n---')?.fixed).toBeNull()
   })
 
   test('closer DONE: FIXED, BUBBLED, indented EVIDENCE skipped, CRLF', async () => {

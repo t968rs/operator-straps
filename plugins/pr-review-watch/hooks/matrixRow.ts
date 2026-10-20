@@ -108,7 +108,7 @@ export const validateRow = (row: Readonly<Record<string, unknown>>): string[] =>
 ]
 
 /** The JSONL text with rows appended, one compact object per line. */
-export const appendRows = (existing: string, rows: readonly MatrixRow[]): string => {
+export const appendRows = (existing: string, rows: readonly object[]): string => {
   if (rows.length === 0) return existing
   const head = existing === '' || existing.endsWith('\n') ? existing : `${existing}\n`
   return head + rows.map(r => `${JSON.stringify(r)}\n`).join('')

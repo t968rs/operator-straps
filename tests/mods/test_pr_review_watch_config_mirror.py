@@ -23,6 +23,7 @@ _DEFAULTS_REL = "plugins/harness/config/defaults.json"
 _MIRRORED = {
     ("state_dir",): "DEFAULT_STATE_DIR",
     ("matrix_path",): "DEFAULT_MATRIX_PATH",
+    ("agent_usage_path",): "DEFAULT_AGENT_USAGE_PATH",
     ("artifacts", "reviews"): "DEFAULT_REVIEWS",
     ("artifacts", "scratch"): "DEFAULT_SCRATCH",
     ("base_branch",): "DEFAULT_BASE_BRANCH",
@@ -53,6 +54,7 @@ def test_mirrored_defaults_equal_an_unconfigured_project(make_project, config_ts
     loaded = {
         "DEFAULT_STATE_DIR": cfg.state_dir,
         "DEFAULT_MATRIX_PATH": cfg.matrix_path,
+        "DEFAULT_AGENT_USAGE_PATH": cfg.agent_usage_path,
         "DEFAULT_REVIEWS": cfg.artifacts.reviews,
         "DEFAULT_SCRATCH": cfg.artifacts.scratch,
         "DEFAULT_BASE_BRANCH": cfg.base_branch,

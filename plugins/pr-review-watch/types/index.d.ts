@@ -29,6 +29,15 @@ export type AgentRec = {
   counts: Counts | null
   /** Epoch ms of the matrix-row attempt; null before it. */
   loggedAt: number | null
+  /** The dispatch's `subagent_type`; null when the call named none or the agent was rebuilt from disk. */
+  subagentType: string | null
+  /** Epoch ms of the usage-row attempt; null before it. */
+  usageLoggedAt: number | null
+  /**
+   * The model the engine resolved at a background launch; null otherwise. Read by usage rows only, so a
+   * background agent whose loop reports no usage still logs the model that ran, not the requested alias.
+   */
+  launchModel: string | null
 }
 
 /** One pr-team or pr-review invocation, keyed by its RUN_ID. */
