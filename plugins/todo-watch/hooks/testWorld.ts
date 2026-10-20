@@ -92,7 +92,7 @@ export const catalogText = (items = 89): string =>
     ],
   })
 
-export const CATALOG_LINE = 'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001'
+export const CATALOG_LINE = 'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: First'
 
 /**
  * A TodoSyncReport as the engine writes it, with generated_at floored to whole seconds: the coarsest stamp the
