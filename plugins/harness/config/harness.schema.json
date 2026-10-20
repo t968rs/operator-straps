@@ -148,7 +148,16 @@
             "warn_counts": {"type": "boolean", "description": "Count warn findings toward the drift number."}
           }
         },
-        "inject_context": {"type": "boolean", "description": "todo-watch adds a TODO_SYNC drift line to the prompt context when it changes."}
+        "inject_context": {"type": "boolean", "description": "todo-watch adds a TODO_SYNC drift line to the prompt context when it changes."},
+        "notice": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "How todo-watch shows its session-start summary and drift notices.",
+          "properties": {
+            "style": {"enum": ["toast", "banner"], "description": "toast: a toast that leaves after toast_seconds (a click or the pointer over it also ends or holds it). banner: a band above the prompt, kept until its Dismiss button is pressed."},
+            "toast_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 60, "description": "Seconds a toast stays; 60 is the engine's ceiling. Unused with style banner."}
+          }
+        }
       }
     }
   }

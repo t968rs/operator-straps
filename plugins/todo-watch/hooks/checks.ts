@@ -9,15 +9,15 @@ import { atom, read, update } from 'claude-code'
 
 import type { SyncFinding, SyncReport, TodoSummary } from '../types'
 import { clearNotices, postNotice } from './band'
-import { isAbsolute, syncDirOf, under } from './config'
+import { isAbsolute, syncDirOf, under, type TodoWatchConfig } from './config'
 import {
   contextLineFor, driftToast, formatSummary, formatTodoBody, ghAgeText, parseCatalog, type SyncStatus,
 } from './summary'
 import { resolveWatch, type Watch } from './watch'
 
 /**
- * Engine glue for todo-watch: the catalog summary toast, the runner pointer, gated and coalesced check
- * runs, the sync report (re-read only when its mtime moved), drift toasts and the TODO_SYNC prompt line.
+ * Engine glue for todo-watch: the catalog summary notice, the runner pointer, gated and coalesced check
+ * runs, the sync report (re-read only when its mtime moved), drift notices and the TODO_SYNC prompt line.
  * Active only in a project whose `.claude/harness.json` sets `todo.folder` (./watch). Every host failure
  * degrades to showing nothing; no hook throws into a tool call, a prompt or a turn. Functions taking `$`
  * are function declarations: the engine follows `$` past an import only into one.
@@ -245,6 +245,19 @@ async function mtimeOf($: Dollar, path: string): Promise<number | undefined> {
   return st === undefined ? undefined : st.mtimeMs
 }
 
+/**
+ * Shows `text` as `todo.notice.style` says: a toast for `todo.notice.toast_seconds` (a click takes it off
+ * sooner, the pointer over it holds it), or a band notice kept until Dismiss. Never throws.
+ */
+async function showNotice($: Dollar, cfg: TodoWatchConfig, text: string): Promise<void> {
+  if (cfg.noticeStyle === 'banner') return postNotice($, text)
+  try {
+    void Promise.resolve($.ui.toast(text, { timeoutMs: cfg.toastMs })).catch(noop)
+  } catch {
+    // a surface that draws no toast
+  }
+}
+
 /** Runs `fn` after the current dispatch, so no tool result or prompt waits on it. */
 function later($: Dollar, fn: () => Promise<unknown>): void {
   try {
@@ -283,14 +296,14 @@ async function refreshCatalog($: Dollar, w: Watch): Promise<TodoSummary | null> 
   return summary
 }
 
-/** Stores a fresh report and raises the drift toast it owes, if any. */
-async function applyReport($: Dollar, report: SyncReport): Promise<void> {
+/** Stores a fresh report and raises the drift notice it owes, if any. */
+async function applyReport($: Dollar, w: Watch, report: SyncReport): Promise<void> {
   const previous = (await read($, reportAtom))?.drift ?? null
   await update($, reportAtom, () => report)
   const owed = driftToast(report, await read($, lastToastAtom), previous)
   if (owed === undefined) return
   await update($, lastToastAtom, () => owed.toasted)
-  await postNotice($, owed.text)
+  await showNotice($, w.cfg, owed.text)
 }
 
 /**
@@ -311,7 +324,7 @@ async function refreshReport($: Dollar, w: Watch, isForced = false): Promise<voi
   const text = await readText($, path)
   const report = text === undefined ? undefined : parseReport(text, mtime)
   if (report === undefined || reportTimeMs(report) < startGateMs(session.startedAtMs ?? 0)) return
-  await applyReport($, report)
+  await applyReport($, w, report)
 }
 
 // ---------------------------------------------------------------------------
@@ -413,7 +426,7 @@ async function resetSession($: Dollar): Promise<void> {
 }
 
 /**
- * `session.start` (wired in ./register): the catalog-only summary toast, then the runner lookup and the
+ * `session.start` (wired in ./register): the catalog-only summary notice, then the runner lookup and the
  * first check. Never throws.
  */
 export async function startSession($: Dollar): Promise<void> {
@@ -425,7 +438,7 @@ async function startWatch($: Dollar): Promise<void> {
   if (w === undefined) return
   await resetSession($)
   const summary = await refreshCatalog($, w).catch(() => null)
-  if (summary !== null) await postNotice($, formatSummary(summary))
+  if (summary !== null) await showNotice($, w.cfg, formatSummary(summary))
   const runner = await lookupRunner($, w).catch(noop)
   if (runner === undefined) return
   session.runner = runner

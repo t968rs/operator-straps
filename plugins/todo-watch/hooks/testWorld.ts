@@ -1,7 +1,7 @@
 /**
  * The mocked world beneath todo-watch for the hook tests (never imported by ./register): files by path,
- * the harness engine behind `$.process.run`, band notices, command registrations and the tools a call
- * reaches.
+ * the harness engine behind `$.process.run`, toasts and band notices, command registrations and the tools a
+ * call reaches.
  * The plugin test sandbox reads no repository file, so every `$` call the mod makes is answered here.
  * Paths are keyed without a drive letter (or the host prefix the engine resolves one onto) and case-folded,
  * so `C:/repo` and `/repo` roots share one world on a Windows or a POSIX host (`keyOf`).
@@ -22,6 +22,8 @@ export const SYNC_REL = '.claude/state/harness/todo-sync'
 
 /** The whole `todo` block a project needs: every other path takes its default under the folder. */
 export const CONFIG = { todo: { folder: TODO_DIR } }
+/** `CONFIG` with notices drawn in the band instead of toasts. */
+export const BANNER_CONFIG = { todo: { folder: TODO_DIR, notice: { style: 'banner' } } }
 
 /** How the engine's check run ends. */
 export type EngineMode = 'ok' | 'timeout' | 'fail'
@@ -52,8 +54,14 @@ export type World = {
   runs: string[][]
   /** Every `$.process.run` init (timeout, env), index for index with `runs`. */
   inits: Array<ProcessRunInit | undefined>
-  /** Every notice posted to the band, in order (a clear posts none). */
+  /** Every notice shown, toast or band, in order. */
   notices: string[]
+  /** Every toast's text. */
+  toasts: string[]
+  /** Every toast's `timeoutMs`, index for index with `toasts`. */
+  toastTimeouts: Array<number | undefined>
+  /** Every notice posted to the band, in order (a clear posts none). */
+  band: string[]
   commands: string[]
   descriptions: string[]
   /** `$.command.register` is refused. */
@@ -164,9 +172,16 @@ function engineHooks(on: On, w: World): void {
     w.inits.push(e.init)
     return e.argv[2] === 'check' ? check(w) : { value: ran('', 128) }
   })
+  on('ui.toast', (_$, e) => {
+    w.notices.push(e.text)
+    w.toasts.push(e.text)
+    w.toastTimeouts.push(e.timeoutMs)
+    return { value: undefined }
+  })
   on('state.set', { plugin: 'todo-watch', key: 'notices' }, (_$, e, next) => {
     const list = e.value
     if (list.length > 0) w.notices.push(list[list.length - 1])
+    if (list.length > 0) w.band.push(list[list.length - 1])
     return next(e)
   })
   on('command.register', (_$, e) => {
@@ -215,8 +230,8 @@ export function world(on: On, opts: WorldOpts = {}): World {
   const root = opts.root ?? '/repo'
   const files = new Map<string, Rec>()
   const w: World = {
-    root, files, reads: [], runs: [], inits: [], notices: [], commands: [], descriptions: [], isRegisterRefused: false,
-    held: [],
+    root, files, reads: [], runs: [], inits: [], notices: [], toasts: [], toastTimeouts: [], band: [], commands: [],
+    descriptions: [], isRegisterRefused: false, held: [],
     clock: mock.clock(on, { now: NOW }),
     engine: { mode: 'ok', drift: 0, byRule: {}, isHeld: false, reports: 0 },
     setFile: (path, text, mtimeMs) => files.set(keyOf(path), { text, mtimeMs: mtimeMs ?? w.clock.now() }),

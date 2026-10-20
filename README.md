@@ -209,6 +209,8 @@ prose that named a moved id.
 | `todo.rules.disabled` | `[]` | `todo_sync.py check` skips these rule ids |
 | `todo.rules.warn_counts` | `false` | warn findings count toward the drift number |
 | `todo.inject_context` | `true` | `todo-watch` per-prompt `TODO_SYNC` line |
+| `todo.notice.style` | `toast` | how `todo-watch` shows its start summary and drift notices: `toast` (leaves on a timer) or `banner` (a band above the prompt, kept until Dismiss) |
+| `todo.notice.toast_seconds` | `60` (the engine's ceiling) | how long a `todo-watch` toast stays, above 0 and at most 60; unused with `banner` |
 
 `schemas_dir` (default `.claude/agent-schemas`) pins project copies of the review schemas; anything missing
 there falls back to the plugin's `schemas/`.

@@ -3,7 +3,7 @@ import type { Engine } from 'claude-code/testing'
 import { describe, expect, test } from 'claude-code/testing'
 
 import { MAX_NOTICES } from './band'
-import { CATALOG_LINE, CATALOG_REL, start, world } from './testWorld'
+import { BANNER_CONFIG, CATALOG_LINE, CATALOG_REL, start, world } from './testWorld'
 
 const SURFACES = ['terminal', 'desktop'] as const
 
@@ -39,7 +39,7 @@ async function bandText($: Engine, surface: (typeof SURFACES)[number]): Promise<
 describe('the band above the prompt', () => {
   for (const surface of SURFACES) {
     test(`${surface}: the start summary stays until Dismiss is pressed`, async ($, on) => {
-      const w = world(on, { hasRunner: false })
+      const w = world(on, { config: BANNER_CONFIG, hasRunner: false })
       engineDraws(on)
       await start($, w)
       expect(await bandText($, surface)).toContain(CATALOG_LINE)
@@ -50,7 +50,7 @@ describe('the band above the prompt', () => {
     })
 
     test(`${surface}: a survey takes the band`, async ($, on) => {
-      const w = world(on, { hasRunner: false })
+      const w = world(on, { config: BANNER_CONFIG, hasRunner: false })
       engineDraws(on)
       await start($, w)
       const ui = await $.ui.mount(bandOn(surface, true))
@@ -67,7 +67,7 @@ describe('the band above the prompt', () => {
   })
 
   test(`the newest ${MAX_NOTICES} notices, oldest first`, async ($, on) => {
-    const w = world(on)
+    const w = world(on, { config: BANNER_CONFIG })
     engineDraws(on)
     await start($, w)
     for (const drift of [1, 2, 3]) {
@@ -83,8 +83,16 @@ describe('the band above the prompt', () => {
     expect(lines).toEqual(w.notices.slice(-MAX_NOTICES))
   })
 
-  test('a session start replaces the notices', async ($, on) => {
+  test('the default toast style leaves the band empty', async ($, on) => {
     const w = world(on, { hasRunner: false })
+    engineDraws(on)
+    await start($, w)
+    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(await bandText($, 'terminal')).toBeUndefined()
+  })
+
+  test('a session start replaces the notices', async ($, on) => {
+    const w = world(on, { config: BANNER_CONFIG, hasRunner: false })
     engineDraws(on)
     await start($, w)
     await start($, w)

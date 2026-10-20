@@ -34,6 +34,8 @@ _MIRRORED: Dict[Tuple[str, ...], Tuple[str, Reader]] = {
     ("todo", "research", "catalog"): ("DEFAULT_RESEARCH_CATALOG", ts_optional_string),
     ("todo", "gh", "max_age_hours"): ("DEFAULT_GH_MAX_AGE_HOURS", ts_number),
     ("todo", "inject_context"): ("DEFAULT_INJECT_CONTEXT", ts_boolean),
+    ("todo", "notice", "style"): ("DEFAULT_NOTICE_STYLE", ts_optional_string),
+    ("todo", "notice", "toast_seconds"): ("DEFAULT_TOAST_SECONDS", ts_number),
 }
 
 Value = Union[str, float, bool, None]
@@ -91,6 +93,8 @@ def test_mirrored_defaults_equal_an_unconfigured_project(make_project, config_ts
         "DEFAULT_TOP_N": cfg.todo.top_n,
         "DEFAULT_GH_MAX_AGE_HOURS": cfg.todo.gh_max_age_hours,
         "DEFAULT_INJECT_CONTEXT": cfg.todo.inject_context,
+        "DEFAULT_NOTICE_STYLE": cfg.todo.notice_style,
+        "DEFAULT_TOAST_SECONDS": cfg.todo.notice_toast_seconds,
     }
     assert {name: _ts(config_ts, name) for name in loaded} == loaded
 

@@ -1,14 +1,15 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  DEFAULT_GH_MAX_AGE_HOURS, DEFAULT_INJECT_CONTEXT, DEFAULT_PLANS, DEFAULT_RESEARCH, DEFAULT_STATE_DIR,
-  DEFAULT_TOP_N, inFolder, isActive, readConfig, syncDirOf, under,
+  DEFAULT_GH_MAX_AGE_HOURS, DEFAULT_INJECT_CONTEXT, DEFAULT_NOTICE_STYLE, DEFAULT_PLANS, DEFAULT_RESEARCH,
+  DEFAULT_STATE_DIR, DEFAULT_TOAST_SECONDS, DEFAULT_TOP_N, inFolder, isActive, readConfig, syncDirOf, under,
 } from './config'
 
 const DEFAULTS = {
   stateDir: DEFAULT_STATE_DIR, researchDir: DEFAULT_RESEARCH, plansDir: DEFAULT_PLANS, folder: null,
   catalog: null, catalogSchema: null, topN: DEFAULT_TOP_N, snapshotsDir: null, researchCatalog: null,
   ghMaxAgeHours: DEFAULT_GH_MAX_AGE_HOURS, injectContext: DEFAULT_INJECT_CONTEXT,
+  noticeStyle: DEFAULT_NOTICE_STYLE, toastMs: DEFAULT_TOAST_SECONDS * 1000,
 }
 
 const F = 'docs/RESEARCH/_TODO'
@@ -41,13 +42,14 @@ describe('readConfig', () => {
       todo: {
         folder: 'docs/R/T', catalog: 'todo.json', catalog_schema: '../schemas/todo.schema.json', top_n: 5,
         snapshots: { dir: '../TODO', name_pattern: 'x' }, research: { catalog: 'cat.json' },
-        gh: { max_age_hours: 6.5 }, inject_context: false,
+        gh: { max_age_hours: 6.5 }, inject_context: false, notice: { style: 'banner', toast_seconds: 12.5 },
       },
     })
     expect(readConfig(text)).toEqual({
       ...DEFAULTS, stateDir: '.claude/state/h', researchDir: 'docs/R', folder: 'docs/R/T',
       catalog: 'docs/R/T/todo.json', catalogSchema: 'docs/R/schemas/todo.schema.json', topN: 5,
       snapshotsDir: 'docs/R/TODO', researchCatalog: 'docs/R/T/cat.json', ghMaxAgeHours: 6.5, injectContext: false,
+      noticeStyle: 'banner', toastMs: 12_500,
     })
   })
 
@@ -66,6 +68,15 @@ describe('readConfig', () => {
     expect(readConfig(JSON.stringify({ todo: { top_n: 2.5 } })).topN).toBe(DEFAULT_TOP_N)
     expect(readConfig(JSON.stringify({ todo: [] })).catalog).toBeNull()
     expect(readConfig(JSON.stringify({ todo: { folder: F, catalog: 7 } }))).toEqual(FOLDER_ONLY)
+  })
+
+  test('the toast defaults to the engine ceiling; an unknown style or an out-of-range time keeps the default', async () => {
+    expect([DEFAULT_NOTICE_STYLE, DEFAULT_TOAST_SECONDS]).toEqual(['toast', 60])
+    for (const notice of [{ style: 'popup' }, { style: 'BANNER' }, { toast_seconds: 0 }, { toast_seconds: 61 },
+      { toast_seconds: '30' }, { toast_seconds: -5 }, 'banner']) {
+      expect(readConfig(JSON.stringify({ todo: { notice } }))).toEqual(DEFAULTS)
+    }
+    expect(readConfig(JSON.stringify({ todo: { notice: { toast_seconds: 0.25 } } })).toastMs).toBe(250)
   })
 
   test('null turns a nullable path off', async () => {
