@@ -25,7 +25,7 @@
     "output_path": {
       "type": "string",
       "minLength": 1,
-      "pattern": "^(?![/\\\\])(?![A-Za-z]:)(?!(.*[/\\\\])?\\.\\.([/\\\\]|$)).+",
+      "pattern": "^(?![/\\x5c])(?![A-Za-z]:)(?!(.*[/\\x5c])?\\.\\.([/\\x5c]|$)).+",
       "description": "Repo-relative path inside the checkout; rooted, drive-letter, UNC and parent-directory paths are forbidden. The shim verifies existence-on-disk at parse time; missing path is treated as STOP_PROTOCOL.",
       "$comment": "Cross-platform path audit: the regex blocks a leading `/` or `\\` (Unix absolute, Windows rooted, UNC `\\\\server` and `//server`), any drive prefix (`C:\\foo`, `C:/foo`, drive-relative `C:foo`) and any `..` segment under either separator. Repo-relative is the only legal shape."
     },
