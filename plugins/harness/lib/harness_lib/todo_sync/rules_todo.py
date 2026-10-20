@@ -192,10 +192,10 @@ def _nonzero(raw: Any) -> Any:
     return {k: v for k, v in raw.items() if v} if isinstance(raw, dict) else raw
 
 
-def t9_counts(src: Sources) -> List[Finding]:
-    """T9: ``counts`` tally the items (``sources_absorbed`` and ``merged_items`` are not checked)."""
-    data, items = src.todo.data, src.items()
-    want = {
+def catalog_counts(data: Dict[str, Any]) -> Dict[str, Any]:
+    """The ``counts`` values T9 checks, tallied from the catalog ``data`` (zero tallies omitted)."""
+    items = [i for i in data.get("items") or [] if isinstance(i, dict)]
+    return {
         "items": len(items), "needs_decision": sum(1 for i in items if i.get("needs_decision")),
         "trackers": len(data.get("trackers") or []),
         "close_candidates": len(data.get("close_candidates") or []),
@@ -203,6 +203,12 @@ def t9_counts(src: Sources) -> List[Finding]:
         "by_impact": _tally(i.get("impact") for i in items),
         "by_loe": _tally((i.get("loe") or {}).get("size") for i in items),
     }
+
+
+def t9_counts(src: Sources) -> List[Finding]:
+    """T9: ``counts`` tally the items (``sources_absorbed`` and ``merged_items`` are not checked)."""
+    data = src.todo.data
+    want = catalog_counts(data)
     stored = data.get("counts") or {}
     return [Finding("T9", "error", src.todo.rel,
                     f"counts.{key} is {stored.get(key)!r}, items tally {value!r}",

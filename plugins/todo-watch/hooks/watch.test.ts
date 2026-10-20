@@ -8,7 +8,7 @@ describe('resolveWatch', () => {
   test('a cwd below the root finds the root without spawning a process', async ($, on) => {
     const w = world(on, { cwd: '/repo/sub/dir', env: {} })
     await start($, w)
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
     expect(w.runs.filter(argv => argv[2] !== 'check')).toEqual([])
     expect(checkRuns(w).length).toBe(1)
   })
@@ -16,20 +16,20 @@ describe('resolveWatch', () => {
   test('a cwd outside any project falls back to CLAUDE_PROJECT_DIR', async ($, on) => {
     const w = world(on, { cwd: '/elsewhere/x', env: { CLAUDE_PROJECT_DIR: '/repo' } })
     await start($, w)
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
   })
 
   test('a Windows-style cwd and project dir with backslashes', async ($, on) => {
     const w = world(on, { root: 'C:/repo', cwd: 'C:\\repo\\sub\\', env: { CLAUDE_PROJECT_DIR: 'C:\\repo\\' } })
     await start($, w)
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
   })
 
   test('the nearest harness.json wins', async ($, on) => {
     const w = world(on, { cwd: '/repo/sub' })
     w.setFile('/repo/sub/.claude/harness.json', JSON.stringify({ todo: { folder: null } }))
     await start($, w)
-    expect([w.toasts, w.commands, w.runs]).toEqual([[], [], []])
+    expect([w.notices, w.commands, w.runs]).toEqual([[], [], []])
   })
 
   test('the root is searched once; its harness.json is read afresh each time', async ($, on) => {
@@ -53,6 +53,6 @@ describe('resolveWatch', () => {
   test('an unreadable harness.json is no project', async ($, on) => {
     const w = world(on, { config: '{ not json' })
     await start($, w)
-    expect([w.toasts, w.commands, w.runs]).toEqual([[], [], []])
+    expect([w.notices, w.commands, w.runs]).toEqual([[], [], []])
   })
 })

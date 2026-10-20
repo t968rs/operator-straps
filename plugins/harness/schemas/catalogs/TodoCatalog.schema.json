@@ -551,7 +551,7 @@
           "then": {
             "properties": {
               "ref": {
-                "pattern": "^(?![/\\\\])(?![A-Za-z]:)[^\\\\]+\\.md$"
+                "pattern": "^(?![/\\x5c])(?![A-Za-z]:)[^\\x5c]+\\.md$"
               }
             },
             "required": [
@@ -573,7 +573,7 @@
           "then": {
             "properties": {
               "ref": {
-                "pattern": "^(?![/\\\\])(?![A-Za-z]:)[^\\\\]+$"
+                "pattern": "^(?![/\\x5c])(?![A-Za-z]:)[^\\x5c]+$"
               }
             },
             "required": [

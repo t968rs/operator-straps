@@ -72,8 +72,17 @@ describe('parseCatalog', () => {
 describe('formatSummary', () => {
   test('the full catalog-only line', async () => {
     expect(formatSummary(summary())).toBe(
-      'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001',
+      'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: First',
     )
+  })
+
+  test('a long or multi-line top title is flattened and clipped', async () => {
+    const title = `line one\nline two ${'x'.repeat(80)}`
+    const top = [{ id: 'TODO-001', rank: 1, title, status: 'OPEN', score: null }]
+    const shown = formatSummary(summary({ top })).split('top: ')[1]
+    expect(shown.startsWith('line one line two x')).toBe(true)
+    expect(shown.length).toBe(60)
+    expect(shown.endsWith('…')).toBe(true)
   })
 
   test('zero segments are left out, the total never is', async () => {
@@ -81,13 +90,13 @@ describe('formatSummary', () => {
       'TODO 0',
     )
     expect(formatSummary(summary({ partial: 0, blocked: 0 }))).toBe(
-      'TODO 89 · 68 open · 12 need a decision · top: TODO-001',
+      'TODO 89 · 68 open · 12 need a decision · top: First',
     )
   })
 
   test('drift, clean and the issue cache age', async () => {
-    expect(formatSummary(summary(), { drift: 4 })).toMatch(/top: TODO-001 · 4 out of sync$/)
-    expect(formatSummary(summary(), { drift: 0 })).toMatch(/top: TODO-001 · sync clean$/)
+    expect(formatSummary(summary(), { drift: 4 })).toMatch(/top: First · 4 out of sync$/)
+    expect(formatSummary(summary(), { drift: 0 })).toMatch(/top: First · sync clean$/)
     expect(formatSummary(summary(), { drift: 4, ghAge: '3d' })).toMatch(/· 4 out of sync · gh 3d old$/)
   })
 })
@@ -186,7 +195,7 @@ describe('the /todo body', () => {
   test('the whole body; an unreadable catalog says so', async () => {
     const body = formatTodoBody(summary(), report(), 'found', { drift: 4 })
     expect(body.split('\n\n')[0]).toBe(
-      'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001 · 4 out of sync',
+      'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: First · 4 out of sync',
     )
     expect(body).toContain('| 1 | TODO-001 | OPEN | 88.5 | First |')
     expect(formatTodoBody(null, null, 'unavailable', {})).toBe('TODO catalog unreadable\n\nsync checks unavailable')

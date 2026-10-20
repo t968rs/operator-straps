@@ -8,6 +8,7 @@ import type {
 import { atom, read, update } from 'claude-code'
 
 import type { SyncFinding, SyncReport, TodoSummary } from '../types'
+import { clearNotices, postNotice } from './band'
 import { isAbsolute, syncDirOf, under } from './config'
 import {
   contextLineFor, driftToast, formatSummary, formatTodoBody, ghAgeText, parseCatalog, type SyncStatus,
@@ -244,14 +245,6 @@ async function mtimeOf($: Dollar, path: string): Promise<number | undefined> {
   return st === undefined ? undefined : st.mtimeMs
 }
 
-function toast($: Dollar, text: string): void {
-  try {
-    void Promise.resolve($.ui.toast(text)).catch(noop)
-  } catch {
-    // a surface that draws no toast
-  }
-}
-
 /** Runs `fn` after the current dispatch, so no tool result or prompt waits on it. */
 function later($: Dollar, fn: () => Promise<unknown>): void {
   try {
@@ -297,7 +290,7 @@ async function applyReport($: Dollar, report: SyncReport): Promise<void> {
   const owed = driftToast(report, await read($, lastToastAtom), previous)
   if (owed === undefined) return
   await update($, lastToastAtom, () => owed.toasted)
-  toast($, owed.text)
+  await postNotice($, owed.text)
 }
 
 /**
@@ -416,6 +409,7 @@ async function resetSession($: Dollar): Promise<void> {
   session.isContextForced = true
   await update($, reportAtom, () => null).catch(noop)
   await update($, lastToastAtom, () => null).catch(noop)
+  await clearNotices($)
 }
 
 /**
@@ -431,7 +425,7 @@ async function startWatch($: Dollar): Promise<void> {
   if (w === undefined) return
   await resetSession($)
   const summary = await refreshCatalog($, w).catch(() => null)
-  if (summary !== null) toast($, formatSummary(summary))
+  if (summary !== null) await postNotice($, formatSummary(summary))
   const runner = await lookupRunner($, w).catch(noop)
   if (runner === undefined) return
   session.runner = runner

@@ -1,6 +1,7 @@
 /**
  * The mocked world beneath todo-watch for the hook tests (never imported by ./register): files by path,
- * the harness engine behind `$.process.run`, toasts, command registrations and the tools a call reaches.
+ * the harness engine behind `$.process.run`, band notices, command registrations and the tools a call
+ * reaches.
  * The plugin test sandbox reads no repository file, so every `$` call the mod makes is answered here.
  * Paths are keyed without a drive letter (or the host prefix the engine resolves one onto) and case-folded,
  * so `C:/repo` and `/repo` roots share one world on a Windows or a POSIX host (`keyOf`).
@@ -51,7 +52,8 @@ export type World = {
   runs: string[][]
   /** Every `$.process.run` init (timeout, env), index for index with `runs`. */
   inits: Array<ProcessRunInit | undefined>
-  toasts: string[]
+  /** Every notice posted to the band, in order (a clear posts none). */
+  notices: string[]
   commands: string[]
   descriptions: string[]
   /** `$.command.register` is refused. */
@@ -90,7 +92,7 @@ export const catalogText = (items = 89): string =>
     ],
   })
 
-export const CATALOG_LINE = 'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001'
+export const CATALOG_LINE = 'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: First'
 
 /**
  * A TodoSyncReport as the engine writes it, with generated_at floored to whole seconds: the coarsest stamp the
@@ -162,9 +164,10 @@ function engineHooks(on: On, w: World): void {
     w.inits.push(e.init)
     return e.argv[2] === 'check' ? check(w) : { value: ran('', 128) }
   })
-  on('ui.toast', (_$, e) => {
-    w.toasts.push(e.text)
-    return { value: undefined }
+  on('state.set', { plugin: 'todo-watch', key: 'notices' }, (_$, e, next) => {
+    const list = e.value
+    if (list.length > 0) w.notices.push(list[list.length - 1])
+    return next(e)
   })
   on('command.register', (_$, e) => {
     if (w.isRegisterRefused) return { deny: 'name taken' }
@@ -212,7 +215,7 @@ export function world(on: On, opts: WorldOpts = {}): World {
   const root = opts.root ?? '/repo'
   const files = new Map<string, Rec>()
   const w: World = {
-    root, files, reads: [], runs: [], inits: [], toasts: [], commands: [], descriptions: [], isRegisterRefused: false,
+    root, files, reads: [], runs: [], inits: [], notices: [], commands: [], descriptions: [], isRegisterRefused: false,
     held: [],
     clock: mock.clock(on, { now: NOW }),
     engine: { mode: 'ok', drift: 0, byRule: {}, isHeld: false, reports: 0 },
