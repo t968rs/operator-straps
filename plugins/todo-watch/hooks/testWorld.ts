@@ -11,6 +11,9 @@ import type { FsEntry, On, ProcessRunInit, ProcessRunResult } from 'claude-code'
 import type { Engine, MockClock } from 'claude-code/testing'
 import { mock } from 'claude-code/testing'
 
+import type { NoticeView } from '../types'
+import { NOTICE_TOAST_SEP, noticeText } from './summary'
+
 export const NOW = 1_800_000_000_000
 export const SCRIPT = '/plugins/harness/scripts/todo_sync.py'
 export const PYTHON = '/usr/bin/python3'
@@ -22,8 +25,10 @@ export const SYNC_REL = '.claude/state/harness/todo-sync'
 
 /** The whole `todo` block a project needs: every other path takes its default under the folder. */
 export const CONFIG = { todo: { folder: TODO_DIR } }
-/** `CONFIG` with notices drawn in the band instead of toasts. */
+/** `CONFIG` with the notice drawn in the band, as the default style is. */
 export const BANNER_CONFIG = { todo: { folder: TODO_DIR, notice: { style: 'banner' } } }
+/** `CONFIG` with the notice posted as a toast instead of the default band. */
+export const TOAST_CONFIG = { todo: { folder: TODO_DIR, notice: { style: 'toast' } } }
 
 /** How the engine's check run ends. */
 export type EngineMode = 'ok' | 'timeout' | 'fail'
@@ -54,14 +59,16 @@ export type World = {
   runs: string[][]
   /** Every `$.process.run` init (timeout, env), index for index with `runs`. */
   inits: Array<ProcessRunInit | undefined>
-  /** Every notice shown, toast or band, in order. */
+  /** Every notice shown, toast or band, in order (a band notice as its `noticeText`, once per show). */
   notices: string[]
   /** Every toast's text. */
   toasts: string[]
   /** Every toast's `timeoutMs`, index for index with `toasts`. */
   toastTimeouts: Array<number | undefined>
-  /** Every notice posted to the band, in order (a clear posts none). */
+  /** The band notice's text each time the band is shown, in order (live updates and hides add none). */
   band: string[]
+  /** The last view written to the `notice` atom; null before one. */
+  notice: NoticeView | null
   commands: string[]
   descriptions: string[]
   /** `$.command.register` is refused. */
@@ -100,7 +107,18 @@ export const catalogText = (items = 89): string =>
     ],
   })
 
-export const CATALOG_LINE = 'TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: First'
+/** A catalog of `n` items ranked 1..n, id `TODO-<k>`, titled `Item <k>`. */
+export const catalogOf = (n: number): string =>
+  JSON.stringify({
+    counts: { items: n, by_status: { OPEN: n } },
+    items: Array.from({ length: n }, (_, i) => ({
+      id: `TODO-${i + 1}`, rank: i + 1, title: `Item ${i + 1}`, status: 'OPEN',
+    })),
+  })
+
+export const CATALOG_LINE ='TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: First'
+/** The fixture catalog's notice as a session start shows it: its items by rank, no status before a report. */
+export const START_NOTICE = ['1  First', '2  Second'].join(NOTICE_TOAST_SEP)
 
 /**
  * A TodoSyncReport as the engine writes it, with generated_at floored to whole seconds: the coarsest stamp the
@@ -178,10 +196,15 @@ function engineHooks(on: On, w: World): void {
     w.toastTimeouts.push(e.timeoutMs)
     return { value: undefined }
   })
-  on('state.set', { plugin: 'todo-watch', key: 'notices' }, (_$, e, next) => {
-    const list = e.value
-    if (list.length > 0) w.notices.push(list[list.length - 1])
-    if (list.length > 0) w.band.push(list[list.length - 1])
+  on('state.set', { plugin: 'todo-watch', key: 'notice' }, (_$, e, next) => {
+    w.notice = e.value
+    return next(e)
+  })
+  on('state.set', { plugin: 'todo-watch', key: 'isNoticeShown' }, (_$, e, next) => {
+    if (e.value && w.notice !== null) {
+      w.notices.push(noticeText(w.notice))
+      w.band.push(noticeText(w.notice))
+    }
     return next(e)
   })
   on('command.register', (_$, e) => {
@@ -230,8 +253,8 @@ export function world(on: On, opts: WorldOpts = {}): World {
   const root = opts.root ?? '/repo'
   const files = new Map<string, Rec>()
   const w: World = {
-    root, files, reads: [], runs: [], inits: [], notices: [], toasts: [], toastTimeouts: [], band: [], commands: [],
-    descriptions: [], isRegisterRefused: false, held: [],
+    root, files, reads: [], runs: [], inits: [], notices: [], toasts: [], toastTimeouts: [], band: [], notice: null,
+    commands: [], descriptions: [], isRegisterRefused: false, held: [],
     clock: mock.clock(on, { now: NOW }),
     engine: { mode: 'ok', drift: 0, byRule: {}, isHeld: false, reports: 0 },
     setFile: (path, text, mtimeMs) => files.set(keyOf(path), { text, mtimeMs: mtimeMs ?? w.clock.now() }),

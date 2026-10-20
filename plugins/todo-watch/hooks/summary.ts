@@ -1,21 +1,24 @@
 /**
- * Pure text work for todo-watch: the TODO catalog's counts and top-N, the summary toast, the TODO_SYNC
- * context line, the drift toasts and the `/todo` body. No `$`.
+ * Pure text work for todo-watch: the TODO catalog's counts and top-N, the notice view, the summary line, the
+ * TODO_SYNC context line and the `/todo` body. No `$`.
  */
 
-import type { SyncFinding, SyncReport, TodoRow, TodoSummary } from '../types'
+import type { NoticeView, SyncFinding, SyncReport, TodoRow, TodoSummary } from '../types'
 
 type Json = Readonly<Record<string, unknown>>
 
 const SEP = ' · '
 const HOUR_MS = 3_600_000
-const MAX_TOAST = 160
 const MAX_TOP_TITLE = 60
 export const UNAVAILABLE_CONTEXT = 'TODO_SYNC unavailable'
-export const CLEAN_TOAST = 'TODO sync clean'
 export const NO_REPORT_TEXT = 'no report yet'
 export const UNAVAILABLE_TEXT = 'sync checks unavailable'
 export const CLEAN_TEXT = 'sync clean'
+export const IN_SYNC_TEXT = '✓ in sync'
+/** The notice's item titles are folded to one line and clipped to this many characters. */
+export const MAX_NOTICE_TITLE = 80
+/** Joins the toast's lines: the item lines, then the status. */
+export const NOTICE_TOAST_SEP = '\n'
 
 const isObject = (v: unknown): v is Json => typeof v === 'object' && v !== null && !Array.isArray(v)
 const isCount = (v: unknown): v is number => typeof v === 'number' && Number.isInteger(v) && v >= 0
@@ -117,7 +120,41 @@ export const formatSummary = (s: TodoSummary, sync: SyncSuffix = {}): string => 
 }
 
 // ---------------------------------------------------------------------------
-// Drift lines
+// The notice
+
+/** `<rank>  <title>`, the title folded to one line and clipped to `MAX_NOTICE_TITLE`. */
+const itemLine = (r: TodoRow): string => `${r.rank}  ${clip(r.title.replace(/\s+/g, ' ').trim(), MAX_NOTICE_TITLE)}`
+
+/**
+ * The status line: a fresh report wins (`✓ in sync` or `<N> out of sync`); without one, `sync checks
+ * unavailable` once checks are known to be unavailable, else none.
+ */
+const noticeStatus = (report: Pick<SyncReport, 'drift'> | null, status: SyncStatus): NoticeView['status'] => {
+  if (report === null) return status === 'unavailable' ? { text: UNAVAILABLE_TEXT, tone: 'dim' } : null
+  if (report.drift === 0) return { text: IN_SYNC_TEXT, tone: 'ok' }
+  return { text: `${report.drift} out of sync`, tone: 'warn' }
+}
+
+/** The notice: the first `count` summary rows by rank, then the sync status. */
+export const formatNotice = (
+  summary: TodoSummary | null,
+  report: Pick<SyncReport, 'drift'> | null,
+  status: SyncStatus,
+  count: number,
+): NoticeView => ({
+  items: summary === null ? [] : summary.top.slice(0, count).map(itemLine),
+  status: noticeStatus(report, status),
+})
+
+/** The toast text: the item lines, then the status text, joined by `NOTICE_TOAST_SEP`; never clipped whole. */
+export const noticeText = (view: NoticeView): string =>
+  [...view.items, ...(view.status === null ? [] : [view.status.text])].join(NOTICE_TOAST_SEP)
+
+/** Whether the view has nothing to show: no item lines and no status. */
+export const isEmptyView = (view: NoticeView): boolean => view.items.length === 0 && view.status === null
+
+// ---------------------------------------------------------------------------
+// The context line
 
 /** Rule id order: the letter, then the number (`G2`, `P1`, `S5`, `S10`, `T2`). */
 const byRuleId = (a: string, b: string): number => {
@@ -148,28 +185,6 @@ export const contextLineFor = (report: SyncReport | null, status: SyncStatus): s
 }
 
 const clip = (text: string, max: number): string => (text.length <= max ? text : `${text.slice(0, max - 1)}…`)
-
-/** A drift toast owed by a new report, and the drift it records as toasted; undefined when none is owed. */
-export type DriftToast = { text: string; toasted: number }
-
-/**
- * Toast only when drift rises above the last toasted drift (`TODO sync drift 4 (+2): P1=1 ...`), plus once
- * when it reaches zero from a non-zero previous report (`TODO sync clean`).
- */
-export const driftToast = (
-  r: Pick<SyncReport, 'drift' | 'byRule'>,
-  lastToasted: number | null,
-  previous: number | null,
-): DriftToast | undefined => {
-  const base = lastToasted ?? 0
-  if (r.drift > base) {
-    const rules = ruleCounts(r.byRule)
-    const head = `TODO sync drift ${r.drift} (+${r.drift - base})`
-    return { text: clip(rules === '' ? head : `${head}: ${rules}`, MAX_TOAST), toasted: r.drift }
-  }
-  if (r.drift === 0 && previous !== null && previous > 0) return { text: CLEAN_TOAST, toasted: 0 }
-  return undefined
-}
 
 // ---------------------------------------------------------------------------
 // The /todo body
@@ -203,14 +218,18 @@ export const formatSyncSection = (report: SyncReport | null, status: SyncStatus)
   return [head, ...report.findings.map(formatFinding)].join('\n')
 }
 
-/** The whole `/todo` body: summary line, top-N table, sync section. */
+/**
+ * The whole `/todo` body: summary line, the table of the first `topN` rows (every parsed row when not given),
+ * sync section.
+ */
 export const formatTodoBody = (
   summary: TodoSummary | null,
   report: SyncReport | null,
   status: SyncStatus,
   sync: SyncSuffix,
+  topN?: number,
 ): string => {
   const head = summary === null ? 'TODO catalog unreadable' : formatSummary(summary, sync)
-  const table = summary === null ? '' : formatTable(summary.top)
+  const table = summary === null ? '' : formatTable(summary.top.slice(0, topN))
   return [head, table, formatSyncSection(report, status)].filter(part => part !== '').join('\n\n')
 }

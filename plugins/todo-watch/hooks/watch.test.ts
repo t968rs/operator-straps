@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { CATALOG_LINE, checkRuns, CONFIG, keyOf, prompt, runTodo, start, world } from './testWorld'
+import { checkRuns, CONFIG, keyOf, prompt, runTodo, start, START_NOTICE, world } from './testWorld'
 
-/** Root resolution, seen through the hooks: the start toast and the check run's `--project`. */
+/** Root resolution, seen through the hooks: the start notice and the check run's `--project`. */
 
 describe('resolveWatch', () => {
   test('a cwd below the root finds the root without spawning a process', async ($, on) => {
     const w = world(on, { cwd: '/repo/sub/dir', env: {} })
     await start($, w)
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
     expect(w.runs.filter(argv => argv[2] !== 'check')).toEqual([])
     expect(checkRuns(w).length).toBe(1)
   })
@@ -16,13 +16,13 @@ describe('resolveWatch', () => {
   test('a cwd outside any project falls back to CLAUDE_PROJECT_DIR', async ($, on) => {
     const w = world(on, { cwd: '/elsewhere/x', env: { CLAUDE_PROJECT_DIR: '/repo' } })
     await start($, w)
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
   })
 
   test('a Windows-style cwd and project dir with backslashes', async ($, on) => {
     const w = world(on, { root: 'C:/repo', cwd: 'C:\\repo\\sub\\', env: { CLAUDE_PROJECT_DIR: 'C:\\repo\\' } })
     await start($, w)
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
   })
 
   test('the nearest harness.json wins', async ($, on) => {

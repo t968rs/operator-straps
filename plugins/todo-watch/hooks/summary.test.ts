@@ -1,9 +1,10 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import type { SyncFinding, SyncReport, TodoSummary } from '../types'
+import type { NoticeView, SyncFinding, SyncReport, TodoRow, TodoSummary } from '../types'
 import {
-  CLEAN_TOAST, contextLineFor, driftToast, formatContextLine, formatFinding, formatSummary, formatSyncSection,
-  formatTable, formatTodoBody, ghAgeText, parseCatalog, ruleCounts, UNAVAILABLE_CONTEXT,
+  contextLineFor, formatContextLine, formatFinding, formatNotice, formatSummary, formatSyncSection, formatTable,
+  formatTodoBody, ghAgeText, IN_SYNC_TEXT, isEmptyView, MAX_NOTICE_TITLE, noticeText, parseCatalog, ruleCounts,
+  UNAVAILABLE_CONTEXT,
 } from './summary'
 
 const HOUR = 3_600_000
@@ -111,7 +112,7 @@ describe('ghAgeText', () => {
   })
 })
 
-describe('context line and drift toasts', () => {
+describe('context line', () => {
   test('rules sorted by id: letter, then number', async () => {
     expect(ruleCounts({ T2: 1, S10: 2, S5: 1, P1: 1, G2: 3 })).toBe('G2=3 P1=1 S5=1 S10=2 T2=1')
     expect(formatContextLine({ drift: 3, byRule: { T2: 1, P1: 1, S5: 1 } })).toBe('TODO_SYNC drift=3 P1=1 S5=1 T2=1')
@@ -124,31 +125,57 @@ describe('context line and drift toasts', () => {
     expect(contextLineFor(null, 'pending')).toBeUndefined()
     expect(contextLineFor(null, 'found')).toBeUndefined()
   })
+})
 
-  test('a rise above the last toasted drift toasts with the delta', async () => {
-    expect(driftToast({ drift: 4, byRule: { P1: 2, S5: 2 } }, null, null)).toEqual({
-      text: 'TODO sync drift 4 (+4): P1=2 S5=2', toasted: 4,
+/** Rows ranked 1..n, titled `Item <k>`. */
+const rows = (n: number): TodoRow[] =>
+  Array.from({ length: n }, (_, i) => ({
+    id: `TODO-${i + 1}`, rank: i + 1, title: `Item ${i + 1}`, status: 'OPEN', score: null,
+  }))
+
+describe('the notice view', () => {
+  test('items by rank, at most count', async () => {
+    expect(formatNotice(summary({ top: rows(5) }), { drift: 0 }, 'found', 3).items).toEqual([
+      '1  Item 1', '2  Item 2', '3  Item 3',
+    ])
+  })
+
+  test('a short or missing catalog gives fewer lines', async () => {
+    expect(formatNotice(summary({ top: rows(2) }), { drift: 0 }, 'found', 3).items.length).toBe(2)
+    expect(formatNotice(null, { drift: 0 }, 'found', 3)).toEqual({
+      items: [], status: { text: '✓ in sync', tone: 'ok' },
     })
-    expect(driftToast({ drift: 4, byRule: { P1: 4 } }, 2, 2)?.text).toBe('TODO sync drift 4 (+2): P1=4')
   })
 
-  test('no toast at or below the last toasted drift', async () => {
-    expect(driftToast({ drift: 4, byRule: { P1: 4 } }, 4, 4)).toBeUndefined()
-    expect(driftToast({ drift: 2, byRule: { P1: 2 } }, 4, 4)).toBeUndefined()
-    expect(driftToast({ drift: 3, byRule: { P1: 3 } }, 4, 2)).toBeUndefined()
+  test('a messy title folds to one clipped line', async () => {
+    const top = [{ id: 'TODO-001', rank: 1, title: `a\n\tb ${'x'.repeat(200)}`, status: 'OPEN', score: null }]
+    const [line] = formatNotice(summary({ top }), null, 'found', 3).items
+    expect(line.startsWith('1  a b x')).toBe(true)
+    expect(/[\n\t]/.test(line)).toBe(false)
+    expect(line.endsWith('…')).toBe(true)
+    expect(line.length).toBeLessThanOrEqual(3 + MAX_NOTICE_TITLE)
   })
 
-  test('zero from non-zero toasts clean once; zero from zero or from nothing does not', async () => {
-    expect(driftToast({ drift: 0, byRule: {} }, 4, 2)).toEqual({ text: CLEAN_TOAST, toasted: 0 })
-    expect(driftToast({ drift: 0, byRule: {} }, 0, 0)).toBeUndefined()
-    expect(driftToast({ drift: 0, byRule: {} }, null, null)).toBeUndefined()
+  test('status by report and checks state', async () => {
+    expect(formatNotice(null, { drift: 5 }, 'found', 3).status).toEqual({ text: '5 out of sync', tone: 'warn' })
+    expect(formatNotice(null, null, 'found', 3).status).toBeNull()
+    expect(formatNotice(null, null, 'unavailable', 3).status).toEqual({ text: 'sync checks unavailable', tone: 'dim' })
   })
 
-  test('a long rise toast is clipped', async () => {
-    const byRule = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`T${i + 1}`, 1]))
-    const text = driftToast({ drift: 40, byRule }, null, null)?.text ?? ''
-    expect(text.length).toBeLessThanOrEqual(160)
-    expect(text.endsWith('…')).toBe(true)
+  test('toast text joins items then status', async () => {
+    const view: NoticeView = { items: ['1  A', '2  B'], status: { text: IN_SYNC_TEXT, tone: 'ok' } }
+    expect(noticeText(view)).toBe('1  A\n2  B\n✓ in sync')
+  })
+
+  test('ten long items still end with the whole status', async () => {
+    const top = rows(10).map(r => ({ ...r, title: 'y'.repeat(80) }))
+    const text = noticeText(formatNotice(summary({ top }), { drift: 12 }, 'found', 10))
+    expect(text.endsWith('\n12 out of sync')).toBe(true)
+  })
+
+  test('an empty view', async () => {
+    expect(isEmptyView(formatNotice(null, null, 'found', 3))).toBe(true)
+    expect(isEmptyView(formatNotice(null, null, 'unavailable', 3))).toBe(false)
   })
 })
 

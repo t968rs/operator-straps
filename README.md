@@ -21,7 +21,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | See where an agent-driven review stands | `pr-review-watch` | A review progress band, pending-fix context, reviewer usage records, and a Stop guard for unrecorded escalated issues. | • `Stop` guard checks that escalated issues are recorded in the review.<br>• Usage rows come from engine measurements and must pass schema validation before append. |
 | Keep the current branch and working tree in view | `git-status` | A Git status line, with Git state checked on each prompt and changed state added as `GIT_STATE` context. | • Prompt hooks recheck Git state and inject changed state.<br>• Git context is reinjected after clear, resume, or main-conversation compaction. |
 | Carry working context through compaction | `session-bookmark` | Git state, recent prompts, and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state. |
-| Keep a project's TODO catalog and its sync checks in view | `todo-watch` | A TODO summary and drift notices in a band above the prompt (kept until dismissed), a `TODO_SYNC` drift line in prompt context, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
+| Keep a project's TODO catalog and its sync checks in view | `todo-watch` | The next TODO items and a live sync status line in a band above the prompt (kept until dismissed), a `TODO_SYNC` drift line in prompt context, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
 | Run targeted tests with the intended Python | `pytest-scope` | Optional rewriting of bare `pytest` to your chosen interpreter and rejection of runs without an explicit test file or node ID. | • When configured, Bash hooks rewrite recognized pytest commands to the selected Python.<br>• Scope hooks reject broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override. |
 
 ## Agent process standardization
@@ -209,8 +209,9 @@ prose that named a moved id.
 | `todo.rules.disabled` | `[]` | `todo_sync.py check` skips these rule ids |
 | `todo.rules.warn_counts` | `false` | warn findings count toward the drift number |
 | `todo.inject_context` | `true` | `todo-watch` per-prompt `TODO_SYNC` line |
-| `todo.notice.style` | `toast` | how `todo-watch` shows its start summary and drift notices: `toast` (leaves on a timer) or `banner` (a band above the prompt, kept until Dismiss) |
+| `todo.notice.style` | `banner` | how `todo-watch` shows its session-start notice (the top items, then the sync status): `banner` (a band above the prompt, kept until Dismiss, its status line live) or `toast` (one toast at start, leaves on a timer) |
 | `todo.notice.toast_seconds` | `60` (the engine's ceiling) | how long a `todo-watch` toast stays, above 0 and at most 60; unused with `banner` |
+| `todo.notice.items` | `3` | how many top items the `todo-watch` notice lists, by rank, 1 to 10 |
 
 `schemas_dir` (default `.claude/agent-schemas`) pins project copies of the review schemas; anything missing
 there falls back to the plugin's `schemas/`.

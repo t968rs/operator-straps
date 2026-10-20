@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import { COMMAND, COMMAND_DESCRIPTION } from './command'
-import { CATALOG_LINE, CATALOG_REL, prompt, runTodo, start, TODO_DIR, world } from './testWorld'
+import { CATALOG_LINE, CATALOG_REL, catalogOf, prompt, runTodo, start, TODO_DIR, world } from './testWorld'
 
 describe('/todo', () => {
   test('registered once at session start in an active project', async ($, on) => {
@@ -45,6 +45,16 @@ describe('/todo', () => {
     const text = await runTodo($)
     expect(text).toContain('| 1 | TODO-001 |')
     expect(text).not.toContain('TODO-002')
+  })
+
+  test('a smaller todo.notice.items never trims the table: /todo keeps top_n rows', async ($, on) => {
+    const config = { todo: { folder: TODO_DIR, top_n: 5, notice: { items: 1 } } }
+    const w = world(on, { config, catalog: catalogOf(5), hasRunner: false })
+    await start($, w)
+    expect(w.band).toEqual(['1  Item 1'])
+    const text = await runTodo($)
+    expect(text).toContain('| 1 | TODO-1 |')
+    expect(text).toContain('| 5 | TODO-5 |')
   })
 
   test('the catalog is re-read when its mtime moved', async ($, on) => {

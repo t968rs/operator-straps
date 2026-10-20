@@ -1,11 +1,11 @@
 # todo-watch
 
 A view over a project's TODO catalog and the harness plugin's `todo_sync` checks, written as a CLI plugin
-of function hooks. It shows a summary notice when a session starts, adds a `TODO_SYNC` drift line to the
-prompt context, adds a notice when drift rises or clears, and answers `/todo` with the top items and every
-finding. A notice is a toast by default, kept for `todo.notice.toast_seconds` (60 s, the engine's ceiling);
-`todo.notice.style: "banner"` draws notices in a band above the prompt instead, kept until its Dismiss button
-is pressed.
+of function hooks. It shows the next TODO items with a small sync status line when a session starts, adds a
+`TODO_SYNC` drift line to the prompt context, and answers `/todo` with the top items and every finding. The
+notice is a band above the prompt by default, kept until its Dismiss button is pressed, its status line
+following each sync change; `todo.notice.style: "toast"` posts it once as a toast instead, kept for
+`todo.notice.toast_seconds` (60 s, the engine's ceiling).
 The sync rules themselves live in Python (`harness_lib.todo_sync` behind `scripts/todo_sync.py`); the mod
 only reads, gates and displays.
 
@@ -39,13 +39,14 @@ value keeps the default):
 | `todo.folder` | `null` | where the TODO files live; null turns the mod off |
 | `todo.catalog` | `RepoToDo.json` (under the folder) | the TODO catalog the summary reads; watched file |
 | `todo.catalog_schema` | `RepoToDo.schema.json` (under the folder) | watched file; null: not watched |
-| `todo.top_n` | `10` | rows in the `/todo` table |
+| `todo.top_n` | `10` | rows in the `/todo` table (the catalog read keeps `max(top_n, notice.items)` rows) |
 | `todo.snapshots.dir` | `Snapshots` (under the folder) | watched folder; null: not watched |
 | `todo.research.catalog` | `ResearchImplementationCatalog.json` (under the folder) | watched file; null: not watched |
 | `todo.gh.max_age_hours` | `24` | `gh <age> old` suffix once the issue cache in the report is older |
 | `todo.inject_context` | `true` | whether prompts carry the `TODO_SYNC` line |
-| `todo.notice.style` | `toast` | `toast` or `banner` (M7); another value keeps the default |
+| `todo.notice.style` | `banner` | `banner` or `toast` (M7); another value keeps the default |
 | `todo.notice.toast_seconds` | `60` | seconds a toast stays; a value outside (0, 60] keeps the default |
+| `todo.notice.items` | `3` | item lines in the notice (M1); a value that is not a whole number from 1 to 10 keeps the default |
 
 `tests/mods/test_todo_watch_config_mirror.py` fails when `defaults.json` changes one of these values
 without `config.ts` following.
@@ -54,14 +55,14 @@ without `config.ts` following.
 
 | # | Rule | Behavior |
 |---|------|----------|
-| M1 | TODO state is visible when a session starts | One notice at `session.start` (in banner style, replacing any earlier band notices), from the catalog: `TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: <title>` (`counts.items`, `counts.by_status` `OPEN` / `PARTIAL` / `BLOCKED`, `counts.needs_decision`, the rank-1 title on one line, clipped to 60 characters; zero segments other than the total are left out). The start notice never carries drift: a report older than the session start is never shown. |
+| M1 | The next items are visible when a session starts | One notice at `session.start` (also after `/clear` or a resume): the first `todo.notice.items` catalog items by rank, one `<rank>  <title>` line each (the title on one line, clipped to 80 characters), then one status line: `✓ in sync` (theme color `success`) once a fresh report has no drift, `<N> out of sync` (`warning`) when it has drift, `sync checks unavailable` (dim) after the runner retry finds none, and no status line before any of these. A shorter catalog shows fewer lines; an unreadable one shows none. A view with no item line and no status shows nothing at all. A report older than the session start is never shown. |
 | M2 | The model sees drift without anyone pasting it | `TODO_SYNC drift=4 G2=1 P1=1 S5=1` on `prompt.submit` (rule ids sorted by letter, then number), attached only when it changed since the line last attached, and again after `/clear`, a resume or a main compaction. No line before a report newer than the session start; `TODO_SYNC unavailable` once when checks are unavailable. |
 | M3 | Changing a watched file re-checks within the turn | After a `Write`, `Edit`, `MultiEdit` or `NotebookEdit` call (`file_path`, or `notebook_path`) on a watched path (equal to the resolved TODO catalog, catalog schema or research catalog, or under `artifacts.research`, `artifacts.plans` or the snapshots folder; backslashes and a project-relative spelling accepted, case-insensitive on a Windows-style root), one check runs. After `Bash` / `PowerShell`, which name no path, the watched files and folders (and the folders' top-level entries, plus the entries one level under each `artifacts.research` subfolder) are stat-ed; a check runs only when one mtime is newer than the last check start (else the last report). Any other call spawns nothing. |
 | M3b | Edits made outside the session are re-checked too | The same mtime probe on `prompt.submit` and on the main `turn.complete`. |
-| M4 | New drift is noticed, old drift does not nag | A notice only when a new report's drift rises above the last toasted drift (`TODO sync drift 4 (+2): P1=1 S5=3`), and once when it reaches zero from non-zero (`TODO sync clean`). |
+| M4 | Sync changes never nag | A new report, a catalog edit or checks becoming unavailable only recompute the notice view: a shown band updates its lines and status in place. Nothing ever shows, re-shows or posts on its own after the session start. |
 | M5 | Full detail on demand | `/todo` prints the summary line (with ` · 4 out of sync`, ` · sync clean` and ` · gh 3d old` once a fresh report says so), the top-N table (`Rank \| Id \| Status \| Score \| Title`), then `sync drift N: <rules>` and each finding as `rule severity file:line subject: message (fix)`, or `sync clean`, `sync checks unavailable`, or `no report yet`. |
 | M6 | The summary needs no engine | The mod reads the TODO catalog itself; the catalog and the report are re-read only when their mtime moved (`$.fs.stat`). |
-| M7 | Notices show as the project chose | `todo.notice.style` `toast` (default): each notice is a toast with `timeoutMs` = `todo.notice.toast_seconds` x 1000; a click takes it off sooner, the pointer over it holds it. `banner`: the band above the prompt (`ui.render` on `AbovePrompt`) draws the newest 3 notices, oldest dim, with a Dismiss button after the newest; pressing it empties the band. The band yields to a survey and passes while empty, so in toast style it never draws. |
+| M7 | The notice shows as the project chose | `todo.notice.style` `banner` (default): the band above the prompt (`ui.render` on `AbovePrompt`) draws one live copy of the notice, each item line cut at the terminal edge, with a Dismiss button beside the status line (beside the last item line while there is no status). Dismiss hides it for the rest of the session; the next session start shows it again. `toast`: one toast at session start with the item lines (no sync status is known yet), its `timeoutMs` = `todo.notice.toast_seconds` x 1000 (a click takes it off sooner, the pointer over it holds it); later changes post nothing. The band yields to a survey and passes while hidden or empty, so in toast style it never draws. |
 
 ### Check runs
 
@@ -69,7 +70,7 @@ The harness SessionStart hook writes `<state_dir>/todo-sync/runner.json`:
 `{"schema_version": 1, "python", "script", "project", "report", "written_at"}`. The mod looks it up at
 `session.start`; when it is missing (or its `script` does not exist), it looks once more on the first
 `prompt.submit` or main `turn.complete`. Only after that retry also finds none does it report
-`sync checks unavailable` (on `/todo` and the context line; no notice). While the lookup is pending nothing
+`sync checks unavailable` (on `/todo`, the context line and a shown band's status line; no new notice). While the lookup is pending nothing
 says unavailable.
 
 A check runs `[python, script, "check", "--project", project]` through `$.process.run` with a 20 s cap,
@@ -96,13 +97,13 @@ pinned constants.
 
 | Hook | Does |
 |------|------|
-| `session.start` | Registers `/todo`, shows the catalog summary notice, looks up the runner pointer and schedules the first check. |
+| `session.start` | Registers `/todo`, shows the start notice, looks up the runner pointer and schedules the first check. |
 | `tool.call` on `Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit`, `NotebookEdit` | After the call returns, schedules the path gate or the mtime probe (M3). |
 | `turn.complete` (main loop) | The runner retry, then the catalog re-read and the mtime probe (M3b). |
 | `prompt.submit` | The runner retry, the report re-read, the probe, and the `TODO_SYNC` line (M2). |
 | `session.end`, `session.compact` | After `/clear`, a resume or a main compaction, the next prompt gets the line again. |
 | `command.run` on `todo` | Answers `/todo` while the mod registered it; otherwise passes the command on. |
-| `ui.render` on `AbovePrompt` | Draws the notices band with its Dismiss button (M7, banner style); passes while empty or under a survey. |
+| `ui.render` on `AbovePrompt` | Draws the notice band with its Dismiss button (M7, banner style); passes while hidden, empty or under a survey. |
 
 ## State
 
@@ -110,11 +111,11 @@ pinned constants.
 
 | Key | Meaning |
 |-----|---------|
-| `summary` | The catalog's counts and its top `todo.top_n` items, with the catalog mtime; null when unreadable. |
+| `summary` | The catalog's counts and its top `max(todo.top_n, todo.notice.items)` items, with the catalog mtime; null when unreadable. |
 | `report` | The latest report newer than the session start (drift, by rule, counts, issue cache time, findings, mtime). |
 | `lastContext` | The `TODO_SYNC` line last attached to a prompt. |
-| `lastToastDrift` | The drift last posted as a notice; null before any drift notice. |
-| `notices` | The band's notices, oldest first (at most 3; banner style only); emptied by Dismiss and at each session start. |
+| `notice` | The one live notice view (item lines, then the status text and tone), recomputed on every catalog, report or checks-status change; null at a session start. |
+| `isNoticeShown` | Whether the band draws the notice: set at session start (banner style, non-empty view), cleared by Dismiss and at the next session start. |
 
 ## Known limitations
 

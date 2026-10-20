@@ -107,7 +107,7 @@
         "catalog": {"$ref": "#/$defs/relPath", "description": "Ranked TODO catalog JSON (TodoCatalog shape), relative to folder."},
         "catalog_schema": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project schema rule T1 validates the catalog against (its declared draft), relative to folder; the default name is used when the file exists, else (or when null) the harness catalogs/TodoCatalog.schema.json. A name set here must exist."},
         "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\x5c]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
-        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the /todo summary table and the rendered snapshot. The start notice shows only the rank-1 title."},
+        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the /todo summary table and the rendered snapshot."},
         "snapshots": {
           "type": "object",
           "additionalProperties": false,
@@ -137,7 +137,7 @@
           "additionalProperties": false,
           "properties": {
             "repo": {"oneOf": [{"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"}, {"type": "null"}], "description": "owner/name the issue fetch reads; null: the origin remote. Phase 3: the fetch is not built yet, so no rule reads it today."},
-            "max_age_hours": {"type": "number", "exclusiveMinimum": 0, "description": "Issue cache age past which G5 warns (Phase 3; no G rule runs yet) and the /todo summary line shows the age. The start toast does not show it."}
+            "max_age_hours": {"type": "number", "exclusiveMinimum": 0, "description": "Issue cache age past which G5 warns (Phase 3; no G rule runs yet) and the /todo summary line shows the age. The start notice does not show it."}
           }
         },
         "rules": {
@@ -152,10 +152,11 @@
         "notice": {
           "type": "object",
           "additionalProperties": false,
-          "description": "How todo-watch shows its session-start summary and drift notices.",
+          "description": "How todo-watch shows its session-start notice: the top items by rank, one per line, then one sync status line. Sync changes update the status line of a shown band and never show the notice again.",
           "properties": {
             "style": {"enum": ["toast", "banner"], "description": "toast: a toast that leaves after toast_seconds (a click or the pointer over it also ends or holds it). banner: a band above the prompt, kept until its Dismiss button is pressed."},
-            "toast_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 60, "description": "Seconds a toast stays; 60 is the engine's ceiling. Unused with style banner."}
+            "toast_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 60, "description": "Seconds a toast stays; 60 is the engine's ceiling. Unused with style banner."},
+            "items": {"type": "integer", "minimum": 1, "maximum": 10, "description": "How many top TODO items, by rank, the todo-watch notice lists."}
           }
         }
       }

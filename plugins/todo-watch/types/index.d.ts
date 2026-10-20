@@ -20,7 +20,7 @@ export type TodoSummary = {
   blocked: number
   /** `counts.needs_decision`. */
   needsDecision: number
-  /** The first `todo.top_n` items by rank. */
+  /** The first `max(todo.top_n, todo.notice.items)` items by rank. */
   top: TodoRow[]
   /** The catalog's mtime when it was read. */
   mtimeMs: number
@@ -53,6 +53,12 @@ export type SyncReport = {
   mtimeMs: number
 }
 
+/** How the notice's status line reads: in sync, drifted, or checks unavailable. */
+export type NoticeTone = 'ok' | 'warn' | 'dim'
+
+/** The notice: the top items as `<rank>  <title>` lines, then the sync status; null status while unknown. */
+export type NoticeView = { items: string[]; status: { text: string; tone: NoticeTone } | null }
+
 declare module 'claude-code' {
   interface PluginState {
     'todo-watch': {
@@ -62,10 +68,10 @@ declare module 'claude-code' {
       report: SyncReport | null
       /** The TODO_SYNC line last attached to a prompt. */
       lastContext: string
-      /** The drift count last toasted; null before any drift toast. */
-      lastToastDrift: number | null
-      /** The band's notices, oldest first; empty once dismissed or at a session start. */
-      notices: string[]
+      /** The live notice view, recomputed on every catalog, report or checks-status change; null at a start. */
+      notice: NoticeView | null
+      /** Whether the band shows the notice: set at session start, cleared by Dismiss and the next start. */
+      isNoticeShown: boolean
     }
   }
 }

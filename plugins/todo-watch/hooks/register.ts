@@ -7,7 +7,7 @@ import { registerCommand, registerTodoCommand } from './command'
 const noop = (): undefined => undefined
 
 export const register: Register = on => {
-  // One session.start hook (the engine refuses two without a matcher): the command, then the summary notice.
+  // One session.start hook (the engine refuses two without a matcher): the command, then the start notice.
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await registerTodoCommand($).catch(noop)

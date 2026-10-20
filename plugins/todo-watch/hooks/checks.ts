@@ -7,17 +7,18 @@ import type {
 } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 
-import type { SyncFinding, SyncReport, TodoSummary } from '../types'
-import { clearNotices, postNotice } from './band'
+import type { NoticeView, SyncFinding, SyncReport, TodoSummary } from '../types'
+import { resetBand, setNoticeView, showBand } from './band'
 import { isAbsolute, syncDirOf, under, type TodoWatchConfig } from './config'
 import {
-  contextLineFor, driftToast, formatSummary, formatTodoBody, ghAgeText, parseCatalog, type SyncStatus,
+  contextLineFor, formatNotice, formatTodoBody, ghAgeText, isEmptyView, noticeText, parseCatalog,
+  type SyncStatus,
 } from './summary'
 import { resolveWatch, type Watch } from './watch'
 
 /**
- * Engine glue for todo-watch: the catalog summary notice, the runner pointer, gated and coalesced check
- * runs, the sync report (re-read only when its mtime moved), drift notices and the TODO_SYNC prompt line.
+ * Engine glue for todo-watch: the start notice and its live view, the runner pointer, gated and coalesced
+ * check runs, the sync report (re-read only when its mtime moved) and the TODO_SYNC prompt line.
  * Active only in a project whose `.claude/harness.json` sets `todo.folder` (./watch). Every host failure
  * degrades to showing nothing; no hook throws into a tool call, a prompt or a turn. Functions taking `$`
  * are function declarations: the engine follows `$` past an import only into one.
@@ -210,7 +211,6 @@ export const pathOfCall = (e: PathCall): string | undefined => {
 const summaryAtom = atom({ plugin: 'todo-watch', key: 'summary' } as const, null)
 const reportAtom = atom({ plugin: 'todo-watch', key: 'report' } as const, null)
 const lastContextAtom = atom({ plugin: 'todo-watch', key: 'lastContext' } as const, '')
-const lastToastAtom = atom({ plugin: 'todo-watch', key: 'lastToastDrift' } as const, null)
 
 /** Per-load session bookkeeping (a reload starts afresh; its `session.start` fires again). */
 const session = {
@@ -246,16 +246,30 @@ async function mtimeOf($: Dollar, path: string): Promise<number | undefined> {
 }
 
 /**
- * Shows `text` as `todo.notice.style` says: a toast for `todo.notice.toast_seconds` (a click takes it off
- * sooner, the pointer over it holds it), or a band notice kept until Dismiss. Never throws.
+ * Shows the start notice as `todo.notice.style` says: the band, kept until Dismiss with its view live, or one
+ * toast of the view as it stands for `todo.notice.toast_seconds` (a click takes it off sooner, the pointer
+ * over it holds it). An empty view shows nothing. Never throws.
  */
-async function showNotice($: Dollar, cfg: TodoWatchConfig, text: string): Promise<void> {
-  if (cfg.noticeStyle === 'banner') return postNotice($, text)
+async function showNotice($: Dollar, cfg: TodoWatchConfig, view: NoticeView): Promise<void> {
+  if (isEmptyView(view)) return
+  if (cfg.noticeStyle === 'banner') return showBand($)
   try {
-    void Promise.resolve($.ui.toast(text, { timeoutMs: cfg.toastMs })).catch(noop)
+    void Promise.resolve($.ui.toast(noticeText(view), { timeoutMs: cfg.toastMs })).catch(noop)
   } catch {
     // a surface that draws no toast
   }
+}
+
+/**
+ * Recomputes the notice view from the summary, the fresh report and the checks status, and stores it: a
+ * shown band follows it; nothing is shown again. Never throws.
+ */
+async function refreshView($: Dollar, w: Watch): Promise<NoticeView> {
+  const summary = await read($, summaryAtom).catch(() => null)
+  const report = await read($, reportAtom).catch(() => null)
+  const view = formatNotice(summary, report, session.status, w.cfg.noticeItems)
+  await setNoticeView($, view)
+  return view
 }
 
 /** Runs `fn` after the current dispatch, so no tool result or prompt waits on it. */
@@ -284,26 +298,27 @@ async function lookupRunner($: Dollar, w: Watch): Promise<Runner | undefined> {
 // ---------------------------------------------------------------------------
 // Catalog and report
 
-/** Re-reads the catalog when its mtime moved; an unreadable or malformed one clears the summary. */
+/**
+ * Re-reads the catalog when its mtime moved, keeping enough rows for `/todo` and the notice; an unreadable
+ * or malformed one clears the summary. A re-read recomputes the notice view.
+ */
 async function refreshCatalog($: Dollar, w: Watch): Promise<TodoSummary | null> {
   const path = under(w.root, w.cfg.catalog ?? '')
   const mtime = await mtimeOf($, path)
   if (mtime !== undefined && mtime === session.catalogMtime) return read($, summaryAtom)
   session.catalogMtime = mtime
   const text = mtime === undefined ? undefined : await readText($, path)
-  const summary = text === undefined ? null : (parseCatalog(text, w.cfg.topN, mtime ?? 0) ?? null)
+  const rows = Math.max(w.cfg.topN, w.cfg.noticeItems)
+  const summary = text === undefined ? null : (parseCatalog(text, rows, mtime ?? 0) ?? null)
   await update($, summaryAtom, () => summary)
+  await refreshView($, w)
   return summary
 }
 
-/** Stores a fresh report and raises the drift notice it owes, if any. */
+/** Stores a fresh report and recomputes the notice view; shows nothing. */
 async function applyReport($: Dollar, w: Watch, report: SyncReport): Promise<void> {
-  const previous = (await read($, reportAtom))?.drift ?? null
   await update($, reportAtom, () => report)
-  const owed = driftToast(report, await read($, lastToastAtom), previous)
-  if (owed === undefined) return
-  await update($, lastToastAtom, () => owed.toasted)
-  await showNotice($, w.cfg, owed.text)
+  await refreshView($, w)
 }
 
 /**
@@ -343,6 +358,7 @@ async function runCycle($: Dollar): Promise<void> {
   if (w === undefined || runner === undefined) return
   session.runner = runner
   session.status = 'found'
+  await refreshView($, w)
   session.lastCheckStart = await $.clock.now()
   pacing.isRunning = true
   const isOk = await runEngine($, runner)
@@ -410,8 +426,8 @@ async function probeWatched($: Dollar, w: Watch): Promise<void> {
 // ---------------------------------------------------------------------------
 // Session start and the runner retry
 
-/** Forgets the previous start's report and toast; the start time is now. */
-async function resetSession($: Dollar): Promise<void> {
+/** Forgets the previous start's report and band; the start time is now. */
+async function resetSession($: Dollar, w: Watch): Promise<void> {
   session.startedAtMs = await $.clock.now()
   session.status = 'pending'
   session.lookup = undefined
@@ -421,13 +437,13 @@ async function resetSession($: Dollar): Promise<void> {
   session.lastCheckStart = undefined
   session.isContextForced = true
   await update($, reportAtom, () => null).catch(noop)
-  await update($, lastToastAtom, () => null).catch(noop)
-  await clearNotices($)
+  await resetBand($)
+  await refreshView($, w)
 }
 
 /**
- * `session.start` (wired in ./register): the catalog-only summary notice, then the runner lookup and the
- * first check. Never throws.
+ * `session.start` (wired in ./register): the start notice (items, no status before a fresh report), then the
+ * runner lookup and the first check. Never throws.
  */
 export async function startSession($: Dollar): Promise<void> {
   await startWatch($).catch(noop)
@@ -436,13 +452,14 @@ export async function startSession($: Dollar): Promise<void> {
 async function startWatch($: Dollar): Promise<void> {
   const w = await resolveWatch($)
   if (w === undefined) return
-  await resetSession($)
-  const summary = await refreshCatalog($, w).catch(() => null)
-  if (summary !== null) await showNotice($, w.cfg, formatSummary(summary))
+  await resetSession($, w)
+  await refreshCatalog($, w).catch(noop)
+  await showNotice($, w.cfg, await refreshView($, w))
   const runner = await lookupRunner($, w).catch(noop)
   if (runner === undefined) return
   session.runner = runner
   session.status = 'found'
+  await refreshView($, w)
   later($, async () => requestCheck($))
 }
 
@@ -456,6 +473,7 @@ async function retryLookup($: Dollar, w: Watch): Promise<void> {
   if (!isFirst || session.status !== 'pending') return
   session.runner = runner
   session.status = runner === undefined ? 'unavailable' : 'found'
+  await refreshView($, w)
   if (runner !== undefined) later($, async () => requestCheck($))
 }
 
@@ -510,7 +528,7 @@ export async function todoText($: Dollar): Promise<string | undefined> {
   const now = await $.clock.now()
   const ghAge = report === null ? undefined : ghAgeText(report.ghFetchedAt, now, w.cfg.ghMaxAgeHours)
   const sync = report === null ? {} : { drift: report.drift, ghAge }
-  return formatTodoBody(summary, report, session.status, sync)
+  return formatTodoBody(summary, report, session.status, sync, w.cfg.topN)
 }
 
 // ---------------------------------------------------------------------------
