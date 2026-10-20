@@ -15,6 +15,14 @@ export const DEFAULT_SNAPSHOTS_DIR: string | null = 'Snapshots'
 export const DEFAULT_RESEARCH_CATALOG: string | null = 'ResearchImplementationCatalog.json'
 export const DEFAULT_GH_MAX_AGE_HOURS = 24
 export const DEFAULT_INJECT_CONTEXT = true
+export const DEFAULT_NOTICE_STYLE: NoticeStyle = 'toast'
+export const DEFAULT_TOAST_SECONDS = 60
+
+/** How a notice shows: a toast that leaves on a timer, or a band line kept until dismissed. */
+export type NoticeStyle = 'toast' | 'banner'
+const NOTICE_STYLES: readonly NoticeStyle[] = ['toast', 'banner']
+/** The engine's toast ceiling: its host check refuses a `timeoutMs` past 60000, and a toast has no sticky flag. */
+export const MAX_TOAST_SECONDS = 60
 
 /**
  * Project-relative POSIX paths and the TODO settings the watch reads; an absolute path is rejected by the
@@ -34,6 +42,9 @@ export type TodoWatchConfig = {
   researchCatalog: string | null
   ghMaxAgeHours: number
   injectContext: boolean
+  noticeStyle: NoticeStyle
+  /** How long a toast stays, in milliseconds. */
+  toastMs: number
 }
 
 type Json = Readonly<Record<string, unknown>>
@@ -60,6 +71,14 @@ const countOr = (v: unknown, fallback: number): number =>
 /** A finite number at or above zero; else the fallback. */
 const hoursOr = (v: unknown, fallback: number): number =>
   typeof v === 'number' && Number.isFinite(v) && v >= 0 ? v : fallback
+
+/** One of `NOTICE_STYLES`; else the fallback. */
+const styleOr = (v: unknown, fallback: NoticeStyle): NoticeStyle =>
+  NOTICE_STYLES.find(s => s === v) ?? fallback
+
+/** Seconds above zero and at most `MAX_TOAST_SECONDS`; else the fallback. */
+const toastSecondsOr = (v: unknown, fallback: number): number =>
+  typeof v === 'number' && v > 0 && v <= MAX_TOAST_SECONDS ? v : fallback
 
 const objectAt = (data: Json, key: string): Json => (isObject(data[key]) ? (data[key] as Json) : {})
 
@@ -113,6 +132,7 @@ export const readConfig = (text: string): TodoWatchConfig => {
   const data = parse(text)
   const artifacts = objectAt(data, 'artifacts')
   const todo = objectAt(data, 'todo')
+  const notice = objectAt(todo, 'notice')
   const inject = todo.inject_context
   const named = optionalPathOr(todo.folder, DEFAULT_FOLDER)
   const folder = named !== null && !isRooted(named) && insideRoot(inFolder(named, '.')) !== null ? named : null
@@ -128,6 +148,8 @@ export const readConfig = (text: string): TodoWatchConfig => {
     researchCatalog: todoPath(folder, optionalPathOr(objectAt(todo, 'research').catalog, DEFAULT_RESEARCH_CATALOG)),
     ghMaxAgeHours: hoursOr(objectAt(todo, 'gh').max_age_hours, DEFAULT_GH_MAX_AGE_HOURS),
     injectContext: typeof inject === 'boolean' ? inject : DEFAULT_INJECT_CONTEXT,
+    noticeStyle: styleOr(notice.style, DEFAULT_NOTICE_STYLE),
+    toastMs: Math.max(1, Math.round(toastSecondsOr(notice.toast_seconds, DEFAULT_TOAST_SECONDS) * 1000)),
   }
 }
 
