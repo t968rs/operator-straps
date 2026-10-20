@@ -2,7 +2,8 @@
 
 Shared by the harness plugin's pr-sum driver (``scripts/pr_sum.py``) and pr-review driver
 (``scripts/pr_review.py``). ``capture_pr`` fetches the PR head and the base side, takes the merge base of the
-head with the base tip, and lists the changed paths with their line counts. ``budgeted_diff`` renders the diff
+head with the base tip, and lists the changed paths with their line counts; on request it reads the local PR
+branch's HEAD and working tree in place of the committed PR head. ``budgeted_diff`` renders the diff
 of a chosen file set under a changed-line read budget and an output character budget; ``file_patches`` reads
 the per-file diffs it renders with one ``git diff`` per pathspec chunk. Test paths are recognized through the
 active harness configuration (``tests.roots`` / ``tests.file_pattern``).
@@ -17,7 +18,18 @@ from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
-from harness_lib.branch_capture import CaptureError, capture_paths, git_out, path_diff, render_section
+from harness_lib.branch_capture import (
+    CaptureError,
+    capture_paths,
+    current_branch,
+    file_lines,
+    git_out,
+    is_binary,
+    path_diff,
+    read_untracked,
+    render_section,
+    untracked_paths,
+)
 from harness_lib.commit_diff import DiffStat, cap_sections, parse_numstat_z, plan_reads
 from harness_lib.commit_grouping import CapturedPath
 from harness_lib.config import active
@@ -99,17 +111,40 @@ def _binary_paths(numstat: str) -> FrozenSet[str]:
     return frozenset(binary)
 
 
-def _numstat(repo: Path, merge_base: str, head: str) -> Tuple[Dict[str, DiffStat], FrozenSet[str]]:
-    """Changed-line counts per path and the binary paths, from one numstat read of merge_base..head."""
-    text = git_out(repo, "diff", "--numstat", "-M", "-z", merge_base, head)
+def _revs(merge_base: str, head: Optional[str]) -> List[str]:
+    """``git diff`` revisions: merge base against ``head``, or against the working tree when None."""
+    return [merge_base, head] if head else [merge_base]
+
+
+def _numstat(
+        repo: Path, merge_base: str, head: Optional[str],
+) -> Tuple[Dict[str, DiffStat], FrozenSet[str]]:
+    """Changed-line counts per path and the binary paths, from one numstat read of merge_base against
+    ``head`` (the working tree when None)."""
+    text = git_out(repo, "diff", "--numstat", "-M", "-z", *_revs(merge_base, head))
     return {s.path: s for s in parse_numstat_z(text)}, _binary_paths(text)
 
 
-def _pr_file(capture: CapturedPath, stats: Mapping[str, DiffStat], binary: FrozenSet[str]) -> PrFile:
+def _untracked_facts(repo: Path) -> Tuple[Dict[str, DiffStat], FrozenSet[str], FrozenSet[str]]:
+    """Untracked paths with their line counts as additions, the binary ones among them, and all of them."""
+    paths = untracked_paths(repo)
+    lines = {path: file_lines(repo, path) for path in paths}
+    stats = {path: DiffStat(path, len(text) if text is not None else 0, 0) for path, text in lines.items()}
+    binary = frozenset(p for p in paths if is_binary(read_untracked(repo, p) or b""))
+    return stats, binary, frozenset(paths)
+
+
+def _pr_file(
+        capture: CapturedPath, stats: Mapping[str, DiffStat], binary: FrozenSet[str],
+        untracked: FrozenSet[str] = frozenset(),
+) -> PrFile:
     """``PrFile`` for one captured path; statuses other than A/D/R read as modified."""
     stat = stats.get(capture.path, DiffStat(capture.path, 0, 0))
     status = capture.status if capture.status in _STATUSES else "M"
-    return PrFile(status, capture.path, capture.old_path, stat.added, stat.deleted, capture.path in binary)
+    return PrFile(
+        status, capture.path, capture.old_path, stat.added, stat.deleted, capture.path in binary,
+        capture.path in untracked,
+    )
 
 
 def _commit_lines(repo: Path, merge_base: str, head: str) -> Tuple[str, ...]:
@@ -118,17 +153,43 @@ def _commit_lines(repo: Path, merge_base: str, head: str) -> Tuple[str, ...]:
     return tuple(line for line in out.splitlines() if line.strip())
 
 
-def capture_pr(repo: Path, meta: PrMeta, fetch: bool = True, today: Optional[str] = None) -> PrFacts:
-    """Facts for the PR ``meta`` describes, from local git (fetching the base side and PR head first)."""
+def _head(repo: Path, meta: PrMeta, local: bool) -> Tuple[str, str]:
+    """(head SHA, source): the checkout's HEAD when ``local`` and it is on the PR branch, else the PR head."""
+    if local and current_branch(repo) == meta.head:
+        return git_out(repo, "rev-parse", "HEAD").strip(), "local"
+    return meta.head_sha, "remote"
+
+
+def _files(repo: Path, merge_base: str, head: Optional[str]) -> Tuple[PrFile, ...]:
+    """Changed files from merge_base to ``head``, or to the working tree plus untracked files when None."""
+    captures = capture_paths(repo, merge_base, head)
+    stats, binary = _numstat(repo, merge_base, head)
+    untracked: FrozenSet[str] = frozenset()
+    if head is None:
+        extra_stats, extra_binary, untracked = _untracked_facts(repo)
+        stats, binary = {**stats, **extra_stats}, binary | extra_binary
+    return tuple(_pr_file(c, stats, binary, untracked) for c in captures)
+
+
+def capture_pr(
+        repo: Path, meta: PrMeta, fetch: bool = True, today: Optional[str] = None, local: bool = False,
+        working_tree: bool = False,
+) -> PrFacts:
+    """Facts for the PR ``meta`` describes, from local git (fetching the base side and PR head first).
+
+    ``local`` reads the checked-out PR branch's HEAD in place of the PR head ``gh`` reports;
+    ``working_tree`` adds that checkout's staged, unstaged and untracked changes. Both apply only while the
+    PR branch is checked out; elsewhere the capture falls back to the committed PR head.
+    """
     if fetch:
         git_out(repo, "fetch", "origin", *meta.fetch_refs)
-    merge_base = git_out(repo, "merge-base", meta.base_tip, meta.head_sha).strip()
-    captures = capture_paths(repo, merge_base, meta.head_sha)
-    stats, binary = _numstat(repo, merge_base, meta.head_sha)
+    head_sha, source = _head(repo, meta, local)
+    working = working_tree and source == "local"
+    merge_base = git_out(repo, "merge-base", meta.base_tip, head_sha).strip()
     return PrFacts(
-        meta.number, meta.title, meta.head, meta.base, meta.head_sha, merge_base,
-        today or date.today().isoformat(), _commit_lines(repo, merge_base, meta.head_sha),
-        tuple(_pr_file(c, stats, binary) for c in captures),
+        meta.number, meta.title, meta.head, meta.base, head_sha, merge_base,
+        today or date.today().isoformat(), _commit_lines(repo, merge_base, head_sha),
+        _files(repo, merge_base, None if working else head_sha), source, working,
     )
 
 
@@ -173,15 +234,18 @@ def _sections(text: str) -> Dict[str, str]:
 def file_patches(repo: Path, facts: PrFacts, files: Sequence[PrFile]) -> Dict[str, str]:
     """Path -> its ``git diff -M merge_base head`` text, read with one ``git diff`` per pathspec chunk.
 
+    A working-tree capture diffs against the working tree, and an untracked file reads as all additions.
     A file whose section does not appear under ``_header`` (a quoted path, a non-default diff prefix, a
-    different rename pairing) is read on its own with ``path_diff``, so each value equals that read.
+    different rename pairing, an untracked file) is read on its own with ``path_diff``, so each value
+    equals that read.
     """
+    head = None if facts.working_tree else facts.head_sha
     sections: Dict[str, str] = {}
-    for chunk in _pathspec_chunks(files):
-        diff = git_out(repo, "diff", "-M", facts.merge_base, facts.head_sha, "--", *chunk)
+    for chunk in _pathspec_chunks([f for f in files if not f.untracked]):
+        diff = git_out(repo, "diff", "-M", *_revs(facts.merge_base, head), "--", *chunk)
         sections.update(_sections(diff))
     return {f.path: sections[_header(f)] if _header(f) in sections
-            else path_diff(repo, facts.merge_base, f.path, f.old_path, False, facts.head_sha) for f in files}
+            else path_diff(repo, facts.merge_base, f.path, f.old_path, f.untracked, head) for f in files}
 
 
 def budgeted_diff(
