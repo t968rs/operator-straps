@@ -100,6 +100,7 @@ def _todo_args(root: Path, *args: str) -> List[str]:
 CASES = {
     "todo_sync check": lambda r, t: (_todo_args(r, "check"), None),
     "todo_sync render": lambda r, t: (_todo_args(r, "render", "--date", "2026-10-21"), None),
+    "todo_sync retire": lambda r, t: (_todo_args(r, "retire", "1"), None),
     "todo_sync session hook": lambda r, t: (["hooks/todo_sync_session.py"],
                                             {"cwd": str(_todo_project(r)), "source": "startup"}),
     "merge-commit": lambda r, t: (_merge_body_args(r), None),

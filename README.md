@@ -167,6 +167,11 @@ TODO sync needs only `todo.folder`. With it set, the catalog is `<folder>/RepoTo
 used when they exist (a name set explicitly must exist); stubs are `_IMPL_TODO.md` files under `artifacts.research`. Set a key below only to depart
 from that layout.
 
+Finished items leave the catalog through `todo_sync.py retire ID [ID ...] [--dry-run]`: ids follow rank (rule T6),
+so it renumbers the rest, rescores, recounts and rewrites moved ids in the research catalog and stubs, then lists
+what the catalog cannot record by itself (issues to add as close candidates, trackers to revisit, and other files
+naming a TODO id).
+
 | Key | Default | Used by |
 |---|---|---|
 | `base_branch` | `origin/HEAD`, else `main` | merge bases, `d-w`, `pr-review-watch` |
