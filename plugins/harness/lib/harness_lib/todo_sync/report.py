@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -153,9 +154,33 @@ def gh_cell(item: Dict[str, Any]) -> str:
     return "none"
 
 
-def _table_row(item: Dict[str, Any]) -> List[str]:
+_LINK_ESCAPES = str.maketrans({"[": "\\[", "]": "\\]", "(": "\\(", ")": "\\)"})
+_CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
+
+
+def _escape_links(text: str) -> str:
+    """``text`` with ``[ ] ( )`` backslash-escaped outside code spans; code spans stay verbatim."""
+    out: List[str] = []
+    pos = 0
+    for span in _CODE_SPAN.finditer(text):
+        out += [text[pos:span.start()].translate(_LINK_ESCAPES), span.group(0)]
+        pos = span.end()
+    out.append(text[pos:].translate(_LINK_ESCAPES))
+    return "".join(out)
+
+
+def _item_cell(item: Dict[str, Any], targets: Sequence[str]) -> str:
+    """``id title``, or ``[id](t1) title [2](t2) ...`` with the title unable to form a link."""
+    if not targets:
+        return _cell(f"{item.get('id', '')} {item.get('title', '')}")
+    title = _escape_links(_cell(item.get("title", "")))
+    extra = "".join(f" [{n}]({t})" for n, t in enumerate(targets[1:], 2))
+    return f"[{item.get('id', '')}]({targets[0]}) {title}{extra}"
+
+
+def _table_row(item: Dict[str, Any], targets: Sequence[str] = ()) -> List[str]:
     score = (item.get("priority") or {}).get("score")
-    return [str(item.get("rank", "")), _cell(f"{item.get('id', '')} {item.get('title', '')}"),
+    return [str(item.get("rank", "")), _item_cell(item, targets),
             _cell(item.get("kind")), _cell((item.get("blast_radius") or {}).get("level")),
             _cell((item.get("loe") or {}).get("size")), "" if score is None else f"{score:.2f}",
             gh_cell(item)]
@@ -171,8 +196,12 @@ def aligned_table(head: Sequence[str], rows: Sequence[Sequence[str]]) -> List[st
     return [fmt(head), "|" + "|".join("-" * (w + 2) for w in widths) + "|", *(fmt(r) for r in rows)]
 
 
-def snapshot_markdown(header: str, top: Sequence[Dict[str, Any]], top_n: int, rendered: str) -> str:
-    """The whole snapshot file: header line, title and the top-N table."""
+def snapshot_markdown(header: str, top: Sequence[Dict[str, Any]], top_n: int, rendered: str,
+                      links: Optional[Sequence[Sequence[str]]] = None) -> str:
+    """The whole snapshot file: header line, title and the top-N table; ``links[k]`` holds the stub link
+    targets of row ``top[k]`` (by position, so rows sharing an id never share links)."""
     head = ["Rank", "Item", "Kind", "Blast", "LoE", "Score", "GH"]
-    table = aligned_table(head, [_table_row(i) for i in top])
+    targets = list(links or [])
+    rows = [_table_row(item, targets[k] if k < len(targets) else ()) for k, item in enumerate(top)]
+    table = aligned_table(head, rows)
     return "\n".join([header, "", f"# TODO Snapshot: Top {top_n} ({rendered})", "", *table]) + "\n"

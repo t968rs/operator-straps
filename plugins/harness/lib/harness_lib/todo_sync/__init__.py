@@ -17,7 +17,7 @@ import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from harness_lib.config import HarnessConfig
 from harness_lib.project import plugin_root
@@ -27,6 +27,7 @@ from harness_lib.todo_sync import rules_todo as rt
 from harness_lib.todo_sync.report import (Finding, Report, snapshot_header, snapshot_markdown, write_atomic,
                                           write_report)
 from harness_lib.todo_sync.sources import JsonFile, Sources, posix, read_json, rows_sha256, top_items
+from harness_lib.todo_sync.stub_links import item_stubs, link_target
 
 __all__ = ["RULES", "RULE_IDS", "Report", "TodoSyncError", "check", "render_snapshot", "report_path",
            "runner_path", "write_report", "write_runner"]
@@ -174,8 +175,17 @@ def render_snapshot(cfg: HarnessConfig, date: dt.date) -> Path:
     items = [i for i in catalog.data.get("items") or [] if isinstance(i, dict)]
     rendered = date.isoformat()
     header = snapshot_header(posix(todo.catalog), todo.top_n, rows_sha256(items, todo.top_n), rendered)
-    text = snapshot_markdown(header, top_items(items, todo.top_n), todo.top_n, rendered)
+    top = top_items(items, todo.top_n)
+    text = snapshot_markdown(header, top, todo.top_n, rendered, _stub_links(cfg, top))
     return write_atomic(cfg.path(todo.snapshots.dir) / name, text)
+
+
+def _stub_links(cfg: HarnessConfig, top: List[Dict[str, Any]]) -> List[List[str]]:
+    """Stub link targets per row of ``top`` (relative to ``todo.snapshots.dir``); a row whose id is not a
+    string gets none."""
+    src = Sources(cfg)
+    return [[link_target(s, cfg.todo.snapshots.dir) for s in item_stubs(src, item)]
+            if isinstance(item.get("id"), str) else [] for item in top]
 
 
 def write_runner(cfg: HarnessConfig) -> Path:
