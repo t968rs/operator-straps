@@ -6,6 +6,7 @@
   "schemas_dir": ".claude/agent-schemas",
   "state_dir": ".claude/state/harness",
   "matrix_path": "docs/_harness/pr_review_invocation_test_matrix.jsonl",
+  "agent_usage_path": "docs/_harness/pr_review_agent_usage.jsonl",
   "exclusions": null,
   "artifacts": {
     "reviews": "docs/PR_REVIEWS",
@@ -36,7 +37,7 @@
     "domain_pointers": []
   },
   "commit_buckets": [
-    {"bucket": "Artifact", "prefixes": ["docs/PR_REVIEWS/", "docs/PR_SUMMARIES/"], "names": [], "suffixes": ["matrix.jsonl"]},
+    {"bucket": "Artifact", "prefixes": ["docs/PR_REVIEWS/", "docs/PR_SUMMARIES/"], "names": [], "suffixes": ["matrix.jsonl", "agent_usage.jsonl"]},
     {"bucket": "Planning", "prefixes": ["docs/superpowers/", "docs/PLANS/"], "names": ["CLAUDE.md", "DesignEvolution.json"], "suffixes": []},
     {"bucket": "Agent", "prefixes": [".claude/"], "names": [], "suffixes": []},
     {"bucket": "Cicd", "prefixes": [".github/workflows/"], "names": [], "suffixes": []},

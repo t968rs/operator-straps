@@ -159,6 +159,7 @@ class HarnessConfig:
     schemas_dir: str
     state_dir: str
     matrix_path: str
+    agent_usage_path: str
     exclusions: Optional[str]
     artifacts: Artifacts
     tests: TestsConfig
@@ -283,7 +284,8 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         project_root=root, source=source, harness_version=m["harness_version"], base_branch=m["base_branch"],
         integration_branches=tuple(m["integration_branches"]), skills_dir=m["skills_dir"],
         schemas_dir=m["schemas_dir"], state_dir=m["state_dir"], matrix_path=m["matrix_path"],
-        exclusions=m["exclusions"], artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
+        agent_usage_path=m["agent_usage_path"], exclusions=m["exclusions"],
+        artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
         auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
         runlogs=_runlogs(m["runlogs"]), todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),

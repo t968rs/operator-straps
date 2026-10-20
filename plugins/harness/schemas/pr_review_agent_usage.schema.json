@@ -1,0 +1,142 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/pr_review_agent_usage.schema.json",
+  "title": "PR Review Agent Usage",
+  "description": "One row per completed review-agent dispatch (pr-review and pr-team: reviewer, fixer, orchestrator, planner, closer), written by the pr-review-watch mod when the agent returns. Records who ran (role, subagent_type, model), its cost (tokens, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "logged_at",
+    "run_id",
+    "pr",
+    "skill",
+    "role",
+    "agent_id",
+    "subagent_type",
+    "model",
+    "model_family",
+    "effort",
+    "tokens",
+    "tool_uses",
+    "duration_s",
+    "signal",
+    "notes"
+  ],
+  "properties": {
+    "logged_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$",
+      "description": "ISO-8601 UTC time the row was built."
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The dispatch's RUN_ID (`pr<N>_<UTC yyyymmddTHHMMSSZ>`); groups the rows of one run."
+    },
+    "pr": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "PR number under review, not zero-padded; null when the run names none."
+    },
+    "skill": {
+      "type": "string",
+      "enum": ["pr-review", "pr-team"],
+      "description": "The skill that dispatched the run."
+    },
+    "role": {
+      "type": "string",
+      "enum": ["reviewer", "fixer", "orchestrator", "planner", "closer"],
+      "description": "The tracked role. A roast is a reviewer; `subagent_type` or `agent_id` tells it apart."
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Slot id from the dispatch plan, or `orchestrator_plan` / `orchestrator_consolidate` / `fixer_plan` / `closer`."
+    },
+    "subagent_type": {
+      "type": ["string", "null"],
+      "description": "The Agent call's `subagent_type`; null when the call named none."
+    },
+    "model": {
+      "type": ["string", "null"],
+      "description": "Full model id: the engine-resolved model, else the requested one; null when neither is known."
+    },
+    "model_family": {
+      "type": "string",
+      "enum": ["haiku", "sonnet", "opus", "unknown"],
+      "description": "The family token found in `model`; `unknown` when it holds none (or `model` is null)."
+    },
+    "effort": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Requested effort, else `default`."
+    },
+    "tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Input + output + cache read + cache creation tokens, as the engine reports them; 0 when unmeasured."
+    },
+    "tool_uses": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tool calls the agent made."
+    },
+    "duration_s": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Wall-clock duration in seconds (milliseconds / 1000)."
+    },
+    "signal": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The return block's SIGNAL; `NO_BLOCK` when the agent returned without one; `ERROR` for an errored Agent result."
+    },
+    "notes": {
+      "type": "string",
+      "description": "`pr-review-watch auto row; <role> <signal>`, plus `; usage not measured` when the engine reported no usage, or `; usage not measured; agent errored` for an errored result."
+    },
+    "issues_assigned": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Fixer and closer rows only. Issue ids the fixer was assigned (pr-review: its `issue_ids` in the run's waves.json); null when unknown."
+    },
+    "issues_fixed": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Fixer and closer rows only. Issues fixed (pr-review: the report's `fixed`; pr-team: the block's FIXED ids); null when unknown."
+    },
+    "issues_bubbled": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Fixer and closer rows only. Issues bubbled (pr-review: the report's `bubbled`; pr-team: the block's BUBBLED ids); null when unknown."
+    },
+    "files_touched": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Fixer and closer rows only. Distinct files edited (pr-review: `files` across the report's `fixed` entries; pr-team: the block's EDITED count); null when unknown."
+    }
+  },
+  "if": {
+    "properties": {
+      "role": {
+        "enum": ["fixer", "closer"]
+      }
+    },
+    "required": ["role"]
+  },
+  "then": {
+    "description": "Fixer and closer rows carry the four outcome counts (null when unknown).",
+    "required": ["issues_assigned", "issues_fixed", "issues_bubbled", "files_touched"]
+  },
+  "else": {
+    "description": "Every other role carries none of the outcome counts.",
+    "not": {
+      "anyOf": [
+        {"required": ["issues_assigned"]},
+        {"required": ["issues_fixed"]},
+        {"required": ["issues_bubbled"]},
+        {"required": ["files_touched"]}
+      ]
+    }
+  }
+}

@@ -181,6 +181,7 @@ prose that named a moved id.
 | `base_branch` | `origin/HEAD`, else `main` | merge bases, `d-w`, `pr-review-watch` |
 | `integration_branches` | base branch + `main` | `d-w` (fetch-and-cut targets) |
 | `state_dir` | `.claude/state/harness` | Phase 5 sentinels, pr-team runtime (gitignore it) |
+| `agent_usage_path` | `docs/_harness/pr_review_agent_usage.jsonl` | `pr-review-watch` (one usage row per review-agent dispatch: model, tokens, runtime, fixer counts) |
 | `artifacts.*` | `docs/PR_REVIEWS`, `docs/PLANS`, ... | review, plan, summary and commit-message output |
 | `tests.*` | `tests/`, common test-file pattern | review bucketing, commit grouping |
 | `tests.timings` | `null` | pr-review fixer briefs: a JSON report whose `tests` rows carry `file` (repo-relative POSIX, spelled exactly as the registry entry's `file`) and `duration` (seconds), summed per file; missing or unreadable means no runtime deferral. Stock pytest JSON reports key rows by nodeid with per-phase durations and do not match |

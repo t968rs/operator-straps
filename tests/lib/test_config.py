@@ -45,6 +45,11 @@ def test_defaults_without_harness_json(make_project) -> None:
     assert [r.bucket for r in cfg.commit_buckets][:2] == ["Artifact", "Planning"]
 
 
+def test_agent_usage_path_default_and_override(make_project) -> None:
+    assert load_config(make_project()).agent_usage_path == "docs/_harness/pr_review_agent_usage.jsonl"
+    assert load_config(make_project({"agent_usage_path": "meta/u.jsonl"})).agent_usage_path == "meta/u.jsonl"
+
+
 def test_objects_merge_key_by_key_and_arrays_replace(make_project) -> None:
     root = make_project({"artifacts": {"reviews": "x/reviews"}, "tests": {"roots": ["t/"]}})
     cfg = load_config(root)

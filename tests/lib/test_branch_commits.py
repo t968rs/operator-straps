@@ -178,6 +178,8 @@ class TestGenericDefaults:
         ("CLAUDE.md", Bucket.PLANNING),
         ("docs/superpowers/plans/x.md", Bucket.PLANNING),
         ("docs/PR_REVIEWS/1_x.json", Bucket.ARTIFACT),
+        ("docs/_harness/pr_review_agent_usage.jsonl", Bucket.ARTIFACT),
+        ("docs/_harness/pr_review_invocation_test_matrix.jsonl", Bucket.ARTIFACT),
         ("docs/guide.md", Bucket.DOCS),
         ("README.md", Bucket.DOCS),
         ("scripts/fpm/a.py", Bucket.OTHER),
