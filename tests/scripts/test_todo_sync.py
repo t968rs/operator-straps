@@ -249,3 +249,65 @@ def test_retire_unknown_id_is_a_problem(clean: Path) -> None:
 def test_retire_needs_the_feature_on(make_project) -> None:
     done = _run(["retire", "1"], make_project({}))
     assert done.returncode == 2 and "retire needs todo.folder" in done.stderr
+
+
+def _spec(root: Path, parts: list) -> Path:
+    path = root / "split_spec.json"
+    path.write_text(json.dumps({"parts": parts}), encoding="utf-8")
+    return path
+
+
+LOADER_PARTS = [{"title": "Split the loader reads", "loe": {"size": "XS", "reasoning": "One function."}},
+                {"title": "Split the loader writes"}]
+
+
+def test_split_renumbers_rewrites_companions_and_flags_prose(retiring: Path) -> None:
+    done = _run(["split", "2", "--spec", str(_spec(retiring, LOADER_PARTS))], retiring)
+    assert done.returncode == 0, done.stderr
+    lines = done.stdout.splitlines()
+    assert lines[0] == "split TODO-002 into TODO-002, TODO-003; 4 item(s) now"
+    assert "renumbered 1 item(s): TODO-003->TODO-004" in lines
+    assert f"rewrote ids in {STUB_REL}" in lines
+    assert f"review: {RESEARCH_REL}:2 names split TODO-002, now TODO-002 (first part)" in lines
+    assert f"reference (not rewritten): {NOTES_REL}:1:See TODO-003." in lines
+    assert _catalog_ids(retiring) == ["TODO-001", "TODO-002", "TODO-003", "TODO-004"]
+    assert "tracks the rest as TODO-004." in (retiring / STUB_REL).read_text(encoding="utf-8")
+    check = _run(["check", "--rules", "T1,T3,T4,T5,T6,T7,T8,T9,T10"], retiring)
+    assert check.returncode == 0 and _report(retiring)["findings"] == []
+
+
+def test_split_dry_run_writes_nothing(retiring: Path) -> None:
+    before = {rel: (retiring / rel).read_bytes() for rel in (CATALOG_REL, STUB_REL, RESEARCH_REL)}
+    done = _run(["split", "--dry-run", "2", "--spec", str(_spec(retiring, LOADER_PARTS))], retiring)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.startswith("would split TODO-002 into TODO-002, TODO-003; 4 item(s) now")
+    assert {rel: (retiring / rel).read_bytes() for rel in before} == before
+
+
+def test_split_bad_spec_is_a_problem(clean: Path) -> None:
+    done = _run(["split", "2", "--spec", str(_spec(clean, [{"title": "alone"}]))], clean)
+    assert done.returncode == 2
+    assert done.stderr.strip() == "problem: a split needs at least two parts"
+
+
+def test_refresh_reorders_after_a_hand_edit(retiring: Path) -> None:
+    path = retiring / CATALOG_REL
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["items"][2].update(severity=5, impact="silent_wrong_output")
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    done = _run(["refresh"], retiring)
+    assert done.returncode == 0, done.stderr
+    lines = done.stdout.splitlines()
+    assert lines[:3] == ["refreshed 3 item(s)", "rescored 1 item(s): TODO-002",
+                         "renumbered 2 item(s): TODO-002->TODO-003, TODO-003->TODO-002"]
+    assert "tracks the rest as TODO-002." in (retiring / STUB_REL).read_text(encoding="utf-8")
+    check = _run(["check", "--rules", "T1,T6,T7,T8,T9,T10"], retiring)
+    assert check.returncode == 0 and _report(retiring)["findings"] == []
+
+
+def test_refresh_of_a_ranked_catalog_writes_nothing(clean: Path) -> None:
+    before = (clean / CATALOG_REL).read_bytes()
+    done = _run(["refresh"], clean)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.splitlines() == ["refreshed 3 item(s)", "nothing changed"]
+    assert (clean / CATALOG_REL).read_bytes() == before

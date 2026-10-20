@@ -65,7 +65,7 @@ def retire_items(catalog: Dict[str, Any], ids: Iterable[str]) -> Retirement:
     data = _rewrite_catalog(data, moved, gone, dangling)
     for n, item in enumerate(data["items"], 1):
         item["rank"] = n
-    data["counts"] = _counts(data.get("counts"), data, retired)
+    data["counts"] = recount(data.get("counts"), data, retired)
     listed = {c.get("number") for c in data.get("close_candidates") or [] if isinstance(c, dict)}
     issues = {n for i in retired for n in i.get("gh_issues") or []} - listed
     trackers = {i["tracker"] for i in retired if i.get("tracker") is not None}
@@ -125,17 +125,18 @@ def _rewrite_catalog(data: Dict[str, Any], moved: Dict[str, str], gone: Set[str]
     out: Dict[str, Any] = {}
     for key, value in data.items():
         if key == "items":
-            out[key] = [_walk(item, f"items/{todo_id(n)}", sub) for n, item in enumerate(value, 1)]
+            out[key] = [walk_strings(item, f"items/{todo_id(n)}", sub) for n, item in enumerate(value, 1)]
         else:
-            out[key] = _walk(value, key, sub)
+            out[key] = walk_strings(value, key, sub)
     return out
 
 
-def _walk(obj: Any, where: str, sub: Callable[[str, str], str]) -> Any:
+def walk_strings(obj: Any, where: str, sub: Callable[[str, str], str]) -> Any:
+    """A copy of ``obj`` with every string passed through ``sub(text, json_path)``."""
     if isinstance(obj, dict):
-        return {k: _walk(v, f"{where}/{k}", sub) for k, v in obj.items()}
+        return {k: walk_strings(v, f"{where}/{k}", sub) for k, v in obj.items()}
     if isinstance(obj, list):
-        return [_walk(v, f"{where}/{n}", sub) for n, v in enumerate(obj)]
+        return [walk_strings(v, f"{where}/{n}", sub) for n, v in enumerate(obj)]
     return sub(obj, where) if isinstance(obj, str) else obj
 
 
@@ -144,7 +145,7 @@ def remap_text(text: str, renames: Dict[str, str]) -> str:
     return ID_RE.sub(lambda m: renames.get(m.group(0), m.group(0)), text)
 
 
-def _counts(stored: Any, data: Dict[str, Any], retired: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+def recount(stored: Any, data: Dict[str, Any], retired: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
     """``counts`` retallied; the untallied ``sources_absorbed`` and ``merged_items`` lose the retired
     items."""
     out = dict(stored) if isinstance(stored, dict) else {}
@@ -183,27 +184,43 @@ class RetireResult:
 
 def apply_retirement(cfg: HarnessConfig, ids: Iterable[str], dry_run: bool = False) -> RetireResult:
     """Retire ``ids`` in the project's catalog and rewrite moved ids in the research catalog and stubs."""
+    raw, data = load_catalog(cfg, "retire")
+    out = retire_items(data, ids)
+    notes = {str(i.get("id")): f"names retired {i.get('id')}" for i in out.retired}
+    edits, dangling = companion_edits(cfg, out.renames, notes)
+    if not dry_run:
+        write_edits(cfg, dump_like(out.catalog, raw), edits)
+    refs = other_references(cfg, edits) if out.renames else ()
+    return RetireResult(out, len(out.catalog["items"]), tuple(edits), (*out.dangling, *dangling), refs)
+
+
+def load_catalog(cfg: HarnessConfig, verb: str) -> Tuple[str, Dict[str, Any]]:
+    """``(raw text, parsed object)`` of the project's catalog; ``verb`` names the caller in errors."""
     if not cfg.todo.catalog:
-        raise TodoSyncError("retire needs todo.folder")
-    catalog_path = cfg.path(cfg.todo.catalog)
+        raise TodoSyncError(f"{verb} needs todo.folder")
     try:
-        raw = catalog_path.read_bytes().decode("utf-8")
+        raw = cfg.path(cfg.todo.catalog).read_bytes().decode("utf-8")
         data = json.loads(raw)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise TodoSyncError(f"{posix(cfg.todo.catalog)}: unparseable: {exc}") from exc
     if not isinstance(data, dict):
         raise TodoSyncError(f"{posix(cfg.todo.catalog)}: top level is not an object")
-    out = retire_items(data, ids)
-    edits, dangling = _companion_edits(cfg, out)
-    if not dry_run:
-        write_atomic(catalog_path, dump_like(out.catalog, raw))
-        for rel, text in edits.items():
-            cfg.path(rel).write_bytes(text.encode("utf-8"))
-    skip = [posix(cfg.todo.catalog), *edits, *_companions(cfg)]
+    return raw, data
+
+
+def write_edits(cfg: HarnessConfig, catalog_text: str, edits: Dict[str, str]) -> None:
+    """Write the catalog atomically, then each rewritten companion."""
+    write_atomic(cfg.path(cfg.todo.catalog), catalog_text)
+    for rel, text in edits.items():
+        cfg.path(rel).write_bytes(text.encode("utf-8"))
+
+
+def other_references(cfg: HarnessConfig, edited: Iterable[str]) -> Tuple[str, ...]:
+    """Lines naming a TODO id outside the catalog, its companions, ``edited`` and the snapshots."""
+    skip = [posix(cfg.todo.catalog), *edited, *_companions(cfg)]
     if cfg.todo.snapshots.dir:
         skip.append(posix(cfg.todo.snapshots.dir))
-    refs = _references(cfg, skip) if out.renames else ()
-    return RetireResult(out, len(out.catalog["items"]), tuple(edits), (*out.dangling, *dangling), refs)
+    return _references(cfg, skip)
 
 
 def dump_like(data: Dict[str, Any], raw: str) -> str:
@@ -228,20 +245,21 @@ def _companions(cfg: HarnessConfig) -> List[str]:
     return rels
 
 
-def _companion_edits(cfg: HarnessConfig, out: Retirement) -> Tuple[Dict[str, str], List[str]]:
-    """``(rel -> rewritten text, dangling notes)`` for the companions whose ids move."""
-    gone = {str(i.get("id")) for i in out.retired}
+def companion_edits(cfg: HarnessConfig, renames: Dict[str, str],
+                    notes: Dict[str, str]) -> Tuple[Dict[str, str], List[str]]:
+    """``(rel -> rewritten text, notes)`` for the companions whose ids move; each line naming an id in
+    ``notes`` adds ``<rel>:<line> <note>``."""
     edits: Dict[str, str] = {}
-    dangling: List[str] = []
+    noted: List[str] = []
     for rel in _companions(cfg):
         text = cfg.path(rel).read_bytes().decode("utf-8", errors="replace")
         for n, line in enumerate(text.splitlines(), 1):
-            hits = sorted(set(ID_RE.findall(line)) & gone)
-            dangling.extend(f"{rel}:{n} names retired {hit}" for hit in hits)
-        new = remap_text(text, out.renames)
+            hits = sorted(set(ID_RE.findall(line)) & set(notes))
+            noted.extend(f"{rel}:{n} {notes[hit]}" for hit in hits)
+        new = remap_text(text, renames)
         if new != text:
             edits[rel] = new
-    return edits, dangling
+    return edits, noted
 
 
 REFERENCE_CAP = 30

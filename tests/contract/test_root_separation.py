@@ -97,10 +97,29 @@ def _todo_args(root: Path, *args: str) -> List[str]:
     return ["scripts/todo_sync.py", "--project", str(_todo_project(root)), *args]
 
 
+def _split_args(root: Path, tmp: Path) -> List[str]:
+    """A split of TODO-002 into two parts, its spec outside the project."""
+    spec = tmp / "split_spec.json"
+    spec.write_text(json.dumps({"parts": [{"title": "Part one"}, {"title": "Part two"}]}), encoding="utf-8")
+    return _todo_args(root, "split", "2", "--spec", str(spec))
+
+
+def _refresh_args(root: Path) -> List[str]:
+    """A refresh after a hand edit that moves TODO-003 above TODO-002, so it rewrites the catalog."""
+    args = _todo_args(root, "refresh")
+    path = root / "docs/RESEARCH/_TODO/RepoToDo.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["items"][2].update(severity=5, impact="silent_wrong_output")
+    path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+    return args
+
+
 CASES = {
     "todo_sync check": lambda r, t: (_todo_args(r, "check"), None),
     "todo_sync render": lambda r, t: (_todo_args(r, "render", "--date", "2026-10-21"), None),
     "todo_sync retire": lambda r, t: (_todo_args(r, "retire", "1"), None),
+    "todo_sync split": lambda r, t: (_split_args(r, t), None),
+    "todo_sync refresh": lambda r, t: (_refresh_args(r), None),
     "todo_sync session hook": lambda r, t: (["hooks/todo_sync_session.py"],
                                             {"cwd": str(_todo_project(r)), "source": "startup"}),
     "merge-commit": lambda r, t: (_merge_body_args(r), None),

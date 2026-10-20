@@ -1,5 +1,5 @@
 """todo_sync driver: check a project's TODO, research and plan artifacts for drift, render the snapshot,
-write the runner pointer.
+write the runner pointer, and retire, split or re-rank catalog items.
 
 ``check [--format summary|json|markdown] [--out PATH] [--rules S1,S2] [--fail-on error|warn]``
     Run the rule catalog and write the report (``TodoSyncReport.schema.json``) atomically to ``--out`` or
@@ -21,6 +21,15 @@ write the runner pointer.
     catalog and stubs. Prints the follow-up the catalog cannot record by itself: resolved issues to list
     as close candidates, trackers to revisit, prose still naming a retired id, and other files naming a
     TODO id (not rewritten). ``--dry-run`` prints the same report and writes nothing.
+``split ID --spec PATH [--dry-run]``
+    Replace one item with the parts in the spec file (``{"parts": [{...}, {...}]}``, each a set of field
+    overrides laid over a copy of the item; ``title`` required, ``id`` / ``rank`` / ``priority`` refused).
+    Parts inherit the item's links, tracker and close candidates; then rescore, renumber, recount and
+    rewrite moved ids as ``retire`` does. Prose naming the split id is pointed at the first part and
+    listed under ``review:``.
+``refresh [--dry-run]``
+    Rescore every item from ``ranking_method``, re-sort, renumber, recount and rewrite moved ids, after hand
+    edits to item fields. A catalog already in order is left untouched.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
 ``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or a
@@ -42,6 +51,8 @@ from harness_lib.project import project_root  # noqa: E402
 from harness_lib.todo_sync import (TodoSyncError, check, render_snapshot, report_path,  # noqa: E402
                                    write_report, write_runner)
 from harness_lib.todo_sync.report import Report, format_markdown, format_summary  # noqa: E402
+from harness_lib.todo_sync.reshape import apply_refresh, apply_split  # noqa: E402
+from harness_lib.todo_sync.reshape import summary_lines as reshape_lines  # noqa: E402
 from harness_lib.todo_sync.retire import apply_retirement, summary_lines  # noqa: E402
 
 INACTIVE = "todo sync inactive (todo.folder is null)"
@@ -76,6 +87,12 @@ def _parser() -> argparse.ArgumentParser:
     ret = sub.add_parser("retire", parents=[common], help="Remove finished items and renumber the rest.")
     ret.add_argument("ids", nargs="+", help="Item ids: TODO-007, 007 or 7.")
     ret.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
+    spl = sub.add_parser("split", parents=[common], help="Replace one item with parts and renumber.")
+    spl.add_argument("id", help="Item id: TODO-007, 007 or 7.")
+    spl.add_argument("--spec", type=Path, required=True, help='JSON file: {"parts": [{...}, {...}]}.')
+    spl.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
+    ref = sub.add_parser("refresh", parents=[common], help="Rescore, re-sort and renumber every item.")
+    ref.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
     return parser
 
 
@@ -118,6 +135,10 @@ def _dispatch(cfg: HarnessConfig, args: argparse.Namespace) -> int:
         print(render_snapshot(cfg, args.date or dt.date.today()))
     elif args.command == "retire":
         print("\n".join(summary_lines(apply_retirement(cfg, args.ids, args.dry_run), args.dry_run)))
+    elif args.command == "split":
+        print("\n".join(reshape_lines(apply_split(cfg, args.id, args.spec, args.dry_run), args.dry_run)))
+    elif args.command == "refresh":
+        print("\n".join(reshape_lines(apply_refresh(cfg, args.dry_run), args.dry_run)))
     else:
         print(write_runner(cfg))
     return 0
