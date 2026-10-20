@@ -35,7 +35,8 @@ _MAX_FLOWS = 3
 
 @dataclass(frozen=True)
 class PrFile:
-    """One changed path: status letter (A/M/D/R), path, pre-rename path, changed-line counts, binary flag.
+    """One changed path: status letter (A/M/D/R), path, pre-rename path, changed-line counts, binary flag,
+    and whether the path is untracked (a working-tree capture only).
 
     Git reports no line counts for a binary file, so ``added`` and ``deleted`` read zero there.
     """
@@ -46,6 +47,7 @@ class PrFile:
     added: int
     deleted: int
     binary: bool = False
+    untracked: bool = False
 
     @property
     def artifact(self) -> bool:
@@ -60,7 +62,11 @@ class PrFile:
 
 @dataclass(frozen=True)
 class PrFacts:
-    """Script-owned facts: PR identity, refs, commit lines (``<sha> <subject>``, oldest first), files."""
+    """Script-owned facts: PR identity, refs, commit lines (``<sha> <subject>``, oldest first), files.
+
+    ``head_source`` is ``remote`` when ``head_sha`` is the PR head ``gh`` reports and ``local`` when it is
+    the checked-out PR branch's HEAD; ``working_tree`` adds that checkout's uncommitted and untracked changes.
+    """
 
     number: int
     pr_title: str
@@ -71,6 +77,8 @@ class PrFacts:
     date: str
     commits: Tuple[str, ...]
     files: Tuple[PrFile, ...]
+    head_source: str = "remote"
+    working_tree: bool = False
 
     @property
     def additions(self) -> int:
@@ -129,7 +137,8 @@ def skeleton(facts: PrFacts, draft: PrDraft) -> Dict[str, object]:
 def facts_from_payload(raw: Mapping[str, object]) -> PrFacts:
     """Inverse of ``asdict(PrFacts)``; malformed input raises ``KeyError``, ``TypeError`` or ``ValueError``.
 
-    Payloads written before ``PrFile.binary`` existed read with ``binary`` False.
+    Payloads written before ``PrFile.binary`` existed read with ``binary`` False; payloads without the
+    source fields read as a committed capture of the remote PR head.
     """
     files = tuple(PrFile(**entry) for entry in raw["files"])
     return PrFacts(**{**raw, "commits": tuple(raw["commits"]), "files": files})
@@ -363,12 +372,21 @@ def _relocated_block(facts: PrFacts) -> List[str]:
     return ["", *_details(f"Relocated {len(facts.relocated)} files", table)]
 
 
+def _source_line(facts: PrFacts) -> List[str]:
+    """``**Source:**`` line for a capture of the local branch; none for the remote PR head."""
+    if facts.head_source != "local":
+        return []
+    extra = ", plus uncommitted changes" if facts.working_tree else ""
+    return [f"**Source:** local branch at `{facts.head_sha[:7]}`{extra}"]
+
+
 def _header(facts: PrFacts, title: str) -> List[str]:
-    """Title line and the Branch / Base / Date / Files Changed envelope; pure moves counted when present."""
+    """Title line and the Branch / Base / Date / Source / Files Changed envelope; pure moves counted when
+    present."""
     moved = f", {len(facts.relocated)} relocated" if facts.relocated else ""
     return [
         f"# PR #{facts.number}: {title.strip()}", "", f"**Branch:** {facts.head}", f"**Base:** {facts.base}",
-        f"**Date:** {facts.date}",
+        f"**Date:** {facts.date}", *_source_line(facts),
         f"**Files Changed:** {len(facts.files)} (+{facts.additions} / -{facts.deletions} lines{moved})",
     ]
 

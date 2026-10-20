@@ -6,6 +6,7 @@ checkout the suite runs from.
 """
 from __future__ import annotations
 
+from dataclasses import asdict
 from pathlib import Path
 from typing import Callable, Dict
 
@@ -266,6 +267,27 @@ class TestRenderSummary:
         assert "<details><summary>Relocated 1 files</summary>" in text
         assert "| `b.md` | `docs/old/` | `docs/new/` |" in text
         assert text.endswith("</details>\n")
+
+    @pytest.mark.parametrize("working, line", [
+        (True, "**Source:** local branch at `hhhhhhh`, plus uncommitted changes\n"),
+        (False, "**Source:** local branch at `hhhhhhh`\n"),
+    ])
+    def test_local_capture_names_its_source(self, working: bool, line: str) -> None:
+        text = render_summary(_facts(head_source="local", working_tree=working), _draft())
+        assert f"**Date:** 2026-10-10\n{line}**Files Changed:** 3" in text
+
+    def test_remote_capture_has_no_source_line(self) -> None:
+        assert "**Source:**" not in render_summary(_facts(), _draft())
+
+    def test_payload_without_source_fields_reads_as_remote_committed(self) -> None:
+        raw = asdict(_facts())
+        for key in ("head_source", "working_tree"):
+            raw.pop(key)
+        for entry in raw["files"]:
+            entry.pop("untracked")
+        facts = facts_from_payload(raw)
+        assert (facts.head_source, facts.working_tree) == ("remote", False)
+        assert not any(f.untracked for f in facts.files)
 
     def test_renamed_with_edits_shows_both_paths(self) -> None:
         facts = _facts(files=(PrFile("R", "n.py", "o.py", 1, 1),))
