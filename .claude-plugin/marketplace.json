@@ -33,7 +33,7 @@
     {
       "name": "todo-watch",
       "source": "./plugins/todo-watch",
-      "description": "TODO catalog summary toast, TODO_SYNC drift context and /todo, backed by the harness todo_sync checks"
+      "description": "TODO summary and drift band above the prompt (kept until dismissed), TODO_SYNC drift context and /todo, backed by the harness todo_sync checks"
     }
   ]
 }
