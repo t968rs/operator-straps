@@ -4,7 +4,7 @@
   "title": "harness.json",
   "description": "Per-project contract for the harness plugin, committed at <project>/.claude/harness.json. Every key is optional; plugins/harness/config/defaults.json fills the rest. Objects merge key by key; arrays and scalars replace.",
   "type": "object",
-  "additionalProperties": true,
+  "additionalProperties": false,
   "$defs": {
     "relPath": {"type": "string", "minLength": 1, "pattern": "^(?![/\\x5c])(?![A-Za-z]:)"},
     "relPaths": {"type": "array", "items": {"$ref": "#/$defs/relPath"}, "uniqueItems": true},
@@ -12,6 +12,7 @@
     "strings": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
   },
   "properties": {
+    "$schema": {"type": "string"},
     "harness_version": {"type": ["string", "null"], "description": "Plugin VERSION the pinned schema copy was synced from."},
     "base_branch": {"type": ["string", "null"], "description": "PR base branch; null resolves origin/HEAD, else main."},
     "integration_branches": {"$ref": "#/$defs/strings", "description": "Branches d-w fetches from origin before cutting; empty means [base_branch, main]."},
