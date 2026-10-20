@@ -37,6 +37,13 @@ the branch or `gh pr list`.
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN
 ```
 
+The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content is
+local branch state. While the PR branch is checked out, it covers the branch's local commits plus staged,
+unstaged and untracked changes, so unpushed work and pending review fixes appear; elsewhere it reads the
+committed PR head `gh` reports. `--remote-head` forces that remote head; `--committed-only` keeps the local
+head without uncommitted changes. Pass either only when asked. A local capture adds a `**Source:**` header
+line.
+
 Exit 1 prints `problem:` lines (malformed JSON or config, missing file, `gh` missing): report them and stop.
 Exit 0 writes `<summaries>/<NNNN>_pr.json` and prints `wrote <path>`; use that path as `SKELETON` below. The
 skeleton holds `facts` (script-owned — **never edit**) and `draft` (yours: `title`, `summary`, `descriptions`,
