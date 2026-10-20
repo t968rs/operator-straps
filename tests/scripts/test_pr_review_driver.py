@@ -1300,6 +1300,7 @@ class TestPathsAndScope:
         assert "outside the file set" in rules and "`out_of_scope`" in rules
         assert "`no_change` list" in rules and "list edited files under `files`" in rules
         assert "already present" in rules
+        assert "closeout resolves it once one of those files changed since the build" in rules
         assert "Never run a test marked deferred" in rules
 
 

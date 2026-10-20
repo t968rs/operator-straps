@@ -1085,10 +1085,9 @@ class TestWidenedFileSets:
         assert out == {"M1": ["b.py"]}
 
 
-def _present(fixes: Sequence[FixReport], changed: Sequence[str],
-             issue: Optional[Dict[str, object]] = None) -> tuple:
-    """``apply_closeout`` over one issue (default M1 on a.py) and fixer ``w1_fix_1`` over a.py and t.py."""
-    review = _review(issue or _issue("M1", "a.py"))
+def _present(fixes: Sequence[FixReport], changed: Sequence[str], *others: Dict[str, object]) -> tuple:
+    """``apply_closeout`` over M1 on a.py plus ``others`` issues, fixer ``w1_fix_1`` over a.py and t.py."""
+    review = _review(_issue("M1", "a.py"), *others)
     return rmg.apply_closeout(review, fixes, {"w1_fix_1": ["a.py", "t.py"]}, set(changed), set(), _HEAD,
                               _TODAY, {})
 
@@ -1116,6 +1115,26 @@ class TestCloseoutFixAlreadyPresent:
         assert problems == ["M1: no fixed entry edited a file (only no_change files)"]
         assert doc["post_review_resolutions"] == []
 
+    def test_own_file_another_issue_edited_is_not_enough(self) -> None:
+        fix = _fix("w1_fix_1", [{"id": "M2", "what": "m2 fix", "files": ["a.py"]},
+                                {"id": "M1", "what": "cited only", "no_change": ["a.py"]}])
+        doc, problems = _present([fix], ["a.py"], _issue("M2", "a.py"))
+        assert problems == ["M1: no fixed entry edited a file (only no_change files)"]
+        assert [r["id"] for r in doc["post_review_resolutions"]] == ["M2"]
+
+    def test_split_entry_editing_only_another_issues_file_is_not_enough(self) -> None:
+        files = {"w1_fix_1": ["a.py", "t.py"], "w1_fix_2": ["b.py"]}
+        parts = {"w1_fix_1": {"M1": ["a.py"], "I1": ["t.py"]}, "w1_fix_2": {"M1": ["b.py"]}}
+        fixes = [_fix("w1_fix_1", [{"id": "M1", "what": "m", "files": ["t.py"], "no_change": ["a.py"]},
+                                   {"id": "I1", "what": "t", "files": ["t.py"]}]),
+                 _no_change("w1_fix_2", "b.py")]
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]),
+                         _issue("I1", "t.py", fix_kind="judgment"))
+        doc, problems = rmg.apply_closeout(review, fixes, files, {"t.py"}, set(), _HEAD, _TODAY, {},
+                                           parts=parts)
+        assert problems == ["M1: no fixed entry edited a file (only no_change files)"]
+        assert [r["id"] for r in doc["post_review_resolutions"]] == ["I1"]
+
     def test_split_issue_already_present_resolves(self) -> None:
         fixes = [_no_change("w1_fix_1", "a.py"), _no_change("w1_fix_2", "b.py")]
         review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]))
@@ -1127,7 +1146,9 @@ class TestCloseoutFixAlreadyPresent:
 
     def test_pr1616_shape_resolves(self) -> None:
         """M3 split over code + ref files; wave 1 edits code and a test owned by its other issues, wave 2
-        cites the ref file, wave 3 finds the fix already present."""
+        cites the ref file, wave 3 cites code and ref as no_change. Closeout resolves M3 through wave 1's
+        edit (the any-file path), so the wave 3 no_change entry adds coverage but does not reach the
+        ``(already present`` branch."""
         code, ref, test = "grids/annual.py", "ref/periods.py", "tests/test_annual.py"
         files = {"w1_fix_1": [code, test], "w2_fix_1": [ref], "w3_fix_1": [code, ref, test]}
         parts = {"w1_fix_1": {"M3": [code], "I2": [test, code]}, "w2_fix_1": {"M3": [ref]},
@@ -1173,8 +1194,16 @@ class TestResolvableHints:
         review = _review(_issue("M1", "a.py"))
         doc, problems = _closeout(review, [_fixed("M1", "a.py", "z.py")], changed=["a.py", "z.py"])
         hints = rmg.resolvable_hints(doc, problems, {"a.py", "z.py"})
-        assert hints == ['hint: M1: a.py changed since build but no fixer entry records it; if the fix is in '
-                         'place, rerun closeout with --resolved M1="what changed"']
+        assert hints == ['hint: M1: a.py changed since build but no accepted fixer entry records it; if the fix '
+                         'is in place, rerun closeout with --resolved M1="what changed"']
+
+    def test_unplanned_fixer_problem_names_its_issue(self) -> None:
+        review = _review(_issue("M1", "a.py"))
+        fix = _fix("w9_fix_1", [{"id": "M1", "what": "w", "files": ["a.py"]}])
+        doc, problems = _closeout(review, [fix], changed=["a.py"])
+        assert problems == ["M1 (w9_fix_1): not a planned fixer; not resolved"]
+        [hint] = rmg.resolvable_hints(doc, problems, {"a.py"})
+        assert hint.startswith("hint: M1: a.py changed since build")
 
     def test_no_hint_without_changed_own_file(self) -> None:
         review = _review(_issue("M1", "a.py"))
