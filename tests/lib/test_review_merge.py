@@ -785,7 +785,9 @@ class TestCloseoutParts:
 
     def test_every_part_no_change_is_problem(self) -> None:
         fixes = [_no_change("w1_fix_1", "a.py"), _no_change("w1_fix_2", "b.py")]
-        doc, problems = _split_closeout(fixes)
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]))
+        doc, problems = rmg.apply_closeout(review, fixes, _SPLIT_FILES, set(), set(), _HEAD, _TODAY, {},
+                                           parts=_SPLIT_PARTS)
         assert problems == ["M1: no fixed entry edited a file (only no_change files)"]
         assert doc["post_review_resolutions"] == []
 
@@ -929,17 +931,26 @@ class TestRemainingParts:
         issues = [_issue("M1", "a.py", files=["a.py", "b.py"])]
         fixes = [_no_change("w1_fix_1", "a.py"), _no_change("w1_fix_2", "b.py")]
         out = rmg.remaining_parts(issues, _SPLIT_PARTS, fixes, fixer_files=_SPLIT_FILES,
-                                  changed={"a.py", "b.py"}, created=set())
+                                  changed=set(), created=set())
         assert "M1" not in out
 
     def test_no_change_only_matches_closeout_rejection(self) -> None:
         fixes = [_no_change("w1_fix_1", "a.py"), _no_change("w1_fix_2", "b.py")]
-        doc, problems = _split_closeout(fixes)
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]))
+        doc, problems = rmg.apply_closeout(review, fixes, _SPLIT_FILES, set(), set(), _HEAD, _TODAY, {},
+                                           parts=_SPLIT_PARTS)
         assert problems and doc["post_review_resolutions"] == []
         issues = [_issue("M1", "a.py", files=["a.py", "b.py"])]
         out = rmg.remaining_parts(issues, _SPLIT_PARTS, fixes, fixer_files=_SPLIT_FILES,
-                                  changed={"a.py", "b.py"}, created=set())
+                                  changed=set(), created=set())
         assert "M1" not in out
+
+    def test_fix_already_present_counts_as_covered(self) -> None:
+        issues = [_issue("M1", "a.py", files=["a.py", "b.py"])]
+        fixes = [_no_change("w1_fix_1", "a.py"), _no_change("w1_fix_2", "b.py")]
+        out = rmg.remaining_parts(issues, _SPLIT_PARTS, fixes, fixer_files=_SPLIT_FILES,
+                                  changed={"a.py"}, created=set())
+        assert out == {"M1": []}
 
     def test_one_fixer_owning_every_part_leaves_missing_file(self) -> None:
         issues = [_issue("M1", "a.py", files=["a.py", "b.py"])]
@@ -1056,6 +1067,126 @@ class TestWidenedFileSets:
         out = rmg.remaining_parts(issues, _SPLIT_PARTS, fixes, fixer_files=files,
                                   changed={"a.py", "tests/test_a.py"}, created=set())
         assert out == {"M1": ["b.py"]}
+
+    def test_split_part_may_list_another_issues_file(self) -> None:
+        files = {"w1_fix_1": ["a.py", "tests/test_a.py"], "w1_fix_2": ["b.py"]}
+        parts = {"w1_fix_1": {"M1": ["a.py"], "I1": ["tests/test_a.py"]}, "w1_fix_2": {"M1": ["b.py"]}}
+        fixes = [_fix("w1_fix_1", [{"id": "M1", "what": "a", "files": ["a.py", "tests/test_a.py"]},
+                                   {"id": "I1", "what": "t", "files": ["tests/test_a.py"]}]),
+                 _part("w1_fix_2", "b.py")]
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]),
+                         _issue("I1", "tests/test_a.py", fix_kind="judgment"))
+        doc, problems = rmg.apply_closeout(review, fixes, files, {"a.py", "b.py", "tests/test_a.py"}, set(),
+                                           _HEAD, _TODAY, {}, parts=parts)
+        assert problems == []
+        assert sorted(r["id"] for r in doc["post_review_resolutions"]) == ["I1", "M1"]
+        out = rmg.remaining_parts([_issue("M1", "a.py", files=["a.py", "b.py"])], parts, fixes[:1],
+                                  fixer_files=files, changed={"a.py", "tests/test_a.py"}, created=set())
+        assert out == {"M1": ["b.py"]}
+
+
+def _present(fixes: Sequence[FixReport], changed: Sequence[str],
+             issue: Optional[Dict[str, object]] = None) -> tuple:
+    """``apply_closeout`` over one issue (default M1 on a.py) and fixer ``w1_fix_1`` over a.py and t.py."""
+    review = _review(issue or _issue("M1", "a.py"))
+    return rmg.apply_closeout(review, fixes, {"w1_fix_1": ["a.py", "t.py"]}, set(changed), set(), _HEAD,
+                              _TODAY, {})
+
+
+class TestCloseoutFixAlreadyPresent:
+    def test_changed_own_file_under_no_change_resolves(self, project: Path) -> None:
+        fix = _fix("w1_fix_1", [{"id": "M1", "what": "guard already at a.py:9", "no_change": ["a.py"]}])
+        doc, problems = _present([fix], ["a.py"])
+        assert problems == []
+        [entry] = doc["post_review_resolutions"]
+        assert entry["status"] == "RESOLVED" and entry["evidence"] == (
+            f"{_HEAD} (working-tree snapshot; developer commits) - guard already at a.py:9 "
+            f"(already present: a.py changed since build)")
+        assert rmg.validate_review(doc, project) == []
+
+    def test_unchanged_own_file_stays_a_problem(self) -> None:
+        fix = _fix("w1_fix_1", [{"id": "M1", "what": "cited only", "no_change": ["a.py"]}])
+        doc, problems = _present([fix], [])
+        assert problems == ["M1: no fixed entry edited a file (only no_change files)"]
+        assert doc["post_review_resolutions"] == []
+
+    def test_changed_file_that_is_not_the_issues_own_is_not_enough(self) -> None:
+        fix = _fix("w1_fix_1", [{"id": "M1", "what": "cited only", "no_change": ["t.py"]}])
+        doc, problems = _present([fix], ["t.py"])
+        assert problems == ["M1: no fixed entry edited a file (only no_change files)"]
+        assert doc["post_review_resolutions"] == []
+
+    def test_split_issue_already_present_resolves(self) -> None:
+        fixes = [_no_change("w1_fix_1", "a.py"), _no_change("w1_fix_2", "b.py")]
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]))
+        doc, problems = rmg.apply_closeout(review, fixes, _SPLIT_FILES, {"a.py"}, set(), _HEAD, _TODAY, {},
+                                           parts=_SPLIT_PARTS)
+        assert problems == []
+        [entry] = doc["post_review_resolutions"]
+        assert entry["evidence"].endswith("(already present: a.py changed since build)")
+
+    def test_pr1616_shape_resolves(self) -> None:
+        """M3 split over code + ref files; wave 1 edits code and a test owned by its other issues, wave 2
+        cites the ref file, wave 3 finds the fix already present."""
+        code, ref, test = "grids/annual.py", "ref/periods.py", "tests/test_annual.py"
+        files = {"w1_fix_1": [code, test], "w2_fix_1": [ref], "w3_fix_1": [code, ref, test]}
+        parts = {"w1_fix_1": {"M3": [code], "I2": [test, code]}, "w2_fix_1": {"M3": [ref]},
+                 "w3_fix_1": {"M3": [code, ref]}}
+        fixes = [_fix("w1_fix_1", [{"id": "M3", "what": "guard", "files": [code, test]},
+                                   {"id": "I2", "what": "tests", "files": [test, code]}]),
+                 _fix("w2_fix_1", [{"id": "M3", "what": "cited", "no_change": [ref]}]),
+                 _fix("w3_fix_1", [{"id": "M3", "what": "already there", "no_change": [code, ref]}])]
+        review = _review(_issue("M3", code, files=[code, ref]),
+                         _issue("I2", test, files=[test, code], fix_kind="judgment"))
+        doc, problems = rmg.apply_closeout(review, fixes, files, {code, test}, set(), _HEAD, _TODAY, {},
+                                           parts=parts)
+        assert problems == []
+        assert sorted(r["id"] for r in doc["post_review_resolutions"]) == ["I2", "M3"]
+
+
+class TestCloseoutLateDisposition:
+    def test_resolved_flag_clears_coverage_problem(self) -> None:
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]))
+        doc, problems = rmg.apply_closeout(review, [_part("w1_fix_1", "a.py")], _SPLIT_FILES, {"a.py"}, set(),
+                                           _HEAD, _TODAY, {}, parts=_SPLIT_PARTS,
+                                           resolved={"M1": "b.py part done by hand"})
+        assert problems == []
+        assert [(r["id"], r["status"]) for r in doc["post_review_resolutions"]] == [("M1", "RESOLVED")]
+
+    def test_closed_flag_clears_coverage_problem(self) -> None:
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]))
+        doc, problems = rmg.apply_closeout(review, [_part("w1_fix_1", "a.py")], _SPLIT_FILES, {"a.py"}, set(),
+                                           _HEAD, _TODAY, {"M1": "b.py needs nothing"}, parts=_SPLIT_PARTS)
+        assert problems == []
+        statuses = [(r["id"], r["status"]) for r in doc["post_review_resolutions"]]
+        assert statuses == [("M1", "CLOSED_NO_ACTION")]
+
+    def test_open_issue_keeps_coverage_problem(self) -> None:
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]))
+        _, problems = rmg.apply_closeout(review, [_part("w1_fix_1", "a.py")], _SPLIT_FILES, {"a.py"}, set(),
+                                         _HEAD, _TODAY, {}, parts=_SPLIT_PARTS)
+        assert problems == ["M1 partially fixed: missing b.py"]
+
+
+class TestResolvableHints:
+    def test_rejected_issue_with_changed_own_file_gets_hint(self) -> None:
+        review = _review(_issue("M1", "a.py"))
+        doc, problems = _closeout(review, [_fixed("M1", "a.py", "z.py")], changed=["a.py", "z.py"])
+        hints = rmg.resolvable_hints(doc, problems, {"a.py", "z.py"})
+        assert hints == ['hint: M1: a.py changed since build but no fixer entry records it; if the fix is in '
+                         'place, rerun closeout with --resolved M1="what changed"']
+
+    def test_no_hint_without_changed_own_file(self) -> None:
+        review = _review(_issue("M1", "a.py"))
+        doc, problems = _closeout(review, [_fixed("M1", "a.py")])
+        assert problems and rmg.resolvable_hints(doc, problems, set()) == []
+
+    def test_no_hint_for_partially_fixed_or_closed_issue(self) -> None:
+        review = _review(_issue("M1", "a.py", files=["a.py", "b.py"]), _issue("M2", "c.py"),
+                         post_review_resolutions=[_res("M2")])
+        doc, problems = rmg.apply_closeout(review, [_part("w1_fix_1", "a.py")], _SPLIT_FILES, {"a.py"}, set(),
+                                           _HEAD, _TODAY, {}, parts=_SPLIT_PARTS)
+        assert rmg.resolvable_hints(doc, [*problems, "M2: stale"], {"a.py", "c.py"}) == []
 
 
 def _resolved(review: Dict[str, object], resolved: Mapping[str, str], changed: Sequence[str]) -> tuple:

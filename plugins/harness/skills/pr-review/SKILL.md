@@ -38,7 +38,7 @@ roots and registry (`tests.*`), the structural guard suites and brief pointers (
 | `bubbles` | 5 | Prints fixer bubbles not yet in the review (read-only) |
 | `waves [--ids I3,M2]` | 5 | Plans fix waves, writes fixer briefs, prints `agent=harness:pr-fixer model=<m>` rows per wave |
 | `closeout [--closed M17="rationale" ...] [--deferred I4="decision; tracker" ...]` | 5 | Validates fixer reports against the working tree, writes resolutions and verdict, prints the Phase 5 line, then any slow tests held out of the fix waves that the changes since `build_head` reach (the `deferred tests:` block, unrelated to `--deferred`). `--deferred` records a developer-confirmed defer of an issue |
-| `closeout --resolved I5="what changed"` | 5 | Resolves developer-directed work done outside the fixer waves; one of the issue's files must have changed since `build_head` |
+| `closeout --resolved I5="what changed"` | 5 | Resolves a fix in the tree that no accepted fixer entry records (developer-directed work, or a fixer edit closeout rejected); one of the issue's files must have changed since `build_head` |
 
 Each successful subcommand writes the run's position to `plan.json` `phase`: `review` (capture, fold before
 build), `consolidate` (merge, amend, build, fold after build outside an open Phase 5 pass), `fix-plan` (bubble),
@@ -820,16 +820,19 @@ late-discovered candidate fails the audit after the plan was made. Two misclassi
 [--deferred I4="decision; tracker" ...] [--resolved I5="what changed" ...]`. It re-reads the
 review and validates every fixer report against the paths changed since `build_head` (commits and working tree, plus
 untracked files): a fixed entry counts only when every file it lists changed and lies in its fixer's file set or was
-newly created; anything else is a problem and gets no resolution. A fixer resolves only the ids its planned parts
+newly created (an entry for a split part may list the fixer's whole set except the same issue's parts other fixers
+own); anything else is a problem and gets no resolution. A fixer resolves only the ids its planned parts
 assign it, and a split issue resolves only when its fixers' entries together cover every planned part (else a
 `<id> partially fixed: missing <files>` problem). A part the fix needs no edit in (a file the finding cites only as
 context) is covered when its owner records it under the entry's `no_change` list, with the reason in `what`
 (`{"id": "M3", "what": "<why>", "no_change": ["<path>"]}`); an issue whose entries edited no file at all still gets a
-problem. Validated fixes become `RESOLVED` with evidence
+problem, unless one of its own files listed under `no_change` changed since `build_head`: the fix is already
+present (an earlier wave or the developer made it), and the evidence ends `(already present: <files> changed since
+build)`. Validated fixes become `RESOLVED` with evidence
 `<HEAD short sha> (working-tree snapshot; developer commits) - <what>`; `--closed` ids become `CLOSED_NO_ACTION`;
-`--resolved I5="what changed"` (developer-directed work done outside a planned fixer only) becomes `RESOLVED` with
-`... - <what> (outside fixer waves)` once one of the issue's files changed since `build_head`, so a fix the
-developer asked for in the main session is recorded without inventing a fixer report;
+`--resolved I5="what changed"` (a fix in the tree that no accepted fixer entry records: developer-directed work, or
+a fixer edit closeout rejected) becomes `RESOLVED` with `... - <what> (outside fixer waves)` once one of the issue's
+files changed since `build_head`, so the fix is recorded without inventing a fixer report;
 fixer bubbles join `bubbles` and `bubble_up`; resolved ids leave `bubbles`; the verdict is recomputed; one validated
 write; the hook run clears the sentinel. Existing resolutions are never duplicated, so a rerun is safe. A planned
 fixer with no fix report (`<fixer>: no fix report; re-dispatch its row`) and an undispositioned id a reporting
@@ -838,8 +841,11 @@ so the done line requires every planned id dispositioned; a pending `pre_fix_tim
 the problems on stderr, and the printed line is `Phase 5 [blocked] | <N> problems | verdict: <v> | next: settle problems,
 rerun closeout`, never the done line; a `deferred tests:` block (Step 8) can follow the `[blocked]` line too. Settle each problem, then rerun `closeout`; Step 8 opens only after a clean exit 0. A `partially fixed` or rejected-entry problem goes to a bare `waves`
 rerun: after a closeout it counts only the entries closeout accepted, re-plans a split issue for its missing parts
-only and a rejected issue whole; a rejected entry stops raising its problem once its id ends a closeout `RESOLVED` or
-`CLOSED_NO_ACTION` by any path. `waves --ids` (which re-plans the named ids whole) is for bubble answers.
+only and a rejected issue whole; any problem of an id stops once that id ends a closeout `RESOLVED` or
+`CLOSED_NO_ACTION` by any path, the same closeout included. A `hint: <id>: <files> changed since build ...` line
+after the `[blocked]` line names an issue whose files already changed: verify the fix is in place, then rerun
+`closeout --resolved <id>="what changed"` instead of another wave, which would find nothing to edit. `waves --ids`
+(which re-plans the named ids whole) is for bubble answers.
 
 ### Order enforcement (Phase 5 atomic close)
 

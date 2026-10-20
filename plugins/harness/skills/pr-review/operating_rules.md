@@ -22,11 +22,12 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   A fixer's DONE block is a claim; `closeout` validates it (every file the entry lists changed since `build_head` and
   lies in that fixer's file set or is new) and writes the entry. A fixer resolves only the ids its planned parts
   assign it; a split issue resolves only when its fixers' entries together cover every planned part.
-- **Developer-directed work outside the fixer waves** (a fix the developer asked the main session for) is
-  `RESOLVED` through `closeout --resolved ID="what changed"`, never through a hand-written fixer report. One of the
-  issue's files (primary + `also`) must have changed since `build_head`; evidence reads `<HEAD short sha>
-  (working-tree snapshot; developer commits) - <what> (outside fixer waves)`. Use it only for developer-directed
-  work; planned fixes resolve through their fixer reports.
+- **A fix no accepted fixer entry records** (a fix the developer asked the main session for, or a fixer edit
+  closeout rejected, which a closeout `hint:` line names) is `RESOLVED` through
+  `closeout --resolved ID="what changed"`, never through a hand-written fixer report. One of the issue's files
+  (primary + `also`) must have changed since `build_head`; evidence reads `<HEAD short sha> (working-tree
+  snapshot; developer commits) - <what> (outside fixer waves)`. Verify the fix is in place first; planned fixes
+  otherwise resolve through their fixer reports.
 - **A developer-confirmed defer** (usually tracked by a GH issue) is `RESOLVED` for this PR, with evidence naming the
   decision and the tracker, plus its `bubble_up` entry: `closeout --deferred ID="decision; tracker"` writes both. An
   unconfirmed defer stays bubbled. `CLOSED_NO_ACTION` means

@@ -684,14 +684,12 @@ def _entry_problem(entry: FixEntry, fixer: str, bin_files: Set[str], changed: Se
 @dataclass(frozen=True)
 class _Planned:
     """What closeout checks entries against: fixer file sets, each fixer's assigned ids (None when no plan
-    parts are known), per split issue each fixer's part, per fixer the widened files no part owns, and per
-    issue its own files (primary and also)."""
+    parts are known), per split issue each fixer's part, and per issue its own files (primary and also)."""
 
     fixer_files: Mapping[str, Sequence[str]]
     split: Mapping[str, Mapping[str, Tuple[str, ...]]]
     ids: Set[str]
     assigned: Optional[Mapping[str, Set[str]]] = None
-    extra: Mapping[str, Set[str]] = field(default_factory=dict)
     own: Mapping[str, Set[str]] = field(default_factory=dict)
 
     def is_assigned(self, fixer: str, issue_id: str) -> bool:
@@ -700,13 +698,14 @@ class _Planned:
 
     def owned(self, fixer: str, issue_id: str) -> Optional[Set[str]]:
         """Files ``fixer`` may list for ``issue_id``; None when it owns none. A split part also allows the
-        fixer's widened files that are no planned part of the same issue."""
+        rest of the fixer's file set (widened tests, named paths, its other issues' files) except the
+        same issue's planned parts other fixers own."""
         if fixer not in self.fixer_files:
             return None
         if issue_id in self.split:
             part = self.split[issue_id].get(fixer)
-            widened = self.extra.get(fixer, set()) - set(self.required(issue_id))
-            return None if part is None else set(part) | widened
+            rest = set(self.fixer_files[fixer]) - set(self.required(issue_id))
+            return None if part is None else set(part) | rest
         return set(self.fixer_files[fixer])
 
     def required(self, issue_id: str) -> List[str]:
@@ -789,11 +788,25 @@ def _valid_entries(planned: _Planned, fixes: Sequence[FixReport], changed: Set[s
     return valid, rejected
 
 
-def _coverage_problem(planned: _Planned, issue_id: str, entries: Sequence[FixEntry]) -> Optional[str]:
+def _present_files(planned: _Planned, issue_id: str, entries: Sequence[FixEntry],
+                   changed: Set[str]) -> List[str]:
+    """The issue's own files its entries list under ``no_change`` that changed since build: a fix already in
+    the tree (an earlier entry or the developer made it) that no entry of this closeout edited."""
+    own = planned.own.get(issue_id, set())
+    return [f for f in _union(f for e in entries for f in e.no_change) if f in own and f in changed]
+
+
+def _counts(planned: _Planned, issue_id: str, entries: Sequence[FixEntry], changed: Set[str]) -> bool:
+    """True when some entry edited a file or the fix is already present (``_present_files``)."""
+    return any(e.files for e in entries) or bool(_present_files(planned, issue_id, entries, changed))
+
+
+def _coverage_problem(planned: _Planned, issue_id: str, entries: Sequence[FixEntry],
+                      changed: Set[str]) -> Optional[str]:
     """``<id> partially fixed: missing <files>`` when a split issue's entries miss a planned file (a file
     edited or marked ``no_change`` by its owner counts as covered); a problem too when no entry edited a
-    file."""
-    if not any(entry.files for entry in entries):
+    file and the fix is not already present."""
+    if not _counts(planned, issue_id, entries, changed):
         return f"{issue_id}: no fixed entry edited a file (only no_change files)"
     if issue_id not in planned.split:
         return None
@@ -802,21 +815,33 @@ def _coverage_problem(planned: _Planned, issue_id: str, entries: Sequence[FixEnt
     return f"{issue_id} partially fixed: missing {', '.join(missing)}" if missing else None
 
 
+def _fixed_evidence(planned: _Planned, issue_id: str, entries: Sequence[FixEntry], changed: Set[str],
+                    head: str) -> str:
+    """Evidence for a fixed issue: the entries' ``what`` (every one for a split issue), plus an
+    ``(already present: ...)`` note when no entry edited a file."""
+    whats = _union(e.what for e in entries) if issue_id in planned.split else (entries[0].what,)
+    evidence = f"{head} {EVIDENCE_NOTE} - {'; '.join(whats)}"
+    if any(e.files for e in entries):
+        return evidence
+    present = ", ".join(_present_files(planned, issue_id, entries, changed))
+    return f"{evidence} (already present: {present} changed since build)"
+
+
 def _apply_fixed(doc: Dict[str, object], planned: _Planned, valid: Mapping[str, Sequence[FixEntry]],
-                 head: str, today: str) -> List[str]:
-    """Append a RESOLVED entry per issue whose validated entries suffice; return the coverage problems."""
+                 changed: Set[str], head: str, today: str) -> List[Tuple[str, str]]:
+    """Append a RESOLVED entry per issue whose validated entries suffice; return each coverage problem's
+    (id, problem)."""
     resolutions: List[Dict[str, str]] = doc["post_review_resolutions"]  # type: ignore[assignment]
     already = _closed_ids(resolutions)
-    problems: List[str] = []
+    problems: List[Tuple[str, str]] = []
     for issue_id, entries in valid.items():
         if issue_id in already:
             continue
-        problem = _coverage_problem(planned, issue_id, entries)
+        problem = _coverage_problem(planned, issue_id, entries, changed)
         if problem:
-            problems.append(problem)
+            problems.append((issue_id, problem))
             continue
-        whats = _union(e.what for e in entries) if issue_id in planned.split else (entries[0].what,)
-        evidence = f"{head} {EVIDENCE_NOTE} - {'; '.join(whats)}"
+        evidence = _fixed_evidence(planned, issue_id, entries, changed, head)
         resolutions.append(_resolution(issue_id, "RESOLVED", today, evidence))
     return problems
 
@@ -889,23 +914,12 @@ def _apply_deferred(doc: Dict[str, object], deferred: Mapping[str, str], head: s
     return problems
 
 
-def _extra_files(fixer_files: Mapping[str, Sequence[str]], parts: Optional[Parts]) -> Dict[str, Set[str]]:
-    """Per fixer: planned files none of its parts own (the files ``plan_waves`` widened it by); empty
-    without ``parts``."""
-    if parts is None:
-        return {}
-    return {fixer: set(files) - {f for owned in parts.get(fixer, {}).values() for f in owned}
-            for fixer, files in fixer_files.items()}
-
-
 def _planned(full: Mapping[str, Set[str]], fixer_files: Mapping[str, Sequence[str]],
              parts: Optional[Parts], mechanical: Optional[Set[str]] = None) -> _Planned:
     """The closeout plan over ``full`` (issue id -> files): fixer file sets, split issues (``mechanical``
-    ids count as split once planned over more than one file), widened files and, when ``parts`` is given,
-    assigned ids."""
+    ids count as split once planned over more than one file) and, when ``parts`` is given, assigned ids."""
     assigned = None if parts is None else {fixer: set(owned) for fixer, owned in parts.items()}
-    return _Planned(fixer_files, _split_parts(full, parts, mechanical), set(full), assigned,
-                    _extra_files(fixer_files, parts), full)
+    return _Planned(fixer_files, _split_parts(full, parts, mechanical), set(full), assigned, full)
 
 
 def _resolved_problem(issue: Optional[Issue], issue_id: str, changed: Set[str]) -> Optional[str]:
@@ -949,13 +963,16 @@ def apply_closeout(review: Mapping[str, object], fixes: Sequence[FixReport],
     fixer outside ``fixer_files``, is rejected with a problem, unless the id ends the closeout closed
     (``RESOLVED`` / ``CLOSED_NO_ACTION`` by any path, e.g. a later fixer's valid entry or ``closed``): a
     superseded rejected entry raises nothing. It also marks split issues (some fixer owns less than the
-    file set, or a mechanical issue planned over more than one file, even in one fixer): there an entry is
-    bounded by its fixer's part, and the issue resolves only when its validated entries together cover
-    every planned file, each edited or marked ``no_change`` by its part's fixer (evidence joins their
-    ``what`` texts); otherwise it gets a ``partially fixed`` problem. A non-split entry that edits files
-    must list at least one of its issue's own files (primary or also); widened files alone are rejected
-    with a problem. An issue whose validated entries edited no file at all gets a problem instead of a
-    resolution. Only ids already ``RESOLVED`` / ``CLOSED_NO_ACTION`` (latest status) are skipped. A
+    file set, or a mechanical issue planned over more than one file, even in one fixer): there an entry may
+    list its fixer's part and the rest of the fixer's file set, never the same issue's parts other fixers
+    own, and the issue resolves only when its validated entries together cover every planned file, each
+    edited or marked ``no_change`` by its part's fixer (evidence joins their ``what`` texts); otherwise it
+    gets a ``partially fixed`` problem. A non-split entry that edits files must list at least one of its
+    issue's own files (primary or also); widened files alone are rejected with a problem. An issue whose
+    validated entries edited no file at all gets a problem instead of a resolution, unless one of its own
+    files listed under ``no_change`` is in ``changed``: the fix is already present, and the evidence says
+    so. Problems of an id that ends the closeout ``RESOLVED`` / ``CLOSED_NO_ACTION`` are dropped.
+    Only ids already ``RESOLVED`` / ``CLOSED_NO_ACTION`` (latest status) are skipped. A
     ``deferred`` id (id -> decision text) is RESOLVED with ``<head> (developer-confirmed defer) - <text>``
     evidence and keeps (or gains) a ``needs_follow_up`` ``bubble_up`` entry. A
     ``resolved`` id (id -> what changed) is RESOLVED with ``<head> (working-tree snapshot; developer
@@ -968,8 +985,8 @@ def apply_closeout(review: Mapping[str, object], fixes: Sequence[FixReport],
     issues = _doc_issues(doc)
     planned = _planned(_full_files(issues), fixer_files, parts, _mechanical_ids(issues))
     valid, rejected = _valid_entries(planned, fixes, changed, created)
-    problems = _apply_fixed(doc, planned, valid, head, today)
-    problems += _apply_closed(doc, closed, head, today)
+    rejected += _apply_fixed(doc, planned, valid, changed, head, today)
+    problems = _apply_closed(doc, closed, head, today)
     problems += _apply_resolved(doc, resolved or {}, changed, head, today)
     for report in fixes:
         problems += _apply_bubbles(doc, planned, report)
@@ -980,6 +997,23 @@ def apply_closeout(review: Mapping[str, object], fixes: Sequence[FixReport],
     doc["verdict"] = compute_verdict(doc["issues"], doc["post_review_resolutions"],  # type: ignore[arg-type]
                                      doc["bubbles"], doc["bubble_up"])  # type: ignore[arg-type]
     return doc, problems
+
+
+def resolvable_hints(doc: Mapping[str, object], problems: Sequence[str], changed: Set[str]) -> List[str]:
+    """One ``hint:`` line per undispositioned issue a closeout problem names (``partially fixed`` problems
+    aside) whose own files are in ``changed``: the fix may be in the tree with no fixer entry closeout
+    accepts, which ``closeout --resolved`` records."""
+    open_ids = set(undispositioned_ids(doc))
+    named = _union(p.split(" ", 1)[0].rstrip(":") for p in problems if " partially fixed: " not in p)
+    by_id = {str(i["id"]): i for i in _doc_issues(doc)}
+    hints: List[str] = []
+    for issue_id in (i for i in named if i in open_ids):
+        touched = [f for f in _files(by_id[issue_id]) if f in changed]
+        if touched:
+            hints.append(f"hint: {issue_id}: {', '.join(touched)} changed since build but no fixer entry "
+                         f"records it; if the fix is in place, rerun closeout with --resolved "
+                         f'{issue_id}="what changed"')
+    return hints
 
 
 # --- follow-up waves ----------------------------------------------------------------------------------------
@@ -998,11 +1032,12 @@ def _accepted_files(full: Mapping[str, Set[str]], parts: Optional[Parts], fixes:
                     fixer_files: Mapping[str, Sequence[str]], changed: Set[str],
                     created: Set[str], mechanical: Optional[Set[str]] = None) -> Dict[str, Set[str]]:
     """Issue id -> files (edited or ``no_change``) listed by the fixed entries closeout accepts
-    (``_check_entry``), for ids in ``full``. An id whose accepted entries edit no file is absent, as
-    ``_coverage_problem`` rejects it."""
-    valid, _ = _valid_entries(_planned(full, fixer_files, parts, mechanical), fixes, changed, created)
+    (``_check_entry``), for ids in ``full``. An id whose accepted entries edit no file is absent unless the
+    fix is already present, as ``_coverage_problem`` rejects it."""
+    planned = _planned(full, fixer_files, parts, mechanical)
+    valid, _ = _valid_entries(planned, fixes, changed, created)
     return {issue_id: {f for e in entries for f in (*e.files, *e.no_change)}
-            for issue_id, entries in valid.items() if any(e.files for e in entries)}
+            for issue_id, entries in valid.items() if _counts(planned, issue_id, entries, changed)}
 
 
 def remaining_parts(issues: Sequence[Issue], parts: Optional[Parts], fixes: Sequence[FixReport],

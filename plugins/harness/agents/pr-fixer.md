@@ -51,6 +51,9 @@ the `record_fixes` command. Results leave this agent only through that one `reco
   a corrected rerun after a validation error is safe.
 - **Cited-only part files.** A file of your split part that the fix cites but needs no edit goes in that entry's
   `no_change` list, with the reason in `what`; edited files go under `files`.
+- **Fix already present.** When an earlier wave or the developer already made the fix, edit nothing: list the
+  issue's files that hold it under `no_change`, with `already present` and the location in `what`. Closeout
+  resolves the issue once one of those files changed since the build.
 - **No git writes.** No `add`, `commit`, `checkout`, `reset`, `restore`, `stash`, `merge`, `rebase` or `push`.
   Read-only git (`status`, `diff`, `show`, `log`) is the extent of git use.
 - **No AI vendor names** in code, comments, docstrings or fix text.
