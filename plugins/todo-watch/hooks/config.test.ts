@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  DEFAULT_GH_MAX_AGE_HOURS, DEFAULT_INJECT_CONTEXT, DEFAULT_NOTICE_STYLE, DEFAULT_PLANS, DEFAULT_RESEARCH,
+  DEFAULT_GH_MAX_AGE_HOURS, DEFAULT_INJECT_CONTEXT, DEFAULT_NOTICE_ITEMS, DEFAULT_NOTICE_STYLE, DEFAULT_PLANS,
+  DEFAULT_RESEARCH,
   DEFAULT_STATE_DIR, DEFAULT_TOAST_SECONDS, DEFAULT_TOP_N, inFolder, isActive, readConfig, syncDirOf, under,
 } from './config'
 
@@ -9,7 +10,7 @@ const DEFAULTS = {
   stateDir: DEFAULT_STATE_DIR, researchDir: DEFAULT_RESEARCH, plansDir: DEFAULT_PLANS, folder: null,
   catalog: null, catalogSchema: null, topN: DEFAULT_TOP_N, snapshotsDir: null, researchCatalog: null,
   ghMaxAgeHours: DEFAULT_GH_MAX_AGE_HOURS, injectContext: DEFAULT_INJECT_CONTEXT,
-  noticeStyle: DEFAULT_NOTICE_STYLE, toastMs: DEFAULT_TOAST_SECONDS * 1000,
+  noticeStyle: DEFAULT_NOTICE_STYLE, toastMs: DEFAULT_TOAST_SECONDS * 1000, noticeItems: DEFAULT_NOTICE_ITEMS,
 }
 
 const F = 'docs/RESEARCH/_TODO'
@@ -71,12 +72,26 @@ describe('readConfig', () => {
   })
 
   test('the toast defaults to the engine ceiling; an unknown style or an out-of-range time keeps the default', async () => {
-    expect([DEFAULT_NOTICE_STYLE, DEFAULT_TOAST_SECONDS]).toEqual(['toast', 60])
+    expect([DEFAULT_NOTICE_STYLE, DEFAULT_TOAST_SECONDS]).toEqual(['banner', 60])
     for (const notice of [{ style: 'popup' }, { style: 'BANNER' }, { toast_seconds: 0 }, { toast_seconds: 61 },
       { toast_seconds: '30' }, { toast_seconds: -5 }, 'banner']) {
       expect(readConfig(JSON.stringify({ todo: { notice } }))).toEqual(DEFAULTS)
     }
     expect(readConfig(JSON.stringify({ todo: { notice: { toast_seconds: 0.25 } } })).toastMs).toBe(250)
+  })
+
+  test('the notice defaults to a banner listing 3 items', async () => {
+    const config = readConfig('{}')
+    expect([config.noticeStyle, config.noticeItems]).toEqual(['banner', 3])
+  })
+
+  test('notice items: an integer from 1 to 10, else the default', async () => {
+    for (const items of [1, 5, 10]) {
+      expect(readConfig(JSON.stringify({ todo: { notice: { items } } })).noticeItems).toBe(items)
+    }
+    for (const items of [0, 11, 2.5, '5']) {
+      expect(readConfig(JSON.stringify({ todo: { notice: { items } } })).noticeItems).toBe(3)
+    }
   })
 
   test('null turns a nullable path off', async () => {

@@ -1,7 +1,7 @@
 {
   "name": "todo-watch",
-  "version": "0.3.0",
-  "description": "TODO summary and drift notices (toast by default or an optional dismissible band above the prompt), TODO_SYNC drift context and /todo, backed by the harness todo_sync checks",
+  "version": "0.4.0",
+  "description": "The next TODO items and a live sync status line in a band above the prompt (kept until dismissed, or optionally one toast at session start), TODO_SYNC drift context and /todo, backed by the harness todo_sync checks",
   "author": {
     "name": "Kevin Gabelman"
   },

@@ -181,7 +181,7 @@ def test_todo_defaults_leave_the_feature_off(make_project) -> None:
     assert (todo.research.ignore_folders, todo.plans_pairs, todo.gh_repo, todo.gh_max_age_hours) == (
         (), True, None, 24.0)
     assert (todo.rules_disabled, todo.rules_warn_counts) == ((), False)
-    assert (todo.notice_style, todo.notice_toast_seconds) == ("toast", 60.0)
+    assert (todo.notice_style, todo.notice_toast_seconds, todo.notice_items) == ("banner", 60.0, 3)
     assert todo.enabled is False
 
 
@@ -231,8 +231,13 @@ def test_todo_override_merges_key_by_key(make_project) -> None:
 
 
 def test_todo_notice_toast_seconds_override(make_project) -> None:
-    todo = load_config(make_project({"todo": {"notice": {"toast_seconds": 12.5}}})).todo
+    todo = load_config(make_project({"todo": {"notice": {"style": "toast", "toast_seconds": 12.5}}})).todo
     assert (todo.notice_style, todo.notice_toast_seconds) == ("toast", 12.5)
+
+
+def test_todo_notice_items_override(make_project) -> None:
+    todo = load_config(make_project({"todo": {"notice": {"items": 5}}})).todo
+    assert todo.notice_items == 5
 
 
 @pytest.mark.parametrize("bad", [{"folder": "/abs/todo"}, {"folder": "C:/todo"},
@@ -249,7 +254,8 @@ def test_todo_rejects_bad_paths(make_project, bad: dict) -> None:
                                  {"research": {"anchor_pattern": "("}}, {"gh": {"max_age_hours": 0}},
                                  {"rules": {"disabled": ["X1"]}}, {"notice": {"style": "popup"}},
                                  {"notice": {"toast_seconds": 0}}, {"notice": {"toast_seconds": 61}},
-                                 {"notice": {"sticky": True}}])
+                                 {"notice": {"sticky": True}}, {"notice": {"items": 0}},
+                                 {"notice": {"items": 11}}, {"notice": {"items": 2.5}}])
 def test_todo_rejects_bad_values(make_project, bad: dict) -> None:
     with pytest.raises(ConfigError):
         load_config(make_project({"todo": bad}))

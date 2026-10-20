@@ -9,7 +9,8 @@ import {
 } from './checks'
 import {
   BANNER_CONFIG, CATALOG_LINE, CATALOG_REL, checkRuns, CONFIG, NOW, prompt, PYTHON, RESEARCH_CATALOG_REL,
-  reportText, runTodo, SCRIPT, SNAPSHOTS_REL, start, SYNC_REL, TODO_DIR, turnEnd, world, type World,
+  reportText, runTodo, SCRIPT, SNAPSHOTS_REL, start, START_NOTICE, SYNC_REL, TODO_DIR, TOAST_CONFIG, turnEnd,
+  world, type World,
 } from './testWorld'
 
 const HOUR = 3_600_000
@@ -154,34 +155,35 @@ async function bash($: Engine, w: World): Promise<void> {
   await w.clock.settle()
 }
 
-describe('M1: the session start toast', () => {
+describe('M1: the session start notice', () => {
   test('catalog-only; a report older than the session start shows no drift', async ($, on) => {
     const w = world(on, { hasRunner: false })
     w.setFile(`${w.root}/${SYNC_REL}/report.json`, reportText(NOW - HOUR, 3, { P1: 3 }), NOW - HOUR)
     await start($, w)
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
     const text = await runTodo($)
     expect(text.split('\n\n')[0]).toBe(CATALOG_LINE)
     expect(text).toContain('no report yet')
     expect(text).not.toContain('sync checks unavailable')
   })
 
-  test('by default a toast that stays the longest the engine allows', async ($, on) => {
-    const w = world(on, { hasRunner: false })
+  test('a toast stays the longest the engine allows by default', async ($, on) => {
+    const w = world(on, { config: TOAST_CONFIG, hasRunner: false })
     await start($, w)
-    expect([w.toasts, w.toastTimeouts, w.band]).toEqual([[CATALOG_LINE], [MAX_TOAST_SECONDS * 1000], []])
+    expect([w.toasts, w.toastTimeouts, w.band]).toEqual([[START_NOTICE], [MAX_TOAST_SECONDS * 1000], []])
   })
 
   test('todo.notice.toast_seconds sets how long the toast stays', async ($, on) => {
-    const w = world(on, { config: { todo: { folder: TODO_DIR, notice: { toast_seconds: 15 } } }, hasRunner: false })
+    const config = { todo: { folder: TODO_DIR, notice: { style: 'toast', toast_seconds: 15 } } }
+    const w = world(on, { config, hasRunner: false })
     await start($, w)
-    expect([w.toasts, w.toastTimeouts]).toEqual([[CATALOG_LINE], [15_000]])
+    expect([w.toasts, w.toastTimeouts]).toEqual([[START_NOTICE], [15_000]])
   })
 
   test('todo.notice.style banner posts to the band, no toast', async ($, on) => {
     const w = world(on, { config: BANNER_CONFIG, hasRunner: false })
     await start($, w)
-    expect([w.band, w.toasts]).toEqual([[CATALOG_LINE], []])
+    expect([w.band, w.toasts]).toEqual([[START_NOTICE], []])
   })
 
   test('the drift part appears once a report newer than the start lands', async ($, on) => {
@@ -189,7 +191,7 @@ describe('M1: the session start toast', () => {
     w.engine.drift = 2
     w.engine.byRule = { P1: 2 }
     await $.session.start({ cwd: w.root, surface: null, isInteractive: false })
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
     expect((await runTodo($)).split('\n\n')[0]).toBe(CATALOG_LINE)
     await w.clock.settle()
     expect(checkRuns(w)).toEqual([[PYTHON, SCRIPT, 'check', '--project', '/repo']])
@@ -207,7 +209,7 @@ describe('M1: the session start toast', () => {
     expect((await runTodo($)).split('\n\n')[0]).toBe(`${CATALOG_LINE} · 2 out of sync`)
   })
 
-  test('a malformed or missing catalog toasts nothing at start', async ($, on) => {
+  test('a malformed or missing catalog shows nothing at start', async ($, on) => {
     const w = world(on, { catalog: '{"counts": 1}', hasRunner: false })
     await start($, w)
     expect(w.notices).toEqual([])
@@ -215,45 +217,23 @@ describe('M1: the session start toast', () => {
   })
 })
 
-describe('M4: drift toasts', () => {
-  test('only on a rise above the last toasted drift, and once at zero', async ($, on) => {
-    const w = world(on)
-    const drifts: Array<[number, Record<string, number>]> = [
-      [1, { P1: 1 }], [3, { P1: 2, S5: 1 }], [2, { S5: 2 }], [3, { S5: 3 }], [0, {}], [0, {}], [1, { T2: 1 }],
-    ]
-    w.engine.drift = 2
-    w.engine.byRule = { P1: 1, S5: 1 }
+describe('M4: sync changes update the status line only', () => {
+  test('toast style: one toast at start, none for later reports', async ($, on) => {
+    const w = world(on, { config: TOAST_CONFIG })
     await start($, w)
-    for (const [drift, byRule] of drifts) {
+    for (const drift of [2, 3, 0]) {
       w.engine.drift = drift
-      w.engine.byRule = byRule
+      w.engine.byRule = drift === 0 ? {} : { P1: drift }
       await write($, w, catalogPath(w))
     }
-    expect(w.notices).toEqual([
-      CATALOG_LINE,
-      'TODO sync drift 2 (+2): P1=1 S5=1',
-      'TODO sync drift 3 (+1): P1=2 S5=1',
-      'TODO sync clean',
-      'TODO sync drift 1 (+1): T2=1',
-    ])
-    expect(checkRuns(w).length).toBe(8)
+    expect(checkRuns(w).length).toBe(4)
+    expect(w.toasts).toEqual([START_NOTICE])
   })
 
-  for (const [config, surface] of [[CONFIG, 'toasts'], [BANNER_CONFIG, 'band']] as const) {
-    test(`drift notices follow todo.notice.style: ${surface}`, async ($, on) => {
-      const w = world(on, { config })
-      await start($, w)
-      w.engine.drift = 1
-      w.engine.byRule = { P1: 1 }
-      await write($, w, catalogPath(w))
-      expect(w[surface]).toEqual([CATALOG_LINE, 'TODO sync drift 1 (+1): P1=1'])
-    })
-  }
-
-  test('a first report with no drift toasts nothing', async ($, on) => {
+  test('a first report with no drift shows nothing new', async ($, on) => {
     const w = world(on)
     await start($, w)
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
     expect(await runTodo($)).toContain('sync clean')
   })
 })
@@ -289,7 +269,6 @@ describe('M2: the TODO_SYNC context line', () => {
     w.engine.byRule = { P1: 1 }
     await start($, w)
     expect(await prompt($, w)).toEqual([])
-    expect(w.notices).toContain('TODO sync drift 1 (+1): P1=1')
   })
 })
 
@@ -423,7 +402,7 @@ describe('fail open', () => {
     w.engine.mode = 'timeout'
     await start($, w)
     expect(checkRuns(w).length).toBe(1)
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
     expect(await prompt($, w)).toEqual([])
     expect(await runTodo($)).toContain('no report yet')
     await write($, w, catalogPath(w))
@@ -436,7 +415,7 @@ describe('fail open', () => {
     w.setFile(`${w.root}/${SYNC_REL}/report.json`, '{"broken": true}', NOW + 1)
     await start($, w)
     expect(await prompt($, w)).toEqual([])
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
   })
 
   test('a malformed report changes nothing shown', async ($, on) => {
@@ -476,7 +455,7 @@ describe('the runner pointer', () => {
     expect(await prompt($, w)).toEqual(['TODO_SYNC unavailable'])
     expect(await prompt($, w)).toEqual([])
     expect(await runTodo($)).toContain('sync checks unavailable')
-    expect(w.notices).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([START_NOTICE])
     w.addRunner()
     await prompt($, w)
     expect(w.runs).toEqual([])
@@ -512,10 +491,10 @@ describe('inactive', () => {
 
 describe('project roots', () => {
   for (const root of ['C:/repo', '/repo']) {
-    test(`${root}: start toast, watched writes in either slash style, the project argument`, async ($, on) => {
+    test(`${root}: start notice, watched writes in either slash style, the project argument`, async ($, on) => {
       const w = world(on, { root })
       await start($, w)
-      expect(w.notices).toEqual([CATALOG_LINE])
+      expect(w.notices).toEqual([START_NOTICE])
       await write($, w, `${root}/docs/PLANS/a.md`.replace(/\//g, '\\'))
       await write($, w, CATALOG_REL)
       await write($, w, `${root}/src/a.py`)

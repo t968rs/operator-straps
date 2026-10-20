@@ -233,3 +233,4 @@ __marimo__/
 
 # Runtime state written by the harness into consuming projects never belongs here.
 .claude/state/
+/.superpowers/

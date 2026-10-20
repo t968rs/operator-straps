@@ -36,6 +36,7 @@ _MIRRORED: Dict[Tuple[str, ...], Tuple[str, Reader]] = {
     ("todo", "inject_context"): ("DEFAULT_INJECT_CONTEXT", ts_boolean),
     ("todo", "notice", "style"): ("DEFAULT_NOTICE_STYLE", ts_optional_string),
     ("todo", "notice", "toast_seconds"): ("DEFAULT_TOAST_SECONDS", ts_number),
+    ("todo", "notice", "items"): ("DEFAULT_NOTICE_ITEMS", ts_number),
 }
 
 Value = Union[str, float, bool, None]
@@ -67,6 +68,22 @@ def test_every_mirrored_key_is_pinned(config_ts: str) -> None:
     assert exported == {name for name, _ in _MIRRORED.values()}
 
 
+_SCHEMA_REL = "plugins/harness/config/harness.schema.json"
+
+#: config.ts ceiling constant -> todo.notice property whose schema ``maximum`` it copies
+_CEILINGS: Dict[str, str] = {
+    "MAX_NOTICE_ITEMS": "items",
+    "MAX_TOAST_SECONDS": "toast_seconds",
+}
+
+
+@pytest.mark.parametrize("name", sorted(_CEILINGS))
+def test_mirrored_ceiling_equals_the_schema_maximum(repo_root: Path, config_ts: str, name: str) -> None:
+    schema = json.loads((repo_root / _SCHEMA_REL).read_text(encoding="utf-8"))
+    notice = schema["properties"]["todo"]["properties"]["notice"]["properties"]
+    assert ts_number(config_ts, name) == notice[_CEILINGS[name]]["maximum"]
+
+
 _FOLDER = "docs/RESEARCH/_TODO"
 
 #: config.ts constant -> TodoConfig path the harness resolves it to under ``todo.folder``
@@ -95,6 +112,7 @@ def test_mirrored_defaults_equal_an_unconfigured_project(make_project, config_ts
         "DEFAULT_INJECT_CONTEXT": cfg.todo.inject_context,
         "DEFAULT_NOTICE_STYLE": cfg.todo.notice_style,
         "DEFAULT_TOAST_SECONDS": cfg.todo.notice_toast_seconds,
+        "DEFAULT_NOTICE_ITEMS": cfg.todo.notice_items,
     }
     assert {name: _ts(config_ts, name) for name in loaded} == loaded
 

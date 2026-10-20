@@ -15,14 +15,17 @@ export const DEFAULT_SNAPSHOTS_DIR: string | null = 'Snapshots'
 export const DEFAULT_RESEARCH_CATALOG: string | null = 'ResearchImplementationCatalog.json'
 export const DEFAULT_GH_MAX_AGE_HOURS = 24
 export const DEFAULT_INJECT_CONTEXT = true
-export const DEFAULT_NOTICE_STYLE: NoticeStyle = 'toast'
+export const DEFAULT_NOTICE_STYLE: NoticeStyle = 'banner'
 export const DEFAULT_TOAST_SECONDS = 60
+export const DEFAULT_NOTICE_ITEMS = 3
 
 /** How a notice shows: a toast that leaves on a timer, or a band line kept until dismissed. */
 export type NoticeStyle = 'toast' | 'banner'
 const NOTICE_STYLES: readonly NoticeStyle[] = ['toast', 'banner']
 /** The engine's toast ceiling: its host check refuses a `timeoutMs` past 60000, and a toast has no sticky flag. */
 export const MAX_TOAST_SECONDS = 60
+/** The most top items the notice lists; the harness schema caps `todo.notice.items` at the same value. */
+export const MAX_NOTICE_ITEMS = 10
 
 /**
  * Project-relative POSIX paths and the TODO settings the watch reads; an absolute path is rejected by the
@@ -45,6 +48,8 @@ export type TodoWatchConfig = {
   noticeStyle: NoticeStyle
   /** How long a toast stays, in milliseconds. */
   toastMs: number
+  /** How many top items, by rank, the notice lists. */
+  noticeItems: number
 }
 
 type Json = Readonly<Record<string, unknown>>
@@ -79,6 +84,10 @@ const styleOr = (v: unknown, fallback: NoticeStyle): NoticeStyle =>
 /** Seconds above zero and at most `MAX_TOAST_SECONDS`; else the fallback. */
 const toastSecondsOr = (v: unknown, fallback: number): number =>
   typeof v === 'number' && v > 0 && v <= MAX_TOAST_SECONDS ? v : fallback
+
+/** A whole number from 1 to `MAX_NOTICE_ITEMS`; else the fallback. */
+const itemsOr = (v: unknown, fallback: number): number =>
+  typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= MAX_NOTICE_ITEMS ? v : fallback
 
 const objectAt = (data: Json, key: string): Json => (isObject(data[key]) ? (data[key] as Json) : {})
 
@@ -150,6 +159,7 @@ export const readConfig = (text: string): TodoWatchConfig => {
     injectContext: typeof inject === 'boolean' ? inject : DEFAULT_INJECT_CONTEXT,
     noticeStyle: styleOr(notice.style, DEFAULT_NOTICE_STYLE),
     toastMs: Math.max(1, Math.round(toastSecondsOr(notice.toast_seconds, DEFAULT_TOAST_SECONDS) * 1000)),
+    noticeItems: itemsOr(notice.items, DEFAULT_NOTICE_ITEMS),
   }
 }
 

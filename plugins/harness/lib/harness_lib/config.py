@@ -138,6 +138,7 @@ class TodoConfig:
     inject_context: bool
     notice_style: str
     notice_toast_seconds: float
+    notice_items: int
 
     @property
     def enabled(self) -> bool:
@@ -358,6 +359,7 @@ def _todo(t: Dict[str, Any], root: Path, explicit: Dict[str, Any]) -> TodoConfig
         gh_max_age_hours=float(t["gh"]["max_age_hours"]), rules_disabled=tuple(t["rules"]["disabled"]),
         rules_warn_counts=bool(t["rules"]["warn_counts"]), inject_context=bool(t["inject_context"]),
         notice_style=t["notice"]["style"], notice_toast_seconds=float(t["notice"]["toast_seconds"]),
+        notice_items=int(t["notice"]["items"]),
     )
 
 
