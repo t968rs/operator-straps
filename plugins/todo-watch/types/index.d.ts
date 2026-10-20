@@ -64,6 +64,8 @@ declare module 'claude-code' {
       lastContext: string
       /** The drift count last toasted; null before any drift toast. */
       lastToastDrift: number | null
+      /** The band's notices, oldest first; empty once dismissed or at a session start. */
+      notices: string[]
     }
   }
 }

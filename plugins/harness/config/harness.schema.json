@@ -6,7 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "$defs": {
-    "relPath": {"type": "string", "minLength": 1, "pattern": "^(?![/\\\\])(?![A-Za-z]:)"},
+    "relPath": {"type": "string", "minLength": 1, "pattern": "^(?![/\\x5c])(?![A-Za-z]:)"},
     "relPaths": {"type": "array", "items": {"$ref": "#/$defs/relPath"}, "uniqueItems": true},
     "regex": {"type": "string", "format": "regex", "minLength": 1},
     "strings": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true}
@@ -106,8 +106,8 @@
         "folder": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project-relative folder holding the TODO catalog and its companions, inside the project root; setting it turns the feature on. null: off."},
         "catalog": {"$ref": "#/$defs/relPath", "description": "Ranked TODO catalog JSON (TodoCatalog shape), relative to folder."},
         "catalog_schema": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Project schema rule T1 validates the catalog against (its declared draft), relative to folder; the default name is used when the file exists, else (or when null) the harness catalogs/TodoCatalog.schema.json. A name set here must exist."},
-        "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\\\]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
-        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the /todo summary table and the rendered snapshot. The start toast shows only the rank-1 id."},
+        "stub_name": {"oneOf": [{"type": "string", "minLength": 1, "pattern": "^[^/\\x5c]+$"}, {"type": "null"}], "description": "File name of a research implementation stub under artifacts.research; null turns S1-S4 off."},
+        "top_n": {"type": "integer", "minimum": 1, "description": "Rows in the /todo summary table and the rendered snapshot. The start notice shows only the rank-1 title."},
         "snapshots": {
           "type": "object",
           "additionalProperties": false,

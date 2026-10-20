@@ -21,7 +21,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | See where an agent-driven review stands | `pr-review-watch` | A review progress band, pending-fix context, reviewer usage records, and a Stop guard for unrecorded escalated issues. | • `Stop` guard checks that escalated issues are recorded in the review.<br>• Usage rows come from engine measurements and must pass schema validation before append. |
 | Keep the current branch and working tree in view | `git-status` | A Git status line, with Git state checked on each prompt and changed state added as `GIT_STATE` context. | • Prompt hooks recheck Git state and inject changed state.<br>• Git context is reinjected after clear, resume, or main-conversation compaction. |
 | Carry working context through compaction | `session-bookmark` | Git state, recent prompts, and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state. |
-| Keep a project's TODO catalog and its sync checks in view | `todo-watch` | A TODO summary toast at session start, a `TODO_SYNC` drift line in prompt context, drift toasts, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
+| Keep a project's TODO catalog and its sync checks in view | `todo-watch` | A TODO summary and drift notices in a band above the prompt (kept until dismissed), a `TODO_SYNC` drift line in prompt context, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
 | Run targeted tests with the intended Python | `pytest-scope` | Optional rewriting of bare `pytest` to your chosen interpreter and rejection of runs without an explicit test file or node ID. | • When configured, Bash hooks rewrite recognized pytest commands to the selected Python.<br>• Scope hooks reject broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override. |
 
 ## Agent process standardization
@@ -166,6 +166,15 @@ TODO sync needs only `todo.folder`. With it set, the catalog is `<folder>/RepoTo
 `<folder>/Snapshots`, and `<folder>/RepoToDo.schema.json` and `<folder>/ResearchImplementationCatalog.json` are
 used when they exist (a name set explicitly must exist); stubs are `_IMPL_TODO.md` files under `artifacts.research`. Set a key below only to depart
 from that layout.
+
+Finished items leave the catalog through `todo_sync.py retire ID [ID ...] [--dry-run]`: ids follow rank (rule T6),
+so it renumbers the rest, rescores, recounts and rewrites moved ids in the research catalog and stubs, then lists
+what the catalog cannot record by itself (issues to add as close candidates, trackers to revisit, and other files
+naming a TODO id). `todo_sync.py split ID --spec PATH` replaces one item with the parts in a spec file (field
+overrides laid over a copy of the item) and `todo_sync.py refresh` rescores and re-sorts after hand edits; both
+renumber and rewrite ids the same way. `/harness:todo-edit --retire 1, 3 | --split 001 | --refresh` runs any of
+the three through the `todo-editor` agent, which also writes the split parts, close-candidate evidence and the
+prose that named a moved id.
 
 | Key | Default | Used by |
 |---|---|---|

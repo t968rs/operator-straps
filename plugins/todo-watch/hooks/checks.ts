@@ -8,6 +8,7 @@ import type {
 import { atom, read, update } from 'claude-code'
 
 import type { SyncFinding, SyncReport, TodoSummary } from '../types'
+import { clearNotices, postNotice } from './band'
 import { isAbsolute, syncDirOf, under } from './config'
 import {
   contextLineFor, driftToast, formatSummary, formatTodoBody, ghAgeText, parseCatalog, type SyncStatus,
@@ -55,11 +56,6 @@ export const RUNNER_KEYS = ['python', 'script', 'project'] as const
 
 /** Longest a check run may take before it is killed and fails open, in milliseconds. */
 export const CHECK_TIMEOUT_MS = 20_000
-/**
- * How long a toast stays, in milliseconds: the engine's ceiling (its host check refuses past 60000, and the
- * toast API has no sticky flag). A click takes it off sooner; the pointer over it holds it.
- */
-export const LONG_TOAST_MS = 60_000
 /** Tools whose calls may change a watched file. */
 export const WATCH_TOOLS = /^(Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit)$/
 const SHELL_TOOLS = /^(Bash|PowerShell)$/
@@ -249,14 +245,6 @@ async function mtimeOf($: Dollar, path: string): Promise<number | undefined> {
   return st === undefined ? undefined : st.mtimeMs
 }
 
-function toast($: Dollar, text: string): void {
-  try {
-    void Promise.resolve($.ui.toast(text, { timeoutMs: LONG_TOAST_MS })).catch(noop)
-  } catch {
-    // a surface that draws no toast
-  }
-}
-
 /** Runs `fn` after the current dispatch, so no tool result or prompt waits on it. */
 function later($: Dollar, fn: () => Promise<unknown>): void {
   try {
@@ -302,7 +290,7 @@ async function applyReport($: Dollar, report: SyncReport): Promise<void> {
   const owed = driftToast(report, await read($, lastToastAtom), previous)
   if (owed === undefined) return
   await update($, lastToastAtom, () => owed.toasted)
-  toast($, owed.text)
+  await postNotice($, owed.text)
 }
 
 /**
@@ -421,6 +409,7 @@ async function resetSession($: Dollar): Promise<void> {
   session.isContextForced = true
   await update($, reportAtom, () => null).catch(noop)
   await update($, lastToastAtom, () => null).catch(noop)
+  await clearNotices($)
 }
 
 /**
@@ -436,7 +425,7 @@ async function startWatch($: Dollar): Promise<void> {
   if (w === undefined) return
   await resetSession($)
   const summary = await refreshCatalog($, w).catch(() => null)
-  if (summary !== null) toast($, formatSummary(summary))
+  if (summary !== null) await postNotice($, formatSummary(summary))
   const runner = await lookupRunner($, w).catch(noop)
   if (runner === undefined) return
   session.runner = runner

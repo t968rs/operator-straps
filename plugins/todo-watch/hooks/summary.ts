@@ -10,6 +10,7 @@ type Json = Readonly<Record<string, unknown>>
 const SEP = ' · '
 const HOUR_MS = 3_600_000
 const MAX_TOAST = 160
+const MAX_TOP_TITLE = 60
 export const UNAVAILABLE_CONTEXT = 'TODO_SYNC unavailable'
 export const CLEAN_TOAST = 'TODO sync clean'
 export const NO_REPORT_TEXT = 'no report yet'
@@ -105,10 +106,13 @@ const syncSegments = (sync: SyncSuffix): string[] => {
   return out
 }
 
-/** `TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: TODO-001`, then the sync parts. */
+/** The rank-1 title on one line, clipped so the sync parts after it stay visible. */
+const topTitle = (title: string): string => clip(title.replace(/\s+/g, ' ').trim(), MAX_TOP_TITLE)
+
+/** `TODO 89 · 68 open · 12 partial · 1 blocked · 12 need a decision · top: <title>`, then the sync parts. */
 export const formatSummary = (s: TodoSummary, sync: SyncSuffix = {}): string => {
   const top = s.top[0]
-  const parts = [`TODO ${s.items}`, ...countSegments(s), ...(top === undefined ? [] : [`top: ${top.id}`])]
+  const parts = [`TODO ${s.items}`, ...countSegments(s), ...(top === undefined ? [] : [`top: ${topTitle(top.title)}`])]
   return [...parts, ...syncSegments(sync)].join(SEP)
 }
 

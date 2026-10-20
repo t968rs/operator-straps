@@ -160,7 +160,7 @@ describe('M1: the session start toast', () => {
     const w = world(on, { hasRunner: false })
     w.setFile(`${w.root}/${SYNC_REL}/report.json`, reportText(NOW - HOUR, 3, { P1: 3 }), NOW - HOUR)
     await start($, w)
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
     const text = await runTodo($)
     expect(text.split('\n\n')[0]).toBe(CATALOG_LINE)
     expect(text).toContain('no report yet')
@@ -178,7 +178,7 @@ describe('M1: the session start toast', () => {
     w.engine.drift = 2
     w.engine.byRule = { P1: 2 }
     await $.session.start({ cwd: w.root, surface: null, isInteractive: false })
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
     expect((await runTodo($)).split('\n\n')[0]).toBe(CATALOG_LINE)
     await w.clock.settle()
     expect(checkRuns(w)).toEqual([[PYTHON, SCRIPT, 'check', '--project', '/repo']])
@@ -199,7 +199,7 @@ describe('M1: the session start toast', () => {
   test('a malformed or missing catalog toasts nothing at start', async ($, on) => {
     const w = world(on, { catalog: '{"counts": 1}', hasRunner: false })
     await start($, w)
-    expect(w.toasts).toEqual([])
+    expect(w.notices).toEqual([])
     expect(await runTodo($)).toContain('TODO catalog unreadable')
   })
 })
@@ -218,7 +218,7 @@ describe('M4: drift toasts', () => {
       w.engine.byRule = byRule
       await write($, w, catalogPath(w))
     }
-    expect(w.toasts).toEqual([
+    expect(w.notices).toEqual([
       CATALOG_LINE,
       'TODO sync drift 2 (+2): P1=1 S5=1',
       'TODO sync drift 3 (+1): P1=2 S5=1',
@@ -231,7 +231,7 @@ describe('M4: drift toasts', () => {
   test('a first report with no drift toasts nothing', async ($, on) => {
     const w = world(on)
     await start($, w)
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
     expect(await runTodo($)).toContain('sync clean')
   })
 })
@@ -267,7 +267,7 @@ describe('M2: the TODO_SYNC context line', () => {
     w.engine.byRule = { P1: 1 }
     await start($, w)
     expect(await prompt($, w)).toEqual([])
-    expect(w.toasts).toContain('TODO sync drift 1 (+1): P1=1')
+    expect(w.notices).toContain('TODO sync drift 1 (+1): P1=1')
   })
 })
 
@@ -401,7 +401,7 @@ describe('fail open', () => {
     w.engine.mode = 'timeout'
     await start($, w)
     expect(checkRuns(w).length).toBe(1)
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
     expect(await prompt($, w)).toEqual([])
     expect(await runTodo($)).toContain('no report yet')
     await write($, w, catalogPath(w))
@@ -414,7 +414,7 @@ describe('fail open', () => {
     w.setFile(`${w.root}/${SYNC_REL}/report.json`, '{"broken": true}', NOW + 1)
     await start($, w)
     expect(await prompt($, w)).toEqual([])
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
   })
 
   test('a malformed report changes nothing shown', async ($, on) => {
@@ -454,7 +454,7 @@ describe('the runner pointer', () => {
     expect(await prompt($, w)).toEqual(['TODO_SYNC unavailable'])
     expect(await prompt($, w)).toEqual([])
     expect(await runTodo($)).toContain('sync checks unavailable')
-    expect(w.toasts).toEqual([CATALOG_LINE])
+    expect(w.notices).toEqual([CATALOG_LINE])
     w.addRunner()
     await prompt($, w)
     expect(w.runs).toEqual([])
@@ -482,7 +482,7 @@ describe('inactive', () => {
       await write($, w, catalogPath(w))
       await bash($, w)
       await turnEnd($, w)
-      expect([w.commands, w.toasts, w.runs]).toEqual([[], [], []])
+      expect([w.commands, w.notices, w.runs]).toEqual([[], [], []])
       expect(await runTodo($)).toBe('beneath')
     })
   }
@@ -493,7 +493,7 @@ describe('project roots', () => {
     test(`${root}: start toast, watched writes in either slash style, the project argument`, async ($, on) => {
       const w = world(on, { root })
       await start($, w)
-      expect(w.toasts).toEqual([CATALOG_LINE])
+      expect(w.notices).toEqual([CATALOG_LINE])
       await write($, w, `${root}/docs/PLANS/a.md`.replace(/\//g, '\\'))
       await write($, w, CATALOG_REL)
       await write($, w, `${root}/src/a.py`)
