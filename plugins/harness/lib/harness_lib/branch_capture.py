@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence
+from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
 
 from harness_lib.commit_diff import DiffStat, clip_text, parse_numstat_z, summarize_diff
 from harness_lib.commit_grouping import CapturedPath, merge_capture, parse_name_status_z
@@ -108,10 +108,18 @@ def file_lines(repo: Path, path: str) -> Optional[List[str]]:
     return data.decode("utf-8", errors="replace").splitlines()
 
 
-def _untracked_stat(repo: Path, path: str) -> DiffStat:
-    """Stat of an untracked file: its line count as additions; zero when binary or unreadable."""
-    lines = file_lines(repo, path)
-    return DiffStat(path, len(lines) if lines is not None else 0, 0)
+def untracked_facts(repo: Path, paths: Sequence[str]) -> Tuple[Dict[str, DiffStat], FrozenSet[str]]:
+    """Stat per untracked path (line count as additions; zero when binary or unreadable) and the binary
+    paths among them. Each file is read once."""
+    stats: Dict[str, DiffStat] = {}
+    binary: List[str] = []
+    for path in paths:
+        data = read_untracked(repo, path)
+        if data is not None and is_binary(data):
+            binary.append(path)
+        lines = data.decode("utf-8", errors="replace").splitlines() if data and path not in binary else []
+        stats[path] = DiffStat(path, len(lines), 0)
+    return stats, frozenset(binary)
 
 
 def capture_stats(
@@ -126,7 +134,8 @@ def capture_stats(
     if head:
         return stats
     untracked = set(untracked_paths(repo))
-    stats.update({c.path: _untracked_stat(repo, c.path) for c in captures if c.path in untracked})
+    extra, _ = untracked_facts(repo, [c.path for c in captures if c.path in untracked])
+    stats.update(extra)
     return stats
 
 

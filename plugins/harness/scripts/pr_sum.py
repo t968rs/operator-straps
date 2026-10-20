@@ -5,6 +5,10 @@
     Everything else is local git: fetch ``pull/N/head`` with ``origin <base>`` (with the merge commit instead
     once merged, so a deleted base branch does not matter), take the merge base of the head with the base tip
     (the merge commit's first parent once merged, ``origin/<base>`` before), and diff merge base..head.
+    While the PR branch is checked out (a branch of the PR head's name whose HEAD contains that head), the
+    head is its local HEAD and the diff runs to the working tree (staged, unstaged and untracked changes;
+    untracked harness output and the skeleton itself are left out); ``--remote-head`` takes the ``gh`` head
+    instead, and ``--committed-only`` stops at the local HEAD. Elsewhere the committed ``gh`` head is used.
     Writes ``<summaries>/<NNNN>_pr.json``: ``{"facts": {...}, "draft": {...}}``. When that file already
     holds a parseable draft, the draft is carried forward: title, summary and sections stay, and
     descriptions stay for paths the PR still lists (new paths get empty slots).
@@ -13,7 +17,8 @@
     lines are spent, and output capped at ``PR_CHAR_BUDGET`` characters (later sections keep only their
     header and ``[omitted: block output budget spent]``). Sections run source, then tests (the project's
     configured test layout), then docs. Machine-generated artifacts are skipped unless named with
-    ``--path``; ``--path`` also matches a rename's old path.
+    ``--path``; ``--path`` also matches a rename's old path. A working-tree skeleton reads the working tree
+    as it stands when ``diff`` runs, and is refused once the captured branch or HEAD has changed.
 ``build FILE [--visual]``
     Validate the draft, write ``<summaries>/<NNNN>_<Title>.md`` and print the receipt. ``--visual``
     (pr-sum-viz) requires the visual sections and caps their table cells.
@@ -28,7 +33,7 @@ Every failure exits 1 with one ``problem: ...`` line per defect on stderr.
 Usage::
 
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr N
-        [--no-fetch] [--out FILE] [--repo DIR]
+        [--no-fetch] [--remote-head] [--committed-only] [--out FILE] [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff FILE [--path P ...]
         [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE [--visual]
@@ -40,7 +45,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
 _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
@@ -107,10 +112,27 @@ def carry_draft(facts: PrFacts, previous: Optional[PrDraft]) -> PrDraft:
 
 def capture_payload(
         repo: Path, meta: PrMeta, fetch: bool = True, previous: Optional[PrDraft] = None,
+        local: bool = True, working_tree: bool = True, out: Optional[Path] = None,
 ) -> Dict[str, object]:
-    """Skeleton for ``meta``: fresh facts and ``previous`` carried forward (an empty draft without one)."""
-    facts = capture_pr(repo, meta, fetch)
+    """Skeleton for ``meta``: fresh facts and ``previous`` carried forward (an empty draft without one).
+
+    By default the facts describe the checked-out PR branch with its uncommitted changes (``capture_pr``
+    falls back to the committed PR head when that branch is not checked out). The skeleton path ``out``
+    never counts as an untracked PR file.
+    """
+    skip = _repo_relative(repo, out)
+    facts = capture_pr(repo, meta, fetch, local=local, working_tree=working_tree, skip=skip)
     return skeleton(facts, carry_draft(facts, previous))
+
+
+def _repo_relative(repo: Path, path: Optional[Path]) -> FrozenSet[str]:
+    """``path`` as a repo-relative POSIX path (one entry), or nothing when it is None or outside ``repo``."""
+    if path is None:
+        return frozenset()
+    try:
+        return frozenset([path.resolve().relative_to(Path(repo).resolve()).as_posix()])
+    except ValueError:
+        return frozenset()
 
 
 def _facts(payload: Mapping[str, object]) -> PrFacts:
@@ -121,7 +143,15 @@ def _facts(payload: Mapping[str, object]) -> PrFacts:
         raise CaptureError([f"skeleton facts do not parse ({exc!r}); rerun capture"]) from exc
     if not _int(facts.number) or not all(_int(f.added) and _int(f.deleted) for f in facts.files):
         raise CaptureError(["skeleton facts carry a non-integer number or line count; rerun capture"])
+    if not _source_typed(facts):
+        raise CaptureError(["skeleton facts carry a wrong-typed source or file flag; rerun capture"])
     return facts
+
+
+def _source_typed(facts: PrFacts) -> bool:
+    """True when ``head_source`` is local/remote and ``working_tree`` and every file flag are bools."""
+    flags = [facts.working_tree, *(flag for f in facts.files for flag in (f.binary, f.untracked))]
+    return facts.head_source in ("local", "remote") and all(isinstance(flag, bool) for flag in flags)
 
 
 def _int(value: object) -> bool:
@@ -207,6 +237,14 @@ def _parser() -> argparse.ArgumentParser:
     cap = sub.add_parser("capture", parents=common, help="Write the PR skeleton JSON (facts + draft).")
     cap.add_argument("--pr", type=int, required=True, help="PR number.")
     cap.add_argument("--no-fetch", action="store_true", help="Skip fetching the base side and pull/N/head.")
+    cap.add_argument(
+        "--remote-head", action="store_true",
+        help="Summarize the PR head gh reports, not the checked-out PR branch (implies --committed-only).",
+    )
+    cap.add_argument(
+        "--committed-only", action="store_true",
+        help="Leave out staged, unstaged and untracked changes of the checked-out PR branch.",
+    )
     cap.add_argument("--out", type=Path, help="Skeleton path (default <summaries>/<NNNN>_pr.json).")
     diff = sub.add_parser("diff", parents=common, help="Print the PR diff under the read budgets.")
     diff.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8).")
@@ -242,7 +280,10 @@ def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
     """Run ``capture`` and write the skeleton, carrying an existing draft forward."""
     out = args.out or summaries_dir(repo) / f"{args.pr:04d}_pr.json"
     previous = previous_draft(out)
-    payload = capture_payload(repo, gh_metadata(repo, args.pr), not args.no_fetch, previous)
+    payload = capture_payload(
+        repo, gh_metadata(repo, args.pr), not args.no_fetch, previous,
+        local=not args.remote_head, working_tree=not args.committed_only, out=out,
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"wrote {out}" + (" (existing draft carried forward)" if previous else ""))

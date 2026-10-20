@@ -113,6 +113,14 @@ class TestPayload:
             entry.pop("binary")
         assert facts_from_payload(payload) == _facts()
 
+    def test_payload_without_source_fields_reads_as_remote_committed(self) -> None:
+        raw = skeleton(_facts(), _draft())["facts"]
+        for key in ("head_source", "working_tree"):
+            raw.pop(key)
+        for entry in raw["files"]:
+            entry.pop("untracked")
+        assert facts_from_payload(raw) == _facts()
+
     def test_description_values_coerced(self) -> None:
         draft = draft_from_payload({"descriptions": {"a.py": None, "b.py": ["x", "y"], "c.py": "z"}})
         assert draft.descriptions == {"a.py": "", "b.py": "x\ny", "c.py": "z"}
@@ -266,6 +274,17 @@ class TestRenderSummary:
         assert "<details><summary>Relocated 1 files</summary>" in text
         assert "| `b.md` | `docs/old/` | `docs/new/` |" in text
         assert text.endswith("</details>\n")
+
+    @pytest.mark.parametrize("working, line", [
+        (True, "**Source:** local branch at `hhhhhhh`, plus uncommitted changes\n"),
+        (False, "**Source:** local branch at `hhhhhhh`\n"),
+    ])
+    def test_local_capture_names_its_source(self, working: bool, line: str) -> None:
+        text = render_summary(_facts(head_source="local", working_tree=working), _draft())
+        assert f"**Date:** 2026-10-10\n{line}**Files Changed:** 3" in text
+
+    def test_remote_capture_has_no_source_line(self) -> None:
+        assert "**Source:**" not in render_summary(_facts(), _draft())
 
     def test_renamed_with_edits_shows_both_paths(self) -> None:
         facts = _facts(files=(PrFile("R", "n.py", "o.py", 1, 1),))
