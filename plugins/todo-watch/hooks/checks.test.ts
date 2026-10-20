@@ -6,6 +6,7 @@ import type { Watch } from './watch'
 import { readConfig } from './config'
 import {
   CHECK_TIMEOUT_MS, isWatchedPath, normalPath, parseReport, parseRunner, pathOfCall, reportTimeMs, startGateMs,
+  LONG_TOAST_MS,
 } from './checks'
 import {
   CATALOG_LINE, CATALOG_REL, checkRuns, CONFIG, NOW, prompt, PYTHON, RESEARCH_CATALOG_REL, reportText, runTodo,
@@ -164,6 +165,12 @@ describe('M1: the session start toast', () => {
     expect(text.split('\n\n')[0]).toBe(CATALOG_LINE)
     expect(text).toContain('no report yet')
     expect(text).not.toContain('sync checks unavailable')
+  })
+
+  test('the toast stays the longest the engine allows', async ($, on) => {
+    const w = world(on, { hasRunner: false })
+    await start($, w)
+    expect(w.toastTimeouts).toEqual([LONG_TOAST_MS])
   })
 
   test('the drift part appears once a report newer than the start lands', async ($, on) => {

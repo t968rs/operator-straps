@@ -52,6 +52,8 @@ export type World = {
   /** Every `$.process.run` init (timeout, env), index for index with `runs`. */
   inits: Array<ProcessRunInit | undefined>
   toasts: string[]
+  /** Every toast's `timeoutMs`, index for index with `toasts`. */
+  toastTimeouts: Array<number | undefined>
   commands: string[]
   descriptions: string[]
   /** `$.command.register` is refused. */
@@ -164,6 +166,7 @@ function engineHooks(on: On, w: World): void {
   })
   on('ui.toast', (_$, e) => {
     w.toasts.push(e.text)
+    w.toastTimeouts.push(e.timeoutMs)
     return { value: undefined }
   })
   on('command.register', (_$, e) => {
@@ -212,7 +215,7 @@ export function world(on: On, opts: WorldOpts = {}): World {
   const root = opts.root ?? '/repo'
   const files = new Map<string, Rec>()
   const w: World = {
-    root, files, reads: [], runs: [], inits: [], toasts: [], commands: [], descriptions: [], isRegisterRefused: false,
+    root, files, reads: [], runs: [], inits: [], toasts: [], toastTimeouts: [], commands: [], descriptions: [], isRegisterRefused: false,
     held: [],
     clock: mock.clock(on, { now: NOW }),
     engine: { mode: 'ok', drift: 0, byRule: {}, isHeld: false, reports: 0 },

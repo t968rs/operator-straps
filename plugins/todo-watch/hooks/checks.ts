@@ -55,6 +55,11 @@ export const RUNNER_KEYS = ['python', 'script', 'project'] as const
 
 /** Longest a check run may take before it is killed and fails open, in milliseconds. */
 export const CHECK_TIMEOUT_MS = 20_000
+/**
+ * How long a toast stays, in milliseconds: the engine's ceiling (its host check refuses past 60000, and the
+ * toast API has no sticky flag). A click takes it off sooner; the pointer over it holds it.
+ */
+export const LONG_TOAST_MS = 60_000
 /** Tools whose calls may change a watched file. */
 export const WATCH_TOOLS = /^(Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit)$/
 const SHELL_TOOLS = /^(Bash|PowerShell)$/
@@ -246,7 +251,7 @@ async function mtimeOf($: Dollar, path: string): Promise<number | undefined> {
 
 function toast($: Dollar, text: string): void {
   try {
-    void Promise.resolve($.ui.toast(text)).catch(noop)
+    void Promise.resolve($.ui.toast(text, { timeoutMs: LONG_TOAST_MS })).catch(noop)
   } catch {
     // a surface that draws no toast
   }
