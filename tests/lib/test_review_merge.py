@@ -1194,8 +1194,8 @@ class TestResolvableHints:
         review = _review(_issue("M1", "a.py"))
         doc, problems = _closeout(review, [_fixed("M1", "a.py", "z.py")], changed=["a.py", "z.py"])
         hints = rmg.resolvable_hints(doc, problems, {"a.py", "z.py"})
-        assert hints == ['hint: M1: a.py changed since build but no accepted fixer entry records it; if the fix '
-                         'is in place, rerun closeout with --resolved M1="what changed"']
+        assert hints == ['hint: M1: a.py changed since build but no accepted fixer entry records it; '
+                         'if the fix is in place, rerun closeout with --resolved M1="what changed"']
 
     def test_unplanned_fixer_problem_names_its_issue(self) -> None:
         review = _review(_issue("M1", "a.py"))
