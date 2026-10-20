@@ -149,7 +149,7 @@ export const readConfig = (text: string): TodoWatchConfig => {
     ghMaxAgeHours: hoursOr(objectAt(todo, 'gh').max_age_hours, DEFAULT_GH_MAX_AGE_HOURS),
     injectContext: typeof inject === 'boolean' ? inject : DEFAULT_INJECT_CONTEXT,
     noticeStyle: styleOr(notice.style, DEFAULT_NOTICE_STYLE),
-    toastMs: Math.round(toastSecondsOr(notice.toast_seconds, DEFAULT_TOAST_SECONDS) * 1000),
+    toastMs: Math.max(1, Math.round(toastSecondsOr(notice.toast_seconds, DEFAULT_TOAST_SECONDS) * 1000)),
   }
 }
 
