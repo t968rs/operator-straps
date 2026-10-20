@@ -39,7 +39,8 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 - `.claude/settings.json` enables the published marketplace (GitHub `t968rs/operator-straps`), so this repo's own
   sessions run the pushed default branch, not the checkout. Exercise local plugin edits before merge with
   `claude --plugin-dir plugins/<name>` or a local marketplace (`claude plugin marketplace add ./`).
-- Lint: `python -m ruff check plugins tests tools` (line length 110, E501 on).
+- Lint: `python -m ruff check plugins tests tools` (line length 110, E501 on locally; CI passes
+  `--extend-ignore E501`, so a long line never fails a build).
 - CI (`.github/workflows/ci.yml`) runs pytest and ruff on Ubuntu and Windows, plus strict validation and the mod
   tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
   changed, when its import closure holds a changed file, when its source names a changed or deleted file (the

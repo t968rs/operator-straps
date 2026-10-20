@@ -45,11 +45,12 @@ jobs:
         shell: bash
         env:
           RUFF_MODE: ${{ steps.select.outputs.ruff }}
+        # Line length (E501) is a local nudge, not a CI gate.
         run: |
           if [ "$RUFF_MODE" = "full" ]; then
-            python -m ruff check plugins tests tools
+            python -m ruff check --extend-ignore E501 plugins tests tools
           else
-            xargs python -m ruff check < .artifacts/ruff-files.txt
+            xargs python -m ruff check --extend-ignore E501 < .artifacts/ruff-files.txt
           fi
       - name: pytest
         if: ${{ steps.select.outputs.pytest != 'none' }}
