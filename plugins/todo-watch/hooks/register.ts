@@ -1,12 +1,13 @@
 import type { Register } from 'claude-code'
 
+import { registerBand } from './band'
 import { registerChecks, registerContext, startSession } from './checks'
 import { registerCommand, registerTodoCommand } from './command'
 
 const noop = (): undefined => undefined
 
 export const register: Register = on => {
-  // One session.start hook (the engine refuses two without a matcher): the command, then the summary toast.
+  // One session.start hook (the engine refuses two without a matcher): the command, then the summary notice.
   on('session.start', async ($, e, next) => {
     const started = await next(e)
     await registerTodoCommand($).catch(noop)
@@ -16,4 +17,5 @@ export const register: Register = on => {
   registerChecks(on)
   registerContext(on)
   registerCommand(on)
+  registerBand(on)
 }
