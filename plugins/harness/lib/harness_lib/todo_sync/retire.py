@@ -145,7 +145,8 @@ def remap_text(text: str, renames: Dict[str, str]) -> str:
 
 
 def _counts(stored: Any, data: Dict[str, Any], retired: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
-    """``counts`` retallied; the untallied ``sources_absorbed`` and ``merged_items`` lose the retired items."""
+    """``counts`` retallied; the untallied ``sources_absorbed`` and ``merged_items`` lose the retired
+    items."""
     out = dict(stored) if isinstance(stored, dict) else {}
     for key, value in catalog_counts(data).items():
         out[key] = _merge_tally(out.get(key), value) if isinstance(value, dict) else value
@@ -235,7 +236,8 @@ def _companion_edits(cfg: HarnessConfig, out: Retirement) -> Tuple[Dict[str, str
     for rel in _companions(cfg):
         text = cfg.path(rel).read_bytes().decode("utf-8", errors="replace")
         for n, line in enumerate(text.splitlines(), 1):
-            dangling.extend(f"{rel}:{n} names retired {hit}" for hit in sorted(set(ID_RE.findall(line)) & gone))
+            hits = sorted(set(ID_RE.findall(line)) & gone)
+            dangling.extend(f"{rel}:{n} names retired {hit}" for hit in hits)
         new = remap_text(text, out.renames)
         if new != text:
             edits[rel] = new
