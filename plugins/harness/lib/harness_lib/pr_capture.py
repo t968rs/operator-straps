@@ -22,13 +22,11 @@ from harness_lib.branch_capture import (
     CaptureError,
     capture_paths,
     current_branch,
-    file_lines,
+    git,
     git_out,
-    is_binary,
     path_diff,
-    read_untracked,
     render_section,
-    untracked_paths,
+    untracked_facts,
 )
 from harness_lib.commit_diff import DiffStat, cap_sections, parse_numstat_z, plan_reads
 from harness_lib.commit_grouping import CapturedPath
@@ -40,6 +38,7 @@ DOC_ROOTS = ("docs", "doc")
 DOC_SUFFIXES = (".md", ".rst", ".adoc")
 PATHSPEC_CHARS = 8000
 _STATUSES = ("A", "M", "D", "R")
+_OUTPUT_DIRS = ("reviews", "summaries", "commit_messages", "scratch")
 _SECTION_START = re.compile(r"^(?=diff --git )", re.M)
 
 
@@ -125,13 +124,17 @@ def _numstat(
     return {s.path: s for s in parse_numstat_z(text)}, _binary_paths(text)
 
 
-def _untracked_facts(repo: Path) -> Tuple[Dict[str, DiffStat], FrozenSet[str], FrozenSet[str]]:
-    """Untracked paths with their line counts as additions, the binary ones among them, and all of them."""
-    paths = untracked_paths(repo)
-    lines = {path: file_lines(repo, path) for path in paths}
-    stats = {path: DiffStat(path, len(text) if text is not None else 0, 0) for path, text in lines.items()}
-    binary = frozenset(p for p in paths if is_binary(read_untracked(repo, p) or b""))
-    return stats, binary, frozenset(paths)
+def _output_dirs() -> Tuple[str, ...]:
+    """The active configuration's harness output directories (reviews, summaries, commit messages,
+    scratch) as POSIX paths without surrounding slashes."""
+    artifacts = active().artifacts
+    dirs = (PurePosixPath(getattr(artifacts, name)).as_posix().strip("/") for name in _OUTPUT_DIRS)
+    return tuple(d for d in dirs if d not in ("", "."))
+
+
+def _skipped(path: str, skip: FrozenSet[str]) -> bool:
+    """True for an untracked path a working-tree capture leaves out: harness output or a ``skip`` path."""
+    return path in skip or any(path == d or path.startswith(d + "/") for d in _output_dirs())
 
 
 def _pr_file(
@@ -153,43 +156,68 @@ def _commit_lines(repo: Path, merge_base: str, head: str) -> Tuple[str, ...]:
     return tuple(line for line in out.splitlines() if line.strip())
 
 
+def _on_pr_branch(repo: Path, meta: PrMeta) -> bool:
+    """True when the checked-out branch carries the PR head's name and its HEAD contains the PR head.
+
+    The name alone matches a fork PR's ``main`` or a stale local branch; the ancestry check rejects both.
+    """
+    if current_branch(repo) != meta.head:
+        return False
+    return git(repo, "merge-base", "--is-ancestor", meta.head_sha, "HEAD").returncode == 0
+
+
 def _head(repo: Path, meta: PrMeta, local: bool) -> Tuple[str, str]:
     """(head SHA, source): the checkout's HEAD when ``local`` and it is on the PR branch, else the PR head."""
-    if local and current_branch(repo) == meta.head:
+    if local and _on_pr_branch(repo, meta):
         return git_out(repo, "rev-parse", "HEAD").strip(), "local"
     return meta.head_sha, "remote"
 
 
-def _files(repo: Path, merge_base: str, head: Optional[str]) -> Tuple[PrFile, ...]:
-    """Changed files from merge_base to ``head``, or to the working tree plus untracked files when None."""
+def _files(
+        repo: Path, merge_base: str, head: Optional[str], skip: FrozenSet[str] = frozenset(),
+) -> Tuple[PrFile, ...]:
+    """Changed files from merge_base to ``head``, or to the working tree plus untracked files when None.
+
+    Untracked paths are the captures numstat does not list; those under a harness output directory or in
+    ``skip`` are left out, and each kept one is read once for its line count and binary flag.
+    """
     captures = capture_paths(repo, merge_base, head)
     stats, binary = _numstat(repo, merge_base, head)
-    untracked: FrozenSet[str] = frozenset()
-    if head is None:
-        extra_stats, extra_binary, untracked = _untracked_facts(repo)
-        stats, binary = {**stats, **extra_stats}, binary | extra_binary
-    return tuple(_pr_file(c, stats, binary, untracked) for c in captures)
+    untracked = [c.path for c in captures if head is None and c.status == "A" and c.path not in stats]
+    kept = frozenset(p for p in untracked if not _skipped(p, skip))
+    extra_stats, extra_binary = untracked_facts(repo, sorted(kept))
+    stats, binary = {**stats, **extra_stats}, binary | extra_binary
+    dropped = set(untracked) - kept
+    return tuple(_pr_file(c, stats, binary, kept) for c in captures if c.path not in dropped)
+
+
+def _dirty(repo: Path, files: Sequence[PrFile]) -> bool:
+    """True when a working-tree capture holds an untracked row or a tracked change against HEAD."""
+    return any(f.untracked for f in files) or git(repo, "diff", "--quiet", "HEAD").returncode == 1
 
 
 def capture_pr(
         repo: Path, meta: PrMeta, fetch: bool = True, today: Optional[str] = None, local: bool = False,
-        working_tree: bool = False,
+        working_tree: bool = False, skip: FrozenSet[str] = frozenset(),
 ) -> PrFacts:
     """Facts for the PR ``meta`` describes, from local git (fetching the base side and PR head first).
 
-    ``local`` reads the checked-out PR branch's HEAD in place of the PR head ``gh`` reports;
-    ``working_tree`` adds that checkout's staged, unstaged and untracked changes. Both apply only while the
-    PR branch is checked out; elsewhere the capture falls back to the committed PR head.
+    ``local`` reads the checked-out PR branch's HEAD in place of the PR head ``gh`` reports, provided that
+    HEAD contains the PR head; ``working_tree`` adds that checkout's staged, unstaged and untracked changes
+    (untracked harness output and ``skip`` paths left out) and is recorded only when such changes exist.
+    Both apply only while the PR branch is checked out; elsewhere the capture falls back to the committed
+    PR head.
     """
     if fetch:
         git_out(repo, "fetch", "origin", *meta.fetch_refs)
     head_sha, source = _head(repo, meta, local)
-    working = working_tree and source == "local"
+    wanted = working_tree and source == "local"
     merge_base = git_out(repo, "merge-base", meta.base_tip, head_sha).strip()
+    files = _files(repo, merge_base, None if wanted else head_sha, skip)
     return PrFacts(
         meta.number, meta.title, meta.head, meta.base, head_sha, merge_base,
         today or date.today().isoformat(), _commit_lines(repo, merge_base, head_sha),
-        _files(repo, merge_base, None if working else head_sha), source, working,
+        files, source, wanted and _dirty(repo, files),
     )
 
 
@@ -231,14 +259,27 @@ def _sections(text: str) -> Dict[str, str]:
     return {part.split("\n", 1)[0]: part for part in parts if part.startswith("diff --git ")}
 
 
+def _require_captured_checkout(repo: Path, facts: PrFacts) -> None:
+    """Raise ``CaptureError`` when the checkout is no longer the captured branch at the captured HEAD."""
+    branch, head = current_branch(repo), git_out(repo, "rev-parse", "HEAD").strip()
+    if branch != facts.head or head != facts.head_sha:
+        raise CaptureError([
+            f"working tree moved since capture (captured {facts.head} at {facts.head_sha[:7]}, now "
+            f"{branch or 'detached HEAD'} at {head[:7]}); rerun capture",
+        ])
+
+
 def file_patches(repo: Path, facts: PrFacts, files: Sequence[PrFile]) -> Dict[str, str]:
     """Path -> its ``git diff -M merge_base head`` text, read with one ``git diff`` per pathspec chunk.
 
-    A working-tree capture diffs against the working tree, and an untracked file reads as all additions.
+    A working-tree capture diffs against the working tree as it stands now, and an untracked file reads as
+    all additions; it raises ``CaptureError`` unless the captured branch and HEAD are still checked out.
     A file whose section does not appear under ``_header`` (a quoted path, a non-default diff prefix, a
     different rename pairing, an untracked file) is read on its own with ``path_diff``, so each value
     equals that read.
     """
+    if facts.working_tree:
+        _require_captured_checkout(repo, facts)
     head = None if facts.working_tree else facts.head_sha
     sections: Dict[str, str] = {}
     for chunk in _pathspec_chunks([f for f in files if not f.untracked]):

@@ -6,7 +6,6 @@ checkout the suite runs from.
 """
 from __future__ import annotations
 
-from dataclasses import asdict
 from pathlib import Path
 from typing import Callable, Dict
 
@@ -113,6 +112,14 @@ class TestPayload:
         for entry in payload["files"]:
             entry.pop("binary")
         assert facts_from_payload(payload) == _facts()
+
+    def test_payload_without_source_fields_reads_as_remote_committed(self) -> None:
+        raw = skeleton(_facts(), _draft())["facts"]
+        for key in ("head_source", "working_tree"):
+            raw.pop(key)
+        for entry in raw["files"]:
+            entry.pop("untracked")
+        assert facts_from_payload(raw) == _facts()
 
     def test_description_values_coerced(self) -> None:
         draft = draft_from_payload({"descriptions": {"a.py": None, "b.py": ["x", "y"], "c.py": "z"}})
@@ -278,16 +285,6 @@ class TestRenderSummary:
 
     def test_remote_capture_has_no_source_line(self) -> None:
         assert "**Source:**" not in render_summary(_facts(), _draft())
-
-    def test_payload_without_source_fields_reads_as_remote_committed(self) -> None:
-        raw = asdict(_facts())
-        for key in ("head_source", "working_tree"):
-            raw.pop(key)
-        for entry in raw["files"]:
-            entry.pop("untracked")
-        facts = facts_from_payload(raw)
-        assert (facts.head_source, facts.working_tree) == ("remote", False)
-        assert not any(f.untracked for f in facts.files)
 
     def test_renamed_with_edits_shows_both_paths(self) -> None:
         facts = _facts(files=(PrFile("R", "n.py", "o.py", 1, 1),))

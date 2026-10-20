@@ -1,0 +1,338 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 34,
+  "pr_title": "0014 pr capture defaults destination",
+  "branch": "0014-pr-capture-defaults-destination",
+  "base_branch": "main",
+  "base_sha": "f42ff2c25534f6d302146ea11d80c0a841fdb169",
+  "head_sha": "c1d05f663615475c75928110ed9d41db4dc4f49a",
+  "review_date": "2026-10-20",
+  "verdict": "READY TO MERGE - 10 of 10 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 229,
+    "deletions": 29,
+    "files_changed": 7
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)",
+    "copilot_review (external)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0034/pr34_20261020T173148Z/findings/tests.json",
+    "docs/_scratch/pr_review/0034/pr34_20261020T173148Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0034/pr34_20261020T173148Z/findings/docs.json",
+    "docs/_scratch/pr_review/0034/pr34_20261020T173148Z/findings/roast.json",
+    "docs/_scratch/pr_review/0034/pr34_20261020T173148Z/findings/copilot_review.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "TestCaptureSource runs real git in the copied clone: unpushed local commits, the remote-head contrast in the same test, and staged/unstaged/untracked text and binary files through both capture_pr and file_patches.",
+    "test_source_defaults_and_overrides drives the CLI end to end and stubs only the external gh read, so the defaults (local plus working tree) and both opt-out flags are checked in the written skeleton.",
+    "test_default_read_skips_artifacts now passes working_tree=False explicitly, which keeps its `uncommitted not in text` assertion meaningful under the new capture_payload default.",
+    "Render tests pin the exact placement of the Source line between Date and Files Changed for both working-tree states, and check that a remote capture prints no Source line.",
+    "New PrFacts/PrFile fields carry defaults, so skeletons written before this change still load through facts_from_payload unchanged.",
+    "capture_pr keeps local=False/working_tree=False defaults, so pr_review.py's committed-head capture is untouched; only pr_sum opts in.",
+    "file_patches routes untracked rows around the batched git diff and through path_diff's all-additions reader, keeping the chunked read and the single-path read equal.",
+    "Fallback to the gh head when the PR branch is not checked out (including detached HEAD) is explicit in _head and documented in both docstrings and the CLI help.",
+    "The new capture paragraph matches the code: `_head` takes the local HEAD only when the current branch equals the PR head name, `working_tree` adds staged, unstaged and untracked changes only for a local source, and `--remote-head` / `--committed-only` behave as described (pr_sum.py:219-224, 263).",
+    "The `**Source:**` header claim matches `_source_line` in pr_summary.py, which emits the line only for a local capture.",
+    "Both skills carry the paragraph word for word, so the pr-sum and pr-sum-viz capture contracts cannot drift apart.",
+    "'Pass either only when asked' keeps the haiku-run skills on the default path and off flags the user never asked for.",
+    "New PrFacts/PrFile fields have defaults, so old skeletons and pr_review's positional PrFacts construction keep working, and a test pops the keys to prove it.",
+    "capture_pr keeps local=False/working_tree=False as library defaults, so pr_review's shared capture is unchanged and only pr_sum opts in.",
+    "The capture falls back to the committed gh head when the PR branch is not checked out, and test_off_the_pr_branch_falls_back_to_the_pr_head covers it.",
+    "test_working_tree_adds_staged_unstaged_and_untracked runs against a real git clone and checks actual patch bodies and binary handling, not stubs.",
+    "The flag semantics (--remote-head implies committed-only) match across code, help text, the module docstring and both SKILL.md files."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Harness plugin version not bumped for a default-behavior change",
+        "file": "plugins/harness/.claude-plugin/plugin.json",
+        "files": [
+          "plugins/harness/.claude-plugin/plugin.json",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "3",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The PR changes what `pr_sum.py capture` summarizes by default (local branch plus working tree instead of the gh head) and adds two CLI flags, but `plugins/harness/.claude-plugin/plugin.json` stays at 0.9.0. The project's Releases rule requires a version bump in the changed plugin, and the marketplace serves the published version, so installs cannot tell old capture behavior from new.",
+        "fix": [
+          "Bump `version` in plugins/harness/.claude-plugin/plugin.json (0.9.0 -> 0.10.0, since the default output changes)"
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Local-branch detection matches by branch name only",
+        "file": "plugins/harness/lib/harness_lib/pr_capture.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_capture.py",
+          "plugins/harness/scripts/pr_sum.py",
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/skills/pr-sum-viz/SKILL.md",
+          "tests/scripts/test_pr_sum.py"
+        ],
+        "lines": "128-134,156-160,163-171",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_head treats the checkout as the PR branch whenever `git branch --show-current` equals meta.head (headRefName). For a fork PR whose head branch is named `main`, `patch-1` or any name that also exists locally, the capture silently summarizes an unrelated local branch (plus its working tree) under the PR's number and title. Nothing checks that the local HEAD is related to meta.head_sha, so a local branch that is behind or diverged from the pushed PR head is also captured without a warning beyond the short SHA on the Source line.\n\nAlso (runtime): With the new default (local + working_tree), every untracked non-ignored path joins PrFacts.files. In a consuming project that does not gitignore artifacts.summaries / artifacts.scratch, a re-capture picks up the previous skeleton `<NNNN>_pr.json`, built summaries and pr-review scratch briefs/diffs as added files. They inflate Files Changed and the +lines headline, can trip the artifact Note, and paths outside the Artifact bucket (the scratch dir by default) get description slots the draft must fill. The re-capture path (draft carried forward) hits this whenever the skeleton sits in the project and is not gitignored.\n\nAlso (roast): With working_tree now the default, `_untracked_facts` / `capture_paths(head=None)` take every untracked, non-ignored path. A rerun of `capture` finds the previous `<summaries>/<NNNN>_pr.json` skeleton (written by `_cmd_capture`, pr_sum.py:259-266) and any built `<NNNN>_<Title>.md` as added PR files, along with docs/PR_REVIEWS, docs/_scratch/pr_review and docs/_commit_messages output, in any consuming project that does not gitignore those dirs (nothing in defaults.json or the skills requires that). They inflate Files Changed and the +/- headline, can trip the artifact Note, and under a custom `artifacts.summaries` path (as in the test fixture's `out/summaries`) they become non-artifact rows that demand drafted descriptions. The summary ends up partly describing itself.\n\nAlso (roast): `_head` returns the checkout's HEAD whenever `current_branch(repo) == meta.head`. headRefName is just a name: a fork PR whose head is `main` matches a local `main`, and a stale local branch (never pulled after a collaborator pushed, or with --no-fetch) also matches. Either way the default capture quietly summarizes a commit range that does not contain the PR head, with a `**Source:** local branch` line as the only clue. The tests cover the ahead and off-branch cases; the stale and fork cases have no test.\n\nAlso (runtime): _untracked_facts re-implements branch_capture.capture_stats (untracked line counts as additions). It runs `git ls-files --others` a second time after capture_paths already did, and reads every untracked file twice: once in file_lines, once in read_untracked for is_binary. If the second listing differs from the first (a file created in between), a stat or flag can land on a path that is not among the captures, or the reverse.",
+        "fix": [
+          "Require ancestry as well as the name: take the local HEAD only when `git merge-base --is-ancestor <meta.head_sha> HEAD` succeeds (local is at or ahead of the PR head); otherwise fall back to remote, or raise CaptureError naming both SHAs.",
+          "Alternatively compare the branch's upstream (`git rev-parse --abbrev-ref @{u}`) against the PR's head repository/ref before accepting the name match.",
+          "In _files (working-tree branch), drop captures under the active config's artifact directories (summaries, reviews, scratch) and the --out target before building PrFile rows.",
+          "Or keep untracked files out of the default and include them only behind an explicit flag.",
+          "Filter untracked paths in `_files` (head is None) through the active config: drop paths under every `cfg.artifacts.*` directory, the `--out` skeleton path, and the project's `exclusions` patterns (`git_status_filter_excluded.load_exclusions`), and add a test that reruns the default capture with the skeleton under the clone",
+          "Or include untracked files only on an explicit flag, and state in both SKILL.md files that harness artifact dirs must be gitignored for the working-tree capture",
+          "Choose the local head only when `git merge-base --is-ancestor <meta.head_sha> HEAD` succeeds (the PR head is already fetched); otherwise fall back to the remote head or raise a `CaptureError` naming the mismatch and pointing at --remote-head, and add a test for a local branch behind the PR head",
+          "At minimum, add a `problem`-style warning and a summary note when the local HEAD does not contain `meta.head_sha`",
+          "Derive the untracked set from the captures (status A and absent from the numstat dict), read each file once with read_untracked, and compute both the line count and the binary flag from those bytes; or call capture_stats(repo, merge_base, captures, None) for the counts."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Working-tree diff is read at diff time with no checkout check",
+        "file": "plugins/harness/lib/harness_lib/pr_capture.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_capture.py",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "234-248",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "For a working-tree capture, file_patches diffs merge_base against whatever working tree is present when `pr_sum.py diff` runs, and untracked rows are read straight from disk. The skeleton records head_sha and working_tree, but nothing verifies that the PR branch is still checked out or that HEAD still equals facts.head_sha. After a branch switch, a commit, or an edit, the diff output disagrees with the captured file list and line counts. An untracked file that was since deleted or committed renders as the unreadable placeholder, and a different branch's tree is diffed silently.\n\nAlso (roast): For a working-tree capture, `file_patches` diffs `merge_base` against the live working tree at `diff` time, while the line counts in facts were taken at `capture` time. Edits, a revert, a deleted untracked file or a branch switch in between produce diff text that disagrees with the recorded counts (or an UNREADABLE body), and nothing reports the drift. `head_sha` pins only the committed part.",
+        "fix": [
+          "At the top of file_patches (or run_diff), when facts.working_tree is set, check that current_branch(repo) == facts.head and `git rev-parse HEAD` == facts.head_sha, and raise CaptureError('working tree moved since capture; rerun capture') otherwise.",
+          "Record a snapshot id at capture (for example `git stash create` for tracked changes plus a hash of the untracked list) and have `run_diff` report a `problem` when it no longer matches, asking for a re-capture",
+          "Or document in both SKILL.md files that `diff` must run right after `capture` with the tree untouched"
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Off-branch fallback test cannot detect a working-tree leak",
+        "file": "tests/scripts/test_pr_sum.py",
+        "files": [
+          "tests/scripts/test_pr_sum.py",
+          "plugins/harness/lib/harness_lib/pr_capture.py"
+        ],
+        "lines": "295-302,304-323",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_off_the_pr_branch_falls_back_to_the_pr_head stashes the dirty edit, checks out main and passes working_tree=True, then asserts only (head_sha, head_source, working_tree). capture_pr derives facts.working_tree from `working` but picks the diff target in a separate expression (`_files(repo, merge_base, None if working else head_sha)`, pr_capture.py:187-192). If that expression regressed to `working_tree`, the capture would diff merge_base against main's clean tree and return zero files while the asserted triple still reads (head, 'remote', False). The test also cleans the tree before checkout, so the case it guards (a user on another branch with uncommitted edits) never arises.\n\nAlso (tests): test_working_tree_adds_staged_unstaged_and_untracked indexes `rows[...]` for four paths and never asserts the full key set. An extra path picked up by mistake (an ignored file or a harness state file that untracked_paths should skip) would still pass. The PR's committed rows (the report and the docs move) are also never checked, so a working-tree diff that dropped committed changes would go unnoticed. An uncommitted deletion ('D' to the working tree) has no coverage either.",
+        "fix": [
+          "After `checkout main`, dirty a tracked file and add an untracked one, then assert `facts.files == script.capture_pr(clone, _meta(script, head), fetch=False).files` (or at least `len(facts.files) == 3` and that neither dirty path appears).",
+          "Assert `set(rows) == {README.md, src/pkg/a.py, src/pkg/new.py, assets/new.bin, docs/new/b.md, _REPORT}`.",
+          "Optionally `git rm` a tracked file without committing and assert its row is ('D', 0, n, False, False)."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "This changes the published harness behavior and both PR-summary skills, but `plugins/harness/.claude-plugin/plugin.json`",
+        "file": "plugins/harness/scripts/pr_sum.py",
+        "reviewer": "copilot_review",
+        "fix_kind": "judgment",
+        "summary": "Copilot (pullrequestreview-5589043460): This changes the published harness behavior and both PR-summary skills, but `plugins/harness/.claude-plugin/plugin.json` remains at version `0.9.0`. Bump the harness patch version with this change so marketplace installs can invalidate the old plugin and receive the new capture defaults.",
+        "fix": [
+          "This changes the published harness behavior and both PR-summary skills, but `plugins/harness/.claude-plugin/plugin.json` remains at version `0.9.0`. Bump the harness patch version with this change so marketplace installs can invalidate the old plugin and receive the new capture defaults."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "_untracked_facts re-lists untracked paths and reads every file twice",
+        "file": "plugins/harness/lib/harness_lib/pr_capture.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_capture.py",
+          "plugins/harness/lib/harness_lib/branch_capture.py"
+        ],
+        "lines": "128-134",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "`capture_paths(head=None)` already ran `git ls-files --others`; `_untracked_facts` runs it again, then reads each untracked file once via `file_lines` and again via `read_untracked` for the binary probe. It also re-implements `branch_capture.capture_stats` / `_untracked_stat`, which already compute these counts. Two listings also let a file created between them show up as an untracked flag on a path `capture_paths` never listed (harmless), or the reverse.",
+        "fix": [
+          "Derive the untracked set from the captures already listed (or one `untracked_paths` call shared by both), read each file's bytes once, and compute line count and binary flag from those bytes; or reuse `branch_capture.capture_stats(repo, merge_base, captures)` for the counts"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Source line claims uncommitted changes on a clean tree",
+        "file": "plugins/harness/lib/harness_lib/pr_summary.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_summary.py",
+          "plugins/harness/lib/harness_lib/pr_capture.py"
+        ],
+        "lines": "375-380",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "_source_line prints ', plus uncommitted changes' whenever facts.working_tree is True. capture_pr sets working_tree whenever the flag is on and the PR branch is checked out, even when the tree is clean, so the default capture of a clean checkout claims uncommitted changes in the published summary.",
+        "fix": [
+          "In capture_pr, set working only when `git status --porcelain` is non-empty (diffing to HEAD is then equivalent).",
+          "Or have _source_line check facts.files for untracked rows / a dirty marker recorded at capture time."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "New skeleton fields are not type-checked on load",
+        "file": "plugins/harness/scripts/pr_sum.py",
+        "lines": "124-132",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "pr_sum._facts validates number and line counts but not the new head_source / working_tree / untracked fields. A hand-edited skeleton with \"working_tree\": \"false\" is truthy, so file_patches diffs against the working tree. A non-bool untracked flag sends a tracked path to untracked_diff.",
+        "fix": [
+          "Extend _facts: require facts.head_source in ('local', 'remote'), isinstance(facts.working_tree, bool), and isinstance(f.untracked, bool) and isinstance(f.binary, bool) for every file; raise the existing 'rerun capture' CaptureError otherwise."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Step 2 does not warn that `diff` re-reads the live working tree for a local capture",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/skills/pr-sum-viz/SKILL.md",
+          "plugins/harness/lib/harness_lib/pr_capture.py"
+        ],
+        "lines": "40-45,58-67",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The new Step 1 paragraph says a capture on the checked-out PR branch includes staged, unstaged and untracked changes, but Step 2 presents `diff SKELETON` as a read of what was captured. For a working-tree skeleton, `file_patches` (plugins/harness/lib/harness_lib/pr_capture.py:242-248) passes head=None and diffs merge_base against the working tree as it stands when `diff` runs, not as it stood at capture. If files are edited, staged or the branch is switched between `capture` and `diff`, the patch the agent describes no longer matches the file list and counts in `facts`, and nothing in either skill tells the agent to recapture.\n\nAlso (docs): Line 40-41 says the content 'is local branch state' with no condition, and the next sentence says that off the PR branch the capture reads the committed PR head `gh` reports (fetched `pull/N/head`), which is not local branch state. The code (`_head`, pr_capture.py:156-160) takes the local HEAD only when `current_branch == meta.head`. A reader skimming the first sentence gets the default wrong for the off-branch case. The same paragraph is duplicated verbatim in pr-sum-viz.",
+        "fix": [
+          "Add one sentence to the new paragraph (or to Step 2) in both skills: 'A local capture's `diff` reads the working tree as it is when `diff` runs; after edits or a branch switch, rerun `capture` first.'",
+          "Alternatively have `diff` refuse a working-tree skeleton when the current branch is not `facts.head`, and document that problem line.",
+          "Reword to: 'The PR anchors the number, title and base; the content comes from local git. While the PR branch is checked out, ...' in both skills."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Backward-compat payload test sits under TestRenderSummary and asserts less than its sibling",
+        "file": "tests/lib/test_pr_summary.py",
+        "lines": "9,282-290",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_payload_without_source_fields_reads_as_remote_committed tests facts_from_payload, not render_summary, yet it sits in TestRenderSummary. Its sibling test_payload_without_binary_key in TestPayload builds the raw dict with skeleton(...)['facts'], the payload writer production uses, and asserts full equality with _facts(). This test builds the dict with dataclasses.asdict, which skips the real serializer, and checks only two fields plus the untracked flags.",
+        "fix": [
+          "Move the test into TestPayload, build `raw` from `skeleton(_facts(), _draft())['facts']`, assert `facts_from_payload(raw) == _facts()`, and drop the now-unused `asdict` import."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 34 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":4,\"first_sha\":\"3f1878557342aff501866bb724499ffa26ef9ceb\",\"headRefName\":\"0014-pr-capture-defaults-destination\",\"headRefOid\":\"c1d05f663615475c75928110ed9d41db4dc4f49a\",\"last_sha\":\"c1d05f663615475c75928110ed9d41db4dc4f49a\",\"mergeCommit\":null,\"number\":34,\"state\":\"OPEN\",\"title\":\"0014 pr capture defaults destination\",\"url\":\"https://github.com/t968rs/operator-straps/pull/34\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0014-pr-capture-defaults-destination",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0014-pr-capture-defaults-destination",
+        "head_ref_name": "0014-pr-capture-defaults-destination",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "3f1878557342aff501866bb724499ffa26ef9ceb",
+        "head_sha": "c1d05f663615475c75928110ed9d41db4dc4f49a",
+        "base_ancestor_command": "git merge-base --is-ancestor 3f1878557342aff501866bb724499ffa26ef9ceb HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor c1d05f663615475c75928110ed9d41db4dc4f49a HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - capture_pr records working_tree only when the working-tree capture holds an untracked row or git diff --quiet HEAD reports a tracked change; clean-checkout test added"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - _facts rejects a head_source outside local/remote and non-bool working_tree, binary or untracked flags with the rerun-capture CaptureError; parametrized test added"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - both skills reword the capture paragraph (content comes from local git; PR-branch condition and off-branch fallback explicit) and add the rerun-capture note for diff on a local capture"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - cited only: the bump lives in plugin.json (another fixer's part); pr_sum.py needs no edit for the version; Bumped harness plugin version 0.9.0 -> 0.10.0 in plugin.json."
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - local head requires merge-base --is-ancestor of the PR head (else remote fallback); untracked set derived from captures absent from numstat, read once via untracked_facts; untracked paths under reviews/summaries/commit_messages/scratch and the --out skeleton dropped; docs and tests (behind branch, harness output, skeleton rerun) added"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - file_patches raises CaptureError 'working tree moved since capture' when a working-tree skeleton's branch or HEAD no longer matches the checkout; pr_sum diff docstring notes it; test added"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - branch_capture.py: added untracked_facts(repo, paths) that reads each untracked file once and returns line-count stats plus binary paths; capture_stats uses it and the duplicate _untracked_stat is removed. pr_capture._untracked_facts is for the other part to switch to this helper.; already present: _files (plugins/harness/lib/harness_lib/pr_capture.py:176-191) takes untracked paths from the one capture_paths listing and reads each file once through untracked_facts; no _untracked_facts exists"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - Moved the backward-compat source-fields test from TestRenderSummary into TestPayload; raw built from skeleton(_facts(), _draft())['facts'] and asserts equality with _facts(); dropped the unused asdict import."
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "c1d05f6 (working-tree snapshot; developer commits) - off-branch test now dirties README.md and adds src/pkg/new.py after checkout main, asserts files equal the committed capture and the path set; working-tree test asserts the full key set, committed rows (a.py, docs move, report) and an uncommitted deletion of assets/logo.bin"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-20",
+      "evidence": "ff8a71b (working-tree snapshot; developer commits) - duplicate of I1; harness plugin.json already bumped 0.9.0 -> 0.10.0 in ff8a71b (outside fixer waves)"
+    }
+  ]
+}

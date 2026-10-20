@@ -298,8 +298,12 @@ class TestCaptureSource:
         clone, _, head = pr_repo
         _git(clone, "stash", "-u")
         _git(clone, "checkout", "main")
+        _write(clone, "README.md", "dirty on main\n")
+        _write(clone, "src/pkg/new.py", "n\n")
         facts = script.capture_pr(clone, _meta(script, head), fetch=False, local=True, working_tree=True)
         assert (facts.head_sha, facts.head_source, facts.working_tree) == (head, "remote", False)
+        assert facts.files == script.capture_pr(clone, _meta(script, head), fetch=False).files
+        assert {f.path for f in facts.files} == {"src/pkg/a.py", "docs/new/b.md", _REPORT}
 
     def test_working_tree_adds_staged_unstaged_and_untracked(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str],
@@ -309,18 +313,65 @@ class TestCaptureSource:
         _git(clone, "add", "--", "README.md")
         _write(clone, "src/pkg/new.py", "one\ntwo\n")
         (clone / "assets" / "new.bin").write_bytes(_BINARY)
+        (clone / "assets" / "logo.bin").unlink()
         facts = script.capture_pr(clone, _meta(script, head), fetch=False, local=True, working_tree=True)
         assert (facts.head_sha, facts.head_source, facts.working_tree) == (head, "local", True)
         rows = {f.path: (f.status, f.added, f.deleted, f.binary, f.untracked) for f in facts.files}
+        assert set(rows) == {
+            "README.md", "src/pkg/a.py", "src/pkg/new.py", "assets/new.bin", "assets/logo.bin",
+            "docs/new/b.md", _REPORT,
+        }
         assert rows["README.md"] == ("M", 1, 1, False, False)
         assert rows["src/pkg/a.py"] == ("M", 1, 1, False, False)
         assert rows["src/pkg/new.py"] == ("A", 2, 0, False, True)
         assert rows["assets/new.bin"] == ("A", 0, 0, True, True)
+        assert rows["assets/logo.bin"] == ("D", 0, 0, True, False)
+        assert rows["docs/new/b.md"][0] == "R"
+        assert rows[_REPORT] == ("A", 30, 0, False, False)
         patches = pr_capture.file_patches(clone, facts, facts.files)
         assert "+uncommitted" in patches["src/pkg/a.py"]
         assert "+staged" in patches["README.md"]
         assert patches["src/pkg/new.py"] == "+one\n+two"
         assert patches["assets/new.bin"] == branch_capture.BINARY_BODY
+
+    def test_clean_checkout_records_no_working_tree(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _git(clone, "checkout", "--", "src/pkg/a.py")
+        facts = script.capture_pr(clone, _meta(script, head), fetch=False, local=True, working_tree=True)
+        assert (facts.head_sha, facts.head_source, facts.working_tree) == (head, "local", False)
+
+    def test_local_branch_behind_the_pr_head_falls_back(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _git(clone, "reset", "--hard", "HEAD~1")
+        facts = script.capture_pr(clone, _meta(script, head), fetch=False, local=True, working_tree=True)
+        assert (facts.head_sha, facts.head_source, facts.working_tree) == (head, "remote", False)
+
+    def test_untracked_harness_output_is_left_out(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        for rel in (f"{_SUMMARIES}/1234_pr.json", "docs/PR_REVIEWS/extra.json", "notes/out.json", "src/n.py"):
+            _write(clone, rel)
+        facts = script.capture_pr(
+            clone, _meta(script, head), fetch=False, local=True, working_tree=True,
+            skip=frozenset({"notes/out.json"}),
+        )
+        untracked = [f.path for f in facts.files if f.untracked]
+        assert untracked == ["src/n.py"]
+        assert _REPORT in [f.path for f in facts.files]
+
+    def test_diff_refuses_a_moved_checkout(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        facts = script.capture_pr(clone, _meta(script, head), fetch=False, local=True, working_tree=True)
+        _commit(clone, {"src/pkg/c.py": "c\n"}, "Feature(c): add c")
+        with pytest.raises(script.CaptureError, match="working tree moved since capture"):
+            pr_capture.file_patches(clone, facts, facts.files)
 
 
 class TestCaptureCommand:
@@ -346,6 +397,9 @@ class TestCaptureCommand:
         assert json.loads(skeleton.read_text(encoding="utf-8"))["facts"]["head_sha"] == head
         assert seen == [clone.resolve()] and active().project_root == clone.resolve()
         assert not (other / "elsewhere").exists()
+        assert script.main(["capture", "--pr", "1234", "--no-fetch"]) == 0
+        files = json.loads(skeleton.read_text(encoding="utf-8"))["facts"]["files"]
+        assert f"{_SUMMARIES}/1234_pr.json" not in [f["path"] for f in files]
 
     def test_repo_argument_selects_project(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
@@ -577,6 +631,19 @@ class TestBuild:
         payload["facts"]["number"] = "1234"
         with pytest.raises(script.CaptureError, match="rerun capture"):
             script.run_build(clone, payload)
+
+    @pytest.mark.parametrize("field, value", [
+        ("head_source", "elsewhere"), ("working_tree", "false"), ("binary", 0), ("untracked", "no"),
+    ])
+    def test_wrong_typed_source_or_flag(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], field: str, value: object,
+    ) -> None:
+        clone, _, head = pr_repo
+        payload = _filled(script.capture_payload(clone, _meta(script, head), fetch=False))
+        target = payload["facts"]["files"][0] if field in ("binary", "untracked") else payload["facts"]
+        target[field] = value
+        with pytest.raises(script.CaptureError, match="wrong-typed source or file flag"):
+            script.run_diff(clone, payload)
 
     @pytest.mark.parametrize(("draft", "word"), [
         ({"descriptions": ["a.py"]}, "descriptions"),

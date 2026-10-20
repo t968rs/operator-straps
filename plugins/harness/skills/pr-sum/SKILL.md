@@ -37,12 +37,14 @@ the branch or `gh pr list`.
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN
 ```
 
-The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content is
-local branch state. While the PR branch is checked out, it covers the branch's local commits plus staged,
-unstaged and untracked changes, so unpushed work and pending review fixes appear; elsewhere it reads the
-committed PR head `gh` reports. `--remote-head` forces that remote head; `--committed-only` keeps the local
-head without uncommitted changes. Pass either only when asked. A local capture adds a `**Source:**` header
-line.
+The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
+from local git. While the PR branch is checked out (a branch of the PR head's name whose HEAD contains that
+head), it covers the branch's local commits plus staged, unstaged and untracked changes, so unpushed work and
+pending review fixes appear; untracked files under the harness output directories (reviews, summaries, commit
+messages, scratch) and the skeleton itself are left out. Elsewhere, including a stale or unrelated local branch
+of the same name, it reads the committed PR head `gh` reports. `--remote-head` forces that remote head;
+`--committed-only` keeps the local head without uncommitted changes. Pass either only when asked. A local
+capture adds a `**Source:**` header line.
 
 Exit 1 prints `problem:` lines (malformed JSON or config, missing file, `gh` missing): report them and stop.
 Exit 0 writes `<summaries>/<NNNN>_pr.json` and prints `wrote <path>`; use that path as `SKELETON` below.
@@ -65,6 +67,10 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py"
 tests (the project's configured test layout), then docs, and stops at a line budget and a 60k-character output
 cap. A section that reads `[omitted: block output budget spent]` or prints as `summary` was cut: rerun `diff`
 with `--path <p>` (repeatable) for those paths. `--path` also accepts a renamed file's old path.
+
+A local capture's `diff` reads the working tree as it is when `diff` runs; after edits or a branch switch, rerun
+`capture` first. `diff` refuses a working-tree skeleton (`problem: working tree moved since capture`) once the
+branch or HEAD has changed: rerun `capture`, then `diff`.
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff SKELETON --path src/pkg/module.py
