@@ -6,7 +6,6 @@ import type { Watch } from './watch'
 import { MAX_TOAST_SECONDS, readConfig } from './config'
 import {
   CHECK_TIMEOUT_MS, isWatchedPath, normalPath, parseReport, parseRunner, pathOfCall, reportTimeMs, startGateMs,
-  LONG_TOAST_MS,
 } from './checks'
 import {
   BANNER_CONFIG, CATALOG_LINE, CATALOG_REL, checkRuns, CONFIG, NOW, prompt, PYTHON, RESEARCH_CATALOG_REL,
