@@ -15,6 +15,12 @@ write the runner pointer.
 ``runner``
     Write ``<state_dir>/todo-sync/runner.json`` (interpreter, this script, project, report) and print its
     path.
+``retire ID [ID ...] [--dry-run]``
+    Remove finished items (``TODO-007``, ``007`` or ``7``) from the catalog, renumber the rest so T6 holds,
+    rescore items that lose their only unblocked item, recount, and rewrite moved ids in the research
+    catalog and stubs. Prints the follow-up the catalog cannot record by itself: resolved issues to list
+    as close candidates, trackers to revisit, prose still naming a retired id, and other files naming a
+    TODO id (not rewritten). ``--dry-run`` prints the same report and writes nothing.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
 ``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or a
@@ -36,6 +42,7 @@ from harness_lib.project import project_root  # noqa: E402
 from harness_lib.todo_sync import (TodoSyncError, check, render_snapshot, report_path,  # noqa: E402
                                    write_report, write_runner)
 from harness_lib.todo_sync.report import Report, format_markdown, format_summary  # noqa: E402
+from harness_lib.todo_sync.retire import apply_retirement, summary_lines  # noqa: E402
 
 INACTIVE = "todo sync inactive (todo.folder is null)"
 #: ``--fail-on`` thresholds, lowest severity first.
@@ -66,6 +73,9 @@ def _parser() -> argparse.ArgumentParser:
     rnd = sub.add_parser("render", parents=[common], help="Write the dated top-N snapshot.")
     rnd.add_argument("--date", type=dt.date.fromisoformat, help="Snapshot date (default: today).")
     sub.add_parser("runner", parents=[common], help="Write the runner pointer.")
+    ret = sub.add_parser("retire", parents=[common], help="Remove finished items and renumber the rest.")
+    ret.add_argument("ids", nargs="+", help="Item ids: TODO-007, 007 or 7.")
+    ret.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
     return parser
 
 
@@ -106,6 +116,8 @@ def _dispatch(cfg: HarnessConfig, args: argparse.Namespace) -> int:
         return _check(cfg, args)
     if args.command == "render":
         print(render_snapshot(cfg, args.date or dt.date.today()))
+    elif args.command == "retire":
+        print("\n".join(summary_lines(apply_retirement(cfg, args.ids, args.dry_run), args.dry_run)))
     else:
         print(write_runner(cfg))
     return 0
