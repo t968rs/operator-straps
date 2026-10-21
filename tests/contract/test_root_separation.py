@@ -134,6 +134,8 @@ CASES = {
     "session rules hook": lambda r, t: (["hooks/session_rules.py"], {"cwd": str(r), "source": "startup"}),
     "schema hook": lambda r, t: (["hooks/validate_pr_json_schema.py"], _review_payload(r)),
     "stop hook": lambda r, t: (["hooks/check_phase5_sentinel.py"], {"cwd": str(r), "session_id": "s"}),
+    "min-viz stop hook": lambda r, t: (["hooks/check_min_viz_sentinel.py"],
+                                       {"cwd": str(r), "session_id": "s"}),
     "bash discipline hook": lambda r, t: (["hooks/bash_discipline.py"], {
         "cwd": str(r), "tool_name": "Bash", "tool_input": {"command": "git status && git log"}}),
 }

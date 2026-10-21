@@ -1,8 +1,8 @@
-"""PR summary model and renderer (pr-sum / pr-sum-viz mechanics).
+"""PR summary model and renderer (pr-sum mechanics).
 
 ``PrFacts`` holds what local git and one ``gh pr view`` read establish about a PR. ``PrDraft`` holds the
-prose an agent writes: the derived title, the Summary, one description per listed source file and, for the
-visual variant, the flowchart, diagram and table sections. ``render_summary`` lays both out as the summary
+prose an agent writes: the derived title, the Summary, one description per listed source file and, from
+level 2 up, the flowchart, diagram and table sections. ``render_summary`` lays both out as the summary
 markdown the driver saves under the project's configured ``artifacts.summaries`` directory, so counts, commit
 subjects and file rows are never re-typed. Artifact classification goes through
 ``branch_commits.path_bucket`` (the project's configured commit buckets). Git and gh are not run here.
@@ -28,9 +28,12 @@ _FLOW_HEADING = "Behavior:"
 _NEW_FLOW_HEADING = "New Behavior:"
 _FLOW_TAGS = ("[changed]", "[new]")
 _SHAPE_HEADINGS = ("Module Relocations", "Symbol Relocations", "Call-Site Migration", "Rule Illustration")
+_LEVEL3_SHAPE_HEADINGS = (*_SHAPE_HEADINGS, "Sequence Diagram", "Data Flow")
 _SYMBOLS_HEADING = "Changed Symbols"
 _KIND_ORDER = ("flow", "shape", "symbols")
-_MAX_FLOWS = 3
+_MAX_FLOWS = {2: 3, 3: 5}
+LEVELS = (1, 2, 3)
+DEFAULT_LEVEL = 2
 
 
 @dataclass(frozen=True)
@@ -108,7 +111,7 @@ class PrFacts:
 
 @dataclass(frozen=True)
 class PrSection:
-    """One drafted markdown section (``pr-sum-viz``): a heading and its body."""
+    """One drafted markdown section (levels 2 and 3): a heading and its body."""
 
     heading: str
     body: str
@@ -236,23 +239,32 @@ def _flow_problems(section: PrSection) -> List[str]:
     return problems + ([misplaced] if tagged else [])
 
 
-def _section_kind(heading: str) -> Optional[str]:
-    """``flow``, ``shape`` or ``symbols`` for a known visual heading; None otherwise."""
+def _section_kind(heading: str, level: int = 2) -> Optional[str]:
+    """``flow``, ``shape`` or ``symbols`` for a heading known at ``level``; None otherwise."""
     heading = heading.strip()
     if heading.startswith((_FLOW_HEADING, _NEW_FLOW_HEADING)):
         return "flow"
-    if heading in _SHAPE_HEADINGS:
+    if heading in (_LEVEL3_SHAPE_HEADINGS if level >= 3 else _SHAPE_HEADINGS):
         return "shape"
     return "symbols" if heading == _SYMBOLS_HEADING else None
 
 
-def _layout_problems(draft: PrDraft) -> List[str]:
+def _shape_count_problems(draft: PrDraft, kinds: List[Optional[str]], level: int) -> List[str]:
+    """Shape diagram limit: one at level 2; at level 3 each shape heading at most once."""
+    headings = [s.heading.strip() for s, kind in zip(draft.sections, kinds) if kind == "shape"]
+    if level < 3:
+        return [] if len(headings) <= 1 else [f"at most one shape diagram (found {len(headings)})"]
+    return [f"shape diagram '{h}' appears {headings.count(h)} times; use each at most once"
+            for h in dict.fromkeys(headings) if headings.count(h) > 1]
+
+
+def _layout_problems(draft: PrDraft, level: int = 2) -> List[str]:
     """Layout checks of the visual sections.
 
     Known headings (a blank heading is left to the no-heading check); a flow or shape diagram; exactly one
-    Changed Symbols; at most one shape diagram and ``_MAX_FLOWS`` flows; flows, shape, symbols order.
+    Changed Symbols; the shape limit and the flow limit of ``level``; flows, shape, symbols order.
     """
-    kinds = [_section_kind(s.heading) for s in draft.sections]
+    kinds = [_section_kind(s.heading, level) for s in draft.sections]
     problems = [
         f"section '{s.heading}': unknown heading; use 'Behavior: <trigger>', 'New Behavior: <trigger>', "
         f"a shape diagram name or '{_SYMBOLS_HEADING}'"
@@ -263,8 +275,9 @@ def _layout_problems(draft: PrDraft) -> List[str]:
     problems += [] if symbols == 1 else [
         f"a visual summary needs exactly one '{_SYMBOLS_HEADING}' section (found {symbols})",
     ]
-    problems += [] if shapes <= 1 else [f"at most one shape diagram (found {shapes})"]
-    problems += [] if flows <= _MAX_FLOWS else [f"at most {_MAX_FLOWS} behavior flows (found {flows})"]
+    problems += _shape_count_problems(draft, kinds, level)
+    limit = _MAX_FLOWS[level]
+    problems += [] if flows <= limit else [f"at most {limit} behavior flows (found {flows})"]
     ranks = [_KIND_ORDER.index(kind) for kind in kinds if kind is not None]
     return problems + ([] if ranks == sorted(ranks) else [
         "sections out of order: behavior flows, then the shape diagram, then Changed Symbols",
@@ -278,18 +291,19 @@ def _table_cells(body: str) -> List[str]:
     return [cell for cell in cells if not _SEPARATOR_CELL.fullmatch(cell)]
 
 
-def _section_problems(draft: PrDraft, visual: bool) -> List[str]:
+def _section_problems(draft: PrDraft, level: int) -> List[str]:
     """Section checks.
 
-    Sections required (visual) or forbidden (plain); the layout checks; every heading set; fenced lines
-    within ``MONOSPACE_WIDTH``; table cells outside fences within ``TABLE_CELL_WIDTH``; and the
+    Sections required (levels 2 and 3) or forbidden (level 1); the layout checks; every heading set; fenced
+    lines within ``MONOSPACE_WIDTH``; table cells outside fences within ``TABLE_CELL_WIDTH``; and the
     ``Behavior:`` flow labels and tag placement.
     """
-    if not visual:
-        return ["sections are for pr-sum-viz; remove them or build with --visual"] if draft.sections else []
+    if level == 1:
+        misplaced = ["sections are for levels 2 and 3; remove them or build with --level 2"]
+        return misplaced if draft.sections else []
     if not draft.sections:
         return ["a visual summary needs its sections (behavior flows or a shape diagram, Changed Symbols)"]
-    problems = _layout_problems(draft)
+    problems = _layout_problems(draft, level)
     for section in draft.sections:
         problems += [] if section.heading.strip() else ["a section has no heading"]
         problems += [
@@ -311,13 +325,16 @@ def _prose(draft: PrDraft) -> str:
     return "\n".join([draft.title, draft.summary, *draft.descriptions.values(), *sections])
 
 
-def draft_problems(facts: PrFacts, draft: PrDraft, visual: bool = False) -> List[str]:
-    """Every defect in ``draft``, one line each; empty when the summary can be built."""
+def draft_problems(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -> List[str]:
+    """Every defect in ``draft``, one line each; empty when the summary can be built.
+
+    ``level`` 1 is plain, 2 the visual layout, 3 the visual layout with more diagram types.
+    """
     problems = [] if draft.title.strip() else ["draft title is empty"]
     problems += ["draft title spans more than one line"] if "\n" in draft.title.strip() else []
     problems += [] if draft.summary.strip() else ["draft summary is empty"]
     problems += _description_problems(facts, draft)
-    problems += _section_problems(draft, visual)
+    problems += _section_problems(draft, level)
     problems += [f"vendor name {name!r} in the draft" for name in vendor_names(_prose(draft))]
     return problems
 
@@ -391,13 +408,16 @@ def _header(facts: PrFacts, title: str) -> List[str]:
     ]
 
 
-def render_summary(facts: PrFacts, draft: PrDraft) -> str:
-    """Summary markdown: header, Summary, Note, drafted sections, Commits, Files Changed, Relocated."""
+def render_summary(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -> str:
+    """Summary markdown: header, Summary, Note, drafted sections, Commits, Files Changed, Relocated.
+
+    Level 1 leaves out the Commits block.
+    """
     note = artifact_note(facts)
     lines = [*_header(facts, draft.title), "", "## Summary", "", draft.summary.strip()]
     lines += ["", note] if note else []
     for section in draft.sections:
         lines += ["", f"## {section.heading.strip()}", "", section.body.strip()]
-    lines += ["", *_details("Commits", [f"- {c}" for c in facts.commits])]
+    lines += [] if level == 1 else ["", *_details("Commits", [f"- {c}" for c in facts.commits])]
     lines += ["", *_files_block(facts, draft), *_relocated_block(facts)]
     return "\n".join(lines) + "\n"

@@ -30,7 +30,7 @@ tools: Bash, Read, Edit, Grep
 
 You write git-facing text for a developer who commits it themselves. The input is a diff and a task from the
 dispatcher; the output is saved text and a short receipt. The dispatcher's prompt decides which procedure
-applies: it names a skill (`harness:branch-commit-msg`, `harness:c-msg`, `harness:pr-sum`, `harness:pr-sum-viz`)
+applies: it names a skill (`harness:branch-commit-msg`, `harness:c-msg`, `harness:pr-sum`)
 or describes the task directly. The commit skills save through the plugin's `scripts/branch_commit_msg.py`, the
 PR-summary skills through its `scripts/pr_sum.py` (which makes the one `gh pr view` read itself); a skill that
 needs a PR fetch of its own or a hand-written file is out of scope (see Stop conditions).
