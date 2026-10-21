@@ -1,8 +1,8 @@
-"""PR summary model and renderer (pr-sum / pr-sum-viz mechanics).
+"""PR summary model and renderer (pr-sum mechanics).
 
 ``PrFacts`` holds what local git and one ``gh pr view`` read establish about a PR. ``PrDraft`` holds the
-prose an agent writes: the derived title, the Summary, one description per listed source file and, for the
-visual variant, the flowchart, diagram and table sections. ``render_summary`` lays both out as the summary
+prose an agent writes: the derived title, the Summary, one description per listed source file and, from
+level 2 up, the flowchart, diagram and table sections. ``render_summary`` lays both out as the summary
 markdown the driver saves under the project's configured ``artifacts.summaries`` directory, so counts, commit
 subjects and file rows are never re-typed. Artifact classification goes through
 ``branch_commits.path_bucket`` (the project's configured commit buckets). Git and gh are not run here.
@@ -33,6 +33,7 @@ _SYMBOLS_HEADING = "Changed Symbols"
 _KIND_ORDER = ("flow", "shape", "symbols")
 _MAX_FLOWS = {2: 3, 3: 5}
 LEVELS = (1, 2, 3)
+DEFAULT_LEVEL = 2
 
 
 @dataclass(frozen=True)
@@ -110,7 +111,7 @@ class PrFacts:
 
 @dataclass(frozen=True)
 class PrSection:
-    """One drafted markdown section (``pr-sum-viz``): a heading and its body."""
+    """One drafted markdown section (levels 2 and 3): a heading and its body."""
 
     heading: str
     body: str
@@ -290,24 +291,16 @@ def _table_cells(body: str) -> List[str]:
     return [cell for cell in cells if not _SEPARATOR_CELL.fullmatch(cell)]
 
 
-def _plain_section_problems(draft: PrDraft, level: Optional[int]) -> List[str]:
-    """Plain summaries (``level`` 1, or None for the unleveled build) carry no sections."""
-    if not draft.sections:
-        return []
-    if level == 1:
-        return ["sections are for levels 2 and 3; remove them or build with --level 2"]
-    return ["sections are for pr-sum-viz; remove them or build with --visual"]
-
-
-def _section_problems(draft: PrDraft, level: Optional[int]) -> List[str]:
+def _section_problems(draft: PrDraft, level: int) -> List[str]:
     """Section checks.
 
-    Sections required (levels 2 and 3) or forbidden (plain); the layout checks; every heading set; fenced
+    Sections required (levels 2 and 3) or forbidden (level 1); the layout checks; every heading set; fenced
     lines within ``MONOSPACE_WIDTH``; table cells outside fences within ``TABLE_CELL_WIDTH``; and the
     ``Behavior:`` flow labels and tag placement.
     """
-    if level not in (2, 3):
-        return _plain_section_problems(draft, level)
+    if level == 1:
+        misplaced = ["sections are for levels 2 and 3; remove them or build with --level 2"]
+        return misplaced if draft.sections else []
     if not draft.sections:
         return ["a visual summary needs its sections (behavior flows or a shape diagram, Changed Symbols)"]
     problems = _layout_problems(draft, level)
@@ -332,15 +325,11 @@ def _prose(draft: PrDraft) -> str:
     return "\n".join([draft.title, draft.summary, *draft.descriptions.values(), *sections])
 
 
-def draft_problems(
-        facts: PrFacts, draft: PrDraft, visual: bool = False, level: Optional[int] = None,
-) -> List[str]:
+def draft_problems(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -> List[str]:
     """Every defect in ``draft``, one line each; empty when the summary can be built.
 
-    ``level`` 1 is plain, 2 the visual layout, 3 the visual layout with more diagram types. Without a
-    level, ``visual`` selects level 2 and otherwise the unleveled plain build.
+    ``level`` 1 is plain, 2 the visual layout, 3 the visual layout with more diagram types.
     """
-    level = level if level is not None else (2 if visual else None)
     problems = [] if draft.title.strip() else ["draft title is empty"]
     problems += ["draft title spans more than one line"] if "\n" in draft.title.strip() else []
     problems += [] if draft.summary.strip() else ["draft summary is empty"]
@@ -419,7 +408,7 @@ def _header(facts: PrFacts, title: str) -> List[str]:
     ]
 
 
-def render_summary(facts: PrFacts, draft: PrDraft, level: Optional[int] = None) -> str:
+def render_summary(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -> str:
     """Summary markdown: header, Summary, Note, drafted sections, Commits, Files Changed, Relocated.
 
     Level 1 leaves out the Commits block.

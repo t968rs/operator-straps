@@ -12,9 +12,10 @@
     Writes ``<summaries>/<NNNN>_pr.json``: ``{"facts": {...}, "draft": {...}}``. When that file already
     holds a parseable draft, the draft is carried forward: title, summary and sections stay, and
     descriptions stay for paths the PR still lists (new paths get empty slots). ``--level 1|2|3`` stores the
-    summary level in the skeleton (1 plain without the Commits block, 2 the visual layout, 3 the visual layout
-    with more diagram types); ``--min-viz [N]`` at level 3 also stores N (default 3) and arms the Stop-hook
-    sentinel that holds the session until ``build`` succeeds. Both flags are stored fresh on every capture.
+    summary level in the skeleton (default 2; 1 prose only without the Commits block, 2 the visual layout,
+    3 the visual layout with more diagram types); ``--min-viz [N]`` at level 3 also stores N (default 3) and
+    arms the Stop-hook sentinel that holds the session until ``build`` succeeds. Both flags are stored fresh
+    on every capture.
 ``diff FILE [--path P ...]``
     The PR's diff under the ``commit_diff`` budgets: paths read in full until ``PR_BLOCK_BUDGET`` changed
     lines are spent, and output capped at ``PR_CHAR_BUDGET`` characters (later sections keep only their
@@ -22,12 +23,12 @@
     configured test layout), then docs. Machine-generated artifacts are skipped unless named with
     ``--path``; ``--path`` also matches a rename's old path. A working-tree skeleton reads the working tree
     as it stands when ``diff`` runs, and is refused once the captured branch or HEAD has changed.
-``build FILE [--visual]``
+``build FILE``
     Validate the draft, write ``<summaries>/<NNNN>_<Title>.md`` and print the receipt. The level and the
-    ``--min-viz`` count come from the skeleton: levels 2 and 3 require the visual sections and cap their
-    table cells, level 3 also requires the stored count of diagram blocks, level 1 leaves out the Commits
-    block. ``--visual`` means level 2 for a skeleton without a stored level. A successful build clears the
-    PR's ``--min-viz`` sentinel.
+    ``--min-viz`` count come from the skeleton (a skeleton without a level builds at level 2): levels 2 and 3
+    require the visual sections and cap their table cells, level 3 also requires the stored count of diagram
+    blocks, level 1 forbids sections and leaves out the Commits block. A successful build clears the PR's
+    ``--min-viz`` sentinel.
 
 Roots: the project (git top level of ``--repo``, which must lie inside a git checkout, else of the working
 directory) holds every input and output; ``<summaries>`` is its ``.claude/harness.json``
@@ -43,7 +44,7 @@ Usage::
         [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff FILE [--path P ...]
         [--repo DIR]
-    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE [--visual]
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE
         [--repo DIR]
 """
 from __future__ import annotations
@@ -63,6 +64,7 @@ from harness_lib.branch_capture import CaptureError, git  # noqa: E402
 from harness_lib.config import ConfigError, activate, active, load_config  # noqa: E402
 from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, gh_metadata, read_rank  # noqa: E402
 from harness_lib.pr_summary import (  # noqa: E402
+    DEFAULT_LEVEL,
     LEVELS,
     PrDraft,
     PrFacts,
@@ -218,12 +220,12 @@ def receipt(repo: Path, target: Path, facts: PrFacts, draft: PrDraft) -> str:
     return f"Saved: {shown} — Merge PR #{facts.number}: {title} ({facts.head} -> {facts.base})"
 
 
-def skeleton_level(payload: Mapping[str, object], visual: bool = False) -> Optional[int]:
-    """Level stored in a skeleton: 1, 2 or 3; ``visual`` stands for 2 in a skeleton without one, and None
-    is the unleveled plain build. Raise ``CaptureError`` for any other stored value."""
+def skeleton_level(payload: Mapping[str, object]) -> int:
+    """Level stored in a skeleton: 1, 2 or 3; ``DEFAULT_LEVEL`` for a skeleton written before levels
+    existed. Raise ``CaptureError`` for any other stored value."""
     level = payload.get("level")
     if level is None:
-        return 2 if visual else None
+        return DEFAULT_LEVEL
     if not _int(level) or level not in LEVELS:
         raise CaptureError([f"skeleton level must be one of {list(LEVELS)}, not {level!r}; rerun capture"])
     return level
@@ -237,21 +239,19 @@ def skeleton_min_viz(payload: Mapping[str, object]) -> int:
     return value
 
 
-def build_problems(
-        facts: PrFacts, draft: PrDraft, level: Optional[int], minimum: int,
-) -> List[str]:
+def build_problems(facts: PrFacts, draft: PrDraft, level: int, minimum: int) -> List[str]:
     """Draft defects at ``level``, plus the ``--min-viz`` shortfall at level 3."""
-    problems = draft_problems(facts, draft, level=level)
+    problems = draft_problems(facts, draft, level)
     return problems + (min_viz_problems(draft, minimum) if level == 3 else [])
 
 
-def run_build(repo: Path, payload: Mapping[str, object], visual: bool = False) -> Tuple[Path, str]:
+def run_build(repo: Path, payload: Mapping[str, object]) -> Tuple[Path, str]:
     """Validate the draft, write the summary markdown, and return its path and the receipt.
 
     The level and ``--min-viz`` count come from the skeleton; a successful build clears the PR's sentinel.
     """
     facts, draft = _facts(payload), _draft(payload)
-    level, minimum = skeleton_level(payload, visual), skeleton_min_viz(payload)
+    level, minimum = skeleton_level(payload), skeleton_min_viz(payload)
     problems = build_problems(facts, draft, level, minimum)
     if problems:
         raise CaptureError(problems)
@@ -289,8 +289,9 @@ def _parser() -> argparse.ArgumentParser:
     )
     cap.add_argument("--out", type=Path, help="Skeleton path (default <summaries>/<NNNN>_pr.json).")
     cap.add_argument(
-        "--level", type=int, choices=LEVELS,
-        help="Summary level stored in the skeleton: 1 plain without Commits, 2 visual, 3 more diagram types.",
+        "--level", type=int, choices=LEVELS, default=DEFAULT_LEVEL,
+        help=f"Summary level stored in the skeleton (default {DEFAULT_LEVEL}): 1 prose only without Commits, "
+             "2 flows, one shape diagram and Changed Symbols, 3 more diagram types.",
     )
     cap.add_argument(
         "--min-viz", type=int, nargs="?", const=DEFAULT_MIN_VIZ, default=None, metavar="N",
@@ -302,10 +303,6 @@ def _parser() -> argparse.ArgumentParser:
     diff.add_argument("--path", action="append", default=[], help="Limit to this path (repeatable).")
     build = sub.add_parser("build", parents=common, help="Validate the draft and write the summary markdown.")
     build.add_argument("skeleton", type=Path, help="Filled skeleton JSON (UTF-8).")
-    build.add_argument(
-        "--visual", action="store_true",
-        help="Level 2 for a skeleton without a stored level (pr-sum-viz): require the visual sections.",
-    )
     return parser
 
 
@@ -330,10 +327,9 @@ def previous_draft(path: Path) -> Optional[PrDraft]:
         return None
 
 
-def level_keys(level: Optional[int], min_viz: Optional[int]) -> Dict[str, int]:
+def level_keys(level: int, min_viz: Optional[int]) -> Dict[str, int]:
     """Skeleton keys for the capture flags: ``level``, and ``min_viz`` only at level 3."""
-    keys = {} if level is None else {"level": level}
-    return {**keys, "min_viz": min_viz} if level == 3 and (min_viz or 0) > 0 else keys
+    return {"level": level, **({"min_viz": min_viz} if level == 3 and (min_viz or 0) > 0 else {})}
 
 
 def sync_sentinel(pr: int, keys: Mapping[str, int]) -> str:
@@ -375,7 +371,7 @@ def _cmd_diff(args: argparse.Namespace, repo: Path) -> int:
 
 def _cmd_build(args: argparse.Namespace, repo: Path) -> int:
     """Run ``build`` and print the receipt."""
-    _, text = run_build(repo, _read(args.skeleton), args.visual)
+    _, text = run_build(repo, _read(args.skeleton))
     print(text)
     return 0
 

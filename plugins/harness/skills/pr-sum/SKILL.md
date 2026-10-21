@@ -1,8 +1,9 @@
 ---
 name: pr-sum
-description: Use when asked to summarize a PR, describe PR changes, or write a PR summary document
+description: Use when asked to summarize a PR, describe PR changes, write a PR summary document, or draw one: a visual, diagram, flowchart or "more visual" summary, one "akin to" an earlier visual summary, or a PR that changes runtime behavior, relocates code, migrates call sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule
+argument-hint: "PR [--level 1|2|3] [--min-viz [N]]"
 model: haiku
-effort: low
+effort: medium
 context: fork
 agent: harness:messenger
 ---
@@ -10,10 +11,25 @@ agent: harness:messenger
 # PR Summary
 
 The plugin script `${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py` does the mechanics: one `gh pr view` metadata read,
-local git for commits, files and line counts, layout, save. The agent writes the prose: title, Summary, one
-description per file. No code review. No status or merge claims.
+local git for commits, files and line counts, layout, save. The agent writes the prose (title, Summary, one
+description per file) and, at levels 2 and 3, the visual sections: behavior flowcharts, shape diagrams and a
+Changed Symbols table. No code review. No status or merge claims.
 
-For a diagram-rich summary, use `harness:pr-sum-viz`.
+## Levels
+
+`--level` picks how much the summary draws. The script stores it in the skeleton at `capture`, and `build`
+reads it from there. No `--level` means 2.
+
+| Level | Output                                                                                              |
+|-------|-----------------------------------------------------------------------------------------------------|
+| 1     | Prose only: Summary, Files Changed, Relocated. No sections, no Commits block.                       |
+| 2     | Default. Behavior flows (at most 3), at most one shape diagram, Changed Symbols, Commits block.     |
+| 3     | Level 2 plus: up to 5 flows, every shape diagram once (two more: Sequence Diagram, Data Flow).      |
+
+`--min-viz [N]` applies at level 3 only (ignored at levels 1 and 2). `build` then requires N diagram blocks
+(default 3): fenced, over 200 characters between the fences, and holding an arrow (`→ ► ▶ ▼ ▲ ◄ ← ↑ ↓ ➜ ⟶ ->
+=>`), counted across the Summary and every section. `capture` arms a Stop-hook sentinel, so the session cannot
+end before `build` succeeds.
 
 ## Running the script
 
@@ -31,10 +47,12 @@ the project's configured summaries directory: `artifacts.summaries` in `.claude/
 ## Step 1 — Capture
 
 The PR number comes from the invocation arguments. No number given: report that and stop; never guess one from
-the branch or `gh pr list`.
+the branch or `gh pr list`. The other arguments are the developer's flags: `--level 1|2|3` and
+`--min-viz [N]`; pass them through unchanged. Any other flag, or a value holding anything but digits, is a
+problem to report; stop. Never choose a level or a `--min-viz` count yourself.
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN [--level L] [--min-viz [N]]
 ```
 
 The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
@@ -50,12 +68,13 @@ Exit 1 prints `problem:` lines (malformed JSON or config, missing file, `gh` mis
 Exit 0 writes `<summaries>/<NNNN>_pr.json` and prints `wrote <path>`; use that path as `SKELETON` below.
 
 - `facts` — script-owned: refs, commit lines, files with status and `+/-` counts. **Never edit.**
-- `draft` — yours: `title`, `summary`, `descriptions` (one key per file that needs one), `sections` (leave `[]`).
+- `draft` — yours: `title`, `summary`, `descriptions` (one key per file that needs one), `sections`.
 
 Artifact files (paths the project's commit buckets classify as Artifact) and pure moves have no description
 key; the script tags and places them, and adds the artifact `***Note:***` itself (do not write one). Header
 totals are local `git diff --numstat` sums and can differ slightly from GitHub's. Rerunning `capture` refreshes
-`facts` and keeps the draft (title, summary, sections, and descriptions for paths still in the PR).
+`facts` and keeps the draft (title, summary, sections, and descriptions for paths still in the PR); the level
+flags are stored fresh on every capture, so repeat them on a rerun.
 
 ## Step 2 — Read what changed
 
@@ -76,11 +95,12 @@ branch or HEAD has changed: rerun `capture`, then `diff`.
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff SKELETON --path src/pkg/module.py
 ```
 
-Read `facts.commits` alongside the diff.
+Read `facts.commits` alongside the diff. Removed lines give the old behavior, added lines the new; the patch is
+the only source for the diagrams, and it is not reviewed.
 
 ## Step 3 — Write the draft
 
-Edit only `draft` in the JSON.
+Edit only `draft`. `summary` and each section `body` may be a list of lines (no `\n` escapes needed).
 
 **`title`** — not a copy of `facts.pr_title` or a commit subject:
 
@@ -101,11 +121,85 @@ Edit only `draft` in the JSON.
 
 No single subject (a broad multi-file change): scope plus artifact noun only.
 
-**`summary`** — what changed and why. 2-3 sentences up to 1000 changed lines; 1-2 more per additional 1000.
-Paragraphs cap at three sentences; separate paragraphs with a blank line (`\n\n`). `summary` may also be a list
-of lines (no `\n` escapes); an empty `""` entry is the blank line between paragraphs.
+**`summary`** — what changed and why. Paragraphs cap at three sentences; separate paragraphs with a blank line
+(`\n\n`). `summary` may also be a list of lines (no `\n` escapes); an empty `""` entry is the blank line between
+paragraphs. Asides that qualify a number go on their own line as `***Note:*** ...` with a blank line above and
+below.
+
+- Level 1: 2-3 sentences up to 1000 changed lines; 1-2 more per additional 1000.
+- Levels 2 and 3: a first paragraph of 2-3 sentences on what changed and why; then a second paragraph on the
+  shape of the change.
 
 **`descriptions`** — one line per file: what changed in it, from the diff. Backtick identifiers.
+
+**`sections`** — level 1: leave `[]` and stop here. Levels 2 and 3: `[{"heading": ..., "body": [...]}]`, in the
+order below; `build` rejects other headings, extra sections and a different order.
+
+### 1. Behavior flows (when behavior changed or was added)
+
+One section per behavior, at most three (five at level 3). A flow shows what a caller or user observes: the
+trigger, the conditions, and the outcomes (files written, values returned, errors raised, messages shown). It is
+not a call graph; a function name goes in parentheses only when it helps the reader find the code.
+
+| Behavior            | Heading                      | Body                                            |
+|---------------------|------------------------------|-------------------------------------------------|
+| Changed behavior    | `Behavior: <trigger>`        | `BEFORE` and `AFTER` flows                      |
+| New behavior        | `New Behavior: <trigger>`    | one flow, no label                              |
+
+A `Behavior:` section has a fence whose first line starts with `BEFORE` and a fence whose first line starts
+with `AFTER`, or one side-by-side fence with both labels on its first line. Both flows start from the same
+trigger and reuse the same wording for unchanged steps, so the difference stands out. Tags go in the AFTER flow
+only: `[changed]` on a step whose outcome differs from BEFORE, `[new]` on a step BEFORE lacks; a step worded the
+same in both is untagged. `build` checks those labels, and checks tags only in a stacked BEFORE fence (none
+allowed there). Keep a flow to about ten steps. Use this grammar and no other glyphs:
+
+```
+BEFORE                                         AFTER
+append review rows                             append review rows
+     │                                              │
+     ▼                                              ▼
+read matrix ──fails──► treated as empty        matrix exists? ──no──► write a new file                 [new]
+     │ok                    │                       │yes
+     ▼                      ▼                       ▼
+append, write file     write new rows only     read succeeds? ──no──► file kept, rows reported failed  [changed]
+                                                    │yes
+                                                    ▼
+                                               append, write file
+```
+
+Side by side in one fence when both fit in 120 columns; otherwise a BEFORE fence, then an AFTER fence. A
+refactor with no behavior change has no flows; the summary says behavior is unchanged.
+
+### 2. Shape diagram (optional; at most one, at level 3 each heading at most once)
+
+Pick the one that matches the change; required when there is no behavior flow. Pure file moves need none: the
+script's Relocated block already lists them. At level 3 every row that matches the change gets its own
+section, in table order.
+
+| Change shape                           | Heading             | Columns                                  |
+|----------------------------------------|---------------------|------------------------------------------|
+| Moves with edits, or package shape     | Module Relocations  | `BEFORE  ───►  AFTER` tree               |
+| Symbols moved across modules           | Symbol Relocations  | `SYMBOL   FROM   ──►   TO`               |
+| Call sites swapped to new API/helpers  | Call-Site Migration | `BEFORE (old) ┃ AFTER (new)`             |
+| New utility with a decision rule       | Rule Illustration   | `input -> output` cases showing the rule |
+| Level 3: calls between actors in order | Sequence Diagram    | one column per actor, `──►` per message  |
+| Level 3: data moving between stages    | Data Flow           | `source ──► stage ──► sink`              |
+
+### 3. Changed Symbols (always, levels 2 and 3)
+
+A simple markdown table: `Symbol | File | Status | Note`. Long text goes outside the table:
+
+- **File paths**: a fenced key block above the table (`T = src/app/hooks/tracker.ts`); the File cell holds
+  the key.
+- **Explanations**: the Note cell holds a short phrase. Anything longer goes in a `- `symbol`: ...` bullet
+  below the table.
+
+`Status` is NEW, FIXED, RENAMED, KEPT or REMOVED. Symbol is byte-exact, in backticks. Rows are the PR's
+source symbols; test helpers and stubs stay out.
+
+Every markdown table cell in a visual section holds 40 characters or fewer, and lines inside a fence are 120
+characters or fewer (`build` rejects longer ones). In diagrams and key blocks, a long path may drop a leading
+directory every changed source file shares; `descriptions` keys stay the full paths from `facts`.
 
 ## Step 4 — Build
 
@@ -114,8 +208,9 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py"
 ```
 
 `build` checks: `title` and `summary` non-empty, `title` on one line, a description for every listed
-non-artifact path and none for paths outside the PR, and no AI vendor names. The header's Files Changed count
-notes relocated files.
+non-artifact path and none for paths outside the PR, no AI vendor names, the section rules of the skeleton's
+level, and with `--min-viz` the diagram-block count. A shortfall prints one `problem:` line with the count
+found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated files.
 
 Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit 0 writes
 `<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim — nothing else.
@@ -133,3 +228,13 @@ Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit
 | Review language (verdicts, strengths, issues, next steps) | This is a summary, not a review — delete it                     |
 | Mining a PR review JSON for findings                      | It is an artifact row; never a content source                   |
 | Running the script from another project's directory       | Run from the project root, or pass `--repo <dir>`               |
+| A flowchart of function calls                             | Steps are observable: condition, outcome, error, file           |
+| AFTER flow only, for a fix                                | BEFORE and AFTER, same trigger and same wording                 |
+| Unlabelled `Behavior:` fences, or BEFORE tags             | First line BEFORE / AFTER; tags in AFTER only                   |
+| A flow per module                                         | A flow per behavior, at most three (five at level 3)            |
+| Flow steps or diagrams not in the diff                    | Each step traces to removed or added lines                      |
+| Long paths or sentences in table cells                    | Key block above, bullets below                                  |
+| Idiosyncratic glyphs (◆◈⊙)                                | The flow grammar and the Status values                          |
+| Sections in a level 1 draft                               | Level 1 has none; `[]`                                          |
+| Padding a diagram to pass `--min-viz`                     | Each block shows a real flow from the diff                      |
+| Choosing the level without the developer                  | No `--level` means 2                                            |

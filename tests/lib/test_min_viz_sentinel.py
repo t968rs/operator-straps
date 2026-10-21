@@ -54,4 +54,5 @@ def test_linked_worktree_arms_the_main_checkout(make_project: Callable[..., Path
     main = make_project()
     git(main, "worktree", "add", str(tmp_path / "linked"), "-b", "linked")
     linked = tmp_path / "linked"
-    assert sentinel_dir_under(linked, ".claude/state/harness") == sentinel_dir_under(main, ".claude/state/harness")
+    state = ".claude/state/harness"
+    assert sentinel_dir_under(linked, state) == sentinel_dir_under(main, state)

@@ -13,6 +13,7 @@ import pytest
 
 from harness_lib.config import activate, load_config
 from harness_lib.pr_summary import (
+    DEFAULT_LEVEL,
     PrDraft,
     PrFacts,
     PrFile,
@@ -154,10 +155,10 @@ class TestArtifactNote:
 
 class TestDraftProblems:
     def test_complete_draft_passes(self) -> None:
-        assert draft_problems(_facts(), _draft()) == []
+        assert draft_problems(_facts(), _draft(sections=(_FLOW, _SYMBOLS))) == []
 
     def test_empty_fields_and_descriptions(self) -> None:
-        problems = draft_problems(_facts(), PrDraft(descriptions={"nope.py": "x"}))
+        problems = draft_problems(_facts(), PrDraft(descriptions={"nope.py": "x"}), level=1)
         assert problems == [
             "draft title is empty", "draft summary is empty", "no description for `src/pkg/a.py`",
             "description for `nope.py`, which is not a changed path",
@@ -165,33 +166,27 @@ class TestDraftProblems:
 
     def test_multiline_title(self) -> None:
         draft = draft_from_payload({**skeleton(_facts(), _draft())["draft"], "title": ["Feature(a):", "two"]})
-        assert draft_problems(_facts(), draft) == ["draft title spans more than one line"]
+        assert draft_problems(_facts(), draft, level=1) == ["draft title spans more than one line"]
 
     def test_empty_heading_reported_once(self) -> None:
         draft = _draft(sections=(_FLOW, PrSection("  ", "x"), _SYMBOLS))
-        assert draft_problems(_facts(), draft, visual=True) == ["a section has no heading"]
+        assert draft_problems(_facts(), draft) == ["a section has no heading"]
 
     def test_unclosed_fence_reads_as_fenced(self) -> None:
         body = "```\nBEFORE\nwrite rows\n```\n```\nAFTER\nkeep file  [changed]\n" + "w" * 121
         draft = _draft(sections=(PrSection("Behavior: append", body), _SYMBOLS))
-        assert draft_problems(_facts(), draft, visual=True) == [
+        assert draft_problems(_facts(), draft) == [
             "section 'Behavior: append': monospace line of 121 chars (limit 120)",
         ]
 
-    def test_visual_needs_sections(self) -> None:
-        assert draft_problems(_facts(), _draft(), visual=True) == [
+    def test_default_level_needs_sections(self) -> None:
+        assert draft_problems(_facts(), _draft()) == [
             "a visual summary needs its sections (behavior flows or a shape diagram, Changed Symbols)",
-        ]
-
-    def test_plain_rejects_sections(self) -> None:
-        draft = _draft(sections=(PrSection("Changed Symbols", "x"),))
-        assert draft_problems(_facts(), draft) == [
-            "sections are for pr-sum-viz; remove them or build with --visual",
         ]
 
     def test_long_monospace_line(self) -> None:
         symbols = PrSection("Changed Symbols", "```\n" + "x" * 121 + "\n```\n" + "y" * 200)
-        assert draft_problems(_facts(), _draft(sections=(_FLOW, symbols)), visual=True) == [
+        assert draft_problems(_facts(), _draft(sections=(_FLOW, symbols))) == [
             "section 'Changed Symbols': monospace line of 121 chars (limit 120)",
         ]
 
@@ -199,7 +194,7 @@ class TestDraftProblems:
         rows = ["| Symbol | File | Note |", "|---|---|---|", "| `writeRows` | T | " + "z" * 41 + " |"]
         fenced = ["```", "| " + "q" * 60 + " |", "```"]
         draft = _draft(sections=(_FLOW, PrSection("Changed Symbols", "\n".join(rows + fenced))))
-        assert draft_problems(_facts(), draft, visual=True) == [
+        assert draft_problems(_facts(), draft) == [
             "section 'Changed Symbols': table cell of 41 chars (limit 40); "
             "move the text above or below the table",
         ]
@@ -207,12 +202,12 @@ class TestDraftProblems:
     def test_escaped_pipe_stays_in_cell(self) -> None:
         body = "| Symbol | Note |\n|---|---|\n| `a \\| b` | ok |"
         draft = _draft(sections=(_FLOW, PrSection("Changed Symbols", body)))
-        assert draft_problems(_facts(), draft, visual=True) == []
+        assert draft_problems(_facts(), draft) == []
 
     def test_behavior_flow_needs_labels(self) -> None:
         body = "```\nrows ready\n```\n```\nAFTER\nrows ready\n```"
         draft = _draft(sections=(PrSection("Behavior: append", body), _SYMBOLS))
-        assert draft_problems(_facts(), draft, visual=True) == [
+        assert draft_problems(_facts(), draft) == [
             "section 'Behavior: append': needs a fence whose first line is BEFORE and one whose first line "
             "is AFTER, or one side-by-side fence whose first line holds both",
         ]
@@ -220,22 +215,22 @@ class TestDraftProblems:
     def test_behavior_flow_tags_only_after(self) -> None:
         body = "```\nBEFORE\nwrite rows  [changed]\n```\n```\nAFTER\nkeep file  [changed]\n```"
         draft = _draft(sections=(PrSection("Behavior: append", body), _SYMBOLS))
-        assert draft_problems(_facts(), draft, visual=True) == [
+        assert draft_problems(_facts(), draft) == [
             "section 'Behavior: append': [changed] / [new] tags belong in the AFTER flow only",
         ]
 
     def test_side_by_side_flow_passes(self) -> None:
         body = "```\nBEFORE          AFTER\nwrite rows      keep file  [changed]\n```"
         draft = _draft(sections=(PrSection("Behavior: x", body), _SYMBOLS))
-        assert draft_problems(_facts(), draft, visual=True) == []
+        assert draft_problems(_facts(), draft) == []
 
     def test_complete_visual_layout(self) -> None:
         draft = _draft(sections=(_FLOW, PrSection("Rule Illustration", "x"), _SYMBOLS))
-        assert draft_problems(_facts(), draft, visual=True) == []
+        assert draft_problems(_facts(), draft) == []
 
     def test_layout_unknown_and_missing(self) -> None:
         draft = _draft(sections=(PrSection("Legend", "x"),))
-        assert draft_problems(_facts(), draft, visual=True) == [
+        assert draft_problems(_facts(), draft) == [
             "section 'Legend': unknown heading; use 'Behavior: <trigger>', 'New Behavior: <trigger>', "
             "a shape diagram name or 'Changed Symbols'",
             "a visual summary needs a behavior flow or a shape diagram",
@@ -246,14 +241,14 @@ class TestDraftProblems:
         shapes = (PrSection("Rule Illustration", "x"), PrSection("Module Relocations", "x"))
         flows = tuple(PrSection(f"New Behavior: {n}", "```\nx\n```") for n in range(4))
         draft = _draft(sections=(_SYMBOLS, *shapes, *flows))
-        assert draft_problems(_facts(), draft, visual=True) == [
+        assert draft_problems(_facts(), draft) == [
             "at most one shape diagram (found 2)",
             "at most 3 behavior flows (found 4)",
             "sections out of order: behavior flows, then the shape diagram, then Changed Symbols",
         ]
 
     def test_vendor_name(self) -> None:
-        assert draft_problems(_facts(), _draft(summary="Written with Claude.")) == [
+        assert draft_problems(_facts(), _draft(summary="Written with Claude."), level=1) == [
             "vendor name 'Claude' in the draft",
         ]
 
@@ -274,12 +269,10 @@ class TestDraftLevels:
             "a visual summary needs its sections (behavior flows or a shape diagram, Changed Symbols)",
         ]
 
-    def test_level_two_matches_visual(self) -> None:
+    def test_default_level_is_two(self) -> None:
         draft = _draft(sections=(_FLOW, _SYMBOLS, PrSection("Legend", "x")))
-        assert draft_problems(_facts(), draft, level=2) == draft_problems(_facts(), draft, visual=True)
-
-    def test_level_overrides_visual(self) -> None:
-        assert draft_problems(_facts(), _draft(), visual=True, level=1) == []
+        assert draft_problems(_facts(), draft, level=2) == draft_problems(_facts(), draft)
+        assert DEFAULT_LEVEL == 2
 
     def test_level_three_allows_five_flows(self) -> None:
         flows = tuple(PrSection(f"New Behavior: {n}", "```\nx\n```") for n in range(5))
@@ -375,8 +368,8 @@ class TestRenderSummary:
         assert commits in text
         assert "\n\nChange codes: A = added, M = modified, D = deleted, R = renamed\n\n</p>" in text
 
-    @pytest.mark.parametrize("level, shown", [(None, True), (1, False), (2, True), (3, True)])
-    def test_commits_block_by_level(self, level: object, shown: bool) -> None:
+    @pytest.mark.parametrize("level, shown", [(1, False), (2, True), (3, True)])
+    def test_commits_block_by_level(self, level: int, shown: bool) -> None:
         text = render_summary(_facts(), _draft(), level)
         assert ("<summary>Commits</summary>" in text) is shown
         assert "abc1234 Feature(a): add a" not in text or shown

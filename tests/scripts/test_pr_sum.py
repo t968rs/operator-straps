@@ -582,7 +582,7 @@ class TestDiff:
 class TestBuild:
     def test_writes_summary_and_receipt(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
         clone, _, head = pr_repo
-        payload = _filled(script.capture_payload(clone, _meta(script, head), fetch=False))
+        payload = {**_filled(script.capture_payload(clone, _meta(script, head), fetch=False)), "level": 1}
         out, receipt = script.run_build(clone, payload)
         assert out == clone / _SUMMARIES / "1234_Feature_a_a_change.md"
         text = out.read_text(encoding="utf-8")
@@ -594,14 +594,14 @@ class TestBuild:
             "Merge PR #1234: Feature(a): `a` change (1234-demo -> main)"
         )
 
-    def test_visual_build(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+    def test_level_two_build(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
         clone, _, head = pr_repo
         sections = [
             {"heading": "Behavior: diff read", "body": _FLOW_BODY},
             {"heading": "Changed Symbols", "body": _SYMBOLS_BODY},
         ]
         payload = _filled(script.capture_payload(clone, _meta(script, head), fetch=False), sections)
-        out, _ = script.run_build(clone, payload, visual=True)
+        out, _ = script.run_build(clone, payload)
         text = out.read_text(encoding="utf-8")
         assert f"\n## Behavior: diff read\n\n{_FLOW_BODY}\n" in text
         assert text.index("## Behavior: diff read") < text.index("## Changed Symbols") < text.index("Commits")
@@ -614,11 +614,13 @@ class TestBuild:
         assert "draft title is empty" in excinfo.value.problems
         assert not (clone / _SUMMARIES).exists()
 
-    def test_visual_requires_sections(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+    def test_default_level_requires_sections(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
         clone, _, head = pr_repo
         payload = _filled(script.capture_payload(clone, _meta(script, head), fetch=False))
         with pytest.raises(script.CaptureError, match="needs its sections"):
-            script.run_build(clone, payload, visual=True)
+            script.run_build(clone, payload)
 
     def test_malformed_facts(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
         clone, _, _ = pr_repo
@@ -662,7 +664,7 @@ class TestBuild:
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], make_project: Callable[..., Path],
     ) -> None:
         clone, _, head = pr_repo
-        payload = _filled(script.capture_payload(clone, _meta(script, head), fetch=False))
+        payload = {**_filled(script.capture_payload(clone, _meta(script, head), fetch=False)), "level": 1}
         other = make_project(name="other")
         with pytest.raises(script.CaptureError, match="not the active project"):
             script.run_build(other, payload)
@@ -674,10 +676,13 @@ def _diagram(n: int) -> str:
     return "```\n" + "start ──► finish\n" * 14 + f"case {n}\n```"
 
 
+_SYMBOLS_SECTION = {"heading": "Changed Symbols", "body": _SYMBOLS_BODY}
+
+
 def _level3_sections(diagrams: int) -> list:
     """``diagrams`` New Behavior sections of one qualifying block each, then Changed Symbols."""
     flows = [{"heading": f"New Behavior: case {n}", "body": _diagram(n)} for n in range(diagrams)]
-    return [*flows, {"heading": "Changed Symbols", "body": _SYMBOLS_BODY}]
+    return [*flows, _SYMBOLS_SECTION]
 
 
 class TestBuildLevels:
@@ -699,7 +704,7 @@ class TestBuildLevels:
         with pytest.raises(script.CaptureError, match="sections are for levels 2 and 3"):
             script.run_build(pr_repo[0], payload)
 
-    def test_level_two_matches_visual(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+    def test_level_two_keeps_commits(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
         sections = [
             {"heading": "Behavior: diff read", "body": _FLOW_BODY},
             {"heading": "Changed Symbols", "body": _SYMBOLS_BODY},
@@ -707,15 +712,14 @@ class TestBuildLevels:
         out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, sections, level=2))
         assert "<summary>Commits</summary>" in out.read_text(encoding="utf-8")
 
-    def test_unleveled_plain_build_keeps_commits(
+    def test_skeleton_without_a_level_builds_at_level_two(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str],
     ) -> None:
-        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, []))
+        with pytest.raises(script.CaptureError, match="needs its sections"):
+            script.run_build(pr_repo[0], self._payload(script, pr_repo, []))
+        sections = [{"heading": "New Behavior: a", "body": _diagram(0)}, _SYMBOLS_SECTION]
+        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, sections))
         assert "<summary>Commits</summary>" in out.read_text(encoding="utf-8")
-
-    def test_stored_level_beats_visual_flag(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
-        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, [], level=1), visual=True)
-        assert out.is_file()
 
     def test_level_three_without_min_viz_needs_no_blocks(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str],
@@ -778,12 +782,12 @@ class TestCaptureLevels:
         assert script.main(argv) == 0
         return json.loads(out.read_text(encoding="utf-8"))
 
-    def test_no_flags_store_nothing(
+    def test_no_flags_store_level_two(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
             monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         payload = self._capture(script, monkeypatch, pr_repo, tmp_path)
-        assert "level" not in payload and "min_viz" not in payload
+        assert payload["level"] == 2 and "min_viz" not in payload
         assert not min_viz_sentinel.sentinel_path(active(), 1234).exists()
 
     @pytest.mark.parametrize("level", ["1", "2", "3"])
@@ -815,7 +819,7 @@ class TestCaptureLevels:
         assert "min_viz" not in payload
         assert not min_viz_sentinel.sentinel_path(active(), 1234).exists()
 
-    def test_min_viz_without_a_level_is_ignored(
+    def test_min_viz_at_the_default_level_is_ignored(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
             monkeypatch: pytest.MonkeyPatch,
     ) -> None:
@@ -840,15 +844,16 @@ class TestCaptureLevels:
 
     def test_parser_defaults(self, script: ModuleType) -> None:
         bare = script._parser().parse_args(["capture", "--pr", "1"])
-        assert (bare.level, bare.min_viz) == (None, None)
+        assert (bare.level, bare.min_viz) == (2, None)
         flagged = script._parser().parse_args(["capture", "--pr", "1", "--level", "3", "--min-viz"])
         assert (flagged.level, flagged.min_viz) == (3, 3)
 
 
 class TestCli:
     def test_parser(self, script: ModuleType) -> None:
-        args = script._parser().parse_args(["build", "x.json", "--visual"])
-        assert (args.command, args.visual) == ("build", True)
+        assert script._parser().parse_args(["build", "x.json"]).command == "build"
+        with pytest.raises(SystemExit):
+            script._parser().parse_args(["build", "x.json", "--visual"])
         assert script._parser().parse_args(["capture", "--pr", "12"]).pr == 12
         diff = script._parser().parse_args(["diff", "x.json", "--path", "a", "--path", "b"])
         assert diff.path == ["a", "b"]

@@ -35,7 +35,7 @@ def count_qualifying(text: str) -> int:
 
 
 def min_viz_problems(draft: PrDraft, minimum: int) -> List[str]:
-    """One problem line when the draft's summary and sections hold fewer than ``minimum`` qualifying blocks."""
+    """One problem line when the summary and sections hold fewer than ``minimum`` qualifying blocks."""
     if minimum <= 0:
         return []
     text = "\n".join([draft.summary, *(section.body for section in draft.sections)])
@@ -43,6 +43,6 @@ def min_viz_problems(draft: PrDraft, minimum: int) -> List[str]:
     if found >= minimum:
         return []
     return [
-        f"--min-viz needs {minimum} diagram blocks (fenced, over {MIN_BLOCK_CHARS} characters, with an arrow); "
-        f"found {found}",
+        f"--min-viz needs {minimum} diagram blocks (fenced, over {MIN_BLOCK_CHARS} characters, "
+        f"with an arrow); found {found}",
     ]
