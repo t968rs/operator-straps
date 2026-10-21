@@ -1,0 +1,304 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 41,
+  "pr_title": "Feature(branch-commit-msg): pass --base through and keep the branch TXT",
+  "branch": "0017-branch-commit-msg-base-arg",
+  "base_branch": "main",
+  "base_sha": "08976c77bfe17ab0f17aa04f25b7f19c3cf254f2",
+  "head_sha": "e312742bf84760b8bc285c20448003c5d09328a0",
+  "review_date": "2026-10-21",
+  "verdict": "READY TO MERGE - 8 of 8 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 151,
+    "deletions": 17,
+    "files_changed": 4
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (sonnet)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0041/pr41_20261021T152417Z/findings/tests.json",
+    "docs/_scratch/pr_review/0041/pr41_20261021T152417Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0041/pr41_20261021T152417Z/findings/docs.json",
+    "docs/_scratch/pr_review/0041/pr41_20261021T152417Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "New tests are behavioral against a real git clone and exercise run_capture, run_build and main end to end, with no stubbed collaborators.",
+    "The sibling-TXT contract is covered from both sides: the suffixed name is written and the branch TXT is byte-for-byte unchanged afterwards.",
+    "Edge cases are pinned: --base with --fresh keeps the branch name, no --base keeps it, an unknown ref raises a BuildError naming the ref, and an explicit --out overrides the sibling name.",
+    "Carry-forward of messages from the branch TXT into a based capture is tested, matching the run_capture docstring.",
+    "resolve_base_ref validates the ref with rev-parse --verify and reports a BuildError problem line, so a bad --base fails cleanly instead of reaching git diff.",
+    "The suffix travels in the skeleton (txt_suffix), so capture --save, build and --out all agree without extra CLI flags; pending captures are left unaffected.",
+    "Existing callers keep working: txt_path, skeleton_path and run_capture take defaulted parameters, and the payload shape is unchanged when no suffix applies.",
+    "Table values (`<branch>_<sha7>` naming, branch TXT read but not overwritten, `--fresh` replacing it) match `base_suffix` and `run_capture` in the script.",
+    "argument-hint frontmatter and the `$ARGUMENTS` passthrough keep the skill's flags in sync with the script's `capture` options.",
+    "resolve_base_ref checks the ref with rev-parse --verify --quiet <ref>^{commit} and reports a bad --base as a problem: line, not a git traceback; test_unknown_base_is_a_problem covers it.",
+    "The new tests are behavioral against real git clones; test_build_writes_sibling_txt_and_spares_branch_txt checks that the branch ledger bytes are unchanged after a based build.",
+    "The module docstring, the --base CLI help, the SKILL.md flag table, the argument-hint and the plugin version bump all moved together with the code.",
+    "An explicit build --out still overrides the sibling name, and a test pins it (test_explicit_out_overrides_the_sibling_name)."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "--base with --fresh still overwrites the branch TXT",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "files": [
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "tests/scripts/test_branch_commit_msg.py"
+        ],
+        "lines": "125-130,189-201",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "base_suffix's docstring says a based capture covers a slice and must not replace the branch's own TXT, but it returns an empty suffix whenever fresh is set. `capture --base X --fresh --save` followed by `build` therefore writes a slice-only <branch>.txt/.json over the full branch ledger. That is the data loss the PR title (keep the branch TXT) sets out to prevent. The module docstring documents the carve-out, but nothing in the code ties the suffix to the capture being partial, only to the carry-forward switch.\n\nAlso (overall): run_capture always reads carry-forward from txt_path(repo, branch) (line 195), never from the <branch>_<sha7>.txt that a based build writes. When capture --save --base REF runs a second time (for example after a build or a plan fix), it overwrites <branch>_<sha7>.json with messages taken only from the branch TXT, so every message drafted and built into the sibling TXT is lost. A plain capture reads back its own output and gives the same result on every run; a based capture does not. No test reruns a based capture after a based build.",
+        "fix": [
+          "Make base_suffix return _<sha7> whenever base is given, independent of fresh, and update the docstrings and --base help to match.",
+          "Keep the carve-out but reject --base with --fresh, or have run_build refuse to overwrite an existing branch TXT whose merge_base differs from the payload's.",
+          "Compute the suffix before the carry-forward read and pass txt_path(repo, branch, suffix) to _existing_document when that file exists, falling back to the branch TXT otherwise; add a test that builds a based TXT with a distinct message, reruns run_capture with the same base, and asserts the sibling's message comes back.",
+          "If dropping the messages is intended, say so in the run_capture docstring and in the SKILL.md Step 1 table row for --base REF."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Fresh-rerun advice can overwrite the branch TXT with a slice",
+        "file": "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "29,32-41,45-47,74-77",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Step 2 (lines 74-77) tells the agent to rerun `capture --save --fresh` to clear a needless split, and Step 1 (line 45) says to add `--fresh` to ignore the existing TXT. The new table (line 40) shows that `--base REF --fresh` writes `<branch>.json`/`.txt`, and the script's `base_suffix` returns an empty suffix for it, so `build` replaces the branch TXT with a plan covering only paths differing from REF. Nothing warns that adding `--fresh` to a based run drops the safety of the `_<sha7>` file. Step 2's rerun also never says whether to keep the developer's `--base`; kept, the rerun overwrites the branch TXT with a slice, dropped, it captures the wrong base.\n\nAlso (overall): Step 1 says to pass $ARGUMENTS through unchanged and add none (SKILL.md:32-33). The same skill then tells the agent to add --fresh when the existing grouping is wrong (SKILL.md:45-47) and to rerun `capture --save --fresh` for a non-doc split (SKILL.md:76). If the developer passed --base REF, adding --fresh moves the run to the table's `--base REF --fresh` row (SKILL.md:40). That row writes <branch>.json/.txt and replaces the branch TXT with a slice of the branch, which is exactly what this PR set out to prevent. The code has the same tension: the base_suffix docstring says a based capture covers a slice and 'must not replace the branch's own TXT' (branch_commit_msg.py:128), yet the --fresh branch of line 130 lets it do so.\n\nAlso (docs): The table (lines 37-41) lists none, `--base --fresh` and `--base`, but not `--fresh` alone (whole branch, `<branch>.json`, plan rebuilt, every message empty) or `--no-fetch` (affects only the no-`--base` path, since a `--base` capture never fetches). Line 32 says to pass `$ARGUMENTS` 'unchanged', but the CLI also accepts `--pending` (ignores the other flags), `--out` (conflicts with `--save`, so argparse exits 2) and `--repo`; the argument-hint lists only three flags. `$ARGUMENTS` is also unquoted in the shell line, so a ref with shell metacharacters is interpreted by the shell.",
+        "fix": [
+          "Add a sentence under the table: `--fresh` combined with `--base` replaces the whole branch TXT with a slice-only plan; use it only when the developer asked for exactly that.",
+          "In Step 2, say the fresh rerun is `capture --save --fresh` with no `--base` (whole branch), and that a based capture keeps its `_<sha7>` TXT and is not rerun with `--fresh` to fix a split.",
+          "Make the suffix depend on --base alone (`return f\"_{merge_base[:7]}\" if base else \"\"`) so --fresh only skips carry-forward, then update the SKILL.md table row, the --base help text and the tests test_base_with_fresh_keeps_branch_name / test_save_with_base_and_fresh_uses_branch_name.",
+          "Keep the current behavior, but change SKILL.md:45-47 and :76 so that, when $ARGUMENTS holds --base, the agent reports the bad grouping to the developer and does not add --fresh. Also reword the base_suffix docstring so it no longer claims a based capture never replaces the branch TXT.",
+          "Add a `--fresh` row and note that `--no-fetch` has no effect with `--base`.",
+          "State that only `--base`, `--fresh` and `--no-fetch` are expected, and stop and report on anything else.",
+          "Quote or validate the ref when it is passed through."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Default-path help text and build docs omit the _<sha7> suffix",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "lines": "29-30,461-462,485-486",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The `--save` help still says <commit_messages dir>/<branch>.json, the `build --out` help says default <branch>.txt (or _pending), and the module docstring's `build` section says it writes <branch>.txt. For a skeleton carrying txt_suffix, build writes <branch>_<sha7>.txt and --save writes <branch>_<sha7>.json, so these descriptions are wrong for based captures. Only the --base help and the capture paragraph mention the suffix.",
+        "fix": [
+          "Add 'or <branch>_<sha7>.json/.txt for a --base capture' to the --save help (lines 461-462), the build --out help (485-486) and the build paragraph (29-30)."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Re-capture of a based slice does not carry forward its own sibling TXT",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "lines": "195",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "run_capture always reads txt_path(repo, branch) (the full branch TXT) for carry-forward, never the <branch>_<sha7>.txt it previously wrote for the same base. Re-running `capture --base X` after drafting messages loses the slice's messages and groupings, and the branch TXT's groupings of the whole branch are applied to a partial capture. The docstring states the branch-TXT behavior, so this is a gap rather than a contradiction.",
+        "fix": [
+          "Prefer the sibling txt_path(repo, branch, suffix) when it exists, falling back to the branch TXT; document the order."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "txt_suffix from the skeleton is used unsanitized in the output path",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "files": [
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "tests/scripts/test_branch_commit_msg.py"
+        ],
+        "lines": "410-413",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "run_build reads payload['txt_suffix'] from the user-edited JSON and interpolates it into f\"{branch}{suffix}.txt\" under the commit_messages directory. A value containing path separators or '..' (an edited or stale skeleton) writes outside that directory or into a subdirectory (mkdir parents=True creates it). Capture only ever emits _<sha7>, so build can validate that shape.\n\nAlso (overall): run_build takes str(payload.get('txt_suffix')) and puts it straight into the output filename (branch_commit_msg.py:410-412). The skeleton is a JSON file the agent edits in place. A stale or hand-edited suffix (one that no longer matches merge_base[:7], or one holding '/..') makes build write a TXT whose name does not match its Merge base line, or write outside the commit_messages directory. Capture derives the suffix from merge_base, so build can derive it the same way.",
+        "fix": [
+          "In run_build, accept txt_suffix only when it matches ^_[0-9a-f]{7}$ (else BuildError) before calling txt_path.",
+          "In run_build, check that suffix is empty or matches re.fullmatch(r\"_[0-9a-f]{7}\", suffix) and equals f\"_{merge_base[:7]}\", and raise BuildError otherwise; add a test with a tampered suffix.",
+          "Store only a boolean (for example \"based\": true) in the skeleton and recompute f\"_{merge_base[:7]}\" in run_build and skeleton_path."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Step 4 still states the TXT is always written as <branch>.txt",
+        "file": "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "120",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Line 120 reads 'Exit 0 writes `<branch>.txt` beside the skeleton'. With `--base REF` and no `--fresh`, `run_build` writes `<branch>_<sha7>.txt` (via `txt_suffix` in the skeleton). The Step 1 table now documents the suffixed name, so Step 4 contradicts it. The Common Mistakes row (line 127) calls 'the TXT' script output without naming which file.\n\nAlso (overall): Four places still name only the branch file and omit the <branch>_<sha7> sibling that a based skeleton now produces: SKILL.md Step 4 ('Exit 0 writes `<branch>.txt` beside the skeleton', SKILL.md:120), the module docstring's build section ('write ``<branch>.txt``', branch_commit_msg.py:29-30), the --save help ('<branch>.json', branch_commit_msg.py:461-462) and the build --out help ('default <commit_messages dir>/<branch>.txt', branch_commit_msg.py:485-486).",
+        "fix": [
+          "Change line 120 to: Exit 0 writes the TXT beside the skeleton (same stem, `.txt`) and prints the receipt.",
+          "SKILL.md:120 -> 'Exit 0 writes the TXT named in the Step 1 table beside the skeleton'; add '(<branch>_<sha7>.json/.txt for a --base skeleton without --fresh)' to the --save help, the build --out help and the module docstring's build paragraph."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Base tests only exercise the degenerate base=HEAD slice",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "files": [
+          "tests/scripts/test_branch_commit_msg.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "250-307",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Every TestCaptureBase and CLI base test passes base=\"HEAD\" (or --base HEAD), so the capture only sees working-tree changes and the committed a.py edit never lands in the slice. A base that predates the branch commit (the upstream SHA the work fixture returns, or the branch name main with fetch=False) is never run, so a regression in resolving a non-HEAD ref, in the merge_base stored for it, or in the _<sha7> suffix derived from it would pass.\n\nAlso (overall): Every TestCaptureBase and TestCli --base test passes base='HEAD'. The docstring says the ref can be a SHA, HEAD or a branch and is stored as its full SHA, but no test passes an abbreviated SHA or a branch name, such as the upstream main SHA the work fixture returns or 'main'. Nothing checks that an abbreviation is expanded or that the suffix comes from the resolved SHA and not from the ref text.",
+        "fix": [
+          "Add a test using the SHA returned by the work fixture as base: assert merge_base == that SHA, txt_suffix == f\"_{sha[:7]}\", and that scripts/fpm/io/a.py appears in the captured paths.",
+          "Optionally parametrize test_base_ref_resolves_to_sha over HEAD, the upstream SHA and a branch name to show the ref is stored as a SHA.",
+          "Add a test that calls run_capture(clone, base=base_sha[:9], fetch=False) with the fixture's upstream SHA and asserts merge_base == base_sha and txt_suffix == f\"_{base_sha[:7]}\"."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "No test that capture --pending ignores --base",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "files": [
+          "tests/scripts/test_branch_commit_msg.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "407-432,434-436",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The --pending help (branch_commit_msg.py:468-474) and the module docstring promise that --base, --no-fetch and --fresh are ignored with --pending, and _cmd_capture routes pending before run_capture. The new --base tests never combine --base with --pending, so a later change that lets a base suffix leak into the pending skeleton (it would write <branch>_pending vs <branch>_<sha7>) is unguarded.\n\nAlso (tests): test_save_with_base_uses_sibling_name and test_build_of_based_skeleton_writes_sibling_txt request capsys but never read it; the fixture only adds noise and hides that these tests check file output, not the printed path or receipt.",
+        "fix": [
+          "Add a CLI test: main(['--repo', clone, 'capture', '--pending', '--base', 'HEAD', '--save']) returns 0, writes 9999-demo_pending.json and no 9999-demo_<sha7>.json.",
+          "Drop the capsys parameter from both tests, or assert the printed 'wrote <path>' and 'Saved: ...' lines as the neighbouring tests do."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I1",
+      "classification": "architectural_ambiguity",
+      "reason": "Approved design lets --base --fresh overwrite <branch>.txt; reviewers see slice-over-ledger loss. Always suffixing a based capture is the safer option. Developer's call."
+    },
+    {
+      "id": "I2",
+      "classification": "architectural_ambiguity",
+      "reason": "Doc half of I1: SKILL.md fresh-rerun advice and table depend on whether --base --fresh may overwrite the branch TXT. Settle I1 first, then fix the docs to match."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 41 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"e312742bf84760b8bc285c20448003c5d09328a0\",\"headRefName\":\"0017-branch-commit-msg-base-arg\",\"headRefOid\":\"e312742bf84760b8bc285c20448003c5d09328a0\",\"last_sha\":\"e312742bf84760b8bc285c20448003c5d09328a0\",\"mergeCommit\":null,\"number\":41,\"state\":\"OPEN\",\"title\":\"Feature(branch-commit-msg): pass --base through and keep the branch TXT\",\"url\":\"https://github.com/t968rs/operator-straps/pull/41\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "0017-branch-commit-msg-base-arg",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "0017-branch-commit-msg-base-arg",
+        "head_ref_name": "0017-branch-commit-msg-base-arg",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "e312742bf84760b8bc285c20448003c5d09328a0",
+        "head_sha": "e312742bf84760b8bc285c20448003c5d09328a0",
+        "base_ancestor_command": "git merge-base --is-ancestor e312742bf84760b8bc285c20448003c5d09328a0 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor e312742bf84760b8bc285c20448003c5d09328a0 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-21",
+      "evidence": "e312742 (working-tree snapshot; developer commits) - --save help, build --out help and module docstring build paragraph now name <branch>_<sha7>.json/.txt for a --base capture without --fresh"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-21",
+      "evidence": "e312742 (working-tree snapshot; developer commits) - run_capture reads carry-forward from the <branch>_<sha7>.txt sibling when it exists, else the branch TXT (new carry_forward_path); order documented in run_capture and module docstrings; test_recapture_prefers_the_sibling_txt added"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-21",
+      "evidence": "e312742 (working-tree snapshot; developer commits) - run_build validates txt_suffix via new checked_suffix: empty or matching _[0-9a-f]{7} and equal to _<merge_base[:7]>, else BuildError; parametrized test_build_rejects_a_tampered_suffix added"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-21",
+      "evidence": "e312742 (working-tree snapshot; developer commits) - script part: --save help, build --out help and module docstring build paragraph now name the <branch>_<sha7> sibling (SKILL.md part owned by another fixer); SKILL.md Step 4: exit 0 now writes the TXT named in the Step 1 table (same stem, .txt) instead of always <branch>.txt; Common Mistakes row names the Step 1 TXT"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-21",
+      "evidence": "e312742 (working-tree snapshot; developer commits) - added tests with the upstream SHA (full and 9-char abbreviation) as base asserting merge_base, txt_suffix and scripts/fpm/io/a.py in captured, plus a branch-name base (main) resolving to its SHA"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-21",
+      "evidence": "e312742 (working-tree snapshot; developer commits) - cited only: _cmd_capture already routes --pending before run_capture so --base never reaches the pending skeleton; the guarding test belongs to the test-file part; added test_save_pending_ignores_base (CLI --pending --base HEAD --save writes 9999-demo_pending.json, no sha7 sibling); dropped unused capsys from test_save_with_base_uses_sibling_name and test_build_of_based_skeleton_writes_sibling_txt"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-21",
+      "evidence": "e312742 (working-tree snapshot; developer commits) - base_suffix returns _<sha7> for any --base capture (fresh param dropped), so --base --fresh never overwrites the branch TXT; module/run_capture docstrings and --base/--save/--fresh/build --out help updated; tests flip the fresh+base name assertions and add a fresh-based build that spares the branch TXT (sibling carry-forward and its rerun test were already present at carry_forward_path / test_recapture_prefers_the_sibling_txt)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-21",
+      "evidence": "e312742 (working-tree snapshot; developer commits) - Suffix now depends on --base alone; SKILL.md table gains a --fresh row, the --base REF --fresh row writes <branch>_<sha7> and never overwrites the branch TXT, --no-fetch noted as no-op with --base, Step 1 limits $ARGUMENTS to the three flags and a safe REF charset (stop and report otherwise), Step 2 fresh rerun keeps the developer's --base"
+    }
+  ]
+}
