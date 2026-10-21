@@ -8,6 +8,12 @@ on:
 permissions:
   contents: read
 
+# A new push to a pull request cancels that branch's superseded run; a push to main never cancels, so every
+# main commit keeps its full run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 # Pull requests run only the work their diff reaches (tools/select_tests.py); pushes to main run everything.
 # Every job still reports success when its steps are skipped, so required checks keep working.
 
@@ -15,6 +21,7 @@ jobs:
   python:
     name: pytest + ruff (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -75,6 +82,7 @@ jobs:
   plugins:
     name: plugin validate + mod tests
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
         with:
