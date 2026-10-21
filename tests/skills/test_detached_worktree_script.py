@@ -20,6 +20,8 @@ import pytest
 
 from conftest import copy_project
 
+pytestmark = pytest.mark.cross_os
+
 _GIT_ENV = {
     "GIT_AUTHOR_NAME": "t",
     "GIT_AUTHOR_EMAIL": "t@t",

@@ -41,7 +41,7 @@ jobs:
       - if: ${{ steps.select.outputs.pytest != 'none' || steps.select.outputs.ruff != 'none' }}
         run: python -m pip install -r requirements-dev.txt
       - name: ruff
-        if: ${{ steps.select.outputs.ruff != 'none' }}
+        if: ${{ steps.select.outputs.ruff != 'none' && runner.os == 'Linux' }}
         shell: bash
         env:
           RUFF_MODE: ${{ steps.select.outputs.ruff }}
@@ -55,9 +55,17 @@ jobs:
       - name: pytest
         if: ${{ steps.select.outputs.pytest != 'none' }}
         shell: bash
+        # Linux runs every selected test. Windows runs only the cross_os subset (launcher, worktree and junction
+        # behavior); the rest is OS-independent logic that costs ~9x more there on process spawns. Exit 5 on
+        # Windows means no selected file carries the marker, which is a pass.
         run: |
           mapfile -t targets < .artifacts/selected-tests.txt
-          python -m pytest "${targets[@]}" -q --junitxml=.artifacts/pytest-junit.xml
+          args=()
+          if [ "$RUNNER_OS" = "Windows" ]; then args=(-m cross_os); fi
+          rc=0
+          python -m pytest "${targets[@]}" "${args[@]}" -q --junitxml=.artifacts/pytest-junit.xml || rc=$?
+          if [ "$RUNNER_OS" = "Windows" ] && [ "$rc" = 5 ]; then rc=0; fi
+          exit $rc
       - name: test runtime catalog
         if: ${{ !cancelled() && hashFiles('.artifacts/pytest-junit.xml') != '' }}
         shell: bash

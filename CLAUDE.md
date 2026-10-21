@@ -41,8 +41,9 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   `claude --plugin-dir plugins/<name>` or a local marketplace (`claude plugin marketplace add ./`).
 - Lint: `python -m ruff check plugins tests tools` (line length 110, E501 on locally; CI passes
   `--extend-ignore E501`, so a long line never fails a build).
-- CI (`.github/workflows/ci.yml`) runs pytest and ruff on Ubuntu and Windows, plus strict validation and the mod
-  tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
+- CI (`.github/workflows/ci.yml`) runs pytest and ruff on Ubuntu, pytest on Windows limited to tests marked
+  `cross_os` (shell launcher, git worktree paths, junctions; mark a new test that depends on the OS), plus strict
+  validation and the mod tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
   changed, when its import closure holds a changed file, when its source names a changed or deleted file (the
   basename, or a `.py` file's bare module name), or when it walks the tree. A data file under `plugins/` or
   `tools/` counts as a change to each `.py` file there that names it in a code string literal (docstrings and
