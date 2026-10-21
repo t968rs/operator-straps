@@ -1,6 +1,7 @@
 ---
 name: branch-commit-msg
 description: Use when asked to draft the full set of commit messages for everything pending on the current branch, as multiple Conventional Commits saved to the project's commit_messages directory (default docs/_commit_messages). Triggers on "break the branch into commits", "draft all commit messages", "commit breakdown", "branch-commit-msg".
+argument-hint: "[--base REF] [--fresh] [--no-fetch]"
 model: haiku
 context: fork
 agent: harness:messenger
@@ -25,12 +26,19 @@ project root, exactly as written.
 ## Step 1 — Capture
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" capture --save
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" capture --save $ARGUMENTS
 ```
 
-Exit 1 prints `problem:` lines: report them and stop. Never substitute another base branch. Exit 0 prints
-`wrote <skeleton>`: the absolute path of `<branch>.json` in the commit_messages directory. Use that path as
-`<skeleton>` below.
+`$ARGUMENTS` holds the developer's flags (`--base REF`, `--fresh`, `--no-fetch`); pass them through unchanged and
+add none. Exit 1 prints `problem:` lines: report them and stop. Never choose or substitute a base yourself: the base
+is the developer's `--base`, else the project's. Exit 0 prints `wrote <skeleton>`: the absolute path of the
+skeleton in the commit_messages directory. Use that path as `<skeleton>` below.
+
+| Flags                  | Skeleton and TXT                  | Plan                                                       |
+|------------------------|-----------------------------------|------------------------------------------------------------|
+| none                   | `<branch>.json` / `.txt`          | whole branch; existing TXT carried forward                 |
+| `--base REF --fresh`   | `<branch>.json` / `.txt`          | paths differing from REF, rebuilt from the rules; replaces the branch TXT |
+| `--base REF`           | `<branch>_<sha7>.json` / `.txt`   | paths differing from REF; the branch TXT is read, never overwritten |
 
 The skeleton holds `merge_base`, `split`, `captured` (status, path, old_path, bucket, added, deleted) and
 `commits` — `{"1": [[paths], "message"], ...}` in landing order. Blocks from an existing TXT keep their grouping

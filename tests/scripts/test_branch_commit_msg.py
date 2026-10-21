@@ -247,6 +247,66 @@ class TestCaptureFresh:
         assert args.fresh is True
 
 
+class TestCaptureBase:
+    def _head(self, clone: Path) -> str:
+        return _git(clone, "rev-parse", "HEAD")
+
+    def test_base_ref_resolves_to_sha(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        payload = script.run_capture(clone, base="HEAD", fetch=False)
+        assert payload["merge_base"] == self._head(clone)
+
+    def test_unknown_base_is_a_problem(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        with pytest.raises(script.BuildError, match="no-such-ref"):
+            script.run_capture(clone, base="no-such-ref", fetch=False)
+
+    def test_base_without_fresh_names_a_sibling_file(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        payload = script.run_capture(clone, base="HEAD", fetch=False)
+        assert payload["txt_suffix"] == f"_{self._head(clone)[:7]}"
+
+    def test_base_with_fresh_keeps_branch_name(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        assert "txt_suffix" not in script.run_capture(clone, base="HEAD", fetch=False, fresh=True)
+
+    def test_no_base_keeps_branch_name(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        assert "txt_suffix" not in script.run_capture(clone, fetch=False)
+
+    def test_build_writes_sibling_txt_and_spares_branch_txt(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        script.run_build(clone, _filled(script.run_capture(clone, fetch=False)))
+        ledger = clone / "docs" / "_commit_messages" / "9999-demo.txt"
+        before = ledger.read_text(encoding="utf-8")
+        payload = _filled(script.run_capture(clone, base="HEAD", fetch=False))
+        out, _ = script.run_build(clone, payload)
+        assert out == clone / "docs" / "_commit_messages" / f"9999-demo_{self._head(clone)[:7]}.txt"
+        assert ledger.read_text(encoding="utf-8") == before
+
+    def test_based_capture_carries_branch_txt_messages(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        script.run_build(clone, _filled(script.run_capture(clone, fetch=False)))
+        payload = script.run_capture(clone, base="HEAD", fetch=False)
+        docs = payload["commits"][str(_block_of(payload, "docs/new.md"))]
+        assert docs[1].startswith("Chore: commit")
+
+    def test_explicit_out_overrides_the_sibling_name(
+            self, script: ModuleType, work: Tuple[Path, str], tmp_path: Path,
+    ) -> None:
+        clone, _ = work
+        target = tmp_path / "chosen.txt"
+        payload = _filled(script.run_capture(clone, base="HEAD", fetch=False))
+        out, _ = script.run_build(clone, payload, target)
+        assert out == target
+
+
 class TestCaptureOutput:
     def test_unparseable_existing_txt_is_reported(self, script: ModuleType, work: Tuple[Path, str]) -> None:
         clone, _ = work
@@ -352,6 +412,35 @@ class TestCli:
         target = clone / "docs" / "_commit_messages" / "9999-demo_pending.json"
         assert target.is_file()
         assert capsys.readouterr().out.strip().endswith("9999-demo_pending.json")
+
+    def test_save_with_base_uses_sibling_name(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        sha = _git(clone, "rev-parse", "HEAD")
+        argv = ("--repo", str(clone), "capture", "--no-fetch", "--base", "HEAD", "--save")
+        assert self._main(script, *argv) == 0
+        assert (clone / "docs" / "_commit_messages" / f"9999-demo_{sha[:7]}.json").is_file()
+        assert not (clone / "docs" / "_commit_messages" / "9999-demo.json").exists()
+
+    def test_save_with_base_and_fresh_uses_branch_name(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        argv = ("--repo", str(clone), "capture", "--no-fetch", "--base", "HEAD", "--fresh", "--save")
+        assert self._main(script, *argv) == 0
+        assert (clone / "docs" / "_commit_messages" / "9999-demo.json").is_file()
+
+    def test_build_of_based_skeleton_writes_sibling_txt(
+            self, script: ModuleType, work: Tuple[Path, str], tmp_path: Path, capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        sha = _git(clone, "rev-parse", "HEAD")
+        skeleton = tmp_path / "filled.json"
+        payload = script.run_capture(clone, base="HEAD", fetch=False)
+        script.write_skeleton(skeleton, _filled(payload))
+        assert self._main(script, "--repo", str(clone), "build", str(skeleton)) == 0
+        assert (clone / "docs" / "_commit_messages" / f"9999-demo_{sha[:7]}.txt").is_file()
 
     def test_save_and_out_are_exclusive(self, script: ModuleType) -> None:
         with pytest.raises(SystemExit):

@@ -8,7 +8,10 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     bucket, pair, split and order them, and carry forward groupings and messages from an existing
     ``<branch>.txt`` in the project's ``commit_messages`` directory (default ``docs/_commit_messages``).
     ``--fresh`` skips that carry-forward (and never parses the TXT), so a stale or over-split grouping
-    is replanned from the rules; messages come back empty. Prints (or writes with ``--out``) a JSON skeleton::
+    is replanned from the rules; messages come back empty. ``--base REF`` replaces the resolved merge base
+    with REF (stored as a SHA); without ``--fresh`` the skeleton gets ``"txt_suffix": "_<sha7>"`` and
+    ``--save`` and ``build`` write ``<branch>_<sha7>.json`` / ``.txt`` beside the branch TXT, which is still
+    read for carry-forward but never overwritten. Prints (or writes with ``--out``) a JSON skeleton::
 
         {"branch": ..., "merge_base": ..., "split": ..., "captured": [...],
          "commits": {"1": [["path", ...], "message or empty"], ...}}
@@ -37,7 +40,7 @@ The project is the git top level of ``--repo`` (default: the working directory);
 ``.claude/harness.json`` is activated once at startup, and an invalid one exits 1 with a ``problem:``
 line. ``--repo`` goes before or after the subcommand. Usage::
 
-    branch_commit_msg.py [--repo DIR] capture [--base SHA] [--no-fetch] [--fresh] [--out FILE | --save]
+    branch_commit_msg.py [--repo DIR] capture [--base REF] [--no-fetch] [--fresh] [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] capture --pending [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] diff FILE --block N
     branch_commit_msg.py [--repo DIR] build FILE [--out TXT]
@@ -58,6 +61,7 @@ from harness_lib.branch_capture import (
     capture_stats,
     current_branch,
     diff_section,
+    git,
     git_out,
     resolve_merge_base,
     untracked_paths,
@@ -105,9 +109,25 @@ def capture_branch(repo: Path, merge_base: str) -> List[CapturedPath]:
     return [c for c in capture_paths(repo, merge_base) if not c.path.startswith(output_prefix)]
 
 
-def txt_path(repo: Path, branch: str) -> Path:
-    """Default TXT location for ``branch``."""
-    return repo / output_dir() / f"{branch}.txt"
+def txt_path(repo: Path, branch: str, suffix: str = "") -> Path:
+    """Default TXT location for ``branch``; ``suffix`` names a sibling file (a ``--base`` capture)."""
+    return repo / output_dir() / f"{branch}{suffix}.txt"
+
+
+def resolve_base_ref(repo: Path, ref: str) -> str:
+    """Commit SHA of ``ref`` (a SHA, ``HEAD``, a branch); ``BuildError`` when it names no commit."""
+    probe = git(repo, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
+    if probe.returncode != 0:
+        raise BuildError([f"--base {ref!r} does not name a commit"])
+    return probe.stdout.strip()
+
+
+def base_suffix(merge_base: str, base: Optional[str], fresh: bool) -> str:
+    """Filename suffix for a capture: ``_<sha7>`` for ``--base`` without ``--fresh``, else empty.
+
+    A based capture covers a slice of the branch, so it must not replace the branch's own TXT.
+    """
+    return f"_{merge_base[:7]}" if base and not fresh else ""
 
 
 def _existing_document(path: Path) -> Optional[BranchCommitDocument]:
@@ -162,15 +182,23 @@ def run_capture(
     """Build the JSON skeleton payload for the checked-out branch; ``fresh`` ignores the existing TXT.
 
     Without ``base`` the merge base resolves against the project's base branch (``resolve_base_branch``).
+    With ``base`` (any ref, stored as its SHA) and no ``fresh``, the payload carries ``txt_suffix`` so
+    ``--save`` and ``build`` write beside the branch TXT instead of over it. The branch TXT is still read
+    for carry-forward.
     """
     branch = current_branch(repo)
-    merge_base = base or resolve_merge_base(repo, active().resolve_base_branch(), fetch)
+    if base:
+        merge_base = resolve_base_ref(repo, base)
+    else:
+        merge_base = resolve_merge_base(repo, active().resolve_base_branch(), fetch)
     captures = capture_branch(repo, merge_base)
     existing = None if fresh else _existing_document(txt_path(repo, branch))
     groups, split = plan_commits(captures, existing, _registry_targets(repo))
     commits = {n: (list(group.paths), group.message) for n, group in enumerate(groups, 1)}
     document = document_from_commit_dict(commits, branch, merge_base)
-    return skeleton_payload(document, split, captures, stats=capture_stats(repo, merge_base, captures))
+    payload = skeleton_payload(document, split, captures, stats=capture_stats(repo, merge_base, captures))
+    suffix = base_suffix(merge_base, base, fresh)
+    return {**payload, "txt_suffix": suffix} if suffix else payload
 
 
 def pending_txt_path(repo: Path, branch: str) -> Path:
@@ -379,7 +407,10 @@ def run_build(
     round_trip = _round_trip_problems(text, document)
     if round_trip:
         raise BuildError(round_trip)
-    target = out or (pending_txt_path if document.pending else txt_path)(repo, branch)
+    default = pending_txt_path(repo, branch) if document.pending else txt_path(
+        repo, branch, str(payload.get("txt_suffix") or ""),
+    )
+    target = out or default
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(text, encoding="utf-8")
     return target, document
@@ -416,7 +447,11 @@ def _parser() -> argparse.ArgumentParser:
         "capture", parents=repo, help="Print the commit skeleton JSON for the checked-out branch.",
     )
     cap.add_argument(
-        "--base", help="Merge-base SHA to use instead of resolving it from the project's base branch.",
+        "--base",
+        help=(
+            "Ref (SHA, HEAD, branch) to use as the merge base instead of resolving the project's base "
+            "branch. Without --fresh the output is <branch>_<sha7>.json/.txt, beside the branch TXT."
+        ),
     )
     cap.add_argument("--no-fetch", action="store_true", help="Skip 'git fetch origin <base branch>'.")
     target = cap.add_mutually_exclusive_group()
@@ -460,9 +495,10 @@ def write_skeleton(out: Path, payload: Mapping[str, object]) -> None:
     out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def skeleton_path(repo: Path, branch: str, pending: bool = False) -> Path:
+def skeleton_path(repo: Path, branch: str, pending: bool = False, suffix: str = "") -> Path:
     """``--save`` location: the TXT path for ``branch`` (pending or ledger) with a ``.json`` suffix."""
-    return (pending_txt_path if pending else txt_path)(repo, branch).with_suffix(".json")
+    path = pending_txt_path(repo, branch) if pending else txt_path(repo, branch, suffix)
+    return path.with_suffix(".json")
 
 
 def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
@@ -472,7 +508,8 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
     else:
         payload = run_capture(repo, args.base, not args.no_fetch, fresh=args.fresh)
     if args.save:
-        out = skeleton_path(repo, str(payload["branch"]), bool(payload.get("pending")))
+        pending, suffix = bool(payload.get("pending")), str(payload.get("txt_suffix") or "")
+        out = skeleton_path(repo, str(payload["branch"]), pending, suffix)
         write_skeleton(out, payload)
         print(f"wrote {out.resolve().as_posix()}")
     elif args.out:
