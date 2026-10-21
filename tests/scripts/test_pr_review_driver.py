@@ -292,6 +292,21 @@ def _delete_in_pr(clone: Path, rel: str) -> str:
 
 
 class TestCapture:
+    def test_default_exclusions_are_seeded_and_applied(self, script: ModuleType, make_project,
+                                                       monkeypatch: pytest.MonkeyPatch) -> None:
+        # Probe paths no default Artifact commit bucket covers, so only the seeded patterns exclude them.
+        config = {k: v for k, v in _CONFIG.items() if k != "exclusions"}
+        config["artifacts"] = {**_CONFIG["artifacts"], "summaries": "out/sums"}
+        config["matrix_path"] = "out/rows/watch_rows.jsonl"
+        probes = {"out/sums/0001_x.md", "out/rows/watch_rows.jsonl"}
+        clone, head = _make_pr(make_project, config=config, extra={
+            "out/sums/0001_x.md": "summary\n", "out/rows/watch_rows.jsonl": "{}\n"})
+        assert not (clone / ".claude" / "review_exclusions.json").exists()
+        assert _capture(script, monkeypatch, clone, head) == 0
+        assert (clone / ".claude" / "review_exclusions.json").is_file()
+        assert not any(script.rp.is_excluded(p, ()) for p in probes)
+        assert probes <= set(_plan(clone)["excluded"])
+
     def test_small_three_bucket_pr(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
                                    pr_repo: Tuple[Path, str]) -> None:
         clone, head = pr_repo
@@ -1782,9 +1797,24 @@ class TestConfigCommand:
     def test_get_prints_one_line_per_key_and_empty_for_unset(self, script: ModuleType, make_project,
                                                              capsys: pytest.CaptureFixture) -> None:
         root = make_project(config={"state_dir": _STATE})
-        assert _run(script, root, "config", "--get", "state_dir", "--get", "exclusions",
+        assert _run(script, root, "config", "--get", "state_dir", "--get", "base_branch",
                     "--get", "artifacts.reviews") == 0
         assert capsys.readouterr().out.splitlines() == [_STATE, "", "docs/PR_REVIEWS"]
+
+    def test_get_exclusions_defaults_to_the_seeded_file(self, script: ModuleType, make_project,
+                                                        capsys: pytest.CaptureFixture) -> None:
+        root = make_project(config={"state_dir": _STATE})
+        assert not (root / ".claude" / "review_exclusions.json").exists()
+        assert _run(script, root, "config", "--get", "exclusions") == 0
+        assert capsys.readouterr().out.splitlines() == [".claude/review_exclusions.json"]
+        assert (root / ".claude" / "review_exclusions.json").is_file()
+
+    def test_get_other_keys_does_not_seed(self, script: ModuleType, make_project,
+                                          capsys: pytest.CaptureFixture) -> None:
+        root = make_project(config={"state_dir": _STATE})
+        assert _run(script, root, "config", "--get", "state_dir") == 0
+        assert capsys.readouterr().out.splitlines() == [_STATE]
+        assert not (root / ".claude" / "review_exclusions.json").exists()
 
     def test_get_unknown_key_reports_problem(self, script: ModuleType, make_project,
                                              capsys: pytest.CaptureFixture) -> None:

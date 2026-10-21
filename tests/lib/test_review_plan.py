@@ -19,7 +19,8 @@ from typing import Dict, Optional, Tuple
 import pytest
 
 from harness_lib import review_plan as rp
-from harness_lib.config import activate, load_config
+from harness_lib.config import activate, active, load_config
+from harness_lib.default_exclusions import default_patterns, ensure_default_exclusions
 from harness_lib.project import plugin_root
 
 _REGISTRY = "tests/registry/registry.json"
@@ -210,9 +211,17 @@ class TestExclusions:
     def test_patterns_load_the_configured_file(self, project: Path) -> None:
         assert rp.exclusion_patterns(project) == _PATTERNS
 
-    def test_no_configured_file_means_no_patterns(self, make_project) -> None:
-        root = _activate(make_project, {})
+    def test_null_exclusions_means_no_patterns(self, make_project) -> None:
+        root = _activate(make_project, {"exclusions": None})
         assert rp.exclusion_patterns(root) == ()
+
+    def test_default_exclusions_need_the_seeded_file(self, make_project) -> None:
+        """A config without ``exclusions`` reads the default file: absent raises, seeded loads it."""
+        root = _activate(make_project, {})
+        with pytest.raises(FileNotFoundError):
+            rp.exclusion_patterns(root)
+        assert ensure_default_exclusions(active()) is not None
+        assert rp.exclusion_patterns(root) == tuple(default_patterns(active()))
 
 
 class TestMergeRegistryIntoTests:

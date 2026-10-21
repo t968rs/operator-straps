@@ -251,10 +251,23 @@ def test_clean_tree_stops_on_other_changes(project, phase4):
 
 def test_clean_tree_without_exclusions_counts_every_change(make_project, phase4):
     """No exclusions configured: every change counts."""
-    root = make_project(config={})
+    root = make_project(config={"exclusions": None})
     _write(root, "build/out.txt")
     check = phase4._check_clean_tree(root, None)
     assert check["result"].startswith("STOP") and check["exclusions_fixture"] == "(none configured)"
+
+
+def test_clean_tree_seeds_and_applies_the_default_exclusions(make_project, phase4, monkeypatch):
+    """No harness.json: ``_project`` seeds the default file into an untracked ``.claude/``, and the
+    clean-tree check filters both that file and a review JSON through it."""
+    root = make_project()
+    monkeypatch.chdir(root)
+    root, cfg = phase4._project()
+    assert (root / ".claude" / "review_exclusions.json").is_file()
+    _write(root, "docs/PR_REVIEWS/0001_x.json", "{}\n")
+    check = phase4._check_clean_tree(root, phase4._exclusions_for(None, cfg))
+    assert "?? .claude/review_exclusions.json" in check["stdout"]
+    assert check["result"] == "OK (empty after exclusions)"
 
 
 def test_clean_tree_missing_exclusions_file_stops(project, phase4):

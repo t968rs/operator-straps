@@ -21,7 +21,7 @@
     "state_dir": {"$ref": "#/$defs/relPath", "description": "Runtime state (sentinels, pr-team runtime). Gitignore it."},
     "matrix_path": {"$ref": "#/$defs/relPath", "description": "pr-review invocation test matrix JSONL (repo data)."},
     "agent_usage_path": {"$ref": "#/$defs/relPath", "description": "pr-review-watch agent usage JSONL: one row per review-agent dispatch (repo data)."},
-    "exclusions": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Machine-generated exclusions JSON; null disables exclusion filtering."},
+    "exclusions": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Machine-generated exclusions JSON; written on first use when left at the default path and absent; null disables exclusion filtering."},
     "artifacts": {
       "type": "object",
       "additionalProperties": false,
