@@ -61,7 +61,8 @@ The prompt always starts with `MODE=PLAN` or `MODE=CONSOLIDATE`. Branch on it.
 **MODE=PLAN-only:**
 
 - `EXCLUSIONS_FIXTURE` (the project's configured `exclusions` path from `.claude/harness.json`; empty
-  string when the project configures none)
+  string when the project configures none; the skill's `pr_review.py config --get exclusions` call
+  seeds the default file, so a non-empty value names a file on disk)
 
 **MODE=CONSOLIDATE-only:**
 

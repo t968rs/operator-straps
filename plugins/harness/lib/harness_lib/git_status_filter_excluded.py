@@ -8,11 +8,16 @@ The exclusions file is the positional argument when given; otherwise the
 project's configured ``exclusions`` path (``.claude/harness.json``), resolved
 against the project at ``--repo`` (default: the working directory). A project
 with ``exclusions`` set to null filters nothing: every line passes through.
+A project on the default exclusions path gets the default file seeded
+(written into the project) when it is absent. Only the configured route
+seeds; a positional path is read as given and must exist.
 
 Two input modes:
-  - default: stdin is `git status --porcelain` output (status code prefix
-    in cols 0-2, path from col 3); the filter strips the prefix when matching
-    against patterns, and re-emits the full line on pass.
+  - default: stdin is `git status --porcelain --untracked-files=all` output
+    (status code prefix in cols 0-2, path from col 3); the filter strips the
+    prefix when matching against patterns, and re-emits the full line on pass.
+    Without `--untracked-files=all`, git collapses an untracked folder to one
+    `?? <dir>/` line that a file pattern never matches.
   - --paths-only: stdin is bare paths (one per line, no status prefix), as
     produced by e.g. `gh pr view <PR> --json files --jq '.files[].path'`;
     the filter matches each line as a path directly. Same exclusions apply
@@ -66,16 +71,19 @@ def configured_exclusions(repo: Path) -> Optional[Path]:
     """Absolute exclusions file configured for the project at ``repo``, or None when disabled.
 
     Loads the project's configuration without activating it, so the process-wide ``active()``
-    configuration is left untouched.
+    configuration is left untouched. A project on the default path gets the default file seeded when
+    it is absent.
 
     Raises:
         ConfigError: If the project's ``.claude/harness.json`` is malformed or fails validation.
     """
     _ensure_lib_on_path()
     from harness_lib.config import load_config
+    from harness_lib.default_exclusions import ensure_default_exclusions
     from harness_lib.project import project_root
 
     cfg = load_config(project_root(repo))
+    ensure_default_exclusions(cfg)
     return cfg.path(cfg.exclusions) if cfg.exclusions else None
 
 
@@ -107,7 +115,8 @@ def _parser() -> argparse.ArgumentParser:
         "json_path",
         nargs="?",
         help="Path to exclusions JSON (default: the project's configured exclusions file; "
-             "none configured filters nothing)",
+             "none configured filters nothing; a project on the default exclusions path gets "
+             "the default file seeded when it is absent)",
     )
     parser.add_argument(
         "--repo", type=Path, default=Path.cwd(),

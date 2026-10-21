@@ -128,13 +128,17 @@ def _check_branch_match(current_branch: str, head_ref_name: str) -> Dict[str, An
     }
 
 
-def _porcelain(repo_root: Path) -> str:
-    """Raw ``git status --porcelain`` of ``repo_root``, trailing newline dropped.
+_STATUS_ARGS = ("status", "--porcelain", "--untracked-files=all")
 
-    Not ``_run``: porcelain output's first column is a single space for worktree-only statuses
-    (' M file'), and stripping the whole blob would corrupt the first line's columns.
+
+def _porcelain(repo_root: Path) -> str:
+    """Raw ``git status --porcelain --untracked-files=all`` of ``repo_root``, trailing newline dropped.
+
+    Untracked files are listed one by one, so a file seeded into an untracked folder (``?? .claude/``)
+    is matched on its own path. Not ``_run``: porcelain output's first column is a single space for
+    worktree-only statuses (' M file'), and stripping the whole blob would corrupt the first line's columns.
     """
-    proc = subprocess.run(["git", "-C", str(repo_root), "status", "--porcelain"], capture_output=True,
+    proc = subprocess.run(["git", "-C", str(repo_root), *_STATUS_ARGS], capture_output=True,
                           text=True, encoding="utf-8", errors="replace")
     return proc.stdout.rstrip("\n")
 
@@ -158,7 +162,7 @@ def _filtered(raw_status: str, patterns: List[str]) -> str:
 def _check_clean_tree(repo_root: Path, exclusions_fixture: Optional[str]) -> Dict[str, Any]:
     """Phase 4 Check 3: the working tree is clean once the exclusions are filtered out."""
     raw_status = _porcelain(repo_root)
-    check = {"command": "git status --porcelain", "stdout": raw_status, "filtered_stdout": "",
+    check = {"command": "git " + " ".join(_STATUS_ARGS), "stdout": raw_status, "filtered_stdout": "",
              "exclusions_fixture": exclusions_fixture or _NO_EXCLUSIONS}
     try:
         patterns = _exclusion_patterns(repo_root, exclusions_fixture)
@@ -204,12 +208,20 @@ def _check_base_branch_recorded(base_ref_name: str, configured_base: str) -> Dic
     }
 
 
-def _project() -> Tuple[Path, HarnessConfig]:
-    """The working directory's project root and its activated harness configuration."""
+def _project(seed: bool = True) -> Tuple[Path, HarnessConfig]:
+    """The working directory's project root and its activated harness configuration.
+
+    With ``seed``, a project on the default exclusions path gets the default file seeded when it is absent.
+    A run with ``--exclusions-fixture`` passes ``seed=False``: its fixture may not list the seeded file, and
+    the clean-tree check would then report a change this script made."""
     from harness_lib.config import activate, load_config
+    from harness_lib.default_exclusions import ensure_default_exclusions
     from harness_lib.project import project_root
     root = project_root()
-    return root, activate(load_config(root))
+    cfg = activate(load_config(root))
+    if seed:
+        ensure_default_exclusions(cfg)
+    return root, cfg
 
 
 def _exclusions_for(flag_value: Optional[str], cfg: HarnessConfig) -> Optional[str]:
@@ -320,7 +332,7 @@ def main(argv: list) -> int:
 
     from harness_lib.config import ConfigError
     try:
-        repo_root, cfg = _project()
+        repo_root, cfg = _project(seed=exclusions_fixture is None)
     except (ConfigError, OSError) as exc:
         sys.stderr.write(f"FAIL: harness config: {exc}\n")
         return 1

@@ -166,7 +166,9 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.
 ```
 
 Line 1 is `state_dir`, line 2 the exclusions file (`EXCLUSIONS_FIXTURE`; empty when the
-project configures none), line 3 the review directory. Then ensure the three paths
+project configures none), line 3 the review directory. Asking for `exclusions` writes the default
+file first when the project leaves the key at its default and the file is absent, so a non-empty
+line 2 names a file on disk. Then ensure the three paths
 below exist (Bash tool, from the project checkout):
 
 ```bash

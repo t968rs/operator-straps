@@ -7,7 +7,7 @@
   "state_dir": ".claude/state/harness",
   "matrix_path": "docs/_harness/pr_review_invocation_test_matrix.jsonl",
   "agent_usage_path": "docs/_harness/pr_review_agent_usage.jsonl",
-  "exclusions": null,
+  "exclusions": ".claude/review_exclusions.json",
   "artifacts": {
     "reviews": "docs/PR_REVIEWS",
     "plans": "docs/PLANS",

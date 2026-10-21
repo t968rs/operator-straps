@@ -165,6 +165,7 @@ from harness_lib import review_models as rm  # noqa: E402
 from harness_lib import review_plan as rp  # noqa: E402
 from harness_lib.branch_capture import CaptureError, git, git_out  # noqa: E402
 from harness_lib.config import HarnessConfig, activate, active, load_config  # noqa: E402
+from harness_lib.default_exclusions import ensure_default_exclusions  # noqa: E402
 from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, file_patches  # noqa: E402
 from harness_lib.pr_summary import PrFacts, PrFile  # noqa: E402
 from harness_lib.project import plugin_root, project_root  # noqa: E402
@@ -488,6 +489,7 @@ class Scope:
 
 def plan_scope(repo: Path, facts: PrFacts, roast: bool, catalog: Mapping[str, object]) -> Scope:
     """Exclusions, buckets (registry auto-merge), lens triggers, guard decision and the reviewer slots."""
+    ensure_default_exclusions(active())
     patterns = rp.exclusion_patterns(repo)
     reviewable, excluded = split_reviewable(facts, patterns)
     buckets, notes = rp.merge_registry_into_tests(rp.sort_buckets(reviewable))
@@ -1987,7 +1989,12 @@ def config_value(data: Mapping[str, object], key: str) -> str:
 
 
 def _cmd_config(repo: Path, args: argparse.Namespace) -> int:
-    """Run ``config``: print the merged configuration as JSON, or one line per ``--get`` key."""
+    """Run ``config``: print the merged configuration as JSON, or one line per ``--get`` key.
+
+    A query that prints ``exclusions`` seeds the default exclusions file first, so the printed path exists.
+    """
+    if not args.get or "exclusions" in args.get:
+        ensure_default_exclusions(active())
     data = config_data()
     lines = [config_value(data, key) for key in args.get]
     print("\n".join(lines) if args.get else json.dumps(data, indent=1))
