@@ -22,7 +22,7 @@ from typing import Callable, Dict, Iterator, Optional, Sequence, Tuple
 import pytest
 
 from conftest import copy_project, project_factory
-from harness_lib import branch_capture, pr_capture
+from harness_lib import branch_capture, min_viz_sentinel, pr_capture
 from harness_lib.commit_diff import DiffStat
 from harness_lib.commit_grouping import CapturedPath
 from harness_lib.config import activate, active, load_config
@@ -667,6 +667,182 @@ class TestBuild:
         with pytest.raises(script.CaptureError, match="not the active project"):
             script.run_build(other, payload)
         assert not (other / _SUMMARIES).exists() and not (clone / _SUMMARIES).exists()
+
+
+def _diagram(n: int) -> str:
+    """A fenced block that qualifies for ``--min-viz``: over 200 characters, with an arrow."""
+    return "```\n" + "start ──► finish\n" * 14 + f"case {n}\n```"
+
+
+def _level3_sections(diagrams: int) -> list:
+    """``diagrams`` New Behavior sections of one qualifying block each, then Changed Symbols."""
+    flows = [{"heading": f"New Behavior: case {n}", "body": _diagram(n)} for n in range(diagrams)]
+    return [*flows, {"heading": "Changed Symbols", "body": _SYMBOLS_BODY}]
+
+
+class TestBuildLevels:
+    def _payload(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], sections: Sequence[Dict[str, str]],
+            **keys: object,
+    ) -> Dict[str, object]:
+        clone, _, head = pr_repo
+        filled = _filled(script.capture_payload(clone, _meta(script, head), fetch=False), sections)
+        return {**filled, **keys}
+
+    def test_level_one_leaves_out_commits(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, [], level=1))
+        text = out.read_text(encoding="utf-8")
+        assert "<summary>Commits</summary>" not in text and "<summary>Files Changed" in text
+
+    def test_level_one_rejects_sections(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+        payload = self._payload(script, pr_repo, _level3_sections(1), level=1)
+        with pytest.raises(script.CaptureError, match="sections are for levels 2 and 3"):
+            script.run_build(pr_repo[0], payload)
+
+    def test_level_two_matches_visual(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+        sections = [
+            {"heading": "Behavior: diff read", "body": _FLOW_BODY},
+            {"heading": "Changed Symbols", "body": _SYMBOLS_BODY},
+        ]
+        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, sections, level=2))
+        assert "<summary>Commits</summary>" in out.read_text(encoding="utf-8")
+
+    def test_unleveled_plain_build_keeps_commits(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, []))
+        assert "<summary>Commits</summary>" in out.read_text(encoding="utf-8")
+
+    def test_stored_level_beats_visual_flag(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, [], level=1), visual=True)
+        assert out.is_file()
+
+    def test_level_three_without_min_viz_needs_no_blocks(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        sections = [
+            {"heading": "Data Flow", "body": "x"}, {"heading": "Changed Symbols", "body": _SYMBOLS_BODY},
+        ]
+        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, sections, level=3))
+        assert "## Data Flow" in out.read_text(encoding="utf-8")
+
+    def test_min_viz_passes_and_clears_the_sentinel(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone = pr_repo[0]
+        sentinel = min_viz_sentinel.arm(active(), 1234, 3)
+        payload = self._payload(script, pr_repo, _level3_sections(3), level=3, min_viz=3)
+        script.run_build(clone, payload)
+        assert not sentinel.exists()
+
+    def test_min_viz_shortfall_keeps_the_sentinel(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone = pr_repo[0]
+        sentinel = min_viz_sentinel.arm(active(), 1234, 3)
+        payload = self._payload(script, pr_repo, _level3_sections(1), level=3, min_viz=3)
+        with pytest.raises(script.CaptureError) as excinfo:
+            script.run_build(clone, payload)
+        assert excinfo.value.problems == [
+            "--min-viz needs 3 diagram blocks (fenced, over 200 characters, with an arrow); found 1",
+        ]
+        assert sentinel.exists() and not (clone / _SUMMARIES).exists()
+
+    def test_min_viz_is_ignored_below_level_three(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        payload = self._payload(script, pr_repo, [], level=1, min_viz=3)
+        out, _ = script.run_build(pr_repo[0], payload)
+        assert out.is_file()
+
+    @pytest.mark.parametrize("keys, word", [
+        ({"level": 4}, "level"), ({"level": "2"}, "level"), ({"level": True}, "level"),
+        ({"level": 3, "min_viz": -1}, "min_viz"), ({"level": 3, "min_viz": "3"}, "min_viz"),
+    ])
+    def test_malformed_level_keys(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], keys: Dict[str, object], word: str,
+    ) -> None:
+        with pytest.raises(script.CaptureError, match=f"{word}.*rerun capture"):
+            script.run_build(pr_repo[0], self._payload(script, pr_repo, [], **keys))
+
+
+class TestCaptureLevels:
+    def _capture(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, pr_repo: Tuple[Path, str, str],
+            tmp_path: Path, *flags: str,
+    ) -> Dict[str, object]:
+        clone, _, head = pr_repo
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        out = tmp_path / "1234_pr.json"
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--out", str(out), "--repo", str(clone), *flags]
+        assert script.main(argv) == 0
+        return json.loads(out.read_text(encoding="utf-8"))
+
+    def test_no_flags_store_nothing(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        payload = self._capture(script, monkeypatch, pr_repo, tmp_path)
+        assert "level" not in payload and "min_viz" not in payload
+        assert not min_viz_sentinel.sentinel_path(active(), 1234).exists()
+
+    @pytest.mark.parametrize("level", ["1", "2", "3"])
+    def test_level_is_stored(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, level: str,
+    ) -> None:
+        payload = self._capture(script, monkeypatch, pr_repo, tmp_path, "--level", level)
+        assert payload["level"] == int(level) and "min_viz" not in payload
+
+    @pytest.mark.parametrize("flags, count", [(("--min-viz",), 3), (("--min-viz", "5"), 5)])
+    def test_min_viz_at_level_three_arms_the_sentinel(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture, flags: Tuple[str, ...],
+            count: int,
+    ) -> None:
+        payload = self._capture(script, monkeypatch, pr_repo, tmp_path, "--level", "3", *flags)
+        assert (payload["level"], payload["min_viz"]) == (3, count)
+        sentinel = min_viz_sentinel.sentinel_path(active(), 1234)
+        assert sentinel.read_text(encoding="utf-8").splitlines()[3] == str(count)
+        assert f"--min-viz armed: {count} diagram blocks" in capsys.readouterr().out
+
+    @pytest.mark.parametrize("level", ["1", "2"])
+    def test_min_viz_below_level_three_is_ignored(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, level: str,
+    ) -> None:
+        payload = self._capture(script, monkeypatch, pr_repo, tmp_path, "--level", level, "--min-viz")
+        assert "min_viz" not in payload
+        assert not min_viz_sentinel.sentinel_path(active(), 1234).exists()
+
+    def test_min_viz_without_a_level_is_ignored(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        payload = self._capture(script, monkeypatch, pr_repo, tmp_path, "--min-viz")
+        assert "min_viz" not in payload
+        assert not min_viz_sentinel.sentinel_path(active(), 1234).exists()
+
+    def test_recapture_without_the_flag_disarms(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        self._capture(script, monkeypatch, pr_repo, tmp_path, "--level", "3", "--min-viz")
+        sentinel = min_viz_sentinel.sentinel_path(active(), 1234)
+        assert sentinel.exists()
+        payload = self._capture(script, monkeypatch, pr_repo, tmp_path, "--level", "2")
+        assert not sentinel.exists() and "min_viz" not in payload
+
+    @pytest.mark.parametrize("flags", [("--level", "0"), ("--level", "4"), ("--min-viz", "x")])
+    def test_bad_flag_values_are_rejected(self, script: ModuleType, flags: Tuple[str, ...]) -> None:
+        with pytest.raises(SystemExit):
+            script._parser().parse_args(["capture", "--pr", "1", *flags])
+
+    def test_parser_defaults(self, script: ModuleType) -> None:
+        bare = script._parser().parse_args(["capture", "--pr", "1"])
+        assert (bare.level, bare.min_viz) == (None, None)
+        flagged = script._parser().parse_args(["capture", "--pr", "1", "--level", "3", "--min-viz"])
+        assert (flagged.level, flagged.min_viz) == (3, 3)
 
 
 class TestCli:

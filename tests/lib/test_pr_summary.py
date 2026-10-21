@@ -258,6 +258,73 @@ class TestDraftProblems:
         ]
 
 
+class TestDraftLevels:
+    def test_level_one_is_plain(self) -> None:
+        assert draft_problems(_facts(), _draft(), level=1) == []
+
+    def test_level_one_rejects_sections(self) -> None:
+        draft = _draft(sections=(_FLOW, _SYMBOLS))
+        assert draft_problems(_facts(), draft, level=1) == [
+            "sections are for levels 2 and 3; remove them or build with --level 2",
+        ]
+
+    @pytest.mark.parametrize("level", [2, 3])
+    def test_visual_levels_need_sections(self, level: int) -> None:
+        assert draft_problems(_facts(), _draft(), level=level) == [
+            "a visual summary needs its sections (behavior flows or a shape diagram, Changed Symbols)",
+        ]
+
+    def test_level_two_matches_visual(self) -> None:
+        draft = _draft(sections=(_FLOW, _SYMBOLS, PrSection("Legend", "x")))
+        assert draft_problems(_facts(), draft, level=2) == draft_problems(_facts(), draft, visual=True)
+
+    def test_level_overrides_visual(self) -> None:
+        assert draft_problems(_facts(), _draft(), visual=True, level=1) == []
+
+    def test_level_three_allows_five_flows(self) -> None:
+        flows = tuple(PrSection(f"New Behavior: {n}", "```\nx\n```") for n in range(5))
+        assert draft_problems(_facts(), _draft(sections=(*flows, _SYMBOLS)), level=3) == []
+        assert draft_problems(_facts(), _draft(sections=(*flows[:4], _SYMBOLS)), level=2) == [
+            "at most 3 behavior flows (found 4)",
+        ]
+
+    def test_level_three_flow_limit(self) -> None:
+        flows = tuple(PrSection(f"New Behavior: {n}", "```\nx\n```") for n in range(6))
+        assert draft_problems(_facts(), _draft(sections=(*flows, _SYMBOLS)), level=3) == [
+            "at most 5 behavior flows (found 6)",
+        ]
+
+    def test_level_three_allows_each_shape_once(self) -> None:
+        shapes = tuple(
+            PrSection(h, "x") for h in (
+                "Module Relocations", "Symbol Relocations", "Call-Site Migration", "Rule Illustration",
+                "Sequence Diagram", "Data Flow",
+            )
+        )
+        assert draft_problems(_facts(), _draft(sections=(_FLOW, *shapes, _SYMBOLS)), level=3) == []
+
+    def test_level_three_rejects_a_repeated_shape(self) -> None:
+        shapes = (PrSection("Data Flow", "x"), PrSection("Data Flow", "y"))
+        assert draft_problems(_facts(), _draft(sections=(_FLOW, *shapes, _SYMBOLS)), level=3) == [
+            "shape diagram 'Data Flow' appears 2 times; use each at most once",
+        ]
+
+    @pytest.mark.parametrize("heading", ["Sequence Diagram", "Data Flow"])
+    def test_new_shapes_are_level_three_only(self, heading: str) -> None:
+        draft = _draft(sections=(_FLOW, PrSection(heading, "x"), _SYMBOLS))
+        assert draft_problems(_facts(), draft, level=3) == []
+        assert draft_problems(_facts(), draft, level=2) == [
+            f"section '{heading}': unknown heading; use 'Behavior: <trigger>', 'New Behavior: <trigger>', "
+            "a shape diagram name or 'Changed Symbols'",
+        ]
+
+    def test_level_three_keeps_section_order(self) -> None:
+        draft = _draft(sections=(_SYMBOLS, PrSection("Data Flow", "x"), _FLOW))
+        assert draft_problems(_facts(), draft, level=3) == [
+            "sections out of order: behavior flows, then the shape diagram, then Changed Symbols",
+        ]
+
+
 class TestRenderSummary:
     def test_layout(self) -> None:
         text = render_summary(_facts(), _draft(sections=(PrSection("Changed Symbols", "```\nx\n```"),)))
@@ -307,6 +374,13 @@ class TestRenderSummary:
         commits = "<details><summary>Commits</summary>\n<p>\n\n- abc1234 Feature(a): add a\n\n</p>\n"
         assert commits in text
         assert "\n\nChange codes: A = added, M = modified, D = deleted, R = renamed\n\n</p>" in text
+
+    @pytest.mark.parametrize("level, shown", [(None, True), (1, False), (2, True), (3, True)])
+    def test_commits_block_by_level(self, level: object, shown: bool) -> None:
+        text = render_summary(_facts(), _draft(), level)
+        assert ("<summary>Commits</summary>" in text) is shown
+        assert "abc1234 Feature(a): add a" not in text or shown
+        assert "<summary>Files Changed (2)</summary>" in text
 
     def test_cell_escapes_pipes_and_newlines(self) -> None:
         text = render_summary(_facts(), _draft(descriptions={"src/pkg/a.py": "adds a | b\n  and c"}))

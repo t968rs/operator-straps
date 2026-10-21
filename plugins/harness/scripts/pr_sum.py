@@ -11,7 +11,10 @@
     instead, and ``--committed-only`` stops at the local HEAD. Elsewhere the committed ``gh`` head is used.
     Writes ``<summaries>/<NNNN>_pr.json``: ``{"facts": {...}, "draft": {...}}``. When that file already
     holds a parseable draft, the draft is carried forward: title, summary and sections stay, and
-    descriptions stay for paths the PR still lists (new paths get empty slots).
+    descriptions stay for paths the PR still lists (new paths get empty slots). ``--level 1|2|3`` stores the
+    summary level in the skeleton (1 plain without the Commits block, 2 the visual layout, 3 the visual layout
+    with more diagram types); ``--min-viz [N]`` at level 3 also stores N (default 3) and arms the Stop-hook
+    sentinel that holds the session until ``build`` succeeds. Both flags are stored fresh on every capture.
 ``diff FILE [--path P ...]``
     The PR's diff under the ``commit_diff`` budgets: paths read in full until ``PR_BLOCK_BUDGET`` changed
     lines are spent, and output capped at ``PR_CHAR_BUDGET`` characters (later sections keep only their
@@ -20,8 +23,11 @@
     ``--path``; ``--path`` also matches a rename's old path. A working-tree skeleton reads the working tree
     as it stands when ``diff`` runs, and is refused once the captured branch or HEAD has changed.
 ``build FILE [--visual]``
-    Validate the draft, write ``<summaries>/<NNNN>_<Title>.md`` and print the receipt. ``--visual``
-    (pr-sum-viz) requires the visual sections and caps their table cells.
+    Validate the draft, write ``<summaries>/<NNNN>_<Title>.md`` and print the receipt. The level and the
+    ``--min-viz`` count come from the skeleton: levels 2 and 3 require the visual sections and cap their
+    table cells, level 3 also requires the stored count of diagram blocks, level 1 leaves out the Commits
+    block. ``--visual`` means level 2 for a skeleton without a stored level. A successful build clears the
+    PR's ``--min-viz`` sentinel.
 
 Roots: the project (git top level of ``--repo``, which must lie inside a git checkout, else of the working
 directory) holds every input and output; ``<summaries>`` is its ``.claude/harness.json``
@@ -33,7 +39,8 @@ Every failure exits 1 with one ``problem: ...`` line per defect on stderr.
 Usage::
 
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr N
-        [--no-fetch] [--remote-head] [--committed-only] [--out FILE] [--repo DIR]
+        [--no-fetch] [--remote-head] [--committed-only] [--out FILE] [--level 1|2|3] [--min-viz [N]]
+        [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff FILE [--path P ...]
         [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE [--visual]
@@ -51,10 +58,12 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
+from harness_lib import min_viz_sentinel  # noqa: E402
 from harness_lib.branch_capture import CaptureError, git  # noqa: E402
 from harness_lib.config import ConfigError, activate, active, load_config  # noqa: E402
 from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, gh_metadata, read_rank  # noqa: E402
 from harness_lib.pr_summary import (  # noqa: E402
+    LEVELS,
     PrDraft,
     PrFacts,
     PrFile,
@@ -66,6 +75,7 @@ from harness_lib.pr_summary import (  # noqa: E402
     skeleton,
     summary_filename,
 )
+from harness_lib.pr_viz import DEFAULT_MIN_VIZ, min_viz_problems  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
 
 PR_BLOCK_BUDGET = 1200
@@ -208,15 +218,47 @@ def receipt(repo: Path, target: Path, facts: PrFacts, draft: PrDraft) -> str:
     return f"Saved: {shown} — Merge PR #{facts.number}: {title} ({facts.head} -> {facts.base})"
 
 
+def skeleton_level(payload: Mapping[str, object], visual: bool = False) -> Optional[int]:
+    """Level stored in a skeleton: 1, 2 or 3; ``visual`` stands for 2 in a skeleton without one, and None
+    is the unleveled plain build. Raise ``CaptureError`` for any other stored value."""
+    level = payload.get("level")
+    if level is None:
+        return 2 if visual else None
+    if not _int(level) or level not in LEVELS:
+        raise CaptureError([f"skeleton level must be one of {list(LEVELS)}, not {level!r}; rerun capture"])
+    return level
+
+
+def skeleton_min_viz(payload: Mapping[str, object]) -> int:
+    """Diagram-block count stored in a skeleton; 0 when none. Raise ``CaptureError`` for a bad value."""
+    value = payload.get("min_viz", 0)
+    if not _int(value) or value < 0:
+        raise CaptureError([f"skeleton min_viz must be a non-negative integer, not {value!r}; rerun capture"])
+    return value
+
+
+def build_problems(
+        facts: PrFacts, draft: PrDraft, level: Optional[int], minimum: int,
+) -> List[str]:
+    """Draft defects at ``level``, plus the ``--min-viz`` shortfall at level 3."""
+    problems = draft_problems(facts, draft, level=level)
+    return problems + (min_viz_problems(draft, minimum) if level == 3 else [])
+
+
 def run_build(repo: Path, payload: Mapping[str, object], visual: bool = False) -> Tuple[Path, str]:
-    """Validate the draft, write the summary markdown, and return its path and the receipt."""
+    """Validate the draft, write the summary markdown, and return its path and the receipt.
+
+    The level and ``--min-viz`` count come from the skeleton; a successful build clears the PR's sentinel.
+    """
     facts, draft = _facts(payload), _draft(payload)
-    problems = draft_problems(facts, draft, visual)
+    level, minimum = skeleton_level(payload, visual), skeleton_min_viz(payload)
+    problems = build_problems(facts, draft, level, minimum)
     if problems:
         raise CaptureError(problems)
     target = summaries_dir(repo) / summary_filename(facts.number, draft.title)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(render_summary(facts, draft), encoding="utf-8")
+    target.write_text(render_summary(facts, draft, level), encoding="utf-8")
+    min_viz_sentinel.clear(active(), facts.number)
     return target, receipt(repo, target, facts, draft)
 
 
@@ -246,12 +288,24 @@ def _parser() -> argparse.ArgumentParser:
         help="Leave out staged, unstaged and untracked changes of the checked-out PR branch.",
     )
     cap.add_argument("--out", type=Path, help="Skeleton path (default <summaries>/<NNNN>_pr.json).")
+    cap.add_argument(
+        "--level", type=int, choices=LEVELS,
+        help="Summary level stored in the skeleton: 1 plain without Commits, 2 visual, 3 more diagram types.",
+    )
+    cap.add_argument(
+        "--min-viz", type=int, nargs="?", const=DEFAULT_MIN_VIZ, default=None, metavar="N",
+        help=f"Level 3: require N diagram blocks before build (default {DEFAULT_MIN_VIZ}); arms the Stop "
+             "hook sentinel. Ignored below level 3.",
+    )
     diff = sub.add_parser("diff", parents=common, help="Print the PR diff under the read budgets.")
     diff.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8).")
     diff.add_argument("--path", action="append", default=[], help="Limit to this path (repeatable).")
     build = sub.add_parser("build", parents=common, help="Validate the draft and write the summary markdown.")
     build.add_argument("skeleton", type=Path, help="Filled skeleton JSON (UTF-8).")
-    build.add_argument("--visual", action="store_true", help="pr-sum-viz: require the visual sections.")
+    build.add_argument(
+        "--visual", action="store_true",
+        help="Level 2 for a skeleton without a stored level (pr-sum-viz): require the visual sections.",
+    )
     return parser
 
 
@@ -276,17 +330,40 @@ def previous_draft(path: Path) -> Optional[PrDraft]:
         return None
 
 
+def level_keys(level: Optional[int], min_viz: Optional[int]) -> Dict[str, int]:
+    """Skeleton keys for the capture flags: ``level``, and ``min_viz`` only at level 3."""
+    keys = {} if level is None else {"level": level}
+    return {**keys, "min_viz": min_viz} if level == 3 and (min_viz or 0) > 0 else keys
+
+
+def sync_sentinel(pr: int, keys: Mapping[str, int]) -> str:
+    """Arm the PR's ``--min-viz`` sentinel when the skeleton asks for blocks, else clear any stale one.
+
+    Returns the note for the capture line.
+    """
+    if "min_viz" in keys:
+        min_viz_sentinel.arm(active(), pr, keys["min_viz"])
+        return f" (--min-viz armed: {keys['min_viz']} diagram blocks before build)"
+    min_viz_sentinel.clear(active(), pr)
+    return ""
+
+
 def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
-    """Run ``capture`` and write the skeleton, carrying an existing draft forward."""
+    """Run ``capture`` and write the skeleton, carrying an existing draft forward.
+
+    The level flags are stored fresh on every capture; a rerun without them stores none.
+    """
     out = args.out or summaries_dir(repo) / f"{args.pr:04d}_pr.json"
     previous = previous_draft(out)
     payload = capture_payload(
         repo, gh_metadata(repo, args.pr), not args.no_fetch, previous,
         local=not args.remote_head, working_tree=not args.committed_only, out=out,
     )
+    keys = level_keys(args.level, args.min_viz)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    print(f"wrote {out}" + (" (existing draft carried forward)" if previous else ""))
+    out.write_text(json.dumps({**payload, **keys}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    note = sync_sentinel(args.pr, keys)
+    print(f"wrote {out}" + (" (existing draft carried forward)" if previous else "") + note)
     return 0
 
 

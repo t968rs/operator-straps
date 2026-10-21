@@ -3,6 +3,7 @@ name: pr-sum-viz
 description: Use when asked for a visual, diagram, flowchart or "more visual" PR summary, one "akin to" an
   earlier visual summary, or a PR summary of a PR that changes runtime behavior, relocates code, migrates call
   sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule
+argument-hint: "PR [--level 1|2|3] [--min-viz [N]]"
 model: haiku
 effort: medium
 context: fork
@@ -12,8 +13,24 @@ agent: harness:messenger
 # PR Summary (Visual)
 
 Same job and script as `harness:pr-sum` (`${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py`): the script owns facts,
-tables and layout; the agent writes the prose plus the visual sections: behavior flowcharts, at most one shape
-diagram, and a Changed Symbols table. No code review.
+tables and layout; the agent writes the prose plus the visual sections: behavior flowcharts, shape diagrams,
+and a Changed Symbols table. No code review.
+
+## Levels
+
+`--level` picks how much the summary draws. The script stores it in the skeleton at `capture`, and `build`
+reads it from there.
+
+| Level | Output                                                                                             |
+|-------|----------------------------------------------------------------------------------------------------|
+| 1     | Prose only: Summary, Files Changed, Relocated. No sections, no Commits block.                      |
+| 2     | Default. Behavior flows (at most 3), at most one shape diagram, Changed Symbols, Commits block.    |
+| 3     | Level 2 plus: up to 5 flows, every shape diagram once (two more: Sequence Diagram, Data Flow).     |
+
+`--min-viz [N]` applies at level 3 only (ignored at levels 1 and 2). `build` then requires N diagram blocks
+(default 3): fenced, over 200 characters between the fences, and holding an arrow (`→ ► ▶ ▼ ▲ ◄ ← ↑ ↓ ➜ ⟶ ->
+=>`), counted across the Summary and every section. `capture` arms a Stop-hook sentinel, so the session cannot
+end before `build` succeeds.
 
 ## Running the script
 
@@ -31,10 +48,12 @@ the project's configured summaries directory: `artifacts.summaries` in `.claude/
 ## Step 1 — Capture
 
 The PR number comes from the invocation arguments. No number given: report that and stop; never guess one from
-the branch or `gh pr list`.
+the branch or `gh pr list`. The other arguments are the developer's flags: `--level 1|2|3` and
+`--min-viz [N]`. Any other flag, or a value holding anything but digits, is a problem to report; stop. With no
+`--level`, pass `--level 2`; never choose a level otherwise.
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN --level L [--min-viz [N]]
 ```
 
 The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
@@ -87,11 +106,12 @@ Edit only `draft`. `summary` and each section `body` may be a list of lines (no 
   `***Note:*** ...` with a blank line above and below. The artifact-noise Note is added by the script.
 - **`descriptions`** — one line per file, from the diff; backtick identifiers.
 - **`sections`** — `[{"heading": ..., "body": [...]}]`, in the order below; `build` rejects other headings,
-  extra sections and a different order.
+  extra sections and a different order. Level 1: leave `[]`, skip the sections below, and keep the rest of
+  this step.
 
 ### 1. Behavior flows (when behavior changed or was added)
 
-One section per behavior, at most three. A flow shows what a caller or user observes: the trigger, the
+One section per behavior, at most three (five at level 3). A flow shows what a caller or user observes: the trigger, the
 conditions, and the outcomes (files written, values returned, errors raised, messages shown). It is not a call
 graph; a function name goes in parentheses only when it helps the reader find the code.
 
@@ -124,10 +144,11 @@ append, write file     write new rows only     read succeeds? ──no──► 
 Side by side in one fence when both fit in 120 columns; otherwise a BEFORE fence, then an AFTER fence. A
 refactor with no behavior change has no flows; the summary says behavior is unchanged.
 
-### 2. Shape diagram (optional, at most one)
+### 2. Shape diagram (optional; at most one, at level 3 each heading at most once)
 
 Pick the one that matches the change; required when there is no behavior flow. Pure file moves need none: the
-script's Relocated block already lists them.
+script's Relocated block already lists them. At level 3 every row that matches the change gets its own
+section, in table order.
 
 | Change shape                          | Heading             | Columns                                  |
 |---------------------------------------|---------------------|------------------------------------------|
@@ -135,6 +156,8 @@ script's Relocated block already lists them.
 | Symbols moved across modules          | Symbol Relocations  | `SYMBOL   FROM   ──►   TO`               |
 | Call sites swapped to new API/helpers | Call-Site Migration | `BEFORE (old) ┃ AFTER (new)`             |
 | New utility with a decision rule      | Rule Illustration   | `input -> output` cases showing the rule |
+| Level 3: calls between actors in order | Sequence Diagram   | one column per actor, `──►` per message  |
+| Level 3: data moving between stages   | Data Flow           | `source ──► stage ──► sink`              |
 
 ### 3. Changed Symbols (always)
 
@@ -155,12 +178,13 @@ directory every changed source file shares; `descriptions` keys stay the full pa
 ## Step 4 — Build
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build SKELETON --visual
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build SKELETON
 ```
 
 `build` checks: `title` and `summary` non-empty, `title` on one line, a description for every listed
-non-artifact path and none for paths outside the PR, no AI vendor names, and the section rules above. The
-header's Files Changed count notes relocated files.
+non-artifact path and none for paths outside the PR, no AI vendor names, the section rules of the skeleton's
+level, and with `--min-viz` the diagram-block count. A shortfall prints one `problem:` line with the count
+found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated files.
 
 Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit 0 writes
 `<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim — nothing else.
@@ -174,7 +198,10 @@ Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit
 | A flowchart of function calls                   | Steps are observable: condition, outcome, error, file      |
 | AFTER flow only, for a fix                      | BEFORE and AFTER, same trigger and same wording            |
 | Unlabelled `Behavior:` fences, or BEFORE tags   | First line BEFORE / AFTER; tags in AFTER only              |
-| A flow per module                               | A flow per behavior, at most three                         |
+| A flow per module                               | A flow per behavior, at most three (five at level 3)       |
+| Sections in a level 1 draft                     | Level 1 has none; `[]`                                     |
+| Padding a diagram to pass `--min-viz`           | Each block shows a real flow from the diff                 |
+| Choosing the level without the developer        | No `--level` means 2                                       |
 | Flow steps or diagrams not in the diff          | Each step traces to removed or added lines                 |
 | Long paths or sentences in table cells          | Key block above, bullets below                             |
 | Idiosyncratic glyphs (◆◈⊙)                      | The flow grammar and the Status values                     |
