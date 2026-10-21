@@ -116,8 +116,8 @@ Commands:
 - `python -m pytest tests/lib/test_review_merge.py -q`
 - `python -m pytest tests/schemas/test_pr_review_fixture_schemas.py -q`
 - `python -m pytest tests/skills/test_pr_review_skill_contract.py -q`
-- `python -m pytest tests/hooks/<the schema-hook test file> -q` (find it by grepping `tests/hooks` for
-  `validate_pr_json_schema`)
+- `python -m pytest tests/hooks/test_hooks_schema_validation.py -q`
+- `python -m pytest tests/hooks/test_check_phase5_sentinel_hook.py -q`
 - the config tests that pin defaults and the key table (run each by file)
 - `python -m pytest tests/contract/test_no_repo_literals.py -q`
 - `python -m pytest tests/contract/test_root_separation.py -q`
