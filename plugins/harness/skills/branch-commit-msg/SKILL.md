@@ -30,15 +30,20 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_com
 ```
 
 `$ARGUMENTS` holds the developer's flags (`--base REF`, `--fresh`, `--no-fetch`); pass them through unchanged and
-add none. Exit 1 prints `problem:` lines: report them and stop. Never choose or substitute a base yourself: the base
+add none. Only those three are expected: on any other flag, or a REF holding anything but letters, digits and
+`/._-~^`, report it and stop. Exit 1 prints `problem:` lines: report them and stop. Never choose or substitute a base yourself: the base
 is the developer's `--base`, else the project's. Exit 0 prints `wrote <skeleton>`: the absolute path of the
 skeleton in the commit_messages directory. Use that path as `<skeleton>` below.
 
 | Flags                  | Skeleton and TXT                  | Plan                                                       |
 |------------------------|-----------------------------------|------------------------------------------------------------|
 | none                   | `<branch>.json` / `.txt`          | whole branch; existing TXT carried forward                 |
-| `--base REF --fresh`   | `<branch>.json` / `.txt`          | paths differing from REF, rebuilt from the rules; replaces the branch TXT |
-| `--base REF`           | `<branch>_<sha7>.json` / `.txt`   | paths differing from REF; the branch TXT is read, never overwritten |
+| `--fresh`              | `<branch>.json` / `.txt`          | whole branch, rebuilt from the rules; every message `""`   |
+| `--base REF`           | `<branch>_<sha7>.json` / `.txt`   | paths differing from REF; carries the `_<sha7>` TXT, else the branch TXT; the branch TXT is never overwritten |
+| `--base REF --fresh`   | `<branch>_<sha7>.json` / `.txt`   | paths differing from REF, rebuilt from the rules; the branch TXT is never overwritten |
+
+`--no-fetch` skips the fetch of the project's base branch; a `--base` capture never fetches, so it has no effect
+there.
 
 The skeleton holds `merge_base`, `split`, `captured` (status, path, old_path, bucket, added, deleted) and
 `commits` — `{"1": [[paths], "message"], ...}` in landing order. Blocks from an existing TXT keep their grouping
@@ -73,7 +78,8 @@ such as Runtime, Test, Cicd, Agent, Other, Docs, Planning, Artifact) stays whole
 the reason; size, topic variety and tidiness are not reasons. Each extra block is a commit the developer must
 stage by hand. `capture` keeps every non-doc block it finds in the existing TXT (Docs and Planning blocks
 re-merge on each run), so a needless Agent, Other or Artifact split survives every later run. When the existing
-TXT already holds such a non-doc split, rerun `capture --save --fresh` (Step 1) instead of editing around it;
+TXT already holds such a non-doc split, rerun `capture --save --fresh` (Step 1, keeping the developer's `--base`
+when one was given: the rerun then replans the same `_<sha7>` files) instead of editing around it;
 `--fresh` discards every carried message, so a split Docs or Planning block needs only a plain rerun of `capture`.
 
 ## Step 3 — Write messages
@@ -117,14 +123,14 @@ Store each message in the JSON as one string (`\n` newlines). No `Branch:` foote
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" build "<skeleton>"
 ```
 
-Exit 1: each `problem:` line names a commit and a defect. Fix the JSON and rerun. Exit 0 writes `<branch>.txt`
-beside the skeleton and prints the receipt. Output the receipt verbatim — nothing else.
+Exit 1: each `problem:` line names a commit and a defect. Fix the JSON and rerun. Exit 0 writes the TXT named in
+the Step 1 table beside the skeleton (same stem, `.txt`) and prints the receipt. Output the receipt verbatim — nothing else.
 
 ## Common Mistakes
 
 | Mistake                                              | Fix                                                                  |
 |------------------------------------------------------|----------------------------------------------------------------------|
-| Writing or patching the TXT by hand                  | Edit the JSON; rerun `build`. The TXT is script output.              |
+| Writing or patching the TXT by hand                  | Edit the JSON; rerun `build`. The TXT (the Step 1 name) is script output. |
 | Subject/bullets derived from filenames ("modify x")  | Read the diff; state the change.                                     |
 | Removing a path from the JSON to silence coverage    | Put it in the block it belongs to.                                   |
 | Leaving a test block before the module it imports    | Step 2 renumber; note it in `split`.                                 |

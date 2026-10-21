@@ -268,9 +268,24 @@ class TestCaptureBase:
         payload = script.run_capture(clone, base="HEAD", fetch=False)
         assert payload["txt_suffix"] == f"_{self._head(clone)[:7]}"
 
-    def test_base_with_fresh_keeps_branch_name(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+    def test_base_with_fresh_still_names_a_sibling_file(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
         clone, _ = work
-        assert "txt_suffix" not in script.run_capture(clone, base="HEAD", fetch=False, fresh=True)
+        payload = script.run_capture(clone, base="HEAD", fetch=False, fresh=True)
+        assert payload["txt_suffix"] == f"_{self._head(clone)[:7]}"
+
+    def test_build_of_fresh_based_capture_spares_branch_txt(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        script.run_build(clone, _filled(script.run_capture(clone, fetch=False)))
+        ledger = clone / "docs" / "_commit_messages" / "9999-demo.txt"
+        before = ledger.read_text(encoding="utf-8")
+        payload = _filled(script.run_capture(clone, base="HEAD", fetch=False, fresh=True))
+        out, _ = script.run_build(clone, payload)
+        assert out == clone / "docs" / "_commit_messages" / f"9999-demo_{self._head(clone)[:7]}.txt"
+        assert ledger.read_text(encoding="utf-8") == before
 
     def test_no_base_keeps_branch_name(self, script: ModuleType, work: Tuple[Path, str]) -> None:
         clone, _ = work
@@ -305,6 +320,43 @@ class TestCaptureBase:
         payload = _filled(script.run_capture(clone, base="HEAD", fetch=False))
         out, _ = script.run_build(clone, payload, target)
         assert out == target
+
+    @pytest.mark.parametrize("abbrev", [40, 9])
+    def test_upstream_sha_base_captures_committed_work(
+            self, script: ModuleType, work: Tuple[Path, str], abbrev: int,
+    ) -> None:
+        clone, base = work
+        payload = script.run_capture(clone, base=base[:abbrev], fetch=False)
+        assert (payload["merge_base"], payload["txt_suffix"]) == (base, f"_{base[:7]}")
+        assert "scripts/fpm/io/a.py" in [entry["path"] for entry in payload["captured"]]
+
+    def test_branch_name_base_resolves_to_its_sha(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, base = work
+        assert script.run_capture(clone, base="main", fetch=False)["merge_base"] == base
+
+    def test_recapture_prefers_the_sibling_txt(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        script.run_build(clone, _filled(script.run_capture(clone, fetch=False)))
+        slice_payload = script.run_capture(clone, base="HEAD", fetch=False)
+        commits = {
+            key: [paths, f"Chore: slice {key}\n\nWhy.\n  - x: y"]
+            for key, (paths, _) in slice_payload["commits"].items()
+        }
+        script.run_build(clone, {**slice_payload, "commits": commits})
+        again = script.run_capture(clone, base="HEAD", fetch=False)
+        assert [message for _, message in again["commits"].values()] == [
+            message for _, message in commits.values()
+        ]
+
+    @pytest.mark.parametrize("suffix", ["_../../x", "_0000000", "_ABCDEFG"])
+    def test_build_rejects_a_tampered_suffix(
+            self, script: ModuleType, work: Tuple[Path, str], suffix: str,
+    ) -> None:
+        clone, _ = work
+        payload = _filled(script.run_capture(clone, base="HEAD", fetch=False))
+        with pytest.raises(script.BuildError, match="txt_suffix"):
+            script.run_build(clone, {**payload, "txt_suffix": suffix})
+        assert not list((clone / "docs" / "_commit_messages").glob("9999-demo_*.txt"))
 
 
 class TestCaptureOutput:
@@ -414,7 +466,7 @@ class TestCli:
         assert capsys.readouterr().out.strip().endswith("9999-demo_pending.json")
 
     def test_save_with_base_uses_sibling_name(
-            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+            self, script: ModuleType, work: Tuple[Path, str],
     ) -> None:
         clone, _ = work
         sha = _git(clone, "rev-parse", "HEAD")
@@ -423,16 +475,27 @@ class TestCli:
         assert (clone / "docs" / "_commit_messages" / f"9999-demo_{sha[:7]}.json").is_file()
         assert not (clone / "docs" / "_commit_messages" / "9999-demo.json").exists()
 
-    def test_save_with_base_and_fresh_uses_branch_name(
+    def test_save_pending_ignores_base(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        sha = _git(clone, "rev-parse", "HEAD")
+        argv = ("--repo", str(clone), "capture", "--pending", "--base", "HEAD", "--save")
+        assert self._main(script, *argv) == 0
+        messages = clone / "docs" / "_commit_messages"
+        assert (messages / "9999-demo_pending.json").is_file()
+        assert not (messages / f"9999-demo_{sha[:7]}.json").exists()
+
+    def test_save_with_base_and_fresh_uses_sibling_name(
             self, script: ModuleType, work: Tuple[Path, str],
     ) -> None:
         clone, _ = work
+        sha = _git(clone, "rev-parse", "HEAD")
         argv = ("--repo", str(clone), "capture", "--no-fetch", "--base", "HEAD", "--fresh", "--save")
         assert self._main(script, *argv) == 0
-        assert (clone / "docs" / "_commit_messages" / "9999-demo.json").is_file()
+        assert (clone / "docs" / "_commit_messages" / f"9999-demo_{sha[:7]}.json").is_file()
+        assert not (clone / "docs" / "_commit_messages" / "9999-demo.json").exists()
 
     def test_build_of_based_skeleton_writes_sibling_txt(
-            self, script: ModuleType, work: Tuple[Path, str], tmp_path: Path, capsys: pytest.CaptureFixture,
+            self, script: ModuleType, work: Tuple[Path, str], tmp_path: Path,
     ) -> None:
         clone, _ = work
         sha = _git(clone, "rev-parse", "HEAD")

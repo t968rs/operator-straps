@@ -9,9 +9,11 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     ``<branch>.txt`` in the project's ``commit_messages`` directory (default ``docs/_commit_messages``).
     ``--fresh`` skips that carry-forward (and never parses the TXT), so a stale or over-split grouping
     is replanned from the rules; messages come back empty. ``--base REF`` replaces the resolved merge base
-    with REF (stored as a SHA); without ``--fresh`` the skeleton gets ``"txt_suffix": "_<sha7>"`` and
-    ``--save`` and ``build`` write ``<branch>_<sha7>.json`` / ``.txt`` beside the branch TXT, which is still
-    read for carry-forward but never overwritten. Prints (or writes with ``--out``) a JSON skeleton::
+    with REF (stored as a SHA); the skeleton gets ``"txt_suffix": "_<sha7>"`` (with or without
+    ``--fresh``) and ``--save`` and ``build`` write ``<branch>_<sha7>.json`` / ``.txt`` beside the branch
+    TXT, which a based capture never overwrites. Carry-forward reads that ``<branch>_<sha7>.txt`` when it
+    exists, else the branch TXT.
+    Prints (or writes with ``--out``) a JSON skeleton::
 
         {"branch": ..., "merge_base": ..., "split": ..., "captured": [...],
          "commits": {"1": [["path", ...], "message or empty"], ...}}
@@ -27,7 +29,9 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     derive from paths), validate it (null fields, one path per commit, merge-base coverage, subject
     rules, vendor names, filler, block-separator lines), render the TXT and re-parse it in memory to
     confirm the round trip, then write ``<branch>.txt`` into the ``commit_messages`` directory
-    (``<branch>_pending.txt`` for a pending skeleton) and print the chat receipt. Exit 1 with one
+    (``<branch>_<sha7>.txt`` for a ``--base`` skeleton, ``<branch>_pending.txt`` for a
+    pending skeleton) and print the chat receipt. A ``txt_suffix`` other than ``_<merge_base[:7]>`` is
+    rejected. Exit 1 with one
     problem per line when validation fails; the existing TXT is left untouched then. A pending skeleton
     builds only while HEAD still equals its ``merge_base``.
 
@@ -49,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
@@ -122,12 +127,13 @@ def resolve_base_ref(repo: Path, ref: str) -> str:
     return probe.stdout.strip()
 
 
-def base_suffix(merge_base: str, base: Optional[str], fresh: bool) -> str:
-    """Filename suffix for a capture: ``_<sha7>`` for ``--base`` without ``--fresh``, else empty.
+def base_suffix(merge_base: str, base: Optional[str]) -> str:
+    """Filename suffix for a capture: ``_<sha7>`` for any ``--base`` capture, else empty.
 
-    A based capture covers a slice of the branch, so it must not replace the branch's own TXT.
+    A based capture covers a slice of the branch, so it never replaces the branch's own TXT;
+    ``--fresh`` only skips carry-forward and leaves the suffix alone.
     """
-    return f"_{merge_base[:7]}" if base and not fresh else ""
+    return f"_{merge_base[:7]}" if base else ""
 
 
 def _existing_document(path: Path) -> Optional[BranchCommitDocument]:
@@ -182,9 +188,9 @@ def run_capture(
     """Build the JSON skeleton payload for the checked-out branch; ``fresh`` ignores the existing TXT.
 
     Without ``base`` the merge base resolves against the project's base branch (``resolve_base_branch``).
-    With ``base`` (any ref, stored as its SHA) and no ``fresh``, the payload carries ``txt_suffix`` so
-    ``--save`` and ``build`` write beside the branch TXT instead of over it. The branch TXT is still read
-    for carry-forward.
+    With ``base`` (any ref, stored as its SHA), with or without ``fresh``, the payload carries
+    ``txt_suffix`` so ``--save`` and ``build`` write beside the branch TXT instead of over it.
+    Carry-forward reads that sibling ``<branch>_<sha7>.txt`` when it exists, else the branch TXT.
     """
     branch = current_branch(repo)
     if base:
@@ -192,13 +198,28 @@ def run_capture(
     else:
         merge_base = resolve_merge_base(repo, active().resolve_base_branch(), fetch)
     captures = capture_branch(repo, merge_base)
-    existing = None if fresh else _existing_document(txt_path(repo, branch))
+    suffix = base_suffix(merge_base, base)
+    existing = None if fresh else _existing_document(carry_forward_path(repo, branch, suffix))
     groups, split = plan_commits(captures, existing, _registry_targets(repo))
     commits = {n: (list(group.paths), group.message) for n, group in enumerate(groups, 1)}
     document = document_from_commit_dict(commits, branch, merge_base)
     payload = skeleton_payload(document, split, captures, stats=capture_stats(repo, merge_base, captures))
-    suffix = base_suffix(merge_base, base, fresh)
     return {**payload, "txt_suffix": suffix} if suffix else payload
+
+
+def carry_forward_path(repo: Path, branch: str, suffix: str) -> Path:
+    """TXT read for carry-forward: the ``suffix`` sibling when it exists, else the branch TXT."""
+    sibling = txt_path(repo, branch, suffix)
+    return sibling if suffix and sibling.exists() else txt_path(repo, branch)
+
+
+def checked_suffix(payload: Mapping[str, object]) -> str:
+    """The skeleton's ``txt_suffix``: empty or ``_<merge_base[:7]>``; anything else raises ``BuildError``."""
+    suffix = str(payload.get("txt_suffix") or "")
+    merge_base = str(payload.get("merge_base") or "")
+    if suffix and not (re.fullmatch(r"_[0-9a-f]{7}", suffix) and suffix == f"_{merge_base[:7]}"):
+        raise BuildError([f"txt_suffix {suffix!r} does not match merge_base; rerun capture"])
+    return suffix
 
 
 def pending_txt_path(repo: Path, branch: str) -> Path:
@@ -407,9 +428,8 @@ def run_build(
     round_trip = _round_trip_problems(text, document)
     if round_trip:
         raise BuildError(round_trip)
-    default = pending_txt_path(repo, branch) if document.pending else txt_path(
-        repo, branch, str(payload.get("txt_suffix") or ""),
-    )
+    suffix = checked_suffix(payload)
+    default = pending_txt_path(repo, branch) if document.pending else txt_path(repo, branch, suffix)
     target = out or default
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(text, encoding="utf-8")
@@ -450,7 +470,8 @@ def _parser() -> argparse.ArgumentParser:
         "--base",
         help=(
             "Ref (SHA, HEAD, branch) to use as the merge base instead of resolving the project's base "
-            "branch. Without --fresh the output is <branch>_<sha7>.json/.txt, beside the branch TXT."
+            "branch. The output is <branch>_<sha7>.json/.txt (also with --fresh), beside the branch "
+            "TXT, which is never overwritten."
         ),
     )
     cap.add_argument("--no-fetch", action="store_true", help="Skip 'git fetch origin <base branch>'.")
@@ -458,12 +479,16 @@ def _parser() -> argparse.ArgumentParser:
     target.add_argument("--out", type=Path, help="Write the skeleton here instead of stdout.")
     target.add_argument(
         "--save", action="store_true",
-        help="Write the skeleton to <commit_messages dir>/<branch>.json (<branch>_pending.json with "
-             "--pending) and print its absolute path.",
+        help="Write the skeleton to <commit_messages dir>/<branch>.json (<branch>_<sha7>.json for a "
+             "--base capture, <branch>_pending.json with --pending) and print its "
+             "absolute path.",
     )
     cap.add_argument(
         "--fresh", action="store_true",
-        help="Replan from the rules, ignoring groupings and messages in the existing branch TXT.",
+        help=(
+            "Replan from the rules, ignoring groupings and messages in the existing TXT "
+            "(the <branch>_<sha7>.txt sibling or the branch TXT); the output name is unchanged."
+        ),
     )
     cap.add_argument(
         "--pending", action="store_true",
@@ -482,8 +507,8 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument(
         "--out", type=Path,
         help=(
-            "TXT path (default <commit_messages dir>/<branch>.txt, "
-            "or <branch>_pending.txt for a pending skeleton)."
+            "TXT path (default <commit_messages dir>/<branch>.txt, <branch>_<sha7>.txt for a "
+            "--base skeleton, or <branch>_pending.txt for a pending skeleton)."
         ),
     )
     return parser
