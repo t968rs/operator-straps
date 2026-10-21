@@ -8,6 +8,9 @@ requires-python = ">=3.11"
 testpaths = ["tests"]
 addopts = "--import-mode=importlib -p no:cacheprovider"
 pythonpath = ["plugins/harness/lib", "tests"]
+markers = [
+    "cross_os: exercises OS-specific behavior (shell launcher, git worktree paths, junctions); CI runs these on Windows too, every other test on Linux only",
+]
 
 [tool.ruff]
 line-length = 110

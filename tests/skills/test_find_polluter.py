@@ -15,7 +15,7 @@ from typing import List
 import pytest
 
 BASH = shutil.which("bash")
-pytestmark = pytest.mark.skipif(BASH is None, reason="bash not on PATH")
+pytestmark = [pytest.mark.cross_os, pytest.mark.skipif(BASH is None, reason="bash not on PATH")]
 
 POLLUTE_IF_SPACED = "import pathlib, sys; ' ' in sys.argv[1] and pathlib.Path('.polluted').write_text('x')"
 

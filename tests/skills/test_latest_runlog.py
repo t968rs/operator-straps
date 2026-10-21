@@ -12,6 +12,8 @@ from typing import Dict, List, Optional, Tuple
 
 import pytest
 
+pytestmark = pytest.mark.cross_os
+
 LOGS = "logs/_RUN_TESTS"
 
 

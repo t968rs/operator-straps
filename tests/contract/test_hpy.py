@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 SH = shutil.which("sh")
-pytestmark = pytest.mark.skipif(SH is None, reason="no POSIX sh on PATH")
+pytestmark = [pytest.mark.cross_os, pytest.mark.skipif(SH is None, reason="no POSIX sh on PATH")]
 
 
 def _run(plugin_root: Path, env: dict, *args: str) -> subprocess.CompletedProcess:
