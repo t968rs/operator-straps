@@ -24,14 +24,17 @@ approved by the user:
 
 - **Optional dependency, not bundled:** installing this plugin does not install ccstatusline, and nothing
   changes on screen until the skill has run. It needs Node.js and npm and one global install,
-  `npm install -g ccstatusline@2.2.32`, which writes to npm's global prefix outside the project. The skill
+  `npm install -g ccstatusline@~2.2.32`, which writes to npm's global prefix outside the project. The skill
   checks `ccstatusline --version` and `npm --version`; when ccstatusline is missing it asks whether to run the
   install now, leave it to the user, or keep the current banner. The install runs only after a yes.
 - **`PATH`:** the global bin folder (`npm prefix -g`) must be on the `PATH` of the shell that starts Claude
   Code. With a per-environment npm (conda, nvm) an install made in one environment is invisible from another;
   the skill re-checks after installing and says so when the command still does not resolve.
-- **Pinned global, not `npx`:** the installed binary runs directly on every repaint and changes only on an
-  upgrade; `npx -y ccstatusline@latest` resolves the package on every repaint and takes each release unasked.
+- **Patch-pinned global, not `npx`:** `~2.2.32` means 2.2.32 or a later 2.2.x, never 2.3 (the range is
+  resolved once, at install time, so a new minor cannot change the config schema the defaults use). The
+  installed binary then runs directly on every repaint and changes only on an upgrade; `npx -y
+  ccstatusline@latest` resolves the package on every repaint and takes each release unasked. The `~` form
+  pastes cleanly into PowerShell, cmd and sh; `^` is cmd's escape character.
 - **Existing `statusLine`:** one that does not run ccstatusline is shown and kept unless the skill is run with
   `--replace`.
 - **Shared:** `.claude/settings.json` is committed, so the setting reaches every checkout. A checkout without

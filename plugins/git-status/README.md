@@ -32,7 +32,7 @@ The status line is the fallback banner (the engine draws it as `⚠ git-status: 
 gives way to the other banner options (`plugins/banner-status/README.md`):
 
 - **ccstatusline:** an optional dependency that no plugin installs on its own (Node.js and npm, then
-  `npm install -g ccstatusline@2.2.32`; `/banner-status:setup-statusline` offers to run it and writes the
+  `npm install -g ccstatusline@~2.2.32`; `/banner-status:setup-statusline` offers to run it and writes the
   `statusLine` setting). Once the merged `statusLine` setting's command runs ccstatusline (`ccstatusline ...`, or
   through `npx` / `bunx`) and its executable is found (as given, or under a `PATH` folder, with `.cmd` and
   `.exe` tried), the mod clears its line on every refresh. The lookup is kept per executable and `PATH` for
