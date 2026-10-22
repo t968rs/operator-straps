@@ -4,6 +4,8 @@ import { describe, expect, mock, test } from 'claude-code/testing'
 import type { GitSnapshot } from '../types'
 import {
   cleanPath,
+  delegateExecutable,
+  executableCandidates,
   formatContext,
   formatStatus,
   MIN_GAP_MS,
@@ -62,9 +64,16 @@ type World = {
   gate?: Promise<void>
   /** Core refuses the prompt while this answers true. */
   isDropping?: () => boolean
+  /** The merged settings `$.settings.read` answers; `throw` makes the read reject. */
+  settings?: Record<string, unknown> | 'throw'
+  /** Paths `$.fs.exists` answers true for. */
+  files?: string[]
 }
-/** `runs`: the git status runs; `starts`: the folders `rev-parse --show-toplevel` was asked from. */
-type Seen = { statuses: (string | undefined)[]; runs: (readonly string[])[]; starts: string[] }
+/**
+ * `runs`: the git status runs; `starts`: the folders `rev-parse --show-toplevel` was asked from;
+ * `probes`: the paths `$.fs.exists` was asked about.
+ */
+type Seen = { statuses: (string | undefined)[]; runs: (readonly string[])[]; starts: string[]; probes: string[] }
 
 const ran = (stdout: string, exitCode = 0): ProcessRunResult => ({
   exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false,
@@ -98,7 +107,7 @@ const deferred = (): { promise: Promise<void>; release: () => void } => {
 
 /** Answers env, session cwd, git and the status line from memory. */
 const world = (on: On, w: World = {}): Seen => {
-  const seen: Seen = { statuses: [], runs: [], starts: [] }
+  const seen: Seen = { statuses: [], runs: [], starts: [], probes: [] }
   if (w.isEnvBroken) {
     on('env.get', () => {
       throw new Error('boom')
@@ -113,6 +122,14 @@ const world = (on: On, w: World = {}): Seen => {
     return w.isStatusRefused ? { deny: 'no surface' } : { value: undefined }
   })
   bottoms(on, w.isDropping)
+  on('settings.read', () => {
+    if (w.settings === 'throw') throw new Error('boom')
+    return { value: w.settings ?? {} }
+  })
+  on('fs.exists', (_$, e) => {
+    seen.probes.push(e.path)
+    return { value: (w.files ?? []).includes(e.path) }
+  })
   on('process.run', async (_$, e) => {
     if (w.git === 'missing') return { deny: 'spawn git ENOENT' }
     if (e.argv[3] === 'rev-parse') {
@@ -653,6 +670,117 @@ describe('round 3: the prompt hook within its budget', () => {
     // the stubbed state answers one fixed version, so the write may be retried: count only its value
     expect(writes.length).toBeGreaterThan(0)
     expect(new Set(writes)).toEqual(new Set([CLEAN_CONTEXT]))
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Fallback: the mod's line gives way to a ccstatusline status line
+
+describe('delegateExecutable', () => {
+  test('a statusLine command naming ccstatusline yields its executable', async () => {
+    const line = { type: 'command', command: 'ccstatusline --config C:/repo/.claude/ccstatusline.json' }
+    expect(delegateExecutable(line)).toBe('ccstatusline')
+    expect(delegateExecutable({ command: 'npx -y ccstatusline@latest' })).toBe('npx')
+    expect(delegateExecutable({ command: '"C:/Program Files/npm/ccstatusline.cmd" --config x' })).toBe(
+      'C:/Program Files/npm/ccstatusline.cmd',
+    )
+  })
+
+  test('anything else yields nothing', async () => {
+    expect(delegateExecutable(undefined)).toBeUndefined()
+    expect(delegateExecutable('ccstatusline')).toBeUndefined()
+    expect(delegateExecutable({ command: 'bash ~/.claude/statusline.sh' })).toBeUndefined()
+    expect(delegateExecutable({ command: 42 })).toBeUndefined()
+    expect(delegateExecutable({ command: 'mystatusline-ccstatuslinex' })).toBeUndefined()
+  })
+})
+
+describe('executableCandidates', () => {
+  test('a bare name is looked up under every PATH folder, with the Windows launcher suffixes', async () => {
+    expect(executableCandidates('ccstatusline', 'C:\\npm\\;C:\\bin')).toEqual([
+      'C:/npm/ccstatusline', 'C:/npm/ccstatusline.cmd', 'C:/npm/ccstatusline.exe',
+      'C:/bin/ccstatusline', 'C:/bin/ccstatusline.cmd', 'C:/bin/ccstatusline.exe',
+    ])
+    expect(executableCandidates('ccstatusline', '/usr/bin:/opt/x/')).toEqual([
+      '/usr/bin/ccstatusline', '/usr/bin/ccstatusline.cmd', '/usr/bin/ccstatusline.exe',
+      '/opt/x/ccstatusline', '/opt/x/ccstatusline.cmd', '/opt/x/ccstatusline.exe',
+    ])
+  })
+
+  test('a single Windows folder is not split at its drive colon', async () => {
+    expect(executableCandidates('npx', 'C:\\nodejs')).toEqual(['C:/nodejs/npx', 'C:/nodejs/npx.cmd', 'C:/nodejs/npx.exe'])
+  })
+
+  test('a path is taken as given; no PATH means no candidates', async () => {
+    expect(executableCandidates('C:/npm/ccstatusline.cmd', '/usr/bin')).toEqual([
+      'C:/npm/ccstatusline.cmd', 'C:/npm/ccstatusline.cmd.cmd', 'C:/npm/ccstatusline.cmd.exe',
+    ])
+    expect(executableCandidates('ccstatusline', undefined)).toEqual([])
+  })
+})
+
+const CC_LINE = { statusLine: { type: 'command', command: 'ccstatusline --config /repo/.claude/ccstatusline.json' } }
+const NPM_DIR = '/home/dev/.npm-global/bin'
+
+describe('the mod line gives way to ccstatusline', () => {
+  test('ccstatusline configured and found: the line is cleared, the context still attached', async ($, on) => {
+    const seen = world(on, {
+      env: { CLAUDE_PROJECT_DIR: ROOT, PATH: `/usr/bin:${NPM_DIR}` },
+      settings: CC_LINE,
+      files: [`${NPM_DIR}/ccstatusline`],
+    })
+    const out = await $.prompt.submit(submit)
+    expect({ probes: seen.probes, read: await $.settings.read({ key: 'statusLine' }), path: await $.env.get('PATH') }).toEqual({})
+    expect(out.context).toEqual([CLEAN_CONTEXT])
+    expect(seen.statuses).toEqual([undefined])
+  })
+
+  test('ccstatusline configured but not installed: the mod draws its own line', async ($, on) => {
+    const seen = world(on, { env: { CLAUDE_PROJECT_DIR: ROOT, PATH: '/usr/bin' }, settings: CC_LINE })
+    await $.prompt.submit(submit)
+    expect(lastStatus(seen)).toBe('⎇ dev · clean -- commits(R,L):0,0')
+  })
+
+  test('another status line command: the mod draws, and probes nothing', async ($, on) => {
+    const settings = { statusLine: { type: 'command', command: 'bash ~/.claude/statusline.sh' } }
+    const seen = world(on, { env: { CLAUDE_PROJECT_DIR: ROOT, PATH: '/usr/bin' }, settings })
+    await $.prompt.submit(submit)
+    expect(lastStatus(seen)).toBe('⎇ dev · clean -- commits(R,L):0,0')
+    expect(seen.probes).toEqual([])
+  })
+
+  test('a settings read that rejects keeps the mod line', async ($, on) => {
+    const seen = world(on, { settings: 'throw' })
+    await $.prompt.submit(submit)
+    expect(lastStatus(seen)).toBe('⎇ dev · clean -- commits(R,L):0,0')
+  })
+
+  test('the lookup is kept: a second refresh probes nothing new', async ($, on) => {
+    const seen = world(on, {
+      env: { CLAUDE_PROJECT_DIR: ROOT, PATH: NPM_DIR },
+      settings: CC_LINE,
+      files: [`${NPM_DIR}/ccstatusline`],
+    })
+    await $.prompt.submit(submit)
+    const probed = seen.probes.length
+    await $.prompt.submit(submit)
+    expect(probed).toBeGreaterThan(0)
+    expect(seen.probes.length).toBe(probed)
+    expect(seen.statuses).toEqual([undefined, undefined])
+  })
+
+  test('removing ccstatusline from the settings brings the line back', async ($, on) => {
+    const w: World = {
+      env: { CLAUDE_PROJECT_DIR: ROOT, PATH: NPM_DIR },
+      settings: CC_LINE,
+      files: [`${NPM_DIR}/ccstatusline`],
+    }
+    const seen = world(on, w)
+    await $.prompt.submit(submit)
+    expect(lastStatus(seen)).toBeUndefined()
+    w.settings = {}
+    await $.prompt.submit(submit)
+    expect(lastStatus(seen)).toBe('⎇ dev · clean -- commits(R,L):0,0')
   })
 })
 
