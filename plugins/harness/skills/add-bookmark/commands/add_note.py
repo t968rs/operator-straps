@@ -38,16 +38,34 @@ def notes_path(repo: Path) -> Path:
     return cfg.path(cfg.state_dir) / NOTES_REL
 
 
+def _usable(entry: object) -> bool:
+    """Whether an entry holds a non-blank text, the rule the mod's ``parseNotes`` applies."""
+    return isinstance(entry, dict) and isinstance(entry.get("text"), str) and bool(entry["text"].strip())
+
+
+def _is_current(version: object) -> bool:
+    """Whether a file's ``version`` is ``NOTES_VERSION``; a JSON boolean never is."""
+    return not isinstance(version, bool) and version == NOTES_VERSION
+
+
 def read_notes(path: Path) -> List[Note]:
-    """The stored notes; an absent or malformed file holds none."""
+    """The stored notes with a non-blank text, oldest first; an absent file holds none.
+
+    Mirrors the mod's ``parseNotes``: a bad entry is skipped, not fatal. A file that is not JSON, holds no
+    ``notes`` list or carries another version raises ``NoteError``, so ``add`` never overwrites it and
+    ``list`` never reports it as empty; ``clear`` is the explicit reset.
+    """
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        notes = data["notes"]
-    except (OSError, ValueError, KeyError, TypeError):
+    except FileNotFoundError:
         return []
-    if not isinstance(notes, list):
-        return []
-    return notes if all(isinstance(n, dict) and isinstance(n.get("text"), str) for n in notes) else []
+    except ValueError as exc:
+        raise NoteError(f"{path} is not JSON; run clear to reset it") from exc
+    if not isinstance(data, dict) or not isinstance(data.get("notes"), list):
+        raise NoteError(f"{path} holds no notes list; run clear to reset it")
+    if not _is_current(data.get("version")):
+        raise NoteError(f"{path} is not a version {NOTES_VERSION} notes file; run clear to reset it")
+    return [n for n in data["notes"] if _usable(n)]
 
 
 def write_notes(path: Path, notes: List[Note]) -> None:
@@ -84,7 +102,12 @@ def listing(path: Path) -> str:
 
 
 def clear(path: Path) -> str:
-    count = len(read_notes(path))
+    """Empty the file; an unreadable one is reset rather than refused."""
+    try:
+        count = len(read_notes(path))
+    except NoteError:
+        write_notes(path, [])
+        return "reset a notes file that could not be read"
     write_notes(path, [])
     return f"cleared {count} note{'' if count == 1 else 's'}"
 

@@ -16,6 +16,8 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   `config/harness.schema.json`, the dataclass and builder in `lib/harness_lib/config.py`, and the README key
   table. When a mod reads the key, also mirror its default in that mod's `hooks/config.ts`
   (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `pr-review-watch` and `todo-watch` have one).
+  `session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead, checked by
+  `tests/mods/test_session_bookmark_notes_contract.py`.
 - **Drivers activate, library code reads.** Scripts, hooks and skill commands call
   `activate(load_config(project_root(...)))` once; library modules read `active()` inside functions, never at
   import time. Hooks resolve the project from the payload `cwd`.

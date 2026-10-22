@@ -110,7 +110,8 @@ export const formatBookmark = (b: Bookmark): string => {
     '',
     ...messageLines(b.lastMessages),
   ]
-  if (b.notes.length > 0) lines.push(...noteLines(b.notes))
+  const notes = b.notes ?? []
+  if (notes.length > 0) lines.push(...noteLines(notes))
   if (b.instructions !== null) lines.push('## Compaction Instructions', '', ...fence(truncate(b.instructions)))
   return lines.join('\n').trimEnd()
 }

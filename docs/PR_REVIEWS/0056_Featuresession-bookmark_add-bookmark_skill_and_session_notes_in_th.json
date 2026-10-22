@@ -8,7 +8,7 @@
   "base_sha": "44efe407e652d46f3d2d3950f69ead0169ae21b7",
   "head_sha": "dccbec90c5bb99fe9939cf14e27c20000857daae",
   "review_date": "2026-10-22",
-  "verdict": "NOT READY TO MERGE - important: I1, I2, I3, I4, I5",
+  "verdict": "READY TO MERGE - 14 of 14 findings resolved, 0 bubbled",
   "stats": {
     "additions": 760,
     "deletions": 16,
@@ -18,13 +18,15 @@
     "tests (opus)",
     "runtime (opus)",
     "docs (opus)",
-    "overall (opus)"
+    "overall (opus)",
+    "developer_readme (developer)"
   ],
   "scoped_review_files": [
     "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/tests.json",
     "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/runtime.json",
     "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/docs.json",
-    "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/overall.json"
+    "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/overall.json",
+    "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/developer_readme.json"
   ],
   "bubbles": [],
   "strengths": [
@@ -268,6 +270,17 @@
         "fix": [
           "Use script.NOTES_VERSION on line 43; add `assert not (project / _NOTES_REL).exists()` after the refusal on line 72; add a test that `'x' * script.MAX_NOTE_CHARS` returns 0 and is stored."
         ]
+      },
+      {
+        "id": "M9",
+        "name": "Root README lacks add-bookmark usage documentation",
+        "file": "README.md",
+        "reviewer": "developer_readme",
+        "fix_kind": "mechanical",
+        "summary": "The root README shows one add-bookmark invocation in the workflow example block but never describes the add, --list and --clear forms, the note cap, where notes are stored, or what the compaction bookmark prints, so the new feature has no usage examples.",
+        "fix": [
+          "Add a short add-bookmark subsection to README.md with usage examples for add, --list and --clear, the note and character limits, the notes file location under state_dir, and a pointer to plugins/session-bookmark/README.md for the bookmark output."
+        ]
       }
     ]
   },
@@ -320,5 +333,91 @@
         "result": "OK (recorded; configured base)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - README state_dir row adds session-bookmark notes (session-bookmark/notes.json); README cap reads 'at most 20 notes, 300 characters each'; CLAUDE.md config-key rule names notes.ts plus test_session_bookmark_notes_contract.py as session-bookmark's mirror; notes.ts cited only (mirror stays there)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - read_notes returns [] only for an absent file; non-JSON, no notes list or version != 1 raise NoteError so add and list refuse; clear resets an unreadable file; notes.ts cited only (parseNotes is the reference)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - bookmark-noter describes the prompt as the add-bookmark skill body and dispatches on the first word inside its Arguments line (empty backticks = nothing row); usage line moved below the table as /harness:add-bookmark; SKILL.md cited only (body kept, agent now describes its shape)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - World gains tops (folder -> top level) used by rev-parse --show-toplevel; worktree test runs from /wt/feature/sub, stores notes under /wt/feature and ROOT via DEFAULT_STATE_DIR, expects only the worktree note; bookmark.ts cited only (captureNotes is correct)"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - cited only: Bookmark.notes stays required for new writes; the notes ?? [] guard belongs in bookmark.ts (other part); formatBookmark reads notes through b.notes ?? [] for the length check and noteLines, so a bookmark stored without notes prints instead of throwing"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - read_notes keeps entries with a non-blank text like parseNotes and refuses a foreign version; tests cover a mixed file (list shows, add keeps the valid note), a version 2/true/null file left untouched, a malformed file refused and reset by clear; notes.ts cited only"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - README intro now names git state, the conversation and the notes file (harness.json state_dir) with the add-bookmark caveat; first bullet lists the stored session notes; compaction wait includes the notes read"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - README notes lookup reworded: git top level of the session cwd, else CLAUDE_PROJECT_DIR; when neither is a repository, the first of cwd and CLAUDE_PROJECT_DIR holding a notes file; cited only: captureNotes reads cwd first, then CLAUDE_PROJECT_DIR, matching the reworded README.md lines 22-24; no edit needed"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - test_agent_names_the_script_and_each_subcommand asserts NOTE add/list/clear in the agent body; limits test checks 'at most N notes' and 'at most N characters' phrases in both SKILL.md and bookmark-noter.md; cited only: bookmark-noter.md already spells NOTE add, NOTE list and NOTE clear (Arguments table lines 44-46); the assertion change lives in the test part; SKILL.md part: no edit needed; it already states 'at most 20 notes, at most 300 characters', the phrase the phrase-regex option checks; the test and agent edits belong to the other parts"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - bookmark-noter.md Reply section now lists every script output shape (note N/20, numbered list or no notes, cleared N note(s), reset message) and the add_note: line on exit 1; add_note.py needed no edit"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - cited only: the mod-side anchor test is a test-file addition in the other part (tests/skills/test_add_note_script.py); add_note.py needs no edit; added test_add_from_a_subdirectory_stores_at_the_git_top_level: runs add with --repo project/sub and asserts the notes land at the git top level"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - added the missing space after '=' in the NOTES_FILE declaration"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - version assert uses script.NOTES_VERSION; refusal test asserts no file written; added test_text_at_the_cap_is_stored for MAX_NOTE_CHARS"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "95632a5 (working-tree snapshot; developer commits) - added an add-bookmark subsection to README.md covering add, --list, --clear, the 20-note and 300-character limits, the notes file under state_dir, the versioned-file refusal, and a pointer to plugins/session-bookmark/README.md"
+    }
+  ]
 }

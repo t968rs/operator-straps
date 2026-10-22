@@ -3,7 +3,8 @@ name: bookmark-noter
 description: |
   Use this agent to store, list or clear the session notes that the session-bookmark mod prints in its
   compaction bookmark. It carries Bash only, so a run skips the tool schemas it never uses. The prompt is the
-  `harness:add-bookmark` skill's: the developer's arguments after `/add-bookmark`.
+  `harness:add-bookmark` skill body; the developer's arguments sit between the backticks of its `Arguments:`
+  line.
   Examples:
   <example>
     Context: The developer wants a constraint to survive the next compaction.
@@ -34,14 +35,18 @@ session is compacted, so it must say what to keep doing or not do, with every co
 
 ## Arguments
 
-The prompt holds the developer's arguments. The first word picks the action:
+The prompt is the `harness:add-bookmark` skill body: a heading, two paragraphs, an `Arguments:` line and a
+table of the arguments. Only the text between the backticks of the `Arguments:` line is the developer's; ignore
+the rest of the body. The first word of that text picks the action:
 
 | First word | Action |
 |---|---|
 | `--list` | `NOTE list` |
 | `--clear` | `NOTE clear` |
 | anything else | condense the text, then `NOTE add '<line>'` |
-| nothing | reply `usage: /add-bookmark <note> | --list | --clear` and stop |
+| nothing (empty backticks) | reply with the usage line below and stop |
+
+Usage line: `usage: /harness:add-bookmark <note> | --list | --clear`
 
 ## Condensing
 
@@ -56,5 +61,5 @@ The prompt holds the developer's arguments. The first word picks the action:
 
 ## Reply
 
-The script's one line (`note N/20: <line>`, the numbered list, or `cleared N notes`), verbatim, and nothing else.
+The script's output (`note N/20: <line>`, the numbered list or `no notes`, `cleared N note(s)`, or `reset a notes file that could not be read`), verbatim, and nothing else.
 On exit 1 after the one retry, the `add_note:` line verbatim.

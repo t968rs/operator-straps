@@ -43,7 +43,7 @@ const HISTORY: SessionMessage[] = [
 const keyOf = (p: string): string =>
   p.replace(/\\/g, '/').replace(/^(?:[^]*?\/)?[A-Za-z]:(?=\/|$)/, '').toLowerCase()
 
-const NOTES_FILE =`${ROOT}/${DEFAULT_STATE_DIR}/${NOTES_PATH}`
+const NOTES_FILE = `${ROOT}/${DEFAULT_STATE_DIR}/${NOTES_PATH}`
 
 const notesJson = (texts: string[]): string =>
   JSON.stringify({ version: NOTES_SCHEMA_VERSION, notes: texts.map(text => ({ added: '2026-10-22T00:00:00Z', text })) })
@@ -72,6 +72,8 @@ type World = {
   cwd?: string
   /** Folders git answers in; others exit 128 (not a repository). Defaults to ROOT. */
   repos?: string[]
+  /** The top level `rev-parse --show-toplevel` prints for a folder; a folder not listed is its own. */
+  tops?: Record<string, string>
   skip?: string
   /** A repository with no commits yet: HEAD names no commit, so rev-parse HEAD and log fail. */
   unborn?: boolean
@@ -108,7 +110,7 @@ const GIT_OUT: Record<string, string> = {
 
 /** Git's answer to one command in a folder it treats as a repository. */
 const gitAnswer = (w: World, root: string, args: string): ProcessRunResult => {
-  if (args === 'rev-parse --show-toplevel') return ran(`${root}\n`)
+  if (args === 'rev-parse --show-toplevel') return ran(`${w.tops?.[root] ?? root}\n`)
   if (w.unborn && (args === 'rev-parse --abbrev-ref HEAD' || args.startsWith('log'))) return ran('', 128)
   if (args === 'status --porcelain' && w.status !== undefined) return ran(w.status)
   return ran(GIT_OUT[args] ?? '')
@@ -430,8 +432,14 @@ describe('session.compact bookmark', () => {
 
   test('notes are read from the git top level, so a worktree reads its own', async ($, on) => {
     const wt = '/wt/feature'
-    const seen = world(on, { cwd: wt, repos: [ROOT, wt], files: { [`${wt}/.claude/state/harness/${NOTES_PATH}`]: notesJson(['wt note']) } })
+    const sub = `${wt}/sub`
+    const files = {
+      [`${wt}/${DEFAULT_STATE_DIR}/${NOTES_PATH}`]: notesJson(['wt note']),
+      [NOTES_FILE]: notesJson(['root note']),
+    }
+    const seen = world(on, { cwd: sub, repos: [ROOT, sub], tops: { [sub]: wt }, files })
     await $.session.compact({ trigger: 'manual', messages: HISTORY })
+    expect(saved(seen)?.root).toBe(sub)
     expect(saved(seen)?.notes).toEqual(['wt note'])
   })
 

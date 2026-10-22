@@ -3,27 +3,31 @@
 A compaction bookmark kept in session state instead of a file. It stands in for file-based `PreCompact`
 and `SessionStart` compact|resume hooks that write a bookmark file and read it back after compaction.
 
-Nothing in it is specific to one repository: it reads git state and the conversation, and depends on
-no other mod.
+Nothing in it is specific to one repository: it reads git state, the conversation and the project's notes
+file (`.claude/harness.json` for `state_dir`). Notes need the harness plugin's add-bookmark skill; the rest
+depends on no other plugin.
 
 ## What it does
 
 - On a `manual`, `auto` or `plugin` compaction of the main conversation, it records the branch,
   `git log --oneline -5`, `git status --porcelain` (first 40 entries, then a count of the rest), the
-  last three prompts and the `/compact` instructions into `$.state['session-bookmark'].bookmark`.
+  last three prompts, the stored session notes and the `/compact` instructions into
+  `$.state['session-bookmark'].bookmark`.
   `$.state` outlives compactions and mod reloads.
 - The same bookmark is appended to the compacted conversation as its last message, opening with
   `POST-COMPACT BOOKMARK (session-bookmark)`. The model reads it on the next request, so a mid-turn
   auto-compaction is covered too, and a resumed transcript already holds it.
 - Notes added with the `harness:add-bookmark` skill print in a `## Session Notes` section, after the last
   user messages and before the `/compact` instructions. They are read at each compaction from
-  `<state_dir>/session-bookmark/notes.json` under the git top level of the session folder (`CLAUDE_PROJECT_DIR`
-  and the cwd when neither is a repository), `state_dir` coming from `.claude/harness.json` (default
+  `<state_dir>/session-bookmark/notes.json` under the git top level of the session cwd, else of
+  `CLAUDE_PROJECT_DIR`; when neither is a repository, the first of the cwd and `CLAUDE_PROJECT_DIR` that holds
+  a notes file is read. `state_dir` coming from `.claude/harness.json` (default
   `.claude/state/harness`). The newest 20 notes are kept, each cut at 300 characters. An absent, malformed or
   other-version file means no notes section; a note stays until `/harness:add-bookmark --clear`.
 - Git is read from the session cwd when it is a repository (a worktree the session moved into), else
   from `CLAUDE_PROJECT_DIR`. Git runs beside the summarizer (`GIT_OPTIONAL_LOCKS=0`, 5 s timeout per
-  command); when core reuses a precomputed summary, the git calls are the compaction's only wait. A
+  command); when core reuses a precomputed summary, the git calls and the notes read are the compaction's only
+  wait. A
   repository with no commits yet still reports its branch and status. When neither folder is a
   repository, or git is missing, the git fields are `null` and the prompts are still recorded.
 - Precompute and subagent compactions pass through untouched. A skipped compaction records nothing.

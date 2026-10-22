@@ -68,13 +68,14 @@ def test_agent_names_the_script_and_each_subcommand() -> None:
     body = _text(_AGENT)
     assert "skills/add-bookmark/commands/add_note.py" in body
     for subcommand in ("add", "list", "clear"):
-        assert re.search(rf"\b{subcommand}\b", body), f"agent never mentions {subcommand}"
+        assert f"NOTE {subcommand}" in body, f"agent never runs NOTE {subcommand}"
 
 
-def test_agent_states_the_script_limits(script) -> None:
-    body = _text(_AGENT)
-    assert str(script.MAX_NOTE_CHARS) in body
-    assert str(script.MAX_NOTES) in body
+def test_skill_and_agent_state_the_script_limits(script) -> None:
+    for path in (_SKILL, _AGENT):
+        text = _text(path)
+        assert re.search(rf"at most {script.MAX_NOTES} notes", text), f"{path.name}: note count"
+        assert re.search(rf"at most {script.MAX_NOTE_CHARS} characters", text), f"{path.name}: length"
 
 
 def test_agent_treats_the_note_as_data_and_may_not_edit_files() -> None:

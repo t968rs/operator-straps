@@ -40,7 +40,7 @@ def test_add_creates_the_file_with_version_timestamp_and_text(script, make_proje
     project = make_project(config={})
     assert _run(script, project, "add", "keep", "the", "API", "frozen") == 0
     data = json.loads((project / _NOTES_REL).read_text(encoding="utf-8"))
-    assert data["version"] == 1
+    assert data["version"] == script.NOTES_VERSION
     assert [n["text"] for n in data["notes"]] == ["keep the API frozen"]
     assert data["notes"][0]["added"].endswith("Z")
     assert "note 1/" in capsys.readouterr().out
@@ -71,6 +71,23 @@ def test_text_past_the_cap_is_refused(script, make_project, capsys) -> None:
     project = make_project(config={})
     assert _run(script, project, "add", "x" * (script.MAX_NOTE_CHARS + 1)) == 1
     assert str(script.MAX_NOTE_CHARS) in capsys.readouterr().err
+    assert not (project / _NOTES_REL).exists()
+
+
+def test_text_at_the_cap_is_stored(script, make_project) -> None:
+    project = make_project(config={})
+    text = "x" * script.MAX_NOTE_CHARS
+    assert _run(script, project, "add", text) == 0
+    assert [n["text"] for n in _notes(project)] == [text]
+
+
+def test_add_from_a_subdirectory_stores_at_the_git_top_level(script, make_project) -> None:
+    project = make_project(config={})
+    sub = project / "sub"
+    sub.mkdir()
+    assert _run(script, sub, "add", "from below") == 0
+    assert [n["text"] for n in _notes(project)] == ["from below"]
+    assert not (sub / _NOTES_REL).exists()
 
 
 def test_a_full_file_refuses_another_note(script, make_project, capsys) -> None:
@@ -109,10 +126,44 @@ def test_clear_empties_the_file_and_reports_the_count(script, make_project, caps
     assert _notes(project) == []
 
 
-def test_a_malformed_file_is_replaced_not_fatal(script, make_project) -> None:
+def test_a_malformed_file_is_refused_not_overwritten(script, make_project, capsys) -> None:
     project = make_project(config={}, files={_NOTES_REL: "{not json"})
+    assert _run(script, project, "add", "fresh") == 1
+    assert (project / _NOTES_REL).read_text(encoding="utf-8") == "{not json"
+    assert "clear" in capsys.readouterr().err
+
+
+def test_clear_resets_a_malformed_file(script, make_project) -> None:
+    project = make_project(config={}, files={_NOTES_REL: "{not json"})
+    assert _run(script, project, "clear") == 0
+    assert _notes(project) == []
     assert _run(script, project, "add", "fresh") == 0
     assert [n["text"] for n in _notes(project)] == ["fresh"]
+
+
+_MIXED = json.dumps({"version": 1, "notes": [5, None, {"added": "x", "text": "keep me"}, {"text": "  "}]})
+
+
+def test_list_skips_bad_entries_and_shows_the_valid_ones(script, make_project, capsys) -> None:
+    project = make_project(config={}, files={_NOTES_REL: _MIXED})
+    assert _run(script, project, "list") == 0
+    assert capsys.readouterr().out.strip() == "1. keep me"
+
+
+def test_add_keeps_the_valid_entries_of_a_mixed_file(script, make_project) -> None:
+    project = make_project(config={}, files={_NOTES_REL: _MIXED})
+    assert _run(script, project, "add", "fresh") == 0
+    assert [n["text"] for n in _notes(project)] == ["keep me", "fresh"]
+
+
+@pytest.mark.parametrize("version", [2, True, None])
+def test_a_foreign_version_is_left_untouched(script, make_project, capsys, version) -> None:
+    text = json.dumps({"version": version, "notes": [{"added": "x", "text": "other"}]})
+    project = make_project(config={}, files={_NOTES_REL: text})
+    assert _run(script, project, "add", "fresh") == 1
+    assert _run(script, project, "list") == 1
+    assert (project / _NOTES_REL).read_text(encoding="utf-8") == text
+    assert "version" in capsys.readouterr().err
 
 
 def test_no_temp_file_is_left_behind(script, make_project) -> None:
