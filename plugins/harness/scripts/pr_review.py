@@ -100,7 +100,7 @@ Usage (Bash tool; ``$PR_REVIEW`` stands for
 
     $PR_REVIEW [--repo DIR] capture --pr N [--no-fetch] [--allow-closed] [--roast yes|no|roll]
     $PR_REVIEW block --pr N --agent ID
-    $PR_REVIEW fold --pr N --source ID --kind K (--from-gh-review URL | --findings FILE) [--severity S]
+    $PR_REVIEW fold --pr N --source ID --kind K (--from-gh-review URL | --findings FILE|-) [--severity S]
     $PR_REVIEW merge --pr N [--force]
     $PR_REVIEW amend --pr N [--regrade ID=severity ...] [--merge KEEP+DROP ...]
     $PR_REVIEW build --pr N [--replace] [--waive-head-ancestry]

@@ -321,7 +321,8 @@ The review JSON is the source of truth, written only by `build`; the chat summar
 
 0. **Fold outside reviews (only when there are any).** A review from outside the slot plan joins the run as a
    findings source before `merge`: an external reviewer (a GitHub PR review URL), test results, the developer, or
-   ad-hoc feedback. Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" fold --pr <N> --source <snake_id>
+   ad-hoc feedback. A developer's free text or pasted test output goes through `harness:fold-in-review`, which
+   verifies each claim and writes the findings before this fold. Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" fold --pr <N> --source <snake_id>
    --kind external|tests|developer|adhoc` with `--from-gh-review <URL>` or `--findings <FILE>` (`-` reads stdin; a JSON list
    of findings, or `{"findings": [...], "strengths": [...]}`). Findings go through the same Finding model reviewers
    use, so `merge` treats a folded source like a slot and `build` credits it as `<id> (<kind>)`. A GitHub review
