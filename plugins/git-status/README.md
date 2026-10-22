@@ -8,11 +8,14 @@ Cross-platform: it runs `git` through the engine, with no shell script.
 Status line (at most 80 characters):
 
 ```
-⎇ feature/x ↑2 ↓1 · +3 ~3 ?2
+⎇ feature/x ↑2 ↓1 · +3 ~3 ?2 -- commits(R,L):1,2
 ```
 
 The branch (clipped to 32 characters), ahead/behind its upstream or `no upstream`, then staged (`+`),
-unstaged and unmerged (`~`) and untracked (`?`) counts, or `clean`.
+unstaged and unmerged (`~`) and untracked (`?`) counts, or `clean`. The `commits(R,L)` tail is always
+present: `R` counts commits only the remote has (behind), `L` commits only the local branch has (ahead);
+both are `0` when the branch has no upstream. When the line runs over 80 characters, the part before the
+tail is clipped and the tail stays whole.
 
 Prompt context, attached only when it changed since the line last attached:
 
