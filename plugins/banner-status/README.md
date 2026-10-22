@@ -4,7 +4,7 @@ Where the project's banner options live. The git state can show in one of three 
 
 | Option | How | Looks like |
 |---|---|---|
-| **ccstatusline status line** (preferred; needs Node.js and npm) | this plugin's `/banner-status:setup-statusline` | `⎇ main · ↑0↓0 · +2 · ~3 · ?1 · ✗`, each widget in its own color, no prefix |
+| **ccstatusline status line** (preferred; needs Node.js and npm) | this plugin's `/banner-status:setup-statusline` | `⎇ main (+38,-15)` over `Opus 5.5 \| Thinking: high \| Ctx: 110.0k - 55%`, no prefix |
 | **oStraps band** above the prompt | enable the `band-line` mod | `oStraps: ⎇ main · +2 ~3 ?1 · (R,L):0,0 \| [Opus 5.5] · ctx:110k 11%` |
 | **git-status's own line** (fallback) | `git-status` alone | `⚠ git-status: ⎇ main · +2 ~3 ?1 -- commits(R,L):0,0` (the engine adds the glyph, the name and the color) |
 
@@ -42,16 +42,16 @@ approved by the user:
 
 ## Defaults
 
-`ccstatusline.defaults.json` is ccstatusline's config schema version 4 (ccstatusline 2.2.32), one line:
+`ccstatusline.defaults.json` is ccstatusline's config schema version 4 (ccstatusline 2.2.32), two lines:
 
-| Widget | Color | Shows |
-|---|---|---|
-| `git-branch` | magenta | `⎇ <branch>` |
-| `git-ahead-behind` | cyan | `↑ahead↓behind`, `↑0↓0` when in sync, `(no upstream)` |
-| `git-staged-files` | green | `+<n>`, hidden at 0 |
-| `git-unstaged-files` | blue | `~<n>`, hidden at 0 |
-| `git-untracked-files` | red | `?<n>`, hidden at 0 |
-| `git-clean-status` | green | `✓` clean, `✗` dirty |
+| Line | Widget | Color | Shows |
+|---|---|---|---|
+| 1 | `git-branch` | magenta | `⎇ <branch>` |
+| 1 | `git-changes` | yellow | `(+<inserted>,-<deleted>)` lines of uncommitted change |
+| 2 | `model` | default | the model's display name, `Opus 5.5` |
+| 2 | `thinking-effort` | default | `Thinking: <level>` |
+| 2 | `context-length` | default | `Ctx: <tokens>`, `Ctx: 110.0k` |
+| 2 | `context-percentage` | default | the context window used, whole percent |
 
 Git results are cached for 5 s (`gitCacheTtlSeconds`). Edit the project file with
 `ccstatusline --config <project>/.claude/ccstatusline.json` in a terminal (its editor opens when no input is

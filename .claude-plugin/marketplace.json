@@ -28,7 +28,7 @@
     {
       "name": "banner-status",
       "source": "./plugins/banner-status",
-      "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch, ahead/behind, working-tree counts in their own colors)"
+      "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch and uncommitted changes, model, thinking effort and context window)"
     },
     {
       "name": "band-line",

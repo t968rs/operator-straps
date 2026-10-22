@@ -2,20 +2,43 @@
   "version": 4,
   "lines": [
     [
-      { "id": "branch", "type": "git-branch", "color": "magenta" },
-      { "id": "sep-ahead-behind", "type": "separator" },
-      { "id": "ahead-behind", "type": "git-ahead-behind", "color": "cyan", "metadata": { "hide": "" } },
-      { "id": "sep-staged", "type": "separator" },
-      { "id": "staged", "type": "git-staged-files", "color": "green", "metadata": { "label": "+", "hide": "zero" } },
-      { "id": "sep-unstaged", "type": "separator" },
-      { "id": "unstaged", "type": "git-unstaged-files", "color": "blue", "metadata": { "label": "~", "hide": "zero" } },
-      { "id": "sep-untracked", "type": "separator" },
-      { "id": "untracked", "type": "git-untracked-files", "color": "red", "metadata": { "label": "?", "hide": "zero" } },
-      { "id": "sep-clean", "type": "separator" },
-      { "id": "clean", "type": "git-clean-status", "color": "green" }
+      { "id": "5", "type": "git-branch", "color": "magenta" },
+      { "id": "6", "type": "separator", "character": " " },
+      { "id": "7", "type": "git-changes", "color": "yellow" },
+      { "id": "a7eb0979-b104-4b47-9e8f-c206a21be2e9", "type": "separator" }
+    ],
+    [
+      { "id": "1edac0de-c027-458c-b46a-55b07fded046", "type": "model", "metadata": { "label": "" } },
+      { "id": "d8b182d9-5872-4aef-9cfc-d9b5b8ca30b5", "type": "separator" },
+      { "id": "e836a66b-28be-4104-8438-3fc646819f26", "type": "thinking-effort" },
+      { "id": "eb6f2875-bcfc-45c9-9363-9330fcd7c83b", "type": "separator" },
+      { "id": "558884f3-7484-4217-a1b6-d0993cfbfda4", "type": "context-length" },
+      { "id": "687b8036-fce7-42e8-91df-8776507d1466", "type": "separator", "character": "-" },
+      {
+        "id": "de3a6556-5021-437b-adea-bf98bc254513",
+        "type": "context-percentage",
+        "metadata": { "label": "" },
+        "numberFormat": { "style": "whole" }
+      }
     ]
   ],
-  "defaultSeparator": "·",
+  "flexMode": "full",
+  "compactThreshold": 60,
   "colorLevel": 2,
-  "gitCacheTtlSeconds": 5
+  "defaultPaddingSide": "both",
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "gitCacheTtlSeconds": 5,
+  "terminalWidthCacheTtlSeconds": 5,
+  "customCommandCacheTtlSeconds": 0,
+  "minimalistMode": false,
+  "powerline": {
+    "enabled": false,
+    "separators": [""],
+    "separatorInvertBackground": [false],
+    "startCaps": [],
+    "endCaps": [],
+    "autoAlign": false,
+    "continueThemeAcrossLines": false
+  }
 }

@@ -25,8 +25,8 @@ _STATUS_TS = _REPO / "plugins" / "git-status" / "hooks" / "status.ts"
 _PINNED = "2.2.32"
 _SCHEMA_VERSION = 4
 _WIDGETS = {
-    "separator", "git-branch", "git-ahead-behind", "git-staged-files", "git-unstaged-files",
-    "git-untracked-files", "git-clean-status",
+    "separator", "git-branch", "git-changes", "model", "thinking-effort", "context-length",
+    "context-percentage",
 }
 
 

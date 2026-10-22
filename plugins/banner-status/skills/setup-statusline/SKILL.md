@@ -7,7 +7,7 @@ argument-hint: "[--replace]"
 # setup-statusline: ccstatusline as the project's status line
 
 A plugin cannot ship a `statusLine` setting, so this skill writes it into the project. The result is one status
-line drawn by ccstatusline from a config file in the project, with each widget in its own color and no
+line drawn by ccstatusline from a config file in the project, with no
 engine-drawn prefix. The git-status mod notices the setting and clears its own line while ccstatusline is
 installed; without the install, the mod keeps drawing its line.
 
