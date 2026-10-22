@@ -13,6 +13,8 @@ export type Bookmark = {
   status: string | null
   /** The last user prompts before the compaction, newest last; a previous compaction's summary can be one. */
   lastMessages: string[]
+  /** Session notes added with the `harness:add-bookmark` skill, oldest first; [] when none are stored. */
+  notes: string[]
   /** The compaction's instructions (the text after `/compact`); null when none. */
   instructions: string | null
 }

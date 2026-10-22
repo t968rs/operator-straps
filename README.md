@@ -20,7 +20,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | Start a task in an isolated checkout | `harness`: `d-w` | A detached-HEAD worktree cut from HEAD, an integration branch, or another ref. | • Script resolves the base ref to a commit and creates a detached worktree.<br>• Failed integration-branch fetches stop creation; directory collisions get a fresh path. |
 | See where an agent-driven review stands | `pr-review-watch` | A review progress band, pending-fix context, reviewer matrix rows and a per-agent usage log (every review-agent dispatch), and a Stop guard for unrecorded escalated issues. | • `Stop` guard checks that escalated issues are recorded in the review.<br>• Usage rows come from engine measurements and must pass schema validation before append. |
 | Keep the current branch and working tree in view | `git-status` | A Git status line, with Git state checked on each prompt and changed state added as `GIT_STATE` context. | • Prompt hooks recheck Git state and inject changed state.<br>• Git context is reinjected after clear, resume, or main-conversation compaction. |
-| Carry working context through compaction | `session-bookmark` | Git state, recent prompts, and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state. |
+| Carry working context through compaction | `session-bookmark`, with `harness`: `add-bookmark` | Git state, recent prompts, your session notes (`/harness:add-bookmark <note>`, `--list`, `--clear`) and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, the stored notes, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state.<br>• Notes are stored by a script (at most 20 notes, 300 characters each) through a Bash-only haiku agent. |
 | Keep a project's TODO catalog and its sync checks in view | `todo-watch` | The next TODO items and a live sync status line in a band above the prompt (kept until dismissed), a `TODO_SYNC` drift line in prompt context, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
 | Run targeted tests with the intended Python | `pytest-scope` | Optional rewriting of bare `pytest` to your chosen interpreter and rejection of runs without an explicit test file or node ID. | • When configured, Bash hooks rewrite recognized pytest commands to the selected Python.<br>• Scope hooks reject broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override. |
 
@@ -96,10 +96,35 @@ After configuring your project below, open Claude Code in that repository and in
 /harness:c-msg
 /harness:pr-sum 123
 /harness:d-w HEAD
+/harness:add-bookmark keep the public API frozen until PR 60 merges
 ```
 
 Replace `123` with your PR number. `pr-review` carries findings into fixes and closeout, so use it when you
 want the full review-and-fix workflow. `c-msg` and `pr-sum` save drafts in the configured artifact folders.
+
+### add-bookmark
+
+`/harness:add-bookmark` stores session notes that survive compaction. The session-bookmark mod prints them in its
+compaction bookmark, above the `/compact` instructions, so a constraint or reminder stays visible after the summary.
+
+```text
+/harness:add-bookmark keep the public API frozen until PR 60 merges
+/harness:add-bookmark --list
+/harness:add-bookmark --clear
+```
+
+| Form | Effect |
+|---|---|
+| `/harness:add-bookmark <note text>` | Store one note |
+| `/harness:add-bookmark --list` | Print the stored notes, numbered |
+| `/harness:add-bookmark --clear` | Drop every stored note |
+
+- A project holds at most 20 notes; `--clear` frees the slots. A note longer than 300 characters or a blank note is refused.
+- Notes are stored per project in `session-bookmark/notes.json` under `state_dir` (default `.claude/state/harness`).
+  Add that folder to `.gitignore`, as with the other runtime state.
+- The notes file is versioned (`"version": 1`). A file that is not JSON or has another version is refused rather than
+  overwritten; run `--clear` to reset it.
+- For what the compaction bookmark prints and how the mod reads the notes, see `plugins/session-bookmark/README.md`.
 
 This repository enables its own plugins in `.claude/settings.json` from the published marketplace (the same
 `t968rs/operator-straps` GitHub source as above), so sessions here run the cached copy from the pushed default
@@ -184,7 +209,7 @@ a stub with any unproven deliverable is kept and listed.
 |---|---|---|
 | `base_branch` | `origin/HEAD`, else `main` | merge bases, `d-w`, `pr-review-watch` |
 | `integration_branches` | base branch + `main` | `d-w` (fetch-and-cut targets) |
-| `state_dir` | `.claude/state/harness` | Phase 5 sentinels, pr-team runtime (gitignore it) |
+| `state_dir` | `.claude/state/harness` | Phase 5 sentinels, pr-team runtime, session-bookmark notes (`session-bookmark/notes.json`) (gitignore it) |
 | `agent_usage_path` | `docs/_harness/pr_review_agent_usage.jsonl` | `pr-review-watch` (one usage row per review-agent dispatch: model, tokens, runtime, fixer counts) |
 | `artifacts.*` | `docs/PR_REVIEWS`, `docs/PLANS`, ... | review, plan, summary and commit-message output |
 | `tests.*` | `tests/`, common test-file pattern | review bucketing, commit grouping |
