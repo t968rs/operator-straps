@@ -1,0 +1,324 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 56,
+  "pr_title": "Feature(session-bookmark): add-bookmark skill and session notes in th…",
+  "branch": "1027-add-bookmark",
+  "base_branch": "main",
+  "base_sha": "44efe407e652d46f3d2d3950f69ead0169ae21b7",
+  "head_sha": "dccbec90c5bb99fe9939cf14e27c20000857daae",
+  "review_date": "2026-10-22",
+  "verdict": "NOT READY TO MERGE - important: I1, I2, I3, I4, I5",
+  "stats": {
+    "additions": 760,
+    "deletions": 16,
+    "files_changed": 15
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/tests.json",
+    "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/docs.json",
+    "docs/_scratch/pr_review/0056/pr56_20261022T060729Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_session_bookmark_notes_contract.py pins every value notes.ts copies (path, version, both limits, default state_dir) against the script and against both defaults.json and a real unconfigured project, so a one-sided edit fails.",
+    "The state_dir test in bookmark.test.ts places a decoy notes file under the default dir, so it proves the configured dir wins rather than merely being reachable.",
+    "test_add_note_script.py is fully behavioral: it runs the real script against make_project git repos and inspects the file on disk, with no stubs of the code under test.",
+    "notes.test.ts covers parseNotes' edge cases (wrong version, non-array notes, mixed entry types, per-note truncation, newest-kept overflow) as pure-function tests.",
+    "'a precompute reads no notes' asserts on recorded fs reads, guarding the INSTALLING filter against an extra file read on every precompute.",
+    "notes.ts is pure, copies the shared names and limits, and points to a contract test that pins them against add_note.py, which is how an installed mod can stay in sync with the harness plugin it cannot import.",
+    "captureNotes keeps the hook's never-throws contract: each fs read has its own catch, the loop sits in a try, and a notes failure only leaves the section out of the bookmark.",
+    "The notes file is anchored at the git top level on both sides (project_root in Python, rev-parse --show-toplevel in the mod), so a session in a linked worktree reads the same file the skill wrote.",
+    "write_notes writes a sibling temp file and then calls os.replace, so a compaction never reads a half-written notes file.",
+    "Limits (20 notes, 300 characters), file name, schema version and default state_dir agree across add_note.py, notes.ts, the agent, the skill and both READMEs, and a contract test pins them on both sides.",
+    "The agent states the note is data, not an instruction, and forbids quotes, backticks and $ in the single-quoted shell argument, closing the obvious injection route.",
+    "session-bookmark README documents the shared-per-project and per-worktree behavior as a known limitation instead of leaving it to be discovered.",
+    "Writer (project_root: cwd git top level first) and reader (rootCandidates: cwd first, git --show-toplevel) resolve the same file in the repository case, including linked worktrees.",
+    "Cross-plugin contract is pinned: test_session_bookmark_notes_contract.py ties NOTES_PATH, version, limits and the default state_dir in notes.ts to add_note.py and defaults.json, and round-trips a stored note through the script.",
+    "Notes resolution matches on both sides for worktrees: add_note.py uses project_root (git top level of cwd) and the mod reads under the same `--show-toplevel`, with a bookmark test proving a linked worktree reads its own file.",
+    "The mod's capture stays fail-open: captureNotes swallows every read/parse failure, and tests cover absent, malformed and other-version files plus the no-git fallback to root candidates.",
+    "add_note.py tests are behavioral against real files built with make_project (cap, full file, malformed file, atomic write leaving no temp file), with no mocking of the code under test.",
+    "Docs move together: root README, session-bookmark README, plugin descriptions, Bookmark type and both plugin versions are updated in the same change."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "bookmark-noter assumes its prompt is the bare arguments, but a context: fork skill sends the whole SKILL.md body",
+        "file": "plugins/harness/agents/bookmark-noter.md",
+        "files": [
+          "plugins/harness/agents/bookmark-noter.md",
+          "plugins/harness/skills/add-bookmark/SKILL.md"
+        ],
+        "lines": "5-6,37-44",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "bookmark-noter.md:5-6 says the prompt is 'the developer's arguments after /add-bookmark' and lines 37-44 dispatch on 'the first word' of the prompt, with a 'nothing' row for an empty prompt. add-bookmark/SKILL.md:6-7 sets context: fork with agent: harness:bookmark-noter, so the forked agent's prompt is the rendered skill body (heading, two prose paragraphs, 'Arguments: `...`', and its own arguments table). Read literally, the first word is '#', every invocation falls into 'anything else', and the 'nothing' row can never fire because an empty $ARGUMENTS still yields a non-empty prompt ('Arguments: ``'). The agent only works if the model infers where the arguments sit; the sibling messenger agent (agents/messenger.md:32-41) is written for exactly this skill-body prompt shape.\n\nAlso (docs): bookmark-noter.md:44 puts `usage: /add-bookmark <note> | --list | --clear` in a table cell; GFM splits cells on pipes even inside code spans, so the row renders with extra columns and a truncated usage string. The root README escapes the same case as `1\\|2\\|3` (README.md:19). The usage string also names /add-bookmark while the installed command is /harness:add-bookmark (README.md:99, session-bookmark README.md:23).\n\nAlso (overall): The `nothing` row's cell holds `usage: /add-bookmark <note> | --list | --clear` inside a code span; GFM splits cells on those pipes even in code spans, so the row renders as five cells and the reply text is mangled. The usage also names `/add-bookmark` while README and SKILL document the invocation as `/harness:add-bookmark`.",
+        "fix": [
+          "Reword bookmark-noter.md lines 5-6 and 37 to say the prompt is the add-bookmark skill body and the action is chosen by the first word of the text inside 'Arguments: `...`' (empty backticks = the 'nothing' row).",
+          "Alternatively shrink SKILL.md's body to just the arguments line so the prompt matches what the agent describes, keeping the explanatory prose in the description or a comment the fork does not send.",
+          "Escape the pipes: `usage: /harness:add-bookmark <note> \\| --list \\| --clear`.",
+          "Or move the usage reply out of the table into a sentence below it.",
+          "Escape the pipes (`\\|`) or move the usage line below the table, and write it as `usage: /harness:add-bookmark <note> | --list | --clear`."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Worktree notes test cannot tell the git top level from the first root candidate",
+        "file": "plugins/session-bookmark/hooks/bookmark.test.ts",
+        "files": [
+          "plugins/session-bookmark/hooks/bookmark.test.ts",
+          "plugins/session-bookmark/hooks/bookmark.ts"
+        ],
+        "lines": "59,139-144",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The test 'notes are read from the git top level, so a worktree reads its own' sets cwd to the worktree root itself, and the fake gitAnswer (line 59) answers rev-parse --show-toplevel with the very folder it was asked about. So top == first candidate (rootCandidates puts cwd first), and no notes file exists at ROOT. A mutation of captureNotes in bookmark.ts:172-177 that ignores `top` and always walks rootCandidates still passes. The test therefore cannot fail for the behavior in its title. It also hard-codes '.claude/state/harness' instead of DEFAULT_STATE_DIR.",
+        "fix": [
+          "Let World map a folder to its top level (e.g. `tops?: Record<string, string>`), have gitAnswer return that for rev-parse --show-toplevel, and accept the subfolder as a repo. Then set cwd to '/wt/feature/sub', keep CLAUDE_PROJECT_DIR at ROOT, put one notes file under '/wt/feature' and another under ROOT, and expect only the worktree note. Build the path from DEFAULT_STATE_DIR."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "formatBookmark crashes on a bookmark stored before this change",
+        "file": "plugins/session-bookmark/hooks/bookmark.ts",
+        "files": [
+          "plugins/session-bookmark/hooks/bookmark.ts",
+          "plugins/session-bookmark/types/index.d.ts"
+        ],
+        "lines": "113,240-241",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "formatBookmark reads `b.notes.length` unguarded (bookmark.ts:113). The bookmark lives in `$.state`, which the module header says outlives compaction and module reloads, and the atom has no version. A session that compacted under the previous mod version and then reloads the updated plugin holds a Bookmark with no `notes` key. `/session-bookmark` then calls formatBookmark on it (bookmark.ts:241) and throws TypeError instead of printing the bookmark. The `.catch` at line 242 hangs off the `on(...)` registration, not the handler, so nothing in the handler catches the throw.",
+        "fix": [
+          "Guard the read: `const notes = b.notes ?? []` in formatBookmark and use `notes` for both the length check and noteLines.",
+          "Normalise in the command handler before formatting: `formatBookmark({ ...b, notes: b.notes ?? [] })`, and add a test that formats a bookmark object without `notes`."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Subcommand check in the agent guard test cannot fail",
+        "file": "tests/skills/test_add_bookmark_skill_contract.py",
+        "files": [
+          "tests/skills/test_add_bookmark_skill_contract.py",
+          "plugins/harness/agents/bookmark-noter.md",
+          "plugins/harness/skills/add-bookmark/SKILL.md"
+        ],
+        "lines": "1-5,67-71,74-77",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_agent_names_the_script_and_each_subcommand searches the agent body for \badd\b, \blist\b and \bclear\b. The same test already requires 'skills/add-bookmark/commands/add_note.py' (line 69), and `-` is a word boundary, so 'add-bookmark' always satisfies \badd\b. 'list' and 'clear' appear in the description prose ('store, list or clear'). Dropping every subcommand row from the agent's Arguments table (bookmark-noter.md:41-43) leaves the loop green.\n\nAlso (overall): test_agent_names_the_script_and_each_subcommand searches the agent body for \badd\b, \blist\b and \bclear\b. Those words match inside `/add-bookmark`, `--list` and `--clear` (a hyphen is a word boundary), which the agent prose names regardless of whether it ever runs `NOTE add`, `NOTE list` or `NOTE clear`. Dropping or renaming the script subcommands in bookmark-noter.md (for example `NOTE append`) leaves the test green, so the guard does not pin the agent-to-script contract its docstring claims.\n\nAlso (tests): The module docstring says the test pins 'the limits they share' across the skill, the agent and the script. But test_agent_states_the_script_limits checks only the agent, while SKILL.md:17 also states 'at most 20 notes, at most 300 characters' and can drift unnoticed. `str(script.MAX_NOTES) in body` is a bare '20' substring, so any year, PR number or count satisfies it.",
+        "fix": [
+          "Assert the command forms the agent actually issues: `for sub in ('add', 'list', 'clear'): assert f'NOTE {sub}' in body`.",
+          "Assert the exact command forms the agent runs: `NOTE add`, `NOTE list`, `NOTE clear` (e.g. `for sub in (\"add\", \"list\", \"clear\"): assert f\"NOTE {sub}\" in body`).",
+          "Or parse the add_note.py subparser names (script.parse_args) and assert each appears as `NOTE <name>` in the agent body.",
+          "Check both texts with phrase regexes: `re.search(rf'at most {script.MAX_NOTES} notes', text)` and `re.search(rf'at most {script.MAX_NOTE_CHARS} characters', text)` for SKILL.md and bookmark-noter.md (both currently carry those exact phrases)."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "No test for a notes file with one bad entry or another version; add silently discards stored notes",
+        "file": "tests/skills/test_add_note_script.py",
+        "files": [
+          "tests/skills/test_add_note_script.py",
+          "plugins/harness/skills/add-bookmark/commands/add_note.py",
+          "plugins/session-bookmark/hooks/notes.ts"
+        ],
+        "lines": "112-115",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_a_malformed_file_is_replaced_not_fatal only covers invalid JSON. add_note.read_notes (add_note.py:41-50) returns [] when any single entry lacks a string text, and it never checks `version`. As a result, `list` says 'no notes' while the mod's parseNotes (notes.ts:59-64) still prints the good entries. `add` then overwrites the file, dropping every valid note, and it rewrites a version-2 file as version 1. The two readers of one file disagree, and no test pins either case.",
+        "fix": [
+          "Add tests to test_add_note_script.py: (a) a file whose notes mix one valid entry with `5`/`null` entries, where `list` shows the valid one and `add` keeps it; (b) a version-2 file, where `add` exits 1 (or otherwise leaves the file untouched). Align read_notes with parseNotes so both pass: filter bad entries instead of rejecting the list, and treat a foreign version as not writable."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "state_dir key row omits the new session-notes consumer",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/session-bookmark/hooks/notes.ts",
+          "CLAUDE.md"
+        ],
+        "lines": "23,188",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "README.md:188 lists state_dir as holding 'Phase 5 sentinels, pr-team runtime'. This PR stores session notes there (add_note.py:38) and the session-bookmark mod now reads state_dir from harness.json (notes.ts:34-38), so a project that relocates state_dir changes where notes live in both plugins. Separately, README.md:23 phrases the cap as 'at most 20 of 300 characters', which reads as a fraction rather than 20 notes of up to 300 characters each.\n\nAlso (overall): The session-bookmark mod now reads `state_dir` from `.claude/harness.json` and mirrors its default (DEFAULT_STATE_DIR in hooks/notes.ts). CLAUDE.md's config-key rule says a mod that reads a key mirrors its default in `hooks/config.ts`, checked by `tests/mods/test_<mod>_config_mirror.py`; this PR places the mirror in notes.ts and checks it in test_session_bookmark_notes_contract.py instead, and the README key table's `state_dir` row (README.md:188) still lists only `Phase 5 sentinels, pr-team runtime` as consumers.",
+        "fix": [
+          "README.md:188 used-by column: 'Phase 5 sentinels, pr-team runtime, session-bookmark notes (gitignore it)'; README.md:23: '(at most 20 notes, 300 characters each)'.",
+          "Add `session-bookmark notes (`session-bookmark/notes.json`)` to the `state_dir` row's consumers in README.md:188, and either note in CLAUDE.md that the notes contract test is session-bookmark's mirror check or move DEFAULT_STATE_DIR into a `hooks/config.ts` with a `test_session_bookmark_config_mirror.py`."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Reply contract lists output shapes the script does not print",
+        "file": "plugins/harness/agents/bookmark-noter.md",
+        "files": [
+          "plugins/harness/agents/bookmark-noter.md",
+          "plugins/harness/skills/add-bookmark/commands/add_note.py"
+        ],
+        "lines": "59",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "bookmark-noter.md:59 names the replies as 'note N/20: <line>', the numbered list, or 'cleared N notes'. add_note.py:83 prints 'no notes' for an empty list and add_note.py:89 prints 'cleared 1 note' (singular) for one note. A haiku agent told to relay one of three shapes 'and nothing else' may treat the other outputs as unexpected.",
+        "fix": [
+          "Change bookmark-noter.md:59 to: The script's output (`note N/20: <line>`, the numbered list or `no notes`, or `cleared N note(s)`), verbatim, and nothing else."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "add silently overwrites a notes file it cannot parse",
+        "file": "plugins/harness/skills/add-bookmark/commands/add_note.py",
+        "files": [
+          "plugins/harness/skills/add-bookmark/commands/add_note.py",
+          "plugins/session-bookmark/hooks/notes.ts"
+        ],
+        "lines": "41-50,73-78",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "read_notes returns [] for a present but malformed file, or one holding a single bad entry, and treats it the same as a missing file (add_note.py:41-50). add then writes `[new note]` over it (add_note.py:73-77), so one hand edit that breaks the JSON or one non-text entry drops every stored note without a warning. read_notes also ignores `version`, while the mod's parseNotes rejects any version other than 1 (notes.ts:61). A file of another version is listed and appended to here but rewritten as version 1, and the bookmark prints none of it.\n\nAlso (overall): add_note.py read_notes returns [] for the whole file when any one entry lacks a string `text`, and never checks `version`. notes.ts parseNotes drops only the bad entries and rejects a file whose version is not 1. Consequences: `--list` prints `no notes` while the bookmark prints the valid ones; `add` on such a file silently rewrites it with only the new note, discarding every valid note; and a non-v1 file is listed and appended to by the script but ignored by the mod (README and SKILL both promise `--list` shows what the bookmark carries).",
+        "fix": [
+          "Separate absent from malformed: return [] only on FileNotFoundError. Raise NoteError for undecodable JSON, a missing or non-list `notes`, a bad entry or `version != NOTES_VERSION`, so `add` refuses and `clear` stays the explicit reset.",
+          "Keep the tolerant read for `list`, but make `add` refuse when the file exists and read_notes found nothing usable in it.",
+          "Make read_notes mirror parseNotes: require version == NOTES_VERSION and keep the entries whose `text` is a non-blank string instead of discarding the list.",
+          "Or refuse (NoteError) to add to a file it cannot fully parse instead of overwriting it, and report that in `list`."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "session-bookmark README intro and first bullet still describe the pre-notes inputs",
+        "file": "plugins/session-bookmark/README.md",
+        "lines": "3-7,11-13,25-26",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "session-bookmark README.md:3 says the bookmark is 'kept in session state instead of a file' and line 6 says 'it reads git state and the conversation'; the mod now also reads .claude/harness.json and <state_dir>/session-bookmark/notes.json. README.md:11-13 lists the recorded fields without notes, though the State table at line 46 was updated to include them. README.md:25-26 says the git calls are the compaction's only wait, while bookmark.ts capture() now also awaits the two file reads.\n\nAlso (overall): The README still says the mod reads only `git state and the conversation` (lines 6-7) and the first bullet lists what is recorded without the notes (lines 11-13). After this PR the mod also reads `.claude/harness.json` and `<state_dir>/session-bookmark/notes.json`, a file written by the harness plugin, so `depends on no other mod` needs the caveat that the notes feature needs harness's add-bookmark skill.",
+        "fix": [
+          "Line 6: 'it reads git state, the conversation and the project's session-notes file'; line 13: add 'the stored session notes' before 'and the /compact instructions'; line 26: 'the git calls and the notes read are the compaction's only wait'.",
+          "Lines 6-7: `it reads git state, the conversation and the harness notes file (`.claude/harness.json` for `state_dir`); notes need the harness plugin's add-bookmark skill, the rest depends on no other plugin.` Lines 11-13: add `the session notes` before `and the /compact instructions`."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Notes lookup order described backwards for the no-repository case",
+        "file": "plugins/session-bookmark/README.md",
+        "files": [
+          "plugins/session-bookmark/README.md",
+          "plugins/session-bookmark/hooks/bookmark.ts"
+        ],
+        "lines": "20-21",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "session-bookmark README.md:20-21 says the notes file is read under '(`CLAUDE_PROJECT_DIR` and the cwd when neither is a repository)'. bookmark.ts captureNotes walks rootCandidates, which is cwd first, then CLAUDE_PROJECT_DIR, taking the first that holds a notes file; the writer (project.py:18-29 via add_note.py:33-38) picks CLAUDE_PROJECT_DIR over cwd when neither is a repository. The parenthetical names the order the writer uses, not the reader's, and hides that the two can disagree when cwd also holds a stale notes file.",
+        "fix": [
+          "Reword README.md:20-21 to: under the git top level of the session cwd, else of CLAUDE_PROJECT_DIR; when neither is a repository, the first of the cwd and CLAUDE_PROJECT_DIR that holds a notes file."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Missing space after `=` in NOTES_FILE",
+        "file": "plugins/session-bookmark/hooks/bookmark.test.ts",
+        "lines": "25",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`const NOTES_FILE =`${ROOT}/...`` lacks the space every other declaration in the file has.",
+        "fix": [
+          "Write `const NOTES_FILE = `${ROOT}/${DEFAULT_STATE_DIR}/${NOTES_PATH}``."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Python side of the shared git-top-level anchor is untested",
+        "file": "tests/skills/test_add_note_script.py",
+        "files": [
+          "tests/skills/test_add_note_script.py",
+          "plugins/harness/skills/add-bookmark/commands/add_note.py"
+        ],
+        "lines": "30-31",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The mod reads notes at the git top level, and the script resolves `--repo` through project_root (git top level). Every script test passes the project root itself, so a regression that stores under a subdirectory passed as --repo would go unnoticed by both test files, and the mod would read an empty bookmark.",
+        "fix": [
+          "Add a test that creates `project/sub`, runs `add` with `--repo project/sub`, and asserts the file lands at `project/.claude/state/harness/session-bookmark/notes.json`."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Script tests miss the cap boundary, the write side of a refusal, and the version constant",
+        "file": "tests/skills/test_add_note_script.py",
+        "lines": "43,70-73",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_add_creates_the_file... asserts `data['version'] == 1` instead of script.NOTES_VERSION. test_text_past_the_cap_is_refused never checks that no file was written. No test shows that a note of exactly MAX_NOTE_CHARS is accepted, so an off-by-one (`>=`) in checked_text would pass.",
+        "fix": [
+          "Use script.NOTES_VERSION on line 43; add `assert not (project / _NOTES_REL).exists()` after the refusal on line 72; add a test that `'x' * script.MAX_NOTE_CHARS` returns 0 and is stored."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 56 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"dccbec90c5bb99fe9939cf14e27c20000857daae\",\"headRefName\":\"1027-add-bookmark\",\"headRefOid\":\"dccbec90c5bb99fe9939cf14e27c20000857daae\",\"last_sha\":\"dccbec90c5bb99fe9939cf14e27c20000857daae\",\"mergeCommit\":null,\"number\":56,\"state\":\"OPEN\",\"title\":\"Feature(session-bookmark): add-bookmark skill and session notes in th…\",\"url\":\"https://github.com/t968rs/operator-straps/pull/56\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1027-add-bookmark",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1027-add-bookmark",
+        "head_ref_name": "1027-add-bookmark",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "dccbec90c5bb99fe9939cf14e27c20000857daae",
+        "head_sha": "dccbec90c5bb99fe9939cf14e27c20000857daae",
+        "base_ancestor_command": "git merge-base --is-ancestor dccbec90c5bb99fe9939cf14e27c20000857daae HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor dccbec90c5bb99fe9939cf14e27c20000857daae HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  }
+}
