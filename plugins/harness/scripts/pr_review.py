@@ -19,8 +19,8 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<NN
     ``findings/<ID>.json`` through ``review_models.record`` and register it in ``plan.json`` ``folded``
     (``{id, kind, origin, at}``; a re-fold replaces both). ``--findings`` takes a JSON list of findings or
     ``{"findings": [...], "strengths": [...]}``; ``--from-gh-review`` maps each inline comment of a GitHub
-    PR review to one ``judgment`` finding at ``--severity`` (default minor), skipping a DISMISSED review or a
-    blank one without comments. Before build the source is merge input. Once the review is built the
+    PR review to one ``judgment`` finding at ``--severity`` (default minor); a DISMISSED review or a blank one
+    without comments is refused (exit 1, nothing recorded). Before build the source is merge input. Once the review is built the
     source is also appended (entry gains ``after_build: true``): its findings convert as merge converts one
     report, ids continue per severity after the review's highest, nothing is renumbered or auto-merged
     (merge candidates against existing issues print as a note), the source is credited in ``reviewers``,
@@ -100,7 +100,7 @@ Usage (Bash tool; ``$PR_REVIEW`` stands for
 
     $PR_REVIEW [--repo DIR] capture --pr N [--no-fetch] [--allow-closed] [--roast yes|no|roll]
     $PR_REVIEW block --pr N --agent ID
-    $PR_REVIEW fold --pr N --source ID --kind K (--from-gh-review URL | --findings FILE) [--severity S]
+    $PR_REVIEW fold --pr N --source ID --kind K (--from-gh-review URL | --findings FILE|-) [--severity S]
     $PR_REVIEW merge --pr N [--force]
     $PR_REVIEW amend --pr N [--regrade ID=severity ...] [--merge KEEP+DROP ...]
     $PR_REVIEW build --pr N [--replace] [--waive-head-ancestry]
