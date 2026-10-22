@@ -172,9 +172,13 @@ so it renumbers the rest, rescores, recounts and rewrites moved ids in the resea
 what the catalog cannot record by itself (issues to add as close candidates, trackers to revisit, and other files
 naming a TODO id). `todo_sync.py split ID --spec PATH` replaces one item with the parts in a spec file (field
 overrides laid over a copy of the item) and `todo_sync.py refresh` rescores and re-sorts after hand edits; both
-renumber and rewrite ids the same way. `/harness:todo-edit --retire 1, 3 | --split 001 | --refresh` runs any of
-the three through the `todo-editor` agent, which also writes the split parts, close-candidate evidence and the
-prose that named a moved id.
+renumber and rewrite ids the same way. `/harness:todo-edit --retire 1, 3 [--delete-retired] | --split 001 |
+--refresh` runs any of the three through the `todo-editor` agent, which also writes the split parts,
+close-candidate evidence and the prose that named a moved id. A retirement also updates the implementation
+status in the affected stubs and research entries, and the reply names each stub's new state, the research
+entries now fully resolved and the issues that can close. With `--delete-retired`, the agent also sets an entry
+to `FULLY_IMPLEMENTED` and deletes its stub, but only after it ran a check for every deliverable in the stub;
+a stub with any unproven deliverable is kept and listed.
 
 | Key | Default | Used by |
 |---|---|---|

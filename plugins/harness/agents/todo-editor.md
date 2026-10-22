@@ -5,8 +5,8 @@ description: |
   `todo.folder`). It runs the plugin's `todo_sync.py` for the mechanical part (renumbering, link rewiring,
   rescoring, recounting, id rewrites in the research catalog and stubs) and edits only the prose the script
   cannot write: split parts, close-candidate evidence, tracker notes, and sentences that named a moved or
-  removed id. The prompt is the four lines the `harness:todo-edit` skill prints: Operation, Ids, Project
-  root, Guidance.
+  removed id. The prompt is the five lines the `harness:todo-edit` skill prints: Operation, Ids, Delete
+  retired, Project root, Guidance.
   Examples:
   <example>
     Context: The developer finished two items.
@@ -47,6 +47,8 @@ says, the evidence behind a close candidate, and the prose that named an id that
   fields it derives from (`severity`, `impact`, `loe.size`, `blast_radius.level`) and run `TS refresh`.
 - **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split spec file. Lines the
   script prints as `reference (not rewritten):` sit in other files: report them, do not edit them.
+- **Delete a stub only under `Delete retired: yes`**, and only through the **delete-retired** gate below. No other
+  file is ever deleted.
 - **Dry-run first** for retire and split; read its report before the real run.
 - **Save, never commit.** No `git commit`, `push`, `reset`, `checkout`, `stash`.
 - Severity and impact follow the catalog's own `ranking_method.severity_scale` and `impact_definitions`; read
@@ -65,7 +67,31 @@ says, the evidence behind a close candidate, and the prose that named an id that
    - `tracker #N: ...` - update that tracker's `status_note` and `recommended_action` to the children left.
    - `dangling: ...` - reword the sentence so it no longer names the retired id (say the work landed, with
      the SHA when known).
-4. Go to **finish**.
+4. Update what the retirement leaves behind. For each research entry the retired items cited
+   (`catalog_entry_ids`) and its `_IMPL_TODO.md` stub:
+   - Write the implementation status into the stub: what landed (with the commit SHA or PR from step 1) and what
+     is left. Keep the stub's `status:` and `loe:` header lines equal to the entry's (rule S4).
+   - Set the entry's `status` and `status_note` in the research catalog to match. Use `PARTIAL` while any
+     deliverable is left; `FULLY_IMPLEMENTED` only through the gate below. Rule T4 (a live entry no item cites)
+     and T5 (an item citing only terminal entries) show which entries lost their last item.
+5. With `Delete retired: yes`, go to **delete-retired**; otherwise go to **finish**.
+
+## delete-retired
+
+Runs only for `retire` with `Delete retired: yes`, once per research entry that retirement left with no live TODO
+item. A stub is deleted only when every deliverable in it is backed by evidence you ran in this run. A claim in
+the stub, the catalog or a commit message is not evidence.
+
+1. List the stub's deliverables: each file, symbol, behavior or test it promises.
+2. For each deliverable run one check and read its output: Grep for the symbol or file, the named test file
+   (`python -m pytest tests/<area>/test_<name>.py -q`, a file or node id, never a directory), or
+   `git -C "<root>" log --oneline` showing the landing commit. A check that fails, cannot run or proves
+   something else leaves that deliverable unproven.
+3. Every deliverable proven: set the entry's `status` to `FULLY_IMPLEMENTED` and its `stub_path` to `null`, write
+   the evidence into `status_note`, delete the stub file with `rm` on its absolute path (the last commit that
+   held it comes from `git -C "<root>" log -1 --format=%h -- <stub>`), then go to **finish**.
+4. Any deliverable unproven: the stub is kept and the entry stays `PARTIAL`. List the stub under `Stubs` as
+   kept and the unproven deliverable and its failed check under `Open`.
 
 ## split
 
@@ -111,6 +137,12 @@ Result: <the script's first line>
 Renumbered: <old->new, ... | none>
 Prose fixed: <file: where, one per line | none>
 Added: <close_candidates #N, tracker #N notes, ... | none>
-Open: <issues without evidence, references outside the catalog, findings left, ... | none>
+Stubs: <stub path: updated | deleted | kept, its status now and what is left, one per line | none>
+Resolved: <research entry id: FULLY_IMPLEMENTED with the evidence run, or PARTIAL with the gap, one per line | none>
+Close: <issue #N: why it can close (commit SHA or PR), one per line | none>
+Open: <issues without evidence, unproven deliverables, references outside the catalog, findings left, ... | none>
 Check: drift=<n> error=<n> warn=<n>
 ```
+
+`Stubs` and `Resolved` answer for every stub and entry the retirement touched, not only the ones that changed. `Close`
+lists an issue only when the evidence is a commit or PR you found; an issue without it goes under `Open`.
