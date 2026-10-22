@@ -2,6 +2,7 @@ import type { Engine } from 'claude-code/testing'
 import type { On, ProcessRunResult } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 
+import { DEFINED_AGENTS } from './contract'
 import { OWNER_NOTE } from './tracker'
 
 /**
@@ -383,6 +384,125 @@ describe('agent usage rows', () => {
     await dispatch($, reviewerPrompt('r1'))
     expect(jsonlRows(seen, `${ROOT}/meta/u.jsonl`)).toHaveLength(1)
     expect(seen.files.has(USAGE)).toBe(false)
+  })
+})
+
+describe('standalone agent usage rows', () => {
+  const launchedAs = (agentId: string) => ({
+    result: { status: 'async_launched', agentId, description: 'r', prompt: '', outputFile: 'f', resolvedModel: 'claude-sonnet-5-5' },
+    text: 'launched',
+  })
+  const run = ($: Engine, type: string, prompt = 'write the commit message') => dispatch($, prompt, type)
+
+  test('a defined agent dispatched without a run header logs one standalone row', async ($, on) => {
+    const seen = world(on, () => completed('commit written'), { config: '{}' })
+    await run($, 'harness:messenger')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(String(usageRows(seen)[0]?.run_id)).toMatch(/^standalone_20270115T080000Z_\d+$/)
+    expect(usageRows(seen)[0]).toMatchObject({
+      pr: null, skill: 'standalone', role: 'other', agent_id: 'messenger',
+      subagent_type: 'harness:messenger', model: 'claude-opus-5-5', model_family: 'opus', effort: 'default',
+      tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'NO_BLOCK',
+      notes: 'pr-review-watch auto row; other NO_BLOCK',
+    })
+    expect(Object.keys(usageRows(seen)[0] ?? {})).not.toContain('issues_fixed')
+    expect(seen.files.has(MATRIX)).toBe(false)
+  })
+
+  test('the row keeps the return block signal when the agent ends in one', async ($, on) => {
+    const seen = world(on, () => completed('---\nSIGNAL: DONE\nOUTPUT: o\n---'))
+    await run($, 'harness:todo-editor')
+    expect(usageRows(seen)[0]).toMatchObject({ agent_id: 'todo-editor', signal: 'DONE' })
+  })
+
+  test('every defined agent type is tracked, each as its own run', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    for (const type of DEFINED_AGENTS) await run($, type)
+    expect(usageRows(seen).map(r => r.subagent_type)).toEqual([...DEFINED_AGENTS])
+    expect(new Set(usageRows(seen).map(r => r.run_id)).size).toBe(DEFINED_AGENTS.length)
+  })
+
+  test('parallel dispatches of one agent type get distinct run ids', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await Promise.all([run($, 'harness:messenger'), run($, 'harness:messenger')])
+    const ids = usageRows(seen).map(r => r.run_id)
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+  })
+
+  test('agents outside the defined set write nothing', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    for (const type of ['Explore', 'general-purpose', 'superpowers:code-reviewer']) await run($, type)
+    expect(seen.files.has(USAGE)).toBe(false)
+  })
+
+  test('a run header still wins: a defined agent in a pr-review run keeps its run and role', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO)))
+    await dispatch($, reviewerPrompt('r1', 'PR: 1526'), 'harness:pr-reviewer')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ run_id: RUN, skill: 'pr-review', role: 'reviewer', pr: 1526 })
+  })
+
+  test('a defined agent with a malformed header falls back to a standalone row', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await dispatch($, `AGENT_ID: a\nAGENT_ROLE: poet\nRUN_ID: ${RUN}`, 'harness:pr-reviewer')
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'standalone', role: 'other', agent_id: 'pr-reviewer' })
+  })
+
+  test('background launch: the row is written when the loop turn ends', async ($, on) => {
+    const seen = world(on, () => launchedAs('loop-9'))
+    on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }) as never)
+    await run($, 'harness:bookmark-noter')
+    expect(seen.files.has(USAGE)).toBe(false)
+    await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'loop-9' } as never)
+    await $.turn.complete({
+      answer: 'noted', durationMs: 4000, isAborted: false, turnId: 't-9', reason: 'answer', agentId: 'loop-9',
+      usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 30, cache_creation_input_tokens: 40, model: 'claude-haiku-5-5' },
+    } as never)
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({
+      skill: 'standalone', agent_id: 'bookmark-noter', tokens: 100, tool_uses: 1, duration_s: 4, model_family: 'haiku',
+    })
+  })
+
+  test('a denied dispatch writes no row; an errored one logs ERROR', async ($, on) => {
+    const seen = world(on, p => (p.includes('denied') ? { deny: 'no' } : { result: 'boom', isError: true, text: 'boom' }))
+    await run($, 'harness:messenger', 'denied')
+    expect(seen.files.has(USAGE)).toBe(false)
+    await run($, 'harness:messenger', 'errored')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'standalone', signal: 'ERROR', tokens: 0 })
+  })
+
+  test('a finished standalone run leaves no state behind and never becomes the active run', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    const written: { runs: unknown[]; active: unknown[] } = { runs: [], active: [] }
+    on('state.set', (_$, e, next) => {
+      if (e.plugin === 'pr-review-watch' && e.key === 'runs') written.runs.push(e.value)
+      if (e.plugin === 'pr-review-watch' && e.key === 'active') written.active.push(e.value)
+      return next(e)
+    })
+    await run($, 'harness:messenger')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(Object.keys(written.runs.at(-1) as object)).toEqual([])
+    expect(written.runs.some(r => Object.keys(r as object).length === 1)).toBe(true)
+    expect(written.active).toEqual([])
+  })
+
+  test('outside a harness project nothing is logged', async ($, on) => {
+    const seen = world(on, () => completed('ok'), { config: null })
+    await run($, 'harness:messenger')
+    expect(seen.files.has(USAGE)).toBe(false)
+  })
+
+  test('standalone dispatches do not disturb a pr-review run in flight', async ($, on) => {
+    const seen = world(on, p => completed(p.includes('AGENT_ID') ? doneBlock(ZERO) : 'ok'))
+    await dispatch($, reviewerPrompt('r1', 'PR: 1526'), 'harness:pr-reviewer')
+    await run($, 'harness:messenger')
+    writeReview(seen, { verdict: 'READY TO MERGE', issues: {} })
+    await mainTurnEnd($, 't')
+    expect(matrixRows(seen).map(r => r.cell)).toEqual(['pr1526_r1'])
+    expect(usageRows(seen).map(r => r.skill)).toEqual(['pr-review', 'standalone'])
   })
 })
 

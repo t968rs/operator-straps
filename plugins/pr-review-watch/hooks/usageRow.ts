@@ -12,9 +12,9 @@ export const USAGE_REQUIRED = [
   'tokens', 'tool_uses', 'duration_s', 'signal', 'notes',
 ] as const
 export const USAGE_COUNT_FIELDS = ['issues_assigned', 'issues_fixed', 'issues_bubbled', 'files_touched'] as const
-export const USAGE_ROLES = ['reviewer', 'fixer', 'orchestrator', 'planner', 'closer'] as const
+export const USAGE_ROLES = ['reviewer', 'fixer', 'orchestrator', 'planner', 'closer', 'other'] as const
 export const USAGE_COUNTED_ROLES = ['fixer', 'closer'] as const
-export const USAGE_SKILLS = ['pr-review', 'pr-team'] as const
+export const USAGE_SKILLS = ['pr-review', 'pr-team', 'standalone'] as const
 export const USAGE_MODEL_FAMILIES = ['haiku', 'sonnet', 'opus', 'unknown'] as const
 export const LOGGED_AT_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$'
 

@@ -8,6 +8,7 @@ enums, ``logged_at`` pattern, nullable strings or non-empty strings without the 
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ from mods._mods_helpers import ts_string, ts_string_array
 
 _SCHEMA_REL = "plugins/harness/schemas/pr_review_agent_usage.schema.json"
 _USAGE_ROW_REL = "plugins/pr-review-watch/hooks/usageRow.ts"
+_CONTRACT_REL = "plugins/pr-review-watch/hooks/contract.ts"
 
 
 @pytest.fixture(scope="module")
@@ -64,3 +66,29 @@ def test_nullable_strings_match(schema: dict, usage_row_ts: str) -> None:
 def test_non_empty_strings_match(schema: dict, usage_row_ts: str) -> None:
     expected = [k for k, p in schema["properties"].items() if p.get("minLength") == 1]
     assert ts_string_array(usage_row_ts, "NON_EMPTY") == expected
+
+
+def _defined_agents(repo_root: Path) -> list:
+    """``<plugin>:<name>`` for every agent file under ``plugins/*/agents/``, as Claude Code names the type."""
+    found = []
+    for agent in sorted((repo_root / "plugins").glob("*/agents/*.md")):
+        plugin = json.loads((agent.parents[1] / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+        front = re.search(r"^name:\s*(\S+)\s*$", agent.read_text(encoding="utf-8"), re.MULTILINE)
+        assert front is not None, f"{agent} has no name: frontmatter"
+        assert front.group(1) == agent.stem, f"{agent} names itself {front.group(1)!r}, not its file stem"
+        found.append(f"{plugin['name']}:{agent.stem}")
+    return found
+
+
+def test_defined_agents_cover_every_agent_file(repo_root: Path) -> None:
+    contract_ts = (repo_root / _CONTRACT_REL).read_text(encoding="utf-8")
+    defined = _defined_agents(repo_root)
+    assert defined, "no agent files found under plugins/*/agents"
+    assert ts_string_array(contract_ts, "DEFINED_AGENTS") == defined
+
+
+def test_standalone_vocabulary_is_in_the_schema(schema: dict, usage_row_ts: str) -> None:
+    assert "other" in schema["properties"]["role"]["enum"]
+    assert "standalone" in schema["properties"]["skill"]["enum"]
+    assert "other" in ts_string_array(usage_row_ts, "USAGE_ROLES")
+    assert "standalone" in ts_string_array(usage_row_ts, "USAGE_SKILLS")

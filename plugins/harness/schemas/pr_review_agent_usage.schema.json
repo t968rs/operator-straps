@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/pr_review_agent_usage.schema.json",
   "title": "PR Review Agent Usage",
-  "description": "One row per returned review-agent dispatch (completed or errored; a denied dispatch writes none) (pr-review and pr-team: reviewer, fixer, orchestrator, planner, closer), written by the pr-review-watch mod when the agent returns. Records who ran (role, subagent_type, model), its cost (tokens, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
+  "description": "One row per returned dispatch of a defined agent (completed or errored; a denied dispatch writes none), written by the pr-review-watch mod when the agent returns. A pr-review or pr-team dispatch (reviewer, fixer, orchestrator, planner, closer) belongs to its run; any other defined agent dispatched outside those skills is a standalone row (skill `standalone`, role `other`). Records who ran (role, subagent_type, model), its cost (tokens, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -31,7 +31,7 @@
     "run_id": {
       "type": "string",
       "minLength": 1,
-      "description": "The dispatch's RUN_ID (`pr<N>_<UTC yyyymmddTHHMMSSZ>`); groups the rows of one run."
+      "description": "The dispatch's RUN_ID (`pr<N>_<UTC yyyymmddTHHMMSSZ>`); groups the rows of one run. A standalone dispatch is a run of one, `standalone_<UTC yyyymmddTHHMMSSZ>_<seq>`."
     },
     "pr": {
       "type": ["integer", "null"],
@@ -40,18 +40,18 @@
     },
     "skill": {
       "type": "string",
-      "enum": ["pr-review", "pr-team"],
-      "description": "The skill that dispatched the run."
+      "enum": ["pr-review", "pr-team", "standalone"],
+      "description": "The skill that dispatched the run; `standalone` for a defined agent dispatched outside pr-review and pr-team (no run header in its prompt)."
     },
     "role": {
       "type": "string",
-      "enum": ["reviewer", "fixer", "orchestrator", "planner", "closer"],
-      "description": "The tracked role. A roast is a reviewer; `subagent_type` or `agent_id` tells it apart."
+      "enum": ["reviewer", "fixer", "orchestrator", "planner", "closer", "other"],
+      "description": "The tracked role. A roast is a reviewer; `subagent_type` or `agent_id` tells it apart. `other` is a standalone dispatch; `subagent_type` names the agent."
     },
     "agent_id": {
       "type": "string",
       "minLength": 1,
-      "description": "Slot id from the dispatch plan, or `orchestrator_plan` / `orchestrator_consolidate` / `fixer_plan` / `closer`."
+      "description": "Slot id from the dispatch plan, or `orchestrator_plan` / `orchestrator_consolidate` / `fixer_plan` / `closer`. A standalone row: the agent's name without its plugin prefix (`messenger`)."
     },
     "subagent_type": {
       "type": ["string", "null"],
@@ -89,7 +89,7 @@
     "signal": {
       "type": "string",
       "minLength": 1,
-      "description": "The return block's SIGNAL; `NO_BLOCK` when the agent returned without one; `ERROR` for an errored Agent result."
+      "description": "The return block's SIGNAL; `NO_BLOCK` when the agent returned without one (the usual case for a standalone agent); `ERROR` for an errored Agent result."
     },
     "notes": {
       "type": "string",

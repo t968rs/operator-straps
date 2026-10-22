@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  identify, idList, modelFamily, parseCounts, parseHeader, parseReturnBlock, prOfRunId, startedAtOfRunId,
+  DEFINED_AGENTS, identify, identifyStandalone, idList, isDefinedAgent, modelFamily, parseCounts, parseHeader,
+  parseReturnBlock, prOfRunId, standaloneRunId, startedAtOfRunId,
 } from './contract'
 
 const RUN = 'pr1526_20261009T120000Z'
@@ -76,6 +77,31 @@ describe('identify', () => {
     expect(identify('x', `AGENT_ID: a\nAGENT_ROLE: poet\nRUN_ID: ${RUN}`, BASE)).toBeUndefined()
     expect(identify('pr-team-orchestrator', `MODE=DANCE\nRUN_ID=${RUN}`, BASE)).toBeUndefined()
     expect(identify('general-purpose', `MODE=PLAN\nRUN_ID=${RUN}`, BASE)).toBeUndefined()
+  })
+})
+
+describe('standalone dispatches', () => {
+  test('a defined agent is identified without any prompt header', async () => {
+    expect(identifyStandalone('harness:messenger', 'standalone_20261022T155329Z_1')).toEqual({
+      runId: 'standalone_20261022T155329Z_1', skill: 'standalone', agentId: 'messenger', role: 'other', pr: null,
+      runtimeDir: null, phase: 'done',
+    })
+  })
+
+  test('every defined agent is recognized; built-in and foreign types are not', async () => {
+    expect(DEFINED_AGENTS.every(t => isDefinedAgent(t))).toBe(true)
+    for (const type of ['Explore', 'general-purpose', 'superpowers:code-reviewer', 'messenger', 'harness:', undefined]) {
+      expect(isDefinedAgent(type)).toBe(false)
+      expect(identifyStandalone(type, 'standalone_x')).toBeUndefined()
+    }
+  })
+
+  test('the run id carries the UTC second and a sequence number', async () => {
+    expect(standaloneRunId(Date.UTC(2026, 9, 22, 15, 53, 29, 350), 3)).toBe('standalone_20261022T155329Z_3')
+  })
+
+  test('identify itself still ignores a header-less defined agent', async () => {
+    expect(identify('harness:messenger', 'write a commit message', BASE)).toBeUndefined()
   })
 })
 

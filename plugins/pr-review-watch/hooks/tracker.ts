@@ -7,7 +7,10 @@ import {
   type ReviewDoc,
 } from './bubbles'
 import { runtimeBaseOf, sentinelDirOf, under } from './config'
-import { identify, parseReturnBlock, prOfRunId, startedAtOfRunId, type Dispatch } from './contract'
+import {
+  identify, identifyStandalone, isDefinedAgent, parseReturnBlock, prOfRunId, standaloneRunId, startedAtOfRunId,
+  type Dispatch,
+} from './contract'
 import { appendRows, buildRow, validateRow, type MatrixRow } from './matrixRow'
 import { scanPhase5, type HotSentinel } from './phase5Scan'
 import {
@@ -22,8 +25,9 @@ import {
 import { resolveWatch, type Watch } from './watch'
 
 /**
- * Engine glue for pr-review-watch: tracks pr-team / pr-review `Agent` dispatches, folds subagent usage,
- * appends invocation-matrix rows and agent usage rows, and guards Stop on undispositioned bubbled
+ * Engine glue for pr-review-watch: tracks pr-team / pr-review `Agent` dispatches and the standalone dispatches
+ * of every other defined agent, folds subagent usage, appends invocation-matrix rows (reviewers) and agent
+ * usage rows (every tracked agent), and guards Stop on undispositioned bubbled
  * ids. Active only in a project holding `.claude/harness.json` (./watch); its paths and base branch
  * come from that file. Every host
  * failure degrades to doing nothing; no hook throws into a tool call, a turn or a stop.
@@ -73,6 +77,8 @@ const noop = (): undefined => undefined
 const toolUses = new Map<string, number>()
 /** Serializes matrix and usage appends: parallel returns never interleave a read-modify-write. */
 let flushTail: Promise<unknown> = Promise.resolve()
+/** Numbers the standalone runs of this process, so same-second dispatches never share a run id. */
+let standaloneSeq = 0
 
 // ---------------------------------------------------------------------------
 // Host access
@@ -173,8 +179,15 @@ type DispatchMeta = { model?: string; effort?: string; subagentType?: string }
 const recordDispatch = async ($: Dollar, d: Dispatch, meta: DispatchMeta): Promise<void> => {
   const now = await $.clock.now()
   await update($, runsAtom, runs => applyDispatch(runs, d, newAgent(d, meta), now))
-  await update($, activeAtom, () => d.runId)
+  if (d.skill !== 'standalone') await update($, activeAtom, () => d.runId)
 }
+
+/** A standalone run holds one agent; once its usage row is attempted the run is dropped, bounding state. */
+const dropStandalone = ($: Dollar, runId: string): Promise<unknown> =>
+  update($, runsAtom, runs => {
+    if (runs[runId]?.skill !== 'standalone') return runs
+    return Object.fromEntries(Object.entries(runs).filter(([id]) => id !== runId))
+  })
 
 /** Writes the pending ownership marker once the orchestrator's plan is in. */
 const claimMatrix = async ($: Dollar, key: Key, signal: string | undefined): Promise<void> => {
@@ -189,6 +202,7 @@ const complete = async ($: Dollar, key: Key, c: Completion): Promise<void> => {
   await updateRun($, key.runId, run => applyCompletion(run, key.agentId, c))
   await claimMatrix($, key, c.block?.signal)
   await logUsage($, key, c)
+  await dropStandalone($, key.runId)
 }
 
 const textOf = (r: AgentResult): string => (r.content ?? []).map(b => b.text ?? '').join('\n')
@@ -512,16 +526,24 @@ const afterShell = async ($: Dollar, command: string | undefined): Promise<void>
 const ownsRows = async ($: Dollar, runId: string): Promise<boolean> =>
   ((await runOf($, runId).catch(noop))?.pr ?? null) !== null
 
-/** The tracked identity of a dispatch in a harness project, with that project; else undefined. */
+/** A defined agent that carries no run header gets a run of its own, under a fresh id. */
+const standaloneFor = async ($: Dollar, subagentType: string | undefined): Promise<Dispatch | undefined> =>
+  identifyStandalone(subagentType, standaloneRunId(await $.clock.now(), ++standaloneSeq))
+
+/**
+ * The tracked identity of a dispatch in a harness project, with that project; else undefined. A run header
+ * names the run; a defined agent without one is a standalone run.
+ */
 const trackedDispatch = async (
   $: Dollar,
   subagentType: string | undefined,
   prompt: string,
 ): Promise<[Dispatch, Watch] | undefined> => {
-  if (identify(subagentType, prompt, '') === undefined) return undefined
+  if (identify(subagentType, prompt, '') === undefined && !isDefinedAgent(subagentType)) return undefined
   const w = await resolveWatch($).catch(noop)
-  const d = w === undefined ? undefined : identify(subagentType, prompt, runtimeBaseOf(w.cfg))
-  return w === undefined || d === undefined ? undefined : [d, w]
+  if (w === undefined) return undefined
+  const d = identify(subagentType, prompt, runtimeBaseOf(w.cfg)) ?? (await standaloneFor($, subagentType))
+  return d === undefined ? undefined : [d, w]
 }
 
 /** Tool-call hooks: tracked Agent dispatches, per-loop tool counts and shell refreshes. */
@@ -533,7 +555,7 @@ const registerToolHooks = (on: On): void => {
     await recordDispatch($, d, { model: e.model, effort: e.effort, subagentType: e.subagent_type }).catch(noop)
     const r = await next(e)
     await recordResult($, { runId: d.runId, agentId: d.agentId }, r).catch(noop)
-    await refreshWith($, w).catch(noop)
+    if (d.skill !== 'standalone') await refreshWith($, w).catch(noop)
     // Refusals inline (not a helper) so the checker narrows `r` to a result that takes context.
     if (d.skill !== 'pr-review' || d.role !== 'reviewer' || r.deny !== undefined || r.isError === true) return r
     if (!(await ownsRows($, d.runId))) return r

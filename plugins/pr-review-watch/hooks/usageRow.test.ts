@@ -62,6 +62,21 @@ describe('buildUsageRow', () => {
   test('null signal logs NO_BLOCK', async () => {
     expect(buildUsageRow(input({ agent: agent({ signal: null }) })).signal).toBe('NO_BLOCK')
   })
+
+  test('a standalone agent row validates and carries no counts', async () => {
+    const row = buildUsageRow(input({
+      runId: 'standalone_20261020T210000Z_1', skill: 'standalone', pr: null, counts: COUNTS,
+      agent: agent({ id: 'messenger', role: 'other', signal: null, subagentType: 'harness:messenger' }),
+    })) as Record<string, unknown>
+    expect(row).toMatchObject({ skill: 'standalone', role: 'other', pr: null, signal: 'NO_BLOCK' })
+    expect(COUNT_KEYS.filter(k => k in row)).toEqual([])
+    expect(validateUsageRow(row)).toEqual([])
+  })
+
+  test('an other row with a count field is rejected', async () => {
+    const row = buildUsageRow(input({ skill: 'standalone', agent: agent({ role: 'other' }) }))
+    expect(validateUsageRow({ ...row, issues_fixed: 1 })).toEqual(['issues_fixed: only on fixer and closer rows'])
+  })
 })
 
 describe('validateUsageRow', () => {
