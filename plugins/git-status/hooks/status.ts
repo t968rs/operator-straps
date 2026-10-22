@@ -82,8 +82,14 @@ const treeSegment = (g: GitSnapshot): string => {
   return parts.length === 0 ? 'clean' : parts.join(' ')
 }
 
-/** The status line, at most 80 characters. */
-export const formatStatus = (g: GitSnapshot): string => clip(`${branchSegment(g)} · ${treeSegment(g)}`, MAX_STATUS)
+/** The commit-count segment: commits only the remote has (behind), then commits only the local branch has (ahead). */
+const commitsSegment = (g: GitSnapshot): string => ` -- commits(R,L):${g.behind},${g.ahead}`
+
+/** The status line, at most 80 characters; the commit counts are kept whole and the rest is clipped to fit. */
+export const formatStatus = (g: GitSnapshot): string => {
+  const commits = commitsSegment(g)
+  return clip(`${branchSegment(g)} · ${treeSegment(g)}`, MAX_STATUS - commits.length) + commits
+}
 
 /** The prompt context line under a GIT_STATE tag. */
 export const formatContext = (g: GitSnapshot): string => {

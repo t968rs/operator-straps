@@ -193,20 +193,25 @@ describe('rootStarts and cleanPath', () => {
 describe('formatStatus', () => {
   test('the full example line', async () => {
     const g = snapshot({ ahead: 1, staged: 2, unstaged: 3, untracked: 1 })
-    expect(formatStatus(g)).toBe('⎇ dev ↑1 ↓0 · +2 ~3 ?1')
+    expect(formatStatus(g)).toBe('⎇ dev ↑1 ↓0 · +2 ~3 ?1 -- commits(R,L):0,1')
   })
 
-  test('clean and in sync omits zero segments', async () => {
-    expect(formatStatus(snapshot())).toBe('⎇ dev · clean')
+  test('clean and in sync omits zero segments but keeps the commit counts', async () => {
+    expect(formatStatus(snapshot())).toBe('⎇ dev · clean -- commits(R,L):0,0')
   })
 
   test('no upstream and partial counts', async () => {
     const g = snapshot({ upstream: null, unstaged: 4 })
-    expect(formatStatus(g)).toBe('⎇ dev no upstream · ~4')
+    expect(formatStatus(g)).toBe('⎇ dev no upstream · ~4 -- commits(R,L):0,0')
   })
 
   test('detached head shows as such', async () => {
-    expect(formatStatus(snapshot({ branch: '(detached)', upstream: null }))).toBe('⎇ (detached) no upstream · clean')
+    const text = formatStatus(snapshot({ branch: '(detached)', upstream: null }))
+    expect(text).toBe('⎇ (detached) no upstream · clean -- commits(R,L):0,0')
+  })
+
+  test('remote-only commits are R (behind), local-only commits are L (ahead)', async () => {
+    expect(formatStatus(snapshot({ ahead: 3, behind: 7 }))).toBe('⎇ dev ↑3 ↓7 · clean -- commits(R,L):7,3')
   })
 
   test('long branch names are clipped and the line stays within 80 characters', async () => {
@@ -216,7 +221,16 @@ describe('formatStatus', () => {
     const text = formatStatus(g)
     expect(text.length).toBeLessThanOrEqual(80)
     expect(text.startsWith(`⎇ feature/${'x'.repeat(23)}… ↑12 ↓345`)).toBe(true)
-    expect(text.endsWith('+99 ~99 ?99')).toBe(true)
+    expect(text.endsWith('+99 ~99 ?99 -- commits(R,L):345,12')).toBe(true)
+  })
+
+  test('an over-long line is clipped before the commit counts, which are never cut', async () => {
+    const g = snapshot({
+      branch: 'x'.repeat(40), ahead: 123456, behind: 654321, staged: 99999, unstaged: 99999, untracked: 99999,
+    })
+    const text = formatStatus(g)
+    expect(text.length).toBeLessThanOrEqual(80)
+    expect(text.endsWith('… -- commits(R,L):654321,123456')).toBe(true)
   })
 })
 
@@ -254,7 +268,7 @@ describe('prompt.submit context', () => {
     const third = await $.prompt.submit(submit)
     expect(third.context).toEqual([CLEAN_CONTEXT.replace('UNTRACKED=0 DIRTY=false', 'UNTRACKED=1 DIRTY=true')])
     expect(seen.runs.length).toBe(3)
-    expect(lastStatus(seen)).toBe('⎇ dev · ?1')
+    expect(lastStatus(seen)).toBe('⎇ dev · ?1 -- commits(R,L):0,0')
   })
 
   test('keeps context attached beneath and never rewrites the text', async ($, on) => {
@@ -364,7 +378,7 @@ describe('git failures clear the status and never block', () => {
     const w: World = { git: { stdout: CLEAN } }
     const seen = world(on, w)
     await $.prompt.submit(submit)
-    expect(lastStatus(seen)).toBe('⎇ dev · clean')
+    expect(lastStatus(seen)).toBe('⎇ dev · clean -- commits(R,L):0,0')
     w.git = { exitCode: 128 }
     await $.prompt.submit(submit)
     expect(lastStatus(seen)).toBeUndefined()
@@ -391,7 +405,7 @@ describe('background refresh', () => {
     expect(seen.runs.length).toBe(0)
     await clock.settle()
     expect(seen.runs.length).toBe(1)
-    expect(lastStatus(seen)).toBe('⎇ dev · clean')
+    expect(lastStatus(seen)).toBe('⎇ dev · clean -- commits(R,L):0,0')
   })
 
   test('bursts coalesce: one run in flight, at most one per 2 s', async ($, on) => {
@@ -575,7 +589,7 @@ describe('runs while git is in flight', () => {
     const out = await pending
     expect(seen.runs.length).toBe(2)
     expect(out.context?.[0]?.endsWith('UNTRACKED=1 DIRTY=true')).toBe(true)
-    expect(lastStatus(seen)).toBe('⎇ dev · ?1')
+    expect(lastStatus(seen)).toBe('⎇ dev · ?1 -- commits(R,L):0,0')
   })
 })
 
