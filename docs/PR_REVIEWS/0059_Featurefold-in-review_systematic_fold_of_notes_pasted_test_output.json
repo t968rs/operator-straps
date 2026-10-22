@@ -1,0 +1,326 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 59,
+  "pr_title": "Feature(fold-in-review): systematic fold of notes, pasted test output…",
+  "branch": "1028-research",
+  "base_branch": "main",
+  "base_sha": "42147a62a844272bfce1dd5e884e82c1931eaa2c",
+  "head_sha": "72818ef33ee4f3772a50ff26fa4047c93af7b3fe",
+  "review_date": "2026-10-22",
+  "verdict": "READY TO MERGE - 10 of 10 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 336,
+    "deletions": 26,
+    "files_changed": 6
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0059/pr59_20261022T153129Z/findings/tests.json",
+    "docs/_scratch/pr_review/0059/pr59_20261022T153129Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0059/pr59_20261022T153129Z/findings/docs.json",
+    "docs/_scratch/pr_review/0059/pr59_20261022T153129Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "No stub or mock chains: every test reads the real driver, model and skill files, so the guard cannot pass on faked collaborators.",
+    "Fold kinds and Finding fields are derived from the driver and model source, so adding a kind or field without updating the skill and README fails the test.",
+    "Driver fold behavior (refold, after-build, gh review, severity fallback) is covered behaviorally in tests/scripts/test_pr_review_driver.py, so this file correctly limits itself to prose-vs-code name pinning.",
+    "Missing files fail with a clear message through _text, and the spelled-out file names let the PR test selector reach this test.",
+    "The one-line change (usage line 103 now shows FILE|-) matches the argparse help at line 2045 and read_findings (stdin when value is -), and brings the usage block in line with the fold entry at line 16.",
+    "Driver messages quoted in SKILL.md and README.md (no current run, reviewer slot, already in the built review, pre_fix_time pending, draft.json predates this fold, DISMISSED/blank) match pr_review.py and review_models.py verbatim.",
+    "The finding field table mirrors the Finding model exactly (120-char name, optional lines/also, also never repeating file, no '..' or drive), and a contract test pins the table to the model fields.",
+    "Before/after-build state table keyed on plan.json review_path matches _cmd_fold's branch, and the post-build next: steps match fold_next and operating_rules.md.",
+    "The --repo placement rule (before the subcommand) matches the argparse layout where --repo lives only on the top-level parser.",
+    "Driver claims in the skill and README match pr_review.py: refusal messages, the `draft.json predates this fold` note, the `--repo` placement rule and the post-build `next:` lines.",
+    "The Finding field table matches review_models.Finding, and the contract test pins it by parsing the model rather than a hand-copied list.",
+    "Contract test derives fold kinds from the driver FOLD_KINDS tuple and flags from the argparse source, so it fails when the driver drifts, not only when the prose does.",
+    "Post-build severity-is-final rule is consistent across fold-in-review SKILL.md, README.md, pr-review SKILL.md step 0 and operating_rules.md."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Review-body fold under the table's <login>_review id silently replaces the inline-comment fold",
+        "file": "plugins/harness/skills/fold-in-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/fold-in-review/SKILL.md",
+          "plugins/harness/skills/fold-in-review/README.md"
+        ],
+        "lines": "3,45-46,48-60,98",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:57-58 says a `review body not folded` note that names a defect is folded 'as free text (section 3b)', but names no source id. Section 2 (SKILL.md table, line ~41) maps every GitHub review to `--source <login>_review --kind external`, and SKILL.md:45-46 itself says that before `build` 'a fold under an id already used replaces it' (driver: rm.record overwrites findings/<source>.json and with_folded replaces the plan entry, pr_review.py:1164-1167, 1133-1136). Following the skill literally before `build` therefore drops every inline-comment finding the URL fold just recorded; after `build` the same id is refused by fold_check (pr_review.py:1127-1130). The driver's own note (pr_review.py:1101) gives no id either.\n\nAlso (docs): SKILL.md:58-60 tells the agent, after `build`, to 'write a `--findings` file with a per-finding `severity` ... and fold that instead', while SKILL.md:98 says to fold through stdin 'so no file lands in the project'. Section 3a also never mentions passing `--severity <level>` to the URL fold when all comments share one serious grade, which pr-review/SKILL.md:335-337 and operating_rules.md:70-73 give as the other option; the 3a command shows only the default.\n\nAlso (roast): SKILL.md:58-59 says after `build` to write a `--findings` file and fold it; SKILL.md:96-97 says stdin so no file lands in the project, and README step 6 only knows stdin. Following 3a leaves a stray JSON in the checkout. 3a also drops the uniform-severity path that operating_rules.md:71-72 and pr-review/SKILL.md:336 give (pass the matching `--severity`).\n\nAlso (roast): SKILL.md:3 says the skill verifies each claim against the tree; README.md:3-4 and step 4 say the same. Section 3a folds a review URL straight through the driver: no read of the named code, no drop of claims that fail. After `build` an unverified comment becomes a final issue a fixer wave then chases.",
+        "fix": [
+          "In SKILL.md section 3a, name a distinct id for the body fold, e.g. `--source <login>_review_body --kind external --findings -`, and add the same rule to README.md 'Rules worth knowing'.",
+          "Alternatively state that the body finding joins the inline-comment findings in one `--findings` fold under `<login>_review` that replaces the URL fold.",
+          "Replace 'write a `--findings` file' with 'build the findings list (section 3b) and fold it through `--findings -`', and add 'otherwise pass the matching `--severity` to the URL fold'.",
+          "Reword 3a: convert the comments to findings with per-finding `severity` and fold through `--findings -` (section 3b); when all share one severity, pass `--severity` on the URL fold.",
+          "Scope the claim to notes and pasted output, or add a 3a step that verifies each inline comment as in 3b and folds the survivors through `--findings -` under `--kind external`."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Fixed default source ids make a second pre-build fold silently replace the first",
+        "file": "plugins/harness/skills/fold-in-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/fold-in-review/SKILL.md",
+          "plugins/harness/skills/fold-in-review/README.md"
+        ],
+        "lines": "38-46",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "Section 2 hands out fixed ids (`developer_notes_1`, `failing_tests_1`, `adhoc_1`) and says the next number is taken only after `build`. Before `build` the driver replaces a same-id fold (`_cmd_fold` rewrites `findings/<source>.json` via `rm.record`; `with_folded` swaps the `plan.json` entry, pr_review.py:1164-1167). A second batch of notes before `build` lands as `developer_notes_1` again and the first batch of verified findings vanishes. README repeats the replace rule with no warning. Fine default, right up to its second use.",
+        "fix": [
+          "Section 2 and README: every new batch takes the next free number in its series before and after `build` (read `plan.json` `folded`); reuse an id only to correct that exact fold."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Verify step reruns tests with bare `python` instead of the hpy launcher",
+        "file": "plugins/harness/skills/fold-in-review/SKILL.md",
+        "lines": "72-75",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:73 reruns failing node ids with `python -m pytest`. Other harness surfaces use the plugin `scripts/hpy` launcher with `-m pytest` (agents/pr-fixer.md:69, agents/pr-team-orchestrator.md:159) because bare `python` may lack the project dependencies. This rerun decides fold versus drop, so a wrong interpreter turns a real failure into an import error the agent must then interpret. The `tests/<area>/test_<name>.py` shape is also this repository layout leaking into a generic plugin.",
+        "fix": [
+          "Use the hpy form (`sh <plugin root>/scripts/hpy -m pytest <file>::<test> -q -p no:cacheprovider`), keep the project-equivalent escape hatch, and note that an import or collection error means a wrong environment, not a verdict."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "fold docstring says a dismissed or blank review is skipped, code refuses it",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "21-23",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (lines 21-23) says --from-gh-review skips a DISMISSED review or a blank one without comments. gh_fold_input raises CaptureError on review_skip (line 1098-1099), so main exits 1 with a problem line and nothing is recorded or registered. Skipping reads as a successful no-op; the code fails the command.",
+        "fix": [
+          "Reword lines 22-23 to say a DISMISSED review or a blank one without comments is refused (exit 1, nothing recorded)."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Refusal table and section 3a omit the --from-gh-review repository and URL-shape refusals",
+        "file": "plugins/harness/skills/fold-in-review/README.md",
+        "files": [
+          "plugins/harness/skills/fold-in-review/README.md",
+          "plugins/harness/skills/fold-in-review/SKILL.md"
+        ],
+        "lines": "99-110",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "parse_review_url (pr_review.py:1013-1022) refuses a malformed URL ('must look like https://github.com/...#pullrequestreview-<id>') and a URL from another repository ('names <o>/<r>, not the PR's repository'), including the case where plan.json has no GitHub PR url. README.md:99-110 lists only the PR-number mismatch, and SKILL.md:55 says only 'The PR in the URL must be the run's PR'.",
+        "fix": [
+          "Add rows for `--from-gh-review names <owner>/<repo>, not the PR's repository` and `must look like https://github.com/...` to README.md's refusal table, and say in SKILL.md 3a that the URL must name the run's repository and PR."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Locate-the-run rule assumes one PR folder under scratch; scratch keeps every past PR",
+        "file": "plugins/harness/skills/fold-in-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/fold-in-review/SKILL.md",
+          "plugins/harness/skills/fold-in-review/README.md"
+        ],
+        "lines": "21-23",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:21-23: one `<NNNN>` folder names the PR, several mean ask. Scratch is never pruned: this checkout has 15 PR folders under docs/_scratch/pr_review (0007 to 0059), each with a `current`. Outside the pr-review conversation the rule always degenerates to asking. README.md:39-40 repeats it.",
+        "fix": [
+          "Resolve the PR from the current branch first (`gh pr view --json number`), confirm `<NNNN>/current` exists, and ask only when that fails."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "pr-review step 0 says fold-in-review writes findings 'before this fold', but the skill runs the fold itself",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "324-325",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "pr-review/SKILL.md:324-325 reads 'goes through `harness:fold-in-review`, which verifies each claim and writes the findings before this fold', implying the main session then runs step 0's `fold --findings <FILE>`. fold-in-review/SKILL.md section 3b runs `fold ... --findings -` itself through stdin (no file is written, by design) and section 4 continues into merge/amend/build. A reader following pr-review's wording would look for a findings file that does not exist or re-run the fold.\n\nAlso (roast): pr-review/SKILL.md:324-325 says free text or test output goes through `harness:fold-in-review`, which writes the findings before this fold. The skill runs `fold --findings -` itself (Section 3b) and continues `merge`/`amend`/`build` (Section 4), so the main session is told to fold again with no file to pass; after `build` that repeat is refused by `fold_check`. It also omits that the skill takes URLs and tool reports.",
+        "fix": [
+          "Reword to: 'goes through `harness:fold-in-review`, which verifies each claim, runs this fold itself and continues the sequence'.",
+          "Reword: notes, test output, a review URL or a tool report can go through `harness:fold-in-review`, which verifies the claims, runs this fold and continues the sequence."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Finding field parser fails with an opaque IndexError when the model is renamed or restructured",
+        "file": "tests/skills/test_fold_in_review_skill_contract.py",
+        "files": [
+          "tests/skills/test_fold_in_review_skill_contract.py",
+          "plugins/harness/lib/harness_lib/review_models.py"
+        ],
+        "lines": "37-39",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_finding_fields (lines 37-39) splits review_models.py on `class Finding(BaseModel):` and then on `    @field_validator`. A rename of the class raises IndexError rather than a message naming the missing class, unlike _fold_kinds which asserts with a message. If the first validator is removed, the slice runs on into the next class and its fields are demanded in the skill table.",
+        "fix": [
+          "Assert the split succeeded with a message ('review_models.py has no class Finding'), and cut at the next `class ` or first `    def `/`    @` line",
+          "Import harness_lib.review_models and read `Finding.model_fields` instead of parsing source text"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Post-build severity test asserts a bare 'final' substring",
+        "file": "tests/skills/test_fold_in_review_skill_contract.py",
+        "files": [
+          "tests/skills/test_fold_in_review_skill_contract.py",
+          "plugins/harness/skills/fold-in-review/SKILL.md",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "69-75,78-82",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_post_build_severity_is_final_and_never_defaults_for_serious_defects (line 80) asserts `\"final\" in text`, which any SKILL.md line containing 'final' (or 'finally', 'finalize') satisfies. The test name promises the post-build severity rule is pinned, but deleting the table row 'the severity written is final' (SKILL.md:32) would not fail it. The two other asserts pin exact wrapped-prose phrases, so a reflow of SKILL.md breaks them without any contract change.\n\nAlso (tests): test_fold_flags_exist_in_the_driver_and_are_used_by_the_skill (lines 69-75) looks for the quoted flag anywhere in pr_review.py. `\"--pr\"` is defined once in the `_pr` helper (pr_review.py:2009) shared by every subcommand, so it passes even if `fold` stopped taking --pr, and `\"--kind\"`/`\"--source\"` pass if any other parser defines them. The skill side is `flag in skill`, so `--pr` also matches any longer flag name. The docstring says it pins 'fold flags'; it pins 'flags somewhere in the driver'.",
+        "fix": [
+          "Replace with `assert \"the severity written is final\" in text`, the phrase that carries the rule (SKILL.md:32)",
+          "Anchor each assert to the section it belongs to (split on '## 1. Locate the run' / '## 3a.') instead of the whole file",
+          "Slice the driver text to the body of `_add_fold_command` (pr_review.py:2037-2048) and check flags there, treating --pr as inherited from `_pr`",
+          "Parse the skill's documented command with the real parser: call main/_parser with `fold --pr 1 --source x --kind developer --findings -` and assert it parses",
+          "Match skill flags with a word-boundary regex such as rf\"{re.escape(flag)}(?![\\w-])\""
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "README is only weakly pinned despite the module docstring promising alignment",
+        "file": "tests/skills/test_fold_in_review_skill_contract.py",
+        "files": [
+          "tests/skills/test_fold_in_review_skill_contract.py",
+          "plugins/harness/skills/fold-in-review/README.md"
+        ],
+        "lines": "85-96",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (lines 1-5) says the skill and README stay aligned with the driver. For the README the test checks only the fold kinds, the bare substring `--repo` (line 88, which any mention of --repo satisfies, including a wrong placement) and three invocation fragments. The README's --findings/--severity/--from-gh-review usage and the `unrecognized arguments: --repo` row (README.md:110) are never checked against the driver, so README flag drift passes. test_repo_flag_is_placed_before_the_subcommand asserts placement only for SKILL.md.",
+        "fix": [
+          "Assert `pr_review.py --repo DIR fold` (the exact placement) in the README as in line 87 for SKILL.md",
+          "Run the flag-existence loop over README.md as well, or narrow the docstring to say the README is checked for kinds and invocation shapes only"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 59 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"72818ef33ee4f3772a50ff26fa4047c93af7b3fe\",\"headRefName\":\"1028-research\",\"headRefOid\":\"72818ef33ee4f3772a50ff26fa4047c93af7b3fe\",\"last_sha\":\"72818ef33ee4f3772a50ff26fa4047c93af7b3fe\",\"mergeCommit\":null,\"number\":59,\"state\":\"OPEN\",\"title\":\"Feature(fold-in-review): systematic fold of notes, pasted test output…\",\"url\":\"https://github.com/t968rs/operator-straps/pull/59\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1028-research",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1028-research",
+        "head_ref_name": "1028-research",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "72818ef33ee4f3772a50ff26fa4047c93af7b3fe",
+        "head_sha": "72818ef33ee4f3772a50ff26fa4047c93af7b3fe",
+        "base_ancestor_command": "git merge-base --is-ancestor 72818ef33ee4f3772a50ff26fa4047c93af7b3fe HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 72818ef33ee4f3772a50ff26fa4047c93af7b3fe HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - SKILL.md 3a: URL must name the run's repository and PR; lists the malformed-URL, other-repository (incl. no GitHub PR url in plan.json) and other-PR refusals; README refusal table gains rows for the --from-gh-review other-repository and malformed-URL refusals"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - SKILL.md section 1: resolve the PR from the current branch (gh pr view --json number), confirm <NNNN>/current under scratch, ask only when both fail; README section 1 locate rule: current branch via gh pr view, confirmed by <NNNN>/current, asks only when both fail"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - test pins 'the severity written is final' on whitespace-normalized text; fold flags checked inside the _add_fold_command body (--pr via _pr) and matched in SKILL.md with a word-boundary regex; pr_review.py cited only, no edit needed"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - SKILL.md 3a: verify comments first, uniform severity passes --severity on the URL fold, otherwise per-finding severity via --findings - (no file); body folds under <login>_review_body; README rule added"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - SKILL.md section 2: every new batch takes the next free number (read plan.json folded) before and after build; reuse an id only to correct that exact fold; README one-source-id rule: every batch takes the next free number before and after build, read from plan.json folded ids"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - SKILL.md verify step reruns node ids through the hpy launcher with -p no:cacheprovider, generic <test file> path, and treats import/collection errors as a wrong environment"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - pr-review SKILL.md step 0: fold-in-review now runs this fold itself and continues the sequence; notes, test output, review URL and tool reports named; main session does not re-fold"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - cited only: the Finding field parser is in tests/skills/test_fold_in_review_skill_contract.py (_finding_fields), owned by the other part's fixer; review_models.py needs no edit for the fix; _finding_fields asserts the Finding class split, cuts at next class or method line, asserts fields found"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - test_repo_flag_is_placed_before_the_subcommand pins 'pr_review.py --repo DIR fold' in README and checks README-used fold flags against the parser"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-22",
+      "evidence": "72818ef (working-tree snapshot; developer commits) - fold docstring now says a DISMISSED or blank review is refused (exit 1, nothing recorded), matching gh_fold_input"
+    }
+  ]
+}

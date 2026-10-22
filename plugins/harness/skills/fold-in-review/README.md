@@ -36,8 +36,9 @@ No arguments prints the argument hint and stops.
 ## Before you start
 
 A review run must exist for the PR: `harness:pr-review` has run `capture` (the driver otherwise answers
-`no current pr-review run for PR <N>`). The skill finds the PR from the conversation, or from the folders under
-the project's `artifacts.scratch` directory, and asks when several PRs have runs.
+`no current pr-review run for PR <N>`). The skill finds the PR from the conversation, or else from the current branch (`gh pr view --json number`),
+confirmed by a `<NNNN>/current` file under the scratch root. It asks only when both fail: the scratch
+directory keeps the folders of every past PR, so the folder list alone never names the run.
 
 ## What the skill does
 
@@ -92,8 +93,13 @@ or more fix options, a repo-relative `file` (optionally `lines` and `also`), and
   more serious than it sounds.
 - **A finding needs a file.** A claim with no file to anchor it is anchored to the file that owns the behavior,
   or the skill asks which file it concerns.
-- **One source id per fold.** After `build` a source is never re-folded: the next one takes the next number
-  (`developer_notes_2`). Before `build`, re-folding the same id replaces the earlier fold.
+- **One source id per fold.** Every new batch, before and after `build`, takes the next free number in its
+  series (`developer_notes_2`, then `developer_notes_3`), read from the `folded` ids in `plan.json`. Before
+  `build`, a fold under an id already used replaces that fold, so reuse an id only to correct that exact fold.
+  After `build` a source is never re-folded.
+- **A GitHub review body folds under its own id.** A body with no file anchor that names a defect folds as
+  free text under `<login>_review_body`; reusing `<login>_review` would replace the inline-comment fold before
+  `build` and is refused after it.
 - **Mixed input is several folds**, one per kind: notes plus a pasted traceback fold as `developer` and `tests`.
 
 ## When the driver refuses
@@ -107,6 +113,8 @@ or more fix options, a repo-relative `file` (optionally `lines` and `also`), and
 | `draft.json predates this fold` (note) | Rerun `merge`, or `merge --force` when the draft was amended. |
 | `DISMISSED` / `blank body and no inline comments` | The GitHub review has nothing to fold. |
 | `--from-gh-review names PR <X>, not PR <N>` | The URL belongs to another PR. |
+| `--from-gh-review names <owner>/<repo>, not the PR's repository` | The URL is from another repository, or `plan.json` has no GitHub PR url. Use the run's repository's review URL. |
+| `--from-gh-review <url> must look like https://github.com/...` | The URL is malformed. Use `https://github.com/<owner>/<repo>/pull/<N>#pullrequestreview-<id>`. |
 | `unrecognized arguments: --repo` | `--repo` goes before the subcommand: `pr_review.py --repo DIR fold ...`. |
 
 ## Related

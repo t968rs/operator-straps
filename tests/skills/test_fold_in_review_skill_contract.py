@@ -35,8 +35,12 @@ def _fold_kinds() -> List[str]:
 
 
 def _finding_fields() -> List[str]:
-    body = _text(_MODELS).split("class Finding(BaseModel):", 1)[1].split("    @field_validator", 1)[0]
-    return re.findall(r"^    (\w+): ", body, re.MULTILINE)
+    parts = _text(_MODELS).split("class Finding(BaseModel):", 1)
+    assert len(parts) == 2, "review_models.py has no class Finding(BaseModel)"
+    body = re.split(r"^(?:class |    (?:def |class |@))", parts[1], maxsplit=1, flags=re.MULTILINE)[0]
+    fields = re.findall(r"^    (\w+): ", body, re.MULTILINE)
+    assert fields, "class Finding declares no fields before its first method"
+    return fields
 
 
 def test_frontmatter_names_the_skill_and_its_inputs() -> None:
@@ -66,18 +70,31 @@ def test_finding_field_table_lists_every_model_field() -> None:
         assert f"| `{field}` |" in table, f"field table has no row for {field!r}"
 
 
+def _fold_parser_body() -> str:
+    """Source of ``_add_fold_command``; ``--pr`` comes from the ``_pr`` helper it wraps the parser in."""
+    body = _text(_DRIVER).split("def _add_fold_command(", 1)
+    assert len(body) == 2, "pr_review.py has no _add_fold_command"
+    return body[1].split("\ndef ", 1)[0]
+
+
+def _uses_flag(text: str, flag: str) -> bool:
+    return re.search(rf"{re.escape(flag)}(?![\w-])", text) is not None
+
+
 def test_fold_flags_exist_in_the_driver_and_are_used_by_the_skill() -> None:
-    driver, skill = _text(_DRIVER), _text(_SKILL)
+    fold, skill = _fold_parser_body(), _text(_SKILL)
+    assert "_pr(sub.add_parser(\"fold\"" in fold, "fold no longer takes --pr through _pr"
     for flag in _FOLD_FLAGS:
-        assert f'"{flag}"' in driver, f"driver defines no {flag}"
-        assert flag in skill, f"SKILL.md never uses {flag}"
+        if flag != "--pr":
+            assert f'"{flag}"' in fold, f"the fold parser defines no {flag}"
+        assert _uses_flag(skill, flag), f"SKILL.md never uses {flag}"
     assert "--findings -" in skill, "the stdin form is the documented default"
     assert "<<'EOF'" in skill
 
 
 def test_post_build_severity_is_final_and_never_defaults_for_serious_defects() -> None:
-    text = _text(_SKILL)
-    assert "final" in text
+    text = " ".join(_text(_SKILL).split())
+    assert "the severity written is final" in text
     assert "never lands at the default `minor`" in text
     assert "per-finding `severity`" in text
 
@@ -85,7 +102,12 @@ def test_post_build_severity_is_final_and_never_defaults_for_serious_defects() -
 def test_repo_flag_is_placed_before_the_subcommand() -> None:
     text = _text(_SKILL)
     assert "pr_review.py --repo DIR fold" in text
-    assert "--repo" in _text(_README)
+    readme = _text(_README)
+    assert "pr_review.py --repo DIR fold" in readme, "README never shows the --repo placement"
+    fold = _fold_parser_body()
+    for flag in _FOLD_FLAGS:
+        if flag != "--pr" and _uses_flag(readme, flag):
+            assert f'"{flag}"' in fold, f"README uses {flag} but the fold parser defines no {flag}"
 
 
 def test_readme_shows_the_three_invocation_shapes() -> None:

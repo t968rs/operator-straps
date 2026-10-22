@@ -19,9 +19,10 @@ An empty argument list prints the `argument-hint` line and stops.
 
 ## 1. Locate the run
 
-- **PR number `<N>`:** the PR of the `harness:pr-review` run in this conversation. Otherwise list the folders under
-  the scratch root (`pr_review.py config --get artifacts.scratch`): one `<NNNN>` folder names the PR, several mean
-  ask which.
+- **PR number `<N>`:** the PR of the `harness:pr-review` run in this conversation. Otherwise the PR of the current
+  branch (`gh pr view --json number`), confirmed by a `<NNNN>/current` file under the scratch root
+  (`pr_review.py config --get artifacts.scratch`). When both fail, ask which PR: scratch keeps the folders of
+  every past PR, so the folder list alone never names it.
 - **No `current` file** (the driver prints `no current pr-review run for PR <N>`): there is nothing to fold into.
   Say so and point to `harness:pr-review`; do not capture from here.
 - **Phase:** read `plan.json` in the run directory (`<scratch>/<NNNN>/<run id in current>/`).
@@ -42,22 +43,35 @@ Before `build`, wait until every dispatched reviewer has returned.
 | the developer's own notes or thoughts | `developer` | `developer_notes_1` |
 | another tool's report, a teammate's message | `adhoc` | `adhoc_1` |
 
-Input of mixed kinds becomes one fold per kind. A source id never equals a reviewer slot id. Before `build`, a
-fold under an id already used replaces it. After `build`, a source is never re-folded: take the next number.
+Input of mixed kinds becomes one fold per kind. A source id never equals a reviewer slot id. Every new batch,
+before and after `build`, takes the next free number in its series (`developer_notes_2`): read the `folded` ids
+in `plan.json`. Before `build`, a fold under an id already used replaces that fold, so reuse an id only to
+correct that exact fold. After `build`, a source is never re-folded.
 
 ## 3a. A GitHub review URL
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" fold --pr <N> \
-  --source <login>_review --kind external --from-gh-review "<URL>"
+  --source <login>_review --kind external --from-gh-review "<URL>" --severity <level>
 ```
 
-The PR in the URL must be the run's PR. Each inline comment becomes one `judgment` finding at `--severity`
-(default `minor`). Exit 1 with `DISMISSED` or `blank body and no inline comments` means nothing to fold: report it.
+The URL must name the run's repository (the PR url in `plan.json`) and the run's PR; the driver refuses a
+malformed URL (`must look like https://github.com/...`), another repository (`names <owner>/<repo>, not the PR's
+repository`, also when `plan.json` has no GitHub PR url) and another PR (`names PR <X>, not PR <N>`).
+
+Each inline comment becomes one `judgment` finding at `--severity` (default `minor`). Exit 1 with `DISMISSED` or
+`blank body and no inline comments` means nothing to fold: report it.
+
+**Verify first.** Fetch the comments (`gh api repos/<owner>/<repo>/pulls/<N>/reviews/<id>/comments`) and read
+the code each one names. When every comment holds and all share one severity, fold the URL with that
+`--severity <level>`. Otherwise convert the comments to findings (section 3b: verify, a per-finding `severity`)
+and fold the survivors through `--findings -` under the same `--source <login>_review --kind external` instead
+of the URL. A comment that reports a critical or important defect never lands at the default `minor`; after
+`build` the severity is final.
+
 A `review body not folded` note means the body has no file anchor; when it names a defect, fold it as free text
-(section 3b). After `build` the severity is final: when the comments differ in blast radius, read them, write a
-`--findings` file with a per-finding `severity` (section 3b), and fold that instead. A comment that reports a
-critical or important defect never lands at the default `minor`.
+(section 3b) under its own id, `--source <login>_review_body --kind external --findings -`. Reusing
+`<login>_review` would replace the inline-comment fold before `build` and is refused after it.
 
 ## 3b. Notes, pasted tests, anything else
 
@@ -70,7 +84,9 @@ critical or important defect never lands at the default `minor`.
 
 **Verify.** A note or a pasted log is a claim, not a fact. Read the named code and confirm the defect exists in
 the working tree. For test failures, rerun only the named node ids
-(`python -m pytest tests/<area>/test_<name>.py::<test> -q`, never a directory) or the project's equivalent.
+(`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" -m pytest <test file>::<test> -q -p no:cacheprovider`, never a
+directory) or the project's equivalent. An import or collection error means a wrong environment, not a verdict:
+fix the interpreter or ask before folding or dropping.
 A claim that does not hold, or a failure that no longer reproduces, is dropped and reported. A test that cannot
 run here keeps the pasted output as its evidence; the summary says so.
 
