@@ -20,7 +20,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | Start a task in an isolated checkout | `harness`: `d-w` | A detached-HEAD worktree cut from HEAD, an integration branch, or another ref. | • Script resolves the base ref to a commit and creates a detached worktree.<br>• Failed integration-branch fetches stop creation; directory collisions get a fresh path. |
 | See where an agent-driven review stands | `pr-review-watch` | A review progress band, pending-fix context, reviewer matrix rows and a per-agent usage log (every review-agent dispatch), and a Stop guard for unrecorded escalated issues. | • `Stop` guard checks that escalated issues are recorded in the review.<br>• Usage rows come from engine measurements and must pass schema validation before append. |
 | Keep the current branch and working tree in view | `git-status` | A Git status line, with Git state checked on each prompt and changed state added as `GIT_STATE` context. | • Prompt hooks recheck Git state and inject changed state.<br>• Git context is reinjected after clear, resume, or main-conversation compaction. |
-| Carry working context through compaction | `session-bookmark` | Git state, recent prompts, and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state. |
+| Carry working context through compaction | `session-bookmark`, with `harness`: `add-bookmark` | Git state, recent prompts, your session notes (`/harness:add-bookmark <note>`, `--list`, `--clear`) and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, the stored notes, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state.<br>• Notes are stored by a script (at most 20 of 300 characters) through a Bash-only haiku agent. |
 | Keep a project's TODO catalog and its sync checks in view | `todo-watch` | The next TODO items and a live sync status line in a band above the prompt (kept until dismissed), a `TODO_SYNC` drift line in prompt context, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
 | Run targeted tests with the intended Python | `pytest-scope` | Optional rewriting of bare `pytest` to your chosen interpreter and rejection of runs without an explicit test file or node ID. | • When configured, Bash hooks rewrite recognized pytest commands to the selected Python.<br>• Scope hooks reject broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override. |
 
@@ -96,6 +96,7 @@ After configuring your project below, open Claude Code in that repository and in
 /harness:c-msg
 /harness:pr-sum 123
 /harness:d-w HEAD
+/harness:add-bookmark keep the public API frozen until PR 60 merges
 ```
 
 Replace `123` with your PR number. `pr-review` carries findings into fixes and closeout, so use it when you

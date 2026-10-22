@@ -11,6 +11,7 @@ import {
   MAX_STATUS_LINES,
   NO_BOOKMARK_TEXT,
 } from './bookmark'
+import { DEFAULT_STATE_DIR, NOTES_PATH, NOTES_SCHEMA_VERSION } from './notes'
 
 const ROOT = '/repo'
 const NOW_MS = 1_800_000_000_000
@@ -35,6 +36,18 @@ const HISTORY: SessionMessage[] = [
   user('fourth ask'),
 ]
 
+/**
+ * A path as the mocked files key it: forward slashes, drive and host prefix dropped, lower case. On Windows the
+ * engine resolves a drive-less path (`/repo`) onto the current drive, so a read arrives as `E:\repo\...`.
+ */
+const keyOf = (p: string): string =>
+  p.replace(/\\/g, '/').replace(/^(?:[^]*?\/)?[A-Za-z]:(?=\/|$)/, '').toLowerCase()
+
+const NOTES_FILE =`${ROOT}/${DEFAULT_STATE_DIR}/${NOTES_PATH}`
+
+const notesJson = (texts: string[]): string =>
+  JSON.stringify({ version: NOTES_SCHEMA_VERSION, notes: texts.map(text => ({ added: '2026-10-22T00:00:00Z', text })) })
+
 const bookmark = (over: Partial<Bookmark> = {}): Bookmark => ({
   savedAt: NOW_MS,
   trigger: 'manual',
@@ -43,6 +56,7 @@ const bookmark = (over: Partial<Bookmark> = {}): Bookmark => ({
   log: 'abc1234 Fix it',
   status: ' M a.py',
   lastMessages: ['do the thing'],
+  notes: [],
   instructions: null,
   ...over,
 })
@@ -69,8 +83,11 @@ type World = {
   clockFails?: boolean
   /** Extra fields core's compaction answers with. */
   core?: { tokensBefore?: number; tokensAfter?: number }
+  /** Files `$.fs.read` answers with, by path; any other read is refused. */
+  files?: Record<string, string>
 }
 type Seen = {
+  reads: string[]
   runs: (readonly string[])[]
   inits: (ProcessRunInit | undefined)[]
   state: Map<string, unknown>
@@ -90,7 +107,8 @@ const GIT_OUT: Record<string, string> = {
 }
 
 /** Git's answer to one command in a folder it treats as a repository. */
-const gitAnswer = (w: World, args: string): ProcessRunResult => {
+const gitAnswer = (w: World, root: string, args: string): ProcessRunResult => {
+  if (args === 'rev-parse --show-toplevel') return ran(`${root}\n`)
   if (w.unborn && (args === 'rev-parse --abbrev-ref HEAD' || args.startsWith('log'))) return ran('', 128)
   if (args === 'status --porcelain' && w.status !== undefined) return ran(w.status)
   return ran(GIT_OUT[args] ?? '')
@@ -98,8 +116,14 @@ const gitAnswer = (w: World, args: string): ProcessRunResult => {
 
 /** Answers env, cwd, git, state writes and core's compaction from memory. */
 const world = (on: On, w: World = {}): Seen => {
-  const seen: Seen = { runs: [], inits: [], state: new Map(), commands: [] }
+  const seen: Seen = { reads: [], runs: [], inits: [], state: new Map(), commands: [] }
   mock.env(on, w.env ?? { CLAUDE_PROJECT_DIR: ROOT })
+  const files = new Map(Object.entries(w.files ?? {}).map(([path, text]) => [keyOf(path), text]))
+  on('fs.read', (_$, e) => {
+    seen.reads.push(e.path)
+    const text = files.get(keyOf(e.path))
+    return text === undefined ? { deny: 'ENOENT' } : { value: text }
+  })
   if (w.clockFails) on('clock.now', () => ({ deny: 'no clock' }))
   else mock.clock(on, { now: NOW_MS })
   on('session.cwd', () => ({ value: w.cwd ?? '' }))
@@ -116,7 +140,7 @@ const world = (on: On, w: World = {}): Seen => {
     if (git === 'missing') return { deny: 'spawn git ENOENT' }
     if (git !== 'ok') return { value: ran('', git.exitCode) }
     if (!(w.repos ?? [ROOT]).includes(e.argv[2] ?? '')) return { value: ran('', 128) }
-    return { value: gitAnswer(w, e.argv.slice(3).join(' ')) }
+    return { value: gitAnswer(w, e.argv[2] ?? '', e.argv.slice(3).join(' ')) }
   })
   on('command.register', (_$, e) => {
     seen.commands.push(e.name)
@@ -191,6 +215,19 @@ describe('formatBookmark', () => {
     expect(formatBookmark(bookmark({ instructions: 'keep the plan' }))).toContain('keep the plan')
   })
 
+  test('session notes are listed before the compaction instructions', async () => {
+    const text = formatBookmark(bookmark({ notes: ['keep the API frozen', 'no new deps'], instructions: 'focus on X' }))
+    expect(text).toContain('## Session Notes')
+    expect(text).toContain('1. keep the API frozen')
+    expect(text).toContain('2. no new deps')
+    expect(text.indexOf('## Last User Messages')).toBeLessThan(text.indexOf('## Session Notes'))
+    expect(text.indexOf('## Session Notes')).toBeLessThan(text.indexOf('## Compaction Instructions'))
+  })
+
+  test('no notes, no notes section', async () => {
+    expect(formatBookmark(bookmark())).not.toContain('Session Notes')
+  })
+
   test('long instructions are cut at MAX_MESSAGE_CHARS', async () => {
     const text = formatBookmark(bookmark({ instructions: 'y'.repeat(MAX_MESSAGE_CHARS + 10) }))
     expect(text).toContain(`${'y'.repeat(MAX_MESSAGE_CHARS)}\n...(truncated)`)
@@ -219,6 +256,7 @@ describe('session.compact bookmark', () => {
       log: 'abc1234 Fix it\ndef5678 Add it',
       status: ' M a.py\n?? b.py',
       lastMessages: ['second ask', 'third ask', 'fourth ask'],
+      notes: [],
       instructions: 'focus on X',
     })
   })
@@ -369,6 +407,58 @@ describe('session.compact bookmark', () => {
     const seen = world(on, { env: {}, cwd: ROOT })
     await $.session.compact({ trigger: 'manual', messages: HISTORY })
     expect(saved(seen)?.root).toBe(ROOT)
+  })
+
+  test('notes stored under the default state dir enter the bookmark', async ($, on) => {
+    const seen = world(on, { files: { [NOTES_FILE]: notesJson(['keep the API frozen', 'no new deps']) } })
+    const out = await $.session.compact({ trigger: 'manual', messages: HISTORY, instructions: 'focus on X' })
+    expect(saved(seen)?.notes).toEqual(['keep the API frozen', 'no new deps'])
+    expect(lastText(out)).toContain('1. keep the API frozen')
+    expect(lastText(out).indexOf('Session Notes')).toBeLessThan(lastText(out).indexOf('Compaction Instructions'))
+  })
+
+  test('state_dir from the project harness.json locates the notes', async ($, on) => {
+    const files = {
+      [`${ROOT}/.claude/harness.json`]: JSON.stringify({ state_dir: 'var/state' }),
+      [`${ROOT}/var/state/${NOTES_PATH}`]: notesJson(['from the configured dir']),
+      [NOTES_FILE]: notesJson(['from the default dir']),
+    }
+    const seen = world(on, { files })
+    await $.session.compact({ trigger: 'manual', messages: HISTORY })
+    expect(saved(seen)?.notes).toEqual(['from the configured dir'])
+  })
+
+  test('notes are read from the git top level, so a worktree reads its own', async ($, on) => {
+    const wt = '/wt/feature'
+    const seen = world(on, { cwd: wt, repos: [ROOT, wt], files: { [`${wt}/.claude/state/harness/${NOTES_PATH}`]: notesJson(['wt note']) } })
+    await $.session.compact({ trigger: 'manual', messages: HISTORY })
+    expect(saved(seen)?.notes).toEqual(['wt note'])
+  })
+
+  const NO_NOTES: Array<[string, Record<string, string>]> = [
+    ['no notes file', {}],
+    ['a malformed notes file', { [NOTES_FILE]: '{not json' }],
+    ['a notes file of another version', { [NOTES_FILE]: '{"version":2,"notes":[{"text":"x"}]}' }],
+  ]
+  for (const [name, files] of NO_NOTES) {
+    test(`${name}: the bookmark has no notes section`, async ($, on) => {
+      const seen = world(on, { files })
+      const out = await $.session.compact({ trigger: 'manual', messages: HISTORY })
+      expect(saved(seen)?.notes).toEqual([])
+      expect(lastText(out)).not.toContain('Session Notes')
+    })
+  }
+
+  test('without git the notes are read from the root candidates', async ($, on) => {
+    const seen = world(on, { git: 'missing', files: { [NOTES_FILE]: notesJson(['no git note']) } })
+    await $.session.compact({ trigger: 'manual', messages: HISTORY })
+    expect(saved(seen)?.notes).toEqual(['no git note'])
+  })
+
+  test('a precompute reads no notes', async ($, on) => {
+    const seen = world(on, { files: { [NOTES_FILE]: notesJson(['x']) } })
+    await $.session.compact({ trigger: 'precompute', messages: HISTORY })
+    expect(seen.reads).toEqual([])
   })
 
   test('a second compaction skips the first bookmark; the summary can fill a prompt slot', async ($, on) => {

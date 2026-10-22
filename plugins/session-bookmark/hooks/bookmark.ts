@@ -8,6 +8,7 @@ import type {
 import { atom, read, update } from 'claude-code'
 
 import type { Bookmark } from '../types'
+import { notesFileOf, parseNotes, stateDirOf } from './notes'
 
 /**
  * Compaction bookmark kept in `$.state` instead of a bookmark file.
@@ -81,6 +82,14 @@ const messageLines = (messages: readonly string[]): string[] => {
   return messages.flatMap((m, i) => [`### Message ${i + 1}`, '', ...fence(truncate(m))])
 }
 
+/** The session notes' lines: one numbered line per note. */
+const noteLines = (notes: readonly string[]): string[] => [
+  '## Session Notes',
+  '',
+  ...notes.map((n, i) => `${i + 1}. ${n}`),
+  '',
+]
+
 /** The bookmark as the message the model reads after the compaction. */
 export const formatBookmark = (b: Bookmark): string => {
   const lines = [
@@ -101,6 +110,7 @@ export const formatBookmark = (b: Bookmark): string => {
     '',
     ...messageLines(b.lastMessages),
   ]
+  if (b.notes.length > 0) lines.push(...noteLines(b.notes))
   if (b.instructions !== null) lines.push('## Compaction Instructions', '', ...fence(truncate(b.instructions)))
   return lines.join('\n').trimEnd()
 }
@@ -132,6 +142,9 @@ type GitFields = Pick<Bookmark, 'root' | 'branch' | 'log' | 'status'>
 
 const NO_GIT: GitFields = { root: null, branch: null, log: null, status: null }
 
+/** What git answered, and the repository's top level (where the project's notes live); null without a repository. */
+type GitCapture = { git: GitFields; top: string | null }
+
 /** The checked-out branch; in a repository with no commits, HEAD's symbolic name. Null when neither answers. */
 const gitBranch = async ($: Dollar, root: string): Promise<string | null> =>
   (await gitText($, root, ['rev-parse', '--abbrev-ref', 'HEAD'])) ??
@@ -141,17 +154,40 @@ const gitBranch = async ($: Dollar, root: string): Promise<string | null> =>
  * Branch, recent commits and capped porcelain status from the first candidate that is a repository; all
  * null when none is. Never throws.
  */
-const captureGit = async ($: Dollar): Promise<GitFields> => {
+const captureGit = async ($: Dollar): Promise<GitCapture> => {
   for (const root of await rootCandidates($)) {
-    if ((await gitText($, root, ['rev-parse', '--show-toplevel'])) === null) continue
+    const top = await gitText($, root, ['rev-parse', '--show-toplevel'])
+    if (top === null) continue
     const [branch, log, status] = await Promise.all([
       gitBranch($, root),
       gitText($, root, ['log', '--oneline', '-5']),
       gitText($, root, ['status', '--porcelain']),
     ])
-    return { root, branch, log, status: status === null ? null : capStatus(status) }
+    return { git: { root, branch, log, status: status === null ? null : capStatus(status) }, top }
   }
-  return NO_GIT
+  return { git: NO_GIT, top: null }
+}
+
+/** The notes of the first root that holds a notes file: `<state_dir>/session-bookmark/notes.json`. Never throws. */
+const captureNotes = async ($: Dollar, top: string | null): Promise<string[]> => {
+  try {
+    for (const root of top === null ? await rootCandidates($) : [top]) {
+      const config = await $.fs.read(`${root.replace(/\\/g, '/')}/.claude/harness.json`).catch(() => undefined)
+      const text = await $.fs.read(notesFileOf(root, stateDirOf(config))).catch(() => undefined)
+      if (typeof text === 'string') return parseNotes(text)
+    }
+  } catch {
+    // a notes failure leaves the bookmark without notes
+  }
+  return []
+}
+
+type Capture = { git: GitFields; notes: string[] }
+
+/** Git state and session notes, read before the compaction answers. Never throws. */
+const capture = async ($: Dollar): Promise<Capture> => {
+  const { git, top } = await captureGit($)
+  return { git, notes: await captureNotes($, top) }
 }
 
 /** Builds and stores the bookmark, and returns the result with the bookmark message appended. */
@@ -159,7 +195,7 @@ const bookmarkResult = async (
   $: Dollar,
   e: SessionCompactInput,
   trigger: Bookmark['trigger'],
-  git: GitFields,
+  { git, notes }: Capture,
   result: SessionCompactResult & { skip?: undefined },
 ): Promise<SessionCompactResult> => {
   const b: Bookmark = {
@@ -167,6 +203,7 @@ const bookmarkResult = async (
     trigger,
     ...git,
     lastMessages: lastUserTexts(e.messages),
+    notes,
     instructions: e.instructions?.trim() || null,
   }
   await update($, bookmarkState, () => b).catch(() => undefined)
@@ -181,12 +218,12 @@ const bookmarkResult = async (
 export const registerBookmark = (on: Parameters<Register>[0]): void => {
   on('session.compact', INSTALLING, async ($, e, next) => {
     if (e.agentId !== undefined) return next(e)
-    // git overlaps the summarizer; when core reuses a precomputed summary, git's own timeouts are the wait
-    const git = captureGit($)
+    // git and the notes overlap the summarizer; when core reuses a precomputed summary, git's own timeouts are the wait
+    const captured = capture($)
     const result = await next(e)
     if (result.skip !== undefined) return result
     try {
-      return await bookmarkResult($, e, e.trigger, await git, result)
+      return await bookmarkResult($, e, e.trigger, await captured, result)
     } catch {
       return result
     }

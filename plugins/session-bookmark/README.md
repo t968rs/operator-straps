@@ -15,6 +15,12 @@ no other mod.
 - The same bookmark is appended to the compacted conversation as its last message, opening with
   `POST-COMPACT BOOKMARK (session-bookmark)`. The model reads it on the next request, so a mid-turn
   auto-compaction is covered too, and a resumed transcript already holds it.
+- Notes added with the `harness:add-bookmark` skill print in a `## Session Notes` section, after the last
+  user messages and before the `/compact` instructions. They are read at each compaction from
+  `<state_dir>/session-bookmark/notes.json` under the git top level of the session folder (`CLAUDE_PROJECT_DIR`
+  and the cwd when neither is a repository), `state_dir` coming from `.claude/harness.json` (default
+  `.claude/state/harness`). The newest 20 notes are kept, each cut at 300 characters. An absent, malformed or
+  other-version file means no notes section; a note stays until `/harness:add-bookmark --clear`.
 - Git is read from the session cwd when it is a repository (a worktree the session moved into), else
   from `CLAUDE_PROJECT_DIR`. Git runs beside the summarizer (`GIT_OPTIONAL_LOCKS=0`, 5 s timeout per
   command); when core reuses a precomputed summary, the git calls are the compaction's only wait. A
@@ -34,7 +40,7 @@ no other mod.
 
 | Key | Type | Meaning |
 |-----|------|---------|
-| `bookmark` | `Bookmark \| null` | Latest compaction bookmark: time, trigger, root, branch, log, status, last prompts, instructions. |
+| `bookmark` | `Bookmark \| null` | Latest compaction bookmark: time, trigger, root, branch, log, status, last prompts, notes, instructions. |
 
 ## Known limitations
 
@@ -44,6 +50,8 @@ no other mod.
   offset.
 - A previous compaction's summary is a user message, so it can appear among the "last user messages"
   when fewer than three prompts followed it.
+- The notes file is per project folder, not per session: two sessions in one repository share their notes, and
+  a note nobody clears reaches the next session's bookmark. A linked worktree reads its own file.
 - A session without this mod loaded gets no bookmark at all. Where the mod is enabled in project
   settings, a folder whose workspace trust was never accepted, including a `claude -p` run there,
   ignores those settings and compacts with no bookmark.
