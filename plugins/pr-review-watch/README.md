@@ -43,7 +43,7 @@ without `config.ts` following.
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
 | R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (pr-review-watch auto)`. |
 | R6 | Bubbled issues are dispositioned in the review JSON before stopping | Two triggers, each blocking once (`stop_hook_active` lets the stop through). **State** (pr-team runs): every tracked bubbled id must appear in the run's review JSON `bubbles[]`, `bubble_up[]` or `post_review_resolutions[]` (the `id_handling.disposition_ids` rule). **Keyword** (any active review): when the last assistant message contains "bubble" (any case or inflection), the active review JSON's `bubbles[]` must be populated unless every issue is already dispositioned. |
-| R7 | Every returned review-agent dispatch gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch, written when the agent returns and validated against `pr_review_agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
+| R7 | Every returned dispatch of a defined agent gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per dispatch of any other agent the marketplace defines (`skill: standalone`, `role: other`). Written when the agent returns and validated against `pr_review_agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
 
 The keyword trigger checks the **active** review: the tracked run's PR (its review JSON no older than the
 run), or, with no tracked run, the PR of the first hot Phase 5 sentinel that blocks the stopping session.
@@ -60,8 +60,14 @@ keyword checks nothing. The band still lists every hot sentinel. The text comes 
 | pr-team orchestrator / fixer modes | `MODE=PLAN\|CONSOLIDATE\|CLOSEOUT`, `PR_NUMBER=`, `RUN_ID=`, `RUNTIME_DIR=` | `orchestrator_plan`, `orchestrator_consolidate`, `fixer_plan`, `closer` |
 | pr-team reviewers and fixers | `AGENT_ID:`, `AGENT_ROLE:`, `RUN_ID:` (`canonical_prompt_template.md`) | the plan's agent id |
 | pr-review reviewers and fixers | the same three lines plus `PR:` (rows printed by `pr_review.py capture` / `waves`) | the `AGENT_ID` |
+| any other defined agent | none | a run of its own, `standalone_<UTC stamp>_<seq>`, agent id the type's name without its plugin prefix (`harness:messenger` is `messenger`) |
 
-An `Agent` call without `RUN_ID` is ignored. A pr-team slot without `OUTPUT_FILE` is placed in
+An `Agent` call without `RUN_ID` is ignored unless its `subagent_type` is a defined agent (`DEFINED_AGENTS` in
+`hooks/contract.ts`: every file under a plugin's `agents/` folder, spelled `<plugin>:<name>`); a header that
+fails to identify a defined agent (an unknown role or `MODE`) also falls back to a standalone run. Built-in
+types (`Explore`, `general-purpose`, `Plan`) and other plugins' agents are never tracked. A standalone run
+feeds only the usage log: it has no PR, no phase, no band entry, no matrix row and no Stop check, and its
+state entry is dropped as soon as its usage row is attempted. A pr-team slot without `OUTPUT_FILE` is placed in
 `<state_dir>/pr-team/_runtime/<RUN_ID>`. Return blocks are parsed per the pr-team skill's
 `return_contract.md`: the last column-1 `---` fenced block that has a `SIGNAL:` line.
 
@@ -125,7 +131,9 @@ but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never r
 
 Each tracked dispatch that returns appends one row to `<agent_usage_path>`: who ran (`role`, `agent_id`,
 `subagent_type`, full `model` and its `model_family`, `unknown` when the id holds no family token), what it
-cost (`tokens`, `tool_uses`, `duration_s`) and its `signal`. A synchronous result is logged when it
+cost (`tokens`, `tool_uses`, `duration_s`) and its `signal`. A standalone dispatch writes the same fields:
+`skill: standalone`, `role: other`, `pr: null`, no count fields, and `signal: NO_BLOCK` for an agent that ends
+without a return block, as most do. A synchronous result is logged when it
 returns, a background agent when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
 second row. An errored result logs `signal: ERROR` with zero usage; a background turn with no usage logs
 `tokens: 0` (the tool calls the mod counted and the turn's duration still land) with `usage not measured` in
@@ -139,7 +147,7 @@ block's `FIXED` / `BUBBLED` / `EDITED`; pr-team fixers and the closer count from
 `issues_assigned` is null. Reviewers a restarted session rebuilds from disk write no usage row. The file
 follows the matrix's write rules: append-only, and a file that exists but cannot be read is never
 rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` and are toasted). The log
-takes one row (about 450 bytes) per agent of every role on every run, so it reaches the 4 MiB read limit
+takes one row (about 450 bytes) per defined-agent dispatch, so it reaches the 4 MiB read limit
 well before the matrix does; past it every row fails as unreadable. Move or archive the file when it nears
 4 MiB; the next row recreates it.
 
@@ -149,8 +157,8 @@ well before the matrix does; past it every row fails as unreadable. Move or arch
 
 | Key | Meaning |
 |-----|---------|
-| `runs` | Tracked runs by `RUN_ID`: skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (subagent type, background launch model, usage, signal, counts, matrix and usage row attempt times), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict. |
-| `active` | The run dispatched most recently. |
+| `runs` | Tracked runs by `RUN_ID` (a standalone run only while its agent is in flight): skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (subagent type, background launch model, usage, signal, counts, matrix and usage row attempt times), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict. |
+| `active` | The pr-review or pr-team run dispatched most recently; a standalone dispatch never becomes active. |
 | `loops` | Background subagent loop id to `[runId, agentId]`. |
 | `failures` | The last 20 rows that failed validation or could not be written. |
 | `phase5` | PR ids of hot Phase 5 sentinels. |
@@ -161,6 +169,8 @@ well before the matrix does; past it every row fails as unreadable. Move or arch
 - A pr-review run, or a pr-team run whose consolidation already logged, loses its tracker state when the
   process restarts. The band then shows only hot sentinels until the next dispatch.
 - A background subagent's tool calls made before its launch result registered are not counted.
+- A standalone row never says which skill or command dispatched the agent; only `subagent_type` and the
+  time identify it.
 - Workflow-run reviews are not tracked. Their agents raise `tool.call` and `turn.complete` with loop ids that
   no dispatch header names.
 - Appends are a read and a whole-file write, serialized within the session. Two sessions appending to the
@@ -182,7 +192,9 @@ tsc -p <tsconfig>   # the tsconfig in the header of the engine's claude-code.d.t
 `DISPATCH_SHAPES`, `DEV_COMMIT_PATTERN` and `MODEL_FAMILIES` to the harness plugin's
 `schemas/pr_review_invocation_test_matrix.schema.json`; `tests/mods/test_pr_review_watch_usage_contract.py`
 pins `USAGE_REQUIRED`, `USAGE_COUNT_FIELDS`, `USAGE_ROLES`, `USAGE_COUNTED_ROLES`, `USAGE_SKILLS`,
-`USAGE_MODEL_FAMILIES` and `LOGGED_AT_PATTERN` to `schemas/pr_review_agent_usage.schema.json`;
+`USAGE_MODEL_FAMILIES` and `LOGGED_AT_PATTERN` to `schemas/pr_review_agent_usage.schema.json`, and
+`DEFINED_AGENTS` to the agent files under `plugins/*/agents/` (a new agent file fails the test until the list
+follows);
 `tests/mods/test_pr_review_watch_config_mirror.py` pins the mirrored defaults. The plugin test sandbox
 cannot read repository files.
 

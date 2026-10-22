@@ -1,5 +1,5 @@
-/** Which skill dispatched a run. */
-export type Skill = 'pr-team' | 'pr-review'
+/** Which skill dispatched a run; `standalone` is a defined agent dispatched outside both skills. */
+export type Skill = 'pr-team' | 'pr-review' | 'standalone'
 
 /**
  * Where a run stands: from its latest dispatch or closeout, refined for pr-review by the `phase` its
@@ -14,7 +14,7 @@ export type Counts = { findings: number; critical: number; important: number; mi
 export type AgentRec = {
   /** Slot id from the dispatch plan, or `orchestrator_plan` / `orchestrator_consolidate` / `fixer_plan` / `closer`. */
   id: string
-  /** `reviewer`, `fixer`, `orchestrator`, `planner` or `closer`. */
+  /** `reviewer`, `fixer`, `orchestrator`, `planner`, `closer`, or `other` for a standalone agent. */
   role: string
   /** Model as requested or resolved; null when neither is known. */
   model: string | null
@@ -40,7 +40,10 @@ export type AgentRec = {
   launchModel: string | null
 }
 
-/** One pr-team or pr-review invocation, keyed by its RUN_ID. */
+/**
+ * One pr-team or pr-review invocation, keyed by its RUN_ID. A standalone dispatch is a run of one agent under a
+ * generated id, dropped once its usage row is attempted.
+ */
 export type Run = {
   runId: string
   skill: Skill
