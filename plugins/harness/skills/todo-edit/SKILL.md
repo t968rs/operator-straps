@@ -1,7 +1,7 @@
 ---
 name: todo-edit
 description: Use when asked to edit the project's TODO catalog structurally - retire finished items, split one item into parts, or refresh scores and ranks after hand edits. Triggers on "todo-edit", "retire TODO-003", "split TODO-001", "refresh the TODO ranking", "re-rank the TODO catalog". Hands the operation to the harness:todo-editor agent, which runs todo_sync.py and fixes the prose the script cannot.
-argument-hint: "--retire ID[, ID ...] | --split ID | --refresh  [guidance]"
+argument-hint: "--retire ID[, ID ...] [--delete-retired] | --split ID | --refresh  [guidance]"
 ---
 
 # todo-edit: retire, split or refresh TODO catalog items
@@ -21,9 +21,11 @@ that named a moved or removed id. The catalog never enters the main session's co
 | `--split` | exactly one | `--split 001 one part per module` | `opus` |
 | `--refresh` | none | `--refresh` | `haiku` |
 
-An id may be `TODO-007`, `007` or `7`; normalize each to `TODO-NNN`. When the operation is missing or unknown,
-`--split` names more than one id, `--retire` names none, or `--refresh` names any, print the `argument-hint`
-line above and stop.
+An id may be `TODO-007`, `007` or `7`; normalize each to `TODO-NNN`. `--delete-retired` is a flag of `--retire`
+alone: it lets the agent close out a research entry and delete its stub once every deliverable in the stub is
+proven implemented. When the operation is missing or unknown, `--split` names more than one id, `--retire` names
+none, `--refresh` names any, or `--delete-retired` appears without `--retire`, print the `argument-hint` line
+above and stop.
 
 The operation needs `todo.folder` in `.claude/harness.json`; the script reports `problem: <op> needs
 todo.folder` when it is unset, and the agent relays that.
@@ -36,6 +38,7 @@ TODO items"`. The prompt is this block with the placeholders filled:
 ```
 Operation: <retire | split | refresh>
 Ids: <TODO-NNN, ... or none>
+Delete retired: <yes | no>
 Project root: <absolute project root>
 Guidance: <the free text after the ids, or none>
 ```
@@ -43,5 +46,7 @@ Guidance: <the free text after the ids, or none>
 ## Step 3: report
 
 Relay the agent's reply as it stands. The edits are saved, not committed; the developer reviews the diff and
-commits. When the reply lists open items (a missing close-candidate evidence, a reference outside the catalog,
-a failed check), name them first.
+commits. For a retirement the reply answers three questions: the new state of each touched stub (`Stubs`), the
+research entries now fully resolved (`Resolved`), and the GitHub issues that can be closed, each with its reason
+(`Close`). When the reply lists open items (a missing close-candidate evidence, a reference outside the catalog,
+a stub kept for lack of proof, a failed check), name them first.
