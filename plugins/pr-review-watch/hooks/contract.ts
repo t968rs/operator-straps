@@ -115,6 +115,34 @@ const slotDispatch = (h: Header, runId: string, runtimeBase: string): Dispatch |
 }
 
 /**
+ * Every agent the marketplace defines, as Claude Code names the type: `<plugin>:<file stem>` for each file in a
+ * plugin's `agents` folder. `tests/mods/test_pr_review_watch_usage_contract.py` pins the list to those files.
+ */
+export const DEFINED_AGENTS = [
+  'harness:bookmark-noter', 'harness:messenger', 'harness:pr-fixer', 'harness:pr-reviewer',
+  'harness:pr-team-fixer', 'harness:pr-team-orchestrator', 'harness:roast-my-code', 'harness:todo-editor',
+] as const
+
+export const isDefinedAgent = (subagentType: string | undefined): boolean =>
+  (DEFINED_AGENTS as readonly (string | undefined)[]).includes(subagentType)
+
+/** `standalone_<UTC yyyymmddTHHMMSSZ>_<seq>`: one run per dispatch; `seq` tells same-second dispatches apart. */
+export const standaloneRunId = (now: number, seq: number): string =>
+  `standalone_${new Date(now).toISOString().replace(/\.\d+Z$/, 'Z').replace(/[-:]/g, '')}_${seq}`
+
+/**
+ * A defined agent dispatched outside any run header: its own run, its agent id the type's name after the
+ * plugin prefix, role `other`. Undefined for any other agent type.
+ */
+export const identifyStandalone = (subagentType: string | undefined, runId: string): Dispatch | undefined =>
+  subagentType === undefined || !isDefinedAgent(subagentType)
+    ? undefined
+    : {
+      runId, skill: 'standalone', agentId: subagentType.slice(subagentType.indexOf(':') + 1), role: 'other', pr: null,
+      runtimeDir: null, phase: 'done',
+    }
+
+/**
  * The tracked identity of an `Agent` call, or undefined for any other dispatch. `runtimeBase` is the
  * project's pr-team runtime folder, used when a pr-team slot names no OUTPUT_FILE.
  */

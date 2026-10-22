@@ -38,9 +38,18 @@ def _row(role: str = "reviewer", **extra) -> dict:
     return row
 
 
-@pytest.mark.parametrize("role", ["reviewer", "fixer", "orchestrator", "planner", "closer"])
+@pytest.mark.parametrize("role", ["reviewer", "fixer", "orchestrator", "planner", "closer", "other"])
 def test_every_role_validates(schema: dict, role: str) -> None:
     jsonschema.validate(_row(role), schema)
+
+
+def test_standalone_dispatch_validates(schema: dict) -> None:
+    row = _row(
+        "other", pr=None, skill="standalone", run_id="standalone_20261022T155329Z_1", agent_id="messenger",
+        subagent_type="harness:messenger", signal="NO_BLOCK",
+        notes="pr-review-watch auto row; other NO_BLOCK",
+    )
+    jsonschema.validate(row, schema)
 
 
 def test_null_pr_subagent_type_model_and_counts_validate(schema: dict) -> None:
@@ -61,6 +70,8 @@ def test_pr_team_skill_validates(schema: dict) -> None:
                  id="closer-row-without-counts"),
     pytest.param(_row("orchestrator", issues_fixed=1), id="count-field-on-an-orchestrator-row"),
     pytest.param(_row("planner", files_touched=0), id="count-field-on-a-planner-row"),
+    pytest.param(_row("other", issues_fixed=1), id="count-field-on-an-other-row"),
+    pytest.param(_row(skill="adhoc"), id="unknown-skill"),
     pytest.param(_row(model_family="fable"), id="unknown-family-token"),
     pytest.param(_row(tokens=-1), id="negative-tokens"),
     pytest.param(_row(cell="x"), id="unknown-key"),
