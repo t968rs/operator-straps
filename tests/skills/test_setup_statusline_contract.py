@@ -23,10 +23,12 @@ _STATUS_TS = _REPO / "plugins" / "git-status" / "hooks" / "status.ts"
 
 # ccstatusline 2.2.32 reads config schema version 4 (src/types/Settings.ts CURRENT_VERSION)
 _PINNED = "2.2.32"
+# the install command pins a patch range, ~2.2.32 (>=2.2.32 <2.3.0), so a new minor never changes the schema
+_RANGE = f"~{_PINNED}"
 _SCHEMA_VERSION = 4
 _WIDGETS = {
-    "separator", "git-branch", "git-ahead-behind", "git-staged-files", "git-unstaged-files",
-    "git-untracked-files", "git-clean-status",
+    "separator", "git-branch", "git-changes", "model", "thinking-effort", "context-length",
+    "context-percentage",
 }
 
 
@@ -57,11 +59,24 @@ def test_skill_reads_the_defaults_from_its_own_folder() -> None:
 
 
 def test_skill_and_readme_pin_one_version() -> None:
-    install = f"npm install -g ccstatusline@{_PINNED}"
+    install = f"npm install -g ccstatusline@{_RANGE}"
     assert install in _text(_SKILL)
     assert install in _text(_README)
-    found = set(re.findall(r"ccstatusline@(\d+\.\d+\.\d+)", _text(_SKILL) + _text(_README)))
+    found = set(re.findall(r"ccstatusline@~?(\d+\.\d+\.\d+)", _text(_SKILL) + _text(_README)))
     assert found == {_PINNED}
+
+
+def test_every_doc_that_sells_ccstatusline_names_the_install_command() -> None:
+    install = f"npm install -g ccstatusline@{_RANGE}"
+    for doc in (_REPO / "README.md", _PLUGIN / "README.md", _REPO / "plugins" / "git-status" / "README.md"):
+        assert install in _text(doc), doc.relative_to(_REPO).as_posix()
+
+
+def test_skill_offers_the_install_and_checks_npm_first() -> None:
+    skill = _text(_SKILL)
+    assert "AskUserQuestion" in skill
+    assert "npm --version" in skill
+    assert "never this skill" not in skill
 
 
 def test_defaults_are_the_pinned_schema() -> None:

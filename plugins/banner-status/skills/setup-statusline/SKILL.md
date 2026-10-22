@@ -7,7 +7,7 @@ argument-hint: "[--replace]"
 # setup-statusline: ccstatusline as the project's status line
 
 A plugin cannot ship a `statusLine` setting, so this skill writes it into the project. The result is one status
-line drawn by ccstatusline from a config file in the project, with each widget in its own color and no
+line drawn by ccstatusline from a config file in the project, with no
 engine-drawn prefix. The git-status mod notices the setting and clears its own line while ccstatusline is
 installed; without the install, the mod keeps drawing its line.
 
@@ -22,22 +22,36 @@ Arguments: `$ARGUMENTS` (`--replace`: replace an existing `statusLine` that does
 
 `<project>` is the repository's top level (`git rev-parse --show-toplevel`), written with forward slashes.
 Nothing is written to the user's home folder: ccstatusline reads the project's file through `--config`, so the
-user's own `~/.config/ccstatusline/settings.json` is left alone. `.claude/settings.json` is shared through the
+user's own `~/.config/ccstatusline/settings.json` is left alone. The one write outside the project is the
+optional global `npm install` of step 2, made only after the user says yes. `.claude/settings.json` is shared through the
 repository, so the change reaches everyone who checks it out; say so in the report.
 
 ## Steps
 
 1. **Find the project.** Run `git rev-parse --show-toplevel`; stop when it fails (not a repository).
-2. **Check the install.** Run `ccstatusline --version`. When it fails, print the install command below and
-   stop: the user runs it, never this skill.
+2. **Check the install.** Run `ccstatusline --version`. A version outside `~2.2.32` is fine to keep; mention
+   it in the report. When the command fails, ccstatusline is an optional dependency that is not installed:
+   offer to install it.
+
+   1. Run `npm --version`. When it fails, Node.js and npm are missing: say so, name
+      <https://nodejs.org/> and stop. Nothing below works without them.
+   2. Ask with `AskUserQuestion` (header `ccstatusline`), stating that the install is global (it writes to
+      npm's global prefix, outside the project) and runs `npm install -g ccstatusline@~2.2.32`:
+      - **Install now (Recommended):** run the command, then go to the check below.
+      - **I will install it myself:** print the command and stop.
+      - **Keep the current banner:** stop; mention the `band-line` mod as the option that needs no install.
+   3. After an install, run `ccstatusline --version` again. When it still fails, npm's global bin folder is
+      not on this session's `PATH`: print `npm prefix -g`, tell the user to put that folder on `PATH` and
+      restart, and stop.
 
    ```
-   npm install -g ccstatusline@2.2.32
+   npm install -g ccstatusline@~2.2.32
    ```
 
-   The pinned global install runs the binary directly on every repaint and changes only when the user
-   upgrades; `npx -y ccstatusline@latest` would resolve the package on every repaint and pick up each new
-   release unasked. A version other than 2.2.32 is fine to keep; mention it in the report.
+   `~2.2.32` takes 2.2.32 or a later 2.2.x, never a new minor that could change the config schema the defaults
+   use; npm resolves it once, at install time. The global install then runs the binary directly on every
+   repaint and changes only when the user upgrades; `npx -y ccstatusline@latest` would resolve the package on
+   every repaint and pick up each new release unasked.
 3. **Read the current setting.** Read `<project>/.claude/settings.json` when it exists.
    - A `statusLine` whose `command` already runs ccstatusline: go on (the run repairs it).
    - Any other `statusLine`: show it and stop, unless the arguments hold `--replace`.

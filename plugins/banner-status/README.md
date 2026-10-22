@@ -4,7 +4,7 @@ Where the project's banner options live. The git state can show in one of three 
 
 | Option | How | Looks like |
 |---|---|---|
-| **ccstatusline status line** (preferred) | this plugin's `/banner-status:setup-statusline` | `⎇ main · ↑0↓0 · +2 · ~3 · ?1 · ✗`, each widget in its own color, no prefix |
+| **ccstatusline status line** (preferred; needs Node.js and npm) | this plugin's `/banner-status:setup-statusline` | `⎇ main (+38,-15)` over `Opus 5.5 \| Thinking: high \| Ctx: 110.0k - 55%`, no prefix |
 | **oStraps band** above the prompt | enable the `band-line` mod | `oStraps: ⎇ main · +2 ~3 ?1 · (R,L):0,0 \| [Opus 5.5] · ctx:110k 11%` |
 | **git-status's own line** (fallback) | `git-status` alone | `⚠ git-status: ⎇ main · +2 ~3 ?1 -- commits(R,L):0,0` (the engine adds the glyph, the name and the color) |
 
@@ -22,10 +22,19 @@ approved by the user:
 | `.claude/settings.json` | `"statusLine": {"type": "command", "command": "ccstatusline --config <project>/.claude/ccstatusline.json", "padding": 0}` |
 | `.claude/ccstatusline.json` | ccstatusline's config, from `skills/setup-statusline/ccstatusline.defaults.json`; kept when present |
 
-- **Install first:** `npm install -g ccstatusline@2.2.32` (run by the user). The skill checks
-  `ccstatusline --version` and stops with that command when it fails.
-- **Pinned global, not `npx`:** the installed binary runs directly on every repaint and changes only on an
-  upgrade; `npx -y ccstatusline@latest` resolves the package on every repaint and takes each release unasked.
+- **Optional dependency, not bundled:** installing this plugin does not install ccstatusline, and nothing
+  changes on screen until the skill has run. It needs Node.js and npm and one global install,
+  `npm install -g ccstatusline@~2.2.32`, which writes to npm's global prefix outside the project. The skill
+  checks `ccstatusline --version` and `npm --version`; when ccstatusline is missing it asks whether to run the
+  install now, leave it to the user, or keep the current banner. The install runs only after a yes.
+- **`PATH`:** the global bin folder (`npm prefix -g`) must be on the `PATH` of the shell that starts Claude
+  Code. With a per-environment npm (conda, nvm) an install made in one environment is invisible from another;
+  the skill re-checks after installing and says so when the command still does not resolve.
+- **Patch-pinned global, not `npx`:** `~2.2.32` means 2.2.32 or a later 2.2.x, never 2.3 (the range is
+  resolved once, at install time, so a new minor cannot change the config schema the defaults use). The
+  installed binary then runs directly on every repaint and changes only on an upgrade; `npx -y
+  ccstatusline@latest` resolves the package on every repaint and takes each release unasked. The `~` form
+  pastes cleanly into PowerShell, cmd and sh; `^` is cmd's escape character.
 - **Existing `statusLine`:** one that does not run ccstatusline is shown and kept unless the skill is run with
   `--replace`.
 - **Shared:** `.claude/settings.json` is committed, so the setting reaches every checkout. A checkout without
@@ -36,16 +45,16 @@ approved by the user:
 
 ## Defaults
 
-`ccstatusline.defaults.json` is ccstatusline's config schema version 4 (ccstatusline 2.2.32), one line:
+`ccstatusline.defaults.json` is ccstatusline's config schema version 4 (ccstatusline 2.2.32), two lines:
 
-| Widget | Color | Shows |
-|---|---|---|
-| `git-branch` | magenta | `⎇ <branch>` |
-| `git-ahead-behind` | cyan | `↑ahead↓behind`, `↑0↓0` when in sync, `(no upstream)` |
-| `git-staged-files` | green | `+<n>`, hidden at 0 |
-| `git-unstaged-files` | blue | `~<n>`, hidden at 0 |
-| `git-untracked-files` | red | `?<n>`, hidden at 0 |
-| `git-clean-status` | green | `✓` clean, `✗` dirty |
+| Line | Widget | Color | Shows |
+|---|---|---|---|
+| 1 | `git-branch` | magenta | `⎇ <branch>` |
+| 1 | `git-changes` | yellow | `(+<inserted>,-<deleted>)` lines of uncommitted change |
+| 2 | `model` | default | the model's display name, `Opus 5.5` |
+| 2 | `thinking-effort` | default | `Thinking: <level>` |
+| 2 | `context-length` | default | `Ctx: <tokens>`, `Ctx: 110.0k` |
+| 2 | `context-percentage` | default | the context window used, whole percent |
 
 Git results are cached for 5 s (`gitCacheTtlSeconds`). Edit the project file with
 `ccstatusline --config <project>/.claude/ccstatusline.json` in a terminal (its editor opens when no input is
