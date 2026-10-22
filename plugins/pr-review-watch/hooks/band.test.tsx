@@ -85,6 +85,23 @@ describe('band', () => {
     await ui.unmount()
   })
 
+  test('another mod\'s band beneath is kept, not replaced', async ($, on) => {
+    // registered ahead of core's stand-in band, which answers for whatever is beneath it
+    on('ui.render', { component: 'AbovePrompt' }, ($$, e) => {
+      const { Box, Text } = $$.ui.resolve(e)
+      return <Box><Text>oStraps: ⎇ dev · clean</Text></Box>
+    })
+    world(on, { '.phase5_pending_1400': `1400\n${NOW / 1000 - 60}\n` })
+    await $.tool.call({
+      tool: 'Agent', description: 'r', subagent_type: 'x', prompt: `AGENT_ID: r1\nAGENT_ROLE: reviewer\nRUN_ID: ${RUN}`,
+    })
+    const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface: 'terminal', ...BAND })
+    expect((await ui.findAll({ type: 'Text' })).map(t => t.text)).toEqual([
+      'PR #1526 · reviewers 0/1 | PR #1400 · Phase 5 pending', 'oStraps: ⎇ dev · clean',
+    ])
+    await ui.unmount()
+  })
+
   test('pr-review consolidating: the plan.json phase replaces the reviewer count', async ($, on) => {
     const dir = `/repo/docs/_scratch/pr_review/1526/${RUN}`
     world(on, {}, {

@@ -79,6 +79,12 @@ const ran = (stdout: string, exitCode = 0): ProcessRunResult => ({
   exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false,
 })
 
+/** Whether two paths name one file once the engine resolved them: separators and a Windows drive ignored. */
+const samePath = (a: string, b: string): boolean => {
+  const norm = (p: string): string => p.replace(/\\/g, '/').replace(/^[A-Za-z]:/, '')
+  return norm(a) === norm(b)
+}
+
 /** git's answer to `rev-parse --show-toplevel` from `start`. */
 const toplevelAnswer = (w: World, start: string): ProcessRunResult => {
   const git = w.git ?? { stdout: '' }
@@ -128,7 +134,7 @@ const world = (on: On, w: World = {}): Seen => {
   })
   on('fs.exists', (_$, e) => {
     seen.probes.push(e.path)
-    return { value: (w.files ?? []).includes(e.path) }
+    return { value: (w.files ?? []).some(f => samePath(f, e.path)) }
   })
   on('process.run', async (_$, e) => {
     if (w.git === 'missing') return { deny: 'spawn git ENOENT' }
@@ -730,7 +736,6 @@ describe('the mod line gives way to ccstatusline', () => {
       files: [`${NPM_DIR}/ccstatusline`],
     })
     const out = await $.prompt.submit(submit)
-    expect({ probes: seen.probes, read: await $.settings.read({ key: 'statusLine' }), path: await $.env.get('PATH') }).toEqual({})
     expect(out.context).toEqual([CLEAN_CONTEXT])
     expect(seen.statuses).toEqual([undefined])
   })

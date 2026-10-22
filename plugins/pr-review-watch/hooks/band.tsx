@@ -3,7 +3,10 @@ import { atom, read } from 'claude-code'
 
 import { bandText } from './runs'
 
-/** The row above the prompt: the active review run and hot Phase 5 sentinels. Reads state only. */
+/**
+ * The row above the prompt: the active review run and hot Phase 5 sentinels. Reads state only. It wraps what
+ * the hooks beneath drew, so another mod's band (band-line's oStraps banner) stays on screen with it.
+ */
 
 const runsAtom = atom({ plugin: 'pr-review-watch', key: 'runs' } as const, {})
 const activeAtom = atom({ plugin: 'pr-review-watch', key: 'active' } as const, null)
@@ -19,12 +22,14 @@ export const registerBand = (on: On): void => {
     const run = id === null ? null : (runs[id] ?? null)
     const text = bandText({ run, phase5: await read($, phase5Atom), missing })
     if (text === undefined) return next(e)
+    const below = await next(e).catch(() => undefined)
     const { Box, Text } = $.ui.resolve(e)
     return (
-      <Box>
+      <Box flexDirection="column">
         <Text color={missing.length > 0 ? 'warning' : 'subtle'}>
           {text}
         </Text>
+        {below}
       </Box>
     )
   })

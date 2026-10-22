@@ -23,7 +23,17 @@
     {
       "name": "git-status",
       "source": "./plugins/git-status",
-      "description": "Git status line and per-prompt GIT_STATE context"
+      "description": "Git snapshot, per-prompt GIT_STATE context and a fallback git status line that gives way to ccstatusline or band-line"
+    },
+    {
+      "name": "banner-status",
+      "source": "./plugins/banner-status",
+      "description": "Banner options: /setup-statusline makes ccstatusline the project's status line (git branch, ahead/behind, working-tree counts in their own colors)"
+    },
+    {
+      "name": "band-line",
+      "source": "./plugins/band-line",
+      "description": "oStraps banner in a band above the prompt (git-status's git state, model, context window); clears git-status's own status line"
     },
     {
       "name": "pytest-scope",

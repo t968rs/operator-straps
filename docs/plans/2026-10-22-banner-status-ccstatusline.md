@@ -1,6 +1,7 @@
 # banner-status: ccstatusline as the primary status line
 
-Status: design draft, nothing built. Origin: issues #57 (banner counts) and #58 (host-drawn prefix), follow-up
+Status: built on `1063-banner-branding`; see "As built" at the end for where the build departs from the
+draft below. Origin: issues #57 (banner counts) and #58 (host-drawn prefix), follow-up
 framework comment on #57. Source reads: sirmalloc/ccstatusline `main` (`src/types/Settings.ts`,
 `src/types/Widget.ts`, `src/utils/config.ts`, `src/ccstatusline.ts`, `src/widgets/GitAheadBehind.ts`,
 `src/widgets/CustomCommand.tsx`, `configTemplates/official-cc.json`) and the engine type declarations.
@@ -13,6 +14,7 @@ framework comment on #57. Source reads: sirmalloc/ccstatusline `main` (`src/type
 | 2 | **New plugin `banner-status`** is the home for banner options: the setup skill, the ccstatusline defaults template and the docs. The `git-status` mod keeps its own line as the fallback. |
 | 3 | **Project scope only.** The skill writes `<project>/.claude/settings.json` (`statusLine`) and `<project>/.claude/ccstatusline.json` (defaults). No `settings.local.json`, no user-level write. The agent running the skill makes the edits; the user approves the permission prompts. |
 | 4 | **Pinned global install** of ccstatusline, not `npx -y ccstatusline@latest` (see below). |
+| 5 | **The band stays an option.** The `oStraps:` band from `174dac4` (branch `1062-banner-branding`, #62) moves into its own mod, `band-line`, rather than replacing git-status's line; ccstatusline remains the preferred option. |
 
 ## Verified facts
 
@@ -66,9 +68,28 @@ install command (run by the user, not the skill) when it is absent.
 - Plugin (`tests/`): contract tests for the new plugin (manifest valid under `claude plugin validate --strict`, skill command paths use `${CLAUDE_SKILL_DIR}`), and a check that `defaults.json` parses and holds the widget types the README names.
 - Live, by the developer: glyph and prefix absent, colors honored, Windows quoting of the `--config` path, repaint cost with the pinned install.
 
-## Open questions
+## Open questions (resolved in the build unless marked)
 
-1. `$.settings.read({ key: 'statusLine' })`: confirm it returns the merged value for this key in the installed engine.
-2. Which pinned ccstatusline version the skill and template name; the template's `version: 4` must match it.
-3. Whether the `git-status` mod's check for the binary (`ccstatusline --version` per refresh) is too costly; cache it for the module's life if so.
-4. Project-scope `statusLine` is committed and shared. Confirm that is wanted for this repo, or have the skill leave a note that `.claude/settings.json` is the shared file.
+1. `$.settings.read({ key: 'statusLine' })`: the engine types take any key string; covered by mod tests with a
+   mocked read. **Open:** confirm against a live session.
+2. Pinned version: `ccstatusline@2.2.32`, whose `CURRENT_VERSION` is 4 (`src/types/Settings.ts` at tag `v2.2.32`).
+3. Binary check: no process run. `$.process.run` spawns without a shell, so a Windows npm shim (`.cmd`) would
+   not start; the mod looks for the executable file under `PATH` with `$.fs.exists` and keeps the answer per
+   executable and `PATH`.
+4. Shared `statusLine`: kept project scope (decision 3); the skill's report says the file is shared.
+
+## As built
+
+| Area | Draft | Built |
+|---|---|---|
+| Choice of banner | ccstatusline, else git-status's line | three options: ccstatusline (preferred), `band-line` band, git-status's line (fallback) |
+| git-status gives way to ccstatusline | `ccstatusline --version` per refresh | `delegateExecutable` + `executableCandidates` (`plugins/git-status/hooks/status.ts`): the `statusLine` command's first word, found as a file under `PATH` (`.cmd`, `.exe` tried); `npx`/`bunx` forms count |
+| git-status gives way to the band | n/a | `band-line` hooks `ui.status` and clears the line when `next.origin.plugin` is git-status; not unit-testable (the test engine has no `ui.status`), live check |
+| band-line | n/a | `plugins/band-line`: `174dac4`'s band and session figures; reads `git-status.git` (another plugin's state, read-only; `dependencies: ["git-status"]` types it) |
+| pr-review-watch | unchanged | `174dac4`'s change: its band wraps what the hooks beneath drew, so both bands show (0.4.0; only `174dac4`'s hunks, not `2789881` beneath it) |
+| `statusLine` command | `... "refreshInterval": 10` | `{"type": "command", "command": "ccstatusline --config <project>/.claude/ccstatusline.json", "padding": 0}`; the absolute path keeps ccstatusline from writing a stray defaults file when run from another folder |
+| Defaults file | `defaults.json` | `ccstatusline.defaults.json`: branch, ahead/behind (zero shown), `+`/`~`/`?` file counts (labels via `metadata.label`, zero hidden), clean status; rendered by ccstatusline 2.2.32 with no config warning |
+| Contract test | `tests/` contract | `tests/skills/test_setup_statusline_contract.py` |
+
+Live checks left for the developer: the band-line `ui.status` suppression, `$.settings.read` of `statusLine`,
+the ccstatusline line under the prompt (no glyph or prefix, colors honored), and the Windows `--config` path.

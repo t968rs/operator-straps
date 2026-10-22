@@ -26,6 +26,20 @@ GIT_STATE BRANCH=feature/x UPSTREAM=origin/feature/x AHEAD=2 BEHIND=1 STAGED=3 U
 After `/clear`, a resume or a compaction of the main conversation, the next prompt gets the line again even
 when unchanged.
 
+## When another banner draws the git state
+
+The status line is the fallback banner (the engine draws it as `⚠ git-status: <line>`, in its own color). It
+gives way to the other banner options (`plugins/banner-status/README.md`):
+
+- **ccstatusline:** when the merged `statusLine` setting's command runs ccstatusline (`ccstatusline ...`, or
+  through `npx` / `bunx`) and its executable is found (as given, or under a `PATH` folder, with `.cmd` and
+  `.exe` tried), the mod clears its line on every refresh. The lookup is kept per executable and `PATH` for
+  the life of the module, so an install made mid-session shows after a restart. Without the executable the
+  mod keeps drawing, so a checkout without the install still has a banner.
+- **band-line:** that mod clears this line while it is loaded.
+
+The snapshot and the `GIT_STATE` context are kept in every case.
+
 ## Project root
 
 `git -C <start> rev-parse --show-toplevel`, asked first from the session cwd (a linked worktree resolves to
@@ -37,7 +51,7 @@ attaches nothing.
 
 | Hook | Does |
 |------|------|
-| `session.start` | Starts a 60 s background refresh and refreshes once. |
+| `session.start` | Starts a 60 s background refresh and refreshes once. Each refresh reads the `statusLine` setting to decide whether the line gives way to ccstatusline. |
 | `tool.call` on `Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit`, `NotebookEdit` | Refreshes after the call returns, without delaying it. |
 | `turn.complete` | Refreshes. |
 | `prompt.submit` | Runs its own `git status` (after a background run in flight, waiting at most 2 s) and attaches the `GIT_STATE` line when it changed. |
