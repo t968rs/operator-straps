@@ -64,6 +64,19 @@ def test_skill_and_readme_pin_one_version() -> None:
     assert found == {_PINNED}
 
 
+def test_every_doc_that_sells_ccstatusline_names_the_install_command() -> None:
+    install = f"npm install -g ccstatusline@{_PINNED}"
+    for doc in (_REPO / "README.md", _PLUGIN / "README.md", _REPO / "plugins" / "git-status" / "README.md"):
+        assert install in _text(doc), doc.relative_to(_REPO).as_posix()
+
+
+def test_skill_offers_the_install_and_checks_npm_first() -> None:
+    skill = _text(_SKILL)
+    assert "AskUserQuestion" in skill
+    assert "npm --version" in skill
+    assert "never this skill" not in skill
+
+
 def test_defaults_are_the_pinned_schema() -> None:
     data = json.loads(_text(_DEFAULTS))
     assert data["version"] == _SCHEMA_VERSION

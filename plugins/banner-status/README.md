@@ -4,7 +4,7 @@ Where the project's banner options live. The git state can show in one of three 
 
 | Option | How | Looks like |
 |---|---|---|
-| **ccstatusline status line** (preferred) | this plugin's `/banner-status:setup-statusline` | `⎇ main · ↑0↓0 · +2 · ~3 · ?1 · ✗`, each widget in its own color, no prefix |
+| **ccstatusline status line** (preferred; needs Node.js and npm) | this plugin's `/banner-status:setup-statusline` | `⎇ main · ↑0↓0 · +2 · ~3 · ?1 · ✗`, each widget in its own color, no prefix |
 | **oStraps band** above the prompt | enable the `band-line` mod | `oStraps: ⎇ main · +2 ~3 ?1 · (R,L):0,0 \| [Opus 5.5] · ctx:110k 11%` |
 | **git-status's own line** (fallback) | `git-status` alone | `⚠ git-status: ⎇ main · +2 ~3 ?1 -- commits(R,L):0,0` (the engine adds the glyph, the name and the color) |
 
@@ -22,8 +22,14 @@ approved by the user:
 | `.claude/settings.json` | `"statusLine": {"type": "command", "command": "ccstatusline --config <project>/.claude/ccstatusline.json", "padding": 0}` |
 | `.claude/ccstatusline.json` | ccstatusline's config, from `skills/setup-statusline/ccstatusline.defaults.json`; kept when present |
 
-- **Install first:** `npm install -g ccstatusline@2.2.32` (run by the user). The skill checks
-  `ccstatusline --version` and stops with that command when it fails.
+- **Optional dependency, not bundled:** installing this plugin does not install ccstatusline, and nothing
+  changes on screen until the skill has run. It needs Node.js and npm and one global install,
+  `npm install -g ccstatusline@2.2.32`, which writes to npm's global prefix outside the project. The skill
+  checks `ccstatusline --version` and `npm --version`; when ccstatusline is missing it asks whether to run the
+  install now, leave it to the user, or keep the current banner. The install runs only after a yes.
+- **`PATH`:** the global bin folder (`npm prefix -g`) must be on the `PATH` of the shell that starts Claude
+  Code. With a per-environment npm (conda, nvm) an install made in one environment is invisible from another;
+  the skill re-checks after installing and says so when the command still does not resolve.
 - **Pinned global, not `npx`:** the installed binary runs directly on every repaint and changes only on an
   upgrade; `npx -y ccstatusline@latest` resolves the package on every repaint and takes each release unasked.
 - **Existing `statusLine`:** one that does not run ccstatusline is shown and kept unless the skill is run with
