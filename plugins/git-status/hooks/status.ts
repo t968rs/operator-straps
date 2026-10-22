@@ -106,6 +106,32 @@ export const cleanPath = (p: string | undefined): string | undefined => {
   return out === '' ? undefined : out
 }
 
+/**
+ * The executable a `statusLine` setting starts when its command runs ccstatusline (a quoted first word
+ * unquoted); undefined for any other setting.
+ */
+export const delegateExecutable = (statusLine: unknown): string | undefined => {
+  if (typeof statusLine !== 'object' || statusLine === null) return undefined
+  const command = (statusLine as { command?: unknown }).command
+  if (typeof command !== 'string' || !/(^|[\s/\\"'])ccstatusline(@|\.|\s|"|'|$)/.test(command)) return undefined
+  const first = command.trim().match(/^"([^"]+)"|^'([^']+)'|^(\S+)/)
+  return first?.[1] ?? first?.[2] ?? first?.[3]
+}
+
+/** The PATH separator: `;` when the value holds one or starts with a drive letter, else `:`. */
+const pathSeparator = (rawPath: string): string => (rawPath.includes(';') || /^[A-Za-z]:[\\/]/.test(rawPath) ? ';' : ':')
+
+/**
+ * Files that would be `exe`, each with the Windows launcher suffixes: `exe` itself when it names a folder,
+ * else `exe` under every PATH folder.
+ */
+export const executableCandidates = (exe: string, rawPath: string | undefined): string[] => {
+  const names = [exe, `${exe}.cmd`, `${exe}.exe`]
+  if (/[\\/]/.test(exe)) return names
+  const dirs = (rawPath ?? '').split(pathSeparator(rawPath ?? '')).map(d => cleanPath(d))
+  return dirs.filter((d): d is string => d !== undefined).flatMap(d => names.map(n => `${d}/${n}`))
+}
+
 /** Where to ask git for the top level, in order: the session cwd, then CLAUDE_PROJECT_DIR (no repeats). */
 export const rootStarts = (rawEnv: string | undefined, rawCwd: string | undefined): string[] => {
   const out: string[] = []
@@ -169,10 +195,46 @@ const showStatus = async ($: Dollar, text: string | undefined): Promise<void> =>
   }
 }
 
+/** Executable lookups already answered, by executable and PATH (a reload starts afresh). */
+const lookups = new Map<string, boolean>()
+
+/** The PATH value: `PATH`, else `Path` (its Windows spelling); undefined when neither is set. */
+const readPath = async ($: Dollar): Promise<string | undefined> =>
+  (await $.env.get('PATH').catch(() => undefined)) ?? $.env.get('Path').catch(() => undefined)
+
+/** Whether `exe` is a file, as given or under a PATH folder; the answer is kept per PATH. */
+const isInstalled = async ($: Dollar, exe: string): Promise<boolean> => {
+  const rawPath = await readPath($)
+  const key = `${exe}\n${rawPath ?? ''}`
+  const known = lookups.get(key)
+  if (known !== undefined) return known
+  let found = false
+  for (const candidate of executableCandidates(exe, rawPath)) {
+    if (await $.fs.exists(candidate).catch(() => false)) {
+      found = true
+      break
+    }
+  }
+  lookups.set(key, found)
+  return found
+}
+
+/**
+ * Whether ccstatusline draws the status line: the merged `statusLine` setting runs it and its executable is
+ * installed. The mod's own line then stays clear. Never throws.
+ */
+const isDelegated = async ($: Dollar): Promise<boolean> => {
+  const statusLine = await $.settings.read({ key: 'statusLine' }).catch(() => undefined)
+  const exe = delegateExecutable(statusLine)
+  return exe === undefined ? false : isInstalled($, exe)
+}
+
 /** Stores the snapshot and draws (or clears) the status line; never throws. */
 const publish = async ($: Dollar, snap: GitSnapshot | undefined): Promise<void> => {
   await update($, gitState, () => snap ?? null).catch(() => undefined)
-  return showStatus($, snap === undefined ? undefined : formatStatus(snap))
+  if (snap === undefined) return showStatus($, undefined)
+  const isClear = await isDelegated($).catch(() => false)
+  return showStatus($, isClear ? undefined : formatStatus(snap))
 }
 
 /** Snapshot then publish; swallows every error. */

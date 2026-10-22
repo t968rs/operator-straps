@@ -88,7 +88,7 @@ and takes tokens (input + output + cache read + cache write), duration and the r
 | `prompt.submit` | Scans the sentinels and attaches `PHASE5_PENDING=<ids>` when the hot set changed since the line last attached. |
 | `session.end`, `session.compact` | After `/clear`, a resume or a main compaction, the next prompt gets the `PHASE5_PENDING=` line again. |
 | `classic.Stop` | Keeps a settings hook's block as is; otherwise blocks on R6. |
-| `ui.render` `AbovePrompt` | Draws the band; yields to a survey and passes when there is nothing to show. |
+| `ui.render` `AbovePrompt` | Draws the band above whatever the hooks beneath drew (band-line's banner stays on screen); yields to a survey and passes when there is nothing to show. |
 
 A refresh reads the hot sentinels, the active run's review JSON (the newest
 `<artifacts.reviews>/<NNNN>_*.json` for its PR, and no older than the run), and `bubble_ups.json` in the

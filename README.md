@@ -19,7 +19,8 @@ to track review progress, keep Git state visible, preserve context through compa
 | Explain a PR to the next reviewer | `harness`: `pr-sum` | A summary grounded in PR metadata and the diff. `--level 1\|2\|3` sets how much it draws (1 prose only, 2 flows and Changed Symbols, the default, 3 more diagram types); `--min-viz` at level 3 holds the session until the summary holds the diagram blocks. | • Script captures PR metadata, commits, file lists, and counts.<br>• Build requires a title, summary, and descriptions covering the listed non-artifact files. |
 | Start a task in an isolated checkout | `harness`: `d-w` | A detached-HEAD worktree cut from HEAD, an integration branch, or another ref. | • Script resolves the base ref to a commit and creates a detached worktree.<br>• Failed integration-branch fetches stop creation; directory collisions get a fresh path. |
 | See where an agent-driven review stands | `pr-review-watch` | A review progress band, pending-fix context, reviewer matrix rows and a per-agent usage log (every dispatch of an agent this marketplace defines), and a Stop guard for unrecorded escalated issues. | • `Stop` guard checks that escalated issues are recorded in the review.<br>• Usage rows come from engine measurements and must pass schema validation before append. |
-| Keep the current branch and working tree in view | `git-status` | A Git status line, with Git state checked on each prompt and changed state added as `GIT_STATE` context. | • Prompt hooks recheck Git state and inject changed state.<br>• Git context is reinjected after clear, resume, or main-conversation compaction. |
+| Keep the current branch and working tree in view | `git-status` | Git state checked on each prompt, changed state added as `GIT_STATE` context, and a fallback Git status line. | • Prompt hooks recheck Git state and inject changed state.<br>• Git context is reinjected after clear, resume, or main-conversation compaction.<br>• The fallback line gives way to ccstatusline or `band-line`. |
+| Choose how the Git banner looks | `banner-status`: `setup-statusline`, or `band-line` | ccstatusline as the project's status line (each widget in its own color, no prefix), or an `oStraps:` band above the prompt with the model and context window. | • The skill writes `.claude/settings.json` `statusLine` and `.claude/ccstatusline.json` only after the user approves each edit.<br>• `band-line` reads the `git-status` snapshot; neither draws without `git-status`. |
 | Carry working context through compaction | `session-bookmark`, with `harness`: `add-bookmark` | Git state, recent prompts, your session notes (`/harness:add-bookmark <note>`, `--list`, `--clear`) and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, the stored notes, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state.<br>• Notes are stored by a script (at most 20 notes, 300 characters each) through a Bash-only haiku agent. |
 | Keep a project's TODO catalog and its sync checks in view | `todo-watch` | The next TODO items and a live sync status line in a band above the prompt (kept until dismissed), a `TODO_SYNC` drift line in prompt context, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
 | Run targeted tests with the intended Python | `pytest-scope` | Optional rewriting of bare `pytest` to your chosen interpreter and rejection of runs without an explicit test file or node ID. | • When configured, Bash hooks rewrite recognized pytest commands to the selected Python.<br>• Scope hooks reject broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override. |
@@ -65,7 +66,9 @@ Skills define the steps, scripts validate structured review artifacts, and hooks
 Branch safety is checked immediately before fixes. Ambiguous issues are escalated for your decision, and
 closeout records how findings were handled. Review data stays in your project; plugin code stays in its cache.
 
-The companion plugins are installed separately and are independent of one another.
+The companion plugins are installed separately and are independent of one another, except that `band-line`
+reads `git-status`'s snapshot (it lists `git-status` as a dependency) and the ccstatusline line from
+`banner-status` replaces `git-status`'s own line only when ccstatusline is installed.
 `pr-review-watch` is active only in projects with `.claude/harness.json`.
 `pytest-scope` takes effect only when one of its options is set.
 `todo-watch` is active only when `.claude/harness.json` sets `todo.folder`.
@@ -84,6 +87,8 @@ Add any companion plugins you want:
 ```sh
 claude plugin install pr-review-watch@operator-straps
 claude plugin install git-status@operator-straps
+claude plugin install banner-status@operator-straps
+claude plugin install band-line@operator-straps
 claude plugin install session-bookmark@operator-straps
 claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
 claude plugin install todo-watch@operator-straps
