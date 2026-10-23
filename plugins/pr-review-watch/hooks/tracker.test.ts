@@ -452,7 +452,7 @@ describe('standalone agent usage rows', () => {
   test('background launch: the row is written when the loop turn ends', async ($, on) => {
     const seen = world(on, () => launchedAs('loop-9'))
     on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }) as never)
-    await run($, 'harness:bookmark-noter')
+    await run($, 'harness:todo-editor')
     expect(seen.files.has(USAGE)).toBe(false)
     await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'loop-9' } as never)
     await $.turn.complete({
@@ -461,7 +461,7 @@ describe('standalone agent usage rows', () => {
     } as never)
     expect(usageRows(seen)).toHaveLength(1)
     expect(usageRows(seen)[0]).toMatchObject({
-      skill: 'standalone', agent_id: 'bookmark-noter', tokens: 100, tool_uses: 1, duration_s: 4, model_family: 'haiku',
+      skill: 'standalone', agent_id: 'todo-editor', tokens: 100, tool_uses: 1, duration_s: 4, model_family: 'haiku',
     })
   })
 

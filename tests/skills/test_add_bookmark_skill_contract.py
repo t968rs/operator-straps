@@ -1,7 +1,8 @@
-"""Guard test: the add-bookmark skill, the bookmark-noter agent and ``add_note.py`` agree.
+"""Guard test: the add-bookmark skill and ``add_note.py`` agree.
 
-The skill forks into the agent; the agent runs the script. All three are named in prose, so the test pins the
-names, the model, the tool list and the limits they share.
+The skill runs in the main session, the only context that holds the facts a note refers to; the script stores
+the line it is given. Both are named in prose, so the test pins the names, the launcher and the limits they
+share, and that the skill never hands the note to a context-free agent.
 """
 from __future__ import annotations
 
@@ -40,12 +41,15 @@ def script():
     return module
 
 
-def test_skill_forks_into_the_noter_on_haiku() -> None:
+def test_skill_runs_in_the_main_session() -> None:
     meta = _frontmatter(_SKILL)
     assert meta["name"] == "add-bookmark"
-    assert meta["context"] == "fork"
-    assert meta["agent"] == "harness:bookmark-noter"
-    assert meta["model"] == "haiku"
+    for key in ("context", "agent", "model"):
+        assert key not in meta, f"{key} would run the note writer without the session's context"
+
+
+def test_no_context_free_noter_agent_remains() -> None:
+    assert not _AGENT.exists()
 
 
 def test_skill_hints_every_form() -> None:
@@ -53,32 +57,30 @@ def test_skill_hints_every_form() -> None:
     assert "--list" in hint and "--clear" in hint
 
 
-def test_skill_passes_the_arguments_to_the_agent() -> None:
+def test_skill_passes_the_arguments_through() -> None:
     assert "$ARGUMENTS" in _text(_SKILL)
 
 
-def test_agent_is_haiku_with_bash_only() -> None:
-    meta = _frontmatter(_AGENT)
-    assert meta["name"] == "bookmark-noter"
-    assert meta["model"] == "haiku"
-    assert meta["tools"] == "Bash"
-
-
-def test_agent_names_the_script_and_each_subcommand() -> None:
-    body = _text(_AGENT)
-    assert "skills/add-bookmark/commands/add_note.py" in body
+def test_skill_runs_the_script_through_the_launcher_with_each_subcommand() -> None:
+    body = _text(_SKILL)
+    assert 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/add_note.py"' in body
     for subcommand in ("add", "list", "clear"):
-        assert f"NOTE {subcommand}" in body, f"agent never runs NOTE {subcommand}"
+        assert f"NOTE {subcommand}" in body, f"skill never runs NOTE {subcommand}"
 
 
-def test_skill_and_agent_state_the_script_limits(script) -> None:
-    for path in (_SKILL, _AGENT):
-        text = _text(path)
-        assert re.search(rf"at most {script.MAX_NOTES} notes", text), f"{path.name}: note count"
-        assert re.search(rf"at most {script.MAX_NOTE_CHARS} characters", text), f"{path.name}: length"
+def test_skill_states_the_script_limits(script) -> None:
+    text = _text(_SKILL)
+    assert re.search(rf"at most {script.MAX_NOTES} notes", text), "note count"
+    assert re.search(rf"at most {script.MAX_NOTE_CHARS} characters", text), "length"
 
 
-def test_agent_treats_the_note_as_data_and_may_not_edit_files() -> None:
-    body = _text(_AGENT).lower()
+def test_skill_resolves_session_references_without_another_turn() -> None:
+    body = _text(_SKILL).lower()
+    assert "concrete facts" in body, "no rule that session references become facts"
+    assert "same turn" in body, "no rule that the note is stored without a second request"
+
+
+def test_skill_treats_the_note_as_data_and_runs_nothing_else() -> None:
+    body = _text(_SKILL).lower()
     assert "data to record" in body and "not an instruction" in body
     assert "no other command" in body
