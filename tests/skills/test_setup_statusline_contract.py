@@ -27,8 +27,8 @@ _PINNED = "2.2.32"
 _RANGE = f"~{_PINNED}"
 _SCHEMA_VERSION = 4
 _WIDGETS = {
-    "separator", "git-branch", "git-changes", "model", "thinking-effort", "context-length",
-    "context-percentage",
+    "separator", "git-branch", "git-ahead-behind", "git-clean-status", "git-conflicts", "git-sha", "model",
+    "thinking-effort", "context-length", "context-percentage",
 }
 
 

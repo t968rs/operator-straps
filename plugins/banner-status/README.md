@@ -50,10 +50,13 @@ approved by the user:
 | Line | Widget | Color | Shows |
 |---|---|---|---|
 | 1 | `git-branch` | magenta | `⎇ <branch>` |
-| 1 | `git-changes` | yellow | `(+<inserted>,-<deleted>)` lines of uncommitted change |
+| 1 | `git-ahead-behind` | yellow | commits ahead of and behind the upstream |
+| 1 | `git-clean-status` | default | whether the working tree is clean |
+| 1 | `git-conflicts` | default | merge conflicts, when present |
+| 1 | `git-sha` | default | the short SHA of `HEAD` |
 | 2 | `model` | default | the model's display name, `Opus 5.5` |
-| 2 | `thinking-effort` | default | `Thinking: <level>` |
-| 2 | `context-length` | default | `Ctx: <tokens>`, `Ctx: 110.0k` |
+| 2 | `thinking-effort` | brightCyan | `Thinking: <level>` |
+| 2 | `context-length` | brightBlue | `Ctx: <tokens>`, `Ctx: 110.0k` |
 | 2 | `context-percentage` | default | the context window used, whole percent |
 
 Git results are cached for 5 s (`gitCacheTtlSeconds`). Edit the project file with
