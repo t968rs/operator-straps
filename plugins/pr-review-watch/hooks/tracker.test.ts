@@ -456,7 +456,7 @@ describe('standalone agent usage rows', () => {
     expect(seen.files.has(USAGE)).toBe(false)
     await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'loop-9' } as never)
     await $.turn.complete({
-      answer: 'noted', durationMs: 4000, isAborted: false, turnId: 't-9', reason: 'answer', agentId: 'loop-9',
+      answer: 'done', durationMs: 4000, isAborted: false, turnId: 't-9', reason: 'answer', agentId: 'loop-9',
       usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 30, cache_creation_input_tokens: 40, model: 'claude-haiku-5-5' },
     } as never)
     expect(usageRows(seen)).toHaveLength(1)

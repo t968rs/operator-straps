@@ -129,8 +129,8 @@ compaction bookmark, above the `/compact` instructions, so a constraint or remin
 
 - The session that runs the command writes the stored line, not a separate agent, so a note that points at the
   conversation (`the current status of the banner options`, `what we built`) is stored as the branch, versions,
-  ids and pending checks it refers to, in the same turn. Text that already stands alone is stored as written.
-
+  ids and pending checks it refers to, in the same turn. Text that already stands alone is stored as written,
+  apart from quoting and length.
 - A project holds at most 20 notes; `--clear` frees the slots. A note longer than 300 characters or a blank note is refused.
 - Notes are stored per project in `session-bookmark/notes.json` under `state_dir` (default `.claude/state/harness`).
   Add that folder to `.gitignore`, as with the other runtime state.

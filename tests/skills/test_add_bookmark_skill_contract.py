@@ -44,12 +44,21 @@ def script():
 def test_skill_runs_in_the_main_session() -> None:
     meta = _frontmatter(_SKILL)
     assert meta["name"] == "add-bookmark"
-    for key in ("context", "agent", "model"):
+    for key in ("context", "agent"):
         assert key not in meta, f"{key} would run the note writer without the session's context"
+    assert "model" not in meta, "model would hand note writing to a different model than the session's"
 
 
-def test_no_context_free_noter_agent_remains() -> None:
+def test_skill_body_names_no_agent_to_dispatch() -> None:
+    body = _text(_SKILL)
+    assert re.search(r"harness:(?!add-bookmark)[a-z-]+", body) is None, "skill names another agent"
+    assert "subagent" not in body.lower(), "skill body mentions a subagent"
+
+
+def test_no_agent_runs_the_note_writer() -> None:
     assert not _AGENT.exists()
+    for agent in sorted(_PLUGIN_ROOT.parent.glob("*/agents/*.md")):
+        assert "add_note.py" not in agent.read_text(encoding="utf-8"), f"{agent.name} runs the note writer"
 
 
 def test_skill_hints_every_form() -> None:
