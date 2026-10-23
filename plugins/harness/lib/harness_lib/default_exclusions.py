@@ -1,9 +1,9 @@
 """The default exclusions file (``.claude/review_exclusions.json``) seeded into a consuming project.
 
-The harness writes review JSONs, PR summaries and the pr-review-watch rows under the project; the clean-tree
-check and the review capture treat them as machine-generated. A project whose ``exclusions`` value is the
-default path (in any equivalent spelling) gets the file written on first use, with patterns derived from its
-configured artifact folders and rows files. Any other path, or null, is never touched.
+The harness writes review JSONs, PR summaries, run scratch and the pr-review-watch rows under the project; the
+clean-tree check and the review capture treat them as machine-generated. A project whose ``exclusions`` value
+is the default path (in any equivalent spelling) gets the file written on first use, with patterns derived
+from its configured artifact folders and rows files. Any other path, or null, is never touched.
 """
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ def _entries(cfg: HarnessConfig) -> List[dict]:
     rows = [
         (f"{cfg.artifacts.reviews.rstrip('/')}/*", "pr-review output"),
         (f"{cfg.artifacts.summaries.rstrip('/')}/*", "PR summaries"),
+        (f"{cfg.artifacts.scratch.rstrip('/')}/*", "pr-review run scratch"),
         (_normalized(cfg.matrix_path), "pr-review-watch invocation matrix rows"),
         (_normalized(cfg.agent_usage_path), "pr-review agent usage rows"),
         (DEFAULT_EXCLUSIONS, "this file, seeded by the harness"),

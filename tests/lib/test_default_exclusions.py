@@ -54,6 +54,29 @@ def test_root_level_rows_file_is_listed_by_name(make_project: _MakeProject) -> N
     assert {"matrix.jsonl", "usage.jsonl"} <= set(default_patterns(cfg))
 
 
+def test_default_patterns_cover_the_run_scratch_folder(make_project: _MakeProject) -> None:
+    cfg = load_config(make_project(config={}))
+    patterns = default_patterns(cfg)
+    assert "docs/_scratch/pr_review/*" in patterns
+    assert any(fnmatch.fnmatch("docs/_scratch/pr_review/0072/current", p) for p in patterns)
+    assert not any(fnmatch.fnmatch("docs/_scratch/notes.md", p) for p in patterns)
+
+
+def test_scratch_pattern_follows_the_configured_folder(make_project: _MakeProject) -> None:
+    cfg = load_config(make_project(config={"artifacts": {"scratch": "tmp/runs/"}}))
+    patterns = default_patterns(cfg)
+    assert "tmp/runs/*" in patterns
+    assert "docs/_scratch/pr_review/*" not in patterns
+
+
+def test_gitignore_lines_are_not_snapshotted(make_project: _MakeProject) -> None:
+    root = make_project(config={}, files={".gitignore": "build/\n*.pyc\n"})
+    ensure_default_exclusions(load_config(root))
+    patterns = _seeded(root)
+    assert not any(p in patterns for p in ("build/*", "*.pyc"))
+    assert patterns == default_patterns(load_config(make_project(config={}, name="plain")))
+
+
 def test_ensure_writes_the_file_when_the_default_is_absent(make_project: _MakeProject) -> None:
     root = make_project(config={})
     written = ensure_default_exclusions(load_config(root))
