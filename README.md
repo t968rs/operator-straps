@@ -15,7 +15,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | Your goal | Use | What you get | Agent 'Ensurance' |
 |---|---|---|---|
 | Review a PR and work through its findings | `harness`: `pr-review` or `pr-team` | Multiple reviewers, a consolidated review, branch checks before fixes, and fix waves with recorded resolutions. `pr-team` keeps finding details out of the main session's context. | • Configured agent-use Python runtime via `hpy`.<br>• Branch checks before fixes; schema validation on review writes.<br>• `Stop` hook blocks a stop attempt while the review session has an active Phase 5 sentinel. |
-| Draft a commit message or organize a branch's changes | `harness`: `c-msg`, `branch-commit-msg` | A message for the pending change, or a proposed breakdown into commits, saved in your project's artifact folders. | • Configured Python runtime via `hpy`.<br>• Build checks file coverage and message format before saving the draft. |
+| Draft a commit message or organize a branch's changes | `harness`: `c-msg`, `branch-commit-msg`, `amend-commit-msg` | A message for the pending change, a proposed breakdown into commits, or an amendment of that breakdown (rewritten messages, files moved between blocks), saved in your project's artifact folders. | • Configured Python runtime via `hpy`.<br>• Build checks file coverage and message format before saving the draft. |
 | Explain a PR to the next reviewer | `harness`: `pr-sum` | A summary grounded in PR metadata and the diff. `--level 1\|2\|3` sets how much it draws (1 prose only, 2 flows and Changed Symbols, the default, 3 more diagram types); `--min-viz` at level 3 holds the session until the summary holds the diagram blocks. | • Script captures PR metadata, commits, file lists, and counts.<br>• Build requires a title, summary, and descriptions covering the listed non-artifact files. |
 | Start a task in an isolated checkout | `harness`: `d-w` | A detached-HEAD worktree cut from HEAD, an integration branch, or another ref. | • Script resolves the base ref to a commit and creates a detached worktree.<br>• Failed integration-branch fetches stop creation; directory collisions get a fresh path. |
 | See where an agent-driven review stands | `pr-review-watch` | A review progress band, pending-fix context, reviewer matrix rows and a per-agent usage log (every dispatch of an agent this marketplace defines), and a Stop guard for unrecorded escalated issues. | • `Stop` guard checks that escalated issues are recorded in the review.<br>• Usage rows come from engine measurements and must pass schema validation before append. |
@@ -137,6 +137,24 @@ compaction bookmark, above the `/compact` instructions, so a constraint or remin
 - The notes file is versioned (`"version": 1`). A file that is not JSON or has another version is refused rather than
   overwritten; run `--clear` to reset it.
 - For what the compaction bookmark prints and how the mod reads the notes, see `plugins/session-bookmark/README.md`.
+
+### amend-commit-msg
+
+`/harness:amend-commit-msg` amends the commit breakdown that `branch-commit-msg` drafted, instead of redrafting it.
+The session that runs it knows what changed since the draft, which the forked `branch-commit-msg` agent does not.
+
+```text
+/harness:amend-commit-msg -- the review fixes landed; restate blocks 2 and 3
+/harness:amend-commit-msg --base HEAD~3 -- move tests/test_x.py into the runtime block
+```
+
+- Arguments before ` -- ` are the `branch-commit-msg` capture arguments (`REF`, `--base REF`, `--no-fetch`) and
+  name the TXT to amend. Text after it says what to change. `--fresh` and `--pending` are refused.
+- A missing TXT is an error (`no TXT to amend: <path>`), never a silent redraft. A `--base` amendment needs the
+  `<branch>_<sha7>.txt` of that base.
+- Files move between blocks with `branch_commit_msg.py move`, which carries each file's `file: what changed`
+  bullet with it. `build` rejects any bullet whose file is not in its block.
+- The replaced TXT is kept as `<name>.txt.bak`, one generation.
 
 This repository enables its own plugins in `.claude/settings.json` from the published marketplace (the same
 `t968rs/operator-straps` GitHub source as above), so sessions here run the cached copy from the pushed default

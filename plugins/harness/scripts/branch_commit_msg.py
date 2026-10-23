@@ -18,6 +18,12 @@ Two subcommands bracket the one judgment step (drafting commit messages):
         {"branch": ..., "merge_base": ..., "split": ..., "captured": [...],
          "commits": {"1": [["path", ...], "message or empty"], ...}}
 
+    ``--edit`` (the ``amend-commit-msg`` skill) captures for an amendment: it requires the exact TXT the other
+    arguments name (``<branch>.txt``, or ``<branch>_<sha7>.txt`` for ``--base``) and exits 1 when that file is
+    absent, so a missing draft is never replanned from scratch. It conflicts with ``--fresh`` and
+    ``--pending``, and marks the skeleton ``"edit": true``, which makes ``build`` also reject any message
+    bullet that names a file outside its own block.
+
     ``--pending`` (the ``c-msg`` skill) instead captures the change pending against HEAD (staged,
     unstaged, untracked) as one commit with ``merge_base`` set to HEAD and ``"pending": true``. The
     message carries forward from ``<branch>_pending.txt`` only while HEAD is unchanged; the branch
@@ -40,13 +46,22 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     budget in full, larger ones as a summary (key tallies for JSON, a truncated head otherwise). The
     ``captured`` entries carry ``added``/``deleted`` counts so sizes are known before reading.
 
+``move``
+    Rewrite a skeleton in place, moving each ``--path`` (a block entry, repeatable; a rename's old side
+    follows) to block ``--to N`` or to a ``new`` block after the lowest source block
+    (``harness_lib.commit_regroup``). The bullet naming each path moves with it; a bullet that cannot be
+    attributed or has no message to land in is printed as a ``note:``. Emptied blocks are dropped and the
+    blocks renumbered 1..N.
+
 The project is the git top level of ``--repo`` (default: the working directory); its
 ``.claude/harness.json`` is activated once at startup, and an invalid one exits 1 with a ``problem:``
 line. ``--repo`` goes before or after the subcommand. Usage::
 
-    branch_commit_msg.py [--repo DIR] capture [REF | --base REF] [--no-fetch] [--fresh] [--out FILE | --save]
+    branch_commit_msg.py [--repo DIR] capture [REF | --base REF] [--no-fetch] [--fresh | --edit]
+        [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] capture --pending [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] diff FILE --block N
+    branch_commit_msg.py [--repo DIR] move FILE --path PATH [--path PATH ...] --to N|new
     branch_commit_msg.py [--repo DIR] build FILE [--out TXT]
 """
 from __future__ import annotations
@@ -57,7 +72,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
@@ -74,6 +89,7 @@ from harness_lib.branch_capture import (
 )
 from harness_lib.branch_commits import BranchCommitDocument
 from harness_lib.commit_diff import DiffStat, cap_sections, plan_reads
+from harness_lib.commit_regroup import bullet_problems, move_paths
 from harness_lib.commit_grouping import (
     CapturedPath,
     captured_set,
@@ -185,8 +201,21 @@ def skeleton_payload(
     return payload
 
 
+def require_amendable(repo: Path, branch: str, suffix: str, fresh: bool) -> None:
+    """Raise ``BuildError`` unless an amendment has its TXT: the exact file the capture arguments name.
+
+    The ``<branch>_<sha7>`` sibling is not replaced by the branch TXT here, and ``fresh`` would discard
+    the messages an amendment exists to keep.
+    """
+    if fresh:
+        raise BuildError(["--edit cannot be combined with --fresh: an amendment keeps the existing messages"])
+    target = txt_path(repo, branch, suffix)
+    if not target.exists():
+        raise BuildError([f"no TXT to amend: {output_dir()}/{target.name}"])
+
+
 def run_capture(
-        repo: Path, base: Optional[str] = None, fetch: bool = True, fresh: bool = False,
+        repo: Path, base: Optional[str] = None, fetch: bool = True, fresh: bool = False, edit: bool = False,
 ) -> Dict[str, object]:
     """Build the JSON skeleton payload for the checked-out branch; ``fresh`` ignores the existing TXT.
 
@@ -194,6 +223,7 @@ def run_capture(
     With ``base`` (any ref, stored as its SHA), with or without ``fresh``, the payload carries
     ``txt_suffix`` so ``--save`` and ``build`` write beside the branch TXT instead of over it.
     Carry-forward reads that sibling ``<branch>_<sha7>.txt`` when it exists, else the branch TXT.
+    ``edit`` requires that exact TXT (``require_amendable``) and marks the payload ``"edit": true``.
     """
     branch = current_branch(repo)
     if base:
@@ -202,12 +232,15 @@ def run_capture(
         merge_base = resolve_merge_base(repo, active().resolve_base_branch(), fetch)
     captures = capture_branch(repo, merge_base)
     suffix = base_suffix(merge_base, base)
+    if edit:
+        require_amendable(repo, branch, suffix, fresh)
     existing = None if fresh else _existing_document(carry_forward_path(repo, branch, suffix))
     groups, split = plan_commits(captures, existing, _registry_targets(repo))
     commits = {n: (list(group.paths), group.message) for n, group in enumerate(groups, 1)}
     document = document_from_commit_dict(commits, branch, merge_base)
     payload = skeleton_payload(document, split, captures, stats=capture_stats(repo, merge_base, captures))
-    return {**payload, "txt_suffix": suffix} if suffix else payload
+    marks = {**({"txt_suffix": suffix} if suffix else {}), **({"edit": True} if edit else {})}
+    return {**payload, **marks}
 
 
 def carry_forward_path(repo: Path, branch: str, suffix: str) -> Path:
@@ -403,13 +436,19 @@ def _round_trip_problems(text: str, document: BranchCommitDocument) -> List[str]
     ]
 
 
+def edit_problems(document: BranchCommitDocument) -> List[str]:
+    """Bullets naming a file outside their own block, the leftover of a regrouping done without ``move``."""
+    commits = {key: (list(entry.files), entry.message or "") for key, entry in document.commits.items()}
+    return bullet_problems(commits)
+
+
 def run_build(
         repo: Path, payload: Mapping[str, object], out: Optional[Path] = None,
 ) -> Tuple[Path, BranchCommitDocument]:
     """Validate the filled skeleton against a fresh capture and write the TXT.
 
-    Any defect raises ``BuildError``. A pending skeleton whose ``merge_base`` is no longer HEAD raises
-    before any validation.
+    Any defect raises ``BuildError``; an ``"edit": true`` skeleton also has its bullets checked against
+    its blocks. A pending skeleton whose ``merge_base`` is no longer HEAD raises before any validation.
     """
     branch = current_branch(repo)
     if payload.get("branch") != branch:
@@ -425,6 +464,7 @@ def run_build(
     problems = _validation_problems(document)
     problems += coverage_problems(document, capture_branch(repo, merge_base)) if merge_base else []
     problems += message_problems(document)
+    problems += edit_problems(document) if payload.get("edit") else []
     if problems:
         raise BuildError(problems)
     text = document_to_txt(document)
@@ -508,6 +548,13 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     cap.add_argument(
+        "--edit", action="store_true",
+        help=(
+            "Capture for an amendment: requires the exact TXT the other arguments name, marks the "
+            "skeleton so build checks bullets against blocks; conflicts with --fresh and --pending."
+        ),
+    )
+    cap.add_argument(
         "--pending", action="store_true",
         help=(
             "One commit for the change pending against HEAD (c-msg); "
@@ -528,7 +575,22 @@ def _parser() -> argparse.ArgumentParser:
             "--base skeleton, or <branch>_pending.txt for a pending skeleton)."
         ),
     )
+    move = sub.add_parser(
+        "move", parents=repo, help="Move paths, with their bullets, between blocks of a skeleton.",
+    )
+    move.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8); rewritten in place.")
+    move.add_argument("--path", action="append", required=True, help="Block entry to move (repeatable).")
+    move.add_argument("--to", required=True, type=_target, help="Target block number, or 'new'.")
     return parser
+
+
+def _target(value: str) -> Union[int, str]:
+    """``--to`` value: a block number or ``new``."""
+    if value == "new":
+        return value
+    if value.isdigit():
+        return int(value)
+    raise argparse.ArgumentTypeError(f"{value!r} is not a block number or 'new'")
 
 
 def write_skeleton(out: Path, payload: Mapping[str, object]) -> None:
@@ -558,10 +620,12 @@ def effective_base(ref: Optional[str], base: Optional[str]) -> Optional[str]:
 def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
     """Run ``capture`` and emit the skeleton."""
     base = effective_base(args.ref, args.base)
+    if args.pending and args.edit:
+        raise BuildError(["--edit cannot be combined with --pending: a pending change has no draft to amend"])
     if args.pending:
         payload = run_capture_pending(repo)
     else:
-        payload = run_capture(repo, base, not args.no_fetch, fresh=args.fresh)
+        payload = run_capture(repo, base, not args.no_fetch, fresh=args.fresh, edit=args.edit)
     if args.save:
         pending, suffix = bool(payload.get("pending")), str(payload.get("txt_suffix") or "")
         out = skeleton_path(repo, str(payload["branch"]), pending, suffix)
@@ -590,6 +654,16 @@ def _cmd_diff(repo: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_move(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``move``: rewrite the skeleton with the paths regrouped and print the notes."""
+    payload = json.loads(args.skeleton.read_text(encoding="utf-8"))
+    moved, notes = move_paths(payload, args.path, args.to)
+    write_skeleton(args.skeleton, moved)
+    print(f"moved {len(args.path)} path(s) to block {args.to}; {len(moved['commits'])} block(s) now")
+    print("\n".join(notes), end="\n" if notes else "")
+    return 0
+
+
 def activate_project(start: Optional[Path]) -> Path:
     """Activate the configuration of the project holding ``start`` (default: cwd); return its root."""
     root = project_root(start)
@@ -602,7 +676,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = _parser().parse_args(argv)
-    commands = {"capture": _cmd_capture, "diff": _cmd_diff, "build": _cmd_build}
+    commands = {"capture": _cmd_capture, "diff": _cmd_diff, "build": _cmd_build, "move": _cmd_move}
     try:
         return commands[args.command](activate_project(args.repo), args)
     except BuildError as exc:
