@@ -3,6 +3,7 @@ name: pr-team
 description: Use when requesting agent-driven code review on a PR with parallel reviewer fan-out and bounded main-session context.
   Two named subagents (harness:pr-team-orchestrator and harness:pr-team-fixer) each invoked twice per run;
   the shim issues all parallel Agent() calls from the main session.
+argument-hint: "<PR number>"
 ---
 
 # PR Review (shimmed)

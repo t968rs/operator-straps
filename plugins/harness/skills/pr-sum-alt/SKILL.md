@@ -1,6 +1,7 @@
 ---
 name: pr-sum-alt
 description: Use when asked for a quick or cheap PR summary built only from gh commands
+argument-hint: "<PR number>"
 model: haiku
 effort: low
 ---

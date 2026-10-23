@@ -44,7 +44,7 @@ The project is the git top level of ``--repo`` (default: the working directory);
 ``.claude/harness.json`` is activated once at startup, and an invalid one exits 1 with a ``problem:``
 line. ``--repo`` goes before or after the subcommand. Usage::
 
-    branch_commit_msg.py [--repo DIR] capture [--base REF] [--no-fetch] [--fresh] [--out FILE | --save]
+    branch_commit_msg.py [--repo DIR] capture [REF | --base REF] [--no-fetch] [--fresh] [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] capture --pending [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] diff FILE --block N
     branch_commit_msg.py [--repo DIR] build FILE [--out TXT]
@@ -54,6 +54,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 import sys
 from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Sequence, Tuple
@@ -93,6 +94,8 @@ from harness_lib.project import project_root
 
 CommitDict = Dict[int, Tuple[List[str], str]]
 
+_REF_PATTERN = re.compile(r"[A-Za-z0-9/._~^@{}-]+")
+
 PENDING_SUFFIX = "_pending"
 PENDING_SPLIT = "single commit: pending change against HEAD"
 
@@ -123,7 +126,7 @@ def resolve_base_ref(repo: Path, ref: str) -> str:
     """Commit SHA of ``ref`` (a SHA, ``HEAD``, a branch); ``BuildError`` when it names no commit."""
     probe = git(repo, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
     if probe.returncode != 0:
-        raise BuildError([f"--base {ref!r} does not name a commit"])
+        raise BuildError([f"ref {ref!r} does not name a commit"])
     return probe.stdout.strip()
 
 
@@ -432,8 +435,18 @@ def run_build(
     default = pending_txt_path(repo, branch) if document.pending else txt_path(repo, branch, suffix)
     target = out or default
     target.parent.mkdir(parents=True, exist_ok=True)
+    back_up_replaced(target, text)
     target.write_text(text, encoding="utf-8")
     return target, document
+
+
+def back_up_replaced(target: Path, text: str) -> None:
+    """Copy an existing ``target`` that ``text`` would change to ``<name>.bak`` (one generation kept).
+
+    A dropped or mistyped ``--base`` then costs a rename, not the messages already drafted.
+    """
+    if target.is_file() and target.read_text(encoding="utf-8") != text:
+        shutil.copyfile(target, target.with_name(target.name + ".bak"))
 
 
 def receipt(repo: Path, out: Path, document: BranchCommitDocument, split: str) -> str:
@@ -467,6 +480,10 @@ def _parser() -> argparse.ArgumentParser:
         "capture", parents=repo, help="Print the commit skeleton JSON for the checked-out branch.",
     )
     cap.add_argument(
+        "ref", nargs="?", metavar="REF",
+        help="A bare ref is the same as --base REF; both given must name the same ref.",
+    )
+    cap.add_argument(
         "--base",
         help=(
             "Ref (SHA, HEAD, branch) to use as the merge base instead of resolving the project's base "
@@ -494,7 +511,7 @@ def _parser() -> argparse.ArgumentParser:
         "--pending", action="store_true",
         help=(
             "One commit for the change pending against HEAD (c-msg); "
-            "--base, --no-fetch and --fresh are ignored."
+            "--base, a bare REF, --no-fetch and --fresh are ignored."
         ),
     )
     diff = sub.add_parser(
@@ -526,12 +543,25 @@ def skeleton_path(repo: Path, branch: str, pending: bool = False, suffix: str = 
     return path.with_suffix(".json")
 
 
+def effective_base(ref: Optional[str], base: Optional[str]) -> Optional[str]:
+    """The ref a capture plans against: a bare ``ref`` is ``--base``; both given must agree.
+
+    A bare token outside the ref character set (free text, shell syntax) raises ``BuildError``.
+    """
+    if ref is not None and not _REF_PATTERN.fullmatch(ref):
+        raise BuildError([f"{ref!r} is not a ref: expected a SHA, branch or tag name"])
+    if ref is not None and base is not None and ref != base:
+        raise BuildError([f"bare ref {ref!r} conflicts with --base {base!r}: give one"])
+    return base if base is not None else ref
+
+
 def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
     """Run ``capture`` and emit the skeleton."""
+    base = effective_base(args.ref, args.base)
     if args.pending:
         payload = run_capture_pending(repo)
     else:
-        payload = run_capture(repo, args.base, not args.no_fetch, fresh=args.fresh)
+        payload = run_capture(repo, base, not args.no_fetch, fresh=args.fresh)
     if args.save:
         pending, suffix = bool(payload.get("pending")), str(payload.get("txt_suffix") or "")
         out = skeleton_path(repo, str(payload["branch"]), pending, suffix)

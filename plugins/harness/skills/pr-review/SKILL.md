@@ -2,6 +2,7 @@
 name: pr-review
 description: Use when requesting agent-driven code review on a PR, when consolidating reviewer findings into a
   verdict JSON, or when fixes from a prior review still need to be applied on the correct branch.
+argument-hint: "<PR number> [--roast yes|no|roll] [--no-fetch]"
 ---
 
 # PR Review

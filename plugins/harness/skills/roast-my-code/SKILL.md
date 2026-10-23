@@ -1,6 +1,7 @@
 ---
 name: roast-my-code
 description: Use when the user asks for a code review, says "review this", "roast my code", or "what do you think of this code".
+argument-hint: "[<path> | PR #<n> | <commit>..<commit>] [brutal|gentle]"
 ---
 
 # Roast My Code

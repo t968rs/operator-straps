@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -493,6 +494,84 @@ class TestCli:
         assert self._main(script, *argv) == 0
         assert (clone / "docs" / "_commit_messages" / f"9999-demo_{sha[:7]}.json").is_file()
         assert not (clone / "docs" / "_commit_messages" / "9999-demo.json").exists()
+
+    def test_bare_ref_saves_same_skeleton_as_base(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        sha = _git(clone, "rev-parse", "HEAD")
+        messages = clone / "docs" / "_commit_messages"
+        skeleton = messages / f"9999-demo_{sha[:7]}.json"
+        argv = ("--repo", str(clone), "capture", "--no-fetch", "--save")
+        assert self._main(script, *argv, "--base", "HEAD") == 0
+        via_base = skeleton.read_text(encoding="utf-8")
+        skeleton.unlink()
+        assert self._main(script, *argv, "HEAD") == 0
+        assert skeleton.read_text(encoding="utf-8") == via_base
+        assert not (messages / "9999-demo.json").exists()
+
+    def test_bare_ref_spares_branch_txt(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        sha7 = _git(clone, "rev-parse", "HEAD")[:7]
+        script.run_build(clone, _filled(script.run_capture(clone, fetch=False)))
+        messages = clone / "docs" / "_commit_messages"
+        ledger = messages / "9999-demo.txt"
+        before = ledger.read_bytes()
+        assert self._main(script, "--repo", str(clone), "capture", "--no-fetch", "--save", "HEAD") == 0
+        skeleton = messages / f"9999-demo_{sha7}.json"
+        filled = _filled(json.loads(skeleton.read_text(encoding="utf-8")))
+        skeleton.write_text(json.dumps(filled), encoding="utf-8")
+        assert self._main(script, "--repo", str(clone), "build", str(skeleton)) == 0
+        assert (messages / f"9999-demo_{sha7}.txt").is_file()
+        assert ledger.read_bytes() == before
+
+    def test_bare_ref_equal_to_base_is_accepted(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        argv = ("--repo", str(clone), "capture", "--no-fetch", "HEAD", "--base", "HEAD")
+        assert self._main(script, *argv) == 0
+
+    def test_bare_ref_conflicting_with_base_is_a_problem(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        argv = ("--repo", str(clone), "capture", "--no-fetch", "--save", "HEAD", "--base", "main")
+        assert self._main(script, *argv) == 1
+        err = capsys.readouterr().err
+        assert err.startswith("problem: ") and "HEAD" in err and "main" in err
+        assert not list((clone / "docs" / "_commit_messages").glob("*.json"))
+
+    @pytest.mark.parametrize("token", ["and skip .json changes", "HEAD;rm", "$(x)", "a b"])
+    def test_bare_token_outside_ref_charset_is_a_problem(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture, token: str,
+    ) -> None:
+        clone, _ = work
+        assert self._main(script, "--repo", str(clone), "capture", "--no-fetch", "--save", token) == 1
+        err = capsys.readouterr().err
+        assert err.startswith("problem: ") and "is not a ref" in err
+        assert not list((clone / "docs" / "_commit_messages").glob("*.json"))
+
+    def test_two_bare_tokens_are_rejected(self, script: ModuleType) -> None:
+        with pytest.raises(SystemExit):
+            script._parser().parse_args(["capture", "HEAD", "main"])
+
+    def test_build_backs_up_a_ledger_it_replaces(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        script.run_build(clone, _filled(script.run_capture(clone, fetch=False)))
+        ledger = clone / "docs" / "_commit_messages" / "9999-demo.txt"
+        before = ledger.read_text(encoding="utf-8")
+        payload = script.run_capture(clone, fetch=False, fresh=True)
+        script.run_build(clone, {**_filled(payload), "split": "replanned"})
+        assert ledger.read_text(encoding="utf-8") != before
+        assert ledger.with_name("9999-demo.txt.bak").read_text(encoding="utf-8") == before
+
+    def test_build_of_identical_text_leaves_no_backup(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        payload = _filled(script.run_capture(clone, fetch=False))
+        script.run_build(clone, payload)
+        script.run_build(clone, payload)
+        assert not (clone / "docs" / "_commit_messages" / "9999-demo.txt.bak").exists()
 
     def test_build_of_based_skeleton_writes_sibling_txt(
             self, script: ModuleType, work: Tuple[Path, str], tmp_path: Path,

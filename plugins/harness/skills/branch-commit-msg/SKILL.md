@@ -1,7 +1,7 @@
 ---
 name: branch-commit-msg
 description: Use when asked to draft the full set of commit messages for everything pending on the current branch, as multiple Conventional Commits saved to the project's commit_messages directory (default docs/_commit_messages). Triggers on "break the branch into commits", "draft all commit messages", "commit breakdown", "branch-commit-msg".
-argument-hint: "[--base REF] [--fresh] [--no-fetch]"
+argument-hint: "[REF] [--base REF] [--fresh] [--no-fetch]"
 model: haiku
 context: fork
 agent: harness:messenger
@@ -29,20 +29,22 @@ project root, exactly as written.
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" capture --save $ARGUMENTS
 ```
 
-`$ARGUMENTS` holds the developer's flags (`--base REF`, `--fresh`, `--no-fetch`); pass them through unchanged and
-add none. Only those three are expected: on any other flag, or a REF holding anything but letters, digits and
-`/._-~^`, report it and stop. Exit 1 prints `problem:` lines: report them and stop. Never choose or substitute a base yourself: the base
-is the developer's `--base`, else the project's. Exit 0 prints `wrote <skeleton>`: the absolute path of the
+`$ARGUMENTS` holds the developer's arguments (a bare `REF`, `--base REF`, `--fresh`, `--no-fetch`); pass them
+through unchanged and add none, `--fresh` included. A bare `REF` and `--base REF` are the same (one ref as the
+merge base); giving both with different refs exits 1. On any other flag, or a REF holding anything but letters,
+digits and `/._-~^`, report it and stop. An argument the script rejects is reported, never removed or replaced.
+Exit 1 prints `problem:` lines: report them and stop. Never choose or substitute a base yourself: the base
+is the developer's ref, else the project's. Exit 0 prints `wrote <skeleton>`: the absolute path of the
 skeleton in the commit_messages directory. Use that path as `<skeleton>` below.
 
 | Flags                  | Skeleton and TXT                  | Plan                                                       |
 |------------------------|-----------------------------------|------------------------------------------------------------|
 | none                   | `<branch>.json` / `.txt`          | whole branch; existing TXT carried forward                 |
 | `--fresh`              | `<branch>.json` / `.txt`          | whole branch, rebuilt from the rules; every message `""`   |
-| `--base REF`           | `<branch>_<sha7>.json` / `.txt`   | paths differing from REF; carries the `_<sha7>` TXT, else the branch TXT; the branch TXT is never overwritten |
-| `--base REF --fresh`   | `<branch>_<sha7>.json` / `.txt`   | paths differing from REF, rebuilt from the rules; the branch TXT is never overwritten |
+| `--base REF` (or bare `REF`) | `<branch>_<sha7>.json` / `.txt` | paths differing from REF; carries the `_<sha7>` TXT, else the branch TXT; the branch TXT is never overwritten |
+| `--base REF --fresh` (or bare `REF --fresh`) | `<branch>_<sha7>.json` / `.txt` | paths differing from REF, rebuilt from the rules; the branch TXT is never overwritten |
 
-`--no-fetch` skips the fetch of the project's base branch; a `--base` capture never fetches, so it has no effect
+`--no-fetch` skips the fetch of the project's base branch; a `--base` (or bare `REF`) capture never fetches, so it has no effect
 there.
 
 The skeleton holds `merge_base`, `split`, `captured` (status, path, old_path, bucket, added, deleted) and
@@ -78,8 +80,8 @@ such as Runtime, Test, Cicd, Agent, Other, Docs, Planning, Artifact) stays whole
 the reason; size, topic variety and tidiness are not reasons. Each extra block is a commit the developer must
 stage by hand. `capture` keeps every non-doc block it finds in the existing TXT (Docs and Planning blocks
 re-merge on each run), so a needless Agent, Other or Artifact split survives every later run. When the existing
-TXT already holds such a non-doc split, rerun `capture --save --fresh` (Step 1, keeping the developer's `--base`
-when one was given: the rerun then replans the same `_<sha7>` files) instead of editing around it;
+TXT already holds such a non-doc split, rerun `capture --save --fresh` (Step 1, keeping the developer's `--base REF`
+or bare `REF` when one was given: the rerun then replans the same `_<sha7>` files) instead of editing around it;
 `--fresh` discards every carried message, so a split Docs or Planning block needs only a plain rerun of `capture`.
 
 ## Step 3 — Write messages
@@ -124,7 +126,8 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_com
 ```
 
 Exit 1: each `problem:` line names a commit and a defect. Fix the JSON and rerun. Exit 0 writes the TXT named in
-the Step 1 table beside the skeleton (same stem, `.txt`) and prints the receipt. Output the receipt verbatim — nothing else.
+the Step 1 table beside the skeleton (same stem, `.txt`) and prints the receipt. When that TXT already exists and its content changes, the old copy is kept as
+`<name>.txt.bak` (one generation). Output the receipt verbatim — nothing else.
 
 ## Common Mistakes
 

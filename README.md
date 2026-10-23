@@ -217,7 +217,7 @@ a stub with any unproven deliverable is kept and listed.
 |---|---|---|
 | `base_branch` | `origin/HEAD`, else `main` | merge bases, `d-w`, `pr-review-watch` |
 | `integration_branches` | base branch + `main` | `d-w` (fetch-and-cut targets) |
-| `state_dir` | `.claude/state/harness` | Phase 5 sentinels, pr-team runtime, session-bookmark notes (`session-bookmark/notes.json`) (gitignore it) |
+| `state_dir` | `.claude/state/harness` | Phase 5 sentinels, pr-team runtime, session-bookmark notes (`session-bookmark/notes.json`), parallel2 runs (`parallel2/`) (gitignore it) |
 | `agent_usage_path` | `docs/_harness/pr_review_agent_usage.jsonl` | `pr-review-watch` (one usage row per defined-agent dispatch: model, tokens, runtime, fixer counts) |
 | `artifacts.*` | `docs/PR_REVIEWS`, `docs/PLANS`, ... | review, plan, summary and commit-message output |
 | `tests.*` | `tests/`, common test-file pattern | review bucketing, commit grouping |

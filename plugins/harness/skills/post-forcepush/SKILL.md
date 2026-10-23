@@ -1,6 +1,7 @@
 ---
 name: post-forcepush
 description: Use when a PR's branch has been rebased / force-pushed and a previously-written PR-review JSON in the project's review directory has stale commit SHAs that need refreshing to match the new HEAD
+argument-hint: "<PR number> [review JSON path]"
 model: haiku
 effort: low
 ---

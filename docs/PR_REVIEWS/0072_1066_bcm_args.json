@@ -1,0 +1,639 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 72,
+  "pr_title": "1066 bcm args",
+  "branch": "1066-bcm-args",
+  "base_branch": "main",
+  "base_sha": "e7d7ccc32ba65a56b236626b0bc7bfae0e0f94c4",
+  "head_sha": "005558a27c5fdaf571ad52c16579d5fbec429cea",
+  "review_date": "2026-10-23",
+  "verdict": "READY TO MERGE - 25 of 25 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2203,
+    "deletions": 307,
+    "files_changed": 18
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0072/pr72_20261023T165648Z/findings/tests.json",
+    "docs/_scratch/pr_review/0072/pr72_20261023T165648Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0072/pr72_20261023T165648Z/findings/docs.json",
+    "docs/_scratch/pr_review/0072/pr72_20261023T165648Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_parallel2.py is fully behavioral: real throwaway repos, real worktrees, in-process main, state read back from disk and git; no stubs.",
+    "Stage tests cover modify, rename, add, delete, three-way merge, conflicts, glob-character paths and a moved target, each verified against the real index.",
+    "Exact-text assertions on plan summary, overlap problem lines and dispatch rows pin the documented output shapes.",
+    "test_parallel_lanes.py exercises plan validation edge cases (bool as wave, mixed waves, path forms) and first-fit packing with concrete expected maps.",
+    "Bare-ref skeleton test compares the --base and bare-ref skeletons byte for byte rather than spot-checking fields.",
+    "Ledger backup tests cover both the replace path and the identical-text no-backup path.",
+    "parallel_lanes is pure (no git, no file system): the driver passes it plain data, so plan, overlap and wave logic can be tested without a repository.",
+    "stage applies the lane diff three-way from its base, so commits the target gained since setup are merged rather than reverted.",
+    "create_worktrees undoes its own worktrees and branches if a later lane fails, and setup checks branch collisions and overlapping pending paths before creating anything.",
+    "effective_base rejects a bare ref that conflicts with --base, and back_up_replaced keeps one .bak generation only when the TXT would actually change.",
+    "The parallel2 SKILL refusal table quotes the actual driver problem strings (overlap, pending, worktree dirty, conflicts, unfinished run) verbatim.",
+    "Splitting the procedure (SKILL.md) from the rationale (README.md) cuts the skill from 254 to 83 lines, and every reference to the deleted DomainPlan example went with it.",
+    "The README reason for staging by three-way apply (instead of a whole-file checkout) matches apply_lane and moved_note exactly.",
+    "branch-commit-msg documents the bare-REF/--base conflict rule exactly as effective_base enforces it.",
+    "parallel_lanes.py is pure and parallel2.py owns every side effect, so planning logic is unit-tested without git.",
+    "stage applies the lane diff three-way from its base, and tests prove later target commits survive and renames and deletions land.",
+    "test_parallel2.py drives the real CLI against throwaway repositories and worktrees, with no stubbed code under test.",
+    "The SKILL refusal table quotes each driver problem message verbatim.",
+    "test_root_separation adds a parallel2 plan case.",
+    "build backs up a TXT only when the text changes, and both paths are tested."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "plan --replace drops the record of live worktrees and branches",
+        "file": "plugins/harness/scripts/parallel2.py",
+        "files": [
+          "plugins/harness/scripts/parallel2.py",
+          "plugins/harness/skills/parallel2/SKILL.md"
+        ],
+        "lines": "158-164",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "guard_existing_run returns at once when --replace is given and the new state overwrites the old one, including lanes that still have a live worktree and a p2/<id> branch. Those worktrees are then invisible to cleanup (which only touches recorded lanes), and a new plan that reuses a lane id fails setup with: branch p2/<id> already exists. Only manual git commands can recover.\n\nAlso (overall): guard_existing_run returns at once under --replace (parallel2.py:158-164), so the new state drops lanes that still have worktrees and p2 branches. cleanup only touches recorded lanes, so those become unreachable, a reused lane id then fails setup with branch already exists, and the SKILL fix for that (P2 cleanup --all, SKILL.md:79) finds nothing to clean.",
+        "fix": [
+          "Refuse --replace while any old lane has_live_worktree (tell the user to run cleanup --all first).",
+          "Or carry the old live lanes into the new state so cleanup can still remove them.",
+          "Keep refusing under --replace while any lane has_live_worktree.",
+          "Or carry live-worktree lanes into the new state and document it in SKILL.md:83."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "a leftover probe file passes stage but blocks cleanup",
+        "file": "plugins/harness/scripts/parallel2.py",
+        "files": [
+          "plugins/harness/scripts/parallel2.py",
+          "plugins/harness/lib/harness_lib/parallel_lanes.py",
+          "tests/scripts/test_parallel2.py",
+          "plugins/harness/skills/parallel2/SKILL.md"
+        ],
+        "lines": "212-221,334-338,411-416,419-426",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The probe prompt tells the agent to report that .p2_probe remains when Bash rm is not authorized, and require_clean_worktree deliberately ignores that file, so such a lane stages fine. cleanup then calls `git worktree remove` without --force, and git refuses a worktree holding untracked files, so the lane can never be cleaned through the driver (`cleanup --all` fails the same way). The same leftover file is also picked up by a lane agent running `git add -A`, after which stage refuses it as undeclared (or stages it into the target with --include-undeclared).\n\nAlso (overall): The probe may leave <worktree>/.p2_probe when Bash rm is not authorized (parallel_lanes.py:459-462), and stage ignores it (parallel2.py:334-338). cleanup then runs git worktree remove without --force (parallel2.py:214), which refuses a worktree with an untracked file, so a lane with Write but no Bash(rm) stages and then fails cleanup. No test runs cleanup after a leftover probe file.\n\nAlso (overall): select_for_cleanup returns dispatched lanes for --all and --lane (parallel2.py:411-416) and remove_worktree runs git branch -D (line 217). A dispatched lane keeps its work only in commits on p2/<id>, so that work is destroyed and no tip SHA is printed. SKILL step 8 says no permission question, and the refusal table prescribes P2 cleanup --all for unfinished runs (SKILL.md:79,83).",
+        "fix": [
+          "Have the driver delete `<worktree>/.p2_probe` itself (in stage before the cleanliness check, and in remove_worktree before `git worktree remove`).",
+          "Or write `.p2_probe` into the worktree info/exclude at setup and filter it out of undeclared_paths.",
+          "Unlink Path(item.worktree) / pl.PROBE_FILE (missing_ok=True) in remove_worktree before git worktree remove, and add a stage-then-cleanup test with a leftover probe file.",
+          "Or write the probe file outside the lane worktree.",
+          "Refuse non-staged lanes unless an explicit --discard flag is given, and name --discard in the SKILL table.",
+          "At minimum print the branch tip SHA in the removal line and warn in SKILL step 8 that --all discards unstaged commits."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "stage builds its patch with porcelain git diff, which user config can make unapplicable",
+        "file": "plugins/harness/scripts/parallel2.py",
+        "lines": "365-366",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "apply_lane pipes `git diff --binary -M base branch` into `git apply --3way`. Porcelain `git diff` honours diff.noprefix / diff.mnemonicPrefix (apply then strips the wrong -p level), color.ui=always / color.diff=always (escape codes in the patch), diff.external (external tool output replaces the patch) and textconv drivers (enabled by default for git diff). With any of these set in the user or repo config, stage fails with a git apply error or, with textconv, applies converted text instead of the real blob content.",
+        "fix": [
+          "Use plumbing: `git diff-tree -p --binary -M --full-index <base_sha> <branch>`, which ignores those porcelain settings.",
+          "Or keep `git diff` and add `--no-color --no-ext-diff --no-textconv --src-prefix=a/ --dst-prefix=b/`."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "a run whose last wave holds only read-only lanes never deletes its state",
+        "file": "plugins/harness/scripts/parallel2.py",
+        "files": [
+          "plugins/harness/scripts/parallel2.py",
+          "plugins/harness/lib/harness_lib/parallel_lanes.py"
+        ],
+        "lines": "437-446",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "Read-only lanes become DISPATCHED at setup and never reach CLEANED (clean_lane rejects them with: no worktree to remove). When no staged lane with a worktree is left, as in a read-only-only plan or after every implement lane is already cleaned, cmd_cleanup prints nothing to clean up and returns before finish_state, so the state file stays even though state_is_spent is true. pl.unfinished then still lists the read-only lanes, so the next `plan` for that target is refused unless --replace. This breaks the docstring promise that state and briefs go away once no lane keeps a worktree or waits for setup.",
+        "fix": [
+          "In cmd_cleanup, call finish_state(repo, target, lanes) before the nothing-to-clean-up return.",
+          "And/or have unfinished() skip read-only lanes that are not PLANNED, or mark read-only lanes CLEANED when set up."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Wave packing is described as if it kept dependency order",
+        "file": "plugins/harness/skills/parallel2/README.md",
+        "files": [
+          "plugins/harness/skills/parallel2/README.md",
+          "plugins/harness/skills/parallel2/SKILL.md"
+        ],
+        "lines": "24,71-73",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The README worked example says that if W2A and W2B shared processing.py, plan would `split them into waves 2 and 3 when no waves were given`. pack_waves (parallel_lanes.py:260-271) is first-fit from wave 1 on file overlap only: with no waves, W2A lands in wave 1 next to the W1 lanes it depends on, and W2B in wave 2 at most. The SKILL (line 40) also says only that the driver packs omitted waves. It never says that packing ignores dependencies or that `wave` must be given on every lane or on none (_structure_problems, parallel_lanes.py:156-158). Step 2 advice to put lanes that share an invariant in different waves needs explicit waves on all lanes, and the SKILL never says so.\n\nAlso (overall): README.md:24 says setup runs while the probe runs, but probe refuses before setup (parallel2.py:288-297). README.md:71-73 says unwaved W2A and W2B would land in waves 2 and 3, but pack_waves is first-fit from wave 1 (parallel_lanes.py:260-271), so they land in waves 1 and 2.",
+        "fix": [
+          "README 71-73: replace the clause with: without waves, `plan` packs first-fit by file overlap only, so dependent lanes must carry explicit waves.",
+          "SKILL 40: add that `wave` goes on every lane or on none, and that packing looks only at file overlap, never at dependencies; give explicit waves whenever one lane reads the output of another or shares an invariant with it.",
+          "Say setup comes first and the probe runs in a lane worktree, and say packing starts at wave 1 so dependencies need explicit waves."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "Plan example implement lane breaks the rule stated two lines below it",
+        "file": "plugins/harness/skills/parallel2/SKILL.md",
+        "lines": "30-39",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The step 1 example gives the `parser` implement lane the tools Read, Edit and Bash(pytest *), then the text says an implement lane commits, so its tools include `Bash(git add *)` and `Bash(git commit *)`. An agent copying the example gets a lane that cannot commit without prompting (and the brief tells it to stop and report), and stage then refuses with `lane parser has no commits`. With Edit but no Write, the probe also only reports Edit as SKIPPED (parallel_lanes.py:448-450), so the profile is never really proven.",
+        "fix": [
+          "Make the example tools list Read, Write, Edit, Bash(pytest *), Bash(git add *) and Bash(git commit *)."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "Step 5 review diff needs a <base> that P2 status never prints",
+        "file": "plugins/harness/skills/parallel2/SKILL.md",
+        "files": [
+          "plugins/harness/skills/parallel2/SKILL.md",
+          "plugins/harness/lib/harness_lib/parallel_lanes.py",
+          "plugins/harness/skills/parallel2/README.md"
+        ],
+        "lines": "52-54",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md step 5 tells the reviewers to read `git -C <worktree> diff <base>..HEAD` and says `P2 status` shows the lane. render_status_line (parallel_lanes.py:424-427) prints only `id wave kind status branch worktree`; base_sha lives only in the state JSON. The session has no documented way to get <base>, and diffing against the moving HEAD of the target would show target commits reverted.\n\nAlso (overall): Step 5 diffs <base>..HEAD and says P2 status shows the lane (SKILL.md:52-54), but render_status_line has no base_sha (parallel_lanes.py:424-427), so reviewers guess the range.",
+        "fix": [
+          "Change the command to `git -C <worktree> diff <target>...HEAD` (three-dot resolves to the merge base, which is the base_sha of the lane) and keep `P2 status` for the worktree path.",
+          "Add base_sha to render_status_line and the README Lifecycle row for status, then keep `<base>` in the SKILL text.",
+          "Add the short base_sha to render_status_line and its tests.",
+          "Or diff <target>...HEAD in step 5."
+        ]
+      },
+      {
+        "id": "I8",
+        "name": "--replace and cleanup --all advice strands p2 branches the driver can no longer remove",
+        "file": "plugins/harness/skills/parallel2/SKILL.md",
+        "files": [
+          "plugins/harness/skills/parallel2/SKILL.md",
+          "plugins/harness/scripts/parallel2.py"
+        ],
+        "lines": "79,83",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The refusal table says to pass `--replace` to discard the record (line 83), and the fix for `branch p2/<id> already exists` is `P2 cleanup --all` (line 79). guard_existing_run plus save_lanes (parallel2.py:158-173) overwrite the state without removing the old worktrees or branches, and select_for_cleanup (parallel2.py:411-416) only touches recorded lanes (as step 8 says). After a `--replace`, the next setup of a reused lane id fails with `branch p2/<id> already exists`, and the documented fix does nothing (`nothing to clean up`). The same dead end happens when the branch belongs to the run of another target.",
+        "fix": [
+          "Line 83: say to run `P2 cleanup --all` before `--replace`, and that `--replace` leaves the old worktrees and branches behind.",
+          "Line 79: add that when `P2 status` does not list the lane, the branch belongs to a discarded or other-target run: run `git worktree remove <path>` and `git branch -D p2/<id>` after the developer confirms, or pass `--target` for the other run."
+        ]
+      },
+      {
+        "id": "I9",
+        "name": "test_bare_ref_spares_branch_txt checks a write capture never makes",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "lines": "150-156,512-518",
+        "reviewer": "overall, tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "capture --save writes only the skeleton JSON (branch_commit_msg.py:558-575), so the assertion that the branch TXT is unchanged holds even if the bare ref were dropped. Only the exit code can fail, and the behavior the name claims is decided at build time.\n\nAlso (tests): The test builds the branch ledger, runs `capture --save HEAD`, and asserts 9999-demo.txt is unchanged. capture (_cmd_capture, branch_commit_msg.py:558-575) only reads the TXT and writes a JSON skeleton; it never writes the ledger, so the assertion holds whether or not the bare ref is honored. The sibling-name protection only matters at build time, which the analogous TestCaptureBase tests (test_build_writes_sibling_txt_and_spares_branch_txt) exercise but this one does not.",
+        "fix": [
+          "Build the saved bare-ref skeleton and assert the branch TXT is byte-identical while the _<sha7>.txt is written.",
+          "Or delete it, since test_bare_ref_saves_same_skeleton_as_base covers the bare ref.",
+          "After the --save, fill the saved skeleton (9999-demo_<sha7>.json) and run `build` on it via main; assert the sibling 9999-demo_<sha7>.txt exists and the ledger text equals `before`.",
+          "Or remove the test, since test_bare_ref_saves_same_skeleton_as_base already proves the bare ref yields the same skeleton as --base."
+        ]
+      },
+      {
+        "id": "I11",
+        "name": "Bare-ref charset test passes with the charset guard deleted",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "files": [
+          "tests/scripts/test_branch_commit_msg.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "535-541",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_bare_token_outside_ref_charset_is_a_problem asserts only exit 1 and a 'problem: ' prefix. If the _REF_PATTERN check in effective_base (branch_commit_msg.py:551-552) were removed, every parametrized token ('HEAD;rm', '$(x)', 'a b', free text) would reach run_capture, fail git ref resolution and still print 'problem: ' with exit 1. The test cannot tell the charset rejection apart from an unknown-ref failure, so it does not guard the behavior it names.",
+        "fix": [
+          "Assert the charset message: `assert \"is not a ref\" in err` (capture err once from capsys).",
+          "Additionally assert the rejection happens before git runs, e.g. no skeleton written with --save."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "the module docstring says no two lanes of a wave may overlap; only implement lanes are checked",
+        "file": "plugins/harness/lib/harness_lib/parallel_lanes.py",
+        "lines": "8",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The parallel_lanes module docstring says: Two lanes of one wave may not overlap. But check_wave_overlaps and pack_waves look only at implement lanes, and read-only lanes always go to wave 1 whatever they overlap.",
+        "fix": [
+          "Reword to: Two implement lanes of one wave may not overlap; read-only lanes may."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "path_problem accepts dot segments and empty segments that never match a git path",
+        "file": "plugins/harness/lib/harness_lib/parallel_lanes.py",
+        "lines": "88-98",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "Entries such as `./src/x.py` or `src//x.py` pass validation, but git reports paths without them, so matches_entry never matches. Overlap checks miss the overlap, and stage refuses the lane changes as undeclared.",
+        "fix": [
+          "In path_problem, reject any `.` or empty segment except a trailing empty one (the directory slash): split the entry with its trailing slash removed on `/` and return a problem when a part is empty or `.`."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "the claim that the witness is the narrower entry fails for a glob against a directory",
+        "file": "plugins/harness/lib/harness_lib/parallel_lanes.py",
+        "lines": "211-214,218-224",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The entry_overlap docstring says the witness is the narrower of the two entries, but _glob_pair returns the glob whenever the other entry is a directory. For `*` against `src/a/` it reports `*`.",
+        "fix": [
+          "Return `_more_specific(glob, other)` in the glob/directory branch.",
+          "Or change the docstring to say a glob/directory pair reports the glob."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "a bare REF is not the same as --base REF for refs that use @ or braces",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "lines": "97,129,482-485,510-515,546-555,558-564",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The help says a bare ref is the same as --base REF, but _REF_PATTERN rejects `@`, `{` and `}`, so `capture HEAD@{1}`, `capture @~3` or `capture main@{u}` fail as not a ref while `--base` accepts them. When a bare ref names no commit, the error from resolve_base_ref also names --base although no --base was given.\n\nAlso (overall): With --pending the bare ref is dropped without notice (branch_commit_msg.py:560-562), and the --pending help (510-515) does not list it. An unresolvable bare ref is reported as --base x does not name a commit (line 129).",
+        "fix": [
+          "Widen the class to `[A-Za-z0-9/._~^@{}-]+` (still excludes whitespace and shell metacharacters).",
+          "Or say in the help that the bare form accepts only branch, tag and SHA spellings.",
+          "Reject --pending combined with a bare ref or --base, or list the bare REF in the --pending help.",
+          "Word the resolve error as ref x does not name a commit."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "parallel2 says nothing is written on a defect, but cleanup and stage write before exiting 1",
+        "file": "plugins/harness/scripts/parallel2.py",
+        "lines": "5-6,261-262,454-456",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring says every defect exits 1 with nothing written. cleanup removes worktrees, saves or deletes the state and only then raises its collected problems. stage writes STAGED on a conflict (that case is documented there). setup creates worktrees before write_briefs, and an OSError there escapes PROBLEMS as a traceback, leaving worktrees and branches that no state records.\n\nAlso (overall): parallel2.py:5-6 says every defect exits 1 with nothing written, but a stage conflict saves state and the index (386-395), and a partial cleanup saves state (447-456), before exiting 1.",
+        "fix": [
+          "Narrow the docstring: validation defects write nothing; cleanup and a stage conflict record progress before exiting 1.",
+          "Wrap write_briefs in setup so a failure removes the worktrees just created, as create_worktrees does.",
+          "Say that refusals write nothing, while a stage conflict or a partial cleanup records what was done."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "target slugs can collide and load_lanes ignores the recorded target",
+        "file": "plugins/harness/scripts/parallel2.py",
+        "files": [
+          "plugins/harness/scripts/parallel2.py",
+          "plugins/harness/lib/harness_lib/parallel_lanes.py"
+        ],
+        "lines": "92-95",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "target_slug maps `a/b` and `a-b` to the same state file. load_lanes throws away the target that load_state returns, so a run for one branch is read, set up and staged as if it belonged to the other.",
+        "fix": [
+          "In load_lanes, compare the stored target with `target` and raise CaptureError on a mismatch."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "pending_paths reads the rename source only for index-side renames",
+        "file": "plugins/harness/scripts/parallel2.py",
+        "lines": "142-143",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "Porcelain v1 can also report R/C in the worktree column (Y, e.g. renames of intent-to-add entries). Because only token[0] is checked, the source path that follows such an entry is read as a status record of its own, and token[3:] then cuts off the first three characters of that path.",
+        "fix": [
+          "Test both status columns: check token[0] and token[1] against RC before consuming the next token."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "the conflict list counts unmerged paths that the lane did not touch",
+        "file": "plugins/harness/scripts/parallel2.py",
+        "lines": "371-375",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "After `git apply --3way`, apply_lane takes every unmerged index path as a conflict of this lane. An unmerged path already in the checkout (outside the lane files, so pending_overlap does not catch it) is reported as a lane conflict, and if apply failed for some other reason while such a path exists, the failure is hidden: the lane is recorded STAGED even though nothing was applied.",
+        "fix": [
+          "Keep only conflicts that fall within the lane changed paths, and raise the apply error when apply failed and none of the lane paths is unmerged."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "TXT backup sentence is in the capture step but build makes the copy",
+        "file": "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "37,40-48,83-84,128-129",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Line 37 in Step 1 (capture) says a rebuild that changes an existing TXT first copies it to `<name>.txt.bak`. The copy happens in run_build via back_up_replaced (branch_commit_msg.py, build path). capture --save writes only the skeleton. The line also runs well past the wrap width of the file.\n\nAlso (docs): Lines 32-35 make a bare REF equal to `--base REF`, but the flags table (40-45), the `--no-fetch` note (47-48) and the Step 2 rerun advice (83-84) still name only `--base`. An agent rerunning `capture --save --fresh` after a bare-REF invocation may drop the ref and overwrite the branch TXT instead of the `_<sha7>` one.",
+        "fix": [
+          "Move the sentence to Step 4 after the Exit 0 sentence: when that TXT already exists and changes, the old copy is kept as `<name>.txt.bak` (one generation). Re-wrap line 37.",
+          "Write `--base REF` (or bare `REF`) in the table rows, the fetch note and the line 83 rerun advice."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "README says setup and probe run concurrently; probe requires setup first",
+        "file": "plugins/harness/skills/parallel2/README.md",
+        "lines": "24",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README line 24 says the worktrees are created (`setup`) while the probe runs. probe_wave (parallel2.py:288-297) refuses a wave that is not set up, and the probe prompts point at the lane worktrees. SKILL step 3 has the correct order: setup, then probe.",
+        "fix": [
+          "Reword line 24: the prongs are separate checks; `setup` cuts the worktrees and `probe` then exercises the tools inside them before any lane is dispatched."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Read-only probe guidance has no driver command behind it",
+        "file": "plugins/harness/skills/parallel2/SKILL.md",
+        "files": [
+          "plugins/harness/skills/parallel2/SKILL.md",
+          "plugins/harness/lib/harness_lib/parallel_lanes.py"
+        ],
+        "lines": "45-48",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL step 3 says read-only waves skip the probe only when the session already ran the same tools. The plan summary prints `prong 2: optional probe for read-only lanes` (parallel_lanes.py:316-317). But cmd_probe and probe_profiles (parallel2.py:300-312, parallel_lanes.py:288-296) cover only implement lanes with a live worktree, and a read-only wave prints `nothing to probe`. A read-only wave with unproven tools has no documented probe route.",
+        "fix": [
+          "Say in SKILL step 3 that `P2 probe` covers implement lanes only. For a read-only wave with tools the session has not run, dispatch one hand-written probe agent that exercises each listed tool once."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "parallel2 root-separation case never proves the write path ran",
+        "file": "tests/contract/test_root_separation.py",
+        "lines": "117-126",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The new 'parallel2 plan' case asserts only that nothing changed under plugins/ and no Traceback. If plan exited 1 with a problem line before writing its state file (for example on target resolution), the case would still pass. Sibling helpers (_merge_body_args, _runlog_args) are built to reach the write, and companion *_lands_in_the_project tests confirm it; parallel2 has no such check.",
+        "fix": [
+          "Add a test that runs the case and asserts returncode 0 plus `(project / '.claude/state/harness/parallel2/feature.json').is_file()`.",
+          "Or add the state path to a lands-in-project table like TODO_OUTPUTS."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "plan fixture docstring misstates its signature",
+        "file": "tests/scripts/test_parallel2.py",
+        "lines": "68",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstring reads ``plan(lanes, target=..., *flags)``, but the function is `_plan(lanes, *flags, **top)`: target is fixed to feat-x and only overridable through **top, alongside any other top-level key. Keyword-before-varargs is also not a callable order.",
+        "fix": [
+          "Reword to: ``plan(lanes, *flags, **top)`` writes {target: feat-x, lanes, **top} as the plan JSON and runs ``plan`` on it."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Dirty-worktree stage refusal does not check the index stayed clean",
+        "file": "tests/scripts/test_parallel2.py",
+        "lines": "421-427",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_stage_refuses_a_dirty_lane_worktree asserts exit 1 and message words only. Sibling refusal tests (test_stage_refuses_undeclared_paths_unless_included) also assert `git diff --cached --name-only == ''`; without it a stage that applied the lane and then reported the dirty tree would pass.",
+        "fix": [
+          "Add `assert git(project, \"diff\", \"--cached\", \"--name-only\") == \"\"` and that the lane status is still dispatched."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Later-wave cleanup test passes if cleanup removes nothing",
+        "file": "tests/scripts/test_parallel2.py",
+        "lines": "535-540",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_cleanup_keeps_the_state_while_a_later_wave_is_planned checks only exit 0 and that task2 is still planned. A cleanup --all that skipped the dispatched task1 lane entirely would pass; the test does not show that wave 1 was cleaned while the state survived.",
+        "fix": [
+          "Capture out and assert `out.splitlines() == [\"removed task1 (p2/task1)\"]` and `lane_state(project, \"task1\")[\"status\"] == \"cleaned\"`."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 72 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":7,\"first_sha\":\"6c2ab8c0300051bd38658dc3895ec28c919bc471\",\"headRefName\":\"1066-bcm-args\",\"headRefOid\":\"005558a27c5fdaf571ad52c16579d5fbec429cea\",\"last_sha\":\"005558a27c5fdaf571ad52c16579d5fbec429cea\",\"mergeCommit\":null,\"number\":72,\"state\":\"OPEN\",\"title\":\"1066 bcm args\",\"url\":\"https://github.com/t968rs/operator-straps/pull/72\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1066-bcm-args",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1066-bcm-args",
+        "head_ref_name": "1066-bcm-args",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "6c2ab8c0300051bd38658dc3895ec28c919bc471",
+        "head_sha": "005558a27c5fdaf571ad52c16579d5fbec429cea",
+        "base_ancestor_command": "git merge-base --is-ancestor 6c2ab8c0300051bd38658dc3895ec28c919bc471 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 005558a27c5fdaf571ad52c16579d5fbec429cea HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - guard_existing_run refuses --replace while any old lane has a live worktree (run cleanup --all first); SKILL refusal table gains that message"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - drop_probe_file deletes <worktree>/.p2_probe in stage (before the cleanliness check) and in remove_worktree; stage-then-cleanup test with a leftover probe; SKILL step 8 warns --all/--lane drop unstaged commits; probe prompt text needs no edit"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - cmd_cleanup calls finish_state before the nothing-to-clean-up return, so a spent read-only run deletes its state; test added; parallel_lanes.py cited only, no edit needed"
+    },
+    {
+      "id": "I8",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - SKILL line 79 covers a branch from another target's or an unrecorded run (--target, or git worktree remove + git branch -D after confirmation); line 83 limits --replace to lanes without a worktree and adds the cleanup --all first row; driver enforces it via the I1 guard"
+    },
+    {
+      "id": "I9",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - test_bare_ref_spares_branch_txt fills the saved bare-ref skeleton, builds it via main, asserts the _<sha7>.txt is written and the branch TXT is byte-identical"
+    },
+    {
+      "id": "I11",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - charset test asserts 'is not a ref' in stderr and that --save wrote no skeleton; cited only: the effective_base charset guard is unchanged in this part; the assertion strengthening is in the test file owned by the other part"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - widened _REF_PATTERN to accept @ { } (branch_commit_msg.py:97), reworded the resolve error to 'ref X does not name a commit' (line 129), and listed the bare REF in the --pending help (line 512-515)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - cited only: the backup sentence and the --base table rows are in SKILL.md (other part); back_up_replaced in the build path is unchanged; Moved the TXT .bak backup sentence from Step 1 to Step 4 after the Exit 0 sentence (build makes the copy); added bare REF to the flags table, the --no-fetch note and the Step 2 rerun advice"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - reworded README.md line 24: setup cuts the worktrees first, then probe exercises the tools inside them before dispatch"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - README.md worked example: unwaved lanes pack first-fit from wave 1 by file overlap only; dependent lanes must carry explicit waves; SKILL step 1: wave goes on every lane or none; omitted waves pack first-fit by file overlap only, so dependent lanes need explicit waves"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - Added test_parallel2_plan_lands_in_the_project asserting returncode 0 and .claude/state/harness/parallel2/feature.json"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - module docstring now says only implement lanes of one wave may not overlap; read-only lanes may"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - path_problem rejects empty and '.' segments (trailing directory slash allowed)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - _glob_pair glob/directory branch returns _more_specific(glob, other), so '*' vs 'src/a/' witnesses 'src/a/'"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - cited only: target_slug and load_state are unchanged; the stored-target check belongs in load_lanes in parallel2.py, owned by the other part; load_lanes compares the stored target with the requested one and raises CaptureError on a mismatch"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - cited only: render_plan_summary prong 2 text (lines 316-317) unchanged; the step 3 wording that says P2 probe covers implement lanes lives in SKILL.md, owned by the other part; SKILL step 3: P2 probe covers implement lanes with a worktree only; read-only waves with unproven tools get one hand-written haiku probe agent"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - module docstring narrowed: refusals write nothing, a stage conflict or partial cleanup records progress before exit 1"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - pending_paths consumes the rename/copy source token when either status column is R or C"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - apply_lane counts only unmerged paths among the lane changed paths and raises the apply error when none of them is unmerged"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - apply_lane builds the patch with plumbing git diff-tree -p --binary -M --full-index, ignoring porcelain diff config"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - SKILL step 1 example: parser implement lane tools now include Write, Bash(git add *) and Bash(git commit *)"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - plan fixture docstring reworded to plan(lanes, *flags, **top) and the plan JSON it writes"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - dirty-worktree stage refusal test now asserts the index stayed clean and lane task1 is still dispatched"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - later-wave cleanup test captures output and asserts removed task1 line and task1 cleaned while task2 stays planned"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "005558a (working-tree snapshot; developer commits) - P2 status prints each lane's base SHA as a seventh column (parallel_lanes.render_status_line); SKILL step 5 diffs <target>...HEAD; status-line tests updated (outside fixer waves)"
+    }
+  ]
+}
