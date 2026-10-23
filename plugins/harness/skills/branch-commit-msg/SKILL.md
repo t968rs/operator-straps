@@ -1,7 +1,7 @@
 ---
 name: branch-commit-msg
 description: Use when asked to draft the full set of commit messages for everything pending on the current branch, as multiple Conventional Commits saved to the project's commit_messages directory (default docs/_commit_messages). Triggers on "break the branch into commits", "draft all commit messages", "commit breakdown", "branch-commit-msg".
-argument-hint: "[--base REF] [--fresh] [--no-fetch]"
+argument-hint: "[REF] [--base REF] [--fresh] [--no-fetch]"
 model: haiku
 context: fork
 agent: harness:messenger
@@ -29,10 +29,12 @@ project root, exactly as written.
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" capture --save $ARGUMENTS
 ```
 
-`$ARGUMENTS` holds the developer's flags (`--base REF`, `--fresh`, `--no-fetch`); pass them through unchanged and
-add none. Only those three are expected: on any other flag, or a REF holding anything but letters, digits and
-`/._-~^`, report it and stop. Exit 1 prints `problem:` lines: report them and stop. Never choose or substitute a base yourself: the base
-is the developer's `--base`, else the project's. Exit 0 prints `wrote <skeleton>`: the absolute path of the
+`$ARGUMENTS` holds the developer's arguments (a bare `REF`, `--base REF`, `--fresh`, `--no-fetch`); pass them
+through unchanged and add none, `--fresh` included. A bare `REF` and `--base REF` are the same (one ref as the
+merge base); giving both with different refs exits 1. On any other flag, or a REF holding anything but letters,
+digits and `/._-~^`, report it and stop. An argument the script rejects is reported, never removed or replaced.
+Exit 1 prints `problem:` lines: report them and stop. Never choose or substitute a base yourself: the base
+is the developer's ref, else the project's. A rebuild that changes an existing TXT first copies it to `<name>.txt.bak`. Exit 0 prints `wrote <skeleton>`: the absolute path of the
 skeleton in the commit_messages directory. Use that path as `<skeleton>` below.
 
 | Flags                  | Skeleton and TXT                  | Plan                                                       |
