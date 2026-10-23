@@ -2,7 +2,7 @@
 name: pr-sum
 description: 'Use when asked to summarize a PR, describe PR changes, write a PR summary document, or draw one: a visual, diagram, flowchart or "more visual" summary, one "akin to" an earlier visual summary, or a PR that changes runtime behavior, relocates code, migrates call sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule'
 argument-hint: "PR [--level 1|2|3] [--min-viz [N]]"
-model: haiku
+model: sonnet
 effort: medium
 context: fork
 agent: harness:messenger
@@ -22,8 +22,8 @@ reads it from there. No `--level` means 2.
 
 | Level | Output                                                                                              |
 |-------|-----------------------------------------------------------------------------------------------------|
-| 1     | Prose only: Summary, Files Changed, Relocated. No sections, no Commits block.                       |
-| 2     | Default. Behavior flows (at most 3), at most one shape diagram, Changed Symbols, Commits block.     |
+| 1     | Prose only: Summary, Files Changed, Relocated. No sections.                                         |
+| 2     | Default. Behavior flows (at most 3), at most one shape diagram, Changed Symbols.                    |
 | 3     | Level 2 plus: up to 5 flows, every shape diagram once (two more: Sequence Diagram, Data Flow).      |
 
 `--min-viz [N]` applies at level 3 only (ignored at levels 1 and 2). `build` then requires N diagram blocks
@@ -113,11 +113,11 @@ Edit only `draft`. `summary` and each section `body` may be a list of lines (no 
 4. **Drop:** imperative verbs (`add`, `fix`, `introduce`, `update`, `remove`, `move`), issue/PR numbers, and
    secondary topics joined by `and` / `plus`.
 
-| Raw PR title / commit message                                                  | Title                                       |
-|--------------------------------------------------------------------------------|---------------------------------------------|
-| Docs(cache): add Issue #291 eviction catalog and blast radius analysis         | Docs(cache): `evict_stale` eviction catalog |
-| Feat(parser): introduce max_depth parameter into tokenizer pipeline            | Feat(parser): `max_depth` parameter         |
-| Refactor(io): remove duplicate normalize_headers and fix merge signature       | Refactor(io): `normalize_headers` deduplication |
+| Raw PR title / commit message                                            | Title                                           |
+|--------------------------------------------------------------------------|-------------------------------------------------|
+| Docs(cache): add Issue #291 eviction catalog and blast radius analysis   | Docs(cache): `evict_stale` eviction catalog     |
+| Feat(parser): introduce max_depth parameter into tokenizer pipeline      | Feat(parser): `max_depth` parameter             |
+| Refactor(io): remove duplicate normalize_headers and fix merge signature | Refactor(io): `normalize_headers` deduplication |
 
 No single subject (a broad multi-file change): scope plus artifact noun only.
 

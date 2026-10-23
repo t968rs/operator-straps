@@ -12,7 +12,7 @@
     Writes ``<summaries>/<NNNN>_pr.json``: ``{"facts": {...}, "draft": {...}}``. When that file already
     holds a parseable draft, the draft is carried forward: title, summary and sections stay, and
     descriptions stay for paths the PR still lists (new paths get empty slots). ``--level 1|2|3`` stores the
-    summary level in the skeleton (default 2; 1 prose only without the Commits block, 2 the visual layout,
+    summary level in the skeleton (default 2; 1 prose only, 2 the visual layout,
     3 the visual layout with more diagram types); ``--min-viz [N]`` at level 3 also stores N (default 3) and
     arms the Stop-hook sentinel that holds the session until ``build`` succeeds. Both flags are stored fresh
     on every capture.
@@ -27,7 +27,7 @@
     Validate the draft, write ``<summaries>/<NNNN>_<Title>.md`` and print the receipt. The level and the
     ``--min-viz`` count come from the skeleton (a skeleton without a level builds at level 2): levels 2 and 3
     require the visual sections and cap their table cells, level 3 also requires the stored count of diagram
-    blocks, level 1 forbids sections and leaves out the Commits block. A successful build clears the PR's
+    blocks, level 1 forbids sections. A successful build clears the PR's
     ``--min-viz`` sentinel.
 
 Roots: the project (git top level of ``--repo``, which must lie inside a git checkout, else of the working
@@ -257,7 +257,7 @@ def run_build(repo: Path, payload: Mapping[str, object]) -> Tuple[Path, str]:
         raise CaptureError(problems)
     target = summaries_dir(repo) / summary_filename(facts.number, draft.title)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(render_summary(facts, draft, level), encoding="utf-8")
+    target.write_text(render_summary(facts, draft), encoding="utf-8")
     min_viz_sentinel.clear(active(), facts.number)
     return target, receipt(repo, target, facts, draft)
 
@@ -290,7 +290,7 @@ def _parser() -> argparse.ArgumentParser:
     cap.add_argument("--out", type=Path, help="Skeleton path (default <summaries>/<NNNN>_pr.json).")
     cap.add_argument(
         "--level", type=int, choices=LEVELS, default=DEFAULT_LEVEL,
-        help=f"Summary level stored in the skeleton (default {DEFAULT_LEVEL}): 1 prose only without Commits, "
+        help=f"Summary level stored in the skeleton (default {DEFAULT_LEVEL}): 1 prose only, "
              "2 flows, one shape diagram and Changed Symbols, 3 more diagram types.",
     )
     cap.add_argument(

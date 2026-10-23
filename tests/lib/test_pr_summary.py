@@ -327,7 +327,7 @@ class TestRenderSummary:
             "## Summary\n\nAdds `a`.\n\n***Note:*** "
         )
         assert "\n## Changed Symbols\n\n```\nx\n```\n" in text
-        assert "\n- abc1234 Feature(a): add a\n" in text
+        assert "abc1234" not in text
         assert "<details><summary>Files Changed (2)</summary>" in text
         assert "| `src/pkg/a.py` | M | adds `a` |" in text
         assert "| `docs/PR_REVIEWS/0007_Demo.json` | A | (machine-generated artifact) |" in text
@@ -356,24 +356,17 @@ class TestRenderSummary:
         text = render_summary(_facts(), _draft(sections=(_FLOW, _SYMBOLS)))
         marks = [
             "## Summary", "***Note:***", "## New Behavior: append", "## Changed Symbols",
-            "<summary>Commits</summary>", "<summary>Files Changed (2)</summary>",
+            "<summary>Files Changed (2)</summary>",
             "<summary>Relocated 1 files",
         ]
         positions = [text.index(mark) for mark in marks]
         assert positions == sorted(positions)
 
-    def test_commits_block_and_change_codes(self) -> None:
+    def test_change_codes_and_no_commits_block(self) -> None:
         text = render_summary(_facts(), _draft())
-        commits = "<details><summary>Commits</summary>\n<p>\n\n- abc1234 Feature(a): add a\n\n</p>\n"
-        assert commits in text
+        assert "<summary>Commits</summary>" not in text
+        assert "abc1234 Feature(a): add a" not in text
         assert "\n\nChange codes: A = added, M = modified, D = deleted, R = renamed\n\n</p>" in text
-
-    @pytest.mark.parametrize("level, shown", [(1, False), (2, True), (3, True)])
-    def test_commits_block_by_level(self, level: int, shown: bool) -> None:
-        text = render_summary(_facts(), _draft(), level)
-        assert ("<summary>Commits</summary>" in text) is shown
-        assert "abc1234 Feature(a): add a" not in text or shown
-        assert "<summary>Files Changed (2)</summary>" in text
 
     def test_cell_escapes_pipes_and_newlines(self) -> None:
         text = render_summary(_facts(), _draft(descriptions={"src/pkg/a.py": "adds a | b\n  and c"}))
