@@ -1,16 +1,17 @@
 """The default exclusions file (``.claude/review_exclusions.json``) seeded into a consuming project.
 
-The harness writes review JSONs, PR summaries and the pr-review-watch rows under the project; the clean-tree
-check and the review capture treat them as machine-generated. A project whose ``exclusions`` value is the
-default path (in any equivalent spelling) gets the file written on first use, with patterns derived from its
-configured artifact folders and rows files. Any other path, or null, is never touched.
+The harness writes review JSONs, PR summaries, run scratch, commit message drafts, runtime state and the
+pr-review-watch rows under the project; the clean-tree check and the review capture treat them as
+machine-generated. A project whose ``exclusions`` value is the default path (in any equivalent spelling) gets
+the file written on first use, with patterns derived from its configured artifact folders and rows files. Any
+other path, or null, is never touched.
 """
 from __future__ import annotations
 
 import json
 import posixpath
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 from harness_lib.config import HarnessConfig
 
@@ -27,8 +28,11 @@ def _normalized(rel: str) -> str:
 
 def _entries(cfg: HarnessConfig) -> List[dict]:
     rows = [
-        (f"{cfg.artifacts.reviews.rstrip('/')}/*", "pr-review output"),
-        (f"{cfg.artifacts.summaries.rstrip('/')}/*", "PR summaries"),
+        (f"{_normalized(cfg.artifacts.reviews)}/*", "pr-review output"),
+        (f"{_normalized(cfg.artifacts.summaries)}/*", "PR summaries"),
+        (f"{_normalized(cfg.artifacts.scratch)}/*", "pr-review run scratch"),
+        (f"{_normalized(cfg.artifacts.commit_messages)}/*", "commit message drafts"),
+        (f"{_normalized(cfg.state_dir)}/*", "harness runtime state"),
         (_normalized(cfg.matrix_path), "pr-review-watch invocation matrix rows"),
         (_normalized(cfg.agent_usage_path), "pr-review agent usage rows"),
         (DEFAULT_EXCLUSIONS, "this file, seeded by the harness"),
@@ -42,6 +46,24 @@ def _entries(cfg: HarnessConfig) -> List[dict]:
 def default_patterns(cfg: HarnessConfig) -> List[str]:
     """The fnmatch patterns a seeded file holds for ``cfg``'s artifact folders."""
     return [e["pattern"] for e in _entries(cfg)]
+
+
+def harness_patterns(cfg: HarnessConfig) -> List[str]:
+    """The fnmatch patterns for what the harness itself writes under the project.
+
+    ``default_patterns`` without the row for the seeded file, which a project on another path never has.
+    """
+    return [p for p in default_patterns(cfg) if p != DEFAULT_EXCLUSIONS]
+
+
+def with_harness_patterns(cfg: HarnessConfig, patterns: Sequence[str]) -> List[str]:
+    """``patterns`` followed by each harness pattern they lack.
+
+    A file seeded by an earlier version, or a project's own list, never gains the rows added since. The
+    harness folders stay exempt in memory, and the file is left as the project wrote it.
+    """
+    merged = list(patterns)
+    return merged + [p for p in harness_patterns(cfg) if p not in merged]
 
 
 def ensure_default_exclusions(cfg: HarnessConfig) -> Optional[Path]:

@@ -62,12 +62,14 @@ def _dir_prefix(rel: str) -> str:
 
 def exclusion_patterns(repo: Path) -> Tuple[str, ...]:
     """The machine-generated exclusion patterns (the Phase 4 / Phase 2 list) of the project's configured
-    ``exclusions`` file under ``repo``; empty when none is configured."""
-    rel = _cfg().exclusions
-    if not rel:
+    ``exclusions`` file under ``repo``, plus any harness pattern the file lacks; empty when none is
+    configured."""
+    cfg = _cfg()
+    if not cfg.exclusions:
         return ()
+    from harness_lib.default_exclusions import with_harness_patterns
     from harness_lib.git_status_filter_excluded import load_exclusions
-    return tuple(load_exclusions(Path(repo) / rel))
+    return tuple(with_harness_patterns(cfg, load_exclusions(Path(repo) / cfg.exclusions)))
 
 
 def is_excluded(path: str, patterns: Sequence[str]) -> bool:

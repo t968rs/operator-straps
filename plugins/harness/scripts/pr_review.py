@@ -1319,13 +1319,39 @@ def _json_object(text: str) -> Optional[Dict[str, object]]:
     return value if isinstance(value, dict) else None
 
 
+_DIRTY_PATH_CAP = 5
+
+
+def _stopped_checks(block: Mapping[str, object]) -> List[str]:
+    """Names of the Phase 4 checks whose ``result`` is a STOP."""
+    return [n for n, b in block.items()
+            if isinstance(b, dict) and str(b.get("result", "")).startswith("STOP")]
+
+
 def _phase4_reason(rc: int, block: Optional[Mapping[str, object]]) -> str:
-    """Why a Phase 4 first run does not count."""
+    """Why a Phase 4 first run does not count, naming the STOP checks when the block lists any."""
     if rc == 2:
         return "argv error"
     if block is None:
         return "empty or non-JSON stdout (metadata failure)"
-    return "a branch-safety check failed" if rc == 1 else "unexpected exit"
+    if rc != 1:
+        return "unexpected exit"
+    stops = _stopped_checks(block)
+    return f"a branch-safety check failed: {', '.join(stops)}" if stops else "a branch-safety check failed"
+
+
+def _clean_tree_hint(block: Optional[Mapping[str, object]]) -> str:
+    """The non-exempt paths of a STOPped clean-tree check (capped) and the exclusions file to extend."""
+    check = (block or {}).get("clean_tree_check")
+    if not isinstance(check, dict) or not str(check.get("result", "")).startswith("STOP"):
+        return ""
+    paths = [ln[3:] if len(ln) > 3 else ln for ln in str(check.get("filtered_stdout") or "").splitlines()
+             if ln.strip()]
+    if not paths:
+        return ""
+    more = f" (+{len(paths) - _DIRTY_PATH_CAP} more)" if len(paths) > _DIRTY_PATH_CAP else ""
+    return (f"; non-exempt paths: {', '.join(paths[:_DIRTY_PATH_CAP])}{more}; clean them or add a pattern "
+            f"to the exclusions file ({check.get('exclusions_fixture') or 'none configured'})")
 
 
 def head_desync_only(rc: int, block: Optional[Mapping[str, object]]) -> bool:
@@ -1333,8 +1359,7 @@ def head_desync_only(rc: int, block: Optional[Mapping[str, object]]) -> bool:
     and ``base_ancestor_exit == 0`` (the remote PR head lags local HEAD; the operating rules waive it)."""
     if rc != 1 or block is None:
         return False
-    stops = [n for n, b in block.items()
-             if isinstance(b, dict) and str(b.get("result", "")).startswith("STOP")]
+    stops = _stopped_checks(block)
     check = block.get("sha_ancestry_check")
     return (stops == ["sha_ancestry_check"] and isinstance(check, dict)
             and check.get("head_ancestor_exit") != 0 and check.get("base_ancestor_exit") == 0)
@@ -1368,7 +1393,8 @@ def apply_phase4(repo: Path, run: Path, pr: int, doc: Dict[str, object],
     reason = _phase4_reason(rc, block)
     hold_ready_verdict(doc, reason)
     hint = "; only the head ancestry failed: rerun build --replace --waive-head-ancestry" if desync else ""
-    return (f"phase4 first run rc {rc}: {reason}; pre_fix_time left pending (see {_rel(repo, record)}); "
+    return (f"phase4 first run rc {rc}: {reason}{_clean_tree_hint(block)}; pre_fix_time left pending "
+            f"(see {_rel(repo, record)}); "
             f"STOP{hint}"), None
 
 

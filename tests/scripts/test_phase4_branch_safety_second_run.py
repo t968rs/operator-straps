@@ -16,6 +16,7 @@ contract.
 from __future__ import annotations
 
 import importlib.util
+import json
 import time
 from pathlib import Path
 from types import ModuleType
@@ -265,9 +266,62 @@ def test_clean_tree_seeds_and_applies_the_default_exclusions(make_project, phase
     root, cfg = phase4._project()
     assert (root / ".claude" / "review_exclusions.json").is_file()
     _write(root, "docs/PR_REVIEWS/0001_x.json", "{}\n")
+    _write(root, "docs/_scratch/pr_review/0001/current", "x\n")
     check = phase4._check_clean_tree(root, phase4._exclusions_for(None, cfg))
     assert "?? .claude/review_exclusions.json" in check["stdout"]
+    assert "docs/_scratch/pr_review/0001/current" in check["stdout"]
     assert check["result"] == "OK (empty after exclusions)"
+
+
+_LEGACY_EXCLUSIONS = {"exclusions": [
+    {"pattern": "docs/PR_REVIEWS/*"},
+    {"pattern": "docs/PR_SUMMARIES/*"},
+    {"pattern": "docs/_harness/pr_review_invocation_test_matrix.jsonl"},
+    {"pattern": "docs/_harness/pr_review_agent_usage.jsonl"},
+    {"pattern": ".claude/review_exclusions.json"},
+]}
+
+
+_META = {"headRefName": "main", "first_sha": "a", "last_sha": "b", "baseRefName": "main"}
+
+
+def _legacy_project(make_project, monkeypatch):
+    """A project holding the five-row file an earlier version seeded, plus untracked run scratch."""
+    root = make_project(config={"exclusions": ".claude/review_exclusions.json"})
+    cfg = activate(load_config(root))
+    monkeypatch.chdir(root)
+    _write(root, ".claude/review_exclusions.json", json.dumps(_LEGACY_EXCLUSIONS))
+    _write(root, "docs/_scratch/pr_review/0001/current", "x\n")
+    _write(root, ".claude/state/harness/pr-review/.phase5_pending_9", "9\n")
+    return root, cfg
+
+
+def test_clean_tree_legacy_file_still_exempts_harness_folders(make_project, phase4, monkeypatch):
+    """A file seeded by an earlier version is never rewritten; the harness folders stay exempt anyway."""
+    root, cfg = _legacy_project(make_project, monkeypatch)
+    check = phase4._pre_fix_checks(_META, root, cfg, None)["clean_tree_check"]
+    assert check["result"] == "OK (empty after exclusions)"
+    assert "docs/_scratch/pr_review/0001/current" in check["stdout"]
+    kept = (root / ".claude/review_exclusions.json").read_text(encoding="utf-8")
+    assert json.loads(kept) == _LEGACY_EXCLUSIONS
+
+
+def test_clean_tree_explicit_fixture_is_taken_as_given(make_project, phase4, monkeypatch):
+    """``--exclusions-fixture`` names the whole list: no harness folder is added to it."""
+    root, cfg = _legacy_project(make_project, monkeypatch)
+    check = phase4._pre_fix_checks(_META, root, cfg, ".claude/review_exclusions.json")["clean_tree_check"]
+    assert check["result"].startswith("STOP: working tree has non-exempt changes")
+    assert "docs/_scratch/pr_review/" in check["filtered_stdout"]
+
+
+def test_clean_tree_null_exclusions_adds_no_harness_folders(make_project, phase4, monkeypatch):
+    """A project that disabled exclusions keeps every change counted."""
+    root = make_project(config={"exclusions": None})
+    cfg = activate(load_config(root))
+    monkeypatch.chdir(root)
+    _write(root, "docs/_scratch/pr_review/0001/current", "x\n")
+    check = phase4._pre_fix_checks(_META, root, cfg, None)["clean_tree_check"]
+    assert check["result"].startswith("STOP")
 
 
 def test_clean_tree_missing_exclusions_file_stops(project, phase4):
