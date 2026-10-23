@@ -30,6 +30,11 @@ write the runner pointer, and retire, split or re-rank catalog items.
 ``refresh [--dry-run]``
     Rescore every item from ``ranking_method``, re-sort, renumber, recount and rewrite moved ids, after hand
     edits to item fields. A catalog already in order is left untouched.
+``init``
+    Create the TODO folder, an empty schema-valid catalog (the default ranking tables, no items, the current
+    commit in ``generated_from``) and the first snapshot (skipped when ``todo.snapshots.dir`` is null). Prints
+    one ``created <path>`` line per file. Refuses, exit 2, when the catalog already exists; needs
+    ``todo.folder`` and a git commit.
 ``untracked``
     List the open GitHub issues (``gh issue list``; ``todo.gh.repo`` or the origin remote) that no catalog
     record mentions: no item, tracker, child, close candidate or research entry. Prints one ``#N title`` line
@@ -64,6 +69,8 @@ from harness_lib.todo_sync import (TodoSyncError, check, render_snapshot, report
 from harness_lib.todo_sync.issues import find_untracked, write_untracked  # noqa: E402
 from harness_lib.todo_sync.report import Report, format_markdown, format_summary  # noqa: E402
 from harness_lib.todo_sync.reshape import apply_add, apply_refresh, apply_split  # noqa: E402
+from harness_lib.todo_sync.scaffold import init_catalog  # noqa: E402
+from harness_lib.todo_sync.sources import posix  # noqa: E402
 from harness_lib.todo_sync.reshape import summary_lines as reshape_lines  # noqa: E402
 from harness_lib.todo_sync.retire import apply_retirement, summary_lines  # noqa: E402
 
@@ -105,6 +112,7 @@ def _parser() -> argparse.ArgumentParser:
     spl.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
     ref = sub.add_parser("refresh", parents=[common], help="Rescore, re-sort and renumber every item.")
     ref.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
+    sub.add_parser("init", parents=[common], help="Create the TODO folder, an empty catalog and a snapshot.")
     sub.add_parser("untracked", parents=[common], help="List open issues no catalog record mentions.")
     add = sub.add_parser("add", parents=[common], help="Add one item per open issue named in a spec.")
     add.add_argument("--spec", type=Path, required=True, help='JSON file: {"items": [{...}, {...}]}.')
@@ -155,9 +163,20 @@ def _untracked(cfg: HarnessConfig) -> int:
     return 0
 
 
+def _init(cfg: HarnessConfig) -> int:
+    result = init_catalog(cfg)
+    for path in (result.catalog, result.snapshot):
+        if path is not None:
+            print(f"created {posix(str(path.relative_to(cfg.project_root)))}")
+    print("next: todo_sync.py check, or /harness:sync-gh-todo to add the open issues")
+    return 0
+
+
 def _dispatch(cfg: HarnessConfig, args: argparse.Namespace) -> int:
     if args.command == "check":
         return _check(cfg, args)
+    if args.command == "init":
+        return _init(cfg)
     if args.command == "untracked":
         return _untracked(cfg)
     if args.command == "add":

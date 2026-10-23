@@ -5,6 +5,9 @@
   "tests": {
     "roots": ["tests/"]
   },
+  "todo": {
+    "folder": "docs/TODO"
+  },
   "commit_buckets": [
     {"bucket": "Planning", "prefixes": ["docs/plans/"], "names": ["CLAUDE.md"]},
     {"bucket": "Cicd", "prefixes": [".github/workflows/"]},

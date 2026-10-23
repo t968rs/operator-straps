@@ -241,11 +241,15 @@ entries now fully resolved and the issues that can close. With `--delete-retired
 to `FULLY_IMPLEMENTED` and deletes its stub, but only after it ran a check for every deliverable in the stub;
 a stub with any unproven deliverable is kept and listed.
 
+A project's first catalog comes from `todo_sync.py init`: with `todo.folder` set, it creates the folder, an empty
+schema-valid `RepoToDo.json` (the default ranking tables, no items, the current commit recorded) and the first
+snapshot, and refuses to overwrite an existing catalog. It needs a git commit and does not edit `harness.json`.
+
 Open GitHub issues enter the catalog through `todo_sync.py untracked`, which lists the open issues that no record
 mentions (an item, tracker, tracker child, close candidate or research entry) and writes each one's text, comments
 and the text of any PR review it links to `<state_dir>/todo-sync/untracked.json`. `todo_sync.py add --spec PATH
 [--dry-run]` inserts one item per issue from a spec file, scores it, renumbers the rest and recounts, and refuses an
-issue the catalog already records. `/harness:sync-gh-todo` runs both through the `todo-editor` agent, which drafts
+issue the catalog already records. `/harness:sync-gh-todo` runs `init` first when the catalog is missing, then both through the `todo-editor` agent, which drafts
 each item from the issue and review text (a best guess for a thin issue, flagged as needing a decision when it
 turns on a choice) and then runs `render` and `check`. A `gh_issue` source needs no `_IMPL_TODO.md` stub.
 

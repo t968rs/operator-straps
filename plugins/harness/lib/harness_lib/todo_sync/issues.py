@@ -82,10 +82,14 @@ def _flatten(raw: Dict[str, Any]) -> Dict[str, Any]:
             "review_errors": []}
 
 
-def open_issues(cfg: HarnessConfig) -> List[Dict[str, Any]]:
-    """Every open issue (up to ``LIST_LIMIT``) as a flat row."""
+def _require_folder(cfg: HarnessConfig) -> None:
     if not cfg.todo.enabled:
         raise TodoSyncError("untracked needs todo.folder")
+
+
+def open_issues(cfg: HarnessConfig) -> List[Dict[str, Any]]:
+    """Every open issue (up to ``LIST_LIMIT``) as a flat row."""
+    _require_folder(cfg)
     repo = ["--repo", cfg.todo.gh_repo] if cfg.todo.gh_repo else []
     out = gh.run_gh(cfg.project_root, ["issue", "list", "--state", "open", "--limit", str(LIST_LIMIT),
                                        "--json", LIST_FIELDS, *repo])
@@ -94,8 +98,9 @@ def open_issues(cfg: HarnessConfig) -> List[Dict[str, Any]]:
 
 def find_untracked(cfg: HarnessConfig) -> List[Dict[str, Any]]:
     """The open issues no catalog record mentions, sorted by number."""
-    rows = open_issues(cfg)
+    _require_folder(cfg)
     tracked = tracked_numbers(Sources(cfg))
+    rows = open_issues(cfg)
     fresh = sorted((r for r in rows if r["number"] not in tracked), key=lambda r: r["number"])
     for row in fresh:
         attach_reviews(cfg, row)

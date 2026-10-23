@@ -22,6 +22,16 @@ Run it from the project root. `untracked: none` ends the run: report that line. 
 `untracked: <n> open issue(s) in no catalog record`, one `#<number> <title>` line per issue and
 `wrote <path>`; the issue numbers feed Step 2.
 
+A `problem:` line ending `RepoToDo.json: file not found` (the catalog named in `todo.catalog`) means
+`todo.folder` is set but the project has no catalog yet. Create the starter one, then rerun the command above:
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" init
+```
+
+`init` writes an empty catalog and the first snapshot and prints one `created <path>` line per file. It
+never overwrites an existing catalog: a `problem:` line from it ends the run, relayed as it stands.
+
 ## Step 2: dispatch the agent
 
 One `Agent` call: `subagent_type="harness:todo-editor"`, `model="opus"`, `description="Sync GitHub issues to

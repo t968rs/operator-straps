@@ -80,10 +80,35 @@ def test_untracked_exits_2_when_gh_fails(driver, make_project, monkeypatch, caps
     assert not (root / UNTRACKED_REL).exists()
 
 
+def test_untracked_reports_a_missing_catalog_before_gh(driver, make_project, monkeypatch, capsys) -> None:
+    root = build(make_project, {}).project_root
+
+    def forbidden(cwd: Path, args) -> str:
+        raise AssertionError("gh was asked before the catalog was read")
+
+    monkeypatch.setattr(gh, "run_gh", forbidden)
+    assert driver.main(["--project", str(root), "untracked"]) == 2
+    assert f"problem: {CATALOG_REL}: file not found" in capsys.readouterr().err
+
+
 def test_untracked_needs_the_todo_folder(driver, make_project, capsys) -> None:
     root = make_project({}, files={})
     assert driver.main(["--project", str(root), "untracked"]) == 2
     assert "problem: untracked needs todo.folder" in capsys.readouterr().err
+
+
+def test_init_creates_the_catalog_and_refuses_a_second_run(driver, make_project, capsys) -> None:
+    root = build(make_project, {}).project_root
+    assert driver.main(["--project", str(root), "init"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[0] == f"created {CATALOG_REL}"
+    assert lines[1].startswith("created docs/RESEARCH/_TODO/Snapshots/TODO_Snapshot_")
+    assert lines[-1] == "next: todo_sync.py check, or /harness:sync-gh-todo to add the open issues"
+    assert (root / CATALOG_REL).is_file()
+    before = (root / CATALOG_REL).read_bytes()
+    assert driver.main(["--project", str(root), "init"]) == 2
+    assert "already exists" in capsys.readouterr().err
+    assert (root / CATALOG_REL).read_bytes() == before
 
 
 def test_add_dry_run_then_real(driver, make_project, capsys) -> None:

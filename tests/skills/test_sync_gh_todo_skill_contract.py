@@ -51,7 +51,14 @@ def test_skill_command_lines_parse() -> None:
     lines = re.findall(rf"^{re.escape(_LAUNCHER)} (.*)$", _text(_SKILL), re.MULTILINE)
     assert lines, "skill never runs todo_sync.py through the launcher"
     for line in lines:
-        assert module._parser().parse_args(shlex.split(line)).command == "untracked"
+        assert module._parser().parse_args(shlex.split(line)).command in {"untracked", "init"}
+    assert {module._parser().parse_args(shlex.split(line)).command for line in lines} == {"untracked", "init"}
+
+
+def test_skill_starts_a_missing_catalog_with_init() -> None:
+    body = _text(_SKILL)
+    assert "file not found" in body and "init" in body
+    assert "never overwrites" in body
 
 
 def test_skill_dispatches_the_todo_editor_on_opus() -> None:
