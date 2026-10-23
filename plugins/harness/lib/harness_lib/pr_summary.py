@@ -3,8 +3,8 @@
 ``PrFacts`` holds what local git and one ``gh pr view`` read establish about a PR. ``PrDraft`` holds the
 prose an agent writes: the derived title, the Summary, one description per listed source file and, from
 level 2 up, the flowchart, diagram and table sections. ``render_summary`` lays both out as the summary
-markdown the driver saves under the project's configured ``artifacts.summaries`` directory, so counts, commit
-subjects and file rows are never re-typed. Artifact classification goes through
+markdown the driver saves under the project's configured ``artifacts.summaries`` directory, so counts and
+file rows are never re-typed. Artifact classification goes through
 ``branch_commits.path_bucket`` (the project's configured commit buckets). Git and gh are not run here.
 """
 from __future__ import annotations
@@ -408,16 +408,12 @@ def _header(facts: PrFacts, title: str) -> List[str]:
     ]
 
 
-def render_summary(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -> str:
-    """Summary markdown: header, Summary, Note, drafted sections, Commits, Files Changed, Relocated.
-
-    Level 1 leaves out the Commits block.
-    """
+def render_summary(facts: PrFacts, draft: PrDraft) -> str:
+    """Summary markdown: header, Summary, Note, drafted sections, Files Changed, Relocated."""
     note = artifact_note(facts)
     lines = [*_header(facts, draft.title), "", "## Summary", "", draft.summary.strip()]
     lines += ["", note] if note else []
     for section in draft.sections:
         lines += ["", f"## {section.heading.strip()}", "", section.body.strip()]
-    lines += [] if level == 1 else ["", *_details("Commits", [f"- {c}" for c in facts.commits])]
     lines += ["", *_files_block(facts, draft), *_relocated_block(facts)]
     return "\n".join(lines) + "\n"

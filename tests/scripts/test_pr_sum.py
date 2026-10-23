@@ -604,7 +604,10 @@ class TestBuild:
         out, _ = script.run_build(clone, payload)
         text = out.read_text(encoding="utf-8")
         assert f"\n## Behavior: diff read\n\n{_FLOW_BODY}\n" in text
-        assert text.index("## Behavior: diff read") < text.index("## Changed Symbols") < text.index("Commits")
+        assert (
+            text.index("## Behavior: diff read") < text.index("## Changed Symbols")
+            < text.index("<summary>Files Changed")
+        )
 
     def test_rejects_unfilled_draft(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
         clone, _, head = pr_repo
@@ -698,19 +701,25 @@ class TestBuildLevels:
         out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, [], level=1))
         text = out.read_text(encoding="utf-8")
         assert "<summary>Commits</summary>" not in text and "<summary>Files Changed" in text
+        assert "Chore: move b, add report" not in text
 
     def test_level_one_rejects_sections(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
         payload = self._payload(script, pr_repo, _level3_sections(1), level=1)
         with pytest.raises(script.CaptureError, match="sections are for levels 2 and 3"):
             script.run_build(pr_repo[0], payload)
 
-    def test_level_two_keeps_commits(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+    @pytest.mark.parametrize("level", [2, 3])
+    def test_visual_levels_leave_out_commits(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], level: int,
+    ) -> None:
         sections = [
             {"heading": "Behavior: diff read", "body": _FLOW_BODY},
             {"heading": "Changed Symbols", "body": _SYMBOLS_BODY},
         ]
-        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, sections, level=2))
-        assert "<summary>Commits</summary>" in out.read_text(encoding="utf-8")
+        out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, sections, level=level))
+        text = out.read_text(encoding="utf-8")
+        assert "<summary>Commits</summary>" not in text and "<summary>Files Changed" in text
+        assert "Chore: move b, add report" not in text
 
     def test_skeleton_without_a_level_builds_at_level_two(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str],
@@ -719,7 +728,7 @@ class TestBuildLevels:
             script.run_build(pr_repo[0], self._payload(script, pr_repo, []))
         sections = [{"heading": "New Behavior: a", "body": _diagram(0)}, _SYMBOLS_SECTION]
         out, _ = script.run_build(pr_repo[0], self._payload(script, pr_repo, sections))
-        assert "<summary>Commits</summary>" in out.read_text(encoding="utf-8")
+        assert "## Changed Symbols" in out.read_text(encoding="utf-8")
 
     def test_level_three_without_min_viz_needs_no_blocks(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str],

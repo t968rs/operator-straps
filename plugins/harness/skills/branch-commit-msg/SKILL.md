@@ -32,7 +32,7 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_com
 `$ARGUMENTS` holds the developer's arguments (a bare `REF`, `--base REF`, `--fresh`, `--no-fetch`); pass them
 through unchanged and add none, `--fresh` included. A bare `REF` and `--base REF` are the same (one ref as the
 merge base); giving both with different refs exits 1. On any other flag, or a REF holding anything but letters,
-digits and `/._-~^`, report it and stop. An argument the script rejects is reported, never removed or replaced.
+digits and `/._-~^@{}`, report it and stop. An argument the script rejects is reported, never removed or replaced.
 Exit 1 prints `problem:` lines: report them and stop. Never choose or substitute a base yourself: the base
 is the developer's ref, else the project's. Exit 0 prints `wrote <skeleton>`: the absolute path of the
 skeleton in the commit_messages directory. Use that path as `<skeleton>` below.

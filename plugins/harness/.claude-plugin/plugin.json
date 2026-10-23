@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.20.0",
+  "version": "0.21.0",
   "description": "Skills, agents, hooks and scripts for PR review, commit breakdowns, PR summaries and worktree flow",
   "author": {
     "name": "Kevin Gabelman"
