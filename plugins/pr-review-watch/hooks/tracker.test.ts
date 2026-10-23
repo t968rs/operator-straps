@@ -452,16 +452,16 @@ describe('standalone agent usage rows', () => {
   test('background launch: the row is written when the loop turn ends', async ($, on) => {
     const seen = world(on, () => launchedAs('loop-9'))
     on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }) as never)
-    await run($, 'harness:bookmark-noter')
+    await run($, 'harness:todo-editor')
     expect(seen.files.has(USAGE)).toBe(false)
     await $.tool.call({ tool: 'Bash', command: 'ls', agentId: 'loop-9' } as never)
     await $.turn.complete({
-      answer: 'noted', durationMs: 4000, isAborted: false, turnId: 't-9', reason: 'answer', agentId: 'loop-9',
+      answer: 'done', durationMs: 4000, isAborted: false, turnId: 't-9', reason: 'answer', agentId: 'loop-9',
       usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 30, cache_creation_input_tokens: 40, model: 'claude-haiku-5-5' },
     } as never)
     expect(usageRows(seen)).toHaveLength(1)
     expect(usageRows(seen)[0]).toMatchObject({
-      skill: 'standalone', agent_id: 'bookmark-noter', tokens: 100, tool_uses: 1, duration_s: 4, model_family: 'haiku',
+      skill: 'standalone', agent_id: 'todo-editor', tokens: 100, tool_uses: 1, duration_s: 4, model_family: 'haiku',
     })
   })
 

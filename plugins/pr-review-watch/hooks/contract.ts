@@ -119,8 +119,8 @@ const slotDispatch = (h: Header, runId: string, runtimeBase: string): Dispatch |
  * plugin's `agents` folder. `tests/mods/test_pr_review_watch_usage_contract.py` pins the list to those files.
  */
 export const DEFINED_AGENTS = [
-  'harness:bookmark-noter', 'harness:messenger', 'harness:pr-fixer', 'harness:pr-reviewer',
-  'harness:pr-team-fixer', 'harness:pr-team-orchestrator', 'harness:roast-my-code', 'harness:todo-editor',
+  'harness:messenger', 'harness:pr-fixer', 'harness:pr-reviewer', 'harness:pr-team-fixer',
+  'harness:pr-team-orchestrator', 'harness:roast-my-code', 'harness:todo-editor',
 ] as const
 
 export const isDefinedAgent = (subagentType: string | undefined): boolean =>
