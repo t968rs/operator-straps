@@ -178,6 +178,14 @@ def test_merge_body_lands_in_the_project(project: Path) -> None:
     assert written.resolve().is_relative_to(project.resolve())
 
 
+def test_parallel2_plan_lands_in_the_project(project: Path, tmp_path: Path) -> None:
+    script, payload = CASES["parallel2 plan"](project, tmp_path)
+    done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project, payload)
+    assert done.returncode == 0, done.stderr
+    state = project / ".claude/state/harness/parallel2/feature.json"
+    assert state.is_file(), f"parallel2 plan did not write {state}:\n{done.stderr}"
+
+
 TODO_OUTPUTS = {
     "todo_sync check": ".claude/state/harness/todo-sync/report.json",
     "todo_sync render": "docs/RESEARCH/_TODO/Snapshots/TODO_Snapshot_2026_1021.md",

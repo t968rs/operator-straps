@@ -94,7 +94,7 @@ from harness_lib.project import project_root
 
 CommitDict = Dict[int, Tuple[List[str], str]]
 
-_REF_PATTERN = re.compile(r"[A-Za-z0-9/._~^-]+")
+_REF_PATTERN = re.compile(r"[A-Za-z0-9/._~^@{}-]+")
 
 PENDING_SUFFIX = "_pending"
 PENDING_SPLIT = "single commit: pending change against HEAD"
@@ -126,7 +126,7 @@ def resolve_base_ref(repo: Path, ref: str) -> str:
     """Commit SHA of ``ref`` (a SHA, ``HEAD``, a branch); ``BuildError`` when it names no commit."""
     probe = git(repo, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
     if probe.returncode != 0:
-        raise BuildError([f"--base {ref!r} does not name a commit"])
+        raise BuildError([f"ref {ref!r} does not name a commit"])
     return probe.stdout.strip()
 
 
@@ -511,7 +511,7 @@ def _parser() -> argparse.ArgumentParser:
         "--pending", action="store_true",
         help=(
             "One commit for the change pending against HEAD (c-msg); "
-            "--base, --no-fetch and --fresh are ignored."
+            "--base, a bare REF, --no-fetch and --fresh are ignored."
         ),
     )
     diff = sub.add_parser(

@@ -5,7 +5,7 @@ this module plain data: the plan JSON, the state text, ``CapturedPath`` lists fr
 
 A lane is ``implement`` (writes code, gets a worktree) or read-only (``review``, ``research``). Lane
 file entries are repo-relative POSIX paths: a file, a directory (trailing ``/``) or a glob (``*``, ``?``,
-``[``). Two lanes of one wave may not overlap.
+``[``). Two implement lanes of one wave may not overlap; read-only lanes may.
 """
 from __future__ import annotations
 
@@ -95,6 +95,9 @@ def path_problem(entry: str) -> Optional[str]:
         return "contains a backslash"
     if ".." in entry.split("/"):
         return "has a '..' segment"
+    parts = entry[:-1].split("/") if entry.endswith("/") else entry.split("/")
+    if any(part in ("", ".") for part in parts):
+        return "has an empty or '.' segment"
     return None
 
 
@@ -211,7 +214,7 @@ def _glob_pair(a: str, b: str) -> Optional[str]:
     glob, other = (a, b) if _is_glob(a) else (b, a)
     if _is_dir(other):
         prefix = _literal_prefix(glob)
-        return glob if prefix.startswith(other) or other.startswith(prefix) else None
+        return _more_specific(glob, other) if prefix.startswith(other) or other.startswith(prefix) else None
     return other if _glob_matches(glob, other) else None
 
 
@@ -422,9 +425,12 @@ def render_dispatch_row(item: Lane, worktree: Optional[str], brief: str) -> str:
 
 
 def render_status_line(item: Lane) -> str:
-    """``id wave kind status branch worktree`` with dashes for absent fields."""
+    """``id wave kind status branch worktree base`` with dashes for absent fields (base: short SHA)."""
     wave = str(item.wave) if item.wave is not None else "-"
-    return " ".join([item.id, wave, item.kind, item.status, item.branch or "-", item.worktree or "-"])
+    base = item.base_sha[:12] if item.base_sha else "-"
+    return " ".join(
+        [item.id, wave, item.kind, item.status, item.branch or "-", item.worktree or "-", base]
+    )
 
 
 def _bash_step(tool: str, worktree: str) -> str:

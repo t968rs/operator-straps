@@ -21,7 +21,8 @@ do not collide                        before scaling to the batch
            both done -> dispatch the wave
 ```
 
-The prongs are independent: the worktrees are created (`setup`) while the probe runs.
+The prongs are separate checks: `setup` cuts the worktrees first, then `probe` exercises the tools inside those
+worktrees before any lane of the wave is dispatched.
 
 **Why worktrees.** Subagents sharing one working tree overwrite each other's edits and break each other's test
 runs. Each implement lane gets its own branch and directory, cut from the target branch's HEAD.
@@ -69,8 +70,9 @@ W4  verification (main session, serial)
 ```
 
 Maximum concurrency is three (W1). The W1 lanes own disjoint file sets, so `plan` accepts them as one wave; had
-W2A and W2B both listed `processing.py`, `plan` would have refused an explicit shared wave, or split them into
-waves 2 and 3 when no waves were given.
+W2A and W2B both listed `processing.py`, `plan` would have refused an explicit shared wave. Without waves, `plan`
+packs first-fit from wave 1 by file overlap only, so W2A and W2B would land in waves 1 and 2 and dependencies
+are ignored: lanes that depend on another lane or share an invariant must carry explicit waves.
 
 Skills that apply per wave (those outside this plugin apply when installed):
 

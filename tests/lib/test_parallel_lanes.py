@@ -337,8 +337,9 @@ def test_dispatch_row() -> None:
 def test_status_line_uses_dashes_for_absent_fields() -> None:
     built = _built([lane("a"), lane("r", kind="review")])
     built[0].branch, built[0].worktree, built[0].status = "p2/a", "C:/w/p2-a", "dispatched"
-    assert pl.render_status_line(built[0]) == "a 1 implement dispatched p2/a C:/w/p2-a"
-    assert pl.render_status_line(built[1]) == "r 1 review planned - -"
+    built[0].base_sha = "0123456789abcdef0123"
+    assert pl.render_status_line(built[0]) == "a 1 implement dispatched p2/a C:/w/p2-a 0123456789ab"
+    assert pl.render_status_line(built[1]) == "r 1 review planned - - -"
 
 
 def test_probe_prompt_exercises_one_call_per_tool() -> None:

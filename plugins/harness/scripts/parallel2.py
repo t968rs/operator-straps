@@ -3,13 +3,14 @@
 The mechanical half of the ``parallel2`` skill. The run state lives in the consuming project at
 ``<main checkout>/<state_dir>/parallel2/<target-slug>.json`` and the lane briefs beside it in
 ``<target-slug>/<lane-id>.md``. One run exists per target branch. Every defect is one ``problem: ...`` line
-on stderr with exit 1 and nothing written; success exits 0.
+on stderr with exit 1; success exits 0. A refusal (a validation defect) writes nothing, while a stage
+conflict or a partial cleanup records what was done before exiting 1.
 
 ``plan PLAN_JSON [--replace]``
     Validate a dispatch plan (lane ids, kinds, models, tools, file entries, waves, overlap inside a wave;
     ``-`` reads it from stdin), pack unwaved lanes into waves, write the state and print the waves, the
     worktree prong and the probe prong. An earlier run with lanes not yet cleaned up is refused unless
-    ``--replace``.
+    ``--replace``; ``--replace`` itself is refused while an earlier lane still has a worktree.
 
 ``setup [--wave N]``
     For the lowest planned wave (or ``N``): cut ``p2/<lane-id>`` branches and worktrees from HEAD for the
@@ -21,10 +22,10 @@ on stderr with exit 1 and nothing written; success exits 0.
 
 ``stage LANE [--include-undeclared]``
     Apply a finished implement lane's committed diff (from its base) three-way onto the index of the
-    checkout (no commit), so target commits made since setup are merged rather than reverted. Refused when
-    the lane worktree is dirty (a leftover probe file aside), the lane has no commits, it changed paths
-    outside its files, or a changed path is pending in the checkout. A conflict leaves markers, records the
-    lane staged and exits 1 naming the conflicted paths.
+    checkout (no commit), so target commits made since setup are merged rather than reverted. A leftover
+    probe file is deleted first. Refused when the lane worktree is dirty, the lane has no commits, it changed
+    paths outside its files, or a changed path is pending in the checkout. A conflict leaves markers, records
+    the lane staged and exits 1 naming the conflicted paths.
 
 ``status``
     Print ``id wave kind status branch worktree`` per lane.
@@ -90,9 +91,14 @@ def run_target(repo: Path, args: argparse.Namespace) -> str:
 
 
 def load_lanes(repo: Path, target: str) -> Optional[List[pl.Lane]]:
-    """Lanes of the target's run, or None when no run exists."""
+    """Lanes of the target's run, or None when no run exists; a problem when the state names another run."""
     path = state_file(repo, target)
-    return pl.load_state(path.read_text(encoding="utf-8"))[1] if path.is_file() else None
+    if not path.is_file():
+        return None
+    stored, lanes = pl.load_state(path.read_text(encoding="utf-8"))
+    if stored != target:
+        raise CaptureError([f"state file {path.name} belongs to target {stored}, not {target}"])
+    return lanes
 
 
 def require_lanes(repo: Path, target: str) -> List[pl.Lane]:
@@ -139,7 +145,7 @@ def pending_paths(repo: Path) -> List[str]:
         if not token:
             continue
         paths.append(token[3:])
-        if token[0] in "RC":
+        if token[0] in "RC" or token[1:2] in ("R", "C"):
             paths.append(next(tokens, ""))
     prefix = _own_state_prefix(repo)
     return [path for path in paths if path and not (prefix and path.startswith(prefix))]
@@ -156,11 +162,20 @@ def read_plan(path: Path) -> object:
 
 
 def guard_existing_run(path: Path, replace: bool) -> None:
-    """Refuse to replace a run that still has lanes not cleaned up."""
-    if replace or not path.is_file():
+    """Refuse to replace a run that still has lanes not cleaned up.
+
+    ``--replace`` discards the record of unfinished lanes, but never of a lane that still has a worktree:
+    dropping it would leave that worktree and its ``p2/`` branch beyond the reach of ``cleanup``.
+    """
+    if not path.is_file():
         return
-    left = pl.unfinished(pl.load_state(path.read_text(encoding="utf-8"))[1])
-    if left:
+    lanes = pl.load_state(path.read_text(encoding="utf-8"))[1]
+    live = [item.id for item in lanes if pl.has_live_worktree(item)]
+    if replace and live:
+        raise pl.PlanError([f"a run for this target still has worktrees for lanes: {', '.join(live)}; "
+                            "run cleanup --all before --replace"])
+    left = pl.unfinished(lanes)
+    if left and not replace:
         raise pl.PlanError([f"a run for this target has unfinished lanes: {', '.join(left)}; pass --replace"])
 
 
@@ -209,8 +224,15 @@ def free_worktree_path(root: Path, lane_id: str) -> Path:
     return path
 
 
+def drop_probe_file(item: pl.Lane) -> None:
+    """Delete a probe file left in the lane worktree (a probe without ``Bash(rm)`` cannot)."""
+    if item.worktree:
+        (Path(str(item.worktree)) / pl.PROBE_FILE).unlink(missing_ok=True)
+
+
 def remove_worktree(repo: Path, item: pl.Lane, force: bool = False) -> Tuple[bool, Optional[str]]:
     """Remove a lane's worktree, then its branch: ``(worktree removed, problem text or None)``."""
+    drop_probe_file(item)
     done = git(repo, "worktree", "remove", *(["--force"] if force else []), str(item.worktree))
     if done.returncode != 0:
         return False, f"lane {item.id}: git worktree remove failed: {done.stderr.strip()}"
@@ -332,7 +354,8 @@ def moved_note(repo: Path, item: pl.Lane) -> Optional[str]:
 
 
 def require_clean_worktree(item: pl.Lane) -> None:
-    """Refuse a lane worktree with uncommitted changes; a leftover probe file does not count."""
+    """Refuse a lane worktree with uncommitted changes; a leftover probe file is deleted first."""
+    drop_probe_file(item)
     lines = git_out(Path(str(item.worktree)), "status", "--porcelain").splitlines()
     if any(line[3:] != pl.PROBE_FILE for line in lines if line.strip()):
         raise CaptureError([f"lane {item.id} worktree has uncommitted changes; commit in the worktree first"])
@@ -357,19 +380,22 @@ def _stderr(done: subprocess.CompletedProcess) -> str:
     return done.stderr.decode("utf-8", errors="replace").strip()
 
 
-def apply_lane(repo: Path, item: pl.Lane) -> List[str]:
+def apply_lane(repo: Path, item: pl.Lane, changed: Sequence[str]) -> List[str]:
     """Apply the lane's committed diff three-way onto the checkout's index; return the conflicted paths.
 
     The diff runs from the lane's base, so commits the target gained since setup are merged, never reverted.
+    Plumbing ``diff-tree`` builds the patch, so diff prefix, color, external and textconv settings never
+    reach it. Only unmerged paths among the lane's ``changed`` paths count as its conflicts.
     """
-    diff = subprocess.run(["git", "diff", "--binary", "-M", str(item.base_sha), str(item.branch)],
-                          cwd=repo, capture_output=True)
+    diff = subprocess.run(["git", "diff-tree", "-p", "--binary", "-M", "--full-index", str(item.base_sha),
+                           str(item.branch)], cwd=repo, capture_output=True)
     if diff.returncode != 0:
         raise CaptureError([f"git diff of lane {item.id} failed: {_stderr(diff)}"])
     done = subprocess.run(["git", "apply", "--3way", "--whitespace=nowarn"], cwd=repo, input=diff.stdout,
                           capture_output=True)
     listing = git_out(repo, "diff", "--name-only", "--diff-filter=U", "-z")
-    conflicts = [path for path in listing.split("\0") if path]
+    own = set(changed)
+    conflicts = [path for path in listing.split("\0") if path and path in own]
     if done.returncode != 0 and not conflicts:
         raise CaptureError([f"git apply of lane {item.id} failed: {_stderr(done)}"])
     return conflicts
@@ -381,9 +407,10 @@ def cmd_stage(repo: Path, args: argparse.Namespace) -> int:
     item = stageable_lane(lanes, args.lane)
     require_checked_out(repo, target)
     require_clean_worktree(item)
-    report = pl.staging_report(lane_changes(repo, item, args.include_undeclared))
+    changes = lane_changes(repo, item, args.include_undeclared)
+    report = pl.staging_report(changes)
     note = moved_note(repo, item)
-    conflicts = apply_lane(repo, item)
+    conflicts = apply_lane(repo, item, [path for change in changes for path in change.paths])
     item.status, item.staged = pl.STAGED, report.touched
     save_lanes(repo, target, lanes)
     waiting = [i.id for i in lanes if i.kind == pl.IMPLEMENT and i.status == pl.DISPATCHED]
@@ -442,6 +469,7 @@ def cmd_cleanup(repo: Path, args: argparse.Namespace) -> int:
         return 0
     chosen = select_for_cleanup(lanes, args.lane or [], args.all)
     if not chosen:
+        finish_state(repo, target, lanes)
         print("nothing to clean up")
         return 0
     problems: List[str] = []

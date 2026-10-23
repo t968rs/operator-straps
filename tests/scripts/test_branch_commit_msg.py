@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import importlib.util
+import json
 import os
 import subprocess
 import sys
@@ -511,11 +512,18 @@ class TestCli:
 
     def test_bare_ref_spares_branch_txt(self, script: ModuleType, work: Tuple[Path, str]) -> None:
         clone, _ = work
+        sha7 = _git(clone, "rev-parse", "HEAD")[:7]
         script.run_build(clone, _filled(script.run_capture(clone, fetch=False)))
-        ledger = clone / "docs" / "_commit_messages" / "9999-demo.txt"
-        before = ledger.read_text(encoding="utf-8")
+        messages = clone / "docs" / "_commit_messages"
+        ledger = messages / "9999-demo.txt"
+        before = ledger.read_bytes()
         assert self._main(script, "--repo", str(clone), "capture", "--no-fetch", "--save", "HEAD") == 0
-        assert ledger.read_text(encoding="utf-8") == before
+        skeleton = messages / f"9999-demo_{sha7}.json"
+        filled = _filled(json.loads(skeleton.read_text(encoding="utf-8")))
+        skeleton.write_text(json.dumps(filled), encoding="utf-8")
+        assert self._main(script, "--repo", str(clone), "build", str(skeleton)) == 0
+        assert (messages / f"9999-demo_{sha7}.txt").is_file()
+        assert ledger.read_bytes() == before
 
     def test_bare_ref_equal_to_base_is_accepted(self, script: ModuleType, work: Tuple[Path, str]) -> None:
         clone, _ = work
@@ -537,8 +545,10 @@ class TestCli:
             self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture, token: str,
     ) -> None:
         clone, _ = work
-        assert self._main(script, "--repo", str(clone), "capture", "--no-fetch", token) == 1
-        assert capsys.readouterr().err.startswith("problem: ")
+        assert self._main(script, "--repo", str(clone), "capture", "--no-fetch", "--save", token) == 1
+        err = capsys.readouterr().err
+        assert err.startswith("problem: ") and "is not a ref" in err
+        assert not list((clone / "docs" / "_commit_messages").glob("*.json"))
 
     def test_two_bare_tokens_are_rejected(self, script: ModuleType) -> None:
         with pytest.raises(SystemExit):

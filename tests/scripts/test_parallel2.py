@@ -65,7 +65,10 @@ def lane(lane_id: str, files: List[str], kind: str = "implement", **extra: objec
 
 @pytest.fixture()
 def plan(run: Callable[..., Result], tmp_path: Path) -> Callable[..., Result]:
-    """``plan(lanes, target=..., *flags)`` writes the plan JSON and runs ``plan`` on it."""
+    """``plan(lanes, *flags, **top)`` writes {target: feat-x, lanes, **top} as the plan JSON.
+
+    It then runs ``plan`` on that file.
+    """
     def _plan(lanes: List[Dict[str, object]], *flags: str, **top: object) -> Result:
         body = {"target": "feat-x", "lanes": lanes, **top}
         path = tmp_path / "plan.json"
@@ -176,6 +179,17 @@ def test_plan_refuses_an_unfinished_run_unless_replaced(plan, project: Path) -> 
     code, _, err = plan([lane("task2", ["src/b.py"])], "--replace")
     assert (code, err) == (0, "")
     assert [i["id"] for i in state(project)["lanes"]] == ["task2"]
+
+
+def test_plan_replace_is_refused_while_a_lane_has_a_worktree(plan, run, project: Path) -> None:
+    plan([lane("task1", ["src/a.py"])])
+    run("setup")
+    code, out, err = plan([lane("task2", ["src/b.py"])], "--replace")
+    assert code == 1 and out == "" and "task1" in err and "cleanup --all" in err
+    assert [i["id"] for i in state(project)["lanes"]] == ["task1"]
+    assert run("cleanup", "--all")[0] == 0
+    code, _, err = plan([lane("task2", ["src/b.py"])], "--replace")
+    assert (code, err) == (0, "")
 
 
 # --- setup ------------------------------------------------------------------------------------------------
@@ -416,6 +430,19 @@ def test_stage_ignores_a_leftover_probe_file(two_lanes, run) -> None:
     code, _, err = run("stage", "task1")
     assert (code, err) == (0, "")
     assert git(project, "diff", "--cached", "--name-only") == "src/a.py"
+    assert not (tree / ".p2_probe").exists()
+
+
+def test_cleanup_removes_a_lane_with_a_leftover_probe_file(two_lanes, run, tmp_path: Path) -> None:
+    project = two_lanes
+    tree = lane_tree(project, "task1")
+    commit_in(tree, {"src/a.py": "a = 2\n"})
+    assert run("stage", "task1")[0] == 0
+    (tree / ".p2_probe").write_text("probe-edited", encoding="utf-8")
+    code, out, err = run("cleanup")
+    assert (code, err) == (0, "")
+    assert out.splitlines() == ["removed task1 (p2/task1)"]
+    assert not (tmp_path / "trees" / "p2-task1").exists()
 
 
 def test_stage_refuses_a_dirty_lane_worktree(two_lanes, run) -> None:
@@ -425,6 +452,8 @@ def test_stage_refuses_a_dirty_lane_worktree(two_lanes, run) -> None:
     (tree / "src" / "a.py").write_text("a = 3\n", encoding="utf-8")
     code, _, err = run("stage", "task1")
     assert code == 1 and "task1" in err and "commit" in err
+    assert git(project, "diff", "--cached", "--name-only") == ""
+    assert lane_state(project, "task1")["status"] == "dispatched"
 
 
 def test_stage_refuses_a_lane_without_commits(two_lanes, run) -> None:
@@ -468,7 +497,7 @@ def test_status_lists_each_lane(plan, run, project: Path) -> None:
     plan([lane("task1", ["src/a.py"]), lane("rev", [], kind="review")])
     code, out, _ = run("status")
     assert code == 0
-    assert out.splitlines() == ["task1 1 implement planned - -", "rev 1 review planned - -"]
+    assert out.splitlines() == ["task1 1 implement planned - - -", "rev 1 review planned - - -"]
     run("setup")
     _, out, _ = run("status")
     first = out.splitlines()[0].split(" ")
@@ -535,8 +564,10 @@ def test_cleanup_failure_stays_recorded_and_others_continue(two_lanes, run, tmp_
 def test_cleanup_keeps_the_state_while_a_later_wave_is_planned(plan, run, project: Path) -> None:
     plan([lane("task1", ["src/a.py"]), lane("task2", ["src/a.py"])])
     run("setup")
-    code, _, _ = run("cleanup", "--all")
+    code, out, _ = run("cleanup", "--all")
     assert code == 0
+    assert out.splitlines() == ["removed task1 (p2/task1)"]
+    assert lane_state(project, "task1")["status"] == "cleaned"
     assert lane_state(project, "task2")["status"] == "planned"
 
 
@@ -544,3 +575,14 @@ def test_cleanup_without_a_run_or_staged_lane(run, plan, project: Path) -> None:
     assert run("cleanup") == (0, "no parallel2 run for feat-x\n", "")
     plan([lane("task1", ["src/a.py"])])
     assert run("cleanup") == (0, "nothing to clean up\n", "")
+
+
+def test_cleanup_deletes_the_state_of_a_read_only_run(plan, run, project: Path) -> None:
+    plan([lane("rev", [], kind="review")])
+    run("setup")
+    assert run("cleanup") == (0, "nothing to clean up\n", "")
+    folder = project / ".claude" / "state" / "harness" / "parallel2"
+    assert not (folder / "feat-x.json").exists()
+    assert not (folder / "feat-x").exists()
+    code, _, err = plan([lane("task1", ["src/a.py"])])
+    assert (code, err) == (0, "")
