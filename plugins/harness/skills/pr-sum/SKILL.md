@@ -1,6 +1,6 @@
 ---
 name: pr-sum
-description: Use when asked to summarize a PR, describe PR changes, write a PR summary document, or draw one: a visual, diagram, flowchart or "more visual" summary, one "akin to" an earlier visual summary, or a PR that changes runtime behavior, relocates code, migrates call sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule
+description: 'Use when asked to summarize a PR, describe PR changes, write a PR summary document, or draw one: a visual, diagram, flowchart or "more visual" summary, one "akin to" an earlier visual summary, or a PR that changes runtime behavior, relocates code, migrates call sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule'
 argument-hint: "PR [--level 1|2|3] [--min-viz [N]]"
 model: haiku
 effort: medium
