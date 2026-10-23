@@ -194,8 +194,19 @@ A simple markdown table: `Symbol | File | Status | Note`. Long text goes outside
 - **Explanations**: the Note cell holds a short phrase. Anything longer goes in a `- `symbol`: ...` bullet
   below the table.
 
-`Status` is NEW, FIXED, RENAMED, KEPT or REMOVED. Symbol is byte-exact, in backticks. Rows are the PR's
-source symbols; test helpers and stubs stay out.
+`Status` is one of:
+
+| Status  | The symbol                                                            |
+|---------|-----------------------------------------------------------------------|
+| NEW     | did not exist before the PR                                           |
+| CHANGED | existed; its signature, behavior or output changed; no bug is cited   |
+| FIXED   | existed; the diff corrects behavior that was wrong                    |
+| RENAMED | keeps its role under a new name; the Note gives the old name          |
+| MOVED   | keeps its name and role in another file; the Note gives the old file  |
+| REMOVED | no longer exists                                                      |
+
+Symbol is byte-exact, in backticks. Rows are the PR's source symbols, each changed by the diff; test helpers,
+stubs and untouched callers stay out.
 
 Every markdown table cell in a visual section holds 40 characters or fewer, and lines inside a fence are 120
 characters or fewer (`build` rejects longer ones). In diagrams and key blocks, a long path may drop a leading
