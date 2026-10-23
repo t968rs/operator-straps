@@ -1,0 +1,280 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 76,
+  "pr_title": "fix(harness): seed the run scratch folder and .gitignore lines into r…",
+  "branch": "1068-review-exclusions",
+  "base_branch": "main",
+  "base_sha": "11123f1ebbcf1caaba991030ce412f6bbd97544e",
+  "head_sha": "1aa9d791a5ef9d3ec4191f2bee8f6786d2f90953",
+  "review_date": "2026-10-23",
+  "verdict": "READY TO MERGE - 7 of 8 findings resolved, 1 bubbled",
+  "stats": {
+    "additions": 30,
+    "deletions": 6,
+    "files_changed": 4
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (sonnet)",
+    "overall (opus)",
+    "adversarial_exclusions_review (adhoc)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0076/pr76_20261023T185000Z/findings/tests.json",
+    "docs/_scratch/pr_review/0076/pr76_20261023T185000Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0076/pr76_20261023T185000Z/findings/docs.json",
+    "docs/_scratch/pr_review/0076/pr76_20261023T185000Z/findings/overall.json",
+    "docs/_scratch/pr_review/0076/pr76_20261023T185000Z/findings/adversarial_exclusions_review.json"
+  ],
+  "bubbles": [
+    "M4"
+  ],
+  "strengths": [
+    "Scratch tests are behavioral: they load a real config via make_project and assert on the real default_patterns output, including a negative sibling-path check (docs/_scratch/notes.md) and the configured-folder override with a trailing slash.",
+    "The fnmatch check for 'docs/_scratch/pr_review/0072/current' verifies the pattern matches nested paths, not just that a string is present.",
+    "Module docstring updated in the same change as the new scratch row, so prose and code agree.",
+    "The scratch pattern reuses the reviews/summaries rstrip('/') + '/*' form, and the seen.setdefault dedup still covers an overlap with another folder.",
+    "cfg.artifacts.scratch exists as an Artifacts field (config.py:36), so the new row cannot raise AttributeError.",
+    "README exclusions row names artifacts.scratch, matching the new _entries scratch row in default_exclusions.py.",
+    "README warns that a file seeded by an earlier version needs the scratch row added by hand, matching the never-overwrite rule in ensure_default_exclusions.",
+    "README list of seeding entry points (capture, config, phase4_branch_safety, git_status_filter_excluded) matches the ensure_default_exclusions call sites.",
+    "default_exclusions.py module docstring updated together with the code to mention run scratch.",
+    "The scratch row is derived from cfg.artifacts.scratch with the same rstrip('/') + '/*' shape as the reviews and summaries rows, so it follows a configured folder and dedups through the existing setdefault pass.",
+    "Tests are behavioral against the real config loader and fnmatch: the default folder, a nested run path, a non-matching sibling under docs/_scratch, and a configured override are all checked.",
+    "README exclusions row, module docstring and code are updated in lockstep, and the README states the upgrade caveat that a file seeded by an earlier version needs the scratch row added by hand.",
+    "Harness version bumped in plugin.json per the release rule.",
+    "Seed timing is right: plan_scope seeds before the run folder is written, and Phase 4 seeds in _project.",
+    "The seeded file matches itself, and a test pins that."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "Legacy seeded exclusions file never gains the scratch row",
+        "file": "plugins/harness/skills/pr-review/commands/phase4_branch_safety.py",
+        "files": [
+          "plugins/harness/skills/pr-review/commands/phase4_branch_safety.py",
+          "plugins/harness/lib/harness_lib/review_plan.py",
+          "plugins/harness/lib/harness_lib/default_exclusions.py"
+        ],
+        "lines": "146-153",
+        "reviewer": "adversarial_exclusions_review",
+        "fix_kind": "judgment",
+        "summary": "ensure_default_exclusions never overwrites an existing file, and both pattern loaders read only that file. A project seeded by PR 45 keeps its 5-row list, so every pr-review capture writes untracked scratch files and build's Phase 4 first run STOPs after the full reviewer fan-out. The only remedy is a hand edit (reproduced by the adversarial reviewer: 'STOP ... ?? docs/_scratch/pr_review/0072/current'; code trace: _exclusion_patterns loads only the named file, review_plan.exclusion_patterns likewise).",
+        "fix": [
+          "Union default_patterns(cfg) into the loaded patterns in memory whenever cfg.exclusions is non-null: in _exclusion_patterns (phase4_branch_safety.py) and in review_plan.exclusion_patterns. Write nothing, so the file stays the user's list and harness artifact folders are always exempt. Skip the union when --exclusions-fixture overrides the file, so fixture runs stay hermetic. Add a legacy-file test: a project whose file lists only five old rows still passes _check_clean_tree with an untracked scratch file."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Seeded rows miss state_dir and commit_messages and skip path normalization",
+        "file": "plugins/harness/lib/harness_lib/default_exclusions.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/default_exclusions.py",
+          "tests/lib/test_default_exclusions.py"
+        ],
+        "lines": "28-39",
+        "reviewer": "adversarial_exclusions_review",
+        "fix_kind": "mechanical",
+        "summary": "Three gaps in default_exclusions._entries, all reproduced by the adversarial reviewer. (1) Untracked files under state_dir (default .claude/state/harness/: stale or other-session phase5 sentinels, pr-team runtime outputs, pr-sum and parallel2 state, todo-sync runner.json) STOP Phase 4 in the main checkout; there is no state_dir row. (2) docs/_commit_messages/*.txt drafts from c-msg and branch-commit-msg are untracked in a project that does not gitignore them and STOP Phase 4; there is no artifacts.commit_messages row. The drafts are harness output, so hiding them from review capture is harmless. (3) The reviews, summaries and scratch rows use only rstrip('/'), while the rows-file entries go through _normalized: scratch './tmp/runs' yields './tmp/runs/*', which never matches the porcelain path 'tmp/runs/x'.",
+        "fix": [
+          "In _entries of default_exclusions.py do all three together: add the rows (f\"{_normalized(cfg.state_dir)}/*\", \"harness runtime state\") and (f\"{_normalized(cfg.artifacts.commit_messages)}/*\", \"commit message drafts\"), and build the reviews, summaries and scratch folder rows with f\"{_normalized(x)}/*\". Add tests in tests/lib/test_default_exclusions.py that default_patterns holds both new rows, follows a configured state_dir and commit_messages, and normalizes a './'-prefixed scratch value."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "build STOP line names neither the dirty paths nor the remedy",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "tests/scripts/test_pr_review_driver.py"
+        ],
+        "lines": "1322-1328",
+        "reviewer": "adversarial_exclusions_review",
+        "fix_kind": "judgment",
+        "summary": "A failed Phase 4 first run prints only 'phase4 first run rc 1: a branch-safety check failed; pre_fix_time left pending (see <run>/phase4_first_run.json); STOP'. The user must open the JSON to find 'STOP: working tree has non-exempt changes' and gets no hint about the exclusions file or the pattern to add (_phase4_reason returns a generic string at pr_review.py:1322-1328).",
+        "fix": [
+          "Make _phase4_reason name the failed checks and, for clean_tree_check, the filtered_stdout paths and the configured exclusions file. Keep the one-line problem format; cap the path list."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Check 3 shell snippet omits --untracked-files=all",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "586-589",
+        "reviewer": "adversarial_exclusions_review",
+        "fix_kind": "mechanical",
+        "summary": "The documented shell form of the clean-tree check runs plain 'git status --porcelain'. When docs/_scratch/ is wholly untracked, git prints one '?? docs/_scratch/' line that the pattern 'docs/_scratch/pr_review/*' never matches, so an agent following the snippet gets a false STOP. The script (phase4_branch_safety.py _STATUS_ARGS) is correct. Predates this PR, but the new row depends on it.",
+        "fix": [
+          "Add --untracked-files=all to both git status lines of the Check 3 snippet in SKILL.md."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Broad scratch folder swallows its subtree",
+        "file": "README.md",
+        "lines": "229",
+        "reviewer": "adversarial_exclusions_review",
+        "fix_kind": "mechanical",
+        "summary": "fnmatch '*' crosses '/', so artifacts.scratch set to a broad folder such as 'docs' seeds 'docs/*' and hides every docs change from Phase 4 and from review capture. Reproduced by the adversarial reviewer. The same footgun exists for reviews and summaries.",
+        "fix": [
+          "Add one sentence to the README exclusions row: the folder rows cover the whole subtree, so point artifacts.scratch, reviews and summaries at dedicated folders."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Stale 'project keeps git-ignored' wording",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "135",
+        "reviewer": "adversarial_exclusions_review",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md says the run directory is one 'which the project keeps git-ignored', and pr_review.py repeats it. The seeded scratch row makes the gitignore unnecessary, and the wording implies a hand step.",
+        "fix": [
+          "Reword both: the run directory is machine-generated and exempt through the seeded exclusions file."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "No end-to-end test of the original failure",
+        "file": "tests/scripts/test_phase4_branch_safety_second_run.py",
+        "lines": "250-272",
+        "reviewer": "adversarial_exclusions_review",
+        "fix_kind": "mechanical",
+        "summary": "tests/lib/test_default_exclusions.py only asserts list membership and plain fnmatch. Nothing runs an untracked scratch file through _check_clean_tree, and nothing covers a legacy five-row file, which is the real failure.",
+        "fix": [
+          "In test_phase4_branch_safety_second_run.py add an untracked docs/_scratch/pr_review/0001/current file to the default-exclusions clean-tree test, and add a legacy-file test that fails before the C1 fix."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Gitignore test contradicts the commit/PR claim and guards nothing",
+        "file": "tests/lib/test_default_exclusions.py",
+        "files": [
+          "tests/lib/test_default_exclusions.py",
+          "plugins/harness/lib/harness_lib/default_exclusions.py"
+        ],
+        "lines": "72-77",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The commit title and body say the seed gains a snapshot of the plain root .gitignore lines. default_exclusions.py:28-40 (_entries) has no .gitignore reading, and the README row documents only the scratch row. test_gitignore_lines_are_not_snapshotted asserts the opposite of the commit message (lines absent). The test therefore passes trivially against code that never reads .gitignore: it exercises no new logic and cannot fail until someone implements the feature the commit describes, at which point it fails by design. Either the PR omits the described behavior or the test and PR text disagree on intent.\n\nAlso (overall): The head commit 1aa9d79 and the PR title/body say the seed writes 'a snapshot of the plain root .gitignore lines (folder lines at any depth unless anchored; comments, negations and ** lines skipped)'. Nothing in default_exclusions.py reads .gitignore: _entries (lines 28-40) adds only the scratch row, and the new test test_gitignore_lines_are_not_snapshotted (test file lines 72-77) asserts the opposite of the description, that build/* and *.pyc are NOT seeded. The README row and the module docstring agree with the code, so only the history is wrong, but a reader of the merged result who goes by the log will believe gitignored folders are filtered by the seeded file.",
+        "fix": [
+          "If the snapshot is intended: implement it in _entries and replace this test with positive assertions (folder line 'build/' seeded as 'build/*' and '*/build/*' or equivalent, comments, negations and ** lines skipped)",
+          "If it is not intended: delete test_gitignore_lines_are_not_snapshotted and reword the PR title and commit body to cover only the scratch row",
+          "Reword the PR title, PR body and squash-merge commit message to drop the .gitignore clause (e.g. 'fix(harness): seed the run scratch folder into review exclusions') and say the new test pins that .gitignore lines are deliberately not copied.",
+          "Or implement the described .gitignore snapshot in _entries, update the README exclusions row, and replace test_gitignore_lines_are_not_snapshotted with tests for the anchored/unanchored, comment, negation and ** cases."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M4",
+      "classification": "out_of_scope",
+      "reason": "Code is as the developer decided (snapshot dropped; test pins that). Only the PR title and commit 1aa9d79 text still mention the snapshot; the developer rewords them."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 76 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"1aa9d791a5ef9d3ec4191f2bee8f6786d2f90953\",\"headRefName\":\"1068-review-exclusions\",\"headRefOid\":\"1aa9d791a5ef9d3ec4191f2bee8f6786d2f90953\",\"last_sha\":\"1aa9d791a5ef9d3ec4191f2bee8f6786d2f90953\",\"mergeCommit\":null,\"number\":76,\"state\":\"OPEN\",\"title\":\"fix(harness): seed the run scratch folder and .gitignore lines into r…\",\"url\":\"https://github.com/t968rs/operator-straps/pull/76\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1068-review-exclusions",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1068-review-exclusions",
+        "head_ref_name": "1068-review-exclusions",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "1aa9d791a5ef9d3ec4191f2bee8f6786d2f90953",
+        "head_sha": "1aa9d791a5ef9d3ec4191f2bee8f6786d2f90953",
+        "base_ancestor_command": "git merge-base --is-ancestor 1aa9d791a5ef9d3ec4191f2bee8f6786d2f90953 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 1aa9d791a5ef9d3ec4191f2bee8f6786d2f90953 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "1aa9d79 (working-tree snapshot; developer commits) - SKILL.md capture paragraph: run directory is machine-generated and exempt through the seeded exclusions file, no git-ignore wording; already present: pr_review.py has no 'git-ignored' run-directory wording (grep for git-ignored and git.ignore finds none); no edit made"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "1aa9d79 (working-tree snapshot; developer commits) - _entries adds state_dir and artifacts.commit_messages rows and builds reviews/summaries/scratch rows through _normalized; tests cover both new rows, configured values and a ./-prefixed scratch"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "1aa9d79 (working-tree snapshot; developer commits) - _phase4_reason names the STOP checks; the problem line adds the capped clean_tree_check non-exempt paths and the exclusions file to extend; verdict text unchanged when no check STOPs; driver test added"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "1aa9d79 (working-tree snapshot; developer commits) - Check 3 snippet: both git status lines run --porcelain --untracked-files=all"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "1aa9d79 (working-tree snapshot; developer commits) - README exclusions row: added a sentence that folder rows cover the whole subtree and to point artifacts.scratch, reviews and summaries at dedicated folders"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "1aa9d79 (working-tree snapshot; developer commits) - default-exclusions clean-tree test now adds an untracked docs/_scratch/pr_review/0001/current; new legacy five-row file test asserts scratch is a STOP"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "1aa9d79 (working-tree snapshot; developer commits) - Harness folders stay exempt in memory: harness_patterns/with_harness_patterns added to default_exclusions.py; Phase 4 _pre_fix_checks and review_plan.exclusion_patterns union them with the configured file (skipped for an explicit --exclusions-fixture and for null exclusions); legacy-file, fixture and null tests added; README updated (outside fixer waves) (outside fixer waves)"
+    }
+  ]
+}

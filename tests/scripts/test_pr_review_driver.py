@@ -653,6 +653,28 @@ class TestBuild:
         doc = json.loads((clone / "docs" / "PR_REVIEWS" / _REVIEW_NAME).read_text(encoding="utf-8"))
         assert doc["verification_log"]["pre_fix_time"] == rmg.PENDING
 
+    def test_clean_tree_stop_names_paths_and_exclusions(self, script: ModuleType,
+                                                        monkeypatch: pytest.MonkeyPatch,
+                                                        pr_repo: Tuple[Path, str],
+                                                        capsys: pytest.CaptureFixture) -> None:
+        clone, head = pr_repo
+        _capture(script, monkeypatch, clone, head)
+        _record_all(clone, [_finding("src/pkg/a.py")])
+        _run(script, clone, "merge", "--pr", str(_PR))
+        dirty = "".join(f"?? tmp/f{i}.txt\n" for i in range(7))
+        block = {**_PRE_FIX, "clean_tree_check": {
+            "command": "git status --porcelain --untracked-files=all", "stdout": dirty,
+            "filtered_stdout": dirty, "exclusions_fixture": ".claude/review_exclusions.json",
+            "result": "STOP: working tree has non-exempt changes"}}
+        _phase4(monkeypatch, script, 1, json.dumps(block), "")
+        capsys.readouterr()
+        assert _run(script, clone, "build", "--pr", str(_PR)) == 1
+        err = capsys.readouterr().err
+        assert "a branch-safety check failed: clean_tree_check" in err
+        assert "tmp/f0.txt, tmp/f1.txt" in err and "tmp/f5.txt" not in err and "(+2 more)" in err
+        assert ".claude/review_exclusions.json" in err
+        assert len([ln for ln in err.splitlines() if "phase4 first run" in ln]) == 1
+
     def test_phase4_failure_holds_a_ready_verdict(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
                                                   pr_repo: Tuple[Path, str],
                                                   capsys: pytest.CaptureFixture) -> None:

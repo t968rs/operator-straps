@@ -59,7 +59,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Sequence, Tuple
 
 _LIB = Path(__file__).resolve().parents[3] / "lib"
 if str(_LIB) not in sys.path:
@@ -159,8 +159,13 @@ def _filtered(raw_status: str, patterns: List[str]) -> str:
     return "\n".join(line for line in lines if not any(fnmatch.fnmatch(line[3:], p) for p in patterns))
 
 
-def _check_clean_tree(repo_root: Path, exclusions_fixture: Optional[str]) -> Dict[str, Any]:
-    """Phase 4 Check 3: the working tree is clean once the exclusions are filtered out."""
+def _check_clean_tree(repo_root: Path, exclusions_fixture: Optional[str],
+                      harness_patterns: Sequence[str] = ()) -> Dict[str, Any]:
+    """Phase 4 Check 3: the working tree is clean once the exclusions are filtered out.
+
+    ``harness_patterns`` are exempt in addition to the file's own list, so a file seeded before a harness
+    folder gained its row still lets that folder's files through.
+    """
     raw_status = _porcelain(repo_root)
     check = {"command": "git " + " ".join(_STATUS_ARGS), "stdout": raw_status, "filtered_stdout": "",
              "exclusions_fixture": exclusions_fixture or _NO_EXCLUSIONS}
@@ -168,6 +173,7 @@ def _check_clean_tree(repo_root: Path, exclusions_fixture: Optional[str]) -> Dic
         patterns = _exclusion_patterns(repo_root, exclusions_fixture)
     except (OSError, ValueError, KeyError, TypeError) as exc:
         return {**check, "result": f"STOP: exclusions file unreadable: {exc}"}
+    patterns = patterns + [p for p in harness_patterns if p not in patterns]
     filtered = _filtered(raw_status, patterns)
     result = ("OK (empty after exclusions)" if not filtered
               else f"STOP: working tree has non-exempt changes:\n{filtered}")
@@ -302,12 +308,18 @@ def _parse_argv(argv: list) -> Tuple[bool, Optional[str], Optional[str]]:
 
 def _pre_fix_checks(meta: Dict[str, Any], repo_root: Path, cfg: HarnessConfig,
                     exclusions_fixture: Optional[str]) -> Dict[str, Dict[str, Any]]:
-    """The five Phase 4 check blocks, keyed as ``verification_log.pre_fix_time`` records them."""
+    """The five Phase 4 check blocks, keyed as ``verification_log.pre_fix_time`` records them.
+
+    The harness's own folders stay exempt beside the configured file; an explicit ``--exclusions-fixture``
+    is taken as given, so a fixture run stays hermetic.
+    """
+    from harness_lib.default_exclusions import harness_patterns
     current_branch_check = _check_current_branch()
+    harness = harness_patterns(cfg) if cfg.exclusions and not exclusions_fixture else ()
     return {
         "current_branch_check": current_branch_check,
         "branch_match_check": _check_branch_match(current_branch_check["stdout"], meta["headRefName"]),
-        "clean_tree_check": _check_clean_tree(repo_root, _exclusions_for(exclusions_fixture, cfg)),
+        "clean_tree_check": _check_clean_tree(repo_root, _exclusions_for(exclusions_fixture, cfg), harness),
         "sha_ancestry_check": _check_sha_ancestry(meta["first_sha"], meta["last_sha"]),
         "base_branch_recorded": _check_base_branch_recorded(meta["baseRefName"], cfg.resolve_base_branch()),
     }

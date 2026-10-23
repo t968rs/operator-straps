@@ -132,7 +132,7 @@ Run, with `--roast roll` for a normal review (the 50/50 dice; `yes` / `no` force
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" capture --pr <N> --roast roll
 ```
 
-`capture` starts a fresh run directory (`<scratch>/<NNNN>/<RUN_ID>/`, which the project keeps git-ignored; `current`
+`capture` starts a fresh run directory (`<scratch>/<NNNN>/<RUN_ID>/`, machine-generated and exempt through the seeded exclusions file; `current`
 names the active run) and makes both checks below. **Exit 1 is a STOP:** do not dispatch reviewers; follow Stop Recovery.
 
 ### Check 1 — PR metadata
@@ -583,10 +583,10 @@ If they differ, STOP and report to the user with the specific mismatch and a sug
 ```bash
 EXCLUSIONS="<exclusions>"   # empty when the project configures none
 if [ -n "$EXCLUSIONS" ]; then
-  DIRTY=$(git -C "$REPO" status --porcelain \
+  DIRTY=$(git -C "$REPO" status --porcelain --untracked-files=all \
     | sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/git_status_filter_excluded.py" "$EXCLUSIONS")
 else
-  DIRTY=$(git -C "$REPO" status --porcelain)
+  DIRTY=$(git -C "$REPO" status --porcelain --untracked-files=all)
 fi
 if [ -z "$DIRTY" ]; then
   echo "OK: working tree clean (after exclusions)"

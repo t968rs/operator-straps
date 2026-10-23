@@ -20,7 +20,7 @@ import pytest
 
 from harness_lib import review_plan as rp
 from harness_lib.config import activate, active, load_config
-from harness_lib.default_exclusions import default_patterns, ensure_default_exclusions
+from harness_lib.default_exclusions import default_patterns, ensure_default_exclusions, harness_patterns
 from harness_lib.project import plugin_root
 
 _REGISTRY = "tests/registry/registry.json"
@@ -208,8 +208,11 @@ class TestExclusions:
     def test_runtime_not_excluded(self) -> None:
         assert not rp.is_excluded("src/a.py", _PATTERNS)
 
-    def test_patterns_load_the_configured_file(self, project: Path) -> None:
-        assert rp.exclusion_patterns(project) == _PATTERNS
+    def test_patterns_load_the_configured_file_then_the_harness_folders(self, project: Path) -> None:
+        patterns = rp.exclusion_patterns(project)
+        assert patterns[:len(_PATTERNS)] == _PATTERNS
+        assert set(harness_patterns(active())) <= set(patterns)
+        assert len(patterns) == len(set(patterns))
 
     def test_null_exclusions_means_no_patterns(self, make_project) -> None:
         root = _activate(make_project, {"exclusions": None})

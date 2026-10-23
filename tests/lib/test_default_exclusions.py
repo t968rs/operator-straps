@@ -69,6 +69,31 @@ def test_scratch_pattern_follows_the_configured_folder(make_project: _MakeProjec
     assert "docs/_scratch/pr_review/*" not in patterns
 
 
+def test_default_patterns_cover_state_dir_and_commit_messages(make_project: _MakeProject) -> None:
+    cfg = load_config(make_project(config={}))
+    patterns = default_patterns(cfg)
+    assert ".claude/state/harness/*" in patterns
+    assert "docs/_commit_messages/*" in patterns
+    assert any(fnmatch.fnmatch(".claude/state/harness/phase5/76.json", p) for p in patterns)
+    assert any(fnmatch.fnmatch("docs/_commit_messages/1068.txt", p) for p in patterns)
+
+
+def test_state_dir_and_commit_messages_follow_the_config(make_project: _MakeProject) -> None:
+    cfg = load_config(make_project(config={
+        "state_dir": "var/harness/", "artifacts": {"commit_messages": "ci/msgs"}}))
+    patterns = default_patterns(cfg)
+    assert {"var/harness/*", "ci/msgs/*"} <= set(patterns)
+    assert ".claude/state/harness/*" not in patterns
+    assert "docs/_commit_messages/*" not in patterns
+
+
+def test_dot_prefixed_scratch_value_is_normalized(make_project: _MakeProject) -> None:
+    cfg = load_config(make_project(config={"artifacts": {"scratch": "./tmp/runs/"}}))
+    patterns = default_patterns(cfg)
+    assert "tmp/runs/*" in patterns
+    assert any(fnmatch.fnmatch("tmp/runs/x", p) for p in patterns)
+
+
 def test_gitignore_lines_are_not_snapshotted(make_project: _MakeProject) -> None:
     root = make_project(config={}, files={".gitignore": "build/\n*.pyc\n"})
     ensure_default_exclusions(load_config(root))
