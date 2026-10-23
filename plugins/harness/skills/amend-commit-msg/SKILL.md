@@ -11,15 +11,17 @@ This skill amends that draft in the main session, which holds what changed since
 file moved on purpose. `${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py` does the mechanics (capture,
 regrouping, validation); this session does the judgment. Grouping and rebuild rules are those of
 `${CLAUDE_PLUGIN_ROOT}/skills/branch-commit-msg/SKILL.md`: every path in exactly one block, each block a
-bisect point.
+bisect point. This skill only rewrites the TXT; it never runs `git commit --amend`.
 
 Arguments: `$ARGUMENTS`
 
-Split them at the first ` -- `. Before it: the capture arguments (a bare `REF` or `--base REF`, `--no-fetch`),
-passed through unchanged and with none added; they name the TXT to amend, exactly as they named it for
-`harness:branch-commit-msg`. After it: the change the developer wants. With no change text, print
-`usage: /harness:amend-commit-msg [REF] [--base REF] [--no-fetch] -- <what to change>` and stop. `--fresh` and
-`--pending` are never passed: `--fresh` discards the messages being kept, and the script rejects both.
+Split them at the first standalone `--` token (at the start, or with spaces on both sides). Before it: the capture
+arguments (a bare `REF` or `--base REF`, `--no-fetch`), passed through unchanged; they name the TXT to amend,
+exactly as they named it for `harness:branch-commit-msg`. After it: the change the developer wants. With no change
+text, print `usage: /harness:amend-commit-msg [REF] [--base REF] [--no-fetch] -- <what to change>` and stop. When the
+capture arguments hold `--fresh` or `--pending`, report that an amendment refuses them (`--fresh` drops the kept
+messages; the script rejects both with `--edit`) and stop; never remove them and continue. Step 1 adds only
+`--save --edit`.
 
 One command per Bash call, run from the project root:
 
@@ -35,17 +37,29 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_com
 SCRIPT capture --save --edit <capture arguments>
 ```
 
-Exit 1 prints `problem:` lines: report them and stop. `no TXT to amend: <path>` means no draft exists for those
-arguments: tell the developer to run `harness:branch-commit-msg` first, with the same `REF` or `--base`. Exit 0
-prints `wrote <skeleton>`; that absolute path is `<skeleton>` below. The skeleton carries the TXT's groupings
-and messages. A path new since the draft joins the block of its bucket, with an empty message when that block
-is new.
+`--base` must resolve now to the drafted base, the sha7 in the TXT name (`<branch>_<sha7>.txt`): a relative
+ref such as `HEAD~3` moves once fix commits land. Exit 1 prints `problem:` lines: report them and stop.
+`no TXT to amend: <path>` means no draft exists for those arguments. When a `<branch>_<sha7>.txt` sits beside
+that path, suggest rerunning with `--base <sha7>`; otherwise tell the developer to run
+`harness:branch-commit-msg` first, with the same `REF` or `--base`. Exit 0 prints `wrote <skeleton>`; that
+absolute path is `<skeleton>` below. The skeleton carries the TXT's groupings and messages, except where a path
+new since the draft lands:
+
+- A rename side or pair partner (test and runtime) of a path in a kept block joins that block, which keeps its
+  message; that message is now stale for the new path.
+- A Docs or Planning path joins the single Docs (or Planning) block, and planning documents fold into the Docs
+  block; that block comes back with an empty message.
+- Any other new path gets a new block with an empty message, even when a block of its bucket exists.
+
+A block emptied this way counts as touched: read its old message in the TXT being amended (the `.txt` of the
+same stem beside `<skeleton>`), check it against `diff --block`, and restate it in Step 4 with a bullet for
+the new path.
 
 ## Step 2: Plan the change
 
 From the change text and this conversation, list the blocks to rewrite and the paths to move. Touch only what
-the change names and what it forces: a block whose paths changed, a bullet left stale, an empty message. Every
-other message stays byte for byte. For each block to rewrite, read what is in it now:
+the change names and what it forces: a block whose paths changed, a bullet left stale, a message the capture
+emptied. Every other message stays byte for byte. For each block to rewrite, read what is in it now:
 
 ```bash
 SCRIPT diff "<skeleton>" --block <key>
@@ -60,14 +74,19 @@ SCRIPT move "<skeleton>" --path <entry> [--path <entry> ...] --to <N|new>
 ```
 
 Each `--path` is an entry of a block exactly as the skeleton lists it; a rename's old side follows its new
-path. The bullet naming the path moves with it, after the target's last bullet. `--to new` makes a block
-right after the lowest source block, with an empty message. An emptied block is dropped and the blocks are
-renumbered 1..N, so read the skeleton again before the next move. Never edit the path lists by hand: the
-script keeps each bullet with its path, and `build` rejects a bullet whose file is not in its block.
+path. The bullets naming the path (or a rename's old file) move with it, after the target's last bullet.
+`--to new` makes a block right after the lowest source block, with an empty message. An emptied block is
+dropped and the blocks are renumbered 1..N, so read the skeleton again before the next move.
+Never edit the path lists by hand: the script keeps each bullet with its path, and `build` rejects a bullet
+that names a file of another block. Never split Docs or Planning paths into a block of their own: the next capture merges
+doc-only blocks back into one and empties both messages.
 
 - `note: unplaced bullet for block N: ...`: the target has no message yet; the line belongs in the one written in
-  Step 4.
-- `note: bullet for <file> is ambiguous ...`: two paths of the block share that name; move the bullet by hand.
+  Step 4. With `--to new` the note reads `block new`; reread the skeleton for its number.
+- `note: bullet for <file> is ambiguous ...`: the bullet also names a path staying in the block; move the
+  bullet by hand.
+- `note: no bullet for <path> in block K`: no bullet in K names that file; the moved path needs one, written
+  in Step 4.
 - Keep the test registry in block 1 when the project configures one, and never leave a block needing a path
   that only a later block adds (an import, a by-path load, a conftest registration).
 
@@ -88,8 +107,8 @@ rejects filler and quality claims, so name the change instead.
 SCRIPT build "<skeleton>"
 ```
 
-Exit 1: each `problem:` line names a commit and a defect, including `bullet names X, not in this block`; fix the
-JSON and rerun. Exit 0 writes the TXT beside the skeleton (same stem, `.txt`), keeps the replaced copy as
+Exit 1: each `problem:` line names a commit and a defect, including `bullet names X, which is in commit K`;
+fix the JSON and rerun. Exit 0 writes the TXT beside the skeleton (same stem, `.txt`), keeps the replaced copy as
 `<name>.txt.bak`, and prints the receipt. Output the receipt verbatim and nothing else.
 
 ## Common Mistakes

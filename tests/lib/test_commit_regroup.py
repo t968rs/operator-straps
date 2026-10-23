@@ -93,6 +93,49 @@ class TestMovePaths:
         assert moved["commits"]["2"][1].splitlines()[-1] == "    second line of the test bullet"
         assert "second line" not in moved["commits"]["1"][1]
 
+    def test_glob_entry_takes_the_bullet_naming_a_concrete_file(self) -> None:
+        payload = _payload()
+        payload["commits"]["3"] = [
+            ["docs/PR_REVIEWS/*.json", "src/c.py"], "Chore: r\n\nR.\n  - 0078_x.json: add\n  - c.py: x",
+        ]
+        moved, notes = _moved(["docs/PR_REVIEWS/*.json"], 2, payload)
+        assert moved["commits"]["2"][1].splitlines()[-1] == "  - 0078_x.json: add"
+        assert "0078_x.json" not in moved["commits"]["3"][1]
+        assert notes == []
+        commits = {int(key): (paths, message) for key, (paths, message) in moved["commits"].items()}
+        assert bullet_problems(commits) == []
+
+    def test_partial_path_bullet_moves_with_its_entry(self) -> None:
+        payload = _payload()
+        payload["commits"]["1"] = [["src/io/a.py", "src/b.py"], "Fix: io\n\nI.\n  - io/a.py: x\n  - b.py: y"]
+        moved, notes = _moved(["src/io/a.py"], 2, payload)
+        assert moved["commits"]["2"][1].splitlines()[-1] == "  - io/a.py: x"
+        assert notes == []
+
+    def test_rename_bullet_naming_the_old_file_moves(self) -> None:
+        payload = _payload()
+        message = "Refactor: b\n\nB.\n  - a.py: x\n  - old_b.py: rename to b.py"
+        payload["commits"]["1"] = [["src/a.py", "src/old_b.py", "src/b.py"], message]
+        moved, notes = _moved(["src/b.py"], 2, payload)
+        assert moved["commits"]["2"][1].splitlines()[-1] == "  - old_b.py: rename to b.py"
+        assert "old_b.py" not in moved["commits"]["1"][1]
+        assert notes == []
+
+    def test_several_paths_to_new_follow_the_lowest_source(self) -> None:
+        moved, notes = _moved(["tests/test_a.py", "docs/new.md"], "new")
+        assert [paths for paths, _ in moved["commits"].values()] == [
+            ["src/a.py"], ["tests/test_a.py", "docs/new.md"], ["docs/PR_REVIEWS/*.json"],
+        ]
+        assert [("test_a.py" in note, "new.md" in note) for note in notes] == [(True, False), (False, True)]
+
+    def test_old_side_in_another_block_stays(self) -> None:
+        payload = _payload()
+        payload["commits"]["1"][0] = ["src/a.py", "tests/test_a.py", "src/b.py"]
+        payload["commits"]["2"][0] = ["docs/new.md", "src/old_b.py"]
+        moved, _ = _moved(["src/b.py"], 3, payload)
+        assert moved["commits"]["2"][0] == ["docs/new.md", "src/old_b.py"]
+        assert moved["commits"]["3"][0] == ["docs/PR_REVIEWS/*.json", "src/b.py"]
+
     def test_input_is_not_mutated(self) -> None:
         payload = _payload()
         before = copy.deepcopy(payload)
@@ -120,8 +163,18 @@ class TestBulletProblems:
         assert bullet_problems(commits) == []
 
     def test_foreign_bullet_is_a_problem(self) -> None:
-        commits = {2: (["docs/new.md"], _DOCS + "\n  - test_a.py: cover empty file")}
-        assert bullet_problems(commits) == ["commit 2: bullet names test_a.py, not in this block"]
+        commits = {
+            1: (["tests/test_a.py"], "Test: a\n\nA.\n  - test_a.py: cover empty file"),
+            2: (["docs/new.md"], _DOCS + "\n  - test_a.py: cover empty file"),
+        }
+        assert bullet_problems(commits) == ["commit 2: bullet names test_a.py, which is in commit 1"]
+
+    def test_bullet_naming_no_entry_passes(self) -> None:
+        commits = {
+            1: (["README.md", "src/config.py"], "Docs: r\n\nR.\n  - README: x\n  - config.py, x.py: y"),
+            2: (["tests/test_a.py"], "Test: a\n\nA.\n  - tests: z"),
+        }
+        assert bullet_problems(commits) == []
 
     def test_full_path_and_glob_entries_match(self) -> None:
         commits = {

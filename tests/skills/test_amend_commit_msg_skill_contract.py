@@ -1,13 +1,15 @@
 """Guard test: the amend-commit-msg skill and ``branch_commit_msg.py`` agree.
 
 The skill amends a drafted commit breakdown in the main session, the only context that holds what changed
-since the draft; the script owns capture, regrouping and build. Both are named in prose, so the test pins the
-commands the skill runs against the script's parser, and that the skill never runs in a context-free fork.
+since the draft; the script owns capture, regrouping and build. Both are named in prose, so the test parses
+the skill's own command lines (placeholders filled) with the script's parser, and pins that the skill never
+runs in a context-free fork.
 """
 from __future__ import annotations
 
 import importlib.util
 import re
+import shlex
 from pathlib import Path
 from typing import Dict, List
 
@@ -64,8 +66,9 @@ def test_skill_names_no_agent_to_dispatch() -> None:
 
 def test_skill_hints_the_capture_arguments_and_the_change() -> None:
     hint = _frontmatter(_SKILL)["argument-hint"]
-    for part in ("REF", "--base", "--no-fetch", "--"):
+    for part in ("REF", "--base", "--no-fetch"):
         assert part in hint
+    assert " -- " in hint, "no separator before the change description"
     assert "--fresh" not in hint and "--pending" not in hint
 
 
@@ -88,7 +91,38 @@ def test_capture_always_edits_and_never_replans() -> None:
     assert not any("--fresh" in line or "--pending" in line for line in lines)
 
 
-def test_skill_commands_parse(parser) -> None:
+_PLACEHOLDERS = {
+    "<capture arguments>": "--base HEAD --no-fetch",
+    "<skeleton>": "s.json",
+    "<key>": "1",
+    "<entry>": "a",
+    "<N|new>": "new",
+}
+
+
+def _argv(line: str) -> List[str]:
+    """Argv of a skill command line: launcher dropped, optional repeats stripped, placeholders filled."""
+    text = re.sub(rf"^(?:SCRIPT|{re.escape(_LAUNCHER)}) ", "", line)
+    text = re.sub(r"\s*\[[^\]]*\]", "", text)
+    for placeholder, value in _PLACEHOLDERS.items():
+        text = text.replace(placeholder, value)
+    assert "<" not in text, f"unfilled placeholder in {line!r}"
+    return shlex.split(text)
+
+
+@pytest.mark.parametrize("subcommand", ["capture", "diff", "move", "build"])
+def test_skill_command_lines_parse(parser, subcommand) -> None:
+    lines = _commands(subcommand)
+    assert lines, f"skill never runs {subcommand}"
+    for line in lines:
+        try:
+            args = parser.parse_args(_argv(line))
+        except SystemExit:
+            pytest.fail(f"the script's parser rejects the skill's command: {line}")
+        assert args.command == subcommand
+
+
+def test_hand_picked_argv_parse(parser) -> None:
     args = parser.parse_args(["capture", "--save", "--edit", "--base", "HEAD", "--no-fetch"])
     assert args.edit is True and args.save is True
     assert parser.parse_args(["diff", "s.json", "--block", "1"]).block == 1
@@ -110,7 +144,7 @@ def test_skill_reads_the_diff_and_states_facts() -> None:
     assert "commit_format.md" in body, "format reference not required"
 
 
-def test_skill_reports_a_missing_draft_and_never_replans() -> None:
+def test_skill_reports_a_missing_draft_and_points_to_the_drafter() -> None:
     body = _text(_SKILL)
     assert "no TXT to amend" in body
     assert "harness:branch-commit-msg" in body, "no pointer to the skill that makes the first draft"

@@ -1,0 +1,435 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 82,
+  "pr_title": "feat(harness): add amend-commit-msg to amend a drafted commit breakdown",
+  "branch": "1070-amend-commit-msg",
+  "base_branch": "main",
+  "base_sha": "d1e9987e2b6260f3790d89de9e8e126eb4664917",
+  "head_sha": "0ace6b6f6f21ecd6e2a3e69444d8d87a610cd888",
+  "review_date": "2026-10-23",
+  "verdict": "READY TO MERGE - 14 of 14 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 757,
+    "deletions": 11,
+    "files_changed": 9
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0082/pr82_20261023T214044Z/findings/tests.json",
+    "docs/_scratch/pr_review/0082/pr82_20261023T214044Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0082/pr82_20261023T214044Z/findings/docs.json",
+    "docs/_scratch/pr_review/0082/pr82_20261023T214044Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_commit_regroup.py is purely behavioral: it calls the real move_paths/bullet_problems on literal payloads, with no stubs, and includes a no-mutation check.",
+    "TestCaptureEdit/TestBuildEdit/TestMove run the real script against a git clone, and pair the edit-only bullet check with a plain-build counterpart, so the gating on 'edit' can fail in either direction.",
+    "test_unknown_path_exits_1_and_leaves_the_skeleton checks both the exit code and that the skeleton is unchanged byte for byte, which pins that a failed move does not rewrite the skeleton.",
+    "No mock-chain wiring tests in scope.",
+    "commit_regroup is pure as its docstring claims: deep-copies the payload, validates the whole request before mutating, and raises CaptureError so the CLI reports problem: lines.",
+    "move preserves every non-commit payload key ({**payload, 'commits': ...}), so the edit and txt_suffix marks survive regrouping into build.",
+    "require_amendable demands the exact TXT the capture arguments name, so an amendment never silently falls back to the branch TXT or replans from scratch.",
+    "Rename old sides follow their new path only when they share its block, and the ambiguity guard refuses to guess between same-basename entries.",
+    "amend-commit-msg/SKILL.md matches the script --edit contract: exact-TXT requirement, the `no TXT to amend:` message, the --fresh/--pending conflicts, and edit-only bullet validation.",
+    "The move semantics in Step 3 (rename old side follows, bullet lands after the target last bullet, `--to new` after the lowest source block, empty blocks dropped and renumbered) match commit_regroup.move_paths.",
+    "The skill runs in the main session (no context: fork) and says why, so conversation references become concrete facts in the messages.",
+    "branch-commit-msg/SKILL.md gains a cross-link to amend-commit-msg and steers redraft-vs-amend without changing its own contract.",
+    "README documents the .bak single-generation backup and the per-base `<branch>_<sha7>.txt` requirement as the code implements them.",
+    "commit_regroup is pure and deep-copies its input; its tests use real payloads (bullets, continuations, renames, ambiguity, renumbering, bad requests).",
+    "`--edit` requires the exact suffixed TXT and refuses --fresh and --pending, each covered by a behavioral test, so an amendment never falls back to a redraft.",
+    "The bullet check runs only for edit skeletons, and test_plain_build_does_not_check_bullets pins that plain builds are unchanged.",
+    "The move CLI tests run main() against a real clone, including that a failed move leaves the skeleton byte-identical.",
+    "Docstring, usage, help, README row and section, the branch-commit-msg cross-link and the version bump all agree."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Relative --base example breaks once fix commits land, and the skill then redirects to a redraft",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "141-163,250",
+        "reviewer": "overall, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "README.md:148 shows `--base HEAD~3`. require_amendable (branch_commit_msg.py:212-214) keys the TXT on the SHA the ref resolves to now. After the review fixes are committed, HEAD~3 moves, the capture fails with `no TXT to amend`, and SKILL.md:38-40 sends the developer to rerun branch-commit-msg. That is the redraft this skill exists to avoid.\n\nAlso (docs): README.md:156 says \"`build` rejects any bullet whose file is not in its block\". run_build applies edit_problems only when the skeleton has \"edit\": true (branch_commit_msg.py:467), so a plain branch-commit-msg build does not check bullets. The config key table row for `commit_buckets` (README.md:250) lists `c-msg`, `branch-commit-msg` as users, but amend-commit-msg runs the same capture and grouping.\n\nAlso (docs): The new `### amend-commit-msg` section was inserted right before the paragraph at README.md:159-163 (\"This repository enables its own plugins in .claude/settings.json ...\"). That paragraph is about working on this repository, not about the skill, but it now sits under the amend-commit-msg heading with no heading of its own.\n\nAlso (overall): README.md:159-163 (how the repo consumes its own plugins) and the options tables after it fall under the new heading at line 141, so they read as part of the amend-commit-msg section.",
+        "fix": [
+          "Use a SHA or branch in the example, and state in the README and in Step 1 that the ref must resolve to the drafted base (the sha7 in the TXT name).",
+          "List the existing `<branch>_*.txt` siblings in the problem line and suggest `--base <sha>` first.",
+          "README.md:156: \"An amendment build rejects any bullet whose file is not in its block.\" README.md:250: add `amend-commit-msg` to the Used-by cell.",
+          "Give lines 159-163 their own heading (for example `### Working on this repository`), or move them back to the install/usage text above `### add-bookmark`.",
+          "Add a section heading before line 159, or move the skill sections below the configuration paragraphs."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "edit build rejects untouched blocks whose bullets name no captured file",
+        "file": "plugins/harness/lib/harness_lib/commit_regroup.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/commit_regroup.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "47-55,58-64,106-114",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The driver docstring (branch_commit_msg.py:24-25) and edit_problems (439-442) promise to reject a bullet that 'names a file outside its own block', the leftover of a regrouping. bullet_problems (commit_regroup.py:47-55) instead flags every bullet whose name matches no entry of its block, including bullets that name no captured file at all (an abbreviated name such as 'README' for README.md, a 'tests' or 'config.py, test_config.py' bullet). The non-edit build never checks bullet names (message_problems does not), so a TXT that branch-commit-msg built and accepted can carry such bullets; an amendment then fails build on blocks the change never touched, which contradicts the amend-commit-msg rule that every other message stays byte for byte (SKILL.md Step 2).\n\nAlso (overall): bullet_problems matches by basename or glob (_names_entry, 30-32). _take_bullet (58-64) needs an exact basename or full path. A bullet written `io/a.py: x` makes move print `no bullet`, then stays behind, or is dropped with an emptied block.",
+        "fix": [
+          "Flag only bullets whose name matches an entry of a different block (build a name -> owning-block map from all blocks and report a bullet when it resolves to another block and not its own), matching the documented 'names a file outside its own block' contract.",
+          "Alternatively limit edit_problems to blocks whose paths or message differ from the carried-forward TXT, so untouched blocks are never re-judged.",
+          "Match with _names_entry in _bullet_for/_take_bullet."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Amendment capture empties carried Docs/Planning messages, contrary to Step 1 and Step 2",
+        "file": "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "plugins/harness/lib/harness_lib/commit_grouping.py",
+          "README.md",
+          "plugins/harness/lib/harness_lib/commit_regroup.py"
+        ],
+        "lines": "40-42,47-48,62-70",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "Step 1 (lines 40-42) says a path new since the draft \"joins the block of its bucket, with an empty message when that block is new\", and Step 2 (lines 47-48) says every other message stays byte for byte. capture --edit re-plans through plan_commits -> consolidate_docs, and _merged (commit_grouping.py:454-458) keeps a doc-only block message only when a single source contributes all its paths. So (a) any Docs or Planning path new since the draft merges with the carried Docs/Planning block and that block comes back with message \"\", not its carried message; (b) a doc-only block split off with `move --to new` (Step 3, line 64) builds fine but is re-merged by the next capture (a later amendment or branch-commit-msg run) with both messages set to \"\". Separately, a new non-doc path with no pair partner or rename side does not join an existing same-bucket block: carry_forward sends it to fresh_groups, so it lands in a new block. The skill gives no instruction to recover the lost text, which sits in the TXT being amended.\n\nAlso (docs): Step 3 (lines 68-70) documents two move notes. commit_regroup._bullet_for (commit_regroup.py:114) also prints `note: no bullet for <path> in block K`. That fires on a rename whose bullet names the old basename (the `R###` convention in reference/commit_format.md:89), because only {basename(new), new} are matched. The bullet then stays in the source block while the old side moves, and the edit build rejects it with \"bullet names X, not in this block\". Also, with `--to new` the unplaced note prints `block new` (commit_regroup.py:145), not a number N as line 68 says, and the real number is only known after rereading the skeleton.",
+        "fix": [
+          "Rewrite Step 1 lines 40-42 to match the planner: a new path joins its pair partner or rename side block, or the single Docs/Planning block, and otherwise gets a new block with \"\"; a Docs or Planning block that gained a path comes back with \"\", so read its old message from the TXT being amended and restate it with the new bullet.",
+          "In Step 3, warn that splitting a doc-only block (move --to new on Docs/Planning paths) is undone by the next capture and empties both messages, or forbid it.",
+          "Alternatively, change _merged in commit_grouping.py to keep the carried block message when the payload is an edit capture, and leave the doc text as written.",
+          "Add a bullet to Step 3: \"`note: no bullet for <path> in block K`: no bullet in K names that file (a rename bullet can name its old file); move that bullet by hand to the target block.\" Also note that with `--to new` the unplaced note reads `block new`.",
+          "Alternatively, make _bullet_for in commit_regroup.py also try the rename old path and basename when it takes the bullet."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Step 1 misstates carry-forward of paths new since the draft",
+        "file": "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "plugins/harness/lib/harness_lib/commit_grouping.py"
+        ],
+        "lines": "40-42,47-48",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:40-42 says a new path joins the block of its bucket. carry_forward (commit_grouping.py:356-363) attaches it only to a rename-side or pair-partner block, which keeps its message, now stale. Other new paths get fresh blocks. _merged (commit_grouping.py:454-458) and fold_planning (:499) clear the message of a docs block that gains a doc, which contradicts Step 2 (other messages stay byte for byte).",
+        "fix": [
+          "Reword SKILL.md:40-42 to the real rules (partner block keeps its message; a new doc clears the docs-block message; anything else gets a new block). Say a cleared message is rewritten from the current TXT plus `diff --block`.",
+          "Or have `capture --edit` print a `note:` for each block whose message was cleared or whose paths grew."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "No test moves a glob entry whose bullet names a concrete file",
+        "file": "tests/lib/test_commit_regroup.py",
+        "files": [
+          "tests/lib/test_commit_regroup.py",
+          "plugins/harness/lib/harness_lib/commit_regroup.py"
+        ],
+        "lines": "34-114,126-131",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_full_path_and_glob_entries_match (lines 126-131) pins that bullet_problems accepts a '0078_x.json' bullet under the entry 'docs/PR_REVIEWS/*.json', via fnmatch. move_paths takes the bullet out of the source only on an exact name match (_take_bullet with {_base(path), path} at commit_regroup.py:113), so moving that glob leaves its '0078_x.json' bullet behind with a 'no bullet' note. If the source block keeps other paths, the next edit build rejects it with 'bullet names 0078_x.json, not in this block'. That breaks the module's own contract that move_paths keeps a path and its bullet together. No test covers the case.\n\nAlso (tests): Every TestMovePaths case moves a single requested path. The skill documents repeated --path, and move_paths has logic that no test reaches: the new block lands after min(keys.index(...)) over several source blocks, bullets land in request order, and _with_old_sides skips an old side that sits in a different block.",
+        "fix": [
+          "Add a TestMovePaths case: block 3 = [['docs/PR_REVIEWS/*.json', 'src/c.py'], 'Chore: r\n\nR.\n  - 0078_x.json: add\n  - c.py: x'], move the glob to 2, assert the bullet lands in block 2 and bullet_problems on the result is empty; then make _bullet_for/_take_bullet match with _names_entry(name, path) so it passes.",
+          "Or document that glob entries move without their bullets, and assert that note in a test.",
+          "Add a case moving ['tests/test_a.py', 'docs/new.md'] to 'new': assert the new block follows block 1, notes carry both bullets in request order, and block 2 is dropped.",
+          "Add a case with 'src/old_b.py' in block 2 and 'src/b.py' in block 1: moving 'src/b.py' leaves 'src/old_b.py' in place."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "Parser guard parses hand-written argv, not the skill's commands",
+        "file": "tests/skills/test_amend_commit_msg_skill_contract.py",
+        "files": [
+          "tests/skills/test_amend_commit_msg_skill_contract.py",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md"
+        ],
+        "lines": "1-5,36-39,91-98",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring (lines 4-5) says the test 'pins the commands the skill runs against the script's parser', but test_skill_commands_parse (lines 91-98) parses argv lists typed into the test. _commands() only proves a SCRIPT line for each subcommand exists. If SKILL.md changed `--path <entry>` to `--paths <entry>`, `--to <N|new>` to `--target`, or `--block <key>` to `-b`, every test would still pass while the skill ran commands the parser rejects.\n\nAlso (overall): The docstring (lines 3-5) says the test pins the skill commands to the parser. test_skill_commands_parse (91-98) parses hand-written argv, not the `SCRIPT ...` lines _commands() extracts. A wrong flag in SKILL.md (for example `--target` for move) passes every test.",
+        "fix": [
+          "Build argv from _commands(sub)[0]: drop the SCRIPT prefix, substitute placeholders (\"<skeleton>\" -> s.json, <key> -> 1, <entry> -> a, <N|new> -> new, <capture arguments> -> --no-fetch), strip the bracketed optional repeats, shlex.split the result and call parser.parse_args on it, asserting no SystemExit.",
+          "Or reword the module docstring to say the test pins hand-picked argv, and accept the weaker guarantee.",
+          "Parse each _commands(sub) line after placeholder substitution and shlex.split, asserting parse_args succeeds."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "move crashes with a traceback on a repeated --path",
+        "file": "plugins/harness/lib/harness_lib/commit_regroup.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/commit_regroup.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "92-103,124-129,160-168",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "move_paths (commit_regroup.py:149-175) never deduplicates paths and _check_request (92-103) does not reject repeats. With '--path a --path a', _with_old_sides keeps both copies, _detach emits a spurious 'no bullet' note for the second, then calls commits[owner][0].remove(path) twice (line 129); the second remove raises ValueError, which main() does not catch, so the CLI exits with a traceback instead of a problem: line.\n\nAlso (overall): With a duplicate --path, _detach removes the path twice (commit_regroup.py:129) and raises ValueError. Non-integer keys fail in sorted(key=int) (100,166). build and diff validate through _commit_dict and print problem lines; move does not.",
+        "fix": [
+          "Deduplicate at the top of move_paths: paths = list(dict.fromkeys(paths)).",
+          "Or add a 'path {path!r} given twice' problem in _check_request.",
+          "Dedupe paths with dict.fromkeys and validate via _commit_dict in _cmd_move."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "move output names the pre-renumber target block",
+        "file": "plugins/harness/lib/harness_lib/commit_regroup.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/commit_regroup.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "138-146,168-175",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_cmd_move prints 'moved N path(s) to block {args.to}' (branch_commit_msg.py:662) and _land notes 'unplaced bullet for block {to}' (commit_regroup.py:145) using the requested target. After an emptied block is dropped and the rest renumbered (175), that number can point at a different block (move all of block 1 to block 3: the target is now block 2), and '--to new' prints 'block new' with no usable number. The count also omits rename old sides that followed.",
+        "fix": [
+          "Have move_paths return the target's final key (its 1-based position among non-empty blocks in the renumbered order) and use it in both the summary line and the unplaced-bullet notes; count len(moving) instead of len(args.path)."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Rules omit the new skill; its name sits beside the banned `commit --amend`",
+        "file": "plugins/harness/rules/HARNESS_RULES.md",
+        "files": [
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md"
+        ],
+        "lines": "23-25",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "HARNESS_RULES.md:25 lists c-msg and branch-commit-msg as the commit-message entry points; line 23 bans `commit --amend`. Neither the rules nor the skill say amend-commit-msg only rewrites the TXT.",
+        "fix": [
+          "Add harness:amend-commit-msg at line 25, and one line in the skill intro saying it never runs `git commit --amend`."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "--edit with --fresh is rejected only after the fetch and full capture",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "lines": "204-214,235-236,620-628",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The --edit/--fresh conflict is a pure argument check, but require_amendable runs inside run_capture (branch_commit_msg.py:235-236) after resolve_merge_base fetches origin and capture_branch walks the diff, so a mistyped invocation pays a network fetch before failing. The --pending conflict is already checked up front in _cmd_capture (623-624).",
+        "fix": [
+          "Move the fresh check into _cmd_capture beside the --pending check, or put --fresh and --edit in an argparse mutually exclusive group, leaving require_amendable to check only the TXT."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "move skips skeleton shape validation and tracebacks on a malformed skeleton",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "files": [
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/lib/harness_lib/commit_regroup.py"
+        ],
+        "lines": "657-664",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_cmd_move (branch_commit_msg.py:657-664) hands the raw JSON straight to move_paths, which does sorted(commits, key=int) (commit_regroup.py:166, also 100), block[0] indexing (77) and entry['path'] (84) without checks. A non-integer key, a block that is not [[paths], message], or a captured entry without 'path' raises ValueError/TypeError/KeyError out of main() as a traceback, while diff and build report the same defects as problem: lines through _commit_dict.\n\nAlso (overall): branch_commit_msg.py:662 prints args.to. After an emptied lower block is dropped, the target key shifts. `new` prints as the word new, and rename old sides are not counted. SKILL.md:65 relies on this output.",
+        "fix": [
+          "Call _commit_dict(payload) at the start of _cmd_move (discarding the result) so malformed skeletons raise BuildError before move_paths runs.",
+          "Return the final target key and the moved list from move_paths and print those."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Split rule ` -- ` does not match the leading `--` form the README and argument-hint use",
+        "file": "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "README.md"
+        ],
+        "lines": "18-22",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Line 18 says to split $ARGUMENTS at the first ` -- ` (space on both sides). The most common call, `/harness:amend-commit-msg -- the review fixes landed; ...` (README.md:147, and the argument-hint when REF is omitted), has no space before `--`. Read literally, nothing splits, the whole string counts as capture arguments, the change text is empty, and line 21 prints usage and stops.\n\nAlso (docs): Lines 18-22 say the capture arguments are \"passed through unchanged and with none added\", then say `--fresh` and `--pending` \"are never passed\". That reads as an instruction to strip them silently. README.md:152 says they are refused, and branch-commit-msg (SKILL.md:37) says a rejected argument \"is reported, never removed or replaced\". Step 1 also adds `--save --edit`, which contradicts \"none added\". The script does refuse both with --edit (branch_commit_msg.py:211, :624).\n\nAlso (overall): SKILL.md:18 splits at the first ` -- ` (with spaces). For the README.md:147 form `/harness:amend-commit-msg -- text`, $ARGUMENTS starts with `--`, so a literal reading finds no separator and prints usage.",
+        "fix": [
+          "Reword line 18 to: \"Split them at the first standalone `--` token (at the start, or with spaces on both sides).\" Use the same wording in README.md:151.",
+          "Replace lines 21-22 with: \"When the arguments hold `--fresh` or `--pending`, report that an amendment refuses them (`--fresh` drops the kept messages; the script rejects both with `--edit`) and stop; never remove them and continue.\" Change \"with none added\" to \"adding only `--save --edit`\".",
+          "Split at the first standalone `--` token, a leading one included; mirror the wording in README.md:151."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Separator assertion on argument-hint can never fail",
+        "file": "tests/skills/test_amend_commit_msg_skill_contract.py",
+        "lines": "65-69",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_skill_hints_the_capture_arguments_and_the_change checks `\"--\" in hint`, which '--base' and '--no-fetch' already satisfy. Dropping the ` -- <what to change>` separator from the hint would not fail the test, so the 'and the change' half of the name is never checked.",
+        "fix": [
+          "Assert `\" -- \" in hint` (with spaces), or `re.search(r\"\\s--\\s\", hint)`."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Test name promises 'never replans' but only checks the pointer",
+        "file": "tests/skills/test_amend_commit_msg_skill_contract.py",
+        "lines": "113-116",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_skill_reports_a_missing_draft_and_never_replans asserts only the 'no TXT to amend' text and the harness:branch-commit-msg pointer. Nothing in it checks that the skill avoids replanning; test_capture_always_edits_and_never_replans covers that.",
+        "fix": [
+          "Rename to test_skill_reports_a_missing_draft_and_points_to_the_drafter."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 82 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"0ace6b6f6f21ecd6e2a3e69444d8d87a610cd888\",\"headRefName\":\"1070-amend-commit-msg\",\"headRefOid\":\"0ace6b6f6f21ecd6e2a3e69444d8d87a610cd888\",\"last_sha\":\"0ace6b6f6f21ecd6e2a3e69444d8d87a610cd888\",\"mergeCommit\":null,\"number\":82,\"state\":\"OPEN\",\"title\":\"feat(harness): add amend-commit-msg to amend a drafted commit breakdown\",\"url\":\"https://github.com/t968rs/operator-straps/pull/82\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1070-amend-commit-msg",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1070-amend-commit-msg",
+        "head_ref_name": "1070-amend-commit-msg",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "0ace6b6f6f21ecd6e2a3e69444d8d87a610cd888",
+        "head_sha": "0ace6b6f6f21ecd6e2a3e69444d8d87a610cd888",
+        "base_ancestor_command": "git merge-base --is-ancestor 0ace6b6f6f21ecd6e2a3e69444d8d87a610cd888 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 0ace6b6f6f21ecd6e2a3e69444d8d87a610cd888 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - README example uses a SHA for --base and states the ref must resolve to the drafted base (sha7 in the TXT name); 'An amendment build rejects any bullet that names a file of another block'; amend-commit-msg added to the commit_buckets Used-by cell; '### Working on this repository' and '### Plugin options' headings split the repo paragraph and options tables off the skill section; SKILL.md Step 1 states the --base rule and suggests --base <sha7> when a sibling TXT exists; driver docstring states the --base rule"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - bullet_problems flags only a bullet that names an entry of another block and none of its own ('bullet names X, which is in commit K'); bullets naming no captured file pass; move matches bullets with _names_entry (basename, partial path, glob) like bullet_problems; driver docstrings match the contract; tests updated and added"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - SKILL.md Step 1 lists the planner's real carry-forward rules (partner block keeps message, Docs/Planning block comes back empty, other new paths get a new block) and says to restate an emptied message from the TXT being amended; Step 3 forbids splitting doc-only blocks, documents the 'no bullet' note and the 'block new' unplaced note; _bullet_for also matches a rename's old file so its bullet moves. Cited only: commit_grouping.py planner left as is and documented; README does not describe carry-forward"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - SKILL.md Step 1 reworded to the carry_forward/_merged/fold_planning rules; Step 2 counts a capture-emptied message as touched, rewritten from the TXT plus diff --block. Cited only: commit_grouping.py unchanged, the skill text now matches it"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - move takes bullets by _names_entry, so a glob entry carries its concrete-file bullet; new TestMovePaths cases: glob move with empty bullet_problems after, partial-path bullet, rename bullet naming the old file, two paths to new (placement after block 1, notes in request order, block 2 dropped), old side in another block stays"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - test_skill_command_lines_parse fills the placeholders of each SCRIPT line in SKILL.md, strips optional repeats, shlex-splits and parses it with the script's parser; hand-written argv test kept as test_hand_picked_argv_parse; docstring matches. Cited only: SKILL.md command lines already parse, the test now reads them"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - Added harness:amend-commit-msg to the commit-message entry-point list in HARNESS_RULES.md, with a line stating it only rewrites the drafted TXT and never runs git commit --amend; skill intro states amend-commit-msg only rewrites the TXT and never runs git commit --amend"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - _cmd_move dedupes --path with dict.fromkeys before move_paths, so a repeated path no longer raises ValueError; move_paths drops repeated paths (dict.fromkeys) and validates the skeleton shape before any detach, so a repeated --path no longer raises ValueError"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - move prints the final target key (found from the moved block) and counts only the paths added to it, so renumbering and rename old sides are reflected; move_paths names the target by its final renumbered key in the unplaced-bullet notes; new helper landed_key(blocks, path) returns that key for the summary line in branch_commit_msg.py _cmd_move"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - _cmd_capture rejects --edit with --fresh beside the --pending check, before any fetch or capture"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - _cmd_move validates captured entries (object with path) and runs _commit_dict on the skeleton before move_paths, so malformed input raises BuildError problem lines; move_paths raises CaptureError via new _shape_problems for non-numeric block keys, blocks not [[paths], str], non-object commits and captured entries without path, before sorting or indexing"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - split rule reworded to the first standalone -- token (leading one included); refused --fresh/--pending reported and stopped on; 'adding only --save --edit' replaces 'none added'; README.md amend-commit-msg split rule now reads the first standalone -- token (at the start, or with spaces on both sides)"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - argument-hint test asserts the ' -- ' separator with spaces instead of a bare '--' substring"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "0ace6b6 (working-tree snapshot; developer commits) - renamed test to test_skill_reports_a_missing_draft_and_points_to_the_drafter"
+    }
+  ]
+}

@@ -22,7 +22,8 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     arguments name (``<branch>.txt``, or ``<branch>_<sha7>.txt`` for ``--base``) and exits 1 when that file is
     absent, so a missing draft is never replanned from scratch. It conflicts with ``--fresh`` and
     ``--pending``, and marks the skeleton ``"edit": true``, which makes ``build`` also reject any message
-    bullet that names a file outside its own block.
+    bullet that names a file of another block and none of its own. ``--base`` must resolve to the drafted
+    base (the sha7 in the TXT name), so pass that SHA or a branch rather than a relative ref.
 
     ``--pending`` (the ``c-msg`` skill) instead captures the change pending against HEAD (staged,
     unstaged, untracked) as one commit with ``merge_base`` set to HEAD and ``"pending": true``. The
@@ -437,7 +438,7 @@ def _round_trip_problems(text: str, document: BranchCommitDocument) -> List[str]
 
 
 def edit_problems(document: BranchCommitDocument) -> List[str]:
-    """Bullets naming a file outside their own block, the leftover of a regrouping done without ``move``."""
+    """Bullets naming a file of another block, the leftover of a regrouping done without ``move``."""
     commits = {key: (list(entry.files), entry.message or "") for key, entry in document.commits.items()}
     return bullet_problems(commits)
 
@@ -622,6 +623,8 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
     base = effective_base(args.ref, args.base)
     if args.pending and args.edit:
         raise BuildError(["--edit cannot be combined with --pending: a pending change has no draft to amend"])
+    if args.edit and args.fresh:
+        raise BuildError(["--edit cannot be combined with --fresh: an amendment keeps the existing messages"])
     if args.pending:
         payload = run_capture_pending(repo)
     else:
@@ -654,12 +657,36 @@ def _cmd_diff(repo: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def _captured_problems(payload: Mapping[str, object]) -> List[str]:
+    """Problems with the skeleton's ``captured`` entries: each must be an object with a ``path``."""
+    captured = payload.get("captured") or []
+    if not isinstance(captured, list):
+        return [f"skeleton captured must be a list, not {type(captured).__name__}"]
+    return [f"captured entry {entry!r} has no path" for entry in captured
+            if not isinstance(entry, dict) or "path" not in entry]
+
+
+def _block_path_count(payload: Mapping[str, object], to: Union[int, str]) -> int:
+    """Paths in block ``to`` of the raw skeleton; zero for ``new``."""
+    if to == "new":
+        return 0
+    return len(payload["commits"][str(to)][0])
+
+
 def _cmd_move(repo: Path, args: argparse.Namespace) -> int:
     """Run ``move``: rewrite the skeleton with the paths regrouped and print the notes."""
     payload = json.loads(args.skeleton.read_text(encoding="utf-8"))
-    moved, notes = move_paths(payload, args.path, args.to)
+    problems = _captured_problems(payload)
+    if problems:
+        raise BuildError(problems)
+    _commit_dict(payload)
+    paths = list(dict.fromkeys(args.path))
+    moved, notes = move_paths(payload, paths, args.to)
+    before = _block_path_count(payload, args.to)
+    target = next(key for key, block in moved["commits"].items() if paths[0] in block[0])
+    count = len(moved["commits"][target][0]) - before
     write_skeleton(args.skeleton, moved)
-    print(f"moved {len(args.path)} path(s) to block {args.to}; {len(moved['commits'])} block(s) now")
+    print(f"moved {count} path(s) to block {target}; {len(moved['commits'])} block(s) now")
     print("\n".join(notes), end="\n" if notes else "")
     return 0
 

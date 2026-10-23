@@ -24,6 +24,7 @@ wherever it is more specific.
   `reset` to drop commits, or `push`. Recommend the operation instead; subagent prompts never contain one.
 - Commit messages only on explicit ask (`harness:c-msg`, `harness:branch-commit-msg`, or in words). A finished
   unit of work otherwise ends with the list of changed files.
+- `harness:amend-commit-msg` rewrites only the drafted commit-message TXT file; it never runs `git commit --amend`.
 - Multi-stage plans run continuously: no pause for commits between stages; save, record evidence, continue.
 
 ### Pre-merge recommendation
