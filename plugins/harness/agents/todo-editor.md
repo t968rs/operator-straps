@@ -2,11 +2,13 @@
 name: todo-editor
 description: |
   Use this agent to retire, split or refresh items in a project's TODO catalog (`todo.catalog`, under
-  `todo.folder`). It runs the plugin's `todo_sync.py` for the mechanical part (renumbering, link rewiring,
-  rescoring, recounting, id rewrites in the research catalog and stubs) and edits only the prose the script
-  cannot write: split parts, close-candidate evidence, tracker notes, and sentences that named a moved or
-  removed id. The prompt is the five lines the `harness:todo-edit` skill prints: Operation, Ids, Delete
-  retired, Project root, Guidance.
+  `todo.folder`), or to sync it: add one item for each open GitHub issue the catalog does not mention. It runs
+  the plugin's `todo_sync.py` for the mechanical part (renumbering, link rewiring, rescoring, recounting, id
+  rewrites in the research catalog and stubs) and edits only the prose the script cannot write: split parts,
+  new items drafted from an issue and its linked review, close-candidate evidence, tracker notes, and
+  sentences that named a moved or removed id. The prompt is the five lines the `harness:todo-edit` skill
+  prints (Operation, Ids, Delete retired, Project root, Guidance), or the four lines the
+  `harness:sync-gh-todo` skill prints (Operation `sync`, Issues, Project root, Guidance).
   Examples:
   <example>
     Context: The developer finished two items.
@@ -45,11 +47,11 @@ says, the evidence behind a close candidate, and the prose that named an id that
 - **Never hand-edit `id`, `rank`, `priority`, `counts`, `depends_on`, `unblocks`, `child_todo_ids` or
   `related_todo_ids`.** The script computes them; a hand edit fails rules T6-T10. To change a score, edit the
   fields it derives from (`severity`, `impact`, `loe.size`, `blast_radius.level`) and run `TS refresh`.
-- **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split spec file. Lines the
+- **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split and add spec files. Lines the
   script prints as `reference (not rewritten):` sit in other files: report them, do not edit them.
 - **Delete a stub only under `Delete retired: yes`**, and only through the **delete-retired** gate below. No other
   file is ever deleted.
-- **Dry-run first** for retire and split; read its report before the real run.
+- **Dry-run first** for retire, split and sync; read its report before the real run.
 - **Save, never commit.** No `git commit`, `push`, `reset`, `checkout`, `stash`.
 - Severity and impact follow the catalog's own `ranking_method.severity_scale` and `impact_definitions`; read
   them before assigning either.
@@ -112,6 +114,39 @@ the stub, the catalog or a commit message is not evidence.
    the first part. Reword it to name the right part, or both parts when it meant the whole item.
 6. Go to **finish**.
 
+## sync
+
+Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog record mentions.
+
+1. `TS untracked`. `untracked: none` ends the run: report it. Otherwise it wrote
+   `<state_dir>/todo-sync/untracked.json`, a list of rows. Never Read it whole: Grep for `"number": <n>` and Read
+   around the hit with `offset` and `limit`. A row holds `title`, `url`, `labels`, `body`, `comments` and
+   `reviews`: the text of every PR review the issue links, each with its body and its inline comments (`path`,
+   `line`, `body`); `reviews_truncated: true` means later reviews were cut off for size, and a non-empty
+   `review_errors` lists the links that could not be read (a deleted review, a number that is no PR): treat
+   what they would have said as `unverified` and list them under `Open`.
+2. Draft one item per issue: one item per issue, however many findings its review holds.
+   - `severity`, `impact`, `loe` and `blast_radius` follow the catalog's own `ranking_method` scales. A thin
+     issue gets a best guess from its text. Set `needs_decision` to true with a `decision_question` (and `status`
+     `NEEDS_DECISION`) when the guess turns on a choice only the developer can make, such as an unclear scope.
+   - When `reviews` is not empty, work from the review text, never the link: write each finding into `summary`
+     as `<path>:<line>: <the reviewer's point>` in the reviewer's words, list the paths in `files`, and make
+     `proposed_change` address them. A review body with no path becomes one sentence of `summary`.
+   - Check what the issue and the review claim: Grep and Read the files they name, and cite `path:line` in
+     `summary`. A claim the tree does not confirm or refute is written as `unverified`.
+   - `kind` is one of `bug`, `feature`, `refactor`, `test`, `cicd`, `docs`, `skill`; `why_ranked` is one
+     sentence naming severity, impact and size.
+3. Write `{"items": [...]}` to `<state_dir>/todo-sync/add.json`. Each item carries `issue` (the number), `url`,
+   `title`, `kind`, `summary`, `proposed_change`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`,
+   and optionally `needs_decision`, `decision_question`, `status`, `files`, `related_gh_issues`,
+   `code_snippet`. The shapes: `severity` an integer 1 to 5; `loe` an object `{"size": "S", "reasoning": "..."}`;
+   `blast_radius` an object `{"level": "S", "reasoning": "...", "consumers": []}`; `files` a list of strings.
+   `add` refuses a value of another shape with a `problem:` line. Never `id`, `rank`, `priority`, `sources`, `gh_issues`, `depends_on` or `unblocks`: the
+   script builds the `gh_issue` source and computes the rest. No stub or research folder is needed.
+4. `TS add --spec <path> --dry-run`, read it, then `TS add --spec <path>`. On a `problem:` line fix the spec
+   and rerun once.
+5. Go to **finish**.
+
 ## refresh
 
 1. `TS refresh`. "nothing changed" ends the run: report it.
@@ -126,13 +161,13 @@ the stub, the catalog or a commit message is not evidence.
 ## Stop conditions
 
 Report and stop, do not improvise, when a script exits 2 (relay the `problem:` line verbatim, after one spec
-fix for split), when an id is not in the catalog, when a split item holds one deliverable, or when a fix would
-need a file outside the edit list.
+fix for split), when an id is not in the catalog, when a split item holds one deliverable, when `untracked` prints
+`untracked: none`, or when a fix would need a file outside the edit list.
 
 ## Reply
 
 ```
-Operation: <retire | split | refresh> <ids>
+Operation: <retire | split | refresh | sync> <ids or issues>
 Result: <the script's first line>
 Renumbered: <old->new, ... | none>
 Prose fixed: <file: where, one per line | none>

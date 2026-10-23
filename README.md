@@ -23,6 +23,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | Choose how the Git banner looks | `banner-status`: `setup-statusline`, or `band-line` | ccstatusline as the project's status line (git branch and uncommitted changes, then model, thinking effort and context window; no prefix), or an `oStraps:` band above the prompt with the model and context window. ccstatusline is an optional dependency: it needs Node.js and npm, and `setup-statusline` offers to run `npm install -g ccstatusline@~2.2.32` for you. `band-line` needs no install. | • The skill writes `.claude/settings.json` `statusLine` and `.claude/ccstatusline.json` only after the user approves each edit.<br>• `band-line` reads the `git-status` snapshot; neither draws without `git-status`. |
 | Carry working context through compaction | `session-bookmark`, with `harness`: `add-bookmark` | Git state, recent prompts, your session notes (`/harness:add-bookmark <note>`, `--list`, `--clear`) and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, the stored notes, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state.<br>• The session itself writes each note, so a reference such as "the current status" becomes the facts it stands for; a script stores it (at most 20 notes, 300 characters each). |
 | Keep a project's TODO catalog and its sync checks in view | `todo-watch` | The next TODO items and a live sync status line in a band above the prompt (kept until dismissed), a `TODO_SYNC` drift line in prompt context, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
+| Add the open GitHub issues a TODO catalog misses | `harness`: `sync-gh-todo` | One drafted, ranked catalog item per open issue no record mentions, written from the issue text and from the text of any PR review it links, then the catalog renumbered. The edits are saved for you to review and commit. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• `gh` lists the issues; the script refuses an issue the catalog already records, scores and renumbers the items, and `check` runs after the edit. |
 | Run targeted tests with the intended Python | `pytest-scope` | Optional rewriting of bare `pytest` to your chosen interpreter and rejection of runs without an explicit test file or node ID. | • When configured, Bash hooks rewrite recognized pytest commands to the selected Python.<br>• Scope hooks reject broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override. |
 
 ## Agent process standardization
@@ -239,6 +240,14 @@ status in the affected stubs and research entries, and the reply names each stub
 entries now fully resolved and the issues that can close. With `--delete-retired`, the agent also sets an entry
 to `FULLY_IMPLEMENTED` and deletes its stub, but only after it ran a check for every deliverable in the stub;
 a stub with any unproven deliverable is kept and listed.
+
+Open GitHub issues enter the catalog through `todo_sync.py untracked`, which lists the open issues that no record
+mentions (an item, tracker, tracker child, close candidate or research entry) and writes each one's text, comments
+and the text of any PR review it links to `<state_dir>/todo-sync/untracked.json`. `todo_sync.py add --spec PATH
+[--dry-run]` inserts one item per issue from a spec file, scores it, renumbers the rest and recounts, and refuses an
+issue the catalog already records. `/harness:sync-gh-todo` runs both through the `todo-editor` agent, which drafts
+each item from the issue and review text (a best guess for a thin issue, flagged as needing a decision when it
+turns on a choice) and then runs `render` and `check`. A `gh_issue` source needs no `_IMPL_TODO.md` stub.
 
 | Key | Default | Used by |
 |---|---|---|

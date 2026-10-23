@@ -30,6 +30,17 @@ write the runner pointer, and retire, split or re-rank catalog items.
 ``refresh [--dry-run]``
     Rescore every item from ``ranking_method``, re-sort, renumber, recount and rewrite moved ids, after hand
     edits to item fields. A catalog already in order is left untouched.
+``untracked``
+    List the open GitHub issues (``gh issue list``; ``todo.gh.repo`` or the origin remote) that no catalog
+    record mentions: no item, tracker, child, close candidate or research entry. Prints one ``#N title`` line
+    per issue and writes the rows (issue text, comments and the text of linked PR reviews) to
+    ``<state_dir>/todo-sync/untracked.json``. Prints ``untracked: none`` and writes nothing when every open
+    issue is recorded.
+``add --spec PATH [--dry-run]``
+    Add one item per entry of the spec file (``{"items": [{...}, {...}]}``; each names its ``issue`` and
+    ``url`` and the fields a person judges, and never ``id``, ``rank`` or ``priority``). The script builds the
+    ``gh_issue`` source, scores the item, re-sorts, renumbers, recounts and rewrites moved ids as ``split``
+    does. An issue the catalog already records is refused.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
 ``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or a
@@ -50,8 +61,9 @@ from harness_lib.config import ConfigError, HarnessConfig, activate, load_config
 from harness_lib.project import project_root  # noqa: E402
 from harness_lib.todo_sync import (TodoSyncError, check, render_snapshot, report_path,  # noqa: E402
                                    write_report, write_runner)
+from harness_lib.todo_sync.issues import find_untracked, write_untracked  # noqa: E402
 from harness_lib.todo_sync.report import Report, format_markdown, format_summary  # noqa: E402
-from harness_lib.todo_sync.reshape import apply_refresh, apply_split  # noqa: E402
+from harness_lib.todo_sync.reshape import apply_add, apply_refresh, apply_split  # noqa: E402
 from harness_lib.todo_sync.reshape import summary_lines as reshape_lines  # noqa: E402
 from harness_lib.todo_sync.retire import apply_retirement, summary_lines  # noqa: E402
 
@@ -93,6 +105,10 @@ def _parser() -> argparse.ArgumentParser:
     spl.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
     ref = sub.add_parser("refresh", parents=[common], help="Rescore, re-sort and renumber every item.")
     ref.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
+    sub.add_parser("untracked", parents=[common], help="List open issues no catalog record mentions.")
+    add = sub.add_parser("add", parents=[common], help="Add one item per open issue named in a spec.")
+    add.add_argument("--spec", type=Path, required=True, help='JSON file: {"items": [{...}, {...}]}.')
+    add.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
     return parser
 
 
@@ -128,9 +144,25 @@ def _fails(report: Report, level: str) -> bool:
     return any(report.by_severity(severity) for severity in reached)
 
 
+def _untracked(cfg: HarnessConfig) -> int:
+    rows = find_untracked(cfg)
+    if not rows:
+        print("untracked: none")
+        return 0
+    print(f"untracked: {len(rows)} open issue(s) in no catalog record")
+    print("\n".join(f"#{row['number']} {row['title']}" for row in rows))
+    print(f"wrote {write_untracked(cfg, rows)}")
+    return 0
+
+
 def _dispatch(cfg: HarnessConfig, args: argparse.Namespace) -> int:
     if args.command == "check":
         return _check(cfg, args)
+    if args.command == "untracked":
+        return _untracked(cfg)
+    if args.command == "add":
+        print("\n".join(reshape_lines(apply_add(cfg, args.spec, args.dry_run), args.dry_run)))
+        return 0
     if args.command == "render":
         print(render_snapshot(cfg, args.date or dt.date.today()))
     elif args.command == "retire":
