@@ -114,7 +114,16 @@ def _refresh_args(root: Path) -> List[str]:
     return args
 
 
+def _parallel2_plan_args(root: Path, tmp: Path) -> List[str]:
+    """A one-lane plan file outside the project, for ``parallel2.py plan``."""
+    lane = {"id": "task1", "kind": "implement", "model": "haiku", "tools": ["Read"], "files": ["src/a.py"]}
+    plan = tmp / "parallel2_plan.json"
+    plan.write_text(json.dumps({"lanes": [lane]}), encoding="utf-8")
+    return ["scripts/parallel2.py", "--repo", str(root), "plan", str(plan)]
+
+
 CASES = {
+    "parallel2 plan": lambda r, t: (_parallel2_plan_args(r, t), None),
     "todo_sync check": lambda r, t: (_todo_args(r, "check"), None),
     "todo_sync render": lambda r, t: (_todo_args(r, "render", "--date", "2026-10-21"), None),
     "todo_sync retire": lambda r, t: (_todo_args(r, "retire", "1"), None),

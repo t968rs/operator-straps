@@ -284,6 +284,10 @@ def test_staging_plan_maps_statuses_to_operations() -> None:
     assert plan.touched == ["a.py", "m.py", "t.py", "d.py", "old.py", "new.py"]
 
 
+def test_plain_files_skip_directories_and_globs() -> None:
+    assert pl.plain_files(["src/*.py", "src/", "a.py", "b/c.py"]) == ["a.py", "b/c.py"]
+
+
 def test_chunks_split_in_hundreds() -> None:
     chunks = list(pl.chunks([str(i) for i in range(250)]))
     assert [len(c) for c in chunks] == [100, 100, 50]

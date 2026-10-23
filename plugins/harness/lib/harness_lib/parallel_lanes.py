@@ -403,6 +403,11 @@ def _touched_in_report_order(changes: Sequence[CapturedPath]) -> List[str]:
     return [path for change in changes for path in (change.old_path, change.path) if path]
 
 
+def plain_files(entries: Sequence[str]) -> List[str]:
+    """Entries naming one file: neither a directory nor a glob."""
+    return [entry for entry in entries if not _is_glob(entry) and not _is_dir(entry)]
+
+
 def chunks(paths: Sequence[str], size: int = CHUNK) -> Iterator[List[str]]:
     """``paths`` in lists of at most ``size`` items."""
     for start in range(0, len(paths), size):
