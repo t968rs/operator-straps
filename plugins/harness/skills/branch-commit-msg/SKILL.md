@@ -12,7 +12,9 @@ agent: harness:messenger
 `${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py` does the mechanics: capture, bucketing, pairing, split, order,
 carry-forward of the existing TXT, layout, validation. The agent's job is the judgment: plan review and messages.
 
-For one message about the current change (not the whole branch), use `harness:c-msg`.
+For one message about the current change (not the whole branch), use `harness:c-msg`. To amend a TXT this
+skill already drafted (rewrite messages after later fixes, or move files between blocks) without redrafting
+it, use `harness:amend-commit-msg`.
 
 **Rebuild assumption.** The developer mixed-resets the branch to its merge base and re-commits the TXT block by
 block. So: every path differing from the merge base appears in exactly one block; each block stages that file's

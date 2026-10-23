@@ -15,7 +15,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | Your goal | Use | What you get | Agent 'Ensurance' |
 |---|---|---|---|
 | Review a PR and work through its findings | `harness`: `pr-review` or `pr-team` | Multiple reviewers, a consolidated review, branch checks before fixes, and fix waves with recorded resolutions. `pr-team` keeps finding details out of the main session's context. | • Configured agent-use Python runtime via `hpy`.<br>• Branch checks before fixes; schema validation on review writes.<br>• `Stop` hook blocks a stop attempt while the review session has an active Phase 5 sentinel. |
-| Draft a commit message or organize a branch's changes | `harness`: `c-msg`, `branch-commit-msg` | A message for the pending change, or a proposed breakdown into commits, saved in your project's artifact folders. | • Configured Python runtime via `hpy`.<br>• Build checks file coverage and message format before saving the draft. |
+| Draft a commit message or organize a branch's changes | `harness`: `c-msg`, `branch-commit-msg`, `amend-commit-msg` | A message for the pending change, a proposed breakdown into commits, or an amendment of that breakdown (rewritten messages, files moved between blocks), saved in your project's artifact folders. | • Configured Python runtime via `hpy`.<br>• Build checks file coverage and message format before saving the draft. |
 | Explain a PR to the next reviewer | `harness`: `pr-sum` | A summary grounded in PR metadata and the diff. `--level 1\|2\|3` sets how much it draws (1 prose only, 2 flows and Changed Symbols, the default, 3 more diagram types); `--min-viz` at level 3 holds the session until the summary holds the diagram blocks. | • Script captures PR metadata, commits, file lists, and counts.<br>• Build requires a title, summary, and descriptions covering the listed non-artifact files. |
 | Start a task in an isolated checkout | `harness`: `d-w` | A detached-HEAD worktree cut from HEAD, an integration branch, or another ref. | • Script resolves the base ref to a commit and creates a detached worktree.<br>• Failed integration-branch fetches stop creation; directory collisions get a fresh path. |
 | See where an agent-driven review stands | `pr-review-watch` | A review progress band, pending-fix context, reviewer matrix rows and a per-agent usage log (every dispatch of an agent this marketplace defines), and a Stop guard for unrecorded escalated issues. | • `Stop` guard checks that escalated issues are recorded in the review.<br>• Usage rows come from engine measurements and must pass schema validation before append. |
@@ -138,11 +138,34 @@ compaction bookmark, above the `/compact` instructions, so a constraint or remin
   overwritten; run `--clear` to reset it.
 - For what the compaction bookmark prints and how the mod reads the notes, see `plugins/session-bookmark/README.md`.
 
+### amend-commit-msg
+
+`/harness:amend-commit-msg` amends the commit breakdown that `branch-commit-msg` drafted, instead of redrafting it.
+The session that runs it knows what changed since the draft, which the forked `branch-commit-msg` agent does not.
+
+```text
+/harness:amend-commit-msg -- the review fixes landed; restate blocks 2 and 3
+/harness:amend-commit-msg --base 3b5d53a -- move tests/test_x.py into the runtime block
+```
+
+- Arguments before the first standalone `--` token (at the start, or with spaces on both sides) are the `branch-commit-msg` capture arguments (`REF`, `--base REF`, `--no-fetch`) and
+  name the TXT to amend. Text after it says what to change. `--fresh` and `--pending` are refused.
+- A missing TXT is an error (`no TXT to amend: <path>`), never a silent redraft. A `--base` amendment needs the
+  `<branch>_<sha7>.txt` of that base, and the ref must resolve now to the drafted base: the sha7 in the TXT
+  name. Pass that SHA or a branch name; a relative ref such as `HEAD~3` moves once more commits land.
+- Files move between blocks with `branch_commit_msg.py move`, which carries each file's `file: what changed`
+  bullet with it. An amendment build rejects any bullet that names a file of another block.
+- The replaced TXT is kept as `<name>.txt.bak`, one generation.
+
+### Working on this repository
+
 This repository enables its own plugins in `.claude/settings.json` from the published marketplace (the same
 `t968rs/operator-straps` GitHub source as above), so sessions here run the cached copy from the pushed default
 branch, not the checkout. Edits under `plugins/` take effect only after merge, version bump and
 `claude plugin marketplace update operator-straps`; to exercise them before that, run
 `claude --plugin-dir plugins/<name>` or add the checkout as a local marketplace (`claude plugin marketplace add ./`).
+
+### Plugin options
 
 Installing from `/plugin` inside a session opens a dialog for each unset option instead; the CLI install takes
 `--config KEY=VALUE`. `pytest-scope` options (see `plugins/pytest-scope/README.md`):
@@ -229,7 +252,7 @@ a stub with any unproven deliverable is kept and listed.
 | `tests.fixer_test_seconds` | `null` (no runtime rule) | pr-review fixer briefs: a registered test summing over this many seconds in `tests.timings` is deferred (listed, not run; `closeout` prints it). With `tests.timings` missing or unusable, the ceiling is inactive and `waves` prints a `deferral:` notice |
 | `tests.defer_flags` | `[]` | pr-review fixer briefs: dotted registry-entry paths (e.g. `properties.super_slow`); `true` at any of them defers the test |
 | `review.*` | empty | Phase 1 guard suites, lens catalog, reviewer-brief rule pointers |
-| `commit_buckets` | generic `src/`, `tests/`, `docs/` rules | `c-msg`, `branch-commit-msg` grouping |
+| `commit_buckets` | generic `src/`, `tests/`, `docs/` rules | `c-msg`, `branch-commit-msg`, `amend-commit-msg` grouping |
 | `exclusions` | `.claude/review_exclusions.json` | pr-review clean-tree checks and review capture ignore machine-generated files. At the default path the file is written on first use (`pr_review.py capture`, `pr_review.py config` when it prints `exclusions`, `phase4_branch_safety.py`, and `git_status_filter_excluded.py` run without a path argument) with patterns for `artifacts.reviews`, `artifacts.summaries`, `artifacts.scratch`, `artifacts.commit_messages`, `state_dir` and the files `matrix_path` and `agent_usage_path`; an existing file is never overwritten, and the folders the harness writes stay exempt in memory even when the file (seeded by an earlier version, or your own list) lacks their rows; a run with `--exclusions-fixture` takes its list as given. The folder rows cover the whole subtree (`fnmatch` `*` crosses `/`), so point `artifacts.scratch`, `artifacts.reviews` and `artifacts.summaries` at dedicated folders: a broad value such as `docs` hides every docs change from the clean-tree check and review capture. When `.claude/` is not writable (a read-only checkout, or a file named `.claude`) the seed is skipped and the first use fails with `Exclusions file not found`; create the file by hand or set `exclusions` to `null`. The clean-tree check runs `git status --porcelain --untracked-files=all`, so a seeded file in an untracked `.claude/` matches its own pattern. Name another file to keep your own list (it must exist), or set `null` to filter nothing |
 | `auto_approve_python_c` | `false` | `approve_python_c` hook |
 | `worktree_root` | `~/.config/superpowers/worktrees/{repo}` | `d-w`, `parallel2` |

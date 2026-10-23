@@ -791,6 +791,126 @@ class TestBuild:
             script.run_build(clone, payload)
 
 
+_SRC_MSG = "Fix(io): a\n\nWhy.\n  - a.py: x\n  - test_a.py: y"
+_DOC_MSG = "Docs: d\n\nWhy.\n  - new.md: relocate old.md -> new.md"
+
+
+def _drafted(script: ModuleType, clone: Path) -> Dict[str, object]:
+    """Build a TXT with real bullets, then capture it back for amending."""
+    payload = script.run_capture(clone, fetch=False)
+    commits = {
+        "1": [payload["commits"]["1"][0], _SRC_MSG],
+        "2": [payload["commits"]["2"][0], _DOC_MSG],
+    }
+    script.run_build(clone, {**payload, "commits": commits})
+    return script.run_capture(clone, fetch=False, edit=True)
+
+
+class TestCaptureEdit:
+    def test_edit_without_the_txt_is_a_problem(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        with pytest.raises(script.BuildError, match=r"no TXT to amend: .*9999-demo\.txt"):
+            script.run_capture(clone, fetch=False, edit=True)
+
+    def test_edit_carries_the_messages_and_marks_the_skeleton(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        payload = _drafted(script, clone)
+        assert payload["edit"] is True
+        assert [message for _, message in payload["commits"].values()] == [_SRC_MSG, _DOC_MSG]
+
+    def test_plain_capture_has_no_edit_key(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        assert "edit" not in script.run_capture(clone, fetch=False)
+
+    def test_edit_with_base_needs_the_sibling_txt(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        script.run_build(clone, _filled(script.run_capture(clone, fetch=False)))
+        with pytest.raises(script.BuildError, match=r"no TXT to amend: .*9999-demo_[0-9a-f]{7}\.txt"):
+            script.run_capture(clone, base="HEAD", fetch=False, edit=True)
+
+    def test_edit_conflicts_with_fresh(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        _drafted(script, clone)
+        with pytest.raises(script.BuildError, match="--fresh"):
+            script.run_capture(clone, fetch=False, edit=True, fresh=True)
+
+    def test_cli_edit_with_pending_exits_1(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        code = script.main(["--repo", str(clone), "capture", "--edit", "--pending", "--no-fetch"])
+        assert code == 1
+        assert "--pending" in capsys.readouterr().err
+
+
+class TestBuildEdit:
+    def test_stale_bullet_is_a_problem(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        payload = _drafted(script, clone)
+        payload["commits"]["1"][0] = ["scripts/fpm/io/a.py"]
+        payload["commits"]["2"][0] = [*payload["commits"]["2"][0], "scripts/__tests__/test_a.py"]
+        with pytest.raises(script.BuildError, match="commit 1: bullet names test_a.py"):
+            script.run_build(clone, payload)
+
+    def test_plain_build_does_not_check_bullets(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        payload = script.run_capture(clone, fetch=False)
+        commits = {"1": [payload["commits"]["1"][0], "Chore: a\n\nWhy.\n  - elsewhere.py: x"],
+                   "2": [payload["commits"]["2"][0], "Chore: d"]}
+        out, _ = script.run_build(clone, {**payload, "commits": commits})
+        assert out.exists()
+
+
+class TestMove:
+    def _skeleton(self, script: ModuleType, clone: Path) -> Path:
+        path = clone / "docs" / "_commit_messages" / "9999-demo.json"
+        script.write_skeleton(path, _drafted(script, clone))
+        return path
+
+    def _move(self, script: ModuleType, clone: Path, path: Path, *extra: str) -> int:
+        return script.main(["--repo", str(clone), "move", str(path), *extra])
+
+    def test_move_rewrites_the_skeleton_and_the_build_keeps_the_bullet(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        code = self._move(script, clone, skeleton, "--path", "scripts/__tests__/test_a.py", "--to", "2")
+        assert code == 0
+        payload = json.loads(skeleton.read_text(encoding="utf-8"))
+        out, _ = script.run_build(clone, payload)
+        second = out.read_text(encoding="utf-8").split("\nCommit 2 - ")[1]
+        assert "\"scripts/__tests__/test_a.py\"," in second
+        assert "  - test_a.py: y" in second
+
+    def test_move_to_new_reports_the_unplaced_bullet(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        code = self._move(script, clone, skeleton, "--path", "scripts/__tests__/test_a.py", "--to", "new")
+        assert code == 0
+        assert "unplaced bullet" in capsys.readouterr().out
+        payload = json.loads(skeleton.read_text(encoding="utf-8"))
+        assert [paths for paths, _ in payload["commits"].values()][1] == ["scripts/__tests__/test_a.py"]
+
+    def test_unknown_path_exits_1_and_leaves_the_skeleton(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        before = skeleton.read_text(encoding="utf-8")
+        assert self._move(script, clone, skeleton, "--path", "nope.py", "--to", "2") == 1
+        assert "nope.py" in capsys.readouterr().err
+        assert skeleton.read_text(encoding="utf-8") == before
+
+    def test_target_must_be_a_block_number_or_new(self, script: ModuleType) -> None:
+        with pytest.raises(SystemExit):
+            script._parser().parse_args(["move", "s.json", "--path", "a", "--to", "abc"])
+
+
 class TestSkeletonPayload:
     def test_round_trips_through_document(self, script: ModuleType) -> None:
         commits = {
