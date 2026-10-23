@@ -272,25 +272,18 @@ def test_undeclared_paths_include_both_sides_of_a_rename() -> None:
     assert pl.undeclared_paths(changes, ["src/"]) == ["lib/old.py"]
 
 
-def test_staging_plan_maps_statuses_to_operations() -> None:
+def test_staging_report_lists_each_change_and_every_touched_path() -> None:
     changes = [
         CapturedPath("A", "a.py"), CapturedPath("M", "m.py"), CapturedPath("T", "t.py"),
         CapturedPath("D", "d.py"), CapturedPath("R", "new.py", "old.py"),
     ]
-    plan = pl.plan_staging(changes)
-    assert plan.checkout == ["a.py", "m.py", "t.py", "new.py"]
-    assert plan.remove == ["d.py", "old.py"]
-    assert plan.lines == ["A a.py", "M m.py", "T t.py", "D d.py", "R old.py -> new.py"]
-    assert plan.touched == ["a.py", "m.py", "t.py", "d.py", "old.py", "new.py"]
+    report = pl.staging_report(changes)
+    assert report.lines == ["A a.py", "M m.py", "T t.py", "D d.py", "R old.py -> new.py"]
+    assert report.touched == ["a.py", "m.py", "t.py", "d.py", "old.py", "new.py"]
 
 
 def test_plain_files_skip_directories_and_globs() -> None:
     assert pl.plain_files(["src/*.py", "src/", "a.py", "b/c.py"]) == ["a.py", "b/c.py"]
-
-
-def test_chunks_split_in_hundreds() -> None:
-    chunks = list(pl.chunks([str(i) for i in range(250)]))
-    assert [len(c) for c in chunks] == [100, 100, 50]
 
 
 def test_pending_overlap_lists_changed_paths_only() -> None:

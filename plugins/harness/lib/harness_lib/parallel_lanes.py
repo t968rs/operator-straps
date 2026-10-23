@@ -13,7 +13,7 @@ import json
 import re
 from dataclasses import asdict, dataclass, field, fields
 from fnmatch import fnmatchcase
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 from harness_lib.commit_grouping import CapturedPath
 
@@ -22,7 +22,6 @@ READ_ONLY = ("review", "research")
 KINDS = (IMPLEMENT, *READ_ONLY)
 PLANNED, DISPATCHED, STAGED, CLEANED = "planned", "dispatched", "staged", "cleaned"
 PROBE_FILE = ".p2_probe"
-CHUNK = 100
 
 _ID = re.compile(r"[a-z0-9][a-z0-9-]*")
 _GLOB_CHARS = "*?["
@@ -72,11 +71,9 @@ class Profile:
 
 
 @dataclass(frozen=True)
-class StagePlan:
-    """Index operations for one lane's changes: paths to check out, paths to remove, report lines."""
+class StageReport:
+    """One lane's staged changes: a report line per change and every path touched."""
 
-    checkout: List[str]
-    remove: List[str]
     lines: List[str]
     touched: List[str]
 
@@ -381,37 +378,15 @@ def _report_line(change: CapturedPath) -> str:
     return f"{change.status} {change.path}"
 
 
-def plan_staging(changes: Sequence[CapturedPath]) -> StagePlan:
-    """Map captured changes to index operations: deletions remove, everything else checks out."""
-    checkout: List[str] = []
-    remove: List[str] = []
-    for change in changes:
-        if change.status == "D":
-            remove.append(change.path)
-        else:
-            checkout.append(change.path)
-            if change.old_path:
-                remove.append(change.old_path)
-    return StagePlan(
-        checkout=checkout, remove=remove, lines=[_report_line(c) for c in changes],
-        touched=_touched_in_report_order(changes),
-    )
-
-
-def _touched_in_report_order(changes: Sequence[CapturedPath]) -> List[str]:
-    """Every staged path, a rename's old side before its new side."""
-    return [path for change in changes for path in (change.old_path, change.path) if path]
+def staging_report(changes: Sequence[CapturedPath]) -> StageReport:
+    """Report lines per change and every touched path, a rename's old side before its new side."""
+    touched = [path for change in changes for path in (change.old_path, change.path) if path]
+    return StageReport(lines=[_report_line(c) for c in changes], touched=touched)
 
 
 def plain_files(entries: Sequence[str]) -> List[str]:
     """Entries naming one file: neither a directory nor a glob."""
     return [entry for entry in entries if not _is_glob(entry) and not _is_dir(entry)]
-
-
-def chunks(paths: Sequence[str], size: int = CHUNK) -> Iterator[List[str]]:
-    """``paths`` in lists of at most ``size`` items."""
-    for start in range(0, len(paths), size):
-        yield list(paths[start:start + size])
 
 
 def pending_overlap(changed: Sequence[str], pending: Sequence[str]) -> List[str]:

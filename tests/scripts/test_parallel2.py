@@ -6,6 +6,7 @@ runs in-process through ``main`` with ``--repo``; git state is read back with pl
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 from pathlib import Path
 from types import ModuleType
@@ -121,6 +122,14 @@ def test_plan_writes_state_in_the_project_and_prints_the_summary(plan, project: 
     assert saved["target"] == "feat-x"
     assert [(i["id"], i["wave"], i["status"]) for i in saved["lanes"]] == [("task1", 1, "planned"),
                                                                            ("task3", 1, "planned")]
+
+
+def test_plan_reads_stdin_for_a_dash(run, project: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    body = json.dumps({"target": "feat-x", "lanes": [lane("a", ["src/a.py"])]})
+    monkeypatch.setattr("sys.stdin", io.StringIO(body))
+    code, out, err = run("plan", "-")
+    assert (code, err) == (0, "")
+    assert out.splitlines()[1] == "wave 1: a (implement, haiku)"
 
 
 def test_plan_defaults_the_target_to_the_current_branch(run, tmp_path: Path, project: Path) -> None:
@@ -360,17 +369,53 @@ def test_stage_applies_adds_and_deletes(two_lanes, run) -> None:
     assert (project / "tests" / "test_new.py").is_file()
 
 
-def test_stage_refuses_when_the_target_moved(two_lanes, run) -> None:
+def test_stage_keeps_target_commits_made_after_setup(two_lanes, run) -> None:
     project = two_lanes
     old = git(project, "rev-parse", "HEAD")
     commit_in(lane_tree(project, "task1"), {"src/a.py": "a = 2\n"})
     commit_in(project, {"docs/guide.md": "moved\n"}, "move target")
     new = git(project, "rev-parse", "HEAD")
     code, out, err = run("stage", "task1")
-    assert code == 1 and out == ""
-    assert err == (f"problem: target moved from {old[:7]} to {new[:7]} since setup; "
-                   "re-scope the lane against the new HEAD\n")
-    assert git(project, "diff", "--cached", "--name-only") == ""
+    assert (code, err) == (0, "")
+    note = f"note: target moved from {old[:7]} to {new[:7]} since setup; merged three-way"
+    assert out.splitlines()[0] == note
+    assert git(project, "diff", "--cached", "--name-only") == "src/a.py"
+    assert (project / "docs" / "guide.md").read_text(encoding="utf-8") == "moved\n"
+
+
+def test_stage_merges_a_file_both_sides_changed(plan, run, project: Path) -> None:
+    lines = [f"line {n}\n" for n in range(1, 8)]
+    commit_in(project, {"src/m.py": "".join(lines)}, "base m")
+    plan([lane("task1", ["src/"])])
+    run("setup")
+    commit_in(lane_tree(project, "task1"), {"src/m.py": "".join(["lane 1\n", *lines[1:]])})
+    commit_in(project, {"src/m.py": "".join([*lines[:-1], "target 7\n"])}, "target edit")
+    code, _, err = run("stage", "task1")
+    assert (code, err) == (0, "")
+    staged = git(project, "show", ":src/m.py")
+    assert staged.splitlines()[0] == "lane 1" and staged.splitlines()[-1] == "target 7"
+
+
+def test_stage_reports_conflicts_and_records_the_lane_staged(two_lanes, run) -> None:
+    project = two_lanes
+    commit_in(lane_tree(project, "task1"), {"src/a.py": "a = 2\n"})
+    commit_in(project, {"src/a.py": "a = 3\n"}, "conflicting target edit")
+    code, _, err = run("stage", "task1")
+    assert code == 1
+    assert err == ("problem: three-way merge left conflicts in src/a.py; "
+                   "resolve the markers and git add them\n")
+    assert "<<<<<<<" in (project / "src" / "a.py").read_text(encoding="utf-8")
+    assert lane_state(project, "task1")["status"] == "staged"
+
+
+def test_stage_ignores_a_leftover_probe_file(two_lanes, run) -> None:
+    project = two_lanes
+    tree = lane_tree(project, "task1")
+    commit_in(tree, {"src/a.py": "a = 2\n"})
+    (tree / ".p2_probe").write_text("probe-edited", encoding="utf-8")
+    code, _, err = run("stage", "task1")
+    assert (code, err) == (0, "")
+    assert git(project, "diff", "--cached", "--name-only") == "src/a.py"
 
 
 def test_stage_refuses_a_dirty_lane_worktree(two_lanes, run) -> None:

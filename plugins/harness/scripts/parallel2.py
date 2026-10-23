@@ -6,9 +6,10 @@ The mechanical half of the ``parallel2`` skill. The run state lives in the consu
 on stderr with exit 1 and nothing written; success exits 0.
 
 ``plan PLAN_JSON [--replace]``
-    Validate a dispatch plan (lane ids, kinds, models, tools, file entries, waves, overlap inside a wave),
-    pack unwaved lanes into waves, write the state and print the waves, the worktree prong and the probe
-    prong. An earlier run with lanes not yet cleaned up is refused unless ``--replace``.
+    Validate a dispatch plan (lane ids, kinds, models, tools, file entries, waves, overlap inside a wave;
+    ``-`` reads it from stdin), pack unwaved lanes into waves, write the state and print the waves, the
+    worktree prong and the probe prong. An earlier run with lanes not yet cleaned up is refused unless
+    ``--replace``.
 
 ``setup [--wave N]``
     For the lowest planned wave (or ``N``): cut ``p2/<lane-id>`` branches and worktrees from HEAD for the
@@ -19,9 +20,11 @@ on stderr with exit 1 and nothing written; success exits 0.
     Print one permission-probe prompt per tool profile of the wave's implement lanes.
 
 ``stage LANE [--include-undeclared]``
-    Apply a finished implement lane to the index of the checkout (no commit). Refused when HEAD moved since
-    setup, the lane worktree is dirty, the lane has no commits, it changed paths outside its files, or a
-    changed path is pending in the checkout.
+    Apply a finished implement lane's committed diff (from its base) three-way onto the index of the
+    checkout (no commit), so target commits made since setup are merged rather than reverted. Refused when
+    the lane worktree is dirty (a leftover probe file aside), the lane has no commits, it changed paths
+    outside its files, or a changed path is pending in the checkout. A conflict leaves markers, records the
+    lane staged and exits 1 naming the conflicted paths.
 
 ``status``
     Print ``id wave kind status branch worktree`` per lane.
@@ -47,6 +50,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
@@ -60,7 +64,6 @@ from harness_lib.config import ConfigError, active, activate, load_config
 from harness_lib.project import main_worktree, project_root
 
 PROBLEMS = (pl.PlanError, CaptureError, ConfigError)
-LITERAL = "--literal-pathspecs"
 
 
 # --- locations and state ----------------------------------------------------------------------------------
@@ -145,8 +148,9 @@ def pending_paths(repo: Path) -> List[str]:
 # --- plan -------------------------------------------------------------------------------------------------
 
 def read_plan(path: Path) -> object:
+    """The plan JSON from ``path``, or from stdin when ``path`` is ``-``."""
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(sys.stdin.read() if str(path) == "-" else path.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
         raise pl.PlanError([f"cannot read plan {path}: {exc}"]) from exc
 
@@ -319,17 +323,18 @@ def stageable_lane(lanes: Sequence[pl.Lane], lane_id: str) -> pl.Lane:
     return item
 
 
-def require_unmoved_head(repo: Path, item: pl.Lane) -> None:
+def moved_note(repo: Path, item: pl.Lane) -> Optional[str]:
+    """A note when the target gained commits since setup, else None."""
     head = git_out(repo, "rev-parse", "HEAD").strip()
-    if head != item.base_sha:
-        raise CaptureError([
-            f"target moved from {str(item.base_sha)[:7]} to {head[:7]} since setup; "
-            "re-scope the lane against the new HEAD"
-        ])
+    if head == item.base_sha:
+        return None
+    return f"note: target moved from {str(item.base_sha)[:7]} to {head[:7]} since setup; merged three-way"
 
 
 def require_clean_worktree(item: pl.Lane) -> None:
-    if git_out(Path(str(item.worktree)), "status", "--porcelain").strip():
+    """Refuse a lane worktree with uncommitted changes; a leftover probe file does not count."""
+    lines = git_out(Path(str(item.worktree)), "status", "--porcelain").splitlines()
+    if any(line[3:] != pl.PROBE_FILE for line in lines if line.strip()):
         raise CaptureError([f"lane {item.id} worktree has uncommitted changes; commit in the worktree first"])
 
 
@@ -348,11 +353,26 @@ def lane_changes(repo: Path, item: pl.Lane, include_undeclared: bool) -> List[Ca
     return changes
 
 
-def apply_staging(repo: Path, branch: str, plan: pl.StagePlan) -> None:
-    for chunk in pl.chunks(plan.checkout):
-        git_out(repo, LITERAL, "checkout", branch, "--", *chunk)
-    for chunk in pl.chunks(plan.remove):
-        git_out(repo, LITERAL, "rm", "--quiet", "--", *chunk)
+def _stderr(done: subprocess.CompletedProcess) -> str:
+    return done.stderr.decode("utf-8", errors="replace").strip()
+
+
+def apply_lane(repo: Path, item: pl.Lane) -> List[str]:
+    """Apply the lane's committed diff three-way onto the checkout's index; return the conflicted paths.
+
+    The diff runs from the lane's base, so commits the target gained since setup are merged, never reverted.
+    """
+    diff = subprocess.run(["git", "diff", "--binary", "-M", str(item.base_sha), str(item.branch)],
+                          cwd=repo, capture_output=True)
+    if diff.returncode != 0:
+        raise CaptureError([f"git diff of lane {item.id} failed: {_stderr(diff)}"])
+    done = subprocess.run(["git", "apply", "--3way", "--whitespace=nowarn"], cwd=repo, input=diff.stdout,
+                          capture_output=True)
+    listing = git_out(repo, "diff", "--name-only", "--diff-filter=U", "-z")
+    conflicts = [path for path in listing.split("\0") if path]
+    if done.returncode != 0 and not conflicts:
+        raise CaptureError([f"git apply of lane {item.id} failed: {_stderr(done)}"])
+    return conflicts
 
 
 def cmd_stage(repo: Path, args: argparse.Namespace) -> int:
@@ -360,15 +380,19 @@ def cmd_stage(repo: Path, args: argparse.Namespace) -> int:
     lanes = require_lanes(repo, target)
     item = stageable_lane(lanes, args.lane)
     require_checked_out(repo, target)
-    require_unmoved_head(repo, item)
     require_clean_worktree(item)
-    plan = pl.plan_staging(lane_changes(repo, item, args.include_undeclared))
-    apply_staging(repo, str(item.branch), plan)
-    item.status, item.staged = pl.STAGED, plan.touched
+    report = pl.staging_report(lane_changes(repo, item, args.include_undeclared))
+    note = moved_note(repo, item)
+    conflicts = apply_lane(repo, item)
+    item.status, item.staged = pl.STAGED, report.touched
     save_lanes(repo, target, lanes)
     waiting = [i.id for i in lanes if i.kind == pl.IMPLEMENT and i.status == pl.DISPATCHED]
     still = ", ".join(waiting) or "none"
-    print("\n".join([*plan.lines, "next: git diff --cached", f"still dispatched: {still}"]))
+    print("\n".join([*([note] if note else []), *report.lines, "next: git diff --cached",
+                     f"still dispatched: {still}"]))
+    if conflicts:
+        raise CaptureError([f"three-way merge left conflicts in {', '.join(conflicts)}; "
+                            "resolve the markers and git add them"])
     return 0
 
 
