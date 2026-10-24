@@ -375,11 +375,12 @@ class TestCaptureSource:
 
 
 class TestCaptureForcedLocal:
-    def _capture(self, script: ModuleType, clone: Path, head: str, **kwargs: object) -> object:
-        """Forced local capture of ``clone`` as ``--local`` runs it (no untracked files), for PR #1234."""
+    def _capture(self, script: ModuleType, clone: Path, head: str, today: Optional[str] = None) -> object:
+        """Forced local capture of ``clone`` as ``--local`` runs it (no untracked files off the PR branch),
+        for PR #1234."""
         return script.capture_pr(
-            clone, _meta(script, head), fetch=False, local=True, working_tree=True, force_local=True,
-            untracked=False, **kwargs,
+            clone, _meta(script, head), fetch=False, today=today, local=True, working_tree=True,
+            force_local=True, untracked=False,
         )
 
     def _leave_pr_branch(self, clone: Path) -> None:
@@ -410,6 +411,7 @@ class TestCaptureForcedLocal:
     ) -> None:
         clone, _, head = pr_repo
         _git(clone, "checkout", "--", "src/pkg/a.py")
+        _git(clone, "checkout", "main")
         _write(clone, "src/pkg/new.py", "n\n")
         facts = self._capture(script, clone, head)
         assert (facts.head_source, facts.working_tree) == ("local", False)
@@ -471,10 +473,24 @@ class TestCaptureForcedLocal:
             self, script: ModuleType, pr_repo: Tuple[Path, str, str],
     ) -> None:
         clone, _, head = pr_repo
-        forced = self._capture(script, clone, head)
-        default = script.capture_pr(clone, _meta(script, head), fetch=False, local=True, working_tree=True)
+        _write(clone, "src/pkg/new.py", "n\n")
+        forced = self._capture(script, clone, head, today="2026-10-10")
+        default = script.capture_pr(
+            clone, _meta(script, head), fetch=False, today="2026-10-10", local=True, working_tree=True,
+        )
         assert forced == default
-        assert forced.local_branch == "1234-demo"
+        assert [f.path for f in forced.files if f.untracked] == ["src/pkg/new.py"]
+        assert (forced.local_branch, forced.on_pr_branch) == ("1234-demo", True)
+
+    def test_stale_branch_of_the_pr_name_is_labelled_another_checkout(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _git(clone, "reset", "--hard", "HEAD~1")
+        facts = self._capture(script, clone, head)
+        assert (facts.head_source, facts.local_branch, facts.on_pr_branch) == ("local", "1234-demo", False)
+        text = script.render_summary(facts, script.new_draft(facts))
+        assert "**Source:** local checkout `1234-demo` at " in text
 
 
 class TestCaptureCommand:
@@ -536,7 +552,7 @@ class TestCaptureCommand:
 
     def test_local_flag_summarizes_a_checkout_off_the_pr_branch(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
-            monkeypatch: pytest.MonkeyPatch,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
     ) -> None:
         clone, base, head = pr_repo
         _git(clone, "stash", "-u")
@@ -553,7 +569,40 @@ class TestCaptureCommand:
         facts = json.loads(forced.read_text(encoding="utf-8"))["facts"]
         assert (facts["head_source"], facts["head_sha"], facts["working_tree"]) == ("local", base, True)
         assert [f["path"] for f in facts["files"]] == ["src/pkg/staged.py"]
+        capsys.readouterr()
         assert script.main(["diff", str(forced), "--repo", str(clone)]) == 0
+        printed = capsys.readouterr().out
+        assert _headers(printed) == ["src/pkg/staged.py"]
+        assert "+s" in printed and "src/pkg/new.py" not in printed
+
+    def test_local_flag_without_the_pr_head_object_stays_silent(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+    ) -> None:
+        _, _, head = pr_repo
+        fresh = _fresh_clone(tmp_path, "fresh")
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--local", "--repo", str(fresh)]
+        assert script.main([*argv, "--out", str(tmp_path / "s.json")]) == 0
+        assert "note:" not in capsys.readouterr().out
+
+    def test_local_flag_note_counts_dropped_descriptions(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _, head = pr_repo
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        out = tmp_path / "s.json"
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--repo", str(clone), "--out", str(out)]
+        assert script.main(argv) == 0
+        filled = _filled(json.loads(out.read_text(encoding="utf-8")))
+        out.write_text(json.dumps(filled), encoding="utf-8")
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "--detach", "main")
+        capsys.readouterr()
+        assert script.main([*argv, "--local"]) == 0
+        count = len(filled["draft"]["descriptions"])
+        assert count and f"; {count} drafted descriptions dropped" in capsys.readouterr().out
 
     def test_local_flag_notes_a_head_without_the_pr_head(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,

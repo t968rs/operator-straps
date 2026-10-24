@@ -3,10 +3,11 @@
 Shared by the harness plugin's pr-sum driver (``scripts/pr_sum.py``) and pr-review driver
 (``scripts/pr_review.py``). ``capture_pr`` fetches the PR head and the base side, takes the merge base of the
 head with the base tip, and lists the changed paths with their line counts; on request it reads the local PR
-branch's HEAD and working tree in place of the committed PR head. ``budgeted_diff`` renders the diff
-of a chosen file set under a changed-line read budget and an output character budget; ``file_patches`` reads
-the per-file diffs it renders with one ``git diff`` per pathspec chunk. Test paths are recognized through the
-active harness configuration (``tests.roots`` / ``tests.file_pattern``).
+branch's HEAD and working tree (or, with force_local, whatever is checked out) in place of the committed PR
+head. ``budgeted_diff`` renders the diff of a chosen file set under a changed-line read budget and an output
+character budget; ``file_patches`` reads the per-file diffs it renders with one ``git diff`` per pathspec
+chunk. Test paths are recognized through the active harness configuration (``tests.roots`` /
+``tests.file_pattern``).
 """
 from __future__ import annotations
 
@@ -217,18 +218,22 @@ def capture_pr(
     Both apply only while the PR branch is checked out; elsewhere the capture falls back to the committed
     PR head. ``force_local`` (with ``local``) reads whatever is checked out, any branch or a detached HEAD:
     the diff then runs from the merge base of that HEAD with the PR base tip. ``untracked`` False leaves
-    untracked files out of a working-tree capture (staged and unstaged changes stay).
+    untracked files out of a working-tree capture off the PR branch (staged and unstaged changes stay); on
+    the PR branch untracked files are always kept, so a forced capture there matches the default one.
+    A local capture records in ``on_pr_branch`` whether the checkout passed the PR-branch test.
     """
     if fetch:
         git_out(repo, "fetch", "origin", *meta.fetch_refs)
     head_sha, source = _head(repo, meta, local, force_local)
+    on_pr = _on_pr_branch(repo, meta) if source == "local" else None
     wanted = working_tree and source == "local"
     merge_base = git_out(repo, "merge-base", meta.base_tip, head_sha).strip()
-    files = _files(repo, merge_base, None if wanted else head_sha, skip, untracked)
+    files = _files(repo, merge_base, None if wanted else head_sha, skip, untracked or bool(on_pr))
     return PrFacts(
         meta.number, meta.title, meta.head, meta.base, head_sha, merge_base,
         today or date.today().isoformat(), _commit_lines(repo, merge_base, head_sha),
         files, source, wanted and _dirty(repo, files), current_branch(repo) if source == "local" else None,
+        on_pr,
     )
 
 

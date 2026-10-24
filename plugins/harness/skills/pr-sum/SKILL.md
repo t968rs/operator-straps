@@ -49,7 +49,7 @@ the project's configured summaries directory: `artifacts.summaries` in `.claude/
 The PR number comes from the invocation arguments. No number given: report that and stop; never guess one from
 the branch or `gh pr list`. The other arguments are the developer's flags: `--level 1|2|3` and
 `--min-viz [N]`, plus the source flags `--local`, `--remote-head` and `--committed-only` and `--repo DIR`;
-pass them through unchanged. Any other flag, a value holding anything but digits, or `--local` together with
+pass them through unchanged. Any other flag, a `--level` or `--min-viz` value holding anything but digits, or `--local` together with
 `--remote-head` is a problem to report; stop. Never choose a level, a `--min-viz` count, a source flag or a
 repo yourself. A `--repo DIR` is added to the `diff` and `build` commands below as well.
 
@@ -66,10 +66,12 @@ of the same name, it reads the committed PR head `gh` reports. `--remote-head` f
 `--committed-only` keeps the local head without uncommitted changes. `--local` reads whatever is checked out
 when it is not the PR branch (another branch): the script takes that HEAD, diffs from its merge base with the
 PR base to the working tree, and so covers the commits since the base plus staged and unstaged changes;
-untracked files are left out. Pass these only when asked. A local capture adds a `**Source:**` header line
-(`local checkout` for a `--local` capture off the PR branch). When that HEAD does not contain the PR head,
-`capture` ends its line with a `note:`: the summary then covers this checkout only, and a rerun drops
-descriptions for PR files the checkout lacks. Report the note. `--local` is meant for ordinary branch
+untracked files are left out. On the PR branch itself `--local` changes nothing (untracked files stay). Pass
+these only when asked. A local capture adds a `**Source:**` header line: `local branch` on the PR branch,
+``local checkout `<branch>` `` for a `--local` capture off it (a stale branch of the PR head's name included),
+`local detached checkout` on a detached HEAD. When that HEAD does not contain the PR head, `capture` ends its
+line with a `note:`: the summary then covers this checkout only, and descriptions already drafted for PR files
+the checkout lacks are dropped by this capture (the note counts them). Report the note. `--local` is meant for ordinary branch
 checkouts; on a detached HEAD `diff` verifies only the HEAD SHA, so two worktrees at one commit are not told
 apart.
 

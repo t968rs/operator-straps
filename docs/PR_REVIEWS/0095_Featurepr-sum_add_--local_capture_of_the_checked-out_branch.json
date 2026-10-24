@@ -1,0 +1,326 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 95,
+  "pr_title": "Feature(pr-sum): add --local capture of the checked-out branch",
+  "branch": "1077-pr-local",
+  "base_branch": "main",
+  "base_sha": "79db3e196e5f5d094954c726affa7f814a99f059",
+  "head_sha": "b2f8bc401edb9de2443739bddf0aa1cb23164d6b",
+  "review_date": "2026-10-24",
+  "verdict": "READY TO MERGE - 10 of 10 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 289,
+    "deletions": 40,
+    "files_changed": 8
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0095/pr95_20261024T145222Z/findings/tests.json",
+    "docs/_scratch/pr_review/0095/pr95_20261024T145222Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0095/pr95_20261024T145222Z/findings/docs.json",
+    "docs/_scratch/pr_review/0095/pr95_20261024T145222Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every new test drives real git in a throwaway clone; the only stub is gh_metadata, a collaborator, so no mock-chain wiring tests.",
+    "test_diff_refuses_after_a_branch_switch pins the branch half of the moved-checkout guard by switching from detached HEAD to the PR branch at the same SHA.",
+    "test_skeleton_without_local_branch_diffs_on_the_pr_branch covers the old-skeleton fallback (local_branch absent reads as the PR head branch) in both the accept and refuse directions.",
+    "test_untracked_only_checkout_records_no_working_tree checks that untracked=False also drops working_tree to False, and contrasts it with the untracked-keeping capture.",
+    "The render parametrization in test_pr_summary.py covers all four _checkout_label branches (other branch, detached, same as head, None).",
+    "The CLI tests exercise the --local/--remote-head mutual exclusion and the --local + --committed-only combination through main().",
+    "local_branch defaults to None, so old skeletons still load: facts_from_payload and _require_captured_checkout read them as the PR branch.",
+    "A detached HEAD records '' (current_branch's empty string), and None means 'PR branch', so the two never collide in the checkout guard or the Source label.",
+    "lacks_pr_head separates git exit 1 (provably lacks the head) from a missing object, so --no-fetch never produces a false warning.",
+    "A mutually exclusive argparse group enforces that --local and --remote-head cannot be combined, so no runtime check is needed.",
+    "_source_typed validates the new field's type before a skeleton is trusted.",
+    "The argument-hint, the capture command and the pr_sum.py usage docstring list the same flags, with --local and --remote-head as mutually exclusive, matching the argparse group.",
+    "--repo DIR is added to the diff and build commands as well as capture, so a capture under another project does not lead to a diff or build against the wrong project's skeleton.",
+    "The note: text, detached-HEAD caveat and carry-forward rule for descriptions match _local_note, lacks_pr_head and the previous_draft behavior.",
+    "local_branch defaults to None and old skeletons read as the PR branch, so earlier payloads still diff; test_skeleton_without_local_branch_diffs_on_the_pr_branch covers that path.",
+    "_require_captured_checkout compares against the captured branch, an empty string for a detached HEAD, so `diff` refuses a branch switch after a --local capture; the detached-HEAD limitation is stated in both the script docstring and the SKILL.",
+    "lacks_pr_head separates git exit 1 (provably missing) from 128 (object unknown), so --no-fetch without the PR head object never prints a false note.",
+    "--local and --remote-head sit in an argparse mutually exclusive group, and the SKILL tells the agent to reject the pair, so the two layers agree.",
+    "The new tests are behavioral against real git clones: staged, unstaged and untracked splits, stacked commits, detached HEAD, --committed-only and the PR-head note all exercise real capture logic, with only gh faked.",
+    "The version bump, argument-hint, usage block, --help text, README row and SKILL all describe the same flag set, and --repo is threaded through diff and build in the SKILL."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "--local from a checkout lacking the PR head silently drops drafted descriptions",
+        "file": "plugins/harness/scripts/pr_sum.py",
+        "files": [
+          "plugins/harness/scripts/pr_sum.py",
+          "plugins/harness/lib/harness_lib/pr_capture.py",
+          "tests/scripts/test_pr_sum.py",
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "README.md"
+        ],
+        "lines": "379-400",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_cmd_capture overwrites the default skeleton (<summaries>/<NNNN>_pr.json) and carry_draft keeps descriptions only for facts.described, so a --local capture from a checkout without the PR head discards every description written for PR files that checkout lacks. The default capture never reads such a checkout, so this loss is new with --local. _local_note fires only after the write and says only that PR files are missing; it says nothing about lost descriptions. Its docstring says 'a rerun drops descriptions', but this same capture already dropped them.\n\nAlso (overall): _cmd_capture passes untracked=not args.local unconditionally, so `capture --local` run while the PR branch itself is checked out leaves out untracked files that the default capture keeps (new modules not yet `git add`-ed vanish from the summary). The header still reads `local branch at ..., plus uncommitted changes`, identical to a default capture. SKILL.md:66-70 and README.md:19 present --local as covering a checkout other than the PR branch, which implies it changes nothing on the PR branch. TestCaptureForcedLocal.test_on_the_pr_branch_matches_the_default (tests/scripts/test_pr_sum.py:470) asserts forced == default, but the pr_repo fixture has no untracked file, so it passes only because nothing differs; add one untracked file and the assertion fails.",
+        "fix": [
+          "In _cmd_capture, compute the previous draft's non-empty descriptions whose paths are absent from the fresh facts.described, and name their count in the --local note (e.g. '; N drafted descriptions dropped'). Correct the _local_note docstring to say this capture drops them.",
+          "Refuse a --local capture whose HEAD lacks the PR head when it would overwrite an existing draft with non-empty descriptions, unless --out names a different file.",
+          "Drop untracked files only off the PR branch: in capture_pr, keep untracked files when _on_pr_branch(repo, meta) holds (for example `untracked or _on_pr_branch(...)`), and add an untracked file to test_on_the_pr_branch_matches_the_default so the equality covers it.",
+          "Keep the behavior but document it: state in SKILL.md, README.md and the pr_sum.py docstring that --local leaves untracked files out on the PR branch as well, and rewrite test_on_the_pr_branch_matches_the_default to write an untracked file and assert that it is missing from the forced capture."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Digits-only value rule now rejects the --repo DIR path",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "lines": "50-54",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Step 1 adds `--repo DIR` to the flags the skill passes through, but the next sentence still reads \"Any other flag, a value holding anything but digits, ... is a problem to report; stop.\" A `--repo` value is a path such as `E:/proj`, which holds non-digits, so an agent that follows the rule as written stops on every `--repo` invocation that the same paragraph says to pass through. Before this PR every value-taking flag (`--level`, `--min-viz`) took digits, so the rule held. Now it contradicts the flag list and the capture command on line 57.",
+        "fix": [
+          "Limit the digits rule to the numeric flags, e.g. \"Any other flag, a `--level` or `--min-viz` value holding anything but digits, or `--local` together with `--remote-head` is a problem to report; stop.\""
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README says --local works 'the same way', then lists a difference",
+        "file": "README.md",
+        "lines": "19",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The pr-sum row says `--local` covers any other branch checkout \"the same way (commits since the PR base plus staged and unstaged changes, no untracked files)\". The PR-branch capture just described includes untracked files, so \"the same way\" contradicts the parenthetical that follows it.",
+        "fix": [
+          "Drop \"the same way\": \"`--local` covers any other branch checkout (commits since the PR base plus staged and unstaged changes, no untracked files)\"."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "pr_capture module docstring still says only the PR branch is read locally",
+        "file": "plugins/harness/lib/harness_lib/pr_capture.py",
+        "lines": "4-6",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says capture_pr 'on request it reads the local PR branch's HEAD and working tree in place of the committed PR head'. capture_pr now also reads any checked-out branch or a detached HEAD (force_local), with untracked files optionally left out.",
+        "fix": [
+          "Extend the sentence: '...reads the local PR branch's HEAD and working tree (or, with force_local, whatever is checked out) in place of the committed PR head'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "PrFacts docstring limits head_source local to the PR branch",
+        "file": "plugins/harness/lib/harness_lib/pr_summary.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_summary.py",
+          "plugins/harness/lib/harness_lib/pr_capture.py"
+        ],
+        "lines": "70-71",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PrFacts docstring says head_source is 'local when it is the checked-out PR branch's HEAD' and that working_tree adds 'that checkout's uncommitted and untracked changes'. With force_local, head_source is local for any branch or a detached HEAD, and --local leaves untracked files out.\n\nAlso (overall): The PrFacts docstring (pr_summary.py:70-71) says head_source `local` means head_sha is 'the checked-out PR branch's HEAD', and the pr_capture module docstring (pr_capture.py:5-6) says capture_pr 'reads the local PR branch's HEAD and working tree'. With force_local, a local capture can now be any branch or a detached HEAD, which the new local_branch field records.",
+        "fix": [
+          "Reword to: '``local`` when it is the checked-out HEAD (the PR branch, or any checkout under ``--local``); ``working_tree`` adds that checkout's uncommitted changes (untracked files too, unless the capture left them out).'",
+          "pr_summary.py:70-71: say `local` when it is the checkout's HEAD (the PR branch, or any checkout under force_local). pr_capture.py:5-6: add 'or, with force_local, whatever is checked out'."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Source label calls a stale same-name branch the PR branch",
+        "file": "plugins/harness/lib/harness_lib/pr_summary.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_summary.py",
+          "plugins/harness/lib/harness_lib/pr_capture.py",
+          "plugins/harness/skills/pr-sum/SKILL.md"
+        ],
+        "lines": "404-408",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_checkout_label returns 'local branch' whenever local_branch equals facts.head. Under --local, a stale local branch with the PR head's name, one that _on_pr_branch rejects because it lacks the PR head, still gets the PR-branch label. The saved summary then gives no sign that it describes a checkout without the PR head. The CLI note warns only on the console.\n\nAlso (overall): _checkout_label returns `local branch` whenever local_branch equals facts.head. Under --local, a stale or unrelated branch carrying the PR head's name (one that does not contain the PR head) gets the same `**Source:** local branch` line as a real PR-branch capture. SKILL.md:64 counts such a branch as 'elsewhere', and SKILL.md:70 promises `local checkout` for a --local capture off the PR branch. A detached capture renders `local detached checkout`, which the SKILL wording does not mention either. Only the transient capture-line note marks the stale case, and the built summary loses it.",
+        "fix": [
+          "Record whether HEAD contains the PR head in PrFacts (e.g. a bool set from _on_pr_branch at capture), and use 'local branch' only when it does. Otherwise use 'local checkout `<name>`'.",
+          "Record in capture_pr whether the PR-branch test (_on_pr_branch) held, for example by storing local_branch as the PR branch name only when it held, and let _checkout_label use that, so a stale same-named branch renders as `local checkout `<name>``.",
+          "Reword SKILL.md:70 to say the label keys on the branch name (a same-named stale branch reads `local branch`, a detached HEAD `local detached checkout`)."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "--local on the PR branch silently drops untracked files",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/scripts/pr_sum.py",
+          "plugins/harness/lib/harness_lib/pr_summary.py"
+        ],
+        "lines": "66-70",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md describes `--local` only for a checkout that is not the PR branch, and says the PR branch capture includes untracked files. `_cmd_capture` passes `untracked=not args.local` (plugins/harness/scripts/pr_sum.py:384) whatever is checked out, and `_head` takes the local HEAD on the PR branch as well. So `--local` run on the PR branch leaves untracked files out, while the Source line still reads `local branch ..., plus uncommitted changes`. A developer who asks for `--local` on the PR branch gets less than the default capture, and the docs do not mention it.\n\nAlso (docs): SKILL.md says a `--local` capture off the PR branch adds a Source line reading `local checkout`. `_checkout_label` (plugins/harness/lib/harness_lib/pr_summary.py:404-408) emits ``local checkout `<branch>` `` for a named branch and `local detached checkout` for a detached HEAD. The skill even mentions the detached case in the same paragraph. An agent checking the receipt against the quoted label would not find it on a detached HEAD.",
+        "fix": [
+          "Document it: add \"`--local` on the PR branch itself also leaves untracked files out\" to the `--local` sentence.",
+          "Or pass `untracked=not args.local or on-PR-branch` so `--local` changes nothing on the PR branch.",
+          "Replace with: (``local checkout `<branch>` `` for a `--local` capture off the PR branch, `local detached checkout` on a detached HEAD)."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Unused **kwargs on TestCaptureForcedLocal._capture",
+        "file": "tests/scripts/test_pr_sum.py",
+        "lines": "378-383",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`_capture` accepts and forwards `**kwargs`, but every caller passes only (script, clone, head); the two tests that need a different flag set call script.capture_pr directly. The parameter is dead.",
+        "fix": [
+          "Drop `**kwargs: object` from the signature and the call, or route the two direct capture_pr calls (lines 417-419, 464-466) through `_capture` with overrides so the parameter earns its place."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Forced-vs-default equality holds only because the fixture has no untracked file",
+        "file": "tests/scripts/test_pr_sum.py",
+        "lines": "470-477",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_on_the_pr_branch_matches_the_default asserts `forced == default` and its name says that `--local` on the PR branch matches the default capture. That is not generally true: `_capture` passes untracked=False (as `_cmd_capture` does for --local, pr_sum.py:384) while the default keeps untracked files (pr_capture.py:195). The two only compare equal because pr_repo carries no untracked file. A reader of the test, or a later change that seeds an untracked file in _build_pr, gets a false contract.\n\nAlso (tests): Both captures in test_on_the_pr_branch_matches_the_default leave `today` unset, so PrFacts.date comes from two separate date.today() calls (pr_capture.py:230); a run that crosses midnight between them fails `forced == default`. test_fetch_matches_local_capture avoids this by comparing selected fields.",
+        "fix": [
+          "Rename the test to say what it shows (for example test_on_the_pr_branch_without_untracked_files_matches_the_default), or",
+          "Write an untracked file (e.g. src/pkg/new.py) before the two captures and assert the forced capture lacks it while the default lists it as untracked; compare the remaining fields.",
+          "Pass today=\"2026-10-10\" to both captures (self._capture(script, clone, head, today=\"2026-10-10\") and the default capture_pr call)."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "CLI diff of a forced-local skeleton checks only the exit code",
+        "file": "tests/scripts/test_pr_sum.py",
+        "lines": "537-556,558-573",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_local_flag_summarizes_a_checkout_off_the_pr_branch ends with `script.main([\"diff\", ...]) == 0` and never reads the printed diff, so a diff that prints an empty or wrong body (e.g. includes the untracked src/pkg/new.py, or loses the staged file) still passes. This is the only end-to-end `diff` run over a --local skeleton.\n\nAlso (tests): lacks_pr_head treats a PR head missing from the local object store as unknown (git exit 128, pr_capture.py:169-171), so `_local_note` stays silent. test_local_flag_notes_a_head_without_the_pr_head covers present-and-contained and present-and-missing only; a regression that turns exit 128 into a note (or a crash) is not caught.",
+        "fix": [
+          "Add a capsys fixture and assert the output holds the `=== src/pkg/staged.py` header and `+s`, and does not name src/pkg/new.py.",
+          "Add a case on a `--no-local` fresh clone (_fresh_clone) with --no-fetch and --local, asserting exit 0 and no `note:` in stdout."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 95 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"b2f8bc401edb9de2443739bddf0aa1cb23164d6b\",\"headRefName\":\"1077-pr-local\",\"headRefOid\":\"b2f8bc401edb9de2443739bddf0aa1cb23164d6b\",\"last_sha\":\"b2f8bc401edb9de2443739bddf0aa1cb23164d6b\",\"mergeCommit\":null,\"number\":95,\"state\":\"OPEN\",\"title\":\"Feature(pr-sum): add --local capture of the checked-out branch\",\"url\":\"https://github.com/t968rs/operator-straps/pull/95\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1077-pr-local",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1077-pr-local",
+        "head_ref_name": "1077-pr-local",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b2f8bc401edb9de2443739bddf0aa1cb23164d6b",
+        "head_sha": "b2f8bc401edb9de2443739bddf0aa1cb23164d6b",
+        "base_ancestor_command": "git merge-base --is-ancestor b2f8bc401edb9de2443739bddf0aa1cb23164d6b HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor b2f8bc401edb9de2443739bddf0aa1cb23164d6b HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - PrFacts.on_pr_branch records the _on_pr_branch test at local capture; _checkout_label names a same-named branch lacking the PR head as local checkout `<name>`; _source_typed checks the field; SKILL.md lists all three labels"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - SKILL.md and the pr_sum.py docstring state --local changes nothing on the PR branch (untracked kept, see I1) and quote the exact Source labels incl. local detached checkout"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - TestCaptureForcedLocal._capture drops **kwargs for an explicit today parameter"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - test_on_the_pr_branch_matches_the_default writes an untracked file, pins today on both captures, asserts the file is listed and on_pr_branch True"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - forced-local diff test asserts headers, +s and absence of src/pkg/new.py via capsys; new fresh-clone --local case asserts no note when the PR head object is absent"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - capture_pr keeps untracked files when on the PR branch; _cmd_capture counts dropped non-empty descriptions and the --local note names them; docstrings/SKILL.md corrected; tests cover the count and moved the untracked-only case off the PR branch"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - README pr-sum row: dropped 'the same way' so the --local description no longer contradicts the no-untracked parenthetical"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - pr_capture module docstring: capture_pr also reads the checkout under force_local"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - PrFacts docstring: head_source local covers any checkout under force_local; working_tree notes untracked files unless left out; pr_capture docstring extended to match"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "b2f8bc4 (working-tree snapshot; developer commits) - SKILL.md Step 1: digits-only rule limited to --level and --min-viz values so --repo DIR passes through"
+    }
+  ]
+}

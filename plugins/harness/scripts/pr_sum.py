@@ -11,7 +11,8 @@
     instead, and ``--committed-only`` stops at the local HEAD. Elsewhere the committed ``gh`` head is used.
     ``--local`` reads whatever is checked out, a branch of any name: the diff runs from the merge base of that
     HEAD with the PR base tip to the working tree, so the PR base..HEAD commits and the staged and unstaged
-    changes appear, untracked files do not; ``--committed-only`` still stops at that HEAD, and
+    changes appear, untracked files do not (on the PR branch itself ``--local`` changes nothing, untracked
+    files included); ``--committed-only`` still stops at that HEAD, and
     ``--remote-head`` cannot be combined with it. A detached HEAD is read too, but ``diff`` then checks the
     HEAD SHA only, so it cannot tell sibling worktrees at one commit apart.
     Writes ``<summaries>/<NNNN>_pr.json``: ``{"facts": {...}, "draft": {...}}``. When that file already
@@ -178,11 +179,13 @@ def _facts(payload: Mapping[str, object]) -> PrFacts:
 
 
 def _source_typed(facts: PrFacts) -> bool:
-    """True when ``head_source`` is local/remote, ``working_tree`` and every file flag are bools, and
-    ``local_branch`` is None or text."""
+    """True when ``head_source`` is local/remote, ``working_tree`` and every file flag are bools,
+    ``local_branch`` is None or text, and ``on_pr_branch`` is None or a bool."""
     flags = [facts.working_tree, *(flag for f in facts.files for flag in (f.binary, f.untracked))]
     branch_ok = facts.local_branch is None or isinstance(facts.local_branch, str)
-    return facts.head_source in ("local", "remote") and branch_ok and all(isinstance(f, bool) for f in flags)
+    on_pr_ok = facts.on_pr_branch is None or isinstance(facts.on_pr_branch, bool)
+    source_ok = facts.head_source in ("local", "remote") and branch_ok and on_pr_ok
+    return source_ok and all(isinstance(f, bool) for f in flags)
 
 
 def _int(value: object) -> bool:
@@ -386,18 +389,28 @@ def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
     keys = level_keys(args.level, args.min_viz)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({**payload, **keys}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    note = sync_sentinel(args.pr, keys) + _local_note(repo, meta, args)
+    dropped = dropped_descriptions(previous, payload)
+    note = sync_sentinel(args.pr, keys) + _local_note(repo, meta, args, dropped)
     print(f"wrote {out}" + (" (existing draft carried forward)" if previous else "") + note)
     return 0
 
 
-def _local_note(repo: Path, meta: PrMeta, args: argparse.Namespace) -> str:
+def dropped_descriptions(previous: Optional[PrDraft], payload: Mapping[str, object]) -> int:
+    """Count of ``previous`` non-empty descriptions whose paths the fresh skeleton no longer describes."""
+    if previous is None:
+        return 0
+    kept = payload["draft"]["descriptions"]
+    return sum(1 for path, text in previous.descriptions.items() if text.strip() and path not in kept)
+
+
+def _local_note(repo: Path, meta: PrMeta, args: argparse.Namespace, dropped: int = 0) -> str:
     """Capture-line note for ``--local`` when HEAD lacks the PR head: the summary then covers only this
-    checkout, and a rerun drops descriptions for PR files it lacks."""
+    checkout, and this capture already dropped the ``dropped`` drafted descriptions for PR files it lacks."""
     if not args.local or not lacks_pr_head(repo, meta):
         return ""
+    lost = f"; {dropped} drafted descriptions dropped" if dropped else ""
     return (f"; note: HEAD does not contain the PR head {meta.head_sha[:7]}, "
-            "so PR files outside this checkout are missing")
+            f"so PR files outside this checkout are missing{lost}")
 
 
 def _cmd_diff(args: argparse.Namespace, repo: Path) -> int:
