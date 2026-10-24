@@ -1,5 +1,6 @@
 """todo_sync driver: check a project's TODO, research and plan artifacts for drift, render the snapshot,
-write the runner pointer, and retire, split or re-rank catalog items.
+write the runner pointer, start a catalog, list untracked GitHub issues, and add, retire, split or re-rank
+catalog items.
 
 ``check [--format summary|json|markdown] [--out PATH] [--rules S1,S2] [--fail-on error|warn]``
     Run the rule catalog and write the report (``TodoSyncReport.schema.json``) atomically to ``--out`` or
@@ -30,10 +31,31 @@ write the runner pointer, and retire, split or re-rank catalog items.
 ``refresh [--dry-run]``
     Rescore every item from ``ranking_method``, re-sort, renumber, recount and rewrite moved ids, after hand
     edits to item fields. A catalog already in order is left untouched.
+``init``
+    Create the TODO folder, an empty schema-valid catalog (the default ranking tables, no items, the current
+    commit in ``generated_from``) and the first snapshot (skipped when ``todo.snapshots.dir`` is null). Prints
+    one ``created <path>`` line per file. Refuses, exit 2 and nothing written, when the catalog already exists
+    or the snapshot name does not match ``todo.snapshots.name_pattern``; needs ``todo.folder`` and a git
+    commit. A snapshot that fails after the catalog is written names the catalog and ``render`` as the way on.
+``untracked``
+    List the open GitHub issues (``gh issue list``; ``todo.gh.repo``, else the repository ``gh`` resolves for
+    the checkout) that no catalog record covers: no item that resolves it (``gh_issues`` or a ``gh_issue``
+    source; ``related_gh_issues`` does not count), tracker, child, close candidate or research entry. Prints
+    one ``#N title`` line
+    per issue and writes the rows (issue text, comments and the text of linked PR reviews) to
+    ``<state_dir>/todo-sync/untracked.json``. Prints ``untracked: none`` and writes nothing when every open
+    issue is recorded. Refuses, exit 2, when ``gh`` fails, returns no JSON list, or the listing reaches the
+    issue limit (the result may be cut off).
+``add --spec PATH [--dry-run]``
+    Add one item per entry of the spec file (``{"items": [{...}, {...}]}``; each names its ``issue`` and
+    ``url`` and the fields a person judges, and never ``id``, ``rank`` or ``priority``). The script builds the
+    ``gh_issue`` source, scores the item, re-sorts, renumbers, recounts and rewrites moved ids as ``split``
+    does. An issue the catalog already records is refused.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
-``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or a
-refused render exits 2 with one ``problem:`` line on stderr.
+``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or any
+refused operation (render, init, add, retire, split, refresh, a failed ``gh`` call) exits 2 with one
+``problem:`` line on stderr.
 """
 from __future__ import annotations
 
@@ -50,14 +72,22 @@ from harness_lib.config import ConfigError, HarnessConfig, activate, load_config
 from harness_lib.project import project_root  # noqa: E402
 from harness_lib.todo_sync import (TodoSyncError, check, render_snapshot, report_path,  # noqa: E402
                                    write_report, write_runner)
+from harness_lib.todo_sync.issues import find_untracked, write_untracked  # noqa: E402
 from harness_lib.todo_sync.report import Report, format_markdown, format_summary  # noqa: E402
-from harness_lib.todo_sync.reshape import apply_refresh, apply_split  # noqa: E402
+from harness_lib.todo_sync.reshape import apply_add, apply_refresh, apply_split  # noqa: E402
+from harness_lib.todo_sync.scaffold import init_catalog  # noqa: E402
+from harness_lib.todo_sync.sources import posix  # noqa: E402
 from harness_lib.todo_sync.reshape import summary_lines as reshape_lines  # noqa: E402
 from harness_lib.todo_sync.retire import apply_retirement, summary_lines  # noqa: E402
 
 INACTIVE = "todo sync inactive (todo.folder is null)"
 #: ``--fail-on`` thresholds, lowest severity first.
 FAIL_LEVELS = ("warn", "error")
+
+
+def _summary() -> str:
+    """The module docstring's first paragraph on one line, used as the argparse description."""
+    return " ".join((__doc__ or "").split("\n\n")[0].split())
 
 
 def _globals() -> argparse.ArgumentParser:
@@ -72,7 +102,7 @@ def _globals() -> argparse.ArgumentParser:
 
 def _parser() -> argparse.ArgumentParser:
     common = _globals()
-    parser = argparse.ArgumentParser(prog="todo_sync.py", description=__doc__.splitlines()[0],
+    parser = argparse.ArgumentParser(prog="todo_sync.py", description=_summary(),
                                      parents=[common])
     sub = parser.add_subparsers(dest="command", required=True)
     chk = sub.add_parser("check", parents=[common], help="Run the sync rules and write the report.")
@@ -93,6 +123,11 @@ def _parser() -> argparse.ArgumentParser:
     spl.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
     ref = sub.add_parser("refresh", parents=[common], help="Rescore, re-sort and renumber every item.")
     ref.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
+    sub.add_parser("init", parents=[common], help="Create the TODO folder, an empty catalog and a snapshot.")
+    sub.add_parser("untracked", parents=[common], help="List open issues no catalog record mentions.")
+    add = sub.add_parser("add", parents=[common], help="Add one item per open issue named in a spec.")
+    add.add_argument("--spec", type=Path, required=True, help='JSON file: {"items": [{...}, {...}]}.')
+    add.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
     return parser
 
 
@@ -128,9 +163,36 @@ def _fails(report: Report, level: str) -> bool:
     return any(report.by_severity(severity) for severity in reached)
 
 
+def _untracked(cfg: HarnessConfig) -> int:
+    rows = find_untracked(cfg)
+    if not rows:
+        print("untracked: none")
+        return 0
+    print(f"untracked: {len(rows)} open issue(s) in no catalog record")
+    print("\n".join(f"#{row['number']} {row['title']}" for row in rows))
+    print(f"wrote {write_untracked(cfg, rows)}")
+    return 0
+
+
+def _init(cfg: HarnessConfig) -> int:
+    result = init_catalog(cfg)
+    for path in (result.catalog, result.snapshot):
+        if path is not None:
+            print(f"created {posix(str(path.relative_to(cfg.project_root)))}")
+    print("next: todo_sync.py check, or /harness:sync-gh-todo to add the open issues")
+    return 0
+
+
 def _dispatch(cfg: HarnessConfig, args: argparse.Namespace) -> int:
     if args.command == "check":
         return _check(cfg, args)
+    if args.command == "init":
+        return _init(cfg)
+    if args.command == "untracked":
+        return _untracked(cfg)
+    if args.command == "add":
+        print("\n".join(reshape_lines(apply_add(cfg, args.spec, args.dry_run), args.dry_run)))
+        return 0
     if args.command == "render":
         print(render_snapshot(cfg, args.date or dt.date.today()))
     elif args.command == "retire":

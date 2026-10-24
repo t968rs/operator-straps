@@ -1,0 +1,756 @@
+{
+  "generated": "2026-10-23",
+  "generated_from": {
+    "description": "Started by todo_sync.py init; items added by todo_sync.py add from open GitHub issues.",
+    "head_sha": "5fecd6e4d368b1842015450cbb6a627fd347b9d3"
+  },
+  "ranking_method": {
+    "value": "severity * impact_weight",
+    "cost": "loe_points * blast_factor",
+    "score": "value / sqrt(cost), multiplied by (1 + unblock_bonus) when the item unblocks at least one item",
+    "impact_weights": {
+      "silent_wrong_output": 1.5,
+      "data_correctness": 1.4,
+      "runtime_failure": 1.3,
+      "dev_velocity": 1.0,
+      "maintainability": 0.8,
+      "docs_tooling": 0.6
+    },
+    "loe_points": {
+      "XS": 1,
+      "S": 2,
+      "M": 4,
+      "L": 8,
+      "XL": 16
+    },
+    "blast_factors": {
+      "S": 1.0,
+      "M": 1.2,
+      "L": 1.5,
+      "XL": 2.0
+    },
+    "unblock_bonus": 0.15,
+    "tie_breakers": [
+      "higher severity",
+      "lower LoE points",
+      "primary source type, where the primary source is sources[0]: gh_issue, then impl_stub, then research_folder",
+      "primary source ref: issue number ascending for gh_issue, otherwise the ref path in code-point order",
+      "primary source item text in code-point order (absent item sorts first)",
+      "title in code-point order"
+    ],
+    "impact_definitions": {
+      "silent_wrong_output": "A shipped path completes without error or warning and publishes a value or feature that is wrong under an established rule.",
+      "data_correctness": "Output or reference data can be wrong or ungoverned, but the correct value still needs a rule or decision to define it, a guard is missing, or the wrong value already surfaces with a warning or error.",
+      "runtime_failure": "A path raises or aborts on an input it accepts.",
+      "dev_velocity": "Tests, CI or developer tooling are slower, noisier or less trustworthy than they need to be; no output changes.",
+      "maintainability": "Structure, duplication, dead code, missing tests or latent defects that no current production path reaches; no output changes.",
+      "docs_tooling": "Documentation, research records, configuration or agent tooling outside the shipped paths."
+    },
+    "severity_scale": {
+      "1": "Cosmetic or hygiene: renames, dead code, stale docs, a test gap for working or accepted behavior.",
+      "2": "Debt with a concrete cost, a latent defect that no current path reaches, a missing guard, or a defect that needs a rare or optional input.",
+      "3": "A wrong or failing result on a supported but uncommon input, or a defect a warning already surfaces.",
+      "4": "Wrong published output on a common input of a production path, or a failure that blocks a supported workflow.",
+      "5": "Crashes or corrupts a production path on its normal inputs."
+    },
+    "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
+  },
+  "counts": {
+    "items": 11,
+    "needs_decision": 5,
+    "trackers": 0,
+    "close_candidates": 2,
+    "by_status": {
+      "NEEDS_DECISION": 5,
+      "OPEN": 6
+    },
+    "by_impact": {
+      "dev_velocity": 9,
+      "docs_tooling": 1,
+      "maintainability": 1
+    },
+    "by_loe": {
+      "XS": 0,
+      "S": 6,
+      "M": 4,
+      "L": 1,
+      "XL": 0
+    },
+    "sources_absorbed": {
+      "gh_issue": 11,
+      "impl_stub": 0,
+      "research_folder": 0
+    },
+    "merged_items": 0
+  },
+  "items": [
+    {
+      "id": "TODO-001",
+      "rank": 1,
+      "title": "validate_pr_json_schema: exit before imports when a Bash command cannot touch a plan or review path",
+      "kind": "refactor",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#17",
+          "url": "https://github.com/t968rs/operator-straps/issues/17"
+        }
+      ],
+      "gh_issues": [
+        17
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "validate_pr_json_schema.py runs on every Write, Edit and Bash call but acts only on plan or review JSON paths, and it pays full startup first. Checked: plugins/harness/hooks/hooks.json:30 registers it on PostToolUse matcher Write|Edit|Bash; plugins/harness/hooks/validate_pr_json_schema.py:33-40 insert lib on sys.path and import harness_lib.config, project and the validation modules (schema_registry among them) at module level, before main() at :265 reaches _bash_target_pattern (:81) and _resolve_file_paths (:98). The issue's comment adds that the early exit must run before those module-level imports. Unverified: the 812 ms median against a 99 ms bare interpreter start (harness 0.3.0, N=8).",
+      "proposed_change": "Put a stdlib-only pre-check ahead of the harness_lib imports (move them into main() or a helper it calls): parse the stdin payload; for Bash, exit 0 when the command holds none of the plan or review directory segments (read artifacts.plans and artifacts.reviews from .claude/harness.json with plain json, or the defaults docs/PLANS and docs/PR_REVIEWS); for Write and Edit, exit 0 when tool_input.file_path does not end in .json. Only then import harness_lib and run the current matcher. Add a test that a git status payload leaves harness_lib, jsonschema, referencing and pydantic out of sys.modules, keep the existing target tests unchanged.",
+      "files": [
+        "plugins/harness/hooks/validate_pr_json_schema.py",
+        "plugins/harness/hooks/hooks.json"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One hook's startup path; targets that reach the matcher keep today's results.",
+        "consumers": [
+          "plugins/harness/hooks/hooks.json"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A short pre-check, an import move and one import-isolation test."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 dev_velocity: a concrete latency cost on every Bash, Edit and Write call; size S."
+    },
+    {
+      "id": "TODO-002",
+      "rank": 2,
+      "title": "Plugin `repo-todo` / `edit-todo` Skill should ignore past plan/review artifacts",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Should the reference scan drop artifacts.plans and artifacts.reviews entirely (offline and simple), or only reviews of merged PRs and plans already executed, as the issue states (merge state needs gh, and executed needs a rule such as every plan checkbox ticked)?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#84",
+          "url": "https://github.com/t968rs/operator-straps/issues/84"
+        }
+      ],
+      "gh_issues": [
+        84
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "A todo-edit run listed stale TODO ids in old docs/PLANS and docs/PR_REVIEWS records as follow-up references (and 84 more were cut off); reviews of merged PRs and executed plans should not count. The skill is todo-edit (plugins/harness/skills/todo-edit), not repo-todo or edit-todo. Checked: plugins/harness/lib/harness_lib/todo_sync/retire.py:218-223 (other_references) excludes only the catalog, its companions and the snapshot dir, and :290-300 git-greps every other tracked or untracked file for TODO-NNN; plugins/harness/lib/harness_lib/todo_sync/reshape.py:380 reuses it for split; retire.py:265 caps the listing at 30 with a \"more reference(s)\" line. The transcript's second point (research folders with no catalog entry) predates that run and is out of scope.",
+      "proposed_change": "After the decision, extend the skip list in other_references with the configured artifacts.plans and artifacts.reviews paths (whole, or filtered to merged-PR reviews and executed plans), so retire and split stop reporting dated records as references; cover both retire and split in tests.",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/retire.py",
+        "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "plugins/harness/skills/todo-edit/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Only the reference report of retire and split; no catalog content changes.",
+        "consumers": [
+          "plugins/harness/agents/todo-editor.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A skip-list change in one function plus tests; more if the merged-PR filter needs gh."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 dev_velocity: dated records flood the follow-up list and hide real references; size S."
+    },
+    {
+      "id": "TODO-003",
+      "rank": 3,
+      "title": "`amend-commit-msg` Suppress Output",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Run amend-commit-msg as a subagent (quiet, but it loses the conversation that is the reason it runs in the main session), or keep it in the main session and move the skeleton edits into a script call so no Update diff is printed?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#88",
+          "url": "https://github.com/t968rs/operator-straps/issues/88"
+        }
+      ],
+      "gh_issues": [
+        88
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "An amend-commit-msg run prints every Update of the skeleton JSON, with whole message strings, into the session; the issue wants it to run as a subagent or at least skip that output. Checked: plugins/harness/skills/amend-commit-msg/SKILL.md:9-10 runs the skill in the main session on purpose, because branch-commit-msg's fork has no view of the conversation; :98 tells it to edit the message strings of the skeleton JSON, which produces the Update output; its frontmatter (lines 2-4) has no context or agent key. The skill landed in PR #82 for #77.",
+      "proposed_change": "After the decision: either add a script step (for example a branch_commit_msg.py subcommand that sets one block's message from a file or argument) so the skill writes messages with one Bash call instead of Edit, or split the run so a harness:messenger subagent gets the amendment request and the conversation facts it needs and returns only the saved path and commit list.",
+      "files": [
+        "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "plugins/harness/scripts/branch_commit_msg.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One skill's execution path; the TXT it saves is unchanged.",
+        "consumers": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A script subcommand or a frontmatter and dispatch change, plus a contract test."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 dev_velocity: every amendment floods the main session with JSON diffs; size S."
+    },
+    {
+      "id": "TODO-004",
+      "rank": 4,
+      "title": "Detached Worktree Skill (`d-w`) Needs a Complimentary Attach Worktree (`a-w`) Skill",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#83",
+          "url": "https://github.com/t968rs/operator-straps/issues/83"
+        }
+      ],
+      "gh_issues": [
+        83
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Moving changes back from a detached-HEAD worktree costs turns; the issue asks for an a-w skill that takes a target branch, either moves the worktree's commits (--committed) or stages the changes uncommitted on that branch, and removes the worktree afterwards without asking. Checked: plugins/harness/skills/d-w/SKILL.md:30-32 leaves the commits on a detached HEAD and cleanup to the developer, and plugins/harness/skills/d-w/commands/new_worktree.py is the only command; no a-w skill exists under plugins/harness/skills. plugins/harness/scripts/parallel2.py:383-399 already stages a worktree's committed diff onto a checkout by three-way apply, a candidate for the uncommitted mode.",
+      "proposed_change": "Add plugins/harness/skills/a-w/SKILL.md and a command script taking --target_branch and --committed: verify the target branch is checked out in the main checkout and its tree is clean, then either cherry-pick the worktree's commits since its base sha onto the target (--committed) or three-way apply their combined diff into the index (reuse the parallel2 apply_lane approach), report conflicts and stop on them, and remove the worktree with git worktree remove once the move succeeds. Cross-reference it from d-w's Afterward section and add the README row and tests.",
+      "files": [
+        "plugins/harness/skills/d-w/SKILL.md",
+        "plugins/harness/skills/d-w/commands/new_worktree.py",
+        "plugins/harness/scripts/parallel2.py",
+        "README.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new skill with no existing consumers; d-w only gains a pointer.",
+        "consumers": [
+          "plugins/harness/skills/d-w/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A new skill and command with two move modes, conflict handling, worktree removal and git-backed tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.0,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 1.0,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 dev_velocity: every d-w run ends in a manual, turn-costly re-attach; size M for a new skill and command."
+    },
+    {
+      "id": "TODO-005",
+      "rank": 5,
+      "title": "pytest-scope: project-level enablement and a project-supplied hint in the broad-run deny message",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#18",
+          "url": "https://github.com/t968rs/operator-straps/issues/18"
+        }
+      ],
+      "gh_issues": [
+        18
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Gap 1: require_test_file and python are plugin options read from user settings only, so a project cannot commit the broad-run deny and a fresh machine gets no deny and no warning. Gap 2: the deny message cannot point at the project's own test lookup. Checked: plugins/pytest-scope/hooks/register.ts:12 reads options.require_test_file only; plugins/harness/hooks/_allow_settings.py:40-43 documents that pluginConfigs lives in user (or managed) settings only; plugins/pytest-scope/hooks/scope.ts:581-590 builds the deny text from the rule line, the git ls-files listing and the override line, with no project input; no pytest_scope or deny_hint key exists under plugins/.",
+      "proposed_change": "Read a pytest_scope object from .claude/harness.json (require_test_file, optionally python and deny_hint), the project value winning over the plugin option and neither set meaning off. Append deny_hint as its own line to denyMessage after the file listing; without it the message stays byte-identical. Add the keys to defaults.json, harness.schema.json, the config dataclass and builder and the README key table, mirror the defaults in the mod with a mirror test, and cover both enablement paths and the hint in scope.test.ts. The optional file-list command in place of git ls-files is lower priority and can stay out of the first change.",
+      "files": [
+        "plugins/pytest-scope/hooks/register.ts",
+        "plugins/pytest-scope/hooks/scope.ts",
+        "plugins/pytest-scope/hooks/scope.test.ts",
+        "plugins/pytest-scope/README.md",
+        "plugins/harness/config/defaults.json",
+        "config/harness.schema.json",
+        "plugins/harness/lib/harness_lib/config.py",
+        "README.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "A new harness.json key touches the four config places and the pytest-scope mod; default behavior stays off.",
+        "consumers": [
+          "plugins/pytest-scope/hooks/register.ts",
+          "plugins/harness/lib/harness_lib/config.py"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Project-config reading in the TypeScript mod, a new config key in four places, a mirror test and deny-message tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 dev_velocity: a guard a project cannot switch on goes missing silently on new machines; size M for a config key across the plugin and the mod."
+    },
+    {
+      "id": "TODO-006",
+      "rank": 6,
+      "title": "Consolidate `merge-commit` SKILL --> `merge-commit-msg`",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#80",
+          "url": "https://github.com/t968rs/operator-straps/issues/80"
+        }
+      ],
+      "gh_issues": [
+        80
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "merge-commit holds merge_body.py, but merge-commit-msg is the name that follows the commit-message skill convention; the issue asks to keep the best of both SKILL.md files in merge-commit-msg, move the scripts there and bring it in line with branch-commit-msg and c-msg and their scripts. Checked: plugins/harness/skills/merge-commit/commands/merge_body.py is the only script and merge-commit-msg holds only SKILL.md; plugins/harness/skills/merge-commit/SKILL.md:3 builds the merge body from the commit-message TXT files and points to merge-commit-msg for a PR-commit draft, while plugins/harness/skills/merge-commit-msg/SKILL.md:4-5 (model: haiku, effort: low) and :24-28 draft from three gh calls with no script. tests/skills/test_merge_body.py and tests/contract/test_root_separation.py name merge_body.",
+      "proposed_change": "Merge the two SKILL.md files into plugins/harness/skills/merge-commit-msg/SKILL.md: keep the TXT-based merge_body.py path as the primary source and the gh-based draft as the fallback when no TXT exists; move commands/merge_body.py under merge-commit-msg, drive it the way branch-commit-msg and c-msg drive branch_commit_msg.py, delete the merge-commit skill folder, and update tests/skills/test_merge_body.py, tests/contract/test_root_separation.py, the README skill rows and docs/PROVENANCE.md if it maps merge_body.py.",
+      "files": [
+        "plugins/harness/skills/merge-commit/SKILL.md",
+        "plugins/harness/skills/merge-commit/commands/merge_body.py",
+        "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "tests/skills/test_merge_body.py",
+        "tests/contract/test_root_separation.py",
+        "README.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Removes a skill name developers invoke and moves a script that tests reference by path.",
+        "consumers": [
+          "tests/skills/test_merge_body.py",
+          "tests/contract/test_root_separation.py",
+          "README.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Two SKILL.md files to merge, a script move, test path updates and README rows."
+      },
+      "impact": "maintainability",
+      "severity": 2,
+      "priority": {
+        "score": 0.7303,
+        "components": {
+          "impact_weight": 0.8,
+          "value": 1.6,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.7303,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 maintainability: two overlapping skills route to each other and split one job; size M."
+    },
+    {
+      "id": "TODO-007",
+      "rank": 7,
+      "title": "Add Flag option to `branch-commit-msg` to include a `merge-commit-msg`",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#81",
+          "url": "https://github.com/t968rs/operator-straps/issues/81"
+        }
+      ],
+      "gh_issues": [
+        81
+      ],
+      "related_gh_issues": [
+        80
+      ],
+      "catalog_entry_ids": [],
+      "summary": "With a flag set, branch-commit-msg should kick off merge-commit-msg once its own run completes. Checked: plugins/harness/skills/branch-commit-msg/SKILL.md:4 argument-hint is [REF] [--base REF] [--fresh] [--no-fetch], with no merge flag, and the skill never names merge-commit or merge_body; it runs in a fork (plugins/harness/skills/branch-commit-msg/SKILL.md:6-7, context: fork, agent: harness:messenger). The TXT-based merge body builder is plugins/harness/skills/merge-commit/commands/merge_body.py, which #80 moves under merge-commit-msg. Unverified: whether a forked skill can invoke another skill; issue #9 records that a forked agent does not re-delegate.",
+      "proposed_change": "Add a --merge flag to the branch-commit-msg argument-hint and SKILL.md: after build saves the TXT, the fork runs the merge body script (merge_body.py, at its merge-commit-msg path once #80 lands) and reports both paths. Land after #80 so the flag names the consolidated skill's script.",
+      "files": [
+        "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "plugins/harness/skills/merge-commit/commands/merge_body.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "An opt-in flag on one skill; the default run is unchanged.",
+        "consumers": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A SKILL.md step and argument-hint change that calls an existing script."
+      },
+      "impact": "dev_velocity",
+      "severity": 1,
+      "priority": {
+        "score": 0.7071,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 1.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.7071,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 dev_velocity: saves one skill invocation per branch; size S."
+    },
+    {
+      "id": "TODO-008",
+      "rank": 8,
+      "title": "Add canned File-Message set (todo stuff)",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#87",
+          "url": "https://github.com/t968rs/operator-straps/issues/87"
+        }
+      ],
+      "gh_issues": [
+        87
+      ],
+      "related_gh_issues": [
+        86
+      ],
+      "catalog_entry_ids": [],
+      "summary": "A change set made only of _IMPL_TODO.md, RepoToDo.json, ResearchImplementationCatalog.json and TODO_Snapshot_*.md files should get a predetermined commit message; this is the first preset for the #86 lookup. Checked: those names are configured, not fixed: this project's catalog is docs/TODO/RepoToDo.json (todo.catalog), and the stub name, research catalog and snapshot folder come from the todo.* keys that plugins/harness/lib/harness_lib/todo_sync/retire.py:219-245 reads (todo.research.catalog, todo.stub_name, todo.snapshots.dir). The TODO_Snapshot_*.md entry is a glob, so the #86 lookup needs pattern matching.",
+      "proposed_change": "Once #86 lands, ship a default preset built from the configured todo.catalog, todo.research.catalog, todo.stub_name and todo.snapshots.dir paths rather than literal names (plugins stay generic), with one fixed message such as a chore(todo) subject, and test that a set holding any other file falls back to the drafter.",
+      "files": [
+        "plugins/harness/scripts/branch_commit_msg.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One preset on top of the #86 lookup.",
+        "consumers": [
+          "plugins/harness/skills/c-msg/SKILL.md",
+          "plugins/harness/skills/branch-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One preset derived from existing config keys and a test, after #86."
+      },
+      "impact": "dev_velocity",
+      "severity": 1,
+      "priority": {
+        "score": 0.7071,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 1.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.7071,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 dev_velocity: saves drafting a routine catalog commit; size S, after #86."
+    },
+    {
+      "id": "TODO-009",
+      "rank": 9,
+      "title": "pr-review: background execution via a saved workflow (Phases 1-3)",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Can a plugin ship a saved workflow, or must the pr-review skill write one under the consuming project's .claude/workflows/ (issue Q4)? The answer settles where the Phases 1-3 workflow lives before any of it is built.",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#9",
+          "url": "https://github.com/t968rs/operator-straps/issues/9"
+        }
+      ],
+      "gh_issues": [
+        9
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "pr-review cannot fork like c-msg or pr-sum: Phase 2 fans out harness:pr-reviewer rows from the main session, a fork would break the per-row model floor, the Phase 5 sentinel binds to the session id, the bubble pause needs the developer and fixers write the shared tree. The issue proposes a saved workflow that runs capture, the reviewer fan-out and merge in the background and returns before amend; Phases 4-5 stay in the foreground. Checked: plugins/harness/skills/pr-review/SKILL.md has no context: key (frontmatter lines 2-5), unlike plugins/harness/skills/c-msg/SKILL.md:5-6 (context: fork, agent: harness:messenger); plugins/harness/hooks/check_phase5_sentinel.py:103 defines blocks_session(owner, session_id); plugins/harness/scripts/pr_review.py has no capture --json mode (its only --json is the gh pr view call at :333); dispatch_shape allows only parallel and inline in plugins/pr-review-watch/hooks/matrixRow.ts:15 and plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json:57-61. Unverified: whether a workflow-launched agent inherits the parent's CLAUDE_CODE_SESSION_ID (Q2) and whether anything else parses capture's printed rows (Q1).",
+      "proposed_change": "Settle Q4 first. Then add a capture --json mode to pr_review.py (or build the rows from the plan.json slots capture already writes), ship the Phases 1-3 workflow (capture, parallel harness:pr-reviewer agents with each row's model, merge) that stops after merge, add a Background mode section to the pr-review SKILL.md naming amend as the resume point and Phases 4-5 as foreground, and add dispatch_shape \"workflow\" to matrixRow.ts DISPATCH_SHAPES and the invocation matrix schema enum. Leave the Phase 5 workflow extension for later.",
+      "files": [
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/scripts/pr_review.py",
+        "plugins/pr-review-watch/hooks/matrixRow.ts",
+        "plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Touches the pr-review skill, its capture driver and the reviewer-stats row shape shared with the pr-review-watch mod; the foreground path stays as it is.",
+        "consumers": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/pr-review-watch/hooks/matrixRow.ts",
+          "plugins/harness/agents/pr-team-orchestrator.md"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "A new workflow script, a structured capture output, a skill section, a schema enum and mod change, plus probes of the workflow runtime (Q2, Q4)."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 dev_velocity: a foreground pr-review blocks the session through the reviewer fan-out; size L for a new workflow, a capture mode and a schema change."
+    },
+    {
+      "id": "TODO-010",
+      "rank": 10,
+      "title": "Add \"auto-message\" blocks for pre-determined change sets",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Does a change set qualify when every changed file matches some preset pattern (a subset), or only when it matches the preset exactly, and do the presets live in .claude/harness.json (a new config key in four places) or in plugin defaults?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#86",
+          "url": "https://github.com/t968rs/operator-straps/issues/86"
+        }
+      ],
+      "gh_issues": [
+        86
+      ],
+      "related_gh_issues": [
+        87
+      ],
+      "catalog_entry_ids": [],
+      "summary": "branch-commit-msg, c-msg and merge-commit-msg should use a preset commit message when the uncommitted changes, or one commit block, touch only files that match a preset file-name set. The issue sketches a Mapping[Set[str], str] lookup keyed by the set of normalized file names. Checked: c-msg and branch-commit-msg both drive plugins/harness/scripts/branch_commit_msg.py (plugins/harness/skills/c-msg/SKILL.md:11, :25), so one lookup there covers both; merge-commit-msg runs no script (plugins/harness/skills/merge-commit-msg/SKILL.md:24-28). No canned or auto-message code exists under plugins/harness/scripts or lib. As sketched, a set cannot be a dict key (a frozenset can), and exact-set lookup cannot serve a glob such as the TODO_Snapshot_*.md entry in #87.",
+      "proposed_change": "After the decision, add a preset lookup (frozenset or pattern list mapped to a message) read from config, and have branch_commit_msg.py capture fill a block's message from the preset when the block's files all match one preset, leaving other blocks to the drafter; document the presets for c-msg, branch-commit-msg and, once #80 lands, merge-commit-msg.",
+      "files": [
+        "plugins/harness/scripts/branch_commit_msg.py",
+        "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "plugins/harness/skills/c-msg/SKILL.md",
+        "plugins/harness/skills/merge-commit-msg/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Changes the shared capture path of two commit-message skills and may add a config key.",
+        "consumers": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/skills/c-msg/SKILL.md",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Matching logic in the capture driver, a config surface and tests across two skills."
+      },
+      "impact": "dev_velocity",
+      "severity": 1,
+      "priority": {
+        "score": 0.4564,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 1.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.4564,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 dev_velocity: a convenience for recurring change sets; size M for a shared capture change and config."
+    },
+    {
+      "id": "TODO-011",
+      "rank": 11,
+      "title": "Add argument to `pr-sum` to include local changes",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "pr_sum.py capture already includes staged, unstaged and untracked changes by default whenever the PR branch is checked out (commit 18f883f, PR #34), with --committed-only and --remote-head as opt-outs. Is an opt-in flag still wanted for a checkout that capture does not treat as the PR branch (a branch of another name, a worktree), or is the remaining work only the README, help and argument-hint updates?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#79",
+          "url": "https://github.com/t968rs/operator-straps/issues/79"
+        }
+      ],
+      "gh_issues": [
+        79
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for a pr-sum flag that diffs PR base..HEAD plus staged changes, with README, help and the hints block updated. Checked: plugins/harness/scripts/pr_sum.py:8-11 already runs the diff to the working tree (staged, unstaged and untracked) while a branch of the PR head's name whose HEAD contains that head is checked out, and :282-289 add --remote-head and --committed-only to turn it off; that landed in 18f883f (\"PR Capture: defaults to include `--cached` (#34)\", 2026-10-20), before the issue was opened on 2026-10-23. plugins/harness/skills/pr-sum/SKILL.md:60-64 documents it, but the argument-hint at plugins/harness/skills/pr-sum/SKILL.md:4 lists only PR, --level and --min-viz, and the pr-sum row at README.md:19 does not mention local changes.",
+      "proposed_change": "After the decision: either add an explicit flag (for example --local) that forces the working-tree diff from the merge base when the checkout is not recognized as the PR branch, or keep the default and only document it. Either way add --committed-only and --remote-head (and any new flag) to the SKILL.md argument-hint, say in the README.md pr-sum row that a checked-out PR branch includes local changes, and keep the pr_sum.py --help text in step.",
+      "files": [
+        "plugins/harness/scripts/pr_sum.py",
+        "plugins/harness/skills/pr-sum/SKILL.md",
+        "README.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "The pr-sum capture options and its docs; existing default behavior is kept.",
+        "consumers": [
+          "plugins/harness/skills/pr-sum/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Documentation updates, plus at most one capture flag on an existing working-tree path."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.4243,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.4243,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 docs_tooling: the behavior mostly exists and the gap is its documentation or an opt-in flag; size S."
+    }
+  ],
+  "trackers": [],
+  "close_candidates": [
+    {
+      "number": 77,
+      "title": "Enable Edit / Ammendments to `branch-commit-msg`",
+      "url": "https://github.com/t968rs/operator-straps/issues/77",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "The issue's question 3 chose a new skill when the fork frontmatter blocks main-session edits. `gh pr view 82` reports MERGED at 2026-10-23T22:31:52Z; its commit 0ace6b6 (\"feat(harness): add amend-commit-msg to amend a drafted commit breakdown\", body \"Refs #77\") is on main under merge 18c3a58 (`git log --oneline main`). plugins/harness/skills/amend-commit-msg/SKILL.md:9-10 amends the branch-commit-msg draft in the main session; plugins/harness/scripts/branch_commit_msg.py:61 and :551-555 add `capture --edit`, which marks the skeleton so build checks bullets against blocks.",
+      "recommended_action": "Close as completed by PR #82 (commit 0ace6b6); the PR said \"Refs #77\", so GitHub did not close it. Output noise of the new skill is tracked separately in #88.",
+      "related_todo_ids": []
+    },
+    {
+      "number": 85,
+      "title": "Add `sync-gh-todo` Skill",
+      "url": "https://github.com/t968rs/operator-straps/issues/85",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "Commit 2f6b2db (\"feat(harness): add sync-gh-todo to add untracked GitHub issues to the TODO catalog\", body \"Closes #85\") adds plugins/harness/skills/sync-gh-todo/SKILL.md, the `untracked` and `add --spec` subcommands of plugins/harness/scripts/todo_sync.py and plugins/harness/lib/harness_lib/todo_sync/issues.py, gh.py and reviews.py; this catalog run used `todo_sync.py untracked` to list the 13 untracked issues. The commit sits on branch 1071-sync-gh-issues, which PR #89 proposes for main; `git log --oneline main` tops out at 18c3a58.",
+      "recommended_action": "Closes on merge of PR #89 through its \"Closes #85\" commit; drop this candidate afterwards. Close by hand only if the branch merges without that keyword reaching main.",
+      "related_todo_ids": []
+    }
+  ]
+}

@@ -1,0 +1,633 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 89,
+  "pr_title": "1071 sync gh issues",
+  "branch": "1071-sync-gh-issues",
+  "base_branch": "main",
+  "base_sha": "1ea15a6e2761d452381d65ec156292e59fbc26b2",
+  "head_sha": "147bfef8fd31bc1857d5f780f250c4d1ab77d18e",
+  "review_date": "2026-10-23",
+  "verdict": "READY TO MERGE - 21 of 21 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2361,
+    "deletions": 29,
+    "files_changed": 21
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)",
+    "developer_notes_1 (developer)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0089/pr89_20261023T233447Z/findings/tests.json",
+    "docs/_scratch/pr_review/0089/pr89_20261023T233447Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0089/pr89_20261023T233447Z/findings/docs.json",
+    "docs/_scratch/pr_review/0089/pr89_20261023T233447Z/findings/overall.json",
+    "docs/_scratch/pr_review/0089/pr89_20261023T233447Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0089/pr89_20261023T233447Z/findings/roast.json",
+    "docs/_scratch/pr_review/0089/pr89_20261023T233447Z/findings/developer_notes_1.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "gh is replaced at the single run_gh/api_object/api_list seam the module documents, and run_gh itself is tested against a fake subprocess.run for both a non-zero exit and a missing binary; no test can reach the network.",
+    "add_items refusals are table-driven with a message fragment per case, covering forbidden keys, duplicate and already-tracked issues (item source, tracker, tracker child, close candidate) and wrong value types.",
+    "test_untracked_reports_a_missing_catalog_before_gh installs a gh fake that raises, pinning the ordering contract that the catalog is read before any gh call.",
+    "Dry-run tests compare catalog bytes before and after, and test_apply_add runs the real check rules on the written catalog rather than asserting on internals.",
+    "The skill contract test parses the skill's command lines with the driver's own argparse parser instead of string-matching subcommand names.",
+    "Scaffold tests cover the refusals (existing catalog, no todo.folder, no commit) and verify head_sha against a real git rev-parse.",
+    "gh.py puts every gh subprocess call behind one run_gh seam reached through the module, so tests can patch it and errors become TodoSyncError with a short label.",
+    "add_items reuses the split/refresh _renumber pipeline (rescore, sort, T6 renumber, link and prose rewrite, recount), so an added item takes the rank its score earns and the moved ids are rewritten in the companion files.",
+    "_new_item refuses unknown keys, computed fields, issues listed twice in the spec and issues the catalog already records, all before anything is written.",
+    "init_catalog never overwrites an existing catalog, and its head_sha check matches the schema pattern ^[0-9a-f]{7,40}$ exactly.",
+    "fetch_reviews follows only links into the issue's own repository, skips dismissed and empty reviews, removes duplicates by source URL, and records unreadable links in review_errors instead of aborting the run.",
+    "RepoToDo.json counts match its 11 items and every priority score recomputes from ranking_method.",
+    "Tied ranks (TODO-001..003, 007/008) follow the documented tie breakers, and the snapshot top 10 matches the catalog.",
+    "The agent spec shape rules and kind enum match reshape._TYPE_RULES and the TodoCatalog schema.",
+    "Spot-checked catalog path:line citations are accurate at head, and the #77 close-candidate evidence matches the main log.",
+    "The README init paragraph matches scaffold.init_catalog.",
+    "add reuses _renumber and _apply, so ranks, links, counts and companion rewrites match split and refresh; tests check T1 and T6-T10.",
+    "Spec refusals for computed keys, duplicates, tracked issues and bad shapes are pinned by parametrized tests.",
+    "gh sits behind one module seam, so tests fake the subprocess boundary, not the logic.",
+    "Dead review links become review_errors instead of aborting untracked.",
+    "untracked reads the catalog before gh, and init refuses overwrite or a commitless repo.",
+    "The skill contract test parses skill command lines with the real driver parser.",
+    "add reuses _renumber and _apply, so ids, links, counts and companion rewrites behave as they do for split and refresh.",
+    "gh access goes through one module; tests replace only that boundary, with no mock-chain wiring tests.",
+    "A failed review fetch goes to review_errors and does not stop the run; the agent treats that text as unverified.",
+    "The skill contract test parses the skill command lines with the real driver parser.",
+    "README, the driver docstring, the agent and the skill describe init, untracked and add with the same paths and refusals.",
+    "add reuses _renumber/_apply, so ids, links, counts and companion rewrites follow the same path split and refresh already prove, and dry-run parity comes for free.",
+    "One gh seam (gh.run_gh) lets every test replace the subprocess without stubbing the logic under test. The tests exercise real issue filtering, review budgeting and renumbering.",
+    "Refusal coverage in test_todo_sync_add.py is thorough: computed fields, tracked issues by every record type, duplicates, wrong value types and unscoreable values each have a pinned message.",
+    "A dead or foreign review link becomes a review_errors entry instead of failing the whole untracked run, and links outside the issue repository are never followed.",
+    "init refuses to overwrite an existing catalog and refuses to run without a commit to record, and both are tested at the library and driver level."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Reply block has no slot for items sync adds or their needs-decision mark",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/skills/sync-gh-todo/SKILL.md",
+          "docs/superpowers/plans/2026-10-23-sync-gh-todo.md"
+        ],
+        "lines": "121,146-148,163-165,169-174",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The sync section never says where added items go in the reply, and the Added: placeholder (line 174) still lists only close candidates and tracker notes. SKILL.md:52-53 asks the main session to name items the reply marks as needing a decision, a mark no reply field carries. The plan (line 177) said Added: carries TODO-NNN for #N.\n\nAlso (docs): Sync step 4 (lines 146-147) fixes the spec and reruns once on a problem: line, but Stop conditions (163-164) allow one spec fix for split only, so an add refusal would stop at once.\n\nAlso (overall): Step 1 (todo-editor.md:121) reruns untracked though the skill passed Issues, repeating all gh calls; lines 163-164 grant the one-spec-fix retry to split only, contradicting sync step 4.\n\nAlso (system_shape): Sync step 4 (todo-editor.md:146-147) fixes the spec and reruns once on an add problem line. Stop conditions (:163-164) allow one spec fix for split only, which contradicts step 4.\n\nAlso (roast): Sync step 4 allows one spec fix and rerun on a `problem:` line (todo-editor.md:146-147), but Stop conditions still grant the one spec fix to split only (todo-editor.md:163-164). The plan (line 177) says the Reply `Added:` field carries `TODO-NNN for #N` for sync, but the Reply block (todo-editor.md:174) still lists only close candidates and tracker notes, so the new items have no documented place in the reply.\n\nAlso (overall, system_shape): SKILL.md:51-53 relays items the reply marks as needing a decision, and plan line 177 puts TODO-NNN for #N on Added. The Reply block (todo-editor.md:174) still defines Added as close candidates and tracker notes only, and no field marks needs_decision, so a sync run has no defined place for either.\n\nAlso (system_shape): The plan (:177) puts TODO-NNN for #N in the Added field. todo-editor.md:174 still lists only close candidates and tracker notes there.",
+        "fix": [
+          "Widen Added: to <TODO-NNN for #N (needs decision), close_candidates #N, tracker #N notes, ... | none> and tell sync step 5 to list each added item there. Field names stay the same, so test_agent_reply_block_is_unchanged holds.",
+          "Change line 164 to: after one spec fix for split or sync.",
+          "Reuse untracked.json when it covers Issues, and name sync in the stop-condition retry.",
+          "Change :163-164 to: after one spec fix for split or add.",
+          "Change the stop condition to: after one spec fix for split or sync. Widen the Added placeholder to also list `TODO-NNN for #N` entries. The field names stay the same, so test_agent_reply_block_is_unchanged still holds.",
+          "Extend the Added placeholder at todo-editor.md:174 to list TODO-NNN for #N, marking needs-decision items, and say a sync run fills it (field names unchanged, so the contract test still passes).",
+          "Extend the :174 placeholder with TODO-NNN for #N; field names stay, so the reply contract test still passes."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "An issue named only in related_gh_issues counts as tracked, so it never gets an item",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/issues.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py",
+          "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+          "docs/superpowers/plans/2026-10-23-sync-gh-todo.md"
+        ],
+        "lines": "44-49",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "catalog_issue_numbers (issues.py:44-49) adds `related_gh_issues` to the tracked set. The schema defines that list as open issues an item cross-references but does not resolve (TodoCatalog.schema.json:685). So an open issue that only shows up as related is hidden by `untracked`, and `add` refuses it (reshape.py:153, already in the catalog). Nothing in the catalog resolves it and no tool lets one be added. This depends on run order: in the catalog this PR commits, TODO-007 lists #80 as related (docs/TODO/RepoToDo.json:458-460). Had #81 been synced in an earlier batch than #80, #80 would have dropped off every later `untracked` run. Mentioned and tracked are not the same thing.",
+        "fix": [
+          "Drop `related_gh_issues` from _item_numbers so only `gh_issues`, gh_issue sources, trackers, children, close candidates and research entries count as tracked. Add a test where an issue appears only as related and is still listed by find_untracked and accepted by add_items.",
+          "If counting related issues as tracked is intended, say so in the plan Design Decisions and in the issues.py module docstring, and have `untracked` print the related-only issues on a separate line so they are not silently lost."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "add writes items the catalog schema rejects",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/agents/todo-editor.md",
+          "tests/lib/test_todo_sync_add.py",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "109-134,136-155,158-174,369-381",
+        "reviewer": "runtime, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_check_types (docstring: refuse a wrong-shaped value 'before it reaches scoring or the catalog') checks only base types. It does not enforce the TodoCatalog item rules: needs_decision true requires a non-empty decision_question and false requires null; status NEEDS_DECISION requires needs_decision true; code_snippet must start with a path:line header line; url must match ^https://\\S+$; files must be unique; kind/impact/loe.size/blast_radius.level are enums and loe/blast_radius forbid extra keys. So a spec with {\"status\": \"NEEDS_DECISION\"} (needs_decision defaults False), with needs_decision true and no question (defaults to null), or with a free-text code_snippet passes, and _apply writes the catalog without validating it. The next `todo_sync.py check` then reports a schema error. A bad impact or LoE size is caught only by scoring, and that error names the temporary id ('cannot score add-new-1') rather than the spec item number.\n\nAlso (overall): _TYPE_RULES checks kind only as a non-empty string and needs_decision, decision_question, status independently. The schema (TodoCatalog.schema.json:628-638, 855-903) needs kind in its enum, a non-empty question when needs_decision is true (null otherwise) and needs_decision true for status NEEDS_DECISION. Such specs pass add and leave a T1 error, though todo-editor.md:144 says add refuses them.\n\nAlso (system_shape): todo-editor.md:144 and _check_types (reshape.py:130-134) say add refuses a wrong-shaped value. _TYPE_RULES (:110-127) checks kind, url and code_snippet only as strings: no kind enum, no ^https:// pattern, no path:line header. It also accepts extra keys in loe/blast_radius, non-string consumers, duplicate files, and needs_decision true with a null decision_question. _apply (:369-381) writes without schema validation, so T1 reports these only at finish, after the write.\n\nAlso (roast): _check_types (reshape.py:130-134) claims to refuse a wrong-shaped value before it reaches the catalog, and the agent (todo-editor.md:144) promises `add` refuses any other shape. It only checks that `kind` is a non-empty string, `code_snippet` is a string and `files`/`related_gh_issues` are lists. The item schema (TodoCatalog.schema.json:628-639, 705-716, 718-744) requires `kind` from a seven-value enum, `code_snippet` matching a path:line first-line pattern, unique `files` and `related_gh_issues`, and no extra keys in `blast_radius`. So `kind: chore`, a snippet with no path:line header, or the same path listed twice (the agent writes one path:line finding per review comment and lists the paths, so duplicates are likely) passes `add`, gets renumbered and written, and only `check` T1 catches it afterwards, on a catalog the agent then hand-edits. In short, the validator approves things the schema rejects.",
+        "fix": [
+          "Before _apply writes, validate each built item (or the whole renumbered catalog) against TodoCatalog.schema.json `$defs/item` with the jsonschema validator that rules_todo.py already builds, and raise TodoSyncError('item N: ...') on the first error.",
+          "Extend _TYPE_RULES with the cross-field and enum rules: needs_decision vs decision_question, status NEEDS_DECISION implies needs_decision, code_snippet header pattern, url pattern, unique files, and enum checks for kind, impact, loe.size and blast_radius.level against the schema or ranking_method tables.",
+          "Add a kind enum rule and a coherence check after _check_types, with TYPE_CASES entries in tests/lib/test_todo_sync_add.py.",
+          "Or validate built items against the schema item definition before _renumber.",
+          "Validate each built item against TodoCatalog.schema.json $defs/item in add_items before _renumber, raising TodoSyncError with the item number and path.",
+          "Or narrow todo-editor.md:144 to the checked fields and say that T1 at finish catches the rest.",
+          "Before `_renumber` in add_items, validate each built item against the catalog schema `$defs/item` (the same schema T1 in rules_todo.py loads), with the temporary id/rank/priority swapped for valid placeholders, and raise TodoSyncError naming item n and the failing path.",
+          "Or extend _TYPE_RULES: `kind` in the schema enum, `code_snippet` against the schema pattern, `files`/`related_gh_issues` without duplicates (or dedupe them in _item_fields), `decision_question` a non-empty string when `needs_decision` is true, and refuse keys other than size/reasoning in `loe` and level/reasoning/consumers in `blast_radius`."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "CLI add refusal never proves the catalog is left untouched",
+        "file": "tests/scripts/test_todo_sync_intake.py",
+        "files": [
+          "tests/scripts/test_todo_sync_intake.py",
+          "tests/lib/test_todo_sync_add.py"
+        ],
+        "lines": "129-134",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_add_refusal_exits_2 asserts only exit 2 and the bare substring 'problem:'. Any failure path passes it, including an unreadable spec or a crash turned into a problem line, and nothing checks that RepoToDo.json is byte-identical after the refusal. The lib refusal tests (test_refusals) exercise the pure add_items, never apply_add, so no test in the PR covers 'a refused add writes nothing', which is the safety property the agent's add call depends on.",
+        "fix": [
+          "Capture (root / CATALOG_REL).read_bytes() before the call, assert it is unchanged afterwards, and match the specific refusal ('issue #11 is already in the catalog') instead of 'problem:'.",
+          "Alternatively add a lib-level test calling apply_add with a refused spec and asserting the catalog bytes are unchanged."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README TODO sync section has no diagram or example block",
+        "file": "README.md",
+        "lines": "226-254",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: README.md may not be sufficiently visual. Confirmed: README.md:226-254 (config layout, retire/split/refresh, init, untracked/add and sync-gh-todo) is prose paragraphs only; the other fenced blocks in the README are the pr-review mermaid flow (README.md:37) and the `text` example blocks of the other skill sections (README.md:103, 119, 147). The sequence init -> untracked -> draft -> add -> render and check of /harness:sync-gh-todo, and which step runs in the main session versus the todo-editor agent, appear only in prose. Verified by listing the README's fenced blocks.",
+        "fix": [
+          "Add a `text` block after README.md:254 showing the flow: `todo_sync.py init` (once, when the catalog is missing) -> `todo_sync.py untracked` (main session) -> todo-editor agent drafts one item per issue from the issue and linked review text -> `todo_sync.py add --spec` -> `render` and `check`, with the main-session steps and the agent step marked, followed by the one-line usage `/harness:sync-gh-todo`",
+          "Or a mermaid flowchart of the same sequence in the style of README.md:37"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "README key table cites an issue fetch step and a rule G5 that do not exist",
+        "file": "README.md",
+        "lines": "285-286",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "mechanical",
+        "summary": "Developer note: README.md may be out of date. Confirmed: README.md:285 lists todo.gh.repo as used by 'issue fetch (Phase 3)' and README.md:286 lists todo.gh.max_age_hours as used by 'rule G5 (Phase 3)'. plugins/harness/scripts/todo_sync.py has no fetch subcommand, and RULES in plugins/harness/lib/harness_lib/todo_sync/__init__.py holds S1-S6, P1-P4 and T1-T10 only, so neither exists. The one reader of todo.gh.repo is `todo_sync.py untracked` (issues.py open_issues adds --repo only when the key is set); a null value runs `gh issue list` with no --repo, so gh chooses the repository, which README.md:285 words as 'the origin remote'. Verified by reading README.md, todo_sync.py and todo_sync/__init__.py.",
+        "fix": [
+          "Replace README.md:285 with: | `todo.gh.repo` | `null` (the repository `gh` resolves for the checkout) | `todo_sync.py untracked` | and README.md:286 with: | `todo.gh.max_age_hours` | `24` | `todo-watch` `/todo` summary age suffix (no sync rule reads it yet) |"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "generated_from still calls the 11-item catalog empty",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "2-6",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "RepoToDo.json:4 reads Empty catalog written by todo_sync.py init. on a catalog with 11 items and 2 close candidates. scaffold.py:83 writes it and apply_add never updates it.",
+        "fix": [
+          "Reword it, e.g. Started by todo_sync.py init, items added by todo_sync.py add from open GitHub issues."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Close candidate #85 evidence is stale once this PR merges",
+        "file": "docs/TODO/RepoToDo.json",
+        "files": [
+          "docs/TODO/RepoToDo.json",
+          "plugins/harness/lib/harness_lib/todo_sync/scaffold.py"
+        ],
+        "lines": "3-6,746-753",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "RepoToDo.json:751-752 says the commit sits on 1071-sync-gh-issues only, that no PR exists, and recommends opening one. PR #89 is that PR, and its Closes #85 commit closes the issue on merge, leaving a candidate for a closed issue.\n\nAlso (overall): RepoToDo.json:751-752 says no PR exists for the branch and recommends opening one; this PR is it.\n\nAlso (system_shape): RepoToDo.json:4-5 calls the 11-item catalog Empty (from init at 5fecd6e). add_items never updates generated_from, so every catalog init starts stays mislabeled. The #85 close candidate (:751-752) says no PR exists, but PR 89 is open.\n\nAlso (roast): docs/TODO/RepoToDo.json:4 still says Empty catalog written by todo_sync.py init, over 11 items, and add never touches `generated_from`. The #85 close candidate (RepoToDo.json:751-752) says no PR exists for 1071-sync-gh-issues and recommends opening one. That PR is #89, the one under review.",
+        "fix": [
+          "Cite PR #89 in evidence and set recommended_action to: closes on merge of PR #89, drop afterwards.",
+          "Or drop the entry and recount close_candidates.",
+          "Name PR #89 in the evidence and recommend closing on its merge.",
+          "Reword the scaffold.py:83 description so it stays true after add, or have add_items refresh generated_from; update this catalog.",
+          "Reword `generated_from.description` (for example: Started by todo_sync.py init, items added by todo_sync.py add from open issues) and update the #85 evidence and recommended_action to name PR #89."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Plan omits init, review_errors and the three-value fetch_reviews",
+        "file": "docs/superpowers/plans/2026-10-23-sync-gh-todo.md",
+        "files": [
+          "docs/superpowers/plans/2026-10-23-sync-gh-todo.md",
+          "plugins/harness/lib/harness_lib/todo_sync/reviews.py",
+          "plugins/harness/lib/harness_lib/todo_sync/scaffold.py"
+        ],
+        "lines": "40-50,61,63,89-90",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Plan lines 89-90 give fetch_reviews a (reviews, truncated) return, but issues.py:116 unpacks a third value, review_errors, which the plan never names. File Structure (40-50) omits scaffold.py and the init subcommand from 5fecd6e.\n\nAlso (overall): Plan File Structure (lines 40-50) and tasks have no init, scaffold.py or its test; lines 63 and 89 give rows without review_errors and a 2-tuple fetch_reviews, while reviews.py:96-119 returns 3.\n\nAlso (system_shape): The plan (:40-50) leaves out init, scaffold.py and test_todo_sync_scaffold.py. Three shapes differ: run_gh error text (:61 vs gh.py:23); the row shape lacks review_errors (:63 vs issues.py:82); fetch_reviews returns 3 values, not 2 (:89 vs reviews.py:96-97). The plan is the project source of truth.\n\nAlso (roast): The plan Interfaces say fetch_reviews returns a 2-tuple and give a row shape without `review_errors` (plan lines 63, 89). The code returns `(reviews, truncated, errors)` (reviews.py:96-119) and every row carries `review_errors` (issues.py:82). The `init` subcommand, scaffold.py, its tests and the `.claude/harness.json` `todo` key appear nowhere in File Structure or the tasks. The plan is the record of truth here, and it is behind the code.",
+        "fix": [
+          "Add a Changes after execution note covering review_errors, the three-value return, scaffold.py and init.",
+          "Add an init task and amend the Task 1 and 2 Interfaces.",
+          "Add an init task and correct :61, :63 and :89 to the shipped code.",
+          "Update the plan Task 1 and 2 Interfaces to the 3-tuple and the `review_errors` row field, and add a task (or a File Structure entry) for scaffold.py, `todo_sync.py init`, tests/lib/test_todo_sync_scaffold.py and the repo docs/TODO catalog."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Agent reruns untracked, so the Issues line goes unused and gh runs twice",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/skills/sync-gh-todo/SKILL.md",
+          "README.md"
+        ],
+        "lines": "119-128",
+        "reviewer": "docs, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:16-23 already runs untracked (every issue and linked review fetched, untracked.json written) and passes the numbers as Issues:. Sync step 1 (line 121) runs TS untracked again, repeating every gh call and possibly rewriting the file with a different set. Nothing in the agent reads Issues:.\n\nAlso (docs): Line 128 reads: Draft one item per issue: one item per issue, however many findings its review holds.\n\nAlso (system_shape): SKILL.md:14-23 runs untracked and builds the Issues line (:42,:47). Sync step 1 (todo-editor.md:121) runs it again, repeating every gh and review fetch and overwriting the file. Nothing reads Issues, so an issue opened between the two runs is drafted unlisted. README.md:252 says the agent runs both.\n\nAlso (roast): The skill runs `untracked`, which fetches every open issue and every linked review over the network, and passes the numbers as `Issues:` (SKILL.md:40-47). The agent sync step 1 (todo-editor.md:121) runs `TS untracked` again and works from its output, so all the gh API calls run twice and `Issues:` is never read. If the two runs disagree, the reply and the skill list do not match.",
+        "fix": [
+          "Have sync step 1 read the existing untracked.json and draft exactly the Issues: numbers, rerunning untracked only when the file is missing.",
+          "Or drop Issues: and the skill-side run.",
+          "Change it to: Draft one item per issue, however many findings its review holds. The contract test substring survives.",
+          "Sync step 1 reads the existing untracked.json for the Issues numbers and reruns untracked only when the file is missing.",
+          "Or drop the listing from the skill and update README.md:252.",
+          "Have the agent read the `untracked.json` the skill run already wrote and draft only the numbers on `Issues:`, re-running `untracked` only when the file is missing.",
+          "Or drop the `untracked` run from the skill and let the agent own it, passing `Issues: all`."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "untracked: malformed gh output crashes with a traceback, and truncation at the list limit is silent",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/issues.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "21,90-96",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "open_issues calls json.loads(out) on the `gh issue list` stdout without a guard. main() catches only ConfigError, TodoSyncError and OSError, so a non-JSON reply (for example a gh warning on stdout) ends in a traceback instead of a 'problem:' line. A repository with more than LIST_LIMIT (1000) open issues is also cut off without notice, so untracked under-reports.\n\nAlso (roast): open_issues calls `json.loads(out)` (issues.py:96) with no guard. main() catches only ConfigError, TodoSyncError and OSError (todo_sync.py:211), so a non-JSON stdout from `gh issue list` (a proxy page, a gh warning on stdout) raises JSONDecodeError with a traceback. The plan review focus says gh failing exits 2 with one `problem:` line. reviews.py already catches ValueError for the same reason. The issue list never got that treatment.\n\nAlso (roast): `gh issue list --limit 1000` (issues.py:21, 94-95) silently stops at 1000 issues. A repository with more open issues gets an `untracked` result that looks complete and is not, and the skill reports it as the full list.",
+        "fix": [
+          "Wrap json.loads in try/except ValueError and raise TodoSyncError('gh issue list returned no JSON: ...').",
+          "When len(rows) == LIST_LIMIT, raise or add a warning line saying the list may be truncated.",
+          "Wrap the parse in open_issues: catch ValueError and raise TodoSyncError with the message gh issue list returned no JSON, chained from the original, and check that the result is a list.",
+          "When `len(rows) == LIST_LIMIT`, raise TodoSyncError (or print a `warning:` line) saying the listing hit the limit and may be incomplete."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Docstrings not updated for add/init/untracked",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py"
+        ],
+        "lines": "38,330",
+        "reviewer": "runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Reshape still says 'The catalog after a split or refresh' (reshape.py:38). ReshapeResult says 'What apply_split or apply_refresh changed' (reshape.py:330), although apply_add returns it too. The todo_sync.py summary line ('retire, split or re-rank catalog items', lines 1-2) also serves as the argparse description and leaves out init, untracked and add. The exit-2 sentence (lines 51-52) lists only a configuration error, an unknown rule id or a refused render, but a gh failure, an add refusal and an init refusal also exit 2.\n\nAlso (overall): reshape.py:38 and :330 describe split or refresh only though apply_add returns both types; todo_sync.py:1-2 omits init, untracked and add.\n\nAlso (system_shape): reshape.py:330 names only apply_split and apply_refresh. issues.py:111 omits review_errors (:116). todo_sync.py:50-52 lists no exit-2 case for init, untracked or add.",
+        "fix": [
+          "reshape.py:38 -> 'The catalog after a split, add or refresh, with what moved.'; reshape.py:330 -> 'What apply_split, apply_add or apply_refresh changed ...'; todo_sync.py:1-2 add 'start a catalog, list untracked issues, add items'; todo_sync.py:51-52 generalize to 'A configuration error, an unknown rule id or any refused operation (render, init, add, a failed gh call) exits 2'.",
+          "Name add in both reshape docstrings and the three subcommands in the driver summary.",
+          "Name apply_add at reshape.py:330 and review_errors at issues.py:111; add gh failures and init/add refusals to todo_sync.py:51-52."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "reviews.py module docstring overstates the review text budget",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/reviews.py",
+        "lines": "5-6,91-119",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring (lines 5-6) says 'The text per issue is bounded by a character budget'. fetch_reviews always keeps the first review whole (line 115: `if kept and ...`), so an issue that links a single huge review exceeds REVIEW_CHARS without limit. The fetch_reviews docstring states this exception, but the module contract does not.\n\nAlso (overall): _link_reviews fetches inline comments for every review of a link before fetch_reviews checks the budget, and one failed inline call drops the whole link.",
+        "fix": [
+          "Reword lines 5-6: 'Reviews after the first stop at a character budget; the first is always kept whole.'",
+          "Or cut the first review's body and comments at the budget and set the truncated flag.",
+          "Consume reviews lazily, check the budget before inline fetches, and record per-review failures."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Starter description says Empty catalog after add fills it",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/scaffold.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/scaffold.py",
+          "docs/TODO/RepoToDo.json"
+        ],
+        "lines": "83",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "scaffold.py:83 writes Empty catalog written by todo_sync.py init; add never updates it, so docs/TODO/RepoToDo.json:4 is false with 11 items.",
+        "fix": [
+          "Use a description that stays true and update RepoToDo.json:4."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "init leaves a catalog behind that it then refuses to finish",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/scaffold.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/scaffold.py",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "106-117",
+        "reviewer": "runtime, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "init_catalog writes RepoToDo.json first and then calls render_snapshot. render_snapshot raises when snapshot_name(day) does not match todo.snapshots.name_pattern, or when the catalog read fails. The driver prints only 'problem: ...' and exits 2, so it never reports the 'created' line for the catalog. A rerun then stops with 'already exists; init never overwrites a catalog', and nothing names `render` as the way to finish.\n\nAlso (overall): scaffold.py:115 writes the catalog before render_snapshot (line 116) can refuse a name_pattern mismatch; the catalog stays and a rerun refuses with already exists.\n\nAlso (roast): init_catalog writes the catalog (scaffold.py:115) before render_snapshot runs (scaffold.py:116). render_snapshot can still refuse, for example when the snapshot name does not match `todo.snapshots.name_pattern` (__init__.py:169-171). The catalog then exists with no snapshot, and a rerun of `init` refuses because the catalog exists (scaffold.py:111-112). The docstring promises both files, and the half-done state contradicts it.",
+        "fix": [
+          "Check snapshot_name(day) against todo.snapshots.name_pattern before write_atomic, so the refusal happens before any file is written.",
+          "Catch TodoSyncError from render_snapshot and re-raise it with the created catalog path and a 'run todo_sync.py render' hint.",
+          "Check the snapshot name against todo.snapshots.name_pattern before write_atomic.",
+          "Check the snapshot name against `todo.snapshots.name_pattern` before writing the catalog, or delete the new catalog when render_snapshot raises, and add a test with a non-matching name_pattern."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Missing-catalog trigger matches the literal default name RepoToDo.json",
+        "file": "plugins/harness/skills/sync-gh-todo/SKILL.md",
+        "files": [
+          "plugins/harness/skills/sync-gh-todo/SKILL.md",
+          "README.md"
+        ],
+        "lines": "20-30",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "tracked_numbers (issues.py:67-68) reports <todo.catalog rel>: file not found, but SKILL.md:25 keys init on a line ending RepoToDo.json: file not found, so a project with another todo.catalog never reaches init although README.md:252 says the skill runs init when the catalog is missing. SKILL.md:20-21 first says any problem: line ends the run. README.md:241-242 also names RepoToDo.json where init writes cfg.todo.catalog.\n\nAlso (overall): SKILL.md:25 routes to init only on RepoToDo.json: file not found, but todo.catalog is configurable (defaults.json:56), so another name ends the run instead.\n\nAlso (system_shape): SKILL.md:25 matches a problem line ending RepoToDo.json: file not found. The error is <todo.catalog>: file not found (sources.py:100, issues.py:68), so a renamed catalog never reaches init. README.md:252 says init runs first, but the skill runs init only after untracked fails.\n\nAlso (roast): SKILL.md:20-21 says any `problem:` line ends the run and is relayed. Lines 25-30 then make a `file not found` problem the trigger for `init` and a rerun. The skill also matches on the literal `RepoToDo.json: file not found`, but the message carries `todo.catalog`, which is configurable (sources.py:100, issues.py:68), so a project with another catalog name misses the branch. The README version (README.md:357, runs init first when the catalog is missing) is a different order again.",
+        "fix": [
+          "Key the branch on <todo.catalog path>: file not found with RepoToDo.json as the default example, place it before the ends-the-run sentence, and say the configured catalog (default RepoToDo.json) in the README.",
+          "Match file not found for the configured todo.catalog, or have untracked print an init hint and key on it.",
+          "SKILL.md:25: match <todo.catalog path>: file not found. README.md:252: init runs when untracked reports the catalog missing.",
+          "Reword Step 1: a `problem:` line ending `: file not found` that names the configured `todo.catalog` leads to `init`, and any other `problem:` line ends the run. Match on the suffix, not the file name, and align the README sentence."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Tracked-number branches are redundant in the fixture, so dropping one passes",
+        "file": "tests/lib/test_todo_sync_issues.py",
+        "files": [
+          "tests/lib/test_todo_sync_issues.py",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py"
+        ],
+        "lines": "40-42",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "issues.py documents an item as tracked through gh_issues, related_gh_issues or a gh_issue source. The fixture records issue 11 both in gh_issues and as a '#11' source, and no item has related_gh_issues, so test_tracked_numbers_cover_every_record still passes with either the gh_issues or the sources branch deleted, and with the related_gh_issues branch deleted. add_items reuses catalog_issue_numbers for its duplicate refusal, so a regression there would also let an add duplicate an item.",
+        "fix": [
+          "Add a parametrized test that builds a catalog item carrying only one of gh_issues, related_gh_issues or a gh_issue source (each naming a distinct number) and asserts that number is in tracked_numbers."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "find_untracked's 'sorted by number' contract is never exercised",
+        "file": "tests/lib/test_todo_sync_issues.py",
+        "files": [
+          "tests/lib/test_todo_sync_issues.py",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py"
+        ],
+        "lines": "60-70",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Every test feeds open issues already in ascending order (or with a single untracked issue), so removing the sorted() call in find_untracked would not fail any test, although the docstring promises sorted rows and the CLI prints them in that order.",
+        "fix": [
+          "In test_find_untracked_lists_only_unrecorded_issues, feed two untracked issues in descending order (for example 300 then 200) and assert the rows come back as [200, 300]."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Budget rule 'first review is always kept whole' is untested",
+        "file": "tests/lib/test_todo_sync_reviews.py",
+        "files": [
+          "tests/lib/test_todo_sync_reviews.py",
+          "plugins/harness/lib/harness_lib/todo_sync/reviews.py"
+        ],
+        "lines": "76-81",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "fetch_reviews documents that the first review is kept whole even when it alone exceeds the budget. test_budget_truncates_and_flags uses a first review (30 chars) under the budget (40), so changing the guard from 'if kept and ...' to 'if ...' passes every test while silently dropping an oversized only review.",
+        "fix": [
+          "Add a case with budget=10 and one 30-character review; assert it is returned whole and truncated is False, then add a second review and assert truncated is True."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Intake test module docstring omits the init subcommand it tests",
+        "file": "tests/scripts/test_todo_sync_intake.py",
+        "lines": "1",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says it covers 'The untracked and add subcommands', but test_init_creates_the_catalog_and_refuses_a_second_run also drives the init subcommand.",
+        "fix": [
+          "Reword the first docstring line to 'The init, untracked and add subcommands of scripts/todo_sync.py, ...'."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Snapshot path literal duplicates the helper constant",
+        "file": "tests/scripts/test_todo_sync_intake.py",
+        "lines": "17,105",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The init CLI test hardcodes 'docs/RESEARCH/_TODO/Snapshots/TODO_Snapshot_' while the helper exports SNAP_DIR; the test breaks for an unrelated reason if the shared fixture folder moves.",
+        "fix": [
+          "Import SNAP_DIR from _todo_helpers and assert lines[1].startswith(f\"created {SNAP_DIR}/TODO_Snapshot_\")."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I3",
+      "classification": "architectural_ambiguity",
+      "reason": "Should related_gh_issues count as tracked (2026-10-17 plan's G4 wording) or only gh_issues, sources, trackers, children, close candidates and research entries? It changes which issues get listed."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 89 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":3,\"first_sha\":\"2f6b2db52789c50b4a776c1781dd9c9287455d02\",\"headRefName\":\"1071-sync-gh-issues\",\"headRefOid\":\"147bfef8fd31bc1857d5f780f250c4d1ab77d18e\",\"last_sha\":\"147bfef8fd31bc1857d5f780f250c4d1ab77d18e\",\"mergeCommit\":null,\"number\":89,\"state\":\"OPEN\",\"title\":\"1071 sync gh issues\",\"url\":\"https://github.com/t968rs/operator-straps/pull/89\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1071-sync-gh-issues",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1071-sync-gh-issues",
+        "head_ref_name": "1071-sync-gh-issues",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "2f6b2db52789c50b4a776c1781dd9c9287455d02",
+        "head_sha": "147bfef8fd31bc1857d5f780f250c4d1ab77d18e",
+        "base_ancestor_command": "git merge-base --is-ancestor 2f6b2db52789c50b4a776c1781dd9c9287455d02 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 147bfef8fd31bc1857d5f780f250c4d1ab77d18e HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - generated_from.description reworded so it stays true after add (scaffold starter text and this catalog); #85 evidence names PR #89 and recommended_action says it closes on merge of PR #89, drop afterwards"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - plan corrected to shipped code: run_gh error label, review_errors in the row shape, 3-tuple fetch_reviews, Step 4 wiring; File Structure lists scaffold.py, docs/TODO catalog, .claude/harness.json todo key and test_todo_sync_scaffold.py; new Task 6 covers init"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - sync step 1 drafts exactly the Issues numbers from the untracked.json the skill wrote and reruns untracked only when the file is missing or lacks a number; duplicated phrase at step 2 removed; SKILL.md and README.md:252 describe the single run"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - init checks the snapshot name against todo.snapshots.name_pattern before writing the catalog; a later render refusal names the created catalog and todo_sync.py render; driver docstring updated; two tests added"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - Added placeholder lists TODO-NNN for #N (needs decision); sync step 5 fills it; stop condition grants one spec fix to split or sync; SKILL.md report reads the (needs decision) mark; plan Task 5 interfaces match"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - add_items validates each built item against TodoCatalog.schema.json $defs/item (placeholder id/rank/priority) before renumbering, raising item N: <path>: <message>; agent :144 lists the refused shapes; tests cover kind, url, snippet header, duplicate files, extra loe key and the needs_decision rules"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - open_issues parses gh output through _parse_listing: non-JSON or non-list raises TodoSyncError (gh issue list returned no JSON), and a listing of LIST_LIMIT rows raises a may-be-incomplete TodoSyncError instead of a silent cut-off; untracked docstring now states the exit-2 refusal when gh fails, returns no JSON list, or the listing reaches the issue limit; the parse guard and limit check live in issues.py (other part)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - attach_reviews docstring now names review_errors; open_issues docstring states the LIST_LIMIT raise; reshape.py Reshape and ReshapeResult docstrings name add/apply_add; todo_sync.py summary names init, untracked and add (argparse description now joins the first paragraph); exit-2 sentence covers any refused operation and a failed gh call"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - added test_each_item_field_alone_tracks_its_number (parametrized over gh_issues, related_gh_issues, gh_issue source with distinct numbers 301-303)"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - added test_find_untracked_sorts_rows_by_number feeding 300, 101, 200 in descending-ish order and asserting [200, 300]"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - added test_first_review_is_kept_whole_even_over_budget: a 30-char only review at budget=10 is returned whole with truncated False, and a second review then sets truncated True; cited only: fetch_reviews already keeps the first review whole (reviews.py:115); the missing case belongs in tests/lib/test_todo_sync_reviews.py (other part)"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - module docstring now names the init, untracked and add subcommands"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - imported SNAP_DIR from _todo_helpers and asserted lines[1] against f\"created {SNAP_DIR}/TODO_Snapshot_\" instead of the hardcoded path"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - test_add_refusal_exits_2 captures RepoToDo.json bytes before the call, matches 'problem: issue #11 is already in the catalog', and asserts the bytes are unchanged after the refusal; Added test_apply_add_refusal_leaves_the_catalog_untouched: apply_add with a spec holding a recorded issue (#11) raises TodoSyncError matching #11 and the catalog bytes stay identical"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - Added a text block after the sync-gh-todo paragraph showing the untracked/init/draft/add/render-check flow with main-session and todo-editor steps marked, headed by the /harness:sync-gh-todo usage line"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - Key table: todo.gh.repo now defaults to the repository gh resolves and is used by todo_sync.py untracked; todo.gh.max_age_hours lists only the todo-watch age suffix (no sync rule reads it yet)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - README init paragraph names the catalog as todo.catalog (default RepoToDo.json); sync-gh-todo sentence now says init runs when untracked reports the configured catalog file not found, then untracked reruns; SKILL.md Step 1: missing-catalog branch now keys on a problem line ending ': file not found' naming the configured todo.catalog (default RepoToDo.json) and sits before the generic problem sentence, which now covers only the other problems"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - module docstring now says reviews after an issue's first stop at the budget and the first is always kept whole"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - docs/TODO/RepoToDo.json generated_from.description reworded so it stays true after items are added (outside fixer waves)"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - scaffold.py starter generated_from.description reworded to 'Started by todo_sync.py init; later items come from todo_sync.py add or a hand edit.' (outside fixer waves)"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "147bfef (working-tree snapshot; developer commits) - Developer chose option two: issues.py _item_numbers no longer counts related_gh_issues as tracked, so an issue only cross-referenced by an item is untracked and add accepts it; tests, README and driver docstring updated (fixer w3_fix_1 could not edit the test file outside its set) (outside fixer waves)"
+    }
+  ]
+}

@@ -23,6 +23,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | Choose how the Git banner looks | `banner-status`: `setup-statusline`, or `band-line` | ccstatusline as the project's status line (git branch and uncommitted changes, then model, thinking effort and context window; no prefix), or an `oStraps:` band above the prompt with the model and context window. ccstatusline is an optional dependency: it needs Node.js and npm, and `setup-statusline` offers to run `npm install -g ccstatusline@~2.2.32` for you. `band-line` needs no install. | • The skill writes `.claude/settings.json` `statusLine` and `.claude/ccstatusline.json` only after the user approves each edit.<br>• `band-line` reads the `git-status` snapshot; neither draws without `git-status`. |
 | Carry working context through compaction | `session-bookmark`, with `harness`: `add-bookmark` | Git state, recent prompts, your session notes (`/harness:add-bookmark <note>`, `--list`, `--clear`) and your `/compact` instructions added to the compacted conversation. | • Compaction hooks capture Git state, the last three prompts, the stored notes, and `/compact` instructions.<br>• Bookmark is appended to the compacted transcript and retained in session state.<br>• The session itself writes each note, so a reference such as "the current status" becomes the facts it stands for; a script stores it (at most 20 notes, 300 characters each). |
 | Keep a project's TODO catalog and its sync checks in view | `todo-watch` | The next TODO items and a live sync status line in a band above the prompt (kept until dismissed), a `TODO_SYNC` drift line in prompt context, and `/todo` with the top items and every finding. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• Watched-file edits re-run the harness `todo_sync` checks; every hook fails open. |
+| Add the open GitHub issues a TODO catalog misses | `harness`: `sync-gh-todo` | One drafted, ranked catalog item per open issue no record mentions, written from the issue text and from the text of any PR review it links, then the catalog renumbered. The edits are saved for you to review and commit. | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• `gh` lists the issues; the script refuses an issue the catalog already records, scores and renumbers the items, and `check` runs after the edit. |
 | Run targeted tests with the intended Python | `pytest-scope` | Optional rewriting of bare `pytest` to your chosen interpreter and rejection of runs without an explicit test file or node ID. | • When configured, Bash hooks rewrite recognized pytest commands to the selected Python.<br>• Scope hooks reject broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override. |
 
 ## Agent process standardization
@@ -240,6 +241,32 @@ entries now fully resolved and the issues that can close. With `--delete-retired
 to `FULLY_IMPLEMENTED` and deletes its stub, but only after it ran a check for every deliverable in the stub;
 a stub with any unproven deliverable is kept and listed.
 
+A project's first catalog comes from `todo_sync.py init`: with `todo.folder` set, it creates the folder, an empty
+schema-valid catalog at `todo.catalog` (default `RepoToDo.json`; the default ranking tables, no items, the
+current commit recorded) and the first snapshot, and refuses to overwrite an existing catalog. It needs a git commit and does not edit `harness.json`.
+
+Open GitHub issues enter the catalog through `todo_sync.py untracked`, which lists the open issues that no record
+covers (an item's `gh_issues` or `gh_issue` source, a tracker or tracker child, a close candidate or a research
+entry; an issue an item only lists in `related_gh_issues` still counts as untracked) and writes each one's text, comments
+and the text of any PR review it links to `<state_dir>/todo-sync/untracked.json`. `todo_sync.py add --spec PATH
+[--dry-run]` inserts one item per issue from a spec file, scores it, renumbers the rest and recounts, and refuses an
+issue the catalog already records. `/harness:sync-gh-todo` runs `untracked` itself (and, when `untracked`
+reports the configured catalog, `todo.catalog` with default `RepoToDo.json`, as `file not found`, runs `init` and
+then `untracked` again), then hands the listed issues to the `todo-editor` agent, which drafts each item from the
+`untracked.json` that run wrote (a best guess for a thin issue, flagged as needing a decision when it turns on a
+choice), runs `add`, and then runs `render` and `check`. A `gh_issue` source needs no `_IMPL_TODO.md` stub.
+
+```text
+/harness:sync-gh-todo
+
+[main session]  todo_sync.py untracked        list open issues no record mentions, write untracked.json
+[main session]  todo_sync.py init             only when untracked reports the catalog file not found,
+                                              then untracked again
+[todo-editor]   draft one item per issue      from the issue text and the text of any linked PR review
+[todo-editor]   todo_sync.py add --spec PATH  insert, score, renumber, recount; refuses a recorded issue
+[todo-editor]   todo_sync.py render, check    new snapshot, then the drift checks
+```
+
 | Key | Default | Used by |
 |---|---|---|
 | `base_branch` | `origin/HEAD`, else `main` | merge bases, `d-w`, `pr-review-watch` |
@@ -269,8 +296,8 @@ a stub with any unproven deliverable is kept and listed.
 | `todo.research.anchor_pattern` | `catalog_entry: <path>#<id>` | rules S1, S4 (named group `id`) |
 | `todo.research.ignore_folders` | `[]` | rule S6 (the folders holding the catalog and the snapshots are excluded automatically) |
 | `todo.plans.pairs` | `true` | rules P1-P4 over `artifacts.plans` |
-| `todo.gh.repo` | `null` (the `origin` remote) | issue fetch (Phase 3) |
-| `todo.gh.max_age_hours` | `24` | rule G5 (Phase 3), `todo-watch` `/todo` summary age suffix |
+| `todo.gh.repo` | `null` (the repository `gh` resolves for the checkout) | `todo_sync.py untracked` |
+| `todo.gh.max_age_hours` | `24` | `todo-watch` `/todo` summary age suffix (no sync rule reads it yet) |
 | `todo.rules.disabled` | `[]` | `todo_sync.py check` skips these rule ids |
 | `todo.rules.warn_counts` | `false` | warn findings count toward the drift number |
 | `todo.inject_context` | `true` | `todo-watch` per-prompt `TODO_SYNC` line |

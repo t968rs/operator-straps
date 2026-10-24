@@ -1,22 +1,28 @@
-"""Split one TODO item into parts, or refresh every item's score and rank; both end by renumbering.
+"""Split one TODO item into parts, add items for open issues, or refresh every item's score and rank; all
+three end by renumbering.
 
-Rule T6 ties each id to its rank, so both operations finish the same way: rescore from ``ranking_method``,
+Rule T6 ties each id to its rank, so the operations finish the same way: rescore from ``ranking_method``,
 sort, renumber ``TODO-<rank>``, map the link lists (``depends_on``, ``unblocks``, tracker ``child_todo_ids``,
 close-candidate ``related_todo_ids``) id for id, and rewrite every other string in one pass. A split's parts
 start as copies of the original item with the spec's fields laid over them; they inherit its links, tracker
 and close candidates. Prose naming the original id is pointed at the first part and listed for a person to
-check, because only a person can say which part a sentence meant.
+check, because only a person can say which part a sentence meant. An added item starts from a spec that names
+its issue and the fields a person judges (title, kind, summary, scoring inputs); the script supplies its
+source, links and score, so the new item takes the rank its score earns and the items below it move down.
 """
 from __future__ import annotations
 
 import copy
+import functools
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from harness_lib.config import HarnessConfig
+from harness_lib.project import plugin_root
 from harness_lib.todo_sync import TodoSyncError
+from harness_lib.todo_sync.issues import catalog_issue_numbers
 from harness_lib.todo_sync.ranking import RankingError, RankingMethod, expected_order, method_from, score
 from harness_lib.todo_sync.retire import (ID_RE, REFERENCE_CAP, companion_edits, dump_like, load_catalog,
                                           normalize_id, other_references, recount, remap_text, todo_id,
@@ -31,7 +37,7 @@ LINKS = {"items": ("depends_on", "unblocks"), "trackers": ("child_todo_ids",),
 
 @dataclass(frozen=True)
 class Reshape:
-    """The catalog after a split or refresh, with what moved."""
+    """The catalog after a split, add or refresh, with what moved."""
 
     catalog: Dict[str, Any]
     renames: Dict[str, str]
@@ -39,6 +45,7 @@ class Reshape:
     rescored: Tuple[str, ...]
     flagged: Tuple[str, ...]
     split: Optional[str] = None
+    added: Tuple[Tuple[str, int], ...] = ()
 
 
 def split_item(catalog: Dict[str, Any], raw_id: str, parts: Sequence[Any]) -> Reshape:
@@ -66,6 +73,132 @@ def refresh_items(catalog: Dict[str, Any]) -> Reshape:
     data = copy.deepcopy(catalog)
     data["items"] = [i for i in data.get("items") or [] if isinstance(i, dict)]
     return _renumber(data, None, None)
+
+
+#: Keys an ``add`` spec item must carry, and those it may carry; everything else is computed or refused.
+ADD_REQUIRED = ("issue", "url", "title", "kind", "summary", "proposed_change", "blast_radius", "loe",
+                "impact", "severity", "why_ranked")
+ADD_OPTIONAL = ("needs_decision", "decision_question", "status", "files", "related_gh_issues", "code_snippet")
+
+
+def add_items(catalog: Dict[str, Any], specs: Sequence[Any]) -> Reshape:
+    """Add one item per spec to a copy of ``catalog`` (its source is the spec's issue), then renumber."""
+    if not specs:
+        raise TodoSyncError("add needs at least one item in the spec")
+    data = copy.deepcopy(catalog)
+    known, listed = catalog_issue_numbers(data), set()
+    built = [_new_item(n, spec, known, listed) for n, spec in enumerate(specs, 1)]
+    data["items"] = [i for i in data.get("items") or [] if isinstance(i, dict)] + built
+    out = _renumber(data, None, None)
+    temps = [str(i["id"]) for i in built]
+    new_ids = tuple(out.renames[t] for t in temps)
+    absorbed = out.catalog["counts"].get("sources_absorbed")
+    if isinstance(absorbed, dict) and isinstance(absorbed.get("gh_issue"), int):
+        absorbed["gh_issue"] += len(built)
+    return replace(out, renames={o: n for o, n in out.renames.items() if o not in temps},
+                   rescored=tuple(r for r in out.rescored if r not in new_ids),
+                   added=tuple(zip(new_ids, (i["gh_issues"][0] for i in built))))
+
+
+def _text(value: Any) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
+def _count(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 1
+
+
+ADD_STATUSES = ("OPEN", "PARTIAL", "NEEDS_DECISION", "BLOCKED")
+#: The schema an added item must pass, under the plugin's ``schemas`` folder.
+ITEM_SCHEMA = "catalogs/TodoCatalog.schema.json"
+_PLACEHOLDER_PRIORITY = {"score": 0, "components": {k: 0 for k in (
+    "impact_weight", "value", "loe_points", "blast_factor", "cost", "base_score", "unblock_bonus")}}
+#: Per spec key: a check on its value and what to say when it fails.
+_TYPE_RULES: Dict[str, Tuple[Callable[[Any], bool], str]] = {
+    **{k: (_text, "a non-empty string") for k in ("url", "title", "kind", "summary", "proposed_change",
+                                                    "impact", "why_ranked")},
+    "severity": (lambda v: _count(v) and v <= 5, "an integer from 1 to 5"),
+    "loe": (lambda v: isinstance(v, dict) and _text(v.get("size")) and _text(v.get("reasoning")),
+            "an object with size and reasoning"),
+    "blast_radius": (lambda v: isinstance(v, dict) and _text(v.get("level")) and _text(v.get("reasoning"))
+                     and isinstance(v.get("consumers"), list), "an object with level, reasoning and consumers"),
+    "needs_decision": (lambda v: isinstance(v, bool), "true or false"),
+    "decision_question": (lambda v: v is None or isinstance(v, str), "a string or null"),
+    "status": (lambda v: v in ADD_STATUSES, f"one of {', '.join(ADD_STATUSES)}"),
+    "files": (lambda v: isinstance(v, list) and all(isinstance(x, str) for x in v), "a list of strings"),
+    "related_gh_issues": (lambda v: isinstance(v, list) and all(_count(x) for x in v),
+                          "a list of issue numbers"),
+    "code_snippet": (lambda v: isinstance(v, str), "a string"),
+}
+
+
+def _check_types(n: int, spec: Dict[str, Any]) -> None:
+    """Refuse a spec value of the wrong base shape with a plain message; ``_check_item`` then holds the built
+    item to the catalog schema."""
+    for key, (valid, wanted) in _TYPE_RULES.items():
+        if key in spec and not valid(spec[key]):
+            raise TodoSyncError(f"item {n}: {key} must be {wanted}")
+
+
+@functools.lru_cache(maxsize=1)
+def _item_validator() -> Any:
+    """A validator for one catalog item: ``$defs/item`` of the harness TodoCatalog schema."""
+    import jsonschema
+    schema = json.loads((plugin_root() / "schemas" / ITEM_SCHEMA).read_text(encoding="utf-8"))
+    return jsonschema.Draft202012Validator(
+        {"$schema": schema["$schema"], "$defs": schema["$defs"], "$ref": "#/$defs/item"})
+
+
+def _check_item(n: int, item: Dict[str, Any]) -> None:
+    """Refuse a built item the catalog schema rejects (enums, patterns, unique lists, the needs_decision
+    rules), before it is scored or written; the computed fields get valid placeholders first."""
+    probe = {**item, "id": "TODO-001", "rank": 1, "priority": _PLACEHOLDER_PRIORITY}
+    errors = sorted(_item_validator().iter_errors(probe), key=lambda e: [str(p) for p in e.absolute_path])
+    if errors:
+        where = "/".join(str(p) for p in errors[0].absolute_path) or "item"
+        raise TodoSyncError(f"item {n}: {where}: {errors[0].message[:200]}")
+
+
+def _new_item(n: int, spec: Any, known: Set[int], listed: Set[int]) -> Dict[str, Any]:
+    """The catalog item for spec item ``n``; id, rank and priority are placeholders the renumber fills."""
+    if not isinstance(spec, dict):
+        raise TodoSyncError(f"item {n} is not an object")
+    for key in spec:
+        if key not in ADD_REQUIRED + ADD_OPTIONAL:
+            raise TodoSyncError(f"item {n} sets {key}; add computes it or does not take it")
+    missing = [k for k in ADD_REQUIRED if k not in spec]
+    if missing:
+        raise TodoSyncError(f"item {n} lacks {', '.join(missing)}")
+    _check_types(n, spec)
+    issue = spec["issue"]
+    if isinstance(issue, bool) or not isinstance(issue, int) or issue < 1:
+        raise TodoSyncError(f"item {n}: issue must be a positive integer")
+    if issue in listed:
+        raise TodoSyncError(f"issue #{issue} appears twice in the spec")
+    if issue in known:
+        raise TodoSyncError(f"issue #{issue} is already in the catalog (item {n})")
+    listed.add(issue)
+    item = _item_fields(n, spec)
+    _check_item(n, item)
+    return item
+
+
+def _item_fields(n: int, spec: Dict[str, Any]) -> Dict[str, Any]:
+    """The item's keys in schema order, with the spec's values and the defaults of the optional ones."""
+    issue = spec["issue"]
+    item: Dict[str, Any] = {
+        "id": f"add-new-{n}", "rank": 0, "title": spec["title"], "kind": spec["kind"],
+        "status": spec.get("status", "OPEN"), "needs_decision": spec.get("needs_decision", False),
+        "decision_question": spec.get("decision_question"), "tracker": None,
+        "sources": [{"type": "gh_issue", "ref": f"#{issue}", "url": spec["url"]}], "gh_issues": [issue],
+        "related_gh_issues": list(spec.get("related_gh_issues") or []), "catalog_entry_ids": [],
+        "summary": spec["summary"], "proposed_change": spec["proposed_change"]}
+    if "code_snippet" in spec:
+        item["code_snippet"] = spec["code_snippet"]
+    item.update({"files": list(spec.get("files") or []), "blast_radius": spec["blast_radius"],
+                 "loe": spec["loe"], "impact": spec["impact"], "severity": spec["severity"], "priority": {},
+                 "depends_on": [], "unblocks": [], "why_ranked": spec["why_ranked"]})
+    return item
 
 
 def _build_parts(orig: Dict[str, Any], parts: Sequence[Any], known: Set[str]) -> List[Dict[str, Any]]:
@@ -222,7 +355,8 @@ def _record(record: Any, where: str, fields: Tuple[str, ...], moved: Dict[str, s
 
 @dataclass(frozen=True)
 class ReshapeResult:
-    """What ``apply_split`` or ``apply_refresh`` changed (or would change) and what it left for a person."""
+    """What ``apply_split``, ``apply_add`` or ``apply_refresh`` changed (or would change) and what it left
+    for a person."""
 
     reshape: Reshape
     rewritten: Tuple[str, ...]
@@ -230,21 +364,30 @@ class ReshapeResult:
     references: Tuple[str, ...]
 
 
-def read_spec(path: Path) -> List[Any]:
-    """The ``parts`` list of a split spec file: ``{"parts": [{...}, {...}]}``."""
+def read_spec(path: Path, key: str = "parts") -> List[Any]:
+    """The ``key`` list of a spec file: ``{"parts": [{...}, {...}]}`` for a split, ``{"items": [...]}`` for
+    an add."""
+    what = "split spec" if key == "parts" else "add spec"
     try:
         doc = json.loads(path.read_bytes().decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise TodoSyncError(f"split spec {path}: unreadable: {exc}") from exc
-    if not isinstance(doc, dict) or not isinstance(doc.get("parts"), list):
-        raise TodoSyncError(f"split spec {path}: expected an object with a 'parts' list")
-    return doc["parts"]
+        raise TodoSyncError(f"{what} {path}: unreadable: {exc}") from exc
+    if not isinstance(doc, dict) or not isinstance(doc.get(key), list):
+        raise TodoSyncError(f"{what} {path}: expected an object with a '{key}' list")
+    return doc[key]
 
 
 def apply_split(cfg: HarnessConfig, raw_id: str, spec: Path, dry_run: bool = False) -> ReshapeResult:
     """Split one item of the project's catalog per ``spec`` and rewrite moved ids in its companions."""
     parts = read_spec(spec)
     return _apply(cfg, "split", lambda data: split_item(data, raw_id, parts), dry_run)
+
+
+def apply_add(cfg: HarnessConfig, spec: Path, dry_run: bool = False) -> ReshapeResult:
+    """Add the items of the ``add`` spec file to the project's catalog and rewrite moved ids in its
+    companions."""
+    specs = read_spec(spec, "items")
+    return _apply(cfg, "add", lambda data: add_items(data, specs), dry_run)
 
 
 def apply_refresh(cfg: HarnessConfig, dry_run: bool = False) -> ReshapeResult:
@@ -271,23 +414,31 @@ def summary_lines(result: ReshapeResult, dry_run: bool) -> List[str]:
     """The driver's report: what moved, what was rewritten and the prose left for a person to check."""
     out = result.reshape
     count = len(out.catalog["items"])
-    if out.split is not None:
-        head = f"{'would split' if dry_run else 'split'} {out.split} into {', '.join(out.parts)}"
-    else:
-        head = f"{'would refresh' if dry_run else 'refreshed'} {count} item(s)"
-    lines = [f"{head}; {count} item(s) now" if out.split is not None else head]
+    changed = out.split is not None or bool(out.added)
+    lines = [_head(out, dry_run, count)]
     if out.rescored:
         lines.append(f"rescored {len(out.rescored)} item(s): {', '.join(out.rescored)}")
     if out.renames:
         lines.append(f"renumbered {len(out.renames)} item(s): "
                      + ", ".join(f"{old}->{new}" for old, new in out.renames.items()))
-    if out.split is None and not out.rescored and not out.renames:
+    if not changed and not out.rescored and not out.renames:
         lines.append("nothing changed")
     lines.extend(f"rewrote ids in {rel}" for rel in result.rewritten)
     lines.extend(f"review: {note}" for note in result.flagged)
     lines.extend(f"reference (not rewritten): {ref}" for ref in result.references[:REFERENCE_CAP])
     if len(result.references) > REFERENCE_CAP:
         lines.append(f"... {len(result.references) - REFERENCE_CAP} more reference(s)")
-    if not dry_run and (out.split is not None or out.rescored or out.renames):
+    if not dry_run and (changed or out.rescored or out.renames):
         lines.append("next: todo_sync.py render, then todo_sync.py check")
     return lines
+
+
+def _head(out: Reshape, dry_run: bool, count: int) -> str:
+    """The first report line: what a split, an add or a refresh did to the catalog."""
+    if out.split is not None:
+        return f"{'would split' if dry_run else 'split'} {out.split} into {', '.join(out.parts)}; " \
+               f"{count} item(s) now"
+    if out.added:
+        added = ", ".join(f"{item} (#{issue})" for item, issue in out.added)
+        return f"{'would add' if dry_run else 'added'} {added}; {count} item(s) now"
+    return f"{'would refresh' if dry_run else 'refreshed'} {count} item(s)"
