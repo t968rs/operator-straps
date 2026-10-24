@@ -28,8 +28,9 @@ GROUP_SEP = "---"
 
 # The one statement of how a saved commit message may change; the build receipt, the TXT guard hook and the
 # harness rules all repeat it word for word.
-CHANGE_ROUTE = ("A message changes only on the developer's ask: harness:amend-commit-msg -- <change> for a "
-                "branch TXT, harness:c-msg <change> for a pending TXT.")
+CHANGE_ROUTE = ("A message changes only on the developer's ask: harness:amend-commit-msg [--base <sha7>] -- "
+                "<change> for a branch TXT (the --base its draft used), harness:c-msg <change> for a "
+                "pending TXT.")
 
 # "Commit 1 - Runtime+Test (5 files)" or legacy "Commit 1 — runtime (5 files) [COMMITTED f0d4360d]"
 _COMMIT_HEADER = re.compile(

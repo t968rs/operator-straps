@@ -2,7 +2,7 @@
 name: c-msg
 description: Use when asked to draft a single commit message for the current pending or staged change. Triggers on "write a commit message", "draft commit msg", "commit message for this", "c-msg". For breaking an entire branch into multiple commits, use harness:branch-commit-msg instead.
 argument-hint: "[what to change in the saved message]"
-model: haiku
+model: sonnet
 context: fork
 agent: harness:messenger
 ---

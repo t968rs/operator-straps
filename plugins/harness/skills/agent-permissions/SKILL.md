@@ -28,11 +28,11 @@ The harness plugin ships the hooks and wires them in its own `hooks/hooks.json` 
 |---|---|---|---|
 | Bash | `bash_discipline.py` (denies `;`/`&&` chains, with construct and heredoc exemptions; off when the plugin option `bash_discipline` is false) | `bash_allow_shapes.py` (auto-allows recognized shapes); `approve_python_c.py` (`python -c` one-liners, only when the project's `.claude/harness.json` sets `auto_approve_python_c: true`) | `Bash` |
 | PowerShell | none | `powershell_allow_shapes.py` (pipelines only, single-stage defers) | `PowerShell` |
-| Write, Edit | `guard_commit_txt.py` (denies hand edits of `.txt` files under `artifacts.commit_messages`, except `PR<NNN>_merge.txt`; those files are `build` output) | none | `Write\|Edit` |
+| Write, Edit | `guard_commit_txt.py` (denies Write and Edit tool calls on `.txt` files under `artifacts.commit_messages`, except `PR<NNN>_merge.txt`; those files are `build` output; shell writes are covered only by the standing rule) | none | `Write\|Edit` |
 
 The `hooks.json` matchers route each hook to its tool; `approve_python_c.py` and `powershell_allow_shapes.py`
-also check `tool_name` as a second guard, while `bash_discipline.py` and `bash_allow_shapes.py` rely on the
-matcher alone. Allow-shapes hooks never block;
+also check `tool_name` as a second guard, while `bash_discipline.py`, `bash_allow_shapes.py` and
+`guard_commit_txt.py` rely on the matcher alone. Allow-shapes hooks never block;
 they either emit `allow` or stay silent. A deny from `bash_discipline.py` wins over any allow.
 
 ## Process (Mandatory)
@@ -103,7 +103,7 @@ All of these mean: stop, re-read this skill, follow the process.
 
 ## Files
 
-- Hooks: `${CLAUDE_PLUGIN_ROOT}/hooks/{bash_discipline,bash_allow_shapes,powershell_allow_shapes,approve_python_c}.py`
+- Hooks: `${CLAUDE_PLUGIN_ROOT}/hooks/{bash_discipline,bash_allow_shapes,powershell_allow_shapes,approve_python_c,guard_commit_txt}.py`
 - Hook wiring: `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`
 - Allowlist (single source of truth): `<project>/.claude/settings.json` (+ `settings.local.json`) and the user settings directory
 - Project opt-ins: `<project>/.claude/harness.json` (`auto_approve_python_c`); plugin options `bash_discipline`, `inject_rules`

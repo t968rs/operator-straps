@@ -1,0 +1,438 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 94,
+  "pr_title": "Fix(commit-msg): pass the developer's --base to the fork and keep sav…",
+  "branch": "1076-BUG-commit-messages",
+  "base_branch": "main",
+  "base_sha": "976bdc68aee47276828e570219c3dca3c6da15d0",
+  "head_sha": "34ad501cfb96169dc0df988e0014406681d4e6e7",
+  "review_date": "2026-10-24",
+  "verdict": "READY TO MERGE - 13 of 13 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 692,
+    "deletions": 15,
+    "files_changed": 20
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0094/pr94_20261024T141704Z/findings/tests.json",
+    "docs/_scratch/pr_review/0094/pr94_20261024T141704Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0094/pr94_20261024T141704Z/findings/docs.json",
+    "docs/_scratch/pr_review/0094/pr94_20261024T141704Z/findings/overall.json",
+    "docs/_scratch/pr_review/0094/pr94_20261024T141704Z/findings/system_shape.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_guard_commit_txt.py runs the real hook as a subprocess against make_project repos: no stubs, deny and allow cases both asserted through the documented hookSpecificOutput shape.",
+    "The configured-folder test checks both directions (custom folder denied, default folder allowed), so a hard-coded default path would fail.",
+    "The branch-commit-msg contract test renders $ARGUMENTS the way the fork does and pins that the value lands only on the label and the capture command, which directly guards the dropped --base regression.",
+    "Receipt [canned] tagging is tested both ways (canned tagged, drafted untagged) through real capture and build on a git clone.",
+    "CHANGE_ROUTE is imported from harness_lib in the rules, receipt and hook tests, so the three restatements cannot drift apart silently.",
+    "Every test in scope is behavioral or a text contract; no mock-chain wiring tests.",
+    "CHANGE_ROUTE is one constant consumed by the receipt, the guard reason and HARNESS_RULES.md, with tests asserting each copy, so the three statements cannot drift.",
+    "guard_commit_txt fails open on unparseable stdin, missing file_path, relative paths, ConfigError and a missing git, matching the hook's documented never-block contract.",
+    "The guard resolves the project from the target file's own directory, so an Edit into a linked worktree's commit_messages folder is judged against that worktree's config, not the session cwd.",
+    "Allow-list is precise: .json skeletons and .txt.bak backups fail the .txt suffix test, and PR<NNN>_merge.txt (the one Write-tool producer) is exempt by name, case-insensitively.",
+    "The [canned] receipt tag reuses get_canned_message on the block's files, so the tag cannot disagree with what capture prefilled.",
+    "CHANGE_ROUTE is one string in commit_txt.py that the receipt FINAL_LINE, the hook REASON and the HARNESS_RULES bullet all end with, and each consumer has a test pinning it, so the three routes cannot drift apart silently.",
+    "The branch-commit-msg and c-msg arguments lines are pinned by contract tests that render both a real value and a blank $ARGUMENTS, checking the value lands only on the label and command lines, which directly targets the #92 misreading.",
+    "messenger.md now covers both dispatch shapes: a forked skill prompt is followed as given, and a skill read from disk gets $ARGUMENTS replaced first, closing the second exposure the findings doc identified.",
+    "The plan's Review Focus lists each guard edge case (merge TXT, nested branch folder, .json/.txt.bak, moved commit_messages folder, blank arguments) and ties each to a named test.",
+    "One CHANGE_ROUTE constant in commit_txt.py feeds the receipt FINAL_LINE and the hook REASON, and test_session_rules.py pins the rules bullet to it, so the three channels cannot drift apart.",
+    "Hook tests run the real hook as a subprocess against make_project repos: nested branch TXT, a Write into a new subfolder, the PR<NNN>_merge.txt exception, .json and .txt.bak, a moved artifacts.commit_messages folder, and file-project-over-session-cwd resolution.",
+    "Skill contract tests render $ARGUMENTS the way the fork does and assert the value lands only on the labeled line and the capture command, which targets the exact #92 misreading.",
+    "Receipt tagging is tested behaviorally through run_build on a real clone, with a canned block tagged and a drafted block left untagged.",
+    "The hook reason routes every change behind the developer ask and drops the skeleton-rebuild route that could overwrite TXT edits; a test pins that skeleton and build do not reappear as a route.",
+    "Cross-file bookkeeping is complete: hooks.json registration, test_hooks_json_paths EXPECTED, agent-permissions table, README, and the 0.28.0 version bump.",
+    "CHANGE_ROUTE is one constant; FINAL_LINE, the hook REASON and the HARNESS_RULES bullet are each pinned to it by test.",
+    "test_guard_commit_txt.py runs the real hook as a subprocess over make_project trees: configured folder, nested TXT, merge TXT, skeleton and .bak exemptions, file project over cwd, fail-open.",
+    "Skill contract tests render $ARGUMENTS as the fork sees it and pin where the value lands, targeting the #92 root cause.",
+    "Hook registration moved in lockstep: hooks.json, test_hooks_json_paths EXPECTED, agent-permissions table, README, 0.28.0 bump.",
+    "Capture prefers a carried message over the canned one (branch_commit_msg.py:281) and the [canned] tag needs an exact match, so a requested change survives a bare rerun."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "amend-commit-msg keeps canned blocks unconditionally, contradicting the change route",
+        "file": "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "README.md",
+          "plugins/harness/lib/harness_lib/commit_txt.py",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "58-60",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "README.md:182-183, CHANGE_ROUTE and HARNESS_RULES.md:33-34 name amend-commit-msg -- <change> as the route that changes a saved branch message, canned included. amend-commit-msg/SKILL.md:58-60 still says a canned block is not touched, keep it as it stands, with no exception when the change names it. c-msg got that override (c-msg/SKILL.md:45-47, even when carried or canned); amend did not.",
+        "fix": [
+          "Amend SKILL.md:58-60: unless the change text names that block, it is not touched; a change that names it rewrites it in Step 4. Pin the wording in a contract test."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "c-msg gains a free-form $ARGUMENTS input but stays on haiku, the model the findings blame for #92",
+        "file": "plugins/harness/skills/c-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/c-msg/SKILL.md",
+          "docs/RESEARCH/1076_commit_msg_findings.md",
+          "tests/skills/test_c_msg_skill_contract.py",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "5,12-13,45-47",
+        "reviewer": "system_shape, docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Findings doc line 14 traces #92 to the haiku fork misreading a substituted value; A3 (line 56) moves branch-commit-msg to sonnet on top of the label line. c-msg now has the same shape (labeled $ARGUMENTS, c-msg/SKILL.md:12-13) plus a judgment rewrite in Step 2, yet stays model: haiku (line 5). The argument is the only route to change a pending message; a dropped argument still yields a Final as saved receipt. No doc says why A1 alone suffices here.\n\nAlso (docs): The findings doc attributes #92 to the haiku fork misreading a substituted $ARGUMENTS value as an illustration, and A3 moves branch-commit-msg to sonnet for that reason. This PR gives c-msg the same failure surface (a labeled $ARGUMENTS line whose value overrides a carried or canned message in Step 2) while its frontmatter keeps model: haiku, and no live forked run with a change argument is recorded (the Evidence section lists only the branch-commit-msg live run as not run).\n\nAlso (overall): The new label makes every non-blank $ARGUMENTS the developer ask to rewrite the saved message, and Step 2 then rewrites even a carried or canned message. A main session that invokes harness:c-msg with descriptive args (for example: for the staged change) now triggers a rewrite of a canned or carried message, the outcome #93 set out to stop; the fork still runs on haiku, the model the research found misreading substituted arguments.",
+        "fix": [
+          "Set model: sonnet in c-msg/SKILL.md and pin it in test_c_msg_skill_contract.py.",
+          "Or record in the findings doc why haiku suffices for c-msg and list a live /harness:c-msg <change> run under Not run.",
+          "Set c-msg frontmatter model to sonnet, matching the A3 rationale, and pin it in tests/skills/test_c_msg_skill_contract.py",
+          "Or keep haiku and record a live '/harness:c-msg <change>' fork run in the findings doc Evidence section as the justification",
+          "Tighten the label text: only an explicit instruction to change the saved message (subject, type, body, bullets) counts as a requested change; any other argument is treated as blank and reported.",
+          "Add to the HARNESS_RULES bullet that harness:c-msg runs without arguments unless the developer asked for a specific change, and pin it in test_session_rules.py."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Session-cwd test leaves the hook process cwd at the project root",
+        "file": "tests/hooks/test_guard_commit_txt.py",
+        "files": [
+          "tests/hooks/test_guard_commit_txt.py",
+          "plugins/harness/hooks/guard_commit_txt.py"
+        ],
+        "lines": "25-29,80-82",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_file_project_wins_over_the_session_cwd sets only the payload cwd to tmp_path; _call always runs the hook subprocess with cwd=root (line 29 passes `root` to _run). In a real session the process cwd and the payload cwd are both the session cwd. A regression that resolved the project from os.getcwd() (the hook's last fallback in _config_for) before the file's directory would still find the project and deny, so the test cannot catch it.",
+        "fix": [
+          "In _call, run the hook with the session cwd as the process cwd too: `return _run(json.dumps(payload), cwd or root)`.",
+          "Or add a dedicated test that calls _run(json.dumps(payload), tmp_path) with the payload cwd also set to tmp_path and asserts the deny."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README overstates what the TXT guard hook blocks",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/agent-permissions/SKILL.md",
+          "plugins/harness/hooks/guard_commit_txt.py",
+          "plugins/harness/skills/c-msg/SKILL.md"
+        ],
+        "lines": "104-114,182-183,185-186,220-221",
+        "reviewer": "docs, system_shape, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "README says the PreToolUse hook 'denies hand edits of the saved .txt files', and the agent-permissions table says the same. guard_commit_txt.py is registered on 'Write|Edit' only, so a Bash heredoc, '>' redirection or sed -i on the TXT (the hand-write forms c-msg's Common Mistakes table lists) passes untouched.\n\nAlso (system_shape): README.md:185-186 says the hook denies hand edits of the saved .txt files; the matcher is Write|Edit only. Bash redirects, heredocs and PowerShell writes pass, and c-msg/SKILL.md:74 names heredoc and > as hand-writing routes.\n\nAlso (system_shape): README shows only a bare /harness:c-msg (line 106); the argument appears only in the canned bullet (183), with no note that a bare rerun keeps the carried message. amend-commit-msg has a usage section (144-161); c-msg has none.\n\nAlso (overall): README and the agent-permissions table say the hook denies hand edits of the saved .txt files, but it is matched only to Write|Edit. A denied session can still rewrite the TXT with a Bash heredoc or redirect, or PowerShell Set-Content (the forms the c-msg Common Mistakes table lists), so the stated guarantee is broader than the enforcement.",
+        "fix": [
+          "Reword to 'denies Write and Edit tool calls on the saved .txt files' in README.md:185-186 and in the agent-permissions table row",
+          "Reword to: denies Write and Edit tool calls on the saved .txt files; note in the hook docstring that shell writes are left to the standing rule.",
+          "Add a c-msg usage note near line 114 with /harness:c-msg <change> and the bare-rerun behavior.",
+          "Reword README and agent-permissions to: denies Write and Edit tool calls on the saved .txt files; shell writes are covered only by the standing rule.",
+          "Or extend enforcement: have bash_discipline and powershell_allow_shapes deny a redirect or Set-Content/Out-File whose target is a guarded TXT (reuse guarded())."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Findings Evidence table omits the review fix pass",
+        "file": "docs/RESEARCH/1076_commit_msg_findings.md",
+        "lines": "58,65-77",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The Evidence section lists B2 as FINAL_LINE in branch_commit_msg.py and has no row for the review fix pass the plan records (plan lines 163-176): CHANGE_ROUTE in lib/harness_lib/commit_txt.py, the c-msg requested-change argument, and the messenger $ARGUMENTS replacement. Its test column omits tests/skills/test_c_msg_skill_contract.py, so the c-msg SKILL.md change has no evidence entry.\n\nAlso (overall): The Evidence table lists B2, B3, A1/A3, A2 and B1 but not the review fix pass the plan records: the CHANGE_ROUTE constant, the c-msg requested-change argument (tests/skills/test_c_msg_skill_contract.py) and the messenger $ARGUMENTS replacement rule (test_a_skill_read_from_disk_gets_the_dispatchers_arguments). A reader of the merged doc cannot map those changes to tests.\n\nAlso (system_shape): Lines 65-77 list only A1-A3 and B1-B3. Missing: CHANGE_ROUTE, the c-msg change argument with test_c_msg_skill_contract.py, the messenger $ARGUMENTS replacement rule, README and agent-permissions rows. Option B2 (line 58) still names only amend-commit-msg.",
+        "fix": [
+          "Add a row: 'Review fix pass | CHANGE_ROUTE (lib/harness_lib/commit_txt.py), c-msg requested-change line and Step 2, messenger $ARGUMENTS replacement | tests/skills/test_c_msg_skill_contract.py, tests/hooks/test_session_rules.py, tests/hooks/test_guard_commit_txt.py' and note in the B2 row that FINAL_LINE ends with CHANGE_ROUTE",
+          "Add rows for CHANGE_ROUTE (commit_txt.py; pinned by test_session_rules.py, test_branch_commit_msg.py, test_guard_commit_txt.py) and for the c-msg argument (skills/c-msg/SKILL.md; tests/skills/test_c_msg_skill_contract.py).",
+          "Add evidence rows for the review fix pass; amend B2 to name CHANGE_ROUTE."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Plan Task 2 project-resolution rule drifts from the hook",
+        "file": "docs/superpowers/plans/2026-10-24-commit-msg-guards.md",
+        "files": [
+          "docs/superpowers/plans/2026-10-24-commit-msg-guards.md",
+          "plugins/harness/hooks/guard_commit_txt.py"
+        ],
+        "lines": "51,76-80,151-154",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Plan Task 2 Interfaces says the project comes from 'the file's parent directory when it exists, else the payload cwd'. guard_commit_txt.py (_existing_dir, docstring line 10-11) walks to the nearest existing ancestor directory, so a Write into a not-yet-created commit_messages subfolder (feat/x.txt on a fresh branch) still resolves the project from the file. The review fix pass section does not supersede this wording.\n\nAlso (system_shape): Task 1 FINAL_LINE (line 51), Task 2 deny reason with the skeleton route (79-80) and Task 5 bullet (151-154) match no code; only the trailing Review fix pass (163-176) supersedes them.",
+        "fix": [
+          "Change plan line 76-77 to 'the project comes from the file's nearest existing ancestor directory, else the payload cwd'",
+          "Mark each inline as superseded (see Review fix pass) or replace with the shipped CHANGE_ROUTE text."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Docstring promises a payload-cwd fallback the code effectively never takes",
+        "file": "plugins/harness/hooks/guard_commit_txt.py",
+        "files": [
+          "plugins/harness/hooks/guard_commit_txt.py",
+          "plugins/harness/hooks/hooks.json"
+        ],
+        "lines": "2-7,10-11,48-60",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The module docstring (lines 10-11) and _config_for say the project is the target file's nearest existing directory, else the payload cwd. _existing_dir walks path.parents, which always ends at the drive/root anchor, so for any absolute path on an existing volume it returns a directory and the cwd branch is dead. When that directory is outside every git repo, project_root falls back to CLAUDE_PROJECT_DIR (then the directory itself), not the payload cwd, so the stated fallback order is wrong.\n\nAlso (runtime): The hook is registered for `Write|Edit` only, so `sed -i`, a heredoc redirect, `python -c` or PowerShell Set-Content on <branch>.txt still lands. The deny reason tells the session the file is final, but a session that treats the denial as a tool obstacle can retry through the shell, which is the exact unasked rewrite the guard exists to stop. The docstring is accurate about scope, so this is a coverage gap rather than a contract break.",
+        "fix": [
+          "Reword the docstrings: the project is the git top level of the target's nearest existing directory, else CLAUDE_PROJECT_DIR, else that directory (project_root's order); drop the cwd branch or keep it only for a path whose anchor does not exist.",
+          "Alternatively pass the payload cwd to project_root when _git_toplevel of the nearest directory fails, to make the documented fallback real.",
+          "Document the gap in the module docstring and README line 185-186 (guard covers the file tools only).",
+          "Or add a Bash/PowerShell check (in bash_discipline.py or a sibling) that denies commands naming a .txt under artifacts.commit_messages with a write operator (>, >>, sed -i, tee, Set-Content, Out-File), reusing REASON."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Guard spawns git and loads config on every Write/Edit before the cheap name check",
+        "file": "plugins/harness/hooks/guard_commit_txt.py",
+        "lines": "36-45,79-88",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "main() calls _config_for (nearest-dir walk, `git rev-parse --show-toplevel` subprocess, load_config, activate) for every Write or Edit payload, and only then does guarded() reject non-.txt names. Every file edit in every session pays a git process plus a config parse (noticeable on Windows) to answer a question the filename alone settles for nearly all calls; a broken harness.json is also reparsed on each edit.\n\nAlso (overall): main() calls _config_for (git rev-parse via project_root, harness.json read, jsonschema validation) for every Write or Edit in every session, and only then does guarded() reject a non-.txt name. Nearly all edits target .py/.md files, so each one pays the config load and a git subprocess for nothing; the suffix and PR<NNN>_merge.txt checks need no config.",
+        "fix": [
+          "In main(), return 0 before _config_for unless file_path.name.lower().endswith('.txt') and not _MERGE_TXT.match(file_path.name); e.g. split the name test out of guarded() into a _txt_candidate(path) helper and call it first.",
+          "In main(), return 0 before _config_for when file_path.name.lower() does not end with .txt or _MERGE_TXT matches it (split a name-only predicate out of guarded() and call it first).",
+          "Add a test that a .py Write produces no output, so the fast path stays covered."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "CHANGE_ROUTE names no capture arguments, so it misses a --base TXT",
+        "file": "plugins/harness/lib/harness_lib/commit_txt.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/commit_txt.py",
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "README.md",
+          "tests/hooks/test_session_rules.py",
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/hooks/guard_commit_txt.py"
+        ],
+        "lines": "50-51",
+        "reviewer": "system_shape, docs, overall, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The route harness:amend-commit-msg -- <change> (relayed verbatim via FINAL_LINE, hook REASON, HARNESS_RULES.md:34) targets <branch>.txt; a --base draft lives in <branch>_<sha7>.txt and needs --base <sha7> (amend-commit-msg/SKILL.md:40-44).\n\nAlso (docs, overall): The B1 rule (and the receipt's FINAL_LINE / hook REASON, all built from CHANGE_ROUTE) names 'harness:amend-commit-msg -- <change>' as the route for a branch TXT. A branch-commit-msg run with --base REF saves <branch>_<sha7>.txt, and amend-commit-msg only targets that file when given the same --base (amend SKILL.md Step 1). Followed literally after a --base draft, the stated route amends <branch>.txt when one exists (the wrong ledger) or exits 'no TXT to amend'.\n\nAlso (overall): The B1 bullet covers only When harness:c-msg or harness:branch-commit-msg returns. harness:amend-commit-msg also finishes with branch_commit_msg.py build and prints the same receipt ending in FINAL_LINE, but the standing rule does not tell the main session to relay that receipt and the amended TXT unchanged, so a post-amend rewrite in chat falls outside the rule.\n\nAlso (runtime): FINAL_LINE and the guard REASON both end with the static CHANGE_ROUTE `harness:amend-commit-msg -- <change> for a branch TXT`. For a build that wrote <branch>_<sha7>.txt (a --base skeleton) or a denied Edit of that file, following the route literally captures --edit against <branch>.txt: it amends the wrong draft when a branch TXT exists, or fails with `no TXT to amend`. amend-commit-msg only recovers by suggesting --base <sha7> after the failure.",
+        "fix": [
+          "Make CHANGE_ROUTE read harness:amend-commit-msg [--base <sha7>] -- <change> and mirror it in HARNESS_RULES.md:33-34.",
+          "Extend CHANGE_ROUTE to 'harness:amend-commit-msg [--base <sha7>] -- <change> for a branch TXT (the --base the draft used)' and update the rule text in HARNESS_RULES.md so test_rules_keep_drafted_commit_messages still matches",
+          "Alternatively have the receipt for a --base run print the exact amend command with that sha7, and say so in the rule",
+          "Name harness:amend-commit-msg in the bullet (When harness:c-msg, harness:branch-commit-msg or harness:amend-commit-msg returns) and extend test_rules_keep_drafted_commit_messages to assert it; keep the file under RULES_LIMIT.",
+          "Have receipt() append the base hint when the payload carries txt_suffix (e.g. `harness:amend-commit-msg --base <sha7> -- <change>`), passing the suffix from _cmd_build.",
+          "Or extend CHANGE_ROUTE to read `harness:amend-commit-msg [--base <sha7>] -- <change>` so the route names the based form; HARNESS_RULES.md and the drift tests follow the constant."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "agent-permissions prose and Files list skip the new hook",
+        "file": "plugins/harness/skills/agent-permissions/SKILL.md",
+        "lines": "33-35,106",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The new table row adds guard_commit_txt.py, but the paragraph under the table still enumerates which hooks check tool_name versus rely on the matcher alone without it (guard_commit_txt.py never checks tool_name), and the Files section hook list stays {bash_discipline,bash_allow_shapes,powershell_allow_shapes,approve_python_c}.\n\nAlso (system_shape): SKILL.md:33-35 sorts hooks into tool_name checkers and matcher-only; guard_commit_txt.py (never reads tool_name) is missing, and the Which tool flowchart (42-54) has no Write/Edit branch.",
+        "fix": [
+          "Line 34: 'while bash_discipline.py, bash_allow_shapes.py and guard_commit_txt.py rely on the matcher alone'; line 106: add guard_commit_txt to the brace list",
+          "Add guard_commit_txt.py to the rely-on-the-matcher-alone list at lines 33-35; optionally add a Write/Edit flowchart branch."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Rewritten branch-commit-msg sentence breaks the file's line wrap",
+        "file": "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "lines": "38-41",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The rewritten arguments paragraph runs line 39 to about 170 characters while the surrounding prose wraps near 110-115, leaving a ragged paragraph in the one passage this PR rewrote.\n\nAlso (overall): The edited sentence put Add none, --fresh included, and drop none. A bare REF and --base REF are the same (one ref as the ... on one line of about 150 characters while the rest of the file wraps near 115.",
+        "fix": [
+          "Reflow lines 38-41 to the file's ~110-character wrap without changing wording",
+          "Rewrap lines 38-41 of the paragraph to the usual width of the file."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Guard hook's documented fail-open and case rules have no test",
+        "file": "tests/hooks/test_guard_commit_txt.py",
+        "files": [
+          "tests/hooks/test_guard_commit_txt.py",
+          "plugins/harness/hooks/guard_commit_txt.py"
+        ],
+        "lines": "92-99",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The hook docstring promises that an unusable harness config never blocks, _file_path refuses a relative file_path, and guarded() matches `.txt` and `PR<N>_merge.txt` case-insensitively. The test module covers garbage stdin and a missing file_path only; a malformed .claude/harness.json, a relative file_path, `B.TXT` and `pr12_MERGE.txt` are unpinned, so a change that blocks on a bad config or drops the case folding passes the suite.\n\nAlso (overall): The hook docstring promises an unusable harness config never blocks, and _config_for catches ConfigError/OSError for that, but test_guard_commit_txt.py only covers non-JSON stdin and a payload without file_path. A regression that lets a malformed .claude/harness.json raise (exit 1, an error on every Write/Edit) or deny would pass the suite.",
+        "fix": [
+          "Add tests: a project whose .claude/harness.json is invalid JSON (files={'.claude/harness.json': '{'}) is not denied; a payload with a relative file_path is not denied; `docs/_commit_messages/B.TXT` is denied; `docs/_commit_messages/pr12_MERGE.txt` is allowed.",
+          "Add a test: make_project with a .claude/harness.json holding invalid JSON (or an unknown key), Edit on docs/_commit_messages/b.txt, assert returncode 0 and empty stdout."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "c-msg contract test does not pin the fork frontmatter or the CHANGE_ROUTE spelling",
+        "file": "tests/skills/test_c_msg_skill_contract.py",
+        "files": [
+          "tests/skills/test_c_msg_skill_contract.py",
+          "plugins/harness/lib/harness_lib/commit_txt.py",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "tests/skills/test_branch_commit_msg_skill_contract.py"
+        ],
+        "lines": "1-30",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The messenger rule pinned in test_messenger_agent_contract.py holds only for a skill run with `context: fork` and `agent: harness:messenger`; the branch-commit-msg test pins both (test_fork_runs_on_sonnet) but the c-msg test does not. The c-msg docstring also says its argument is 'the route the receipt and the standing rules name', yet nothing ties CHANGE_ROUTE's `harness:c-msg <change>` (and `harness:amend-commit-msg -- <change>`) to the skills' argument-hint lines, so the routes can drift from what the skills accept.\n\nAlso (tests): _split and _frontmatter are copied verbatim between test_branch_commit_msg_skill_contract.py (lines 22-31) and test_c_msg_skill_contract.py (lines 18-26), differing only in the path. A parser fix (for example a quoted value holding a colon) has to land twice.",
+        "fix": [
+          "Add `assert (meta['context'], meta['agent']) == ('fork', 'harness:messenger')` for c-msg.",
+          "Add a test that imports CHANGE_ROUTE and asserts it contains `harness:c-msg <change>` while the c-msg argument-hint takes a free-text change, and that the amend-commit-msg argument-hint carries `-- <`.",
+          "Move a `skill_parts(path) -> Tuple[Dict[str, str], str]` helper into tests/lib (beside _commit_helpers) and import it from both modules."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 94 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"34ad501cfb96169dc0df988e0014406681d4e6e7\",\"headRefName\":\"1076-BUG-commit-messages\",\"headRefOid\":\"34ad501cfb96169dc0df988e0014406681d4e6e7\",\"last_sha\":\"34ad501cfb96169dc0df988e0014406681d4e6e7\",\"mergeCommit\":null,\"number\":94,\"state\":\"OPEN\",\"title\":\"Fix(commit-msg): pass the developer's --base to the fork and keep sav…\",\"url\":\"https://github.com/t968rs/operator-straps/pull/94\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1076-BUG-commit-messages",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1076-BUG-commit-messages",
+        "head_ref_name": "1076-BUG-commit-messages",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "34ad501cfb96169dc0df988e0014406681d4e6e7",
+        "head_sha": "34ad501cfb96169dc0df988e0014406681d4e6e7",
+        "base_ancestor_command": "git merge-base --is-ancestor 34ad501cfb96169dc0df988e0014406681d4e6e7 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 34ad501cfb96169dc0df988e0014406681d4e6e7 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - README and agent-permissions row now say the hook denies Write and Edit tool calls, shell writes covered only by the standing rule; hook docstring states the scope; README adds a c-msg <change> / bare-rerun usage note"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - module and _config_for docstrings now state project_root's order (git top level, CLAUDE_PROJECT_DIR, the directory) from the nearest existing directory, payload cwd only when no ancestor exists; hooks.json cited only, matcher unchanged"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - CHANGE_ROUTE names harness:amend-commit-msg [--base <sha7>] -- <change> (the --base its draft used); HARNESS_RULES bullet mirrors it and covers amend-commit-msg returns; README canned bullet updated; test_session_rules pins the bullet; branch_commit_msg.py and the hook read the constant, no edit"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - new tests/lib/_skill_parts.py skill_parts helper shared by both skill contract tests; c-msg test pins fork/messenger/model and ties CHANGE_ROUTE to the c-msg and amend argument-hints; commit_txt.py and amend SKILL.md cited only"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - amend-commit-msg canned exception keeps the canned message unless the change text names that block, which Step 4 then rewrites; wording pinned in test_c_msg_skill_contract.py; cited only: CHANGE_ROUTE and README.md lines 182-186 already name amend-commit-msg for a canned block; the wording fix is in amend-commit-msg/SKILL.md (other part); already present: amend-commit-msg/SKILL.md Exception (lines 58-60) rewrites a canned block when the change names it; HARNESS_RULES.md lines 29-36 route any message change, canned included, through harness:amend-commit-msg -- <change>"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - c-msg frontmatter model set to sonnet and pinned in its contract test; findings doc Evidence lists the c-msg A1/A3 row and the live /harness:c-msg <change> run under Not run; HARNESS_RULES says c-msg runs without arguments unless a specific change was asked"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - Task 2 project rule now reads nearest existing ancestor directory, else payload cwd; Task 1 FINAL_LINE, Task 2 deny reason and Task 5 bullet marked superseded by the Review fix pass; cited only: the hook docstring (lines 10-12) already states the nearest-existing-ancestor rule; the plan wording is fixed by the other part"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - Rewrapped the rewritten arguments paragraph (lines 39-42) to the file's ~110-character wrap; wording unchanged"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - Added tests: malformed .claude/harness.json never blocks, relative file_path not denied, B.TXT denied, pr12_MERGE.txt allowed; cited only: fail-open and case-folding behaviour is already in the hook; the pinning tests are in tests/hooks/test_guard_commit_txt.py, owned by the other part"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - _call runs the hook with the session cwd as process cwd (cwd or root), so the file-project-wins test sees tmp_path as process cwd too; cited only: the session-cwd fix is a test-side change in tests/hooks/test_guard_commit_txt.py (other part); the hook needs no edit"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - main() checks the name-only predicate (_txt_candidate) before _config_for; non-.txt and PR<NNN>_merge.txt payloads return without a git subprocess or config load"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - Evidence table: B2 row notes FINAL_LINE ends with CHANGE_ROUTE; new Review fix pass row maps CHANGE_ROUTE, the c-msg requested-change line and Step 2, and the messenger $ARGUMENTS replacement to their tests (test_c_msg_skill_contract.py, test_session_rules.py, test_guard_commit_txt.py, test_branch_commit_msg.py, test_messenger_agent_contract.py); B2 fix-option row names CHANGE_ROUTE"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "34ad501 (working-tree snapshot; developer commits) - agent-permissions: the tool_name/matcher paragraph lists guard_commit_txt.py among the matcher-only hooks; the Files hook list adds guard_commit_txt"
+    }
+  ]
+}

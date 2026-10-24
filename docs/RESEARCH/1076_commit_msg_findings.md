@@ -55,7 +55,7 @@ in chat as a rewritten `Fix(a-w)` message.
 | A2 | #92 | `messenger.md`: a forked skill's prompt is the skill; do not re-read its `SKILL.md` from disk | prompt |
 | A3 | #92 | Raise the `branch-commit-msg` fork from `haiku` to `sonnet` | model |
 | B1 | #93 | `HARNESS_RULES.md`: a commit skill's saved TXT is the message; relay it as saved, never rewrite it in chat or on disk; changes go through `harness:amend-commit-msg` on the developer's ask | prompt, every session |
-| B2 | #93 | `build` receipt gains a final line marking the message as final and naming `harness:amend-commit-msg` for changes; canned blocks are labeled as canned | script, tested |
+| B2 | #93 | `build` receipt gains a final line marking the message as final and naming `harness:amend-commit-msg` for changes (the line ends with `CHANGE_ROUTE`, see the review fix pass); canned blocks are labeled as canned | script, tested |
 | B3 | #93 | PreToolUse hook denies `Edit`/`Write` on `*.txt` under `artifacts.commit_messages` (every skill writes the TXT through `build`) | hook, tested |
 
 ## Resolutions
@@ -67,11 +67,13 @@ in chat as a rewritten `Fix(a-w)` message.
 | Id | Change | Test |
 |----|--------|------|
 | B2 | `receipt` ends with `FINAL_LINE`, tags canned blocks `[canned]` (`scripts/branch_commit_msg.py`) | `tests/scripts/test_branch_commit_msg.py` |
+| Review fix pass | `CHANGE_ROUTE` constant (`lib/harness_lib/commit_txt.py`), which `FINAL_LINE` and the hook `REASON` end with; c-msg `Requested change for this run:` line and Step 2 (`skills/c-msg/SKILL.md`), with `argument-hint`; messenger replaces `$ARGUMENTS` in a skill read from disk (`agents/messenger.md`); B1 repeats `CHANGE_ROUTE` | `tests/skills/test_c_msg_skill_contract.py`, `tests/hooks/test_session_rules.py`, `tests/hooks/test_guard_commit_txt.py`, `tests/scripts/test_branch_commit_msg.py`, `tests/skills/test_messenger_agent_contract.py` (`test_a_skill_read_from_disk_gets_the_dispatchers_arguments`) |
 | B3 | `hooks/guard_commit_txt.py`, PreToolUse `Write\|Edit` | `tests/hooks/test_guard_commit_txt.py`, `tests/contract/test_hooks_json_paths.py` |
 | A1, A3 | labeled arguments line, line-34 rewrite, `model: sonnet` (`skills/branch-commit-msg/SKILL.md`) | `tests/skills/test_branch_commit_msg_skill_contract.py` |
+| A1, A3 | labeled change line, `model: sonnet` (`skills/c-msg/SKILL.md`): its `$ARGUMENTS` overrides a carried or canned message, the same failure surface as #92 | `tests/skills/test_c_msg_skill_contract.py` |
 | A2 | forked-skill prompt is not re-read (`agents/messenger.md`) | `tests/skills/test_messenger_agent_contract.py` |
 | B1 | "A drafted commit message is final as saved." (`rules/HARNESS_RULES.md`) | `tests/hooks/test_session_rules.py` |
 
 Plan test set: 242 passed; ruff `--no-cache` clean on every changed `.py`. Each new test was run red first.
 Harness plugin version 0.28.0. Not run: the full suite and Windows CI (developer-owned); a live forked
-`/harness:branch-commit-msg --base <ref>` run.
+`/harness:branch-commit-msg --base <ref>` run; a live forked `/harness:c-msg <change>` run.

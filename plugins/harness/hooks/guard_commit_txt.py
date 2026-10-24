@@ -7,9 +7,13 @@ changes only on the developer's ask, through the skills ``CHANGE_ROUTE`` names, 
 drifts from its skeleton or rewrites a message the developer never asked to change.
 
 Allowed: ``PR<NNN>_merge.txt`` (``harness:merge-commit-msg`` writes that file with the Write tool), the
-skeleton ``.json`` and the ``.txt.bak`` backup. The project is the one holding the target file (its nearest
-existing directory), else the payload ``cwd``. Unparseable input, a payload without a file path and an
-unusable harness config never block.
+skeleton ``.json`` and the ``.txt.bak`` backup. The project follows ``project_root``'s order from the target
+file's nearest existing directory: its git top level, else ``CLAUDE_PROJECT_DIR``, else that directory. The
+payload ``cwd`` is the start only when no ancestor of the target exists (a path on a missing drive).
+Unparseable input, a payload without a file path and an unusable harness config never block.
+
+Scope: only the Write and Edit tools. A shell write of the TXT (redirect, heredoc, ``sed -i``, PowerShell
+``Set-Content``) is not matched here; the standing rule in ``rules/HARNESS_RULES.md`` covers it.
 """
 from __future__ import annotations
 
@@ -33,9 +37,14 @@ REASON = f"Commit-message TXT files are build output and final as saved. {CHANGE
 _MERGE_TXT = re.compile(r"^PR\d+_merge\.txt$", re.IGNORECASE)
 
 
+def _txt_candidate(file_path: Path) -> bool:
+    """True when the file name alone allows a deny: a ``.txt`` that is not a ``PR<NNN>_merge.txt``."""
+    return file_path.name.lower().endswith(".txt") and not _MERGE_TXT.match(file_path.name)
+
+
 def guarded(file_path: Path, cfg: HarnessConfig) -> bool:
     """True when ``file_path`` is a build-owned ``.txt`` under the project's commit_messages directory."""
-    if not file_path.name.lower().endswith(".txt") or _MERGE_TXT.match(file_path.name):
+    if not _txt_candidate(file_path):
         return False
     folder = cfg.path(cfg.artifacts.commit_messages).resolve()
     try:
@@ -51,7 +60,10 @@ def _existing_dir(path: Path) -> Optional[Path]:
 
 
 def _config_for(file_path: Path, payload: Dict[str, Any]) -> Optional[HarnessConfig]:
-    """The activated config of the project holding ``file_path`` (else the payload ``cwd``), or None."""
+    """The activated config of ``project_root`` for ``file_path``'s nearest existing directory, or None.
+
+    The payload ``cwd`` (then the process cwd) starts the lookup only when no ancestor of the file exists.
+    """
     cwd = payload.get("cwd")
     start = _existing_dir(file_path) or (Path(cwd) if isinstance(cwd, str) and cwd else Path(os.getcwd()))
     try:
@@ -82,7 +94,9 @@ def main() -> int:
     except (json.JSONDecodeError, UnicodeDecodeError):
         return 0
     file_path = _file_path(payload)
-    cfg = _config_for(file_path, payload) if file_path is not None else None
+    if file_path is None or not _txt_candidate(file_path):
+        return 0
+    cfg = _config_for(file_path, payload)
     if cfg is not None and guarded(file_path, cfg):
         print(deny(REASON))
     return 0

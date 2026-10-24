@@ -48,7 +48,7 @@ Each line has its test in Task 2 (1-4) or Task 3 (5).
 
 **Interfaces:**
 - Produces: module constant `FINAL_LINE: str`, exactly
-  `Final as saved: relay this receipt unchanged. A message changes only on the developer's ask: harness:amend-commit-msg for a branch TXT, a rerun of harness:c-msg for a pending TXT.`
+  `Final as saved: relay this receipt unchanged. A message changes only on the developer's ask: harness:amend-commit-msg for a branch TXT, a rerun of harness:c-msg for a pending TXT.` (superseded by the Review fix pass: `FINAL_LINE` ends with `CHANGE_ROUTE`)
 - Produces: a commit line whose stored message equals `get_canned_message(commit.files)` ends with ` [canned]`.
 
 - [ ] **Step 1: Update `test_receipt_lists_subjects`** to expect `script.FINAL_LINE` as the last line, after
@@ -73,11 +73,12 @@ Each line has its test in Task 2 (1-4) or Task 3 (5).
 **Interfaces:**
 - Produces: `guarded(file_path: Path, cfg: HarnessConfig) -> bool`: True when `file_path` is a `.txt` at any
   depth under `cfg.path(cfg.artifacts.commit_messages)` and its name does not match `^PR\d+_merge\.txt$`.
-- Produces: `main() -> int`: reads the payload; the project comes from the file's parent directory when it
-  exists, else the payload `cwd`; `activate(load_config(project_root(...)))`; prints a deny when guarded;
+- Produces: `main() -> int`: reads the payload; the project comes from the file's nearest existing ancestor
+  directory, else the payload `cwd`; `activate(load_config(project_root(...)))`; prints a deny when guarded;
   exit 0 always.
 - Deny reason, exactly: `Commit-message TXT files are build output. Edit the skeleton JSON beside it and rerun
-  branch_commit_msg.py build, or run harness:amend-commit-msg on the developer's ask.`
+  branch_commit_msg.py build, or run harness:amend-commit-msg on the developer's ask.` (superseded by the Review
+  fix pass: the reason is `Commit-message TXT files are build output and final as saved.` plus `CHANGE_ROUTE`)
 
 - [ ] **Step 1: Write the tests** (each builds a project with `make_project`):
   - `test_edit_of_a_branch_txt_is_denied`: `Edit` on `<root>/docs/_commit_messages/b.txt` -> stdout JSON
@@ -151,7 +152,8 @@ Each line has its test in Task 2 (1-4) or Task 3 (5).
 - Produces the bullet: `**A drafted commit message is final as saved.** When a commit skill returns, relay its
   receipt (and the TXT's text when asked) unchanged: no new subject, type, body or bullets, in chat or on disk,
   a canned message included. A change happens only on the developer's ask, through \`harness:amend-commit-msg\`
-  (branch TXT) or a rerun of \`harness:c-msg\` (pending TXT).`
+  (branch TXT) or a rerun of \`harness:c-msg\` (pending TXT).` (superseded by the Review fix pass: the B1 bullet
+  repeats `CHANGE_ROUTE`)
 
 - [ ] **Step 1: Write the test**: the rules text holds `final as saved` and `canned message included`.
 - [ ] **Step 2: Run** `python -m pytest tests/hooks/test_session_rules.py -q`. Expected: FAIL on the new test.

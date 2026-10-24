@@ -8,10 +8,15 @@ lands only on the labeled arguments line and on the capture command, and that th
 from __future__ import annotations
 
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List
 
 import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
+
+from _skill_parts import skill_parts  # noqa: E402
 
 _SKILLS = Path(__file__).resolve().parents[2] / "plugins" / "harness" / "skills"
 _SKILL = _SKILLS / "branch-commit-msg" / "SKILL.md"
@@ -19,31 +24,27 @@ _LABEL = "**Arguments for this run:**"
 _CAPTURE = re.compile(r'branch_commit_msg\.py" capture --save\b')
 
 
-def _split() -> List[str]:
-    text = _SKILL.read_text(encoding="utf-8")
-    parts = re.match(r"^---\n(.*?)\n---\n(.*)$", text, re.DOTALL)
-    assert parts, "SKILL.md has no frontmatter"
-    return [parts.group(1), parts.group(2)]
+def _body() -> str:
+    return skill_parts(_SKILL)[1]
 
 
 def _frontmatter() -> Dict[str, str]:
-    pairs = (line.split(":", 1) for line in _split()[0].splitlines() if re.match(r"^[a-z-]+:", line))
-    return {key.strip(): value.strip() for key, value in pairs}
+    return skill_parts(_SKILL)[0]
 
 
 def _rendered(arguments: str) -> List[str]:
-    return _split()[1].replace("$ARGUMENTS", arguments).splitlines()
+    return _body().replace("$ARGUMENTS", arguments).splitlines()
 
 
 def test_arguments_placeholder_only_in_the_label_and_command() -> None:
-    holders = [line for line in _split()[1].splitlines() if "$ARGUMENTS" in line]
+    holders = [line for line in _body().splitlines() if "$ARGUMENTS" in line]
     assert len(holders) == 2 and sum(line.count("$ARGUMENTS") for line in holders) == 2, holders
     assert holders[0].startswith(_LABEL)
     assert _CAPTURE.search(holders[1]) and holders[1].rstrip().endswith("$ARGUMENTS")
 
 
 def test_label_sits_under_the_title_and_names_the_command() -> None:
-    body = [line for line in _split()[1].splitlines() if line.strip()]
+    body = [line for line in _body().splitlines() if line.strip()]
     assert body[0].startswith("# branch-commit-msg")
     assert body[1].startswith(_LABEL)
     assert "not an example" in body[2] and "Step 1 command already carries them" in body[2]

@@ -26,7 +26,7 @@ def _call(root: Path, rel: str, tool: str = "Edit",
           cwd: Optional[Path] = None) -> subprocess.CompletedProcess:
     payload = {"hook_event_name": "PreToolUse", "tool_name": tool, "cwd": str(cwd or root),
                "tool_input": {"file_path": str(root / rel)}}
-    return _run(json.dumps(payload), root)
+    return _run(json.dumps(payload), cwd or root)
 
 
 def _denied(done: subprocess.CompletedProcess) -> bool:
@@ -97,3 +97,24 @@ def test_garbage_payload_fails_open(tmp_path: Path) -> None:
 def test_payload_without_a_file_path_fails_open(tmp_path: Path) -> None:
     done = _run(json.dumps({"tool_name": "Edit", "tool_input": {}}), tmp_path)
     assert (done.returncode, done.stdout) == (0, "")
+
+
+def test_relative_file_path_is_not_denied(make_project) -> None:
+    root = _project(make_project)
+    tool_input = {"file_path": "docs/_commit_messages/b.txt"}
+    done = _run(json.dumps({"tool_name": "Edit", "cwd": str(root), "tool_input": tool_input}), root)
+    assert (done.returncode, done.stdout) == (0, "")
+
+
+def test_unusable_harness_config_never_blocks(make_project) -> None:
+    root = make_project(files={"docs/_commit_messages/b.txt": "x\n", ".claude/harness.json": "{"})
+    done = _call(root, "docs/_commit_messages/b.txt")
+    assert (done.returncode, done.stdout) == (0, "")
+
+
+def test_uppercase_branch_txt_is_denied(make_project) -> None:
+    assert _denied(_call(_project(make_project), "docs/_commit_messages/B.TXT"))
+
+
+def test_mixed_case_merge_txt_write_is_allowed(make_project) -> None:
+    assert not _denied(_call(_project(make_project), "docs/_commit_messages/pr12_MERGE.txt", tool="Write"))

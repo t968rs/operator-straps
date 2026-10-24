@@ -56,8 +56,8 @@ same stem beside `<skeleton>`), check it against `diff --block`, and restate it 
 the new path.
 
 Exception: a block holding only the files of a canned set (`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`)
-comes back with the canned message instead of an empty one; it is not touched, so keep it as it stands and add
-no bullets.
+comes back with the canned message instead of an empty one. Keep that canned message as it stands and add no
+bullets, unless the change text names that block: a change that names it rewrites it in Step 4.
 
 ## Step 2: Plan the change
 

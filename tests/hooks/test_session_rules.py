@@ -36,6 +36,8 @@ def test_rules_keep_drafted_commit_messages() -> None:
     assert "A drafted commit message is final as saved." in text
     assert "a canned message included" in text
     assert CHANGE_ROUTE in text, "the rule's change routes drift from the receipt and the hook"
+    assert "When harness:c-msg, harness:branch-commit-msg or harness:amend-commit-msg returns" in text
+    assert "harness:c-msg runs without arguments unless the developer asked for a specific change" in text
 
 
 def test_saved_text_is_the_proposed_message() -> None:
