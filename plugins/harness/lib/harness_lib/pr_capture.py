@@ -166,25 +166,33 @@ def _on_pr_branch(repo: Path, meta: PrMeta) -> bool:
     return git(repo, "merge-base", "--is-ancestor", meta.head_sha, "HEAD").returncode == 0
 
 
-def _head(repo: Path, meta: PrMeta, local: bool) -> Tuple[str, str]:
-    """(head SHA, source): the checkout's HEAD when ``local`` and it is on the PR branch, else the PR head."""
-    if local and _on_pr_branch(repo, meta):
+def lacks_pr_head(repo: Path, meta: PrMeta) -> bool:
+    """True when HEAD provably lacks the PR head (git exit 1); an object absent locally reads as unknown."""
+    return git(repo, "merge-base", "--is-ancestor", meta.head_sha, "HEAD").returncode == 1
+
+
+def _head(repo: Path, meta: PrMeta, local: bool, force_local: bool = False) -> Tuple[str, str]:
+    """(head SHA, source): the checkout's HEAD when ``local`` and it is on the PR branch (or ``force_local``),
+    else the PR head."""
+    if local and (force_local or _on_pr_branch(repo, meta)):
         return git_out(repo, "rev-parse", "HEAD").strip(), "local"
     return meta.head_sha, "remote"
 
 
 def _files(
         repo: Path, merge_base: str, head: Optional[str], skip: FrozenSet[str] = frozenset(),
+        untracked_files: bool = True,
 ) -> Tuple[PrFile, ...]:
     """Changed files from merge_base to ``head``, or to the working tree plus untracked files when None.
 
     Untracked paths are the captures numstat does not list; those under a harness output directory or in
-    ``skip`` are left out, and each kept one is read once for its line count and binary flag.
+    ``skip`` are left out (all of them when ``untracked_files`` is False), and each kept one is read once
+    for its line count and binary flag.
     """
     captures = capture_paths(repo, merge_base, head)
     stats, binary = _numstat(repo, merge_base, head)
     untracked = [c.path for c in captures if head is None and c.status == "A" and c.path not in stats]
-    kept = frozenset(p for p in untracked if not _skipped(p, skip))
+    kept = frozenset(p for p in untracked if untracked_files and not _skipped(p, skip))
     extra_stats, extra_binary = untracked_facts(repo, sorted(kept))
     stats, binary = {**stats, **extra_stats}, binary | extra_binary
     dropped = set(untracked) - kept
@@ -198,7 +206,8 @@ def _dirty(repo: Path, files: Sequence[PrFile]) -> bool:
 
 def capture_pr(
         repo: Path, meta: PrMeta, fetch: bool = True, today: Optional[str] = None, local: bool = False,
-        working_tree: bool = False, skip: FrozenSet[str] = frozenset(),
+        working_tree: bool = False, skip: FrozenSet[str] = frozenset(), force_local: bool = False,
+        untracked: bool = True,
 ) -> PrFacts:
     """Facts for the PR ``meta`` describes, from local git (fetching the base side and PR head first).
 
@@ -206,18 +215,20 @@ def capture_pr(
     HEAD contains the PR head; ``working_tree`` adds that checkout's staged, unstaged and untracked changes
     (untracked harness output and ``skip`` paths left out) and is recorded only when such changes exist.
     Both apply only while the PR branch is checked out; elsewhere the capture falls back to the committed
-    PR head.
+    PR head. ``force_local`` (with ``local``) reads whatever is checked out, any branch or a detached HEAD:
+    the diff then runs from the merge base of that HEAD with the PR base tip. ``untracked`` False leaves
+    untracked files out of a working-tree capture (staged and unstaged changes stay).
     """
     if fetch:
         git_out(repo, "fetch", "origin", *meta.fetch_refs)
-    head_sha, source = _head(repo, meta, local)
+    head_sha, source = _head(repo, meta, local, force_local)
     wanted = working_tree and source == "local"
     merge_base = git_out(repo, "merge-base", meta.base_tip, head_sha).strip()
-    files = _files(repo, merge_base, None if wanted else head_sha, skip)
+    files = _files(repo, merge_base, None if wanted else head_sha, skip, untracked)
     return PrFacts(
         meta.number, meta.title, meta.head, meta.base, head_sha, merge_base,
         today or date.today().isoformat(), _commit_lines(repo, merge_base, head_sha),
-        files, source, wanted and _dirty(repo, files),
+        files, source, wanted and _dirty(repo, files), current_branch(repo) if source == "local" else None,
     )
 
 
@@ -261,10 +272,12 @@ def _sections(text: str) -> Dict[str, str]:
 
 def _require_captured_checkout(repo: Path, facts: PrFacts) -> None:
     """Raise ``CaptureError`` when the checkout is no longer the captured branch at the captured HEAD."""
+    captured = facts.head if facts.local_branch is None else facts.local_branch
     branch, head = current_branch(repo), git_out(repo, "rev-parse", "HEAD").strip()
-    if branch != facts.head or head != facts.head_sha:
+    if branch != captured or head != facts.head_sha:
         raise CaptureError([
-            f"working tree moved since capture (captured {facts.head} at {facts.head_sha[:7]}, now "
+            f"working tree moved since capture (captured {captured or 'detached HEAD'} at "
+            f"{facts.head_sha[:7]}, now "
             f"{branch or 'detached HEAD'} at {head[:7]}); rerun capture",
         ])
 

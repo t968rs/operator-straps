@@ -69,6 +69,8 @@ class PrFacts:
 
     ``head_source`` is ``remote`` when ``head_sha`` is the PR head ``gh`` reports and ``local`` when it is
     the checked-out PR branch's HEAD; ``working_tree`` adds that checkout's uncommitted and untracked changes.
+    ``local_branch`` names the branch a local capture read (empty on a detached HEAD); None for a remote
+    capture and for payloads written before the field existed, which read as the PR branch.
     """
 
     number: int
@@ -82,6 +84,7 @@ class PrFacts:
     files: Tuple[PrFile, ...]
     head_source: str = "remote"
     working_tree: bool = False
+    local_branch: Optional[str] = None
 
     @property
     def additions(self) -> int:
@@ -390,11 +393,19 @@ def _relocated_block(facts: PrFacts) -> List[str]:
 
 
 def _source_line(facts: PrFacts) -> List[str]:
-    """``**Source:**`` line for a capture of the local branch; none for the remote PR head."""
+    """``**Source:**`` line for a local capture (the PR branch, or the checkout ``--local`` read); none for
+    the remote PR head."""
     if facts.head_source != "local":
         return []
     extra = ", plus uncommitted changes" if facts.working_tree else ""
-    return [f"**Source:** local branch at `{facts.head_sha[:7]}`{extra}"]
+    return [f"**Source:** {_checkout_label(facts)} at `{facts.head_sha[:7]}`{extra}"]
+
+
+def _checkout_label(facts: PrFacts) -> str:
+    """``local branch`` for the PR branch; otherwise the other branch named, or a detached checkout."""
+    if facts.local_branch is None or facts.local_branch == facts.head:
+        return "local branch"
+    return f"local checkout `{facts.local_branch}`" if facts.local_branch else "local detached checkout"
 
 
 def _header(facts: PrFacts, title: str) -> List[str]:

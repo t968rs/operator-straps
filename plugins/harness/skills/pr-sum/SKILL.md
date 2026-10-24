@@ -1,7 +1,7 @@
 ---
 name: pr-sum
 description: 'Use when asked to summarize a PR, describe PR changes, write a PR summary document, or draw one: a visual, diagram, flowchart or "more visual" summary, one "akin to" an earlier visual summary, or a PR that changes runtime behavior, relocates code, migrates call sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule'
-argument-hint: "PR [--level 1|2|3] [--min-viz [N]]"
+argument-hint: "PR [--level 1|2|3] [--min-viz [N]] [--local | --remote-head] [--committed-only] [--repo DIR]"
 model: sonnet
 effort: medium
 context: fork
@@ -48,11 +48,13 @@ the project's configured summaries directory: `artifacts.summaries` in `.claude/
 
 The PR number comes from the invocation arguments. No number given: report that and stop; never guess one from
 the branch or `gh pr list`. The other arguments are the developer's flags: `--level 1|2|3` and
-`--min-viz [N]`; pass them through unchanged. Any other flag, or a value holding anything but digits, is a
-problem to report; stop. Never choose a level or a `--min-viz` count yourself.
+`--min-viz [N]`, plus the source flags `--local`, `--remote-head` and `--committed-only` and `--repo DIR`;
+pass them through unchanged. Any other flag, a value holding anything but digits, or `--local` together with
+`--remote-head` is a problem to report; stop. Never choose a level, a `--min-viz` count, a source flag or a
+repo yourself. A `--repo DIR` is added to the `diff` and `build` commands below as well.
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN [--level L] [--min-viz [N]]
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN [--level L] [--min-viz [N]] [--local | --remote-head] [--committed-only] [--repo DIR]
 ```
 
 The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
@@ -61,8 +63,15 @@ head), it covers the branch's local commits plus staged, unstaged and untracked 
 pending review fixes appear; untracked files under the harness output directories (reviews, summaries, commit
 messages, scratch) and the skeleton itself are left out. Elsewhere, including a stale or unrelated local branch
 of the same name, it reads the committed PR head `gh` reports. `--remote-head` forces that remote head;
-`--committed-only` keeps the local head without uncommitted changes. Pass either only when asked. A local
-capture adds a `**Source:**` header line.
+`--committed-only` keeps the local head without uncommitted changes. `--local` reads whatever is checked out
+when it is not the PR branch (another branch): the script takes that HEAD, diffs from its merge base with the
+PR base to the working tree, and so covers the commits since the base plus staged and unstaged changes;
+untracked files are left out. Pass these only when asked. A local capture adds a `**Source:**` header line
+(`local checkout` for a `--local` capture off the PR branch). When that HEAD does not contain the PR head,
+`capture` ends its line with a `note:`: the summary then covers this checkout only, and a rerun drops
+descriptions for PR files the checkout lacks. Report the note. `--local` is meant for ordinary branch
+checkouts; on a detached HEAD `diff` verifies only the HEAD SHA, so two worktrees at one commit are not told
+apart.
 
 Exit 1 prints `problem:` lines (malformed JSON or config, missing file, `gh` missing): report them and stop.
 Exit 0 writes `<summaries>/<NNNN>_pr.json` and prints `wrote <path>`; use that path as `SKELETON` below.
@@ -79,7 +88,7 @@ flags are stored fresh on every capture, so repeat them on a rerun.
 ## Step 2 — Read what changed
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff SKELETON
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff SKELETON [--repo DIR]
 ```
 
 `diff` skips machine-generated artifact files unless named with `--path`, prints source sections first, then
@@ -92,7 +101,7 @@ A local capture's `diff` reads the working tree as it is when `diff` runs; after
 branch or HEAD has changed: rerun `capture`, then `diff`.
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff SKELETON --path src/pkg/module.py
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff SKELETON --path src/pkg/module.py [--repo DIR]
 ```
 
 Read `facts.commits` alongside the diff. Removed lines give the old behavior, added lines the new; the patch is
@@ -215,7 +224,7 @@ directory every changed source file shares; `descriptions` keys stay the full pa
 ## Step 4 — Build
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build SKELETON
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build SKELETON [--repo DIR]
 ```
 
 `build` checks: `title` and `summary` non-empty, `title` on one line, a description for every listed

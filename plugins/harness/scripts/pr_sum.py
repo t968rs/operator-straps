@@ -9,6 +9,11 @@
     head is its local HEAD and the diff runs to the working tree (staged, unstaged and untracked changes;
     untracked harness output and the skeleton itself are left out); ``--remote-head`` takes the ``gh`` head
     instead, and ``--committed-only`` stops at the local HEAD. Elsewhere the committed ``gh`` head is used.
+    ``--local`` reads whatever is checked out, a branch of any name: the diff runs from the merge base of that
+    HEAD with the PR base tip to the working tree, so the PR base..HEAD commits and the staged and unstaged
+    changes appear, untracked files do not; ``--committed-only`` still stops at that HEAD, and
+    ``--remote-head`` cannot be combined with it. A detached HEAD is read too, but ``diff`` then checks the
+    HEAD SHA only, so it cannot tell sibling worktrees at one commit apart.
     Writes ``<summaries>/<NNNN>_pr.json``: ``{"facts": {...}, "draft": {...}}``. When that file already
     holds a parseable draft, the draft is carried forward: title, summary and sections stay, and
     descriptions stay for paths the PR still lists (new paths get empty slots). ``--level 1|2|3`` stores the
@@ -40,8 +45,8 @@ Every failure exits 1 with one ``problem: ...`` line per defect on stderr.
 Usage::
 
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr N
-        [--no-fetch] [--remote-head] [--committed-only] [--out FILE] [--level 1|2|3] [--min-viz [N]]
-        [--repo DIR]
+        [--no-fetch] [--remote-head | --local] [--committed-only] [--out FILE] [--level 1|2|3]
+        [--min-viz [N]] [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff FILE [--path P ...]
         [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE
@@ -62,7 +67,14 @@ if str(_LIB) not in sys.path:
 from harness_lib import min_viz_sentinel  # noqa: E402
 from harness_lib.branch_capture import CaptureError, git  # noqa: E402
 from harness_lib.config import ConfigError, activate, active, load_config  # noqa: E402
-from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, gh_metadata, read_rank  # noqa: E402
+from harness_lib.pr_capture import (  # noqa: E402
+    PrMeta,
+    budgeted_diff,
+    capture_pr,
+    gh_metadata,
+    lacks_pr_head,
+    read_rank,
+)
 from harness_lib.pr_summary import (  # noqa: E402
     DEFAULT_LEVEL,
     LEVELS,
@@ -125,15 +137,20 @@ def carry_draft(facts: PrFacts, previous: Optional[PrDraft]) -> PrDraft:
 def capture_payload(
         repo: Path, meta: PrMeta, fetch: bool = True, previous: Optional[PrDraft] = None,
         local: bool = True, working_tree: bool = True, out: Optional[Path] = None,
+        force_local: bool = False, untracked: bool = True,
 ) -> Dict[str, object]:
     """Skeleton for ``meta``: fresh facts and ``previous`` carried forward (an empty draft without one).
 
     By default the facts describe the checked-out PR branch with its uncommitted changes (``capture_pr``
-    falls back to the committed PR head when that branch is not checked out). The skeleton path ``out``
-    never counts as an untracked PR file.
+    falls back to the committed PR head when that branch is not checked out); ``force_local`` describes
+    whatever is checked out instead, and ``untracked`` False leaves untracked files out. The skeleton path
+    ``out`` never counts as an untracked PR file.
     """
     skip = _repo_relative(repo, out)
-    facts = capture_pr(repo, meta, fetch, local=local, working_tree=working_tree, skip=skip)
+    facts = capture_pr(
+        repo, meta, fetch, local=local, working_tree=working_tree, skip=skip, force_local=force_local,
+        untracked=untracked,
+    )
     return skeleton(facts, carry_draft(facts, previous))
 
 
@@ -161,9 +178,11 @@ def _facts(payload: Mapping[str, object]) -> PrFacts:
 
 
 def _source_typed(facts: PrFacts) -> bool:
-    """True when ``head_source`` is local/remote and ``working_tree`` and every file flag are bools."""
+    """True when ``head_source`` is local/remote, ``working_tree`` and every file flag are bools, and
+    ``local_branch`` is None or text."""
     flags = [facts.working_tree, *(flag for f in facts.files for flag in (f.binary, f.untracked))]
-    return facts.head_source in ("local", "remote") and all(isinstance(flag, bool) for flag in flags)
+    branch_ok = facts.local_branch is None or isinstance(facts.local_branch, str)
+    return facts.head_source in ("local", "remote") and branch_ok and all(isinstance(f, bool) for f in flags)
 
 
 def _int(value: object) -> bool:
@@ -279,13 +298,20 @@ def _parser() -> argparse.ArgumentParser:
     cap = sub.add_parser("capture", parents=common, help="Write the PR skeleton JSON (facts + draft).")
     cap.add_argument("--pr", type=int, required=True, help="PR number.")
     cap.add_argument("--no-fetch", action="store_true", help="Skip fetching the base side and pull/N/head.")
-    cap.add_argument(
+    where = cap.add_mutually_exclusive_group()
+    where.add_argument(
         "--remote-head", action="store_true",
         help="Summarize the PR head gh reports, not the checked-out PR branch (implies --committed-only).",
     )
+    where.add_argument(
+        "--local", action="store_true",
+        help="Summarize this checkout whatever its branch: PR base merge base..HEAD plus staged and "
+             "unstaged changes (untracked files left out). Default: only the PR branch is read.",
+    )
     cap.add_argument(
         "--committed-only", action="store_true",
-        help="Leave out staged, unstaged and untracked changes of the checked-out PR branch.",
+        help="Leave out staged, unstaged and untracked changes of the checkout read (the PR branch, or "
+             "any checkout with --local).",
     )
     cap.add_argument("--out", type=Path, help="Skeleton path (default <summaries>/<NNNN>_pr.json).")
     cap.add_argument(
@@ -351,16 +377,27 @@ def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
     """
     out = args.out or summaries_dir(repo) / f"{args.pr:04d}_pr.json"
     previous = previous_draft(out)
+    meta = gh_metadata(repo, args.pr)
     payload = capture_payload(
-        repo, gh_metadata(repo, args.pr), not args.no_fetch, previous,
-        local=not args.remote_head, working_tree=not args.committed_only, out=out,
+        repo, meta, not args.no_fetch, previous,
+        local=not args.remote_head, working_tree=not args.committed_only, out=out, force_local=args.local,
+        untracked=not args.local,
     )
     keys = level_keys(args.level, args.min_viz)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({**payload, **keys}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-    note = sync_sentinel(args.pr, keys)
+    note = sync_sentinel(args.pr, keys) + _local_note(repo, meta, args)
     print(f"wrote {out}" + (" (existing draft carried forward)" if previous else "") + note)
     return 0
+
+
+def _local_note(repo: Path, meta: PrMeta, args: argparse.Namespace) -> str:
+    """Capture-line note for ``--local`` when HEAD lacks the PR head: the summary then covers only this
+    checkout, and a rerun drops descriptions for PR files it lacks."""
+    if not args.local or not lacks_pr_head(repo, meta):
+        return ""
+    return (f"; note: HEAD does not contain the PR head {meta.head_sha[:7]}, "
+            "so PR files outside this checkout are missing")
 
 
 def _cmd_diff(args: argparse.Namespace, repo: Path) -> int:
