@@ -149,10 +149,44 @@ def test_staged_conflict_stops_and_keeps_the_worktree(script_path: Path, repos: 
     wt, main = repos["wt"], repos["main"]
     (wt / "shared.txt").write_text("one\nWORKTREE\nthree\n", encoding="utf-8")
     _commit(main, "shared.txt", "one\nTARGET\nthree\n", "target edit")
+    moved = _git(main, "rev-parse", "HEAD")
     done = _attach(script_path, repos)
     assert done.returncode == 1
-    assert "shared.txt" in done.stderr
+    assert "conflicts in shared.txt" in done.stderr, "the conflict branch, not the generic apply failure"
+    assert _git(main, "rev-parse", "HEAD") == moved
+    assert _git(main, "diff", "--name-only", "--diff-filter=U").splitlines() == ["shared.txt"]
+    assert "<<<<<<<" in (main / "shared.txt").read_text(encoding="utf-8")
     assert wt.exists()
+    assert (wt / "shared.txt").read_text(encoding="utf-8") == "one\nWORKTREE\nthree\n"
+    assert _git(wt, "diff", "--cached") == "", "the worktree's own index is untouched"
+
+
+def test_staged_moves_a_deletion(script_path: Path, repos: dict) -> None:
+    wt, main = repos["wt"], repos["main"]
+    (wt / "shared.txt").unlink()
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    assert _git(main, "diff", "--cached", "--name-status") == "D\tshared.txt"
+    assert not (main / "shared.txt").exists()
+
+
+def test_staged_moves_a_rename(script_path: Path, repos: dict) -> None:
+    wt, main = repos["wt"], repos["main"]
+    (wt / "shared.txt").rename(wt / "renamed.txt")
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    status = _git(main, "diff", "--cached", "--name-status", "-M").split("\t")
+    assert status[0].startswith("R") and status[1:] == ["shared.txt", "renamed.txt"]
+    assert (main / "renamed.txt").read_text(encoding="utf-8") == "one\ntwo\nthree\n"
+
+
+def test_a_target_branch_checked_out_in_the_worktree_itself_is_refused(script_path: Path,
+                                                                       repos: dict) -> None:
+    _git(repos["wt"], "switch", "-q", "-c", "side")
+    done = _run(script_path, repos, "side", "--worktree", str(repos["wt"]))
+    assert done.returncode == 1
+    assert "worktree itself" in done.stderr
+    assert repos["wt"].exists()
 
 
 def test_staged_with_nothing_to_move_is_an_error(script_path: Path, repos: dict) -> None:
@@ -194,11 +228,13 @@ def test_the_worktree_defaults_to_the_current_directory(script_path: Path, repos
     assert not repos["wt"].exists()
 
 
-def test_target_branch_flag_spellings_match_the_positional(script_path: Path, repos: dict) -> None:
-    _commit(repos["wt"], "a.txt", "a")
-    done = _run(script_path, repos, "--target_branch", "feature", "--worktree", str(repos["wt"]),
-                "--committed")
+@pytest.mark.parametrize("spelling", ["--target-branch", "--target_branch"])
+def test_target_branch_flag_spellings_match_the_positional(script_path: Path, repos: dict,
+                                                          spelling: str) -> None:
+    head = _commit(repos["wt"], "a.txt", "a")
+    done = _run(script_path, repos, spelling, "feature", "--worktree", str(repos["wt"]), "--committed")
     assert done.returncode == 0, done.stderr
+    assert _git(repos["main"], "rev-parse", "HEAD") == head
 
 
 def test_a_missing_target_branch_is_a_usage_error(script_path: Path, repos: dict) -> None:

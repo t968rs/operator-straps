@@ -19,7 +19,7 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/new_worktre
 - **stdout is the absolute worktree path, nothing else**; stderr names the sha and ref. Exit 1 = bad ref, a
   failed fetch (offline: rerun with `--no-fetch`) or an unreadable `harness.json`, nothing created. `--help`
   lists the rest.
-- The path lands under the project's `worktree_root` (default `~/.config/superpowers/worktrees/<repo>/`; `--root`
+- The path lands under the project's `worktree_root` (default `~/.config/harness/worktrees/<repo>/`; `--root`
   overrides); collisions get `-2`, `-3`.
 
 ## Afterward
@@ -29,4 +29,7 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/new_worktre
   Do not `cd`. Do not touch the main checkout.
 - Commits in the worktree are allowed. They sit on a detached HEAD until the work moves.
 - Finishing: `harness:a-w` moves the work onto the branch the developer names (staged, or the commits with
-  `--committed`) and removes the worktree. Use it rather than a hand-run `git worktree remove`.
+  `--committed`) and removes the worktree. Use it rather than a hand-run `git worktree remove` for work that
+  moves. Two cases take the hand-run `git worktree remove --force "<path>"`: a worktree whose work is
+  discarded or that holds nothing to move (a-w refuses both), and a worktree whose a-w move stopped on a
+  three-way conflict, once the markers in the target are resolved (`harness:a-w` names the command).

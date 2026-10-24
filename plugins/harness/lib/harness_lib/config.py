@@ -18,7 +18,7 @@ CONFIG_REL = Path(".claude") / "harness.json"
 _CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
 DEFAULTS_PATH = _CONFIG_DIR / "defaults.json"
 SCHEMA_PATH = _CONFIG_DIR / "harness.schema.json"
-DEFAULT_WORKTREE_ROOT = "~/.config/superpowers/worktrees/{repo}"
+DEFAULT_WORKTREE_ROOT = "~/.config/harness/worktrees/{repo}"
 
 
 class ConfigError(ValueError):

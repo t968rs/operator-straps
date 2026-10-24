@@ -89,7 +89,7 @@
       }
     },
     "auto_approve_python_c": {"type": "boolean", "description": "Auto-approve `python -c` Bash commands in this project."},
-    "worktree_root": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}], "description": "Directory linked worktrees are created under; a leading ~ expands and {repo} is the main checkout's folder name. null: ~/.config/superpowers/worktrees/{repo}."},
+    "worktree_root": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}], "description": "Directory linked worktrees are created under; a leading ~ expands and {repo} is the main checkout's folder name. null: ~/.config/harness/worktrees/{repo}."},
     "runlogs": {
       "type": "object",
       "additionalProperties": false,

@@ -7,7 +7,7 @@ BASE defaults to HEAD. The project's integration branches (``integration_branche
 first and cut from ``origin/<base>``; a failed fetch is an error. Without a remote, or with ``--no-fetch``,
 they cut from the local branch, else the existing ``origin/<base>``. Any other git ref is cut as given.
 Worktrees land in ``<root>/<name>``: ``--root``, else the project's ``worktree_root``, else
-``~/.config/superpowers/worktrees/<repo-name>``. stdout carries only the path.
+``~/.config/harness/worktrees/<repo-name>``. stdout carries only the path.
 """
 from __future__ import annotations
 

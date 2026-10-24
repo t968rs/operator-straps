@@ -84,6 +84,14 @@ def _runlog_args(root: Path) -> List[str]:
     return ["skills/check-runlogs/commands/latest_runlog.py", "--repo", str(root), "--dir", "logs/runs"]
 
 
+def _attach_args(root: Path, tmp: Path) -> List[str]:
+    """A detached worktree of the case project with one new file, so ``attach_worktree.py`` moves it."""
+    wt = tmp / "wt"
+    git(root, "worktree", "add", "-q", "--detach", str(wt), "HEAD")
+    (wt / "new.txt").write_text("new\n", encoding="utf-8")
+    return ["skills/a-w/commands/attach_worktree.py", "feature", "--worktree", str(wt)]
+
+
 def _todo_project(root: Path) -> Path:
     """Turn the case project into a configured todo_sync project (catalogs, stub, plans, snapshot)."""
     for rel, body in {**todo_files(), ".claude/harness.json": config(base_branch="main")}.items():
@@ -140,7 +148,7 @@ CASES = {
     "check-runlogs": lambda r, t: (_runlog_args(r), None),
     "d-w": lambda r, t: (["skills/d-w/commands/new_worktree.py", "--repo", str(r), "--root",
                           str(t / "trees")], None),
-    "a-w": lambda r, t: (["skills/a-w/commands/attach_worktree.py", "nobranch", "--worktree", str(r)], None),
+    "a-w": lambda r, t: (_attach_args(r, t), None),
     "session rules hook": lambda r, t: (["hooks/session_rules.py"], {"cwd": str(r), "source": "startup"}),
     "schema hook": lambda r, t: (["hooks/validate_pr_json_schema.py"], _review_payload(r)),
     "stop hook": lambda r, t: (["hooks/check_phase5_sentinel.py"], {"cwd": str(r), "session_id": "s"}),

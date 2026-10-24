@@ -1,25 +1,31 @@
 """Move a detached worktree's work onto a target branch, then remove the worktree.
 
-Usage: attach_worktree.py TARGET [--worktree PATH] [--committed]
+Usage: attach_worktree.py [TARGET] [--target-branch BRANCH] [--worktree PATH] [--committed]
 
 TARGET names a branch that is checked out in one of the repository's worktrees; its checkout must have no
-tracked changes. ``--worktree`` defaults to the current directory, which must be a linked worktree.
+tracked changes. ``--target-branch`` (also ``--target_branch``) names it as a flag and wins over TARGET when
+both are given. ``--worktree`` defaults to the current directory, which must be a linked worktree.
 
 Default mode stages the worktree's committed, edited and new files on the target as an uncommitted change: the
 combined diff from the merge base is applied three-way, so commits the target gained since the worktree was
 cut are merged and never reverted. ``--committed`` instead fast-forwards the target to the worktree's commits
 and keeps their structure; it refuses uncommitted worktree changes and a target that moved since the cut.
 
-The worktree is removed once the move succeeds. A failed move leaves the worktree and says why.
+The worktree is removed once the move succeeds. Files its ignore rules match never move and are discarded with
+it. A failed move leaves the worktree's files and index as they
+were and says why. A three-way conflict also leaves markers and staged files in the target checkout; the error
+names the command that finishes the move and the one that undoes it.
 """
 from __future__ import annotations
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
-from typing import List, NamedTuple, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple
 
 
 class AttachError(RuntimeError):
@@ -31,18 +37,24 @@ class Checkout(NamedTuple):
     branch: Optional[str]
 
 
-def run_git(repo: Path, *args: str, stdin: Optional[bytes] = None) -> subprocess.CompletedProcess:
+def run_git(repo: Path, *args: str, stdin: Optional[bytes] = None,
+            env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
     """Run git in ``repo`` and return the completed process with bytes output."""
-    return subprocess.run(["git", "-C", str(repo), *args], input=stdin, capture_output=True)
+    return subprocess.run(["git", "-C", str(repo), *args], input=stdin, capture_output=True, env=env)
 
 
-def git(repo: Path, *args: str) -> str:
-    """Stripped stdout of a git command; raises ``AttachError`` on a non-zero exit."""
-    done = run_git(repo, *args)
+def git_bytes(repo: Path, *args: str, env: Optional[Dict[str, str]] = None) -> bytes:
+    """Raw stdout of a git command; raises ``AttachError`` on a non-zero exit."""
+    done = run_git(repo, *args, env=env)
     if done.returncode != 0:
         detail = done.stderr.decode("utf-8", errors="replace").strip()
         raise AttachError(detail or f"git {' '.join(args)} failed")
-    return done.stdout.decode("utf-8", errors="replace").strip()
+    return done.stdout
+
+
+def git(repo: Path, *args: str, env: Optional[Dict[str, str]] = None) -> str:
+    """Stripped stdout of a git command; raises ``AttachError`` on a non-zero exit."""
+    return git_bytes(repo, *args, env=env).decode("utf-8", errors="replace").strip()
 
 
 def checkouts(repo: Path) -> List[Checkout]:
@@ -94,20 +106,43 @@ def move_committed(worktree: Path, target: Path, branch: str) -> List[str]:
     return [f"attached {count} commit(s) to {branch} at {head[:7]}"]
 
 
+def scratch_index(worktree: Path, scratch: Path) -> Dict[str, str]:
+    """A git environment whose index is a copy of the worktree's, so staging never touches the real one."""
+    real = worktree / git(worktree, "rev-parse", "--git-path", "index")
+    copy = scratch / "index"
+    env = {**os.environ, "GIT_INDEX_FILE": str(copy)}
+    if real.is_file():
+        shutil.copy2(real, copy)  # the kept mtime lets git still content-check racily clean entries
+    else:
+        git(worktree, "read-tree", "HEAD", env=env)
+    return env
+
+
 def worktree_patch(worktree: Path, base: str) -> Tuple[bytes, int]:
-    """The diff from ``base`` to the worktree's files, new ones included, and the changed file count."""
-    git(worktree, "add", "-A")
-    try:
-        names = git(worktree, "diff", "--cached", "--name-only", base).splitlines()
-        patch = run_git(worktree, "diff", "--cached", "--binary", "--full-index", "-M", base).stdout
-    finally:
-        git(worktree, "reset", "-q")
+    """The diff from ``base`` to the worktree's files, new ones included, and the changed file count.
+
+    Staging runs against a throwaway copy of the index, so the worktree's own staged/unstaged split survives.
+    """
+    with tempfile.TemporaryDirectory() as scratch:
+        env = scratch_index(worktree, Path(scratch))
+        git(worktree, "add", "-A", env=env)
+        names = git(worktree, "diff", "--cached", "--name-only", base, env=env).splitlines()
+        patch = git_bytes(worktree, "diff", "--cached", "--binary", "--full-index", "-M", base, env=env)
     return patch, len(names)
 
 
 def unmerged(target: Path) -> List[str]:
     listing = git(target, "diff", "--name-only", "--diff-filter=U", "-z")
     return [path for path in listing.split("\0") if path]
+
+
+def conflict_message(conflicts: List[str], worktree: Path, target: Path) -> str:
+    """The conflict report: what is left where, and the commands that finish or undo the move."""
+    return (f"three-way merge left conflicts in {', '.join(conflicts)}; the markers and the rest of the "
+            f"patch are staged in {target.as_posix()} and the worktree is kept at {worktree.as_posix()}. "
+            f"To finish, resolve the markers, then run git worktree remove --force {worktree.as_posix()}. "
+            f"To undo, run git -C {target.as_posix()} reset --hard (the target had no tracked changes "
+            "before the move)")
 
 
 def move_staged(worktree: Path, target: Path, branch: str) -> List[str]:
@@ -119,8 +154,7 @@ def move_staged(worktree: Path, target: Path, branch: str) -> List[str]:
     done = run_git(target, "apply", "--3way", "--whitespace=nowarn", stdin=patch)
     conflicts = unmerged(target)
     if conflicts:
-        raise AttachError(f"three-way merge left conflicts in {', '.join(conflicts)}; the worktree is kept "
-                          f"at {worktree.as_posix()}")
+        raise AttachError(conflict_message(conflicts, worktree, target))
     if done.returncode != 0:
         raise AttachError("git apply failed: " + done.stderr.decode("utf-8", errors="replace").strip())
     return [f"staged {count} file(s) on {branch}, nothing committed", "next: git diff --cached"]

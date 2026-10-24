@@ -1,0 +1,393 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 91,
+  "pr_title": "Feature(a-w): add skill to move detached worktree changes onto a branch",
+  "branch": "1075-attach-worktree",
+  "base_branch": "main",
+  "base_sha": "66977e325c928a1907b60e6ed536820ec7dac9de",
+  "head_sha": "28cb2c48774b9e92f5d15a34b0674b5aa0a718f1",
+  "review_date": "2026-10-24",
+  "verdict": "READY TO MERGE - 12 of 12 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 427,
+    "deletions": 4,
+    "files_changed": 7
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (sonnet)",
+    "docs (opus)",
+    "roast (opus)",
+    "developer_notes_1 (developer)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0091/pr91_20261024T063016Z/findings/tests.json",
+    "docs/_scratch/pr_review/0091/pr91_20261024T063016Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0091/pr91_20261024T063016Z/findings/docs.json",
+    "docs/_scratch/pr_review/0091/pr91_20261024T063016Z/findings/roast.json",
+    "docs/_scratch/pr_review/0091/pr91_20261024T063016Z/findings/developer_notes_1.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every test is behavioral: real throwaway git repositories and the command run as a subprocess, with no stubs of the code under test.",
+    "The worktree fixture mirrors how d-w cuts worktrees (`worktree add --detach`), so the tests exercise the real input shape.",
+    "The three-way test proves a target commit made after the cut is merged rather than reverted, which is the core safety claim of the default mode.",
+    "test_the_worktree_defaults_to_the_current_directory runs with cwd inside the worktree under the cross_os marker, covering the Windows held-directory removal path.",
+    "Refusal tests check that the worktree survives and the target HEAD is unchanged, not just the exit code.",
+    "Preconditions are checked up front (not the main checkout, target checked out elsewhere, target tracked-clean) and each raises a specific AttachError.",
+    "Three-way apply of the merge-base diff matches the docstring promise that commits gained by the target are merged and never reverted.",
+    "Small single-purpose functions, bytes-safe git wrapper and `-z` parsing for unmerged paths; chdir out of the worktree before removal handles the Windows directory lock.",
+    "a-w SKILL.md mode table matches attach_worktree.py: staged mode diffs from the merge base and applies three-way, and --committed is ff-only with a moved-target refusal.",
+    "The `--target_branch` alias and the exit-1 `attach_worktree: <reason>` stderr contract in SKILL.md match parse_args and main exactly.",
+    "README feature row and quick-start example line up with the skill's argument-hint and the d-w row before it.",
+    "d-w now hands off to a-w explicitly instead of leaving detached commits at risk at removal time.",
+    "attach_worktree.py tests are genuinely behavioral: real throwaway repos, a real detached worktree, the script run as a subprocess, and outcomes checked in git state rather than stubs.",
+    "Staged mode diffs from the merge base and applies three-way, so commits the target gained since the cut are merged instead of reverted, and a test proves it.",
+    "--committed refuses a moved target and uncommitted worktree changes before touching anything, with an error that points to the staged mode as the way out.",
+    "remove_worktree chdirs out of the worktree first, which is the right paranoia for Windows directory locks, and its failure message hands over the exact cleanup command.",
+    "README row, quick-start line, d-w handoff and plugin version bump land together, and the new entry point joins the root-separation contract cases."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Worktree default path is named after another plugin (superpowers)",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/skills/d-w/SKILL.md",
+          "plugins/harness/skills/d-w/commands/new_worktree.py",
+          "plugins/harness/config/harness.schema.json",
+          "README.md",
+          "plugins/todo-watch/README.md",
+          "plugins/harness/schemas/_subagent_expectations.example.json"
+        ],
+        "lines": "21",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: the plugin default should not use a folder default based on another plugin; make it ~/.config/harness/worktrees/{repo} (under .config/worktrees or harness/worktrees). Confirmed: DEFAULT_WORKTREE_ROOT is ~/.config/superpowers/worktrees/{repo} (config.py:21) and d-w/SKILL.md:22 repeats it; the same default is written at d-w/commands/new_worktree.py:10, config/harness.schema.json:92, README.md:310, plugins/todo-watch/README.md:127 and schemas/_subagent_expectations.example.json:156. No test pins the string. A config-less project's new worktrees move to the new folder; existing worktrees are unaffected.",
+        "fix": [
+          "change DEFAULT_WORKTREE_ROOT to ~/.config/harness/worktrees/{repo} and update every place that spells the old default"
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "HARNESS_RULES still describes the pre-a-w worktree flow",
+        "file": "plugins/harness/rules/HARNESS_RULES.md",
+        "files": [
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/skills/a-w/SKILL.md",
+          "plugins/harness/skills/d-w/SKILL.md"
+        ],
+        "lines": "19-22,52-54",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The PR rewrites d-w's finishing step to `harness:a-w`, but the session rules file still says the main session merges a worktree back with `git merge` and cleans up with `git worktree remove` / `git branch -d` (HARNESS_RULES.md:21-22) and describes staging results onto the target by hand (HARNESS_RULES.md:52-54), with no mention of a-w. HARNESS_RULES.md:19-20 also forbids commits on the target branch without an explicit ask, while a-w's `--committed` fast-forwards the target to agent-made commits and a-w/SKILL.md never says that mode needs the developer's explicit request. Two documents, two workflows, one session reading both.",
+        "fix": [
+          "Update HARNESS_RULES.md:21-22 and 52-54 to name `harness:a-w` as the finishing step for d-w worktrees (default staged; `--committed` only when the developer asks), and add that `--committed` condition to a-w/SKILL.md next to the mode table."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "a-w conflict path promises the worktree 'stays until resolved' but nothing removes it afterward",
+        "file": "plugins/harness/skills/a-w/SKILL.md",
+        "files": [
+          "plugins/harness/skills/a-w/SKILL.md",
+          "plugins/harness/skills/d-w/SKILL.md",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py"
+        ],
+        "lines": "9-10,27-28",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:27-28 says that after a three-way conflict the worktree stays until the developer resolves the markers, which implies a later step drops it. No such step exists. Once the conflicts are resolved, the target checkout has staged tracked changes, so a rerun of a-w fails at attach_worktree.py:148-150 ('target checkout ... is not clean'). The only way out is a hand-run `git worktree remove`. That contradicts SKILL.md:9-10 ('The developer never edits, inspects or removes the worktree') and d-w SKILL.md:32 ('Use it rather than a hand-run git worktree remove'). The removal-failure message at attach_worktree.py:135-136 also tells the developer to remove the worktree by hand.",
+        "fix": [
+          "State the recovery path in a-w SKILL.md: after resolving the conflict, remove the worktree with `git worktree remove --force <path>`. Soften line 9-10 to cover the success path only.",
+          "Add a `--drop` / `--remove-only` mode to attach_worktree.py that removes the worktree without moving anything, and document it as the post-conflict step."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Failed three-way apply leaves the target checkout dirty and blocks a rerun",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/SKILL.md",
+          "plugins/harness/skills/d-w/SKILL.md"
+        ],
+        "lines": "13,97-105,117-125,148-150",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "move_staged runs `git apply --3way` against the target and, on conflicts, raises AttachError saying only that the worktree is kept (lines 119-123). The target is left with conflict markers and unmerged index entries. The module docstring (line 13) says a failed move 'leaves the worktree and says why', which implies nothing else changed. A rerun then dies at the tracked_changes(target) precondition (line 148), and the message gives no recovery step. Because the target was verified free of tracked changes before the apply, a `git reset --hard` in the target is a safe rollback.\n\nAlso (roast): On a three-way conflict move_staged raises with the worktree kept and the target checkout holding conflict markers plus the rest of the patch staged (attach_worktree.py:119-123). After the developer resolves, re-running a-w is refused by tracked_changes (attach_worktree.py:148-150) because the target is now dirty, and d-w/SKILL.md:31-32 tells the session to use a-w rather than a hand-run git worktree remove. a-w/SKILL.md:27-28 says the worktree 'stays until the developer resolves them' and then says nothing. The documented happy ending is a dead end: the worktree is orphaned or removed by the exact command the docs just discouraged.\n\nAlso (runtime): worktree_patch takes `.stdout` of run_git for `git diff --cached --binary` without checking returncode (line 102). If that diff fails, the patch is empty and move_staged reports 'nothing to move: the worktree matches the target branch' (line 118), a false statement that hides the real git error. The `finally` reset (line 104) also uses git(), which can raise inside the finally and mask the original exception. A prior staged/unstaged split in the worktree is flattened by add -A plus reset -q, and a kept worktree (after a conflict) loses it.",
+        "fix": [
+          "On conflicts, report the target path and the recovery command (`git -C <target> reset --hard`) in the error text and in the docstring.",
+          "Roll the target back automatically after a failed apply with `git -C <target> reset --hard HEAD`, then raise the error, so a failed move leaves only the worktree in place as the docstring claims.",
+          "Document the recovery in a-w/SKILL.md and the conflict error text: after resolving, remove the worktree with `git worktree remove --force <path>` (and relax the d-w wording to allow it in that case).",
+          "Add a `--cleanup` (remove-only) mode to attach_worktree.py that skips the clean-target check and the move, removes the worktree, and cover it with a test after a resolved conflict.",
+          "Check the returncode of the diff and raise AttachError with its stderr when non-zero.",
+          "Use run_git for the cleanup reset so it cannot mask the original error."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "Conflict test never checks the state it leaves in the target checkout or the worktree",
+        "file": "tests/skills/test_attach_worktree_script.py",
+        "files": [
+          "tests/skills/test_attach_worktree_script.py",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py"
+        ],
+        "lines": "122-162",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_staged_conflict_stops_and_keeps_the_worktree asserts only rc 1, the path in stderr and wt.exists(). On conflict, move_staged (attach_worktree.py:119-123) has already run `git apply --3way` on the target, so the target checkout is left with unmerged index entries and conflict markers, while the module docstring (attach_worktree.py:13) only promises that 'a failed move leaves the worktree'. worktree_patch (97-105) also runs `add -A` / `reset -q` in the worktree, and nothing checks that the worktree's edit survives. A regression that cleans up the target, leaves it half-applied in some other way, or loses the worktree edit passes this test.\n\nAlso (tests): move_staged builds its patch with `-M --binary` and `add -A` (attach_worktree.py:99-102), so deleted and renamed files are part of the move, but every staged test only adds or edits files. target_checkout's refusal when the target branch is checked out in the worktree itself (attach_worktree.py:69-70) has no test either.\n\nAlso (roast): test_staged_conflict_stops_and_keeps_the_worktree asserts only that 'shared.txt' is in stderr and the worktree exists (test_attach_worktree_script.py:148-155). The generic `git apply failed` branch (attach_worktree.py:124-125) also names shared.txt ('patch failed: shared.txt:1'), so the test passes even if the conflict-detection branch never fires. The documented outcome, markers in the target checkout, is not checked at all.",
+        "fix": [
+          "Pin the failure state: assert HEAD on main is unchanged, assert `git diff --name-only --diff-filter=U` on main lists shared.txt (or that main is clean if the script is changed to roll back with `git checkout -- .`/`reset --merge`), and assert (wt / 'shared.txt').read_text() is still 'one\nWORKTREE\nthree\n' and `git -C wt diff --cached` is empty.",
+          "If leaving the target conflicted is intended, say so in the script docstring and in the stderr message, and assert that wording in the test.",
+          "Add a staged test that deletes shared.txt and renames another committed file in wt, then asserts the deletion and rename are staged on main (`git diff --cached --name-status -M`).",
+          "Add a test that runs `git -C wt switch -c side` and attaches to `side`, asserting rc 1, 'worktree itself' in stderr, and wt.exists().",
+          "Assert 'conflicts' in done.stderr and that (main / 'shared.txt') contains '<<<<<<<', plus `git diff --name-only --diff-filter=U` in main lists shared.txt."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README 'leaves the worktree untouched' overstates what a failed a-w run preserves",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/SKILL.md"
+        ],
+        "lines": "21",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "README.md:21 says 'A conflict or refusal leaves the worktree untouched.' In staged mode, worktree_patch (attach_worktree.py:99-104) runs `git add -A` and then `git reset -q` in the worktree, so any staging the developer had there is reset to HEAD even when the run then refuses or conflicts. A conflict also writes markers and partially staged files into the target checkout (SKILL.md:27-28 says so; the README row does not), so 'untouched' reads as 'nothing changed'.",
+        "fix": [
+          "Reword the README cell: 'A refusal changes nothing; a three-way conflict leaves markers in the target checkout and keeps the worktree.' Add a note in a-w SKILL.md that the worktree's index is reset.",
+          "Make worktree_patch restore the worktree's original index (for example by building the patch with a temporary GIT_INDEX_FILE) so the 'untouched' claim holds."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "a-w --committed row omits two refusals the script enforces",
+        "file": "plugins/harness/skills/a-w/SKILL.md",
+        "lines": "22",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:22 lists two --committed refusals: uncommitted worktree changes and a moved target. The script also refuses a worktree with no commits beyond the target (attach_worktree.py:88-89). Its 'uncommitted changes' check uses plain `git status --porcelain` (attach_worktree.py:82), so untracked files alone trigger the refusal. Neither case is documented.",
+        "fix": [
+          "Edit SKILL.md:22 to read: 'Refuses uncommitted worktree changes (untracked files included), a worktree with no commits beyond the target, and a target that moved since the cut; none of these changes anything.'"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Docstring omits the --target-branch alias and the loss of ignored files",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/a-w/SKILL.md"
+        ],
+        "lines": "3,13,129-137,156-168",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The usage line (line 3) lists only TARGET, --worktree and --committed, but parse_args also accepts --target-branch/--target_branch (lines 159-160) and silently lets the flag win over the positional (line 165). Separately, remove_worktree uses `git worktree remove --force` (line 132); files ignored by .gitignore (local env files, caches, venvs) are neither moved by the patch (add -A skips them) nor kept, yet the docstring only says the worktree is removed.\n\nAlso (roast): remove_worktree always runs `git worktree remove --force` (attach_worktree.py:132). `git add -A` in staged mode and `status --porcelain` in committed mode both skip ignored files, so anything gitignored in the worktree (scratch notes, local env files, build outputs) is never moved and is then deleted without mention, under a docs line that says removal happens 'without asking' (a-w/SKILL.md:26).",
+        "fix": [
+          "Add `[--target-branch BRANCH]` to the usage line and state that ignored files in the worktree are discarded with it.",
+          "Reject the case where both the positional and the flag are given with different values.",
+          "Before removal, list `git -C <worktree> status --porcelain --ignored=matching` entries starting with '!!' and print them in a report line ('discarded ignored: ...'), or document in a-w/SKILL.md that ignored files are discarded."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Root-separation a-w case exits on its first precondition and never reaches the git writes",
+        "file": "tests/contract/test_root_separation.py",
+        "lines": "143",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The new CASES entry passes the project's main checkout as --worktree, so attach() raises 'is the main checkout' (attach_worktree.py:145-146) before any apply, os.chdir or `worktree remove`. Other entries seed their inputs so the entry point reaches its write (see _merge_body_args, _runlog_args docstrings). As written the a-w case only shows that argument parsing and `rev-parse` write nothing under plugins/.",
+        "fix": [
+          "Add a helper `_attach_args(r, t)` that runs `git(r, 'worktree', 'add', '-q', '--detach', str(t / 'wt'), 'HEAD')`, writes a new file into t / 'wt', and returns ['skills/a-w/commands/attach_worktree.py', 'feature', '--worktree', str(t / 'wt')], so the case runs a full staged move and worktree removal against the clean `feature` project."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Flag-spelling test covers one spelling and checks only the exit code",
+        "file": "tests/skills/test_attach_worktree_script.py",
+        "lines": "197-201",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_target_branch_flag_spellings_match_the_positional exercises only `--target_branch`; the documented `--target-branch` (attach_worktree.py:159, and the parser.error text at 167) is never run. It asserts returncode 0 but not that the target moved, and the flag-over-positional precedence at line 165 is untested.",
+        "fix": [
+          "Parametrize over ['--target-branch', '--target_branch'], capture `head = _commit(...)`, and assert `_git(repos['main'], 'rev-parse', 'HEAD') == head` after the run.",
+          "Optionally add a case passing a bogus positional plus `--target-branch feature` to pin that the flag wins."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "'Leaves the worktree untouched' is false in staged mode",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "README.md",
+          "plugins/harness/skills/a-w/SKILL.md"
+        ],
+        "lines": "97-105",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "README's a-w row promises 'A conflict or refusal leaves the worktree untouched' and a-w/SKILL.md:27 says exit 1 'leaves the worktree'. worktree_patch runs `git add -A` then `git reset -q` in the worktree (attach_worktree.py:99-104) before any refusal in move_staged ('nothing to move', apply failure, conflict). Any deliberate partial staging in the worktree index is flattened back to HEAD, on exactly the paths where the worktree is supposed to survive intact. The files survive; the index does not.",
+        "fix": [
+          "Build the patch against a throwaway index: copy or seed a temp file, set GIT_INDEX_FILE for the `add -A` and `diff --cached` calls (run_git gains an env parameter), and never touch the worktree's real index; add a test that stages one file in the worktree, forces a conflict, and asserts `git diff --cached --name-only` in the worktree is unchanged.",
+          "Or narrow the README and SKILL claim to 'leaves the worktree's files in place (its index is reset)'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "d-w lost its cleanup guidance for worktrees with nothing to keep",
+        "file": "plugins/harness/skills/d-w/SKILL.md",
+        "files": [
+          "plugins/harness/skills/d-w/SKILL.md",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "30-32",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "d-w SKILL.md:30-32 removes the old 'Cleanup: git worktree remove' line and sends every finish through `harness:a-w`, 'rather than a hand-run git worktree remove'. But d-w is also for 'throwaway' worktrees (description, line 3), and a-w cannot drop one. If the worktree matches the target, staged mode exits 1 with 'nothing to move' (attach_worktree.py:117-118). With no commits, --committed exits 1 with 'no commits beyond the target branch' (attach_worktree.py:88-89). Both leave the worktree in place. An abandoned or empty worktree now has no documented way to be removed.\n\nAlso (docs): HARNESS_RULES.md:52-54 says to 'stage results onto the target branch only after validation and review, once the target branch is confirmed checked out' and names only `harness:d-w`. This PR adds a-w as the sanctioned mover, and d-w now forbids the hand-run path, but the rules file that every session loads does not point to it.",
+        "fix": [
+          "Add one line back to d-w SKILL.md 'Afterward': a worktree whose work is discarded or empty is removed with `git worktree remove \"<path>\"`. a-w is for work that moves.",
+          "Have a-w remove the worktree when there is nothing to move (and say so in a-w SKILL.md), instead of exiting 1.",
+          "Append to HARNESS_RULES.md:54: 'then run `harness:a-w <target>` to stage (or `--committed` to fast-forward) and drop the worktree.'"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 91 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"28cb2c48774b9e92f5d15a34b0674b5aa0a718f1\",\"headRefName\":\"1075-attach-worktree\",\"headRefOid\":\"28cb2c48774b9e92f5d15a34b0674b5aa0a718f1\",\"last_sha\":\"28cb2c48774b9e92f5d15a34b0674b5aa0a718f1\",\"mergeCommit\":null,\"number\":91,\"state\":\"OPEN\",\"title\":\"Feature(a-w): add skill to move detached worktree changes onto a branch\",\"url\":\"https://github.com/t968rs/operator-straps/pull/91\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1075-attach-worktree",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1075-attach-worktree",
+        "head_ref_name": "1075-attach-worktree",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "28cb2c48774b9e92f5d15a34b0674b5aa0a718f1",
+        "head_sha": "28cb2c48774b9e92f5d15a34b0674b5aa0a718f1",
+        "base_ancestor_command": "git merge-base --is-ancestor 28cb2c48774b9e92f5d15a34b0674b5aa0a718f1 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 28cb2c48774b9e92f5d15a34b0674b5aa0a718f1 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - README a-w row now says a refusal changes nothing and a conflict keeps the worktree (files and index) and leaves markers in the target; worktree_patch stages in a throwaway copy of the index (GIT_INDEX_FILE) so the worktree index survives; a-w SKILL documents it; new test pins the index"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - worktree_patch builds the patch against a copied index via GIT_INDEX_FILE (run_git gains env) and never touches the worktree's real index; README and a-w SKILL claims match; test stages a file in the worktree, forces a conflict and asserts the worktree's staged/unstaged split is unchanged"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - d-w SKILL Afterward names the hand-run git worktree remove --force for discarded or empty worktrees (a-w refuses both) and after a resolved conflict; HARNESS_RULES worktree rule points to harness:a-w <target> (or --committed) to stage and drop the worktree; attach_worktree.py cited only: its nothing-to-move and no-commits refusals stay, covered by the documented removal path"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - a-w SKILL scopes 'never removes the worktree' to a successful move and states the post-conflict finish (git worktree remove --force <path>) and undo (git -C <target> reset --hard); the conflict error names both commands; d-w SKILL allows the hand-run removal after a resolved conflict"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - conflict error (conflict_message) and module docstring name the target path and the finish/undo commands (git -C <target> reset --hard); patch diff now goes through git_bytes so a failed diff raises its stderr instead of 'nothing to move'; the finally reset is gone (scratch index), so nothing masks the original error; a-w and d-w SKILL document the recovery; test covers the message and the undo"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - a-w case now seeds a detached worktree of the clean feature project with one new file (_attach_args) so attach_worktree.py runs the full staged move and worktree removal"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - flag-spelling test parametrized over --target-branch and --target_branch; asserts the target HEAD moved to the worktree commit"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - --committed row now lists untracked files in the uncommitted refusal and the no-commits-beyond-target refusal"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - usage line adds [--target-branch BRANCH], docstring states the flag alias wins over TARGET and that ignored files are discarded with the worktree; SKILL.md removal bullet documents ignored-file loss"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - HARNESS_RULES worktree exception names harness:a-w (staged default, --committed only on explicit ask) instead of git merge/branch -d; worktree-flow bullet adds the explicit-ask condition; a-w SKILL.md adds the --committed condition under the mode table; d-w SKILL.md cited only, its lines 31-35 already name harness:a-w as the finishing step"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - conflict test pins 'conflicts in shared.txt', unchanged target HEAD, unmerged shared.txt with markers, intact worktree file and empty worktree index; new tests for staged deletion, staged rename, and a target branch checked out in the worktree itself; attach_worktree.py cited only, its docstring already states conflicts leave markers and staged files in the target"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-24",
+      "evidence": "28cb2c4 (working-tree snapshot; developer commits) - DEFAULT_WORKTREE_ROOT is now ~/.config/harness/worktrees/{repo}; the old default is replaced in config.py, d-w/SKILL.md, new_worktree.py, harness.schema.json, README.md, todo-watch README, the subagent expectations example and tests/lib/test_config.py (64 passed); developer chose the home folder and no .gitignore change (outside fixer waves)"
+    }
+  ]
+}
