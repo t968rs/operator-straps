@@ -1083,6 +1083,16 @@ class TestCannedMessages:
         by_paths = {tuple(paths): message for paths, message in commits.values()}
         assert by_paths == {tuple(sorted(_TODO_FILES)): _CANNED_TODO, ("notes/other.md",): ""}
 
+    def test_a_carried_branch_message_wins_over_the_canned_one(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        _settled_with_todo_change(clone)
+        script.run_build(clone, _filled(script.run_capture(clone, base="HEAD", fetch=False)))
+        commits = script.run_capture(clone, base="HEAD", fetch=False)["commits"]
+        by_paths = {tuple(paths): message for paths, message in commits.values()}
+        assert by_paths[tuple(sorted(_TODO_FILES))].startswith("Chore: commit 1")
+
 
 class TestCannedSubcommand:
     def _run(self, script: ModuleType, clone: Path, *args: str) -> int:

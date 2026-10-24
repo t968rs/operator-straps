@@ -8,8 +8,9 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     bucket, pair, split and order them, and carry forward groupings and messages from an existing
     ``<branch>.txt`` in the project's ``commit_messages`` directory (default ``docs/_commit_messages``).
     ``--fresh`` skips that carry-forward (and never parses the TXT), so a stale or over-split grouping
-    is replanned from the rules; messages come back empty. ``--base REF`` replaces the resolved merge base
-    with REF (stored as a SHA); the skeleton gets ``"txt_suffix": "_<sha7>"`` (with or without
+    is replanned from the rules; messages come back empty, except a block covered by a canned set
+    (``harness_lib.canned_messages``), which gets its canned message. ``--base REF`` replaces the resolved
+    merge base with REF (stored as a SHA); the skeleton gets ``"txt_suffix": "_<sha7>"`` (with or without
     ``--fresh``) and ``--save`` and ``build`` write ``<branch>_<sha7>.json`` / ``.txt`` beside the branch
     TXT, which a based capture never overwrites. Carry-forward reads that ``<branch>_<sha7>.txt`` when it
     exists, else the branch TXT.
@@ -50,7 +51,7 @@ Two subcommands bracket the one judgment step (drafting commit messages):
 ``canned``
     Print the canned commit message (``harness_lib.canned_messages``) for the changed paths given as arguments
     or, with none, one per line on stdin; ``canned: none`` when the paths are not a canned set. ``capture``
-    applies the same lookup to each block whose message is empty (a block of exactly the TODO files, say).
+    applies the same lookup to each block whose message is empty (a block of only TODO files, say).
 
 ``move``
     Rewrite a skeleton in place, moving each ``--path`` (a block entry, repeatable; a rename's old side
@@ -274,7 +275,8 @@ def pending_txt_path(repo: Path, branch: str) -> Path:
 
 
 def _prefilled(paths: Sequence[str], message: str) -> str:
-    """``message`` when set, else the canned message for a block of exactly ``paths`` (``""`` when none)."""
+    """``message`` when set, else the canned message for a block whose every path falls in one canned set (``""``
+    when none)."""
     return message or get_canned_message(paths) or ""
 
 
@@ -677,6 +679,8 @@ def _cmd_diff(repo: Path, args: argparse.Namespace) -> int:
 
 def _cmd_canned(repo: Path, args: argparse.Namespace) -> int:
     """Run ``canned``: print the canned message for the paths, or ``canned: none``."""
+    if not args.paths and sys.stdin.isatty():
+        raise BuildError(["canned: give paths as arguments or pipe one per line on stdin"])
     paths = args.paths or [line.strip() for line in sys.stdin if line.strip()]
     print(get_canned_message(paths) or "canned: none")
     return 0

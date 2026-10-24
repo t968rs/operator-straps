@@ -42,7 +42,7 @@ skeleton in the commit_messages directory. Use that path as `<skeleton>` below.
 | Flags                  | Skeleton and TXT                  | Plan                                                       |
 |------------------------|-----------------------------------|------------------------------------------------------------|
 | none                   | `<branch>.json` / `.txt`          | whole branch; existing TXT carried forward                 |
-| `--fresh`              | `<branch>.json` / `.txt`          | whole branch, rebuilt from the rules; every message `""`   |
+| `--fresh`              | `<branch>.json` / `.txt`          | whole branch, rebuilt from the rules; every message `""` except a canned set's |
 | `--base REF` (or bare `REF`) | `<branch>_<sha7>.json` / `.txt` | paths differing from REF; carries the `_<sha7>` TXT, else the branch TXT; the branch TXT is never overwritten |
 | `--base REF --fresh` (or bare `REF --fresh`) | `<branch>_<sha7>.json` / `.txt` | paths differing from REF, rebuilt from the rules; the branch TXT is never overwritten |
 
@@ -51,11 +51,11 @@ there.
 
 The skeleton holds `merge_base`, `split`, `captured` (status, path, old_path, bucket, added, deleted) and
 `commits` — `{"1": [[paths], "message"], ...}` in landing order. Blocks from an existing TXT keep their grouping
-and message; new blocks have `""`, except a block holding only the files of a canned set (the TODO files, the
-review artifacts; entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), which capture fills with
-the canned message. Add `--fresh` to ignore the existing TXT: the plan is rebuilt from the rules
-alone and every message is `""`. Use it only when the existing grouping is wrong (an over-split block, a stale
-split), or when the developer asks for a replan.
+and message; a new or emptied block has `""`, except a block holding only the files of a canned set (the TODO
+files, the review artifacts; entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), which capture
+fills with the canned message. Add `--fresh` to ignore the existing TXT: the plan is rebuilt from the rules alone
+and every message is `""` except a canned block's. Use it only when the existing grouping is wrong (an over-split
+block, a stale split), or when the developer asks for a replan.
 
 The plan already applies the grouping rules: the test registry alone in block 1 (when the project configures one);
 one block per source module (a source paired with its tests via the registry's `test_target_paths`, falling back

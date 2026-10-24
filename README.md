@@ -179,7 +179,7 @@ changed files ──► every file fits one entry's patterns? ──no──► 
   canned message. A pattern with a `/` matches the whole path, any other the file name.
 - `c-msg`, `branch-commit-msg` and `amend-commit-msg` keep a prefilled message as it stands. `merge-commit-msg`
   asks for it with `gh pr diff NNN --name-only | ... branch_commit_msg.py canned`.
-- The entries use the plugin's default file names and folders; a project that moves them drafts as usual.
+- The entries use the plugin's default file names (and, for review artifacts, folders); a project that renames them drafts as usual.
 
 ### Working on this repository
 

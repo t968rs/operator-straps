@@ -5,8 +5,12 @@ set takes an entry's message when every changed file matches at least one of the
 touching only some of the files still qualifies and one touching any other file does not. A pattern holding a
 ``/`` is matched against the whole repo-relative path; any other pattern, against the file name.
 
-The entries cover generated files whose paths and names are plugin defaults (``config/defaults.json``); a
-project that moves them away from the defaults gets no canned message and drafts one as usual.
+The entries use the plugin's default file names (``config/defaults.json``: the ``todo`` names, ``matrix_path``
+and ``agent_usage_path``) and, for review artifacts, the default folders (``artifacts.reviews``,
+``artifacts.summaries``). The module deliberately reads no config: ``LOOKUP`` is a fixed, read-only table so a
+canned message never depends on which project is active, and a project that renames those files, or moves the
+review artifacts away from the defaults, simply gets no canned message and drafts one as usual (an accepted
+limitation, not a drift bug).
 """
 from __future__ import annotations
 

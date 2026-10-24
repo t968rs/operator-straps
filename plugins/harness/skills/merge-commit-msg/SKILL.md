@@ -43,8 +43,8 @@ canned message. Ask for it with the PR's file list:
 gh pr diff NNN --name-only | sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" canned
 ```
 
-A printed message replaces the drafted prose paragraph, as it stands; the subject line and the bullets stay as
-below. `canned: none` means draft the prose as usual.
+A printed message becomes the prose paragraph verbatim, its `Type(scope):` prefix included (no stripping, no
+recasing); the subject line and the bullets stay as below. `canned: none` means draft the prose as usual.
 
 ## Output Shape
 

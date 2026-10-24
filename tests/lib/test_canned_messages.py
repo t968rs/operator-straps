@@ -6,15 +6,14 @@ entry's message when every changed file matches one of that entry's patterns.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
-from typing import Callable
 
 import pytest
 
 from harness_lib.branch_commits import BranchCommitDocument
 from harness_lib.canned_messages import LOOKUP, get_canned_message, has_canned_message
 from harness_lib.commit_txt import entry_from_message, message_problems
-from harness_lib.config import activate, load_config
 
 TODO_FILES = ["docs/TODO/RepoToDo.json", "docs/TODO/Snapshots/TODO_Snapshot_2026_1023.md"]
 REVIEW_FILES = [
@@ -25,11 +24,6 @@ REVIEW_FILES = [
 ]
 
 
-@pytest.fixture(autouse=True)
-def _default_project(make_project: Callable[..., Path]) -> None:
-    activate(load_config(make_project()))
-
-
 def test_the_todo_file_set_has_a_message() -> None:
     changed = ["docs/TODO/_IMPL_TODO.md", "docs/TODO/RepoToDo.json",
                "docs/TODO/ResearchImplementationCatalog.json", *TODO_FILES[1:]]
@@ -38,7 +32,10 @@ def test_the_todo_file_set_has_a_message() -> None:
 
 
 def test_a_subset_of_an_entry_takes_its_message() -> None:
-    assert get_canned_message(TODO_FILES) == get_canned_message(["RepoToDo.json"])
+    message = get_canned_message(["RepoToDo.json"])
+    assert message is not None
+    assert message.startswith("Chore(todo): ")
+    assert message == get_canned_message(TODO_FILES)
 
 
 def test_a_snapshot_name_matches_by_pattern() -> None:
@@ -48,6 +45,11 @@ def test_a_snapshot_name_matches_by_pattern() -> None:
 
 def test_paths_normalize_before_matching() -> None:
     assert has_canned_message(["docs\\TODO\\RepoToDo.json", "./docs/TODO/_IMPL_TODO.md"])
+
+
+def test_paths_normalize_before_a_whole_path_pattern() -> None:
+    assert has_canned_message(["./docs/PR_REVIEWS/0001_x.json", "docs\\PR_SUMMARIES\\0001_x.md"])
+    assert has_canned_message([".\\docs\\PR_REVIEWS\\0001_x.json"])
 
 
 def test_any_other_file_voids_the_match() -> None:
@@ -96,7 +98,9 @@ def test_the_patterns_cover_the_plugin_defaults(plugin_root: Path) -> None:
     """A default path or name changed in defaults.json must change the entry that names it."""
     defaults = json.loads((plugin_root / "config" / "defaults.json").read_text(encoding="utf-8"))
     todo, artifacts = defaults["todo"], defaults["artifacts"]
-    snapshot = "TODO_Snapshot_2026_1023.md"
+    pattern = todo["snapshots"]["name_pattern"]
+    snapshot = re.sub(r"\(\?P<date>[^)]*\)", "2026_1023", pattern).replace("\\.", ".")
+    assert re.fullmatch(pattern, snapshot), snapshot
     names = [todo["catalog"], todo["stub_name"], todo["research"]["catalog"], snapshot]
     assert all(has_canned_message([name]) for name in names)
     assert has_canned_message([defaults["matrix_path"], defaults["agent_usage_path"]])

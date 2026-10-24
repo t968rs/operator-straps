@@ -51,12 +51,13 @@ new since the draft lands:
   block; that block comes back with an empty message.
 - Any other new path gets a new block with an empty message, even when a block of its bucket exists.
 
-A block holding only the files of a canned set (`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`) comes
-back with the canned message instead of an empty one; keep it as it stands.
-
 A block emptied this way counts as touched: read its old message in the TXT being amended (the `.txt` of the
 same stem beside `<skeleton>`), check it against `diff --block`, and restate it in Step 4 with a bullet for
 the new path.
+
+Exception: a block holding only the files of a canned set (`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`)
+comes back with the canned message instead of an empty one; it is not touched, so keep it as it stands and add
+no bullets.
 
 ## Step 2: Plan the change
 

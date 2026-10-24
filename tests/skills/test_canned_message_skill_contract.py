@@ -36,11 +36,11 @@ def parser():
 @pytest.mark.parametrize("skill", _CAPTURE_SKILLS)
 def test_capture_skills_keep_a_canned_message(skill: str) -> None:
     body = _text(skill)
-    assert "canned" in body, f"{skill} never mentions the canned message a capture can prefill"
+    assert "canned message" in body, f"{skill} never mentions the canned message a capture can prefill"
     assert "canned_messages.py" in body, f"{skill} does not point at the module that owns the entries"
 
 
-@pytest.mark.parametrize("skill", ["c-msg", "branch-commit-msg"])
+@pytest.mark.parametrize("skill", _CAPTURE_SKILLS)
 def test_a_prefilled_block_is_not_redrafted(skill: str) -> None:
     body = _text(skill)
     assert re.search(r"canned[^\n]*(skip|keep|as it stands)|(skip|keep)[^\n]*canned", body, re.IGNORECASE)
