@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from harness_lib.config import HarnessConfig
-from harness_lib.todo_sync import TodoSyncError, render_snapshot
+from harness_lib.todo_sync import TodoSyncError, render_snapshot, snapshot_name
 from harness_lib.todo_sync.report import write_atomic
 from harness_lib.todo_sync.sources import posix
 
@@ -80,7 +80,8 @@ def starter_catalog(head_sha: str, today: dt.date) -> Dict[str, Any]:
     """An empty catalog dated ``today`` and verified against ``head_sha``."""
     return {
         "generated": today.isoformat(),
-        "generated_from": {"description": "Empty catalog written by todo_sync.py init.", "head_sha": head_sha},
+        "generated_from": {"description": "Started by todo_sync.py init; later items come from "
+                                          "todo_sync.py add or a hand edit.", "head_sha": head_sha},
         "ranking_method": copy.deepcopy(STARTER_RANKING),
         "counts": {"items": 0, "needs_decision": 0, "trackers": 0, "close_candidates": 0, "by_status": {},
                    "by_impact": {}, "by_loe": {size: 0 for size in LOE_SIZES},
@@ -103,6 +104,26 @@ def _head_sha(root: Path) -> str:
     return sha
 
 
+def _check_snapshot_name(cfg: HarnessConfig, day: dt.date) -> None:
+    """Refuse, before any file is written, a snapshot name ``render_snapshot`` would refuse."""
+    name = snapshot_name(day)
+    pattern = cfg.todo.snapshots.name_pattern
+    if cfg.todo.snapshots.dir and not re.fullmatch(pattern, name):
+        raise TodoSyncError(f"{name} does not match todo.snapshots.name_pattern {pattern}; "
+                            "init wrote nothing")
+
+
+def _first_snapshot(cfg: HarnessConfig, day: dt.date) -> Optional[Path]:
+    """The first snapshot, or None without ``todo.snapshots.dir``; a refusal names the catalog left behind."""
+    if not cfg.todo.snapshots.dir:
+        return None
+    try:
+        return render_snapshot(cfg, day)
+    except TodoSyncError as exc:
+        raise TodoSyncError(f"{exc}; {posix(cfg.todo.catalog)} was created, finish with todo_sync.py "
+                            "render") from exc
+
+
 def init_catalog(cfg: HarnessConfig, today: Optional[dt.date] = None) -> InitResult:
     """Write the starter catalog and, when ``todo.snapshots.dir`` is set, the first snapshot."""
     if not cfg.todo.enabled or not cfg.todo.catalog:
@@ -111,7 +132,7 @@ def init_catalog(cfg: HarnessConfig, today: Optional[dt.date] = None) -> InitRes
     if path.exists():
         raise TodoSyncError(f"{posix(cfg.todo.catalog)} already exists; init never overwrites a catalog")
     day = today or dt.date.today()
+    _check_snapshot_name(cfg, day)
     catalog = starter_catalog(_head_sha(cfg.project_root), day)
     write_atomic(path, json.dumps(catalog, indent=2, ensure_ascii=False) + "\n")
-    snapshot = render_snapshot(cfg, day) if cfg.todo.snapshots.dir else None
-    return InitResult(path, snapshot)
+    return InitResult(path, _first_snapshot(cfg, day))

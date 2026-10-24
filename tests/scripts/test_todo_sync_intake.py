@@ -1,4 +1,5 @@
-"""The ``untracked`` and ``add`` subcommands of ``scripts/todo_sync.py``, run in-process with ``gh`` replaced.
+"""The ``init``, ``untracked`` and ``add`` subcommands of ``scripts/todo_sync.py``, run in-process with
+``gh`` replaced.
 
 Projects come from ``tests/lib/_todo_helpers.py`` (issues 11, 101, 102 and 103 are recorded in its catalog).
 """
@@ -14,7 +15,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from _todo_helpers import CATALOG_REL, build  # noqa: E402
+from _todo_helpers import CATALOG_REL, SNAP_DIR, build  # noqa: E402
 from conftest import PLUGIN_ROOT  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, gh  # noqa: E402
 
@@ -102,7 +103,7 @@ def test_init_creates_the_catalog_and_refuses_a_second_run(driver, make_project,
     assert driver.main(["--project", str(root), "init"]) == 0
     lines = capsys.readouterr().out.splitlines()
     assert lines[0] == f"created {CATALOG_REL}"
-    assert lines[1].startswith("created docs/RESEARCH/_TODO/Snapshots/TODO_Snapshot_")
+    assert lines[1].startswith(f"created {SNAP_DIR}/TODO_Snapshot_")
     assert lines[-1] == "next: todo_sync.py check, or /harness:sync-gh-todo to add the open issues"
     assert (root / CATALOG_REL).is_file()
     before = (root / CATALOG_REL).read_bytes()
@@ -130,5 +131,7 @@ def test_add_refusal_exits_2(driver, make_project, capsys) -> None:
     root = build(make_project).project_root
     spec = root / "add.json"
     spec.write_text(json.dumps({"items": [_spec(11)]}), encoding="utf-8")
+    before = (root / CATALOG_REL).read_bytes()
     assert driver.main(["--project", str(root), "add", "--spec", str(spec)]) == 2
-    assert "problem:" in capsys.readouterr().err
+    assert "problem: issue #11 is already in the catalog" in capsys.readouterr().err
+    assert (root / CATALOG_REL).read_bytes() == before

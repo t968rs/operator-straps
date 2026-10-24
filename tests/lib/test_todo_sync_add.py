@@ -65,6 +65,13 @@ def test_counts_follow_the_new_items() -> None:
     assert all(new not in out.rescored for new, _ in out.added)
 
 
+def test_an_issue_only_cross_referenced_by_an_item_gets_its_own_item() -> None:
+    catalog = _catalog()
+    catalog["items"][0]["related_gh_issues"] = [400]
+    out = add_items(catalog, [_spec(400)])
+    assert [n for _, n in out.added] == [400]
+
+
 def test_priority_is_computed_not_taken() -> None:
     out = add_items(_catalog(), [_spec()])
     item = out.catalog["items"][0]
@@ -91,7 +98,7 @@ FRAGMENTS = {
     "missing why_ranked": "why_ranked", "sets rank": "sets rank", "sets depends_on": "sets depends_on",
     "sets sources": "sets sources", "item source": "#11", "tracker": "#101", "tracker child": "#103",
     "close candidate": "#102", "same issue twice": "appears twice", "not an object": "not an object",
-    "bad issue": "positive integer", "empty": "at least one", "unscoreable": "cannot score"}
+    "bad issue": "positive integer", "empty": "at least one", "unscoreable": "item 1: impact"}
 
 
 @pytest.mark.parametrize("case", list(CASES))
@@ -113,9 +120,17 @@ TYPE_CASES = {
     "needs_decision as a string": ({"needs_decision": "yes"}, "needs_decision"),
     "empty title": ({"title": ""}, "title"),
     "unknown status": ({"status": "DONE"}, "status"),
-    "unknown loe size": ({"loe": {"size": "Q", "reasoning": "x"}}, "cannot score"),
+    "unknown loe size": ({"loe": {"size": "Q", "reasoning": "x"}}, "item 1: loe/size"),
     "unknown blast level": ({"blast_radius": {"level": "Z", "reasoning": "x", "consumers": []}},
-                            "cannot score"),
+                            "item 1: blast_radius/level"),
+    "unknown kind": ({"kind": "chore"}, "item 1: kind"),
+    "url not https": ({"url": "http://example.com/9"}, "item 1: sources/0/url"),
+    "snippet without a path:line header": ({"code_snippet": "x = 1\n"}, "item 1: code_snippet"),
+    "files listed twice": ({"files": ["src/a.py", "src/a.py"]}, "item 1: files"),
+    "extra loe key": ({"loe": {"size": "S", "reasoning": "x", "points": 2}}, "item 1: loe"),
+    "decision without a question": ({"needs_decision": True}, "item 1: decision_question"),
+    "question without a decision": ({"decision_question": "Which?"}, "item 1: decision_question"),
+    "NEEDS_DECISION status without the flag": ({"status": "NEEDS_DECISION"}, "item 1: needs_decision"),
 }
 
 
@@ -142,6 +157,17 @@ def test_apply_add_writes_the_catalog_and_dry_run_does_not(make_project) -> None
     assert summary_lines(done, False)[-1] == "next: todo_sync.py render, then todo_sync.py check"
     report = check(cfg, rules=CATALOG_RULES)
     assert report.findings == ()
+
+
+def test_apply_add_refusal_leaves_the_catalog_untouched(make_project) -> None:
+    cfg = build(make_project)
+    catalog_path = cfg.project_root / CATALOG_REL
+    spec = cfg.project_root / "add.json"
+    spec.write_text(json.dumps({"items": [_spec(9), _spec(11)]}), encoding="utf-8")
+    before = catalog_path.read_bytes()
+    with pytest.raises(TodoSyncError, match="#11"):
+        apply_add(cfg, spec)
+    assert catalog_path.read_bytes() == before
 
 
 def test_read_spec_names_its_key(tmp_path: Path) -> None:

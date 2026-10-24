@@ -1,7 +1,7 @@
 {
   "generated": "2026-10-23",
   "generated_from": {
-    "description": "Empty catalog written by todo_sync.py init.",
+    "description": "Started by todo_sync.py init; items added by todo_sync.py add from open GitHub issues.",
     "head_sha": "5fecd6e4d368b1842015450cbb6a627fd347b9d3"
   },
   "ranking_method": {
@@ -748,8 +748,8 @@
       "title": "Add `sync-gh-todo` Skill",
       "url": "https://github.com/t968rs/operator-straps/issues/85",
       "current_state": "LIKELY_RESOLVED",
-      "evidence": "Commit 2f6b2db (\"feat(harness): add sync-gh-todo to add untracked GitHub issues to the TODO catalog\", body \"Closes #85\") adds plugins/harness/skills/sync-gh-todo/SKILL.md, the `untracked` and `add --spec` subcommands of plugins/harness/scripts/todo_sync.py and plugins/harness/lib/harness_lib/todo_sync/issues.py, gh.py and reviews.py; this catalog run used `todo_sync.py untracked` to list the 13 untracked issues. The commit sits on branch 1071-sync-gh-issues only: `git log --oneline main` tops out at 18c3a58, and `gh pr list --head 1071-sync-gh-issues --state all` returns no PR yet.",
-      "recommended_action": "Open the PR for 1071-sync-gh-issues; its \"Closes #85\" commit closes the issue on merge. Close by hand only if the branch merges without that keyword reaching main.",
+      "evidence": "Commit 2f6b2db (\"feat(harness): add sync-gh-todo to add untracked GitHub issues to the TODO catalog\", body \"Closes #85\") adds plugins/harness/skills/sync-gh-todo/SKILL.md, the `untracked` and `add --spec` subcommands of plugins/harness/scripts/todo_sync.py and plugins/harness/lib/harness_lib/todo_sync/issues.py, gh.py and reviews.py; this catalog run used `todo_sync.py untracked` to list the 13 untracked issues. The commit sits on branch 1071-sync-gh-issues, which PR #89 proposes for main; `git log --oneline main` tops out at 18c3a58.",
+      "recommended_action": "Closes on merge of PR #89 through its \"Closes #85\" commit; drop this candidate afterwards. Close by hand only if the branch merges without that keyword reaching main.",
       "related_todo_ids": []
     }
   ]

@@ -242,16 +242,30 @@ to `FULLY_IMPLEMENTED` and deletes its stub, but only after it ran a check for e
 a stub with any unproven deliverable is kept and listed.
 
 A project's first catalog comes from `todo_sync.py init`: with `todo.folder` set, it creates the folder, an empty
-schema-valid `RepoToDo.json` (the default ranking tables, no items, the current commit recorded) and the first
-snapshot, and refuses to overwrite an existing catalog. It needs a git commit and does not edit `harness.json`.
+schema-valid catalog at `todo.catalog` (default `RepoToDo.json`; the default ranking tables, no items, the
+current commit recorded) and the first snapshot, and refuses to overwrite an existing catalog. It needs a git commit and does not edit `harness.json`.
 
 Open GitHub issues enter the catalog through `todo_sync.py untracked`, which lists the open issues that no record
-mentions (an item, tracker, tracker child, close candidate or research entry) and writes each one's text, comments
+covers (an item's `gh_issues` or `gh_issue` source, a tracker or tracker child, a close candidate or a research
+entry; an issue an item only lists in `related_gh_issues` still counts as untracked) and writes each one's text, comments
 and the text of any PR review it links to `<state_dir>/todo-sync/untracked.json`. `todo_sync.py add --spec PATH
 [--dry-run]` inserts one item per issue from a spec file, scores it, renumbers the rest and recounts, and refuses an
-issue the catalog already records. `/harness:sync-gh-todo` runs `init` first when the catalog is missing, then both through the `todo-editor` agent, which drafts
-each item from the issue and review text (a best guess for a thin issue, flagged as needing a decision when it
-turns on a choice) and then runs `render` and `check`. A `gh_issue` source needs no `_IMPL_TODO.md` stub.
+issue the catalog already records. `/harness:sync-gh-todo` runs `untracked` itself (and, when `untracked`
+reports the configured catalog, `todo.catalog` with default `RepoToDo.json`, as `file not found`, runs `init` and
+then `untracked` again), then hands the listed issues to the `todo-editor` agent, which drafts each item from the
+`untracked.json` that run wrote (a best guess for a thin issue, flagged as needing a decision when it turns on a
+choice), runs `add`, and then runs `render` and `check`. A `gh_issue` source needs no `_IMPL_TODO.md` stub.
+
+```text
+/harness:sync-gh-todo
+
+[main session]  todo_sync.py untracked        list open issues no record mentions, write untracked.json
+[main session]  todo_sync.py init             only when untracked reports the catalog file not found,
+                                              then untracked again
+[todo-editor]   draft one item per issue      from the issue text and the text of any linked PR review
+[todo-editor]   todo_sync.py add --spec PATH  insert, score, renumber, recount; refuses a recorded issue
+[todo-editor]   todo_sync.py render, check    new snapshot, then the drift checks
+```
 
 | Key | Default | Used by |
 |---|---|---|
@@ -282,8 +296,8 @@ turns on a choice) and then runs `render` and `check`. A `gh_issue` source needs
 | `todo.research.anchor_pattern` | `catalog_entry: <path>#<id>` | rules S1, S4 (named group `id`) |
 | `todo.research.ignore_folders` | `[]` | rule S6 (the folders holding the catalog and the snapshots are excluded automatically) |
 | `todo.plans.pairs` | `true` | rules P1-P4 over `artifacts.plans` |
-| `todo.gh.repo` | `null` (the `origin` remote) | issue fetch (Phase 3) |
-| `todo.gh.max_age_hours` | `24` | rule G5 (Phase 3), `todo-watch` `/todo` summary age suffix |
+| `todo.gh.repo` | `null` (the repository `gh` resolves for the checkout) | `todo_sync.py untracked` |
+| `todo.gh.max_age_hours` | `24` | `todo-watch` `/todo` summary age suffix (no sync rule reads it yet) |
 | `todo.rules.disabled` | `[]` | `todo_sync.py check` skips these rule ids |
 | `todo.rules.warn_counts` | `false` | warn findings count toward the drift number |
 | `todo.inject_context` | `true` | `todo-watch` per-prompt `TODO_SYNC` line |

@@ -15,7 +15,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _todo_helpers import RESEARCH_REL, TODO_DIR, build, config, todo_files  # noqa: E402
+from _todo_helpers import CATALOG_REL, RESEARCH_REL, TODO_DIR, build, config, todo_files  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, gh, issues  # noqa: E402
 from harness_lib.todo_sync.sources import Sources  # noqa: E402
 
@@ -40,6 +40,24 @@ def _fake_gh(monkeypatch, open_issues: List[Dict[str, Any]]) -> List[List[str]]:
 def test_tracked_numbers_cover_every_record(make_project) -> None:
     cfg = build(make_project)
     assert issues.tracked_numbers(Sources(cfg)) == {11, 101, 102, 103}
+
+
+@pytest.mark.parametrize("item, number", [
+    ({"gh_issues": [301]}, 301),
+    ({"sources": [{"type": "gh_issue", "ref": "303"}]}, 303),
+], ids=["gh_issues", "gh_issue_source"])
+def test_each_item_field_alone_tracks_its_number(make_project, item, number) -> None:
+    files = todo_files()
+    files[CATALOG_REL]["items"] = [{"id": "solo", **item}]
+    cfg = build(make_project, files)
+    assert number in issues.tracked_numbers(Sources(cfg))
+
+
+def test_an_issue_only_cross_referenced_by_an_item_is_untracked(make_project) -> None:
+    files = todo_files()
+    files[CATALOG_REL]["items"] = [{"id": "solo", "related_gh_issues": [302]}]
+    cfg = build(make_project, files)
+    assert 302 not in issues.tracked_numbers(Sources(cfg))
 
 
 def test_research_entry_issues_count_as_tracked(make_project) -> None:
@@ -68,6 +86,12 @@ def test_find_untracked_lists_only_unrecorded_issues(make_project, monkeypatch) 
     assert rows[0]["body"] == ""
     assert rows[0]["comments"] == [{"author": "ann", "body": "hi"}]
     assert rows[0]["reviews"] == [] and rows[0]["reviews_truncated"] is False
+
+
+def test_find_untracked_sorts_rows_by_number(make_project, monkeypatch) -> None:
+    cfg = build(make_project)
+    _fake_gh(monkeypatch, [_issue(300), _issue(101), _issue(200)])
+    assert [r["number"] for r in issues.find_untracked(cfg)] == [200, 300]
 
 
 def test_open_issues_ask_for_every_open_issue(make_project, monkeypatch) -> None:

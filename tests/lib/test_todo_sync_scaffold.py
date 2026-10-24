@@ -14,6 +14,7 @@ from _todo_helpers import CATALOG_REL, SNAP_DIR, TODO_DIR, build, config, todo_f
 from conftest import git  # noqa: E402
 from harness_lib.config import load_config  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, check  # noqa: E402
+from harness_lib.todo_sync import scaffold  # noqa: E402
 from harness_lib.todo_sync.scaffold import init_catalog, starter_catalog  # noqa: E402
 
 DAY = dt.date(2026, 10, 23)
@@ -69,6 +70,25 @@ def test_init_without_a_snapshots_folder_writes_the_catalog_only(make_project) -
     result = init_catalog(cfg, DAY)
     assert result.snapshot is None
     assert result.catalog.is_file()
+
+
+def test_init_refuses_a_snapshot_name_outside_the_pattern_before_writing(make_project) -> None:
+    body = config(todo={"folder": TODO_DIR, "snapshots": {"name_pattern": r"Snap_(?P<date>\d{8})\.md"}})
+    cfg = build(make_project, {}, cfg=body)
+    with pytest.raises(TodoSyncError, match="name_pattern.*init wrote nothing"):
+        init_catalog(cfg, DAY)
+    assert not (cfg.project_root / CATALOG_REL).exists()
+
+
+def test_a_snapshot_refusal_after_the_catalog_names_render(make_project, monkeypatch) -> None:
+    def refuse(*_args) -> None:
+        raise TodoSyncError("snapshot refused")
+
+    monkeypatch.setattr(scaffold, "render_snapshot", refuse)
+    cfg = build(make_project, {})
+    with pytest.raises(TodoSyncError, match="was created, finish with todo_sync.py render"):
+        init_catalog(cfg, DAY)
+    assert (cfg.project_root / CATALOG_REL).is_file()
 
 
 def test_init_needs_a_commit_to_record(tmp_path: Path) -> None:

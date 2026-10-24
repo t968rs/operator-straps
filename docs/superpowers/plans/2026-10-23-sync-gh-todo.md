@@ -47,7 +47,9 @@
 - Modify `plugins/harness/agents/todo-editor.md`: the `sync` operation.
 - Create `plugins/harness/skills/sync-gh-todo/SKILL.md`.
 - Modify `README.md`, `plugins/harness/.claude-plugin/plugin.json`.
-- Tests: `tests/lib/test_todo_sync_issues.py`, `tests/lib/test_todo_sync_reviews.py`, `tests/lib/test_todo_sync_add.py`, `tests/scripts/test_todo_sync_intake.py`, `tests/skills/test_sync_gh_todo_skill_contract.py`.
+- Create `plugins/harness/lib/harness_lib/todo_sync/scaffold.py`: the starter catalog and `init_catalog` behind `todo_sync.py init` (Task 6).
+- Create `docs/TODO/RepoToDo.json` and its first snapshot, and add the `todo` key to `.claude/harness.json` (Task 6).
+- Tests: `tests/lib/test_todo_sync_issues.py`, `tests/lib/test_todo_sync_reviews.py`, `tests/lib/test_todo_sync_add.py`, `tests/scripts/test_todo_sync_intake.py`, `tests/skills/test_sync_gh_todo_skill_contract.py`, `tests/lib/test_todo_sync_scaffold.py`.
 
 ---
 
@@ -58,9 +60,9 @@
 - Test: `tests/lib/test_todo_sync_issues.py`
 
 **Interfaces:**
-- Produces (`gh.py`): `run_gh(cwd: Path, args: Sequence[str]) -> str` returns stdout; raises `TodoSyncError("gh <first three args> failed: <stderr>")` on a non-zero exit and `TodoSyncError("gh could not run (<exc>); install gh or check PATH")` on `OSError`. `api_object(cwd: Path, path: str) -> Dict[str, Any]` runs `gh api <path>`. `api_list(cwd: Path, path: str) -> List[Dict[str, Any]]` runs `gh api --paginate --jq .[] <path>` and parses one JSON object per output line. Every caller reaches them as `gh.run_gh(...)` through the module so tests can patch `harness_lib.todo_sync.gh.run_gh`.
+- Produces (`gh.py`): `run_gh(cwd: Path, args: Sequence[str]) -> str` returns stdout; raises `TodoSyncError("gh <label> failed: <stderr>")` on a non-zero exit, where `<label>` is `api <last arg>` for a `gh api` call and the first two args otherwise (`gh issue list failed: ...`), and `TodoSyncError("gh could not run (<exc>); install gh or check PATH")` on `OSError`. `api_object(cwd: Path, path: str) -> Dict[str, Any]` runs `gh api <path>`. `api_list(cwd: Path, path: str) -> List[Dict[str, Any]]` runs `gh api --paginate --jq .[] <path>` and parses one JSON object per output line. Every caller reaches them as `gh.run_gh(...)` through the module so tests can patch `harness_lib.todo_sync.gh.run_gh`.
 - Produces (`issues.py`): `LIST_LIMIT = 1000`; `untracked_path(cfg: HarnessConfig) -> Path` (`<state_dir>/todo-sync/untracked.json`); `catalog_issue_numbers(catalog: Dict[str, Any]) -> Set[int]` (every `items[].gh_issues`, `related_gh_issues`, `sources[type=gh_issue].ref` as `#N`, `trackers[].number` and `children`, `close_candidates[].number`); `tracked_numbers(src: Sources) -> Set[int]` (that, plus the research catalog's `entries[].issues` entries, each coerced with `int()` when it is a digit string or int); `open_issues(cfg: HarnessConfig) -> List[Dict[str, Any]]`; `find_untracked(cfg: HarnessConfig) -> List[Dict[str, Any]]`; `write_untracked(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> Path`.
-- Row shape of `find_untracked`: `{"number": int, "title": str, "url": str, "labels": [str], "body": str, "comments": [{"author": str, "body": str}], "reviews": [], "reviews_truncated": False}`; a null body becomes `""`.
+- Row shape of `find_untracked`: `{"number": int, "title": str, "url": str, "labels": [str], "body": str, "comments": [{"author": str, "body": str}], "reviews": [], "reviews_truncated": False, "review_errors": []}`; a null body becomes `""`. `review_errors` holds one `<link>: <reason>` line per linked review that could not be read (Task 2).
 
 - [ ] **Step 1: Write the failing tests** in `tests/lib/test_todo_sync_issues.py`. Build the project with `_todo_helpers.build(make_project, files, cfg)`; a `_fake_gh(monkeypatch, issues)` helper patches `gh.run_gh` to return `json.dumps(issues)` for an args list starting `issue list` and records every args list.
   - `test_tracked_numbers_cover_every_record`: the shared fixture gives `tracked_numbers(Sources(cfg)) == {11, 101, 102, 103}`.
@@ -86,7 +88,7 @@
 
 **Interfaces:**
 - Consumes: `gh.api_object`, `gh.api_list` (Task 1); the issue row shape.
-- Produces: `REVIEW_CHARS = 20000`; `@dataclass(frozen=True) ReviewLink(pr: int, review_id: Optional[int])`; `review_links(texts: Iterable[str], slug: str) -> List[ReviewLink]` (matches `https://github.com/<slug>/pull/<N>` with an optional `#pullrequestreview-<id>`; any other repository is ignored; first occurrence order, deduplicated; `slug` compared case-insensitively); `slug_of(issue_url: str) -> str` (`owner/repo` of `https://github.com/<o>/<r>/issues/<N>`, else `""`); `fetch_reviews(cwd: Path, slug: str, links: Sequence[ReviewLink], budget: int = REVIEW_CHARS) -> Tuple[List[Dict[str, Any]], bool]` returning the review dicts and a truncated flag.
+- Produces: `REVIEW_CHARS = 20000`; `@dataclass(frozen=True) ReviewLink(pr: int, review_id: Optional[int])`; `review_links(texts: Iterable[str], slug: str) -> List[ReviewLink]` (matches `https://github.com/<slug>/pull/<N>` with an optional `#pullrequestreview-<id>`; any other repository is ignored; first occurrence order, deduplicated; `slug` compared case-insensitively); `slug_of(issue_url: str) -> str` (`owner/repo` of `https://github.com/<o>/<r>/issues/<N>`, else `""`); `fetch_reviews(cwd: Path, slug: str, links: Sequence[ReviewLink], budget: int = REVIEW_CHARS) -> Tuple[List[Dict[str, Any]], bool, List[str]]` returning the review dicts, a truncated flag and one `<link>: <reason>` line per link whose fetch raised `TodoSyncError` or `ValueError` (a deleted review, an issue number); such a link is skipped, not fatal.
 - Review dict: `{"source": "https://github.com/<slug>/pull/<N>#pullrequestreview-<id>", "state": str, "author": str, "body": str, "comments": [{"path": str, "line": Optional[int], "author": str, "body": str}]}`. Endpoints: `repos/<slug>/pulls/<N>/reviews/<id>` and `.../comments` for a named review, `repos/<slug>/pulls/<N>/reviews` for a bare PR. A DISMISSED review, and a review with a blank body and no non-blank inline comment, are left out. The budget counts the characters of every body; once spent, later reviews are dropped and the flag is True.
 
 - [ ] **Step 1: Write the failing tests** in `tests/lib/test_todo_sync_reviews.py`; a `_fake_api(monkeypatch, objects, lists)` helper patches `gh.api_object` and `gh.api_list` to answer by path.
@@ -98,7 +100,7 @@
   - `test_find_untracked_attaches_linked_reviews`: an untracked issue whose body holds a review URL (and whose repo comes from its `url`) gets `reviews` of length 1 and `reviews_truncated is False`; an untracked issue with no link keeps `reviews == []`.
 - [ ] **Step 2: Run to verify failure.** `python -m pytest tests/lib/test_todo_sync_reviews.py -q` fails on the missing module.
 - [ ] **Step 3: Implement `reviews.py`** to the Interfaces above; `api_list` results are dicts, `user.login` gives the author, an inline comment's line is `line` else `original_line` else `None`.
-- [ ] **Step 4: Wire `find_untracked`** so each row's links come from `review_links([body, *comment bodies], slug_of(url))` and its `reviews`, `reviews_truncated` from `fetch_reviews(cfg.project_root, slug, links)`.
+- [ ] **Step 4: Wire `find_untracked`** so each row's links come from `review_links([body, *comment bodies], slug_of(url))` and its `reviews`, `reviews_truncated`, `review_errors` from `fetch_reviews(cfg.project_root, slug, links)`.
 - [ ] **Step 5: Run to verify pass.** `python -m pytest tests/lib/test_todo_sync_reviews.py tests/lib/test_todo_sync_issues.py -q` passes.
 - [ ] **Step 6: Checkpoint.** Ruff on the changed files is clean; list them.
 
@@ -174,7 +176,7 @@
   ```
 
   Step 3 relays the reply and states that the edits are saved, not committed.
-- The agent gains a `## sync` section: read `<state_dir>/todo-sync/untracked.json` in slices (never whole; Grep for `"number": <n>` and Read around it); for each listed issue draft one item, never merge issues; take severity, impact and `loe` from the catalog's own `ranking_method` scales; set `needs_decision` with a `decision_question` when the guess is shaky; when `reviews` is non-empty, write each review finding into `summary` as `<path>:<line>: <point>` (the review's own words, not its URL) and list the paths in `files`; verify claims with Grep and cite `path:line`, or write `unverified` in the summary; write `{"items": [...]}` to `<state_dir>/todo-sync/add.json` using only the keys `add` accepts; run `add --spec ... --dry-run`, then `add --spec ...`, then the existing **finish** steps. The `Operation` and reply blocks name `sync`; `Added:` carries `TODO-NNN for #N`. Stop conditions gain: `untracked: none`.
+- The agent gains a `## sync` section: read `<state_dir>/todo-sync/untracked.json` in slices (never whole; Grep for `"number": <n>` and Read around it); for each listed issue draft one item, never merge issues; take severity, impact and `loe` from the catalog's own `ranking_method` scales; set `needs_decision` with a `decision_question` when the guess is shaky; when `reviews` is non-empty, write each review finding into `summary` as `<path>:<line>: <point>` (the review's own words, not its URL) and list the paths in `files`; verify claims with Grep and cite `path:line`, or write `unverified` in the summary; write `{"items": [...]}` to `<state_dir>/todo-sync/add.json` using only the keys `add` accepts; run `add --spec ... --dry-run`, then `add --spec ...`, then the existing **finish** steps. The `Operation` and reply blocks name `sync`; `Added:` carries `TODO-NNN for #N`, with ` (needs decision)` appended for an item with `needs_decision: true`, and the skill's report names those items. Stop conditions gain `untracked: none`, and the one spec fix before stopping on a `problem:` line applies to sync as well as split. The agent drafts from the `untracked.json` the skill's Step 1 wrote and reruns `untracked` only when that file is missing.
 
 - [ ] **Step 1: Write the failing tests** in `tests/skills/test_sync_gh_todo_skill_contract.py`, in the style of `tests/skills/test_amend_commit_msg_skill_contract.py` (load `todo_sync._parser()` through `importlib`).
   - `test_skill_frontmatter_names_the_skill_and_no_arguments`: `name: sync-gh-todo`; no `argument-hint` line.
@@ -189,6 +191,24 @@
 - [ ] **Step 6: Whole-change checks, files named.** `python -m pytest tests/lib/test_todo_sync_issues.py tests/lib/test_todo_sync_reviews.py tests/lib/test_todo_sync_add.py tests/scripts/test_todo_sync_intake.py tests/scripts/test_todo_sync.py tests/lib/test_todo_sync_reshape.py tests/lib/test_todo_sync_retire.py tests/skills/test_sync_gh_todo_skill_contract.py tests/skills/test_todo_edit_skill_contract.py tests/contract/test_no_repo_literals.py tests/contract/test_root_separation.py tests/contract/test_hooks_json_paths.py -q` passes; `python -m ruff check --no-cache plugins tests tools` reports at most the pre-existing `plugins/harness/scripts/pr_review.py:23` E501; `claude plugin validate --strict plugins/harness` passes.
 - [ ] **Step 7: Live check against a scratch project.** In a throwaway directory with `.claude/harness.json` (`{"todo": {"folder": "docs/_TODO"}}`) and a small valid catalog, run `todo_sync.py untracked` with the real `gh` against any repository the developer names, and report the output. Skipped, with the reason stated, when `gh` is not authenticated.
 - [ ] **Step 8: Checkpoint.** List every changed file; the developer commits.
+
+---
+
+### Task 6: Starter catalog (`todo_sync.py init`)
+
+Added after execution (commit 5fecd6e) so this repository could run `sync` against its own issues.
+
+**Files:**
+- Create: `plugins/harness/lib/harness_lib/todo_sync/scaffold.py`, `docs/TODO/RepoToDo.json` and its first snapshot
+- Modify: `plugins/harness/scripts/todo_sync.py` (`init` subcommand and docstring), `.claude/harness.json` (`todo` key)
+- Test: `tests/lib/test_todo_sync_scaffold.py`
+
+**Interfaces:**
+- Produces (`scaffold.py`): `STARTER_RANKING` (the default `ranking_method` tables); `starter_catalog(head_sha: str, today: dt.date) -> Dict[str, Any]` (an empty, schema-valid catalog whose `generated_from` records `head_sha`); `@dataclass(frozen=True) InitResult(catalog: Path, snapshot: Optional[Path])`; `init_catalog(cfg: HarnessConfig, today: Optional[dt.date] = None) -> InitResult`.
+- `init_catalog` raises `TodoSyncError` without writing anything when `todo.folder` is unset, when the catalog already exists (`init never overwrites a catalog`), when `git rev-parse HEAD` gives no commit, or when the first snapshot name does not match `todo.snapshots.name_pattern`. Otherwise it writes the catalog and, when `todo.snapshots.dir` is set, renders the first snapshot.
+- `todo_sync.py init` prints one `created <path>` line per written file; a `TodoSyncError` prints `problem: <reason>` and exits 2.
+
+- [ ] **Tests** in `tests/lib/test_todo_sync_scaffold.py`: init writes a catalog and snapshot that `check` passes clean; the starter catalog is empty and records the commit; `head_sha` is the current commit; init refuses to overwrite a catalog, needs `todo.folder` and needs a commit; without a snapshots folder it writes the catalog only; a snapshot name outside `name_pattern` is refused before any file is written.
 
 ---
 

@@ -17,20 +17,22 @@ catalog and the issue text never enter the main session's context.
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" untracked
 ```
 
-Run it from the project root. `untracked: none` ends the run: report that line. A `problem:` line (no
-`todo.folder` in `.claude/harness.json`, `gh` missing or failing) ends the run: relay it. Otherwise the output is
+Run it from the project root. `untracked: none` ends the run: report that line. Otherwise the output is
 `untracked: <n> open issue(s) in no catalog record`, one `#<number> <title>` line per issue and
 `wrote <path>`; the issue numbers feed Step 2.
 
-A `problem:` line ending `RepoToDo.json: file not found` (the catalog named in `todo.catalog`) means
-`todo.folder` is set but the project has no catalog yet. Create the starter one, then rerun the command above:
+A `problem:` line ending `: file not found` that names the configured `todo.catalog` (default `RepoToDo.json`)
+means `todo.folder` is set but the project has no catalog yet. Create the starter one, then rerun the command
+above:
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" init
 ```
 
 `init` writes an empty catalog and the first snapshot and prints one `created <path>` line per file. It
-never overwrites an existing catalog: a `problem:` line from it ends the run, relayed as it stands.
+never overwrites an existing catalog: a `problem:` line from it ends the run, relayed as it stands. Any other
+`problem:` line from the untracked command (no `todo.folder` in `.claude/harness.json`, `gh` missing or failing)
+ends the run: relay it.
 
 ## Step 2: dispatch the agent
 
@@ -44,10 +46,11 @@ Project root: <absolute project root>
 Guidance: none
 ```
 
-`Issues:` lists every number from Step 1.
+`Issues:` lists every number from Step 1. The agent drafts from the `untracked.json` Step 1 wrote and reruns
+`untracked` only when that file is missing, so `gh` fetches the issues and reviews once.
 
 ## Step 3: report
 
 Relay the agent's reply as it stands. The edits are saved, not committed; the developer reviews the diff and
-commits. The items are the agent's best guess from the issue text: say so, and name any item the reply marks
-as needing a decision.
+commits. The items are the agent's best guess from the issue text: say so, and name any item the reply's `Added`
+line marks `(needs decision)`.

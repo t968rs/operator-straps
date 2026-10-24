@@ -13,12 +13,14 @@ source, links and score, so the new item takes the rank its score earns and the 
 from __future__ import annotations
 
 import copy
+import functools
 import json
 from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 from harness_lib.config import HarnessConfig
+from harness_lib.project import plugin_root
 from harness_lib.todo_sync import TodoSyncError
 from harness_lib.todo_sync.issues import catalog_issue_numbers
 from harness_lib.todo_sync.ranking import RankingError, RankingMethod, expected_order, method_from, score
@@ -35,7 +37,7 @@ LINKS = {"items": ("depends_on", "unblocks"), "trackers": ("child_todo_ids",),
 
 @dataclass(frozen=True)
 class Reshape:
-    """The catalog after a split or refresh, with what moved."""
+    """The catalog after a split, add or refresh, with what moved."""
 
     catalog: Dict[str, Any]
     renames: Dict[str, str]
@@ -107,6 +109,10 @@ def _count(value: Any) -> bool:
 
 
 ADD_STATUSES = ("OPEN", "PARTIAL", "NEEDS_DECISION", "BLOCKED")
+#: The schema an added item must pass, under the plugin's ``schemas`` folder.
+ITEM_SCHEMA = "catalogs/TodoCatalog.schema.json"
+_PLACEHOLDER_PRIORITY = {"score": 0, "components": {k: 0 for k in (
+    "impact_weight", "value", "loe_points", "blast_factor", "cost", "base_score", "unblock_bonus")}}
 #: Per spec key: a check on its value and what to say when it fails.
 _TYPE_RULES: Dict[str, Tuple[Callable[[Any], bool], str]] = {
     **{k: (_text, "a non-empty string") for k in ("url", "title", "kind", "summary", "proposed_change",
@@ -127,10 +133,30 @@ _TYPE_RULES: Dict[str, Tuple[Callable[[Any], bool], str]] = {
 
 
 def _check_types(n: int, spec: Dict[str, Any]) -> None:
-    """Refuse a spec value of the wrong shape before it reaches scoring or the catalog."""
+    """Refuse a spec value of the wrong base shape with a plain message; ``_check_item`` then holds the built
+    item to the catalog schema."""
     for key, (valid, wanted) in _TYPE_RULES.items():
         if key in spec and not valid(spec[key]):
             raise TodoSyncError(f"item {n}: {key} must be {wanted}")
+
+
+@functools.lru_cache(maxsize=1)
+def _item_validator() -> Any:
+    """A validator for one catalog item: ``$defs/item`` of the harness TodoCatalog schema."""
+    import jsonschema
+    schema = json.loads((plugin_root() / "schemas" / ITEM_SCHEMA).read_text(encoding="utf-8"))
+    return jsonschema.Draft202012Validator(
+        {"$schema": schema["$schema"], "$defs": schema["$defs"], "$ref": "#/$defs/item"})
+
+
+def _check_item(n: int, item: Dict[str, Any]) -> None:
+    """Refuse a built item the catalog schema rejects (enums, patterns, unique lists, the needs_decision
+    rules), before it is scored or written; the computed fields get valid placeholders first."""
+    probe = {**item, "id": "TODO-001", "rank": 1, "priority": _PLACEHOLDER_PRIORITY}
+    errors = sorted(_item_validator().iter_errors(probe), key=lambda e: [str(p) for p in e.absolute_path])
+    if errors:
+        where = "/".join(str(p) for p in errors[0].absolute_path) or "item"
+        raise TodoSyncError(f"item {n}: {where}: {errors[0].message[:200]}")
 
 
 def _new_item(n: int, spec: Any, known: Set[int], listed: Set[int]) -> Dict[str, Any]:
@@ -152,7 +178,9 @@ def _new_item(n: int, spec: Any, known: Set[int], listed: Set[int]) -> Dict[str,
     if issue in known:
         raise TodoSyncError(f"issue #{issue} is already in the catalog (item {n})")
     listed.add(issue)
-    return _item_fields(n, spec)
+    item = _item_fields(n, spec)
+    _check_item(n, item)
+    return item
 
 
 def _item_fields(n: int, spec: Dict[str, Any]) -> Dict[str, Any]:
@@ -327,7 +355,8 @@ def _record(record: Any, where: str, fields: Tuple[str, ...], moved: Dict[str, s
 
 @dataclass(frozen=True)
 class ReshapeResult:
-    """What ``apply_split`` or ``apply_refresh`` changed (or would change) and what it left for a person."""
+    """What ``apply_split``, ``apply_add`` or ``apply_refresh`` changed (or would change) and what it left
+    for a person."""
 
     reshape: Reshape
     rewritten: Tuple[str, ...]

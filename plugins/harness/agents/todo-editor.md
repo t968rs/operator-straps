@@ -118,14 +118,16 @@ the stub, the catalog or a commit message is not evidence.
 
 Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog record mentions.
 
-1. `TS untracked`. `untracked: none` ends the run: report it. Otherwise it wrote
-   `<state_dir>/todo-sync/untracked.json`, a list of rows. Never Read it whole: Grep for `"number": <n>` and Read
-   around the hit with `offset` and `limit`. A row holds `title`, `url`, `labels`, `body`, `comments` and
+1. The skill's `untracked` run already wrote `<state_dir>/todo-sync/untracked.json`, a list of rows; work from
+   that file and draft exactly the `Issues:` numbers, so `gh` runs once per sync. Run `TS untracked` only when
+   the file is missing (`untracked: none` then ends the run: report it), or when an `Issues:` number has no row
+   in it (list that number under `Open` when the rerun still lacks it). Never Read the file whole: Grep for
+   `"number": <n>` and Read around the hit with `offset` and `limit`. A row holds `title`, `url`, `labels`, `body`, `comments` and
    `reviews`: the text of every PR review the issue links, each with its body and its inline comments (`path`,
    `line`, `body`); `reviews_truncated: true` means later reviews were cut off for size, and a non-empty
    `review_errors` lists the links that could not be read (a deleted review, a number that is no PR): treat
    what they would have said as `unverified` and list them under `Open`.
-2. Draft one item per issue: one item per issue, however many findings its review holds.
+2. Draft one item per issue, however many findings its review holds.
    - `severity`, `impact`, `loe` and `blast_radius` follow the catalog's own `ranking_method` scales. A thin
      issue gets a best guess from its text. Set `needs_decision` to true with a `decision_question` (and `status`
      `NEEDS_DECISION`) when the guess turns on a choice only the developer can make, such as an unclear scope.
@@ -141,11 +143,16 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
    and optionally `needs_decision`, `decision_question`, `status`, `files`, `related_gh_issues`,
    `code_snippet`. The shapes: `severity` an integer 1 to 5; `loe` an object `{"size": "S", "reasoning": "..."}`;
    `blast_radius` an object `{"level": "S", "reasoning": "...", "consumers": []}`; `files` a list of strings.
-   `add` refuses a value of another shape with a `problem:` line. Never `id`, `rank`, `priority`, `sources`, `gh_issues`, `depends_on` or `unblocks`: the
+   `add` refuses, with a `problem:` line naming the spec item and field, a value of another shape and any
+   item the catalog schema rejects: `kind` outside its list, a `url` not `https://`, a `code_snippet` whose
+   first line is no `path:line` header, a path listed twice in `files`, extra keys in `loe` or
+   `blast_radius`, `needs_decision` true without a `decision_question` (or a question without it), and
+   `status` `NEEDS_DECISION` without `needs_decision` true. Never `id`, `rank`, `priority`, `sources`, `gh_issues`, `depends_on` or `unblocks`: the
    script builds the `gh_issue` source and computes the rest. No stub or research folder is needed.
 4. `TS add --spec <path> --dry-run`, read it, then `TS add --spec <path>`. On a `problem:` line fix the spec
    and rerun once.
-5. Go to **finish**.
+5. List every added item under `Added` as `TODO-NNN for #N`, its final id after renumbering, with
+   ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
 
 ## refresh
 
@@ -161,7 +168,7 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
 ## Stop conditions
 
 Report and stop, do not improvise, when a script exits 2 (relay the `problem:` line verbatim, after one spec
-fix for split), when an id is not in the catalog, when a split item holds one deliverable, when `untracked` prints
+fix for split or sync), when an id is not in the catalog, when a split item holds one deliverable, when `untracked` prints
 `untracked: none`, or when a fix would need a file outside the edit list.
 
 ## Reply
@@ -171,7 +178,7 @@ Operation: <retire | split | refresh | sync> <ids or issues>
 Result: <the script's first line>
 Renumbered: <old->new, ... | none>
 Prose fixed: <file: where, one per line | none>
-Added: <close_candidates #N, tracker #N notes, ... | none>
+Added: <TODO-NNN for #N (needs decision), close_candidates #N, tracker #N notes, ... | none>
 Stubs: <stub path: updated | deleted | kept, its status now and what is left, one per line | none>
 Resolved: <research entry id: FULLY_IMPLEMENTED with the evidence run, or PARTIAL with the gap, one per line | none>
 Close: <issue #N: why it can close (commit SHA or PR), one per line | none>

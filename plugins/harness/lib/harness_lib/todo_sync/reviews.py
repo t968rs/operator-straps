@@ -2,8 +2,9 @@
 
 An issue that points at a review ("resolve the points in <review url>") is only useful with the review's own
 words, so the review body and its inline comments are fetched through ``gh api``. Only links into the
-issue's own repository are followed; a dismissed review and a review with nothing to say are left out. The
-text per issue is bounded by a character budget.
+issue's own repository are followed; a dismissed review and a review with nothing to say are left out.
+Reviews after an issue's first stop at a character budget; the first is always kept whole, so a single
+oversized review can pass the budget.
 """
 from __future__ import annotations
 

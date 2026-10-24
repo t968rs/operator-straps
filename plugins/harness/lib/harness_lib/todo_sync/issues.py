@@ -1,7 +1,9 @@
 """Open GitHub issues that no TODO catalog record mentions, for ``todo_sync.py untracked``.
 
-An issue is tracked when an item (``gh_issues``, ``related_gh_issues``, a ``gh_issue`` source), a tracker
-(its number or a child), a close candidate or a research catalog entry (``issues``) names it. The rows
+An issue is tracked when an item resolves it (``gh_issues`` or a ``gh_issue`` source), a tracker (its number
+or a child), a close candidate or a research catalog entry (``issues``) names it. An item's
+``related_gh_issues`` only cross-reference issues the item does not resolve, so an issue named there alone
+is untracked and gets an item of its own. The rows
 ``find_untracked`` returns carry what an agent needs to draft an item: the issue text, its comments and
 the text of the PR reviews it links.
 """
@@ -42,7 +44,7 @@ def _numbers(values: Any) -> Set[int]:
 
 
 def _item_numbers(item: Dict[str, Any]) -> Set[int]:
-    found = _numbers(item.get("gh_issues")) | _numbers(item.get("related_gh_issues"))
+    found = _numbers(item.get("gh_issues"))
     for source in item.get("sources") or []:
         if isinstance(source, dict) and source.get("type") == "gh_issue":
             found |= _numbers([source.get("ref")])
@@ -87,13 +89,27 @@ def _require_folder(cfg: HarnessConfig) -> None:
         raise TodoSyncError("untracked needs todo.folder")
 
 
+def _parse_listing(out: str) -> List[Any]:
+    try:
+        rows = json.loads(out)
+    except ValueError as exc:
+        raise TodoSyncError(f"gh issue list returned no JSON: {exc}") from exc
+    if not isinstance(rows, list):
+        raise TodoSyncError("gh issue list returned no JSON list")
+    return rows
+
+
 def open_issues(cfg: HarnessConfig) -> List[Dict[str, Any]]:
-    """Every open issue (up to ``LIST_LIMIT``) as a flat row."""
+    """Every open issue as a flat row; raises when the listing reaches ``LIST_LIMIT`` (may be cut off)."""
     _require_folder(cfg)
     repo = ["--repo", cfg.todo.gh_repo] if cfg.todo.gh_repo else []
     out = gh.run_gh(cfg.project_root, ["issue", "list", "--state", "open", "--limit", str(LIST_LIMIT),
                                        "--json", LIST_FIELDS, *repo])
-    return [_flatten(raw) for raw in json.loads(out) if isinstance(raw, dict) and "number" in raw]
+    rows = _parse_listing(out)
+    if len(rows) >= LIST_LIMIT:
+        raise TodoSyncError(f"gh issue list returned {len(rows)} issues, the limit of {LIST_LIMIT}; "
+                            "the listing may be incomplete, so no untracked result is reported")
+    return [_flatten(raw) for raw in rows if isinstance(raw, dict) and "number" in raw]
 
 
 def find_untracked(cfg: HarnessConfig) -> List[Dict[str, Any]]:
@@ -108,7 +124,7 @@ def find_untracked(cfg: HarnessConfig) -> List[Dict[str, Any]]:
 
 
 def attach_reviews(cfg: HarnessConfig, row: Dict[str, Any]) -> None:
-    """Fill ``reviews`` and ``reviews_truncated`` of ``row`` from the PR reviews its text links."""
+    """Fill ``reviews``, ``reviews_truncated`` and ``review_errors`` of ``row`` from its linked PR reviews."""
     slug = slug_of(row["url"])
     texts = [row["body"], *(c["body"] for c in row["comments"])]
     links = review_links(texts, slug) if slug else []

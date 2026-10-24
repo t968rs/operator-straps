@@ -1,5 +1,6 @@
 """todo_sync driver: check a project's TODO, research and plan artifacts for drift, render the snapshot,
-write the runner pointer, and retire, split or re-rank catalog items.
+write the runner pointer, start a catalog, list untracked GitHub issues, and add, retire, split or re-rank
+catalog items.
 
 ``check [--format summary|json|markdown] [--out PATH] [--rules S1,S2] [--fail-on error|warn]``
     Run the rule catalog and write the report (``TodoSyncReport.schema.json``) atomically to ``--out`` or
@@ -33,14 +34,18 @@ write the runner pointer, and retire, split or re-rank catalog items.
 ``init``
     Create the TODO folder, an empty schema-valid catalog (the default ranking tables, no items, the current
     commit in ``generated_from``) and the first snapshot (skipped when ``todo.snapshots.dir`` is null). Prints
-    one ``created <path>`` line per file. Refuses, exit 2, when the catalog already exists; needs
-    ``todo.folder`` and a git commit.
+    one ``created <path>`` line per file. Refuses, exit 2 and nothing written, when the catalog already exists
+    or the snapshot name does not match ``todo.snapshots.name_pattern``; needs ``todo.folder`` and a git
+    commit. A snapshot that fails after the catalog is written names the catalog and ``render`` as the way on.
 ``untracked``
-    List the open GitHub issues (``gh issue list``; ``todo.gh.repo`` or the origin remote) that no catalog
-    record mentions: no item, tracker, child, close candidate or research entry. Prints one ``#N title`` line
+    List the open GitHub issues (``gh issue list``; ``todo.gh.repo``, else the repository ``gh`` resolves for
+    the checkout) that no catalog record covers: no item that resolves it (``gh_issues`` or a ``gh_issue``
+    source; ``related_gh_issues`` does not count), tracker, child, close candidate or research entry. Prints
+    one ``#N title`` line
     per issue and writes the rows (issue text, comments and the text of linked PR reviews) to
     ``<state_dir>/todo-sync/untracked.json``. Prints ``untracked: none`` and writes nothing when every open
-    issue is recorded.
+    issue is recorded. Refuses, exit 2, when ``gh`` fails, returns no JSON list, or the listing reaches the
+    issue limit (the result may be cut off).
 ``add --spec PATH [--dry-run]``
     Add one item per entry of the spec file (``{"items": [{...}, {...}]}``; each names its ``issue`` and
     ``url`` and the fields a person judges, and never ``id``, ``rank`` or ``priority``). The script builds the
@@ -48,8 +53,9 @@ write the runner pointer, and retire, split or re-rank catalog items.
     does. An issue the catalog already records is refused.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
-``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or a
-refused render exits 2 with one ``problem:`` line on stderr.
+``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or any
+refused operation (render, init, add, retire, split, refresh, a failed ``gh`` call) exits 2 with one
+``problem:`` line on stderr.
 """
 from __future__ import annotations
 
@@ -79,6 +85,11 @@ INACTIVE = "todo sync inactive (todo.folder is null)"
 FAIL_LEVELS = ("warn", "error")
 
 
+def _summary() -> str:
+    """The module docstring's first paragraph on one line, used as the argparse description."""
+    return " ".join((__doc__ or "").split("\n\n")[0].split())
+
+
 def _globals() -> argparse.ArgumentParser:
     """``--project`` / ``--config``, accepted before or after the subcommand."""
     common = argparse.ArgumentParser(add_help=False)
@@ -91,7 +102,7 @@ def _globals() -> argparse.ArgumentParser:
 
 def _parser() -> argparse.ArgumentParser:
     common = _globals()
-    parser = argparse.ArgumentParser(prog="todo_sync.py", description=__doc__.splitlines()[0],
+    parser = argparse.ArgumentParser(prog="todo_sync.py", description=_summary(),
                                      parents=[common])
     sub = parser.add_subparsers(dest="command", required=True)
     chk = sub.add_parser("check", parents=[common], help="Run the sync rules and write the report.")

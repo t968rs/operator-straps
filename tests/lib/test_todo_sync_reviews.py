@@ -81,6 +81,18 @@ def test_budget_truncates_and_flags(monkeypatch) -> None:
     assert truncated is True
 
 
+def test_first_review_is_kept_whole_even_over_budget(monkeypatch) -> None:
+    _fake_api(monkeypatch, {}, {f"{BASE}/8/reviews": [_review(body="c" * 30, id=1)]})
+    found, truncated, _ = fetch_reviews(Path("."), SLUG, [ReviewLink(8, None)], budget=10)
+    assert [r["body"] for r in found] == ["c" * 30]
+    assert truncated is False
+    listed = [_review(body="c" * 30, id=1), _review(body="d" * 30, id=2)]
+    _fake_api(monkeypatch, {}, {f"{BASE}/8/reviews": listed})
+    found, truncated, _ = fetch_reviews(Path("."), SLUG, [ReviewLink(8, None)], budget=10)
+    assert [r["body"][0] for r in found] == ["c"]
+    assert truncated is True
+
+
 def test_failed_review_fetch_is_reported_not_fatal(monkeypatch) -> None:
     def gone(cwd: Path, path: str) -> Any:
         raise TodoSyncError(f"gh api {path} failed: HTTP 404")
