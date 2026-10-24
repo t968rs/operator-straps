@@ -95,7 +95,7 @@ from harness_lib.branch_capture import (
     resolve_merge_base,
     untracked_paths,
 )
-from harness_lib.branch_commits import BranchCommitDocument
+from harness_lib.branch_commits import BranchCommitDocument, CommitEntry
 from harness_lib.canned_messages import get_canned_message
 from harness_lib.commit_diff import DiffStat, cap_sections, plan_reads
 from harness_lib.commit_regroup import bullet_problems, move_paths
@@ -108,6 +108,7 @@ from harness_lib.commit_grouping import (
     plan_commits,
 )
 from harness_lib.commit_txt import (
+    CHANGE_ROUTE,
     document_to_txt,
     entry_from_message,
     message_problems,
@@ -506,15 +507,28 @@ def back_up_replaced(target: Path, text: str) -> None:
         shutil.copyfile(target, target.with_name(target.name + ".bak"))
 
 
+FINAL_LINE = f"Final as saved: relay this receipt unchanged. {CHANGE_ROUTE}"
+
+
+def _receipt_line(key: int, commit: CommitEntry) -> str:
+    """``<key>. <header>``, tagged `` [canned]`` when the message is the canned one for the block's files."""
+    canned = get_canned_message(commit.files)
+    tag = " [canned]" if canned is not None and commit.message.strip() == canned.strip() else ""
+    return f"{key}. {commit.header}{tag}"
+
+
 def receipt(repo: Path, out: Path, document: BranchCommitDocument, split: str) -> str:
-    """Return the SKILL Step 7 chat receipt."""
+    """Return the chat receipt: the saved path, one line per commit, the split and ``FINAL_LINE``.
+
+    ``FINAL_LINE`` tells the session that relays the receipt that the saved messages are final.
+    """
     try:
         shown = out.resolve().relative_to(repo.resolve()).as_posix()
     except ValueError:
         shown = out.as_posix()
     lines = [f"Saved: {shown} - {len(document.commits)} commit(s) proposed"]
-    lines += [f"{key}. {document.commits[key].header}" for key in sorted(document.commits)]
-    return "\n".join([*lines, f"Split Decision: {split}"])
+    lines += [_receipt_line(key, document.commits[key]) for key in sorted(document.commits)]
+    return "\n".join([*lines, f"Split Decision: {split}", FINAL_LINE])
 
 
 _REPO_HELP = "Directory inside the project (default: the working directory); its git top level is used."

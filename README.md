@@ -112,6 +112,8 @@ After configuring your project below, open Claude Code in that repository and in
 
 Replace `123` with your PR number. `pr-review` carries findings into fixes and closeout, so use it when you
 want the full review-and-fix workflow. `c-msg` and `pr-sum` save drafts in the configured artifact folders.
+`/harness:c-msg <change>` rewrites the saved pending message to make that change; a bare `/harness:c-msg` rerun
+keeps a carried or canned message as it stands.
 
 ### add-bookmark
 
@@ -179,8 +181,13 @@ changed files ──► every file fits one entry's patterns? ──no──► 
 
 - A change may use only some of an entry's files; one file outside the entry, or files from two entries, gives no
   canned message. A pattern with a `/` matches the whole path, any other the file name.
-- `c-msg`, `branch-commit-msg` and `amend-commit-msg` keep a prefilled message as it stands. `merge-commit-msg`
-  asks for it with `gh pr diff NNN --name-only | ... branch_commit_msg.py canned`.
+- `c-msg`, `branch-commit-msg` and `amend-commit-msg` keep a prefilled message as it stands, unless the
+  developer asks for a change (`/harness:c-msg <change>`, `/harness:amend-commit-msg [--base <sha7>] -- <change>`,
+  with the `--base` the draft used).
+  `merge-commit-msg` asks for it with `gh pr diff NNN --name-only | ... branch_commit_msg.py canned`.
+- A saved message is final: the build receipt ends with a `Final as saved` line, and a PreToolUse hook
+  (`guard_commit_txt.py`) denies Write and Edit tool calls on the saved `.txt` files (`PR<NNN>_merge.txt`
+  excepted). Shell writes (redirects, heredocs, `sed -i`, `Set-Content`) are covered only by the standing rule.
 - The entries use the plugin's default file names (and, for review artifacts, folders); a project that renames them drafts as usual.
 
 ### Working on this repository

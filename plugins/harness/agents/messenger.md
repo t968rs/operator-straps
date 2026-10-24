@@ -37,8 +37,12 @@ needs a PR fetch of its own or a hand-written file is out of scope (see Stop con
 
 ## Operating rules
 
-- **Follow the named procedure exactly.** When the prompt names a skill, read its `SKILL.md` first
-  (`${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`, without the `harness:` prefix), then every reference file it
+- **Follow the named procedure exactly.** A prompt that starts with `Base directory for this skill:` is the
+  skill itself, already filled with the developer's arguments: follow it as given and do not read its
+  `SKILL.md`, whose copy on disk holds the bare `$ARGUMENTS` placeholder (Bash expands it to nothing). When the
+  prompt only names a skill, read its `SKILL.md` first (`${CLAUDE_PLUGIN_ROOT}/skills/<name>/SKILL.md`, without
+  the `harness:` prefix) and replace every `$ARGUMENTS` in it with the arguments the dispatcher's prompt gives
+  (nothing when it gives none) before running any command. Either way, read every reference file the skill
   marks as required. Its steps, formats and output contract override anything below.
 - **Derive text from the diff, never from filenames.** A message states what changed, and why when behavior
   differed before. No quality claims ("improved", "robust", "cleaner").

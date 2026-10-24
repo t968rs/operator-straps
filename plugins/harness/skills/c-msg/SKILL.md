@@ -1,12 +1,16 @@
 ---
 name: c-msg
 description: Use when asked to draft a single commit message for the current pending or staged change. Triggers on "write a commit message", "draft commit msg", "commit message for this", "c-msg". For breaking an entire branch into multiple commits, use harness:branch-commit-msg instead.
-model: haiku
+argument-hint: "[what to change in the saved message]"
+model: sonnet
 context: fork
 agent: harness:messenger
 ---
 
 # c-msg — Single Commit Message
+
+**Requested change for this run:** `$ARGUMENTS` (blank: none).
+Blank means draft as usual. A requested change is the developer's ask to rewrite the saved message (Step 2).
 
 `${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py` does the mechanics: capture, layout, validation, save. The
 agent's job is one message.
@@ -38,8 +42,9 @@ Do not add, drop or split paths. The block is the commit.
 
 ## Step 2 — Write the message
 
-Skip when the carried message still matches the diff, and keep a canned message as it stands: go to Step 3.
-Otherwise read what changed:
+With a requested change, rewrite the message to make that change, even when it is carried or canned; keep
+the rest of it as it stands. Without one, skip when the carried message still matches the diff, and keep a
+canned message as it stands: go to Step 3. Otherwise, and whenever the change needs it, read what changed:
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" diff "<skeleton>" --block 1
