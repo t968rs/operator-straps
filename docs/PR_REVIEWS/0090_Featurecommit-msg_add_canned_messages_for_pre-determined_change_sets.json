@@ -1,0 +1,399 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 90,
+  "pr_title": "Feature(commit-msg): add canned messages for pre-determined change sets",
+  "branch": "auto-commit-msg",
+  "base_branch": "main",
+  "base_sha": "73451d874c3dc4d25bd5ce465bf33950ad8b7692",
+  "head_sha": "948f23fa58051a8024163fa02508e9376813a7d3",
+  "review_date": "2026-10-23",
+  "verdict": "READY TO MERGE - 13 of 13 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 393,
+    "deletions": 9,
+    "files_changed": 11
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0090/pr90_20261024T054519Z/findings/tests.json",
+    "docs/_scratch/pr_review/0090/pr90_20261024T054519Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0090/pr90_20261024T054519Z/findings/docs.json",
+    "docs/_scratch/pr_review/0090/pr90_20261024T054519Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every new test is behavioral: real git clones, the real capture/build pipeline and the real lookup, with no mock-chain wiring.",
+    "The lookalike parametrization (PR_REVIEWS_old, docs/other, a bare pr_review_agent_usage.json) pins the whole-path versus file-name split in _matches.",
+    "test_every_canned_message_passes_the_message_checks runs each LOOKUP entry through message_problems, so a new entry with a malformed header fails at once.",
+    "The canned subcommand tests cover argv, stdin, a mixed set and empty input, and assert the exact stdout.",
+    "The merge-skill contract parses the documented `canned` command line with the script's own argparse parser, which catches drift between the skill text and the CLI.",
+    "_prefilled only fills an empty message, so messages carried forward from an existing TXT or pending TXT are never overwritten.",
+    "Both canned subjects ('Chore(todo): ...', 'Chore(reviews): ...') pass _HEADER_RULE and contain no filler or vendor names, so a prefilled skeleton builds without edits.",
+    "LOOKUP is wrapped in MappingProxyType with frozenset keys and get_canned_message normalizes backslashes and leading './', so Windows-style and git-style paths match alike.",
+    "The `canned` subcommand is wired through the existing parser, the dispatch table and the usage docstring in the same way as the other subcommands.",
+    "README Canned commit messages section matches canned_messages.py exactly: the patterns, both messages, the all-files-of-one-entry rule, the slash-means-whole-path matching, and the fallback for projects that moved the defaults.",
+    "The 'build still checks it' claim holds: canned messages run through message_problems, and both LOOKUP values pass _HEADER_RULE (Chore is a valid type).",
+    "c-msg prose matches pending_document: a pending draft against the same HEAD takes precedence and canned fills only an empty message; 'go to Step 3' points at the real Build step.",
+    "tests/skills/test_canned_message_skill_contract.py parses the merge skill's canned command line with the script's real argparse parser, so that doc line cannot drift silently.",
+    "_prefilled never overrides a carried message: a pending or branch draft wins over the canned text, and test_a_carried_message_wins_over_the_canned_one pins that.",
+    "The canned messages still go through build validation: test_every_canned_message_passes_the_message_checks runs each LOOKUP message through message_problems, and test_a_prefilled_message_builds runs the real build.",
+    "The skill contract test parses the merge skill's 'canned' command line with the script's real argparse parser, so prose drift from the CLI fails CI.",
+    "The tests are behavioral against real git clones and the real lookup; no test stubs a helper and asserts on the stub.",
+    "Matching is precise: patterns with a slash match the whole path, others the file name, and the lookalike-path parametrized test guards against false positives.",
+    "The docs land together: README, the script docstring, all four commit-message skills and the plugin version bump move in one change."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "--fresh docstring still promises empty messages",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "files": [
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/skills/branch-commit-msg/txt_format.md",
+          "plugins/harness/lib/harness_lib/canned_messages.py",
+          "plugins/harness/skills/branch-commit-msg/SKILL.md"
+        ],
+        "lines": "10-11,247-249",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring says `--fresh` replans from the rules and 'messages come back empty'. After this PR, run_capture passes every fresh group through _prefilled (lines 247-249), so a block covered by a canned set comes back with the canned message even under --fresh. The skill format doc makes the same claim ('every message is empty'), so the documented contract and the code now disagree.\n\nAlso (runtime): capture runs the lookup separately for each block (lines 247-249). If planning splits files from one canned set into two blocks (for example, a TODO catalog and a snapshot that land in different buckets), both blocks get the same canned subject. A one-file block also gets a subject that claims more than it changed ('refresh TODO catalog, research stubs and snapshot'). build accepts duplicate subjects, so nothing flags it.\n\nAlso (overall): run_capture now passes every planned block through _prefilled, including under --fresh, so a fresh capture returns the canned message for a TODO-only or review-artifact-only block. The script docstring (branch_commit_msg.py:10-11, 'messages come back empty') and the branch-commit-msg skill (SKILL.md:45 table row 'every message \"\"', SKILL.md:56-57 'every message is \"\"') still say a fresh capture empties every message. The skill's own new sentence at :54-56 covers only the carry-forward case, so the --fresh rows contradict the code.",
+        "fix": [
+          "Change line 11 to 'messages come back empty, except a block covered by a canned set, which gets its canned message' and make the same edit to txt_format.md line 106.",
+          "In run_capture, prefill a canned message for only the first block that matches a given LOOKUP entry and leave later matches empty for drafting.",
+          "Have message_problems report two blocks with an identical subject.",
+          "Reword branch_commit_msg.py:10-11 to 'messages come back empty, except a canned block (canned_messages)' and SKILL.md:45/:57 to 'every message \"\" except a canned set's'."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "branch-commit-msg still says --fresh empties every message",
+        "file": "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "54-57",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md lines 56-57 keep the pre-PR sentence 'Add `--fresh` to ignore the existing TXT: the plan is rebuilt from the rules alone and every message is `\"\"`.' At the head, run_capture builds every block through _prefilled(group.paths, group.message) (plugins/harness/scripts/branch_commit_msg.py), and --fresh only drops the existing document, so a fresh capture still prefills a canned block's message. The lines just above (54-56) also limit the prefill to 'new blocks', yet _prefilled runs on every group, including a kept block that capture emptied (the Docs/Planning merge). The skill now contradicts itself and the code, and an agent that trusts the --fresh sentence redrafts a canned block.",
+        "fix": [
+          "Change lines 56-57 to: 'Add `--fresh` to ignore the existing TXT: the plan is rebuilt from the rules alone and every message is `\"\"` except a canned block's.' Also reword line 54 from 'new blocks have `\"\"`, except ...' to 'a new or emptied block has `\"\"`, except ...'."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Subset test passes vacuously when the TODO entry is gone",
+        "file": "tests/lib/test_canned_messages.py",
+        "lines": "40-41",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_a_subset_of_an_entry_takes_its_message asserts get_canned_message(TODO_FILES) == get_canned_message(['RepoToDo.json']). If the TODO entry is dropped or both lookups break, both sides are None and the test still passes. It never checks that the subset actually gets a message, which is the claim in its name.",
+        "fix": [
+          "Assert the subset's message directly: `assert get_canned_message(['RepoToDo.json']) == get_canned_message(TODO_FILES) is not None`, or compare against the literal 'Chore(todo): ...' message."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Normalization test never reaches a whole-path pattern",
+        "file": "tests/lib/test_canned_messages.py",
+        "files": [
+          "tests/lib/test_canned_messages.py",
+          "plugins/harness/lib/harness_lib/canned_messages.py"
+        ],
+        "lines": "49-50",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_paths_normalize_before_matching uses only TODO files, which match by file name. For a name pattern the leading './' makes no difference, because PurePosixPath(path).name ignores it, so the './docs/TODO/_IMPL_TODO.md' case passes even with no normalization. Only the backslash case can fail. The leading-'./' handling promised by _norm_path matters only for slash patterns such as 'docs/PR_REVIEWS/*.json', and no test feeds one a './' or backslash path. A regression there (for example from `gh pr diff --name-only` output or Windows paths fed to `canned`) goes undetected.",
+        "fix": [
+          "Add whole-path cases: `assert has_canned_message(['./docs/PR_REVIEWS/0001_x.json', 'docs\\PR_SUMMARIES\\0001_x.md'])`, either in this test or as a parametrized companion."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "No test checks that a carried message beats the canned one in branch capture or amend",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "files": [
+          "tests/scripts/test_branch_commit_msg.py",
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md"
+        ],
+        "lines": "1046-1077",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "run_capture now sends every planned block through _prefilled(group.paths, group.message), and amend-commit-msg/SKILL.md promises that a block emptied by a new path 'comes back with the canned message'. TestCannedMessages checks the 'carried wins' precedence only for capture --pending (test_a_carried_message_wins_over_the_canned_one). Neither the branch-capture path (a block carried from an existing TXT) nor the amend path is checked. If the `message or canned` order were swapped in run_capture, drafted branch messages would be overwritten silently and every test would still pass.",
+        "fix": [
+          "Add a branch-mode test: with _settled_with_todo_change, run_capture(base='HEAD'), run_build with _filled(...), capture again, and assert the TODO block keeps 'Chore: commit N...'.",
+          "Optionally add an amend-mode test: a block emptied by a new path inside the TODO set comes back holding the canned message."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "'default file names and folders' overstates the TODO entry's path dependence",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/lib/harness_lib/canned_messages.py"
+        ],
+        "lines": "182",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "README.md:182 and canned_messages.py:8-9 say that a project which moves the files away from the defaults drafts as usual. The TODO entry's patterns have no '/', so _matches compares only the file name (canned_messages.py:41). Moving the TODO folder (todo.folder, snapshots.dir) keeps the canned message; only renaming the files, or moving the review artifacts, drops it.",
+        "fix": [
+          "README.md:182: 'The entries use the plugin's default file names (and, for review artifacts, folders); a project that renames them drafts as usual.' Mirror the wording in canned_messages.py:8-9."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "LOOKUP hardcodes paths that already exist as config keys",
+        "file": "plugins/harness/lib/harness_lib/canned_messages.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/canned_messages.py",
+          "plugins/harness/config/defaults.json",
+          "tests/lib/test_canned_messages.py",
+          "README.md"
+        ],
+        "lines": "8-31",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "LOOKUP spells out values that are already configurable: artifacts.reviews, artifacts.summaries, todo.catalog, todo.stub_name, todo.snapshots.name_pattern, todo.research.catalog, and the basenames of matrix_path and agent_usage_path. The project rule is that library code reads active() inside its functions. As written, a project that overrides any of these keys silently loses the shortcut. The module docstring (lines 8-9) admits the limitation, and tests/lib/test_canned_messages.py pins LOOKUP to the defaults, so this is not a drift bug, but it goes against the plugin's config-driven convention.\n\nAlso (overall): LOOKUP hardcodes seven names and paths that the plugin already exposes as config keys: todo.catalog, todo.stub_name, todo.research.catalog, the todo.snapshots name_pattern, artifacts.reviews, artifacts.summaries, matrix_path and agent_usage_path. A project that overrides any of them silently loses the shortcut. The scripts already activate config before calling get_canned_message, so the module could read active() inside the function, as the 'drivers activate, library code reads' rule in CLAUDE.md describes. The test module's autouse _default_project fixture (test_canned_messages.py:28-30) activates a config that the code under test never reads, so it is dead setup. test_the_patterns_cover_the_plugin_defaults (95-103) pins only the defaults and uses a made-up snapshot name instead of todo.snapshots.name_pattern.",
+        "fix": [
+          "Build the pattern sets inside get_canned_message from active() (artifacts.reviews + '/*.json', artifacts.summaries + '/*.md', basenames of matrix_path/agent_usage_path, todo.* names), and keep the fixed messages in a module constant.",
+          "Keep the literals but add a note to README/CLAUDE.md that canned sets assume the default artifact and todo names.",
+          "Build the entries from active() inside get_canned_message (todo/artifacts/matrix/usage keys), and have the tests activate a project with overridden keys to prove the lookup follows them.",
+          "Or keep the hardcoded defaults as an accepted limitation: delete the dead autouse fixture and say in the module docstring why config is not read."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "'exactly' in the prefill docs contradicts subset matching",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "lines": "53,277",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_prefilled's docstring ('a block of exactly ``paths``') and the `canned` section ('a block of exactly the TODO files') say the block must match the canned set exactly. get_canned_message uses subset semantics (canned_messages.py lines 3-5, 45-47): a block holding only RepoToDo.json, or only pr_review_agent_usage.jsonl, also qualifies. The skill docs correctly say 'holding only the files of a canned set'.",
+        "fix": [
+          "Change both to 'a block whose every path falls in a canned set' (line 53: 'a block of only TODO files, say')."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "`canned` with no args blocks on an interactive stdin",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "lines": "678-682",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_cmd_canned reads sys.stdin whenever no paths are given. Run by hand with no paths, the command hangs until EOF instead of saying input is required. It also calls activate_project, so it needs a git checkout with a valid config even though it reads no config.",
+        "fix": [
+          "When `not args.paths and sys.stdin.isatty()`, raise BuildError(['canned: give paths as arguments or pipe one per line on stdin'])."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "amend-commit-msg canned paragraph breaks the 'emptied this way' antecedent and conflicts with the touched-block rule",
+        "file": "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "README.md"
+        ],
+        "lines": "54-59",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The new paragraph at lines 54-55 sits between the bullet list of ways capture empties a block (48-52) and 'A block emptied this way counts as touched ... restate it in Step 4 with a bullet for the new path' (57-59). 'This way' now reads as if it refers to the canned prefill. The two rules also collide: a Docs block of only TODO files that gains a new snapshot is emptied by capture, then refilled by _prefilled with the canned text. Lines 54-55 say keep it as it stands, while 57-59 and Step 4 (line 102, one bullet for every non-artifact path; the TODO files are not Artifact-bucket) say to restate it with bullets. The old TXT message, even one the developer edited, is dropped silently. README.md line 180 repeats the 'keep as it stands' half.\n\nAlso (overall): In amend-commit-msg/SKILL.md the new canned paragraph (54-55) sits between the bullet list that defines how a block gets emptied (48-52) and the paragraph that starts 'A block emptied this way counts as touched' (57-59). 'This way' now reads as if it refers to the canned prefill, which tells the agent to restate an old message for a block the line above says to keep as it stands.",
+        "fix": [
+          "Move lines 54-55 below the 'A block emptied this way counts as touched' paragraph and say a canned block is the exception: 'Exception: a block holding only the files of a canned set (...) comes back with the canned message instead of an empty one; it is not touched, so keep it as it stands and add no bullets.'",
+          "Move the canned paragraph (54-55) below the 'A block emptied this way...' paragraph (after line 59)."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "merge-commit-msg puts a conventional-commit subject in the prose slot",
+        "file": "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "lines": "46-47",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "Line 46 says the canned message 'replaces the drafted prose paragraph, as it stands'. Every LOOKUP value is a '<Type>(<scope>): <subject>' header (for example 'Chore(todo): refresh TODO catalog, research stubs and snapshot'), so the merge body gets a second subject line under 'Merge PR #NNN — <title>' where the Output Shape template (lines 76-80) asks for lead-with-the-action prose. Nothing breaks, but the result does not match the documented shape, and the haiku-run skill gets no guidance on whether to strip the 'Chore(...):' prefix.",
+        "fix": [
+          "State the intended rendering explicitly, for example 'use the printed message as the prose paragraph verbatim, Type(scope) prefix included'.",
+          "Or drop the 'Type(scope): ' prefix and capitalize the rest, for example 'Refresh TODO catalog, research stubs and snapshot.'"
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Defaults-coverage test hard-codes the snapshot name its docstring says it derives",
+        "file": "tests/lib/test_canned_messages.py",
+        "files": [
+          "tests/lib/test_canned_messages.py",
+          "plugins/harness/config/defaults.json"
+        ],
+        "lines": "95-101",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The docstring says 'A default path or name changed in defaults.json must change the entry that names it', but the snapshot is the literal 'TODO_Snapshot_2026_1023.md' and is not built from todo.snapshots.name_pattern. If that default changes, for example to a different prefix or a .json suffix, the test still passes while capture stops prefilling snapshots.",
+        "fix": [
+          "Build the sample snapshot name from defaults['todo']['snapshots']['name_pattern'], for example by substituting a date into the named group and checking that re.fullmatch accepts it, then assert has_canned_message on that name.",
+          "At minimum, assert that the name_pattern starts with 'TODO_Snapshot_' and ends with '\\.md' so a change to the default fails here."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Skill contract leaves amend-commit-msg out of the 'keep it' check its docstring claims",
+        "file": "tests/skills/test_canned_message_skill_contract.py",
+        "files": [
+          "tests/skills/test_canned_message_skill_contract.py",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md"
+        ],
+        "lines": "4-5,39-40,43",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says the test pins 'that each skill says what to do with a prefilled message'. test_a_prefilled_block_is_not_redrafted, however, is parametrized over only c-msg and branch-commit-msg. amend-commit-msg/SKILL.md now says 'keep it as it stands' about the canned block, and nothing pins that sentence.\n\nAlso (tests): In test_capture_skills_keep_a_canned_message, `'canned' in body` is implied by the next assertion, `'canned_messages.py' in body`, so the first can never fail on its own.",
+        "fix": [
+          "Parametrize test_a_prefilled_block_is_not_redrafted over _CAPTURE_SKILLS.",
+          "Drop the first assertion, or make it check something distinct, such as a 'canned message' phrase outside the module path."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 90 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"948f23fa58051a8024163fa02508e9376813a7d3\",\"headRefName\":\"auto-commit-msg\",\"headRefOid\":\"948f23fa58051a8024163fa02508e9376813a7d3\",\"last_sha\":\"948f23fa58051a8024163fa02508e9376813a7d3\",\"mergeCommit\":null,\"number\":90,\"state\":\"OPEN\",\"title\":\"Feature(commit-msg): add canned messages for pre-determined change sets\",\"url\":\"https://github.com/t968rs/operator-straps/pull/90\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "auto-commit-msg",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "auto-commit-msg",
+        "head_ref_name": "auto-commit-msg",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "948f23fa58051a8024163fa02508e9376813a7d3",
+        "head_sha": "948f23fa58051a8024163fa02508e9376813a7d3",
+        "base_ancestor_command": "git merge-base --is-ancestor 948f23fa58051a8024163fa02508e9376813a7d3 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 948f23fa58051a8024163fa02508e9376813a7d3 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - kept LOOKUP fixed as an accepted limitation: module docstring names the config keys and says why config is not read; removed the dead autouse _default_project fixture and its imports; defaults.json and README cited only, no edit needed"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - defaults-coverage test now builds the snapshot name from todo.snapshots.name_pattern and asserts re.fullmatch accepts it; defaults.json cited only"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - --fresh docs now say messages come back empty except a block covered by a canned set (script docstring, txt_format.md, SKILL.md table row and paragraph); canned_messages.py cited only, behavior unchanged"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - subset test asserts the subset's message is non-None, starts with 'Chore(todo): ' and equals the full set's"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - added test_paths_normalize_before_a_whole_path_pattern feeding ./ and backslash paths to the PR_REVIEWS/PR_SUMMARIES slash patterns; cited only: the fix adds whole-path assertions to tests/lib/test_canned_messages.py, owned by the other part; _norm_path in canned_messages.py already covers './' and backslash paths and needs no edit"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - added branch-mode test: capture --base HEAD, build with drafted messages, recapture, TODO block keeps 'Chore: commit 1'; script and amend SKILL.md cited only (precedence in _prefilled unchanged, optional amend test not added)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - merge-commit-msg now states the canned message becomes the prose paragraph verbatim, Type(scope) prefix included, no stripping or recasing"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - test_a_prefilled_block_is_not_redrafted parametrized over _CAPTURE_SKILLS (adds amend-commit-msg); first assertion now checks the 'canned message' phrase, distinct from the canned_messages.py path; cited only: amend-commit-msg/SKILL.md line 55 already says 'keep it as it stands' for the canned block; the pinning test edit (parametrize over _CAPTURE_SKILLS) belongs to the other part"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - canned_messages.py module docstring now says the entries use the default file names and, for review artifacts, the default folders; a renamed file or moved review artifact drafts as usual; README.md line 182: the canned-entries note now says the entries use the plugin's default file names (and, for review artifacts, folders), matching canned_messages.py:8-9"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - branch_commit_msg.py: the canned section and _prefilled docstring say a block whose every path falls in a canned set, not exactly the canned set"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - _cmd_canned raises BuildError asking for paths or piped stdin when no paths are given and stdin is a TTY"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - SKILL.md: line 54 says a new or emptied block has empty message except a canned block; lines 56-57 say every message is empty except a canned block's under --fresh; branch_commit_msg.py cited only, _prefilled already runs on every group so the code matches"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-23",
+      "evidence": "948f23f (working-tree snapshot; developer commits) - amend-commit-msg/SKILL.md: moved the canned paragraph below the 'A block emptied this way counts as touched' paragraph and wrote it as an exception (not touched, keep as it stands, no bullets); README.md:182-area canned note unchanged, README line 180 already matches the exception"
+    }
+  ]
+}

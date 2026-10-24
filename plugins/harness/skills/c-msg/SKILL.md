@@ -29,14 +29,17 @@ Exit 1 prints `problem:` lines (for example, nothing pending): report them and s
 `wrote <skeleton>`: the absolute path of `<branch>_pending.json`. Use that path as `<skeleton>` below.
 
 The skeleton has one block: `commits: {"1": [[paths], "message"]}`. The message is `""` unless a draft against the
-same HEAD exists. Leave the `"pending": true` key in place; build uses it to write `<branch>_pending.txt` and keep
-the branch ledger untouched.
+same HEAD exists or the change is a canned set: only generated files whose message is fixed in advance (the TODO
+files, the review artifacts; entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), for which
+capture fills the canned message. Leave the `"pending": true` key in place; build uses it to write
+`<branch>_pending.txt` and keep the branch ledger untouched.
 
 Do not add, drop or split paths. The block is the commit.
 
 ## Step 2 — Write the message
 
-Skip when the carried message still matches the diff. Otherwise read what changed:
+Skip when the carried message still matches the diff, and keep a canned message as it stands: go to Step 3.
+Otherwise read what changed:
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" diff "<skeleton>" --block 1

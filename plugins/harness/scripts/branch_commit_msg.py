@@ -8,8 +8,9 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     bucket, pair, split and order them, and carry forward groupings and messages from an existing
     ``<branch>.txt`` in the project's ``commit_messages`` directory (default ``docs/_commit_messages``).
     ``--fresh`` skips that carry-forward (and never parses the TXT), so a stale or over-split grouping
-    is replanned from the rules; messages come back empty. ``--base REF`` replaces the resolved merge base
-    with REF (stored as a SHA); the skeleton gets ``"txt_suffix": "_<sha7>"`` (with or without
+    is replanned from the rules; messages come back empty, except a block covered by a canned set
+    (``harness_lib.canned_messages``), which gets its canned message. ``--base REF`` replaces the resolved
+    merge base with REF (stored as a SHA); the skeleton gets ``"txt_suffix": "_<sha7>"`` (with or without
     ``--fresh``) and ``--save`` and ``build`` write ``<branch>_<sha7>.json`` / ``.txt`` beside the branch
     TXT, which a based capture never overwrites. Carry-forward reads that ``<branch>_<sha7>.txt`` when it
     exists, else the branch TXT.
@@ -47,6 +48,11 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     budget in full, larger ones as a summary (key tallies for JSON, a truncated head otherwise). The
     ``captured`` entries carry ``added``/``deleted`` counts so sizes are known before reading.
 
+``canned``
+    Print the canned commit message (``harness_lib.canned_messages``) for the changed paths given as arguments
+    or, with none, one per line on stdin; ``canned: none`` when the paths are not a canned set. ``capture``
+    applies the same lookup to each block whose message is empty (a block of only TODO files, say).
+
 ``move``
     Rewrite a skeleton in place, moving each ``--path`` (a block entry, repeatable; a rename's old side
     follows) to block ``--to N`` or to a ``new`` block after the lowest source block
@@ -62,6 +68,7 @@ line. ``--repo`` goes before or after the subcommand. Usage::
         [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] capture --pending [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] diff FILE --block N
+    branch_commit_msg.py [--repo DIR] canned [PATH ...]
     branch_commit_msg.py [--repo DIR] move FILE --path PATH [--path PATH ...] --to N|new
     branch_commit_msg.py [--repo DIR] build FILE [--out TXT]
 """
@@ -89,6 +96,7 @@ from harness_lib.branch_capture import (
     untracked_paths,
 )
 from harness_lib.branch_commits import BranchCommitDocument
+from harness_lib.canned_messages import get_canned_message
 from harness_lib.commit_diff import DiffStat, cap_sections, plan_reads
 from harness_lib.commit_regroup import bullet_problems, move_paths
 from harness_lib.commit_grouping import (
@@ -237,7 +245,9 @@ def run_capture(
         require_amendable(repo, branch, suffix, fresh)
     existing = None if fresh else _existing_document(carry_forward_path(repo, branch, suffix))
     groups, split = plan_commits(captures, existing, _registry_targets(repo))
-    commits = {n: (list(group.paths), group.message) for n, group in enumerate(groups, 1)}
+    commits = {
+        n: (list(group.paths), _prefilled(group.paths, group.message)) for n, group in enumerate(groups, 1)
+    }
     document = document_from_commit_dict(commits, branch, merge_base)
     payload = skeleton_payload(document, split, captures, stats=capture_stats(repo, merge_base, captures))
     marks = {**({"txt_suffix": suffix} if suffix else {}), **({"edit": True} if edit else {})}
@@ -264,6 +274,12 @@ def pending_txt_path(repo: Path, branch: str) -> Path:
     return repo / output_dir() / f"{branch}{PENDING_SUFFIX}.txt"
 
 
+def _prefilled(paths: Sequence[str], message: str) -> str:
+    """``message`` when set, else the canned message for a block whose every path falls in one canned set (``""``
+    when none)."""
+    return message or get_canned_message(paths) or ""
+
+
 def _pending_message(path: Path, head: str, paths: Sequence[str]) -> str:
     """Message of an existing pending TXT drafted against ``head`` over overlapping ``paths``.
 
@@ -285,7 +301,7 @@ def pending_document(repo: Path, captures: Sequence[CapturedPath], head: str) ->
     if not branch:
         raise BuildError(["detached HEAD: check out a branch before capture --pending"])
     paths = [path for capture in captures for path in capture.paths]
-    message = _pending_message(pending_txt_path(repo, branch), head, paths)
+    message = _prefilled(paths, _pending_message(pending_txt_path(repo, branch), head, paths))
     return document_from_commit_dict({1: (paths, message)}, branch, head, pending=True)
 
 
@@ -576,6 +592,10 @@ def _parser() -> argparse.ArgumentParser:
             "--base skeleton, or <branch>_pending.txt for a pending skeleton)."
         ),
     )
+    canned = sub.add_parser(
+        "canned", parents=repo, help="Print the canned commit message for a set of changed paths, if any.",
+    )
+    canned.add_argument("paths", nargs="*", help="Changed paths; one per line on stdin when none are given.")
     move = sub.add_parser(
         "move", parents=repo, help="Move paths, with their bullets, between blocks of a skeleton.",
     )
@@ -657,6 +677,15 @@ def _cmd_diff(repo: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_canned(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``canned``: print the canned message for the paths, or ``canned: none``."""
+    if not args.paths and sys.stdin.isatty():
+        raise BuildError(["canned: give paths as arguments or pipe one per line on stdin"])
+    paths = args.paths or [line.strip() for line in sys.stdin if line.strip()]
+    print(get_canned_message(paths) or "canned: none")
+    return 0
+
+
 def _captured_problems(payload: Mapping[str, object]) -> List[str]:
     """Problems with the skeleton's ``captured`` entries: each must be an object with a ``path``."""
     captured = payload.get("captured") or []
@@ -703,7 +732,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     args = _parser().parse_args(argv)
-    commands = {"capture": _cmd_capture, "diff": _cmd_diff, "build": _cmd_build, "move": _cmd_move}
+    commands = {"capture": _cmd_capture, "diff": _cmd_diff, "build": _cmd_build, "move": _cmd_move,
+                "canned": _cmd_canned}
     try:
         return commands[args.command](activate_project(args.repo), args)
     except BuildError as exc:

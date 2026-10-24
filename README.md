@@ -158,6 +158,29 @@ The session that runs it knows what changed since the draft, which the forked `b
   bullet with it. An amendment build rejects any bullet that names a file of another block.
 - The replaced TXT is kept as `<name>.txt.bak`, one generation.
 
+### Canned commit messages
+
+A change made only of generated files whose message never varies skips drafting: `capture` fills the block with a
+canned message, and `build` still checks it like any other.
+
+```text
+changed files ──► every file fits one entry's patterns? ──no──► drafted as usual
+                              │yes
+                              ▼
+                  block message = that entry's canned message
+```
+
+| Entry (`lib/harness_lib/canned_messages.py`) | Patterns                                                                           | Message                                                   |
+|----------------------------------------------|------------------------------------------------------------------------------------|-----------------------------------------------------------|
+| TODO sync files                              | `_IMPL_TODO.md`, `RepoToDo.json`, `ResearchImplementationCatalog.json`, `TODO_Snapshot_*.md` | `Chore(todo): refresh TODO catalog, research stubs and snapshot` |
+| Review artifacts                             | `docs/PR_REVIEWS/*.json`, `docs/PR_SUMMARIES/*.md`, the two `pr_review_*.jsonl` run logs      | `Chore(reviews): record PR review, summary and run-log artifacts` |
+
+- A change may use only some of an entry's files; one file outside the entry, or files from two entries, gives no
+  canned message. A pattern with a `/` matches the whole path, any other the file name.
+- `c-msg`, `branch-commit-msg` and `amend-commit-msg` keep a prefilled message as it stands. `merge-commit-msg`
+  asks for it with `gh pr diff NNN --name-only | ... branch_commit_msg.py canned`.
+- The entries use the plugin's default file names (and, for review artifacts, folders); a project that renames them drafts as usual.
+
 ### Working on this repository
 
 This repository enables its own plugins in `.claude/settings.json` from the published marketplace (the same

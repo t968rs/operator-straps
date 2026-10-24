@@ -55,6 +55,10 @@ A block emptied this way counts as touched: read its old message in the TXT bein
 same stem beside `<skeleton>`), check it against `diff --block`, and restate it in Step 4 with a bullet for
 the new path.
 
+Exception: a block holding only the files of a canned set (`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`)
+comes back with the canned message instead of an empty one; it is not touched, so keep it as it stands and add
+no bullets.
+
 ## Step 2: Plan the change
 
 From the change text and this conversation, list the blocks to rewrite and the paths to move. Touch only what

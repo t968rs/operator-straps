@@ -103,7 +103,8 @@ only its own message forward, and only while HEAD is unchanged.
 
 `capture --fresh` treats the existing file as absent: steps 1, 2 and 4 and the existing-block clauses of step 3 are
 skipped, every captured path goes to a fresh block, the Docs/Planning merge and planning fold in step 3 and the
-step 5 re-sort still apply, and every message is empty.
+step 5 re-sort still apply, and every message is empty, except a block covered by a canned set, which gets its
+canned message.
 
 Bare files (no `===` / `Commit N` scaffold) parse to zero blocks: `capture`
 carries nothing from them, and the plugin's `scripts/txt_to_commit_dict.py` emits an empty `$commitDict`.

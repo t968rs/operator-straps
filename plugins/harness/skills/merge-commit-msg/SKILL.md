@@ -36,6 +36,16 @@ gh pr diff NNN --name-only
 
 Derive `{owner}/{repo}` from `gh repo view --json nameWithOwner -q .nameWithOwner`.
 
+A PR made only of generated files whose message is fixed in advance (the TODO files, the review artifacts) has a
+canned message. Ask for it with the PR's file list:
+
+```bash
+gh pr diff NNN --name-only | sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" canned
+```
+
+A printed message becomes the prose paragraph verbatim, its `Type(scope):` prefix included (no stripping, no
+recasing); the subject line and the bullets stay as below. `canned: none` means draft the prose as usual.
+
 ## Output Shape
 
 Save the message to a file first; chat output is a two-line receipt. This
