@@ -27,6 +27,6 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/new_worktre
 - Report the path and the base sha in one line.
 - Every Read / Edit / Write uses absolute paths under that worktree; every git call is `git -C "<path>" ...`.
   Do not `cd`. Do not touch the main checkout.
-- Commits in the worktree are allowed. They sit on a detached HEAD: before the worktree is removed, keep them with
-  `git -C "<path>" switch -c <branch>` or merge them elsewhere.
-- Cleanup: `git worktree remove "<path>"`, only once its commits are integrated or the developer says so.
+- Commits in the worktree are allowed. They sit on a detached HEAD until the work moves.
+- Finishing: `harness:a-w` moves the work onto the branch the developer names (staged, or the commits with
+  `--committed`) and removes the worktree. Use it rather than a hand-run `git worktree remove`.
