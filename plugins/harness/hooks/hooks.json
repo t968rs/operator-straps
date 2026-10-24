@@ -1,5 +1,5 @@
 {
-  "description": "Harness guards: session rules, Bash discipline, allow-shape approvals, PR JSON validation, Phase 5 sentinel",
+  "description": "Harness guards: session rules, Bash discipline, allow-shape approvals, commit TXT guard, PR JSON validation, Phase 5 sentinel",
   "hooks": {
     "SessionStart": [
       {
@@ -22,6 +22,12 @@
         "matcher": "PowerShell",
         "hooks": [
           {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/powershell_allow_shapes.py\""}
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_commit_txt.py\""}
         ]
       }
     ],

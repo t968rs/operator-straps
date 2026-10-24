@@ -28,6 +28,7 @@ The harness plugin ships the hooks and wires them in its own `hooks/hooks.json` 
 |---|---|---|---|
 | Bash | `bash_discipline.py` (denies `;`/`&&` chains, with construct and heredoc exemptions; off when the plugin option `bash_discipline` is false) | `bash_allow_shapes.py` (auto-allows recognized shapes); `approve_python_c.py` (`python -c` one-liners, only when the project's `.claude/harness.json` sets `auto_approve_python_c: true`) | `Bash` |
 | PowerShell | none | `powershell_allow_shapes.py` (pipelines only, single-stage defers) | `PowerShell` |
+| Write, Edit | `guard_commit_txt.py` (denies hand edits of `.txt` files under `artifacts.commit_messages`, except `PR<NNN>_merge.txt`; those files are `build` output) | none | `Write\|Edit` |
 
 The `hooks.json` matchers route each hook to its tool; `approve_python_c.py` and `powershell_allow_shapes.py`
 also check `tool_name` as a second guard, while `bash_discipline.py` and `bash_allow_shapes.py` rely on the

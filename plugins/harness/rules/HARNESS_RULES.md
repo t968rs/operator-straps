@@ -27,6 +27,11 @@ wherever it is more specific.
 - Commit messages only on explicit ask (`harness:c-msg`, `harness:branch-commit-msg`, or in words). A finished
   unit of work otherwise ends with the list of changed files.
 - `harness:amend-commit-msg` rewrites only the drafted commit-message TXT file; it never runs `git commit --amend`.
+- **A drafted commit message is final as saved.** When `harness:c-msg` or `harness:branch-commit-msg`
+  returns, relay its receipt (and the TXT's text when asked) unchanged: no new subject, type, body or bullets,
+  in chat or on disk, a canned message included. That saved text, quoted unchanged, is the proposed commit
+  message wherever an instruction asks for one. A message changes only on the developer's ask:
+  `harness:amend-commit-msg -- <change>` for a branch TXT, `harness:c-msg <change>` for a pending TXT.
 - Multi-stage plans run continuously: no pause for commits between stages; save, record evidence, continue.
 
 ### Pre-merge recommendation

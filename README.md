@@ -179,8 +179,11 @@ changed files ──► every file fits one entry's patterns? ──no──► 
 
 - A change may use only some of an entry's files; one file outside the entry, or files from two entries, gives no
   canned message. A pattern with a `/` matches the whole path, any other the file name.
-- `c-msg`, `branch-commit-msg` and `amend-commit-msg` keep a prefilled message as it stands. `merge-commit-msg`
-  asks for it with `gh pr diff NNN --name-only | ... branch_commit_msg.py canned`.
+- `c-msg`, `branch-commit-msg` and `amend-commit-msg` keep a prefilled message as it stands, unless the
+  developer asks for a change (`/harness:c-msg <change>`, `/harness:amend-commit-msg -- <change>`).
+  `merge-commit-msg` asks for it with `gh pr diff NNN --name-only | ... branch_commit_msg.py canned`.
+- A saved message is final: the build receipt ends with a `Final as saved` line, and a PreToolUse hook
+  (`guard_commit_txt.py`) denies hand edits of the saved `.txt` files (`PR<NNN>_merge.txt` excepted).
 - The entries use the plugin's default file names (and, for review artifacts, folders); a project that renames them drafts as usual.
 
 ### Working on this repository

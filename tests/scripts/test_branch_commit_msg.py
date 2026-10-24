@@ -27,6 +27,7 @@ from _commit_helpers import FPM_CONFIG, REGISTRY, activate_copy, fpm_template  #
 from conftest import copy_project, project_factory  # noqa: E402
 from harness_lib import commit_diff  # noqa: E402
 from harness_lib.branch_commits import BranchCommitDocument, Bucket, CommitEntry  # noqa: E402
+from harness_lib.commit_txt import CHANGE_ROUTE  # noqa: E402
 from harness_lib.config import activate, active, load_config  # noqa: E402
 
 _GIT_ENV = {
@@ -759,7 +760,12 @@ class TestBuild:
             "1. Chore: commit 1",
             "2. Chore: commit 2",
             f"Split Decision: {payload['split']}",
+            script.FINAL_LINE,
         ]
+
+    def test_final_line_names_the_change_routes(self, script: ModuleType) -> None:
+        assert script.FINAL_LINE.startswith("Final as saved: relay this receipt unchanged.")
+        assert script.FINAL_LINE.endswith(CHANGE_ROUTE)
 
     def test_rejects_uncovered_path_and_bad_message(self, script: ModuleType, work: Tuple[Path, str]) -> None:
         clone, _ = work
@@ -1072,6 +1078,23 @@ class TestCannedMessages:
         _settled_with_todo_change(clone)
         _, document = script.run_build(clone, script.run_capture_pending(clone))
         assert document.commits[1].header == _CANNED_TODO
+
+    def test_receipt_tags_a_canned_block(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        _settled_with_todo_change(clone)
+        payload = script.run_capture_pending(clone)
+        out, document = script.run_build(clone, payload)
+        lines = script.receipt(clone, out, document, payload["split"]).splitlines()
+        assert lines[1] == f"1. {_CANNED_TODO} [canned]"
+
+    def test_receipt_leaves_a_drafted_block_untagged(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        _settled_with_todo_change(clone)
+        payload = _filled(script.run_capture_pending(clone))
+        out, document = script.run_build(clone, payload)
+        assert script.receipt(clone, out, document, payload["split"]).splitlines()[1] == "1. Chore: commit 1"
 
     def test_branch_capture_prefills_only_the_matching_block(
             self, script: ModuleType, work: Tuple[Path, str],

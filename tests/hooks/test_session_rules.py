@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 import pytest
+from harness_lib.commit_txt import CHANGE_ROUTE
 
 PLUGIN = Path(__file__).resolve().parents[2] / "plugins" / "harness"
 HOOK = PLUGIN / "hooks" / "session_rules.py"
@@ -28,6 +29,18 @@ def _run(option: Optional[str], payload: str = '{"hook_event_name": "SessionStar
 
 def test_rules_file_stays_under_limit() -> None:
     assert len(RULES.read_text(encoding="utf-8")) < RULES_LIMIT
+
+
+def test_rules_keep_drafted_commit_messages() -> None:
+    text = " ".join(RULES.read_text(encoding="utf-8").replace("`", "").split())
+    assert "A drafted commit message is final as saved." in text
+    assert "a canned message included" in text
+    assert CHANGE_ROUTE in text, "the rule's change routes drift from the receipt and the hook"
+
+
+def test_saved_text_is_the_proposed_message() -> None:
+    text = " ".join(RULES.read_text(encoding="utf-8").split())
+    assert "is the proposed commit message wherever an instruction asks for one" in text
 
 
 def test_rules_carry_no_project_specific_literals() -> None:

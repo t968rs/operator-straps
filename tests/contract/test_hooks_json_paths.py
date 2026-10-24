@@ -18,6 +18,7 @@ EXPECTED: Dict[Tuple[str, str], List[str]] = {
     ("SessionStart", ""): ["session_rules.py", "todo_sync_session.py"],
     ("PreToolUse", "Bash"): ["bash_discipline.py", "bash_allow_shapes.py", "approve_python_c.py"],
     ("PreToolUse", "PowerShell"): ["powershell_allow_shapes.py"],
+    ("PreToolUse", "Write|Edit"): ["guard_commit_txt.py"],
     ("PostToolUse", "Write|Edit|Bash"): ["validate_pr_json_schema.py"],
     ("Stop", ""): ["check_phase5_sentinel.py", "check_min_viz_sentinel.py"],
     ("SubagentStop", ""): ["check_min_viz_sentinel.py"],
