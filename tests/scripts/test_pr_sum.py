@@ -374,6 +374,125 @@ class TestCaptureSource:
             pr_capture.file_patches(clone, facts, facts.files)
 
 
+class TestCaptureForcedLocal:
+    def _capture(self, script: ModuleType, clone: Path, head: str, today: Optional[str] = None) -> object:
+        """Forced local capture of ``clone`` as ``--local`` runs it (no untracked files off the PR branch),
+        for PR #1234."""
+        return script.capture_pr(
+            clone, _meta(script, head), fetch=False, today=today, local=True, working_tree=True,
+            force_local=True, untracked=False,
+        )
+
+    def _leave_pr_branch(self, clone: Path) -> None:
+        """Park the PR branch's uncommitted edit, then leave it for ``main`` with an unstaged edit, a staged
+        new file and an untracked file."""
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "main")
+        _write(clone, "README.md", "dirty on main\n")
+        _write(clone, "src/pkg/staged.py", "s\n")
+        _git(clone, "add", "--", "src/pkg/staged.py")
+        _write(clone, "src/pkg/new.py", "n\n")
+
+    def test_other_branch_reads_staged_and_unstaged_but_not_untracked(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, base, head = pr_repo
+        self._leave_pr_branch(clone)
+        facts = self._capture(script, clone, head)
+        assert (facts.head_sha, facts.head_source, facts.working_tree) == (base, "local", True)
+        assert facts.local_branch == "main"
+        assert {f.path: f.untracked for f in facts.files} == {"README.md": False, "src/pkg/staged.py": False}
+        patches = pr_capture.file_patches(clone, facts, facts.files)
+        assert "+dirty on main" in patches["README.md"]
+        assert "+s" in patches["src/pkg/staged.py"]
+
+    def test_untracked_only_checkout_records_no_working_tree(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _git(clone, "checkout", "--", "src/pkg/a.py")
+        _git(clone, "checkout", "main")
+        _write(clone, "src/pkg/new.py", "n\n")
+        facts = self._capture(script, clone, head)
+        assert (facts.head_source, facts.working_tree) == ("local", False)
+        assert "src/pkg/new.py" not in [f.path for f in facts.files]
+        everything = script.capture_pr(
+            clone, _meta(script, head), fetch=False, local=True, working_tree=True, force_local=True,
+        )
+        assert [f.path for f in everything.files if f.untracked] == ["src/pkg/new.py"]
+
+    def test_other_branch_with_commits_diffs_from_the_pr_base(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, base, head = pr_repo
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "-b", "stacked", "main")
+        local = _commit(clone, {"src/pkg/c.py": "c\n"}, "Feature(c): add c")
+        _write(clone, "src/pkg/d.py", "d\n")
+        _write(clone, "src/pkg/e.py", "e\n")
+        _git(clone, "add", "--", "src/pkg/e.py")
+        facts = self._capture(script, clone, head)
+        assert (facts.head_sha, facts.merge_base, facts.local_branch) == (local, base, "stacked")
+        assert {f.path for f in facts.files} == {"src/pkg/c.py", "src/pkg/e.py"}
+        assert facts.commits[-1].endswith("Feature(c): add c")
+
+    def test_detached_checkout_is_captured_and_diffable(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _git(clone, "checkout", "--detach", "HEAD")
+        facts = self._capture(script, clone, head)
+        assert (facts.head_sha, facts.head_source, facts.working_tree, facts.local_branch) == (
+            head, "local", True, "",
+        )
+        assert "+uncommitted" in pr_capture.file_patches(clone, facts, facts.files)["src/pkg/a.py"]
+
+    def test_diff_refuses_after_a_branch_switch(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _git(clone, "checkout", "--detach", "HEAD")
+        facts = self._capture(script, clone, head)
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "1234-demo")
+        with pytest.raises(script.CaptureError, match="working tree moved since capture"):
+            pr_capture.file_patches(clone, facts, facts.files)
+
+    def test_committed_only_stops_at_the_forced_head(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, base, head = pr_repo
+        self._leave_pr_branch(clone)
+        facts = script.capture_pr(
+            clone, _meta(script, head), fetch=False, local=True, working_tree=False, force_local=True,
+        )
+        assert (facts.head_sha, facts.head_source, facts.working_tree) == (base, "local", False)
+        assert facts.files == ()
+
+    def test_on_the_pr_branch_matches_the_default(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _write(clone, "src/pkg/new.py", "n\n")
+        forced = self._capture(script, clone, head, today="2026-10-10")
+        default = script.capture_pr(
+            clone, _meta(script, head), fetch=False, today="2026-10-10", local=True, working_tree=True,
+        )
+        assert forced == default
+        assert [f.path for f in forced.files if f.untracked] == ["src/pkg/new.py"]
+        assert (forced.local_branch, forced.on_pr_branch) == ("1234-demo", True)
+
+    def test_stale_branch_of_the_pr_name_is_labelled_another_checkout(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        _git(clone, "reset", "--hard", "HEAD~1")
+        facts = self._capture(script, clone, head)
+        assert (facts.head_source, facts.local_branch, facts.on_pr_branch) == ("local", "1234-demo", False)
+        text = script.render_summary(facts, script.new_draft(facts))
+        assert "**Source:** local checkout `1234-demo` at " in text
+
+
 class TestCaptureCommand:
     def _run(
             self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, clone: Path, head: str, out: Path,
@@ -416,6 +535,8 @@ class TestCaptureCommand:
         ((), ("local", True)),
         (("--remote-head",), ("remote", False)),
         (("--committed-only",), ("local", False)),
+        (("--local",), ("local", True)),
+        (("--local", "--committed-only"), ("local", False)),
     ])
     def test_source_defaults_and_overrides(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
@@ -428,6 +549,88 @@ class TestCaptureCommand:
         assert script.main(argv) == 0
         facts = json.loads(out.read_text(encoding="utf-8"))["facts"]
         assert (facts["head_source"], facts["working_tree"]) == expected
+
+    def test_local_flag_summarizes_a_checkout_off_the_pr_branch(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, base, head = pr_repo
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "--detach", "main")
+        _write(clone, "src/pkg/new.py", "n\n")
+        _write(clone, "src/pkg/staged.py", "s\n")
+        _git(clone, "add", "--", "src/pkg/staged.py")
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--repo", str(clone)]
+        plain, forced = tmp_path / "plain.json", tmp_path / "forced.json"
+        assert script.main([*argv, "--out", str(plain)]) == 0
+        assert json.loads(plain.read_text(encoding="utf-8"))["facts"]["head_source"] == "remote"
+        assert script.main([*argv, "--out", str(forced), "--local"]) == 0
+        facts = json.loads(forced.read_text(encoding="utf-8"))["facts"]
+        assert (facts["head_source"], facts["head_sha"], facts["working_tree"]) == ("local", base, True)
+        assert [f["path"] for f in facts["files"]] == ["src/pkg/staged.py"]
+        capsys.readouterr()
+        assert script.main(["diff", str(forced), "--repo", str(clone)]) == 0
+        printed = capsys.readouterr().out
+        assert _headers(printed) == ["src/pkg/staged.py"]
+        assert "+s" in printed and "src/pkg/new.py" not in printed
+
+    def test_local_flag_without_the_pr_head_object_stays_silent(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+    ) -> None:
+        _, _, head = pr_repo
+        fresh = _fresh_clone(tmp_path, "fresh")
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--local", "--repo", str(fresh)]
+        assert script.main([*argv, "--out", str(tmp_path / "s.json")]) == 0
+        assert "note:" not in capsys.readouterr().out
+
+    def test_local_flag_note_counts_dropped_descriptions(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _, head = pr_repo
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        out = tmp_path / "s.json"
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--repo", str(clone), "--out", str(out)]
+        assert script.main(argv) == 0
+        filled = _filled(json.loads(out.read_text(encoding="utf-8")))
+        out.write_text(json.dumps(filled), encoding="utf-8")
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "--detach", "main")
+        capsys.readouterr()
+        assert script.main([*argv, "--local"]) == 0
+        count = len(filled["draft"]["descriptions"])
+        assert count and f"; {count} drafted descriptions dropped" in capsys.readouterr().out
+
+    def test_local_flag_notes_a_head_without_the_pr_head(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _, head = pr_repo
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: _meta(script, head))
+        out = str(tmp_path / "s.json")
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--repo", str(clone), "--out", out]
+        assert script.main([*argv, "--local"]) == 0
+        assert "note:" not in capsys.readouterr().out
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "--detach", "main")
+        assert script.main(argv) == 0
+        assert "note:" not in capsys.readouterr().out
+        assert script.main([*argv, "--local"]) == 0
+        assert f"note: HEAD does not contain the PR head {head[:7]}" in capsys.readouterr().out
+
+    def test_local_flag_conflicts_with_remote_head(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _, _ = pr_repo
+        argv = ["capture", "--pr", "1234", "--repo", str(clone), "--out", str(tmp_path / "x.json")]
+        with pytest.raises(SystemExit) as exc:
+            script.main([*argv, "--local", "--remote-head"])
+        assert exc.value.code == 2
+        assert "not allowed with" in capsys.readouterr().err
 
     def test_rerun_carries_draft_forward(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
@@ -639,6 +842,7 @@ class TestBuild:
 
     @pytest.mark.parametrize("field, value", [
         ("head_source", "elsewhere"), ("working_tree", "false"), ("binary", 0), ("untracked", "no"),
+        ("local_branch", 5),
     ])
     def test_wrong_typed_source_or_flag(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], field: str, value: object,
@@ -648,6 +852,19 @@ class TestBuild:
         target = payload["facts"]["files"][0] if field in ("binary", "untracked") else payload["facts"]
         target[field] = value
         with pytest.raises(script.CaptureError, match="wrong-typed source or file flag"):
+            script.run_diff(clone, payload)
+
+    def test_skeleton_without_local_branch_diffs_on_the_pr_branch(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str],
+    ) -> None:
+        clone, _, head = pr_repo
+        payload = script.capture_payload(clone, _meta(script, head), fetch=False)
+        assert payload["facts"]["working_tree"] is True
+        payload["facts"].pop("local_branch")
+        assert "+uncommitted" in script.run_diff(clone, payload)
+        _git(clone, "stash", "-u")
+        _git(clone, "checkout", "--detach", "HEAD")
+        with pytest.raises(script.CaptureError, match="working tree moved since capture"):
             script.run_diff(clone, payload)
 
     @pytest.mark.parametrize(("draft", "word"), [

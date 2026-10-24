@@ -7,7 +7,7 @@ checkout the suite runs from.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 import pytest
 
@@ -116,7 +116,7 @@ class TestPayload:
 
     def test_payload_without_source_fields_reads_as_remote_committed(self) -> None:
         raw = skeleton(_facts(), _draft())["facts"]
-        for key in ("head_source", "working_tree"):
+        for key in ("head_source", "working_tree", "local_branch"):
             raw.pop(key)
         for entry in raw["files"]:
             entry.pop("untracked")
@@ -342,6 +342,17 @@ class TestRenderSummary:
     def test_local_capture_names_its_source(self, working: bool, line: str) -> None:
         text = render_summary(_facts(head_source="local", working_tree=working), _draft())
         assert f"**Date:** 2026-10-10\n{line}**Files Changed:** 3" in text
+
+    @pytest.mark.parametrize("branch, label", [
+        ("stacked", "local checkout `stacked`"),
+        ("", "local detached checkout"),
+        ("demo", "local branch"),
+        (None, "local branch"),
+    ])
+    def test_local_capture_names_its_checkout(self, branch: Optional[str], label: str) -> None:
+        facts = _facts(head_source="local", working_tree=True, local_branch=branch, head="demo")
+        text = render_summary(facts, _draft())
+        assert f"**Source:** {label} at `hhhhhhh`, plus uncommitted changes\n" in text
 
     def test_remote_capture_has_no_source_line(self) -> None:
         assert "**Source:**" not in render_summary(_facts(), _draft())
