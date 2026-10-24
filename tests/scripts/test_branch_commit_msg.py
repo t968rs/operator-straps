@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 import importlib.util
+import io
 import json
 import os
 import subprocess
@@ -1028,3 +1029,93 @@ class TestPending:
 
     def test_cli_accepts_pending_flag(self, script: ModuleType) -> None:
         assert script._parser().parse_args(["capture", "--pending"]).pending is True
+
+
+_TODO_FILES = ("docs/TODO/RepoToDo.json", "docs/TODO/Snapshots/TODO_Snapshot_2026_1023.md")
+_CANNED_TODO = "Chore(todo): refresh TODO catalog, research stubs and snapshot"
+
+
+def _settled_with_todo_change(clone: Path) -> None:
+    """Commit the template's work, then leave only the TODO files changed."""
+    _git(clone, "add", "-A")
+    _git(clone, "commit", "-m", "all")
+    for rel in _TODO_FILES:
+        _write(clone, rel)
+
+
+class TestCannedMessages:
+    def test_pending_change_of_a_canned_set_is_prefilled(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        _settled_with_todo_change(clone)
+        assert script.run_capture_pending(clone)["commits"] == {"1": [sorted(_TODO_FILES), _CANNED_TODO]}
+
+    def test_pending_change_with_another_file_is_not_prefilled(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        _settled_with_todo_change(clone)
+        _write(clone, "notes/other.md")
+        assert script.run_capture_pending(clone)["commits"]["1"][1] == ""
+
+    def test_a_carried_message_wins_over_the_canned_one(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        _settled_with_todo_change(clone)
+        script.run_build(clone, _filled(script.run_capture_pending(clone)))
+        assert script.run_capture_pending(clone)["commits"]["1"][1].startswith("Chore: commit 1")
+
+    def test_a_prefilled_message_builds(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        _settled_with_todo_change(clone)
+        _, document = script.run_build(clone, script.run_capture_pending(clone))
+        assert document.commits[1].header == _CANNED_TODO
+
+    def test_branch_capture_prefills_only_the_matching_block(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        _settled_with_todo_change(clone)
+        _write(clone, "notes/other.md")
+        commits = script.run_capture(clone, base="HEAD", fetch=False)["commits"]
+        by_paths = {tuple(paths): message for paths, message in commits.values()}
+        assert by_paths == {tuple(sorted(_TODO_FILES)): _CANNED_TODO, ("notes/other.md",): ""}
+
+
+class TestCannedSubcommand:
+    def _run(self, script: ModuleType, clone: Path, *args: str) -> int:
+        return script.main(["--repo", str(clone), "canned", *args])
+
+    def test_prints_the_message_for_paths_given_as_arguments(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        assert self._run(script, clone, *_TODO_FILES) == 0
+        assert capsys.readouterr().out == _CANNED_TODO + "\n"
+
+    def test_reads_paths_from_stdin_when_none_are_given(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+            monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        clone, _ = work
+        monkeypatch.setattr(sys, "stdin", io.StringIO("\n".join(_TODO_FILES) + "\n"))
+        assert self._run(script, clone) == 0
+        assert capsys.readouterr().out == _CANNED_TODO + "\n"
+
+    def test_reports_none_when_a_path_is_outside_every_set(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        assert self._run(script, clone, *_TODO_FILES, "README.md") == 0
+        assert capsys.readouterr().out == "canned: none\n"
+
+    def test_reports_none_for_no_paths(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+            monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        clone, _ = work
+        monkeypatch.setattr(sys, "stdin", io.StringIO(""))
+        assert self._run(script, clone) == 0
+        assert capsys.readouterr().out == "canned: none\n"

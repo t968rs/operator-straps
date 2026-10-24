@@ -51,7 +51,9 @@ there.
 
 The skeleton holds `merge_base`, `split`, `captured` (status, path, old_path, bucket, added, deleted) and
 `commits` — `{"1": [[paths], "message"], ...}` in landing order. Blocks from an existing TXT keep their grouping
-and message; new blocks have `""`. Add `--fresh` to ignore the existing TXT: the plan is rebuilt from the rules
+and message; new blocks have `""`, except a block holding only the files of a canned set (the TODO files, the
+review artifacts; entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), which capture fills with
+the canned message. Add `--fresh` to ignore the existing TXT: the plan is rebuilt from the rules
 alone and every message is `""`. Use it only when the existing grouping is wrong (an over-split block, a stale
 split), or when the developer asks for a replan.
 
@@ -88,7 +90,8 @@ or bare `REF` when one was given: the rerun then replans the same `_<sha7>` file
 
 ## Step 3 — Write messages
 
-For each block whose message is `""` (or whose carried message no longer matches its diff), read what changed:
+For each block whose message is `""` (or whose carried message no longer matches its diff), read what changed.
+Skip a block with a canned message: keep it as it stands.
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" diff "<skeleton>" --block <key>
