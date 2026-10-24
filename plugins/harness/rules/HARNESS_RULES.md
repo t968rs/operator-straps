@@ -18,8 +18,10 @@ wherever it is more specific.
 
 - **The agent saves files; the developer commits and pushes.** No `git push`, no force-push, no commits on the
   target branch unless the current user message asks for exactly that.
-- **Worktree exception:** commits inside a dedicated worktree are allowed. Only the main session merges a
-  worktree back (`git merge`) and cleans up (`git worktree remove`, `git branch -d`). Subagents never merge.
+- **Worktree exception:** commits inside a dedicated worktree are allowed. Only the main session moves a
+  `harness:d-w` worktree back, with `harness:a-w`: staged and uncommitted by default, `--committed`
+  (fast-forwarding the target to the worktree's commits) only when the current user message asks for it. a-w
+  removes the worktree itself. Subagents never move or merge a worktree.
 - **History rewrites belong to the developer, everywhere:** no `rebase`, `cherry-pick`, `commit --amend`,
   `reset` to drop commits, or `push`. Recommend the operation instead; subagent prompts never contain one.
 - Commit messages only on explicit ask (`harness:c-msg`, `harness:branch-commit-msg`, or in words). A finished
@@ -51,7 +53,8 @@ branch's actual commit history, with a one-sentence rationale:
 - **Worktrees** live outside the project directory (an IDE indexing the workspace holds file locks on Windows).
   `harness:d-w` creates a detached worktree and prints its path. Work there with absolute paths only, commit
   coherent slices, and stage results onto the target branch only after validation and review, once the target
-  branch is confirmed checked out.
+  branch is confirmed checked out: `harness:a-w <target>` stages them (or, on the developer's explicit ask,
+  `--committed` fast-forwards the commits) and drops the worktree.
 
 ## Agent accountability
 

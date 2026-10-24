@@ -124,7 +124,7 @@ pinned constants.
   applies at once.
 - A nested `.claude/harness.json` between the cwd and the checkout root wins over the checkout's own, where
   the harness library's `project_root` (git's top level) would pick the checkout's.
-- A linked worktree outside its checkout's folder (the `~/.config/superpowers/worktrees` convention) is not
+- A linked worktree outside its checkout's folder (the `~/.config/harness/worktrees` default) is not
   walked up to the main checkout. It finds only its own tracked `.claude/harness.json`, else falls back to
   `CLAUDE_PROJECT_DIR`. The mod then watches the main checkout while the harness hook (git's top level)
   resolves the worktree.

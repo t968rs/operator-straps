@@ -153,7 +153,7 @@
     }
   },
   "common_constraints_for_all_subagents": [
-    "Work ONLY in the worktree at <user-home>/.config/superpowers/worktrees/<repo>/747-CICD-Decompose-checks (the dispatcher provides the absolute path)",
+    "Work ONLY in the worktree at <user-home>/.config/harness/worktrees/<repo>/747-CICD-Decompose-checks (the dispatcher provides the absolute path)",
     "NEVER run git push",
     "NEVER edit files outside the worktree",
     "DO NOT run git commit or git add - main session owns commits. Contract revised after T1 (a9a4468450d42c451) got stuck on git permission.",

@@ -285,7 +285,7 @@ def test_worktree_root_default_expands_home_and_repo(make_project, monkeypatch: 
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.setenv("USERPROFILE", str(tmp_path))
     root = make_project(name="widgets")
-    expected = tmp_path / ".config" / "superpowers" / "worktrees" / "widgets"
+    expected = tmp_path / ".config" / "harness" / "worktrees" / "widgets"
     assert load_config(root).resolve_worktree_root() == expected
 
 
