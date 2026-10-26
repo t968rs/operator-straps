@@ -274,10 +274,24 @@ def _config_dirs(config_file: Path) -> Optional[List[str]]:
     return dirs if all(isinstance(d, str) and d for d in dirs) else None
 
 
-def _candidate_dirs(start: Path) -> Optional[List[str]]:
-    """Every plan or review directory a config near ``start`` could name: the plugin defaults plus each
-    ancestor's (and ``CLAUDE_PROJECT_DIR``'s) ``harness.json``. A superset of what ``load_config`` reads."""
+def _ancestry(start: Path) -> List[Path]:
+    """``start`` and its parents, then the resolved path and its parents (symlinks and junctions)."""
     roots = [start, *start.parents]
+    try:
+        resolved = start.resolve()
+    except (OSError, RuntimeError):  # RuntimeError: a symlink loop on Python 3.11
+        return roots
+    for root in (resolved, *resolved.parents):
+        if root not in roots:
+            roots.append(root)
+    return roots
+
+
+def _candidate_dirs(start: Path) -> Optional[List[str]]:
+    """Every plan or review directory a config near ``start`` could name: the plugin defaults plus the
+    ``harness.json`` of each ancestor of ``start`` as given and as resolved (and of ``CLAUDE_PROJECT_DIR``).
+    A superset of what ``load_config`` reads, since git's top level is the resolved path."""
+    roots = _ancestry(start)
     if os.environ.get("CLAUDE_PROJECT_DIR"):
         roots.append(Path(os.environ["CLAUDE_PROJECT_DIR"]))
     files = [_DEFAULTS_PATH] + [r / ".claude" / "harness.json" for r in roots]
@@ -294,18 +308,20 @@ def _cannot_target(payload: Dict[str, Any], tool_input: Dict[str, Any],
                    tool_response: Dict[str, Any]) -> bool:
     """True when the event cannot name a plan or review artifact, decided with the stdlib only.
 
-    Runs before any ``harness_lib`` import. A path event needs a ``.json`` path and a Bash event needs a
-    ``.json`` token, each under a candidate artifact directory; anything uncertain returns False.
+    Runs before any ``harness_lib`` import. The payload-only test comes first: a path event needs a
+    ``.json`` path and a Bash event a ``.json`` substring. Only then are configs read: the path must sit
+    under a candidate artifact directory, and the Bash command must contain a candidate directory prefix
+    anywhere (not necessarily on the ``.json`` token). Anything uncertain returns False.
     """
+    direct = tool_input.get("file_path") or tool_response.get("filePath")
+    command = tool_input.get("command")
+    text = str(direct) if direct else command
+    if not isinstance(text, str) or (direct and not text.endswith(".json")) or ".json" not in text:
+        return True
     dirs = _candidate_dirs(_start_dir(payload))
     if dirs is None:
         return False
-    under_dir = re.compile(_alternation(dirs) + r"[/\\]")
-    direct = tool_input.get("file_path") or tool_response.get("filePath")
-    if direct:
-        return not (str(direct).endswith(".json") and under_dir.search(str(direct)))
-    command = tool_input.get("command")
-    return not (isinstance(command, str) and ".json" in command and under_dir.search(command))
+    return not re.search(_alternation(dirs) + r"[/\\]", text)
 
 
 def _activate_project(payload: Dict[str, Any]) -> Optional[HarnessConfig]:

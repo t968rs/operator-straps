@@ -196,7 +196,8 @@ _HEAVY_PACKAGES = ("harness_lib", "jsonschema", "referencing", "pydantic")
 
 
 def _run_hook_loaded_modules(payload: Dict[str, Any]) -> Dict[str, Any]:
-    """Run the hook in-process under runpy; report its exit code and the heavy packages it imported."""
+    """Run the hook in a child interpreter under runpy; report its exit code and the heavy packages it
+    imported."""
     shim = (
         "import json, runpy, sys\n"
         f"sys.argv = [{str(_HOOK_PY)!r}]\n"
@@ -219,10 +220,29 @@ def _bash_payload(project: Path, command: str) -> Dict[str, Any]:
     return {"cwd": str(project), "tool_name": "Bash", "tool_input": {"command": command}}
 
 
-def test_irrelevant_bash_command_exits_before_heavy_imports(make_project) -> None:
-    """A command that names no plan or review directory never pays for harness_lib or the validators."""
-    report = _run_hook_loaded_modules(_bash_payload(make_project(), "git status --short"))
+@pytest.mark.parametrize("command", ["git status --short", "cat package.json", "ls docs/PLANS/"])
+def test_irrelevant_bash_command_exits_before_heavy_imports(make_project, command: str) -> None:
+    """A command that names no ``.json`` path under a plan or review directory never pays for harness_lib
+    or the validators: neither ``.json`` alone nor the directory alone is enough."""
+    report = _run_hook_loaded_modules(_bash_payload(make_project(), command))
     assert report == {"code": 0, "loaded": []}
+
+
+def test_plan_write_loads_harness_lib(make_project) -> None:
+    """Positive control for the import-guard shim: a plan write must reach the full path."""
+    project = make_project()
+    plan = _write(project / "docs" / "PLANS" / "x_ActionPlan.json", _VALID_PLAN)
+    report = _run_hook_loaded_modules(_write_payload(project, plan))
+    assert report["code"] == 0
+    assert "harness_lib" in report["loaded"]
+
+
+def test_backslash_plan_path_passes_the_pre_check(make_project) -> None:
+    """A Windows-style ``docs\\PLANS`` path is not skipped by the stdlib pre-check."""
+    project = make_project()
+    target = str(project) + "\\docs\\PLANS\\x_ActionPlan.json"
+    report = _run_hook_loaded_modules(_write_payload(project, Path(target)))
+    assert "harness_lib" in report["loaded"]
 
 
 def test_non_json_write_exits_before_heavy_imports(make_project) -> None:
@@ -248,11 +268,76 @@ def test_bash_command_naming_a_plan_still_validates(make_project) -> None:
 def test_bash_command_follows_configured_plans_dir(make_project) -> None:
     """The pre-check reads ``artifacts.plans`` from harness.json, so a relocated directory is not skipped."""
     project = make_project(config={"artifacts": {"plans": "planning/active"}})
-    bad = _write(project / "planning" / "active" / "bad_ActionPlan.json", _INVALID_PLAN)
+    _write(project / "planning" / "active" / "bad_ActionPlan.json", _INVALID_PLAN)
     result = _run_hook(_bash_payload(project, "cat planning/active/bad_ActionPlan.json"))
     assert result.returncode == 1, f"stderr={result.stderr!r}"
     assert "ActionPlan SCHEMA VIOLATION" in result.stderr
-    assert bad.is_file()
+
+
+_RELOCATED_PLANS = {"artifacts": {"plans": "planning/active"}}
+
+
+def test_subdirectory_cwd_finds_ancestor_config(make_project) -> None:
+    """The pre-check reads the ``harness.json`` of a cwd ancestor, not only the cwd itself."""
+    project = make_project(config=_RELOCATED_PLANS, files={"src/README.md": "src\n"})
+    _write(project / "planning" / "active" / "bad_ActionPlan.json", _INVALID_PLAN)
+    result = _run_hook(_bash_payload(project / "src", "cat ../planning/active/bad_ActionPlan.json"))
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "ActionPlan SCHEMA VIOLATION" in result.stderr
+
+
+def test_symlinked_cwd_finds_resolved_root_config(make_project, tmp_path: Path) -> None:
+    """A cwd reached through a symlink still sees the config at git's resolved top level."""
+    project = make_project(config=_RELOCATED_PLANS, files={"src/README.md": "src\n"})
+    _write(project / "planning" / "active" / "bad_ActionPlan.json", _INVALID_PLAN)
+    link = tmp_path / "linked_src"
+    try:
+        link.symlink_to(project / "src", target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlinks unavailable: {exc}")
+    result = _run_hook(_bash_payload(link, "cat planning/active/bad_ActionPlan.json"))
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "ActionPlan SCHEMA VIOLATION" in result.stderr
+
+
+def test_claude_project_dir_config_is_read(make_project, tmp_path: Path) -> None:
+    """With the cwd outside any repo, the pre-check reads ``CLAUDE_PROJECT_DIR``'s harness.json."""
+    project = make_project(config=_RELOCATED_PLANS)
+    bad = _write(project / "planning" / "active" / "bad_ActionPlan.json", _INVALID_PLAN)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    env = dict(_hook_env(), CLAUDE_PROJECT_DIR=str(project))
+    result = subprocess.run([sys.executable, str(_HOOK_PY)], input=json.dumps(_write_payload(outside, bad)),
+                            capture_output=True, text=True, env=env, check=False)
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "ActionPlan SCHEMA VIOLATION" in result.stderr
+
+
+def test_relocated_reviews_dir_still_validates(make_project) -> None:
+    project = make_project(config={"artifacts": {"reviews": "reviews/pr"}})
+    bad = _write(project / "reviews" / "pr" / "0001_bad_review.json", {"not": "a review"})
+    result = _run_hook(_write_payload(project, bad))
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "PR_REVIEW SCHEMA VIOLATION" in result.stderr
+
+
+def test_unusable_artifacts_value_falls_back_to_full_path(make_project) -> None:
+    """A non-string ``artifacts.plans`` makes the pre-check defer to the full path, which reports it."""
+    project = make_project(config={"artifacts": {"plans": 5}})
+    bad = _write(project / "planning" / "active" / "bad_ActionPlan.json", _INVALID_PLAN)
+    result = _run_hook(_write_payload(project, bad))
+    assert result.returncode == 0
+    assert "harness config unusable" in result.stderr
+
+
+def test_tool_response_file_path_fallback_validates(make_project) -> None:
+    project = make_project()
+    bad = _write(project / "docs" / "PLANS" / "bad_ActionPlan.json", _INVALID_PLAN)
+    payload = {"cwd": str(project), "tool_name": "Write", "tool_input": {},
+               "tool_response": {"filePath": str(bad)}}
+    result = _run_hook(payload)
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "ActionPlan SCHEMA VIOLATION" in result.stderr
 
 
 def test_missing_git_exits_zero_with_notice(make_project, tmp_path: Path) -> None:
