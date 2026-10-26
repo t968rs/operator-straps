@@ -282,7 +282,18 @@ def retiring(make_project) -> Path:
     files[STUB_REL] = stub_text() + "\nRepoToDo tracks the rest as TODO-003.\n"
     files[RESEARCH_REL] = {"description": "Loader work is TODO-002.", **files[RESEARCH_REL]}
     files[NOTES_REL] = "See TODO-003.\n"
+    files.update(_dated_records("docs/PLANS", "docs/PR_REVIEWS"))
     return make_project(config(), files=files)
+
+
+def _dated_records(plans: str, reviews: str) -> dict:
+    """A plan PIP and a review that name a TODO id, as dated records of finished work."""
+    return {f"{plans}/0001_Old_PIP.md": "Executed under TODO-003.\n",
+            f"{reviews}/0001_Old.json": {"summary": "Merged review naming TODO-003."}}
+
+
+def _references(lines: List[str]) -> List[str]:
+    return [line for line in lines if line.startswith("reference (not rewritten): ")]
 
 
 def _catalog_ids(root: Path) -> List[str]:
@@ -306,6 +317,20 @@ def test_retire_renumbers_and_rewrites_companions(retiring: Path) -> None:
     assert (retiring / NOTES_REL).read_text(encoding="utf-8") == "See TODO-003.\n"
     check = _run(["check", "--rules", "T1,T3,T4,T5,T6,T7,T8,T9,T10"], retiring)
     assert check.returncode == 0 and _report(retiring)["findings"] == []
+
+
+def test_retire_skips_plan_and_review_records(retiring: Path) -> None:
+    lines = _run(["retire", "1"], retiring).stdout.splitlines()
+    assert _references(lines) == [f"reference (not rewritten): {NOTES_REL}:1:See TODO-003."]
+
+
+def test_retire_skips_the_configured_record_folders(make_project) -> None:
+    files = {**todo_files(), NOTES_REL: "See TODO-003.\n", **_dated_records("kept/plans", "kept/reviews"),
+             **_dated_records("docs/PLANS", "docs/PR_REVIEWS")}
+    root = make_project(config(artifacts={"plans": "kept/plans", "reviews": "kept/reviews"}), files=files)
+    lines = _run(["retire", "1"], root).stdout.splitlines()
+    assert sorted(ref.split(":", 2)[1].strip() for ref in _references(lines)) == [
+        "docs/PLANS/0001_Old_PIP.md", "docs/PR_REVIEWS/0001_Old.json", NOTES_REL]
 
 
 def test_retire_keeps_the_catalog_style(retiring: Path) -> None:
@@ -360,6 +385,11 @@ def test_split_renumbers_rewrites_companions_and_flags_prose(retiring: Path) -> 
     assert "tracks the rest as TODO-004." in (retiring / STUB_REL).read_text(encoding="utf-8")
     check = _run(["check", "--rules", "T1,T3,T4,T5,T6,T7,T8,T9,T10"], retiring)
     assert check.returncode == 0 and _report(retiring)["findings"] == []
+
+
+def test_split_skips_plan_and_review_records(retiring: Path) -> None:
+    lines = _run(["split", "2", "--spec", str(_spec(retiring, LOADER_PARTS))], retiring).stdout.splitlines()
+    assert _references(lines) == [f"reference (not rewritten): {NOTES_REL}:1:See TODO-003."]
 
 
 def test_split_dry_run_writes_nothing(retiring: Path) -> None:
