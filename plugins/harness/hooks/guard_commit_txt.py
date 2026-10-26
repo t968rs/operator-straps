@@ -6,10 +6,13 @@ Denies, through the documented ``permissionDecision: deny`` hook output, an ``Ed
 changes only on the developer's ask, through the skills ``CHANGE_ROUTE`` names, so a hand edit of the TXT
 drifts from its skeleton or rewrites a message the developer never asked to change.
 
-Allowed: ``PR<NNN>_merge.txt`` (``harness:merge-commit-msg`` writes that file with the Write tool), the
-skeleton ``.json`` and the ``.txt.bak`` backup. The project follows ``project_root``'s order from the target
-file's nearest existing directory: its git top level, else ``CLAUDE_PROJECT_DIR``, else that directory. The
-payload ``cwd`` is the start only when no ancestor of the target exists (a path on a missing drive).
+A ``PR<NNN>_merge.txt`` is ``merge_commit_msg.py build`` output too; its reason routes a change to the text
+fence of ``PR<NNN>_merge.md`` (which the skill's agent edits freely) and a rerun of ``build``.
+
+Allowed: the skeleton ``.json``, the merge-message ``.md`` and the ``.txt.bak`` backup. The project follows
+``project_root``'s order from the target file's nearest existing directory: its git top level, else
+``CLAUDE_PROJECT_DIR``, else that directory. The payload ``cwd`` is the start only when no ancestor of the
+target exists (a path on a missing drive).
 Unparseable input, a payload without a file path and an unusable harness config never block.
 
 Scope: only the Write and Edit tools. A shell write of the TXT (redirect, heredoc, ``sed -i``, PowerShell
@@ -32,14 +35,22 @@ from harness_lib.project import project_root  # noqa: E402
 
 # Every route the reason names sits behind the developer's ask; a bare "edit the skeleton and rebuild" route
 # would hand the session the same unasked rewrite one hop later, over a skeleton that may predate TXT edits.
-REASON = f"Commit-message TXT files are build output and final as saved. {CHANGE_ROUTE}"
+_FINAL = "Commit-message TXT files are build output and final as saved."
+REASON = f"{_FINAL} {CHANGE_ROUTE}"
+MERGE_REASON = (f"{_FINAL} A merge message changes only on the developer's ask: edit the text fence of its "
+                "PR<NNN>_merge.md, then rerun harness:merge-commit-msg build.")
 
 _MERGE_TXT = re.compile(r"^PR\d+_merge\.txt$", re.IGNORECASE)
 
 
 def _txt_candidate(file_path: Path) -> bool:
-    """True when the file name alone allows a deny: a ``.txt`` that is not a ``PR<NNN>_merge.txt``."""
-    return file_path.name.lower().endswith(".txt") and not _MERGE_TXT.match(file_path.name)
+    """True when the file name alone allows a deny: any ``.txt``."""
+    return file_path.name.lower().endswith(".txt")
+
+
+def reason_for(file_path: Path) -> str:
+    """The deny reason: the merge-message route for a ``PR<NNN>_merge.txt``, else the commit-message route."""
+    return MERGE_REASON if _MERGE_TXT.match(file_path.name) else REASON
 
 
 def guarded(file_path: Path, cfg: HarnessConfig) -> bool:
@@ -98,7 +109,7 @@ def main() -> int:
         return 0
     cfg = _config_for(file_path, payload)
     if cfg is not None and guarded(file_path, cfg):
-        print(deny(REASON))
+        print(deny(reason_for(file_path)))
     return 0
 
 

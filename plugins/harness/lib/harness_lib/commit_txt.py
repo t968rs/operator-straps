@@ -229,6 +229,11 @@ def vendor_names(text: str) -> List[str]:
     return [match.group(1) for match in _VENDOR.finditer(text)]
 
 
+def filler_words(text: str) -> List[str]:
+    """Filler words in ``text`` (qualities that name no change), outside verbatim paths."""
+    return [match.group(1) for match in _FILLER.finditer(text)]
+
+
 def _commit_message_problems(key: int, commit: CommitEntry) -> List[str]:
     """Problems for one commit: subject rule, vendor names, filler prose."""
     header = commit.header or ""
@@ -239,9 +244,7 @@ def _commit_message_problems(key: int, commit: CommitEntry) -> List[str]:
             f"commit {key}: subject {header!r} is not '<Type>(<scope>): <subject>' with a valid type"
         )
     problems += [f"commit {key}: vendor name {name!r} in message" for name in vendor_names(text)]
-    problems += [
-        f"commit {key}: filler {m.group(1)!r} - state what changed instead" for m in _FILLER.finditer(text)
-    ]
+    problems += [f"commit {key}: filler {word!r} - state what changed instead" for word in filler_words(text)]
     if any(line.strip() == GROUP_SEP for line in text.splitlines()):
         problems.append(f"commit {key}: a message line of '{GROUP_SEP}' would split the TXT block; reword it")
     return problems
