@@ -237,6 +237,40 @@ def test_target_branch_flag_spellings_match_the_positional(script_path: Path, re
     assert _git(repos["main"], "rev-parse", "HEAD") == head
 
 
+def test_head_names_the_main_checkouts_branch_for_a_staged_move(script_path: Path, repos: dict) -> None:
+    _commit(repos["wt"], "a.txt", "a")
+    done = _run(script_path, repos, "HEAD", "--worktree", str(repos["wt"]))
+    assert done.returncode == 0, done.stderr
+    assert "staged 1 file(s) on feature" in done.stdout
+    assert _staged(repos["main"]) == ["a.txt"]
+    assert not repos["wt"].exists()
+
+
+def test_head_names_the_main_checkouts_branch_for_a_committed_move(script_path: Path, repos: dict) -> None:
+    head = _commit(repos["wt"], "a.txt", "a")
+    done = _run(script_path, repos, "HEAD", "--worktree", str(repos["wt"]), "--committed")
+    assert done.returncode == 0, done.stderr
+    assert f"attached 1 commit(s) to feature at {head[:7]}" in done.stdout
+    assert _git(repos["main"], "rev-parse", "HEAD") == head
+
+
+def test_head_from_inside_the_worktree_still_targets_the_main_checkout(script_path: Path,
+                                                                      repos: dict) -> None:
+    head = _commit(repos["wt"], "a.txt", "a")
+    done = _run(script_path, repos, "HEAD", "--committed", cwd=repos["wt"])
+    assert done.returncode == 0, done.stderr
+    assert _git(repos["main"], "rev-parse", "HEAD") == head
+
+
+def test_head_with_a_detached_main_checkout_is_refused(script_path: Path, repos: dict) -> None:
+    _commit(repos["wt"], "a.txt", "a")
+    _git(repos["main"], "switch", "-q", "--detach")
+    done = _run(script_path, repos, "HEAD", "--worktree", str(repos["wt"]))
+    assert done.returncode == 1
+    assert "detached" in done.stderr and "branch" in done.stderr
+    assert repos["wt"].exists()
+
+
 def test_a_missing_target_branch_is_a_usage_error(script_path: Path, repos: dict) -> None:
     done = _run(script_path, repos, "--worktree", str(repos["wt"]))
     assert done.returncode != 0

@@ -4,7 +4,8 @@ Usage: attach_worktree.py [TARGET] [--target-branch BRANCH] [--worktree PATH] [-
 
 TARGET names a branch that is checked out in one of the repository's worktrees; its checkout must have no
 tracked changes. ``--target-branch`` (also ``--target_branch``) names it as a flag and wins over TARGET when
-both are given. ``--worktree`` defaults to the current directory, which must be a linked worktree.
+both are given. The literal ``HEAD`` stands for the branch checked out in the main checkout. ``--worktree``
+defaults to the current directory, which must be a linked worktree.
 
 Default mode stages the worktree's committed, edited and new files on the target as an uncommitted change: the
 combined diff from the merge base is applied three-way, so commits the target gained since the worktree was
@@ -72,6 +73,16 @@ def checkouts(repo: Path) -> List[Checkout]:
 def worktree_path(arg: Optional[Path]) -> Path:
     """The worktree's top level: ``--worktree``, else the current directory."""
     return Path(git(arg or Path.cwd(), "rev-parse", "--show-toplevel")).resolve()
+
+
+def resolve_branch(entries: List[Checkout], name: str) -> str:
+    """The branch ``name`` stands for; the literal ``HEAD`` is the main checkout's checked-out branch."""
+    if name != "HEAD":
+        return name
+    if entries[0].branch is None:
+        raise AttachError(f"HEAD of the main checkout {entries[0].path.as_posix()} is detached; name a "
+                          "target branch instead")
+    return entries[0].branch
 
 
 def target_checkout(entries: List[Checkout], branch: str, worktree: Path) -> Path:
@@ -178,18 +189,20 @@ def attach(args: argparse.Namespace) -> List[str]:
     main = entries[0].path
     if worktree == main:
         raise AttachError(f"{worktree.as_posix()} is the main checkout, not a linked worktree")
-    target = target_checkout(entries, args.target, worktree)
+    branch = resolve_branch(entries, args.target)
+    target = target_checkout(entries, branch, worktree)
     if tracked_changes(target):
         raise AttachError(f"target checkout {target.as_posix()} is not clean: commit or stash its tracked "
                           "changes first")
     mover = move_committed if args.committed else move_staged
-    lines = mover(worktree, target, args.target)
+    lines = mover(worktree, target, branch)
     return [*lines, remove_worktree(worktree, main)]
 
 
 def parse_args(argv: Optional[list]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("target_positional", nargs="?", metavar="TARGET", help="target branch")
+    parser.add_argument("target_positional", nargs="?", metavar="TARGET",
+                        help="target branch, or HEAD for the main checkout's branch")
     parser.add_argument("--target-branch", "--target_branch", dest="target_flag", metavar="BRANCH",
                         help="target branch, as a flag")
     parser.add_argument("--worktree", type=Path, help="worktree to attach (default: the current directory)")
