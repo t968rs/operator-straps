@@ -49,5 +49,6 @@ Relay the agent's reply as it stands. The edits are saved, not committed; the de
 commits. For a retirement the reply answers three questions: the new state of each touched stub (`Stubs`), the
 research entries now fully resolved (`Resolved`), and the GitHub issues that can be closed, each with its reason
 (`Close`). When the reply lists open items (a missing close-candidate evidence, a reference outside the catalog,
-a stub kept for lack of proof, a failed check), name them first. The script's reference list leaves out the dated
-records under `artifacts.plans` and `artifacts.reviews`: a TODO id in an old plan or review is not a follow-up.
+a stub kept for lack of proof, a failed check), name them first. The script's reference list leaves out every
+file under `artifacts.plans` and `artifacts.reviews`, in-progress plans included: a TODO id in an old plan or
+review is not a follow-up, but a live plan naming a moved id has to be checked by hand.

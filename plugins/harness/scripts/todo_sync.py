@@ -21,7 +21,8 @@ catalog items.
     rescore items that lose their only unblocked item, recount, and rewrite moved ids in the research
     catalog and stubs. Prints the follow-up the catalog cannot record by itself: resolved issues to list
     as close candidates, trackers to revisit, prose still naming a retired id, and other files naming a
-    TODO id (not rewritten). ``--dry-run`` prints the same report and writes nothing.
+    TODO id (not rewritten; the snapshots and the ``artifacts.plans`` and ``artifacts.reviews`` records are
+    skipped). ``--dry-run`` prints the same report and writes nothing.
 ``split ID --spec PATH [--dry-run]``
     Replace one item with the parts in the spec file (``{"parts": [{...}, {...}]}``, each a set of field
     overrides laid over a copy of the item; ``title`` required, ``id`` / ``rank`` / ``priority`` refused).

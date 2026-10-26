@@ -216,8 +216,8 @@ def write_edits(cfg: HarnessConfig, catalog_text: str, edits: Dict[str, str]) ->
 
 
 def other_references(cfg: HarnessConfig, edited: Iterable[str]) -> Tuple[str, ...]:
-    """Lines naming a TODO id outside the catalog, its companions, ``edited``, the snapshots and the dated
-    plan and review records (``artifacts.plans``, ``artifacts.reviews``)."""
+    """Lines naming a TODO id outside the catalog, its companions, ``edited``, the snapshots and every file
+    under ``artifacts.plans`` and ``artifacts.reviews`` (in-progress plans included)."""
     skip = [posix(cfg.todo.catalog), *edited, *_companions(cfg),
             posix(cfg.artifacts.plans), posix(cfg.artifacts.reviews)]
     if cfg.todo.snapshots.dir:
