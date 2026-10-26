@@ -107,6 +107,7 @@ After configuring your project below, open Claude Code in that repository and in
 /harness:pr-sum 123
 /harness:d-w HEAD
 /harness:a-w my-branch --committed
+/harness:a-w HEAD
 /harness:add-bookmark keep the public API frozen until PR 60 merges
 ```
 

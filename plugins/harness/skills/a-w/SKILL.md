@@ -1,12 +1,13 @@
 ---
 name: a-w
 description: Use when work done in a detached-HEAD worktree (see d-w) is finished and must move onto a target branch, either as the worktree's own commits or as staged, uncommitted changes. Triggers on "attach the worktree", "move the worktree changes to <branch>", "a-w".
-argument-hint: "<target-branch> [--committed] [--worktree PATH]"
+argument-hint: "<target-branch|HEAD> [--committed] [--worktree PATH]"
 ---
 
 # a-w: move a worktree's work onto a branch and drop the worktree
 
-The developer names the target branch; the command does the rest. On a successful move the developer never
+The developer names the target branch, or `HEAD` for the branch checked out in the main checkout; the command
+does the rest. On a successful move the developer never
 edits, inspects or removes the worktree; only a three-way conflict (below) hands a step back.
 
 ```bash
@@ -14,7 +15,9 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/attach_work
 ```
 
 Run it with the Bash tool from the main checkout, naming the worktree the session created with `d-w`. A
-`--target_branch <name>` flag is accepted in place of the positional branch.
+`--target_branch <name>` flag is accepted in place of the positional branch. `HEAD` resolves to the main
+checkout's branch wherever the command runs; a detached main checkout is a problem to report, so name the
+branch then.
 
 | Mode | What lands on the target |
 |---|---|
