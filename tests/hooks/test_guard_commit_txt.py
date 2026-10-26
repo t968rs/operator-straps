@@ -57,8 +57,16 @@ def test_write_of_a_new_txt_in_a_new_subfolder_is_denied(make_project) -> None:
     assert _denied(_call(_project(make_project), "docs/_commit_messages/fix/new/y.txt", tool="Write"))
 
 
-def test_merge_txt_write_is_allowed(make_project) -> None:
-    assert not _denied(_call(_project(make_project), "docs/_commit_messages/PR12_merge.txt", tool="Write"))
+def test_merge_txt_write_is_denied_with_the_merge_route(make_project) -> None:
+    done = _call(_project(make_project), "docs/_commit_messages/PR12_merge.txt", tool="Write")
+    assert _denied(done)
+    reason = json.loads(done.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+    assert "PR<NNN>_merge.md" in reason and "merge-commit-msg build" in reason
+    assert CHANGE_ROUTE not in reason
+
+
+def test_merge_md_write_is_allowed(make_project) -> None:
+    assert not _denied(_call(_project(make_project), "docs/_commit_messages/PR12_merge.md", tool="Write"))
 
 
 def test_skeleton_json_and_bak_are_allowed(make_project) -> None:
@@ -116,5 +124,5 @@ def test_uppercase_branch_txt_is_denied(make_project) -> None:
     assert _denied(_call(_project(make_project), "docs/_commit_messages/B.TXT"))
 
 
-def test_mixed_case_merge_txt_write_is_allowed(make_project) -> None:
-    assert not _denied(_call(_project(make_project), "docs/_commit_messages/pr12_MERGE.txt", tool="Write"))
+def test_mixed_case_merge_txt_write_is_denied(make_project) -> None:
+    assert _denied(_call(_project(make_project), "docs/_commit_messages/pr12_MERGE.txt", tool="Write"))

@@ -68,12 +68,15 @@ def _review_payload(root: Path) -> dict:
             "tool_input": {"file_path": str(target)}, "tool_response": {}}
 
 
-def _merge_body_args(root: Path) -> List[str]:
-    """Seed the feature branch's commit-message TXT so ``merge_body.py`` reaches its write."""
+def _merge_build_args(root: Path) -> List[str]:
+    """Seed a filled merge-message MD so ``merge_commit_msg.py build`` reaches its write."""
     folder = root / "docs" / "_commit_messages"
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "feature.txt").write_text("Feature(x): y\n", encoding="utf-8")
-    return ["skills/merge-commit/commands/merge_body.py", "--repo", str(root)]
+    message = ["Merge PR #7 — t", "", "Prose.", "", "  - a.py: change", "",
+               "Branch lineage: `main` -> `feature`"]
+    md = ["- Title: t", "", "## Message", "", "```text", *message, "```", ""]
+    (folder / "PR7_merge.md").write_text("\n".join(md), encoding="utf-8")
+    return ["skills/merge-commit-msg/commands/merge_commit_msg.py", "--repo", str(root), "build", "7"]
 
 
 def _runlog_args(root: Path) -> List[str]:
@@ -139,7 +142,7 @@ CASES = {
     "todo_sync refresh": lambda r, t: (_refresh_args(r), None),
     "todo_sync session hook": lambda r, t: (["hooks/todo_sync_session.py"],
                                             {"cwd": str(_todo_project(r)), "source": "startup"}),
-    "merge-commit": lambda r, t: (_merge_body_args(r), None),
+    "merge-commit-msg build": lambda r, t: (_merge_build_args(r), None),
     "commit capture --save": lambda r, t: (["scripts/branch_commit_msg.py", "--repo", str(r), "capture",
                                             "--save", "--no-fetch"], None),
     "pr_review config": lambda r, t: (["scripts/pr_review.py", "--repo", str(r), "config"], None),
@@ -178,11 +181,11 @@ def test_commit_capture_lands_in_the_project(project: Path) -> None:
     assert written.resolve().is_relative_to(project.resolve())
 
 
-def test_merge_body_lands_in_the_project(project: Path) -> None:
-    script, _ = CASES["merge-commit"](project, project)
+def test_merge_build_lands_in_the_project(project: Path) -> None:
+    script, _ = CASES["merge-commit-msg build"](project, project)
     done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project)
     assert done.returncode == 0, done.stderr
-    written = Path(done.stdout.strip())
+    written = project / "docs" / "_commit_messages" / "PR7_merge.txt"
     assert written.is_file()
     assert written.resolve().is_relative_to(project.resolve())
 

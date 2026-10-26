@@ -184,10 +184,10 @@ changed files ──► every file fits one entry's patterns? ──no──► 
 - `c-msg`, `branch-commit-msg` and `amend-commit-msg` keep a prefilled message as it stands, unless the
   developer asks for a change (`/harness:c-msg <change>`, `/harness:amend-commit-msg [--base <sha7>] -- <change>`,
   with the `--base` the draft used).
-  `merge-commit-msg` asks for it with `gh pr diff NNN --name-only | ... branch_commit_msg.py canned`.
+  `merge-commit-msg` capture applies the same lookup to the PR's changed files and prefills the prose.
 - A saved message is final: the build receipt ends with a `Final as saved` line, and a PreToolUse hook
-  (`guard_commit_txt.py`) denies Write and Edit tool calls on the saved `.txt` files (`PR<NNN>_merge.txt`
-  excepted). Shell writes (redirects, heredocs, `sed -i`, `Set-Content`) are covered only by the standing rule.
+  (`guard_commit_txt.py`) denies Write and Edit tool calls on the saved `.txt` files, `PR<NNN>_merge.txt`
+  included (its working document, `PR<NNN>_merge.md`, stays editable). Shell writes (redirects, heredocs, `sed -i`, `Set-Content`) are covered only by the standing rule.
 - The entries use the plugin's default file names (and, for review artifacts, folders); a project that renames them drafts as usual.
 
 ### Working on this repository

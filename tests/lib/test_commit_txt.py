@@ -11,6 +11,7 @@ from harness_lib.config import activate, load_config
 from harness_lib.commit_txt import (
     document_to_txt,
     entry_from_message,
+    filler_words,
     message_problems,
     parse_commit_txt,
     read_commit_txt,
@@ -194,3 +195,9 @@ class TestMessageProblems:
 class TestVendorNames:
     def test_names_outside_paths(self) -> None:
         assert vendor_names("Uses Claude; see .claude/agents/x.md and CLAUDE.md") == ["Claude"]
+
+
+class TestFillerWords:
+    def test_words_outside_paths(self) -> None:
+        text = "A robust fix; see docs/improve/notes.md and various tweaks"
+        assert filler_words(text) == ["robust", "various"]
