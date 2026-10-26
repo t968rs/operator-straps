@@ -1,0 +1,150 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 96,
+  "pr_title": "`repo-todo` artifacts ignore",
+  "branch": "1078-repo-todo-artifacts-ignore",
+  "base_branch": "main",
+  "base_sha": "5ccdee9f766dee0de8bccb3c88958f6534a759af",
+  "head_sha": "1d32402cd18bcdc2b8101cea3c2c3672be2afc37",
+  "review_date": "2026-10-26",
+  "verdict": "READY TO MERGE - 2 of 2 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 39,
+    "deletions": 5,
+    "files_changed": 5
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0096/pr96_20261026T143825Z/findings/tests.json",
+    "docs/_scratch/pr_review/0096/pr96_20261026T143825Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0096/pr96_20261026T143825Z/findings/docs.json",
+    "docs/_scratch/pr_review/0096/pr96_20261026T143825Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "New tests are behavioral: they run the real todo_sync.py subprocess against a real git project and assert on the printed reference lines, with no stubbing.",
+    "test_retire_skips_the_configured_record_folders is discriminating: it overrides artifacts.plans/reviews and keeps default-named docs/PLANS and docs/PR_REVIEWS files that must still be listed, so a hard-coded or ignored-config skip would fail.",
+    "Retire and split are both covered through the shared retiring fixture, matching other_references() being used by retire.py and reshape.py.",
+    "Docstring of _dated_records and the new other_references docstring agree with the code (skip list adds artifacts.plans and artifacts.reviews).",
+    "other_references docstring matches the new skip list: plans and reviews are excluded and named in the docstring.",
+    "artifacts.plans and artifacts.reviews are schema-validated non-empty relative paths, so the new git pathspec excludes cannot degenerate to an empty ':(exclude)'.",
+    "The change reuses the existing posix and _references machinery; the skip list is built in one place.",
+    "todo-editor.md:51-52 matches the code: other_references (lib/harness_lib/todo_sync/retire.py:218-225) puts artifacts.plans and artifacts.reviews in the git-grep exclude list, and split reaches the same function (reshape.py:409), so 'never lists' holds for every operation that prints reference lines.",
+    "todo-edit/SKILL.md:52-53 gives the developer the reason along with the fact (an old plan or review naming a TODO id is not a follow-up), so a missing reference line will not read as a script gap.",
+    "Both notes name the config keys (artifacts.plans, artifacts.reviews) rather than the default paths docs/PLANS and docs/PR_REVIEWS, which keeps the plugin generic as the project rules require.",
+    "One change in other_references covers both callers (retire.py:193 and reshape.py:409), and both are tested (test_retire_skips_plan_and_review_records, test_split_skips_plan_and_review_records).",
+    "test_retire_skips_the_configured_record_folders moves the record folders and asserts the default folders show up again, which proves the skip reads artifacts.plans and artifacts.reviews from config instead of hardcoding docs/PLANS.",
+    "The new tests are behavioral: they run the real driver against a real git tree and compare the whole reference list for equality, so a regression in either direction fails them.",
+    "The agent rule (todo-editor.md) and the skill report (SKILL.md) were updated together with the code, and the plugin version was bumped to 0.29.1 as the release rule requires."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "todo_sync.py usage docstring still says retire lists every other file naming a TODO id",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/lib/harness_lib/todo_sync/retire.py"
+        ],
+        "lines": "23-24",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The driver's usage text at plugins/harness/scripts/todo_sync.py:23-24 says retire prints 'other files naming a TODO id (not rewritten)', and split defers to it. After this PR the list also leaves out artifacts.plans and artifacts.reviews (on top of the snapshots, which it already left out unmentioned). The agent and skill docs were updated in this PR; the CLI's own description was not.",
+        "fix": [
+          "At todo_sync.py:23-24, change 'other files naming a TODO id (not rewritten)' to 'other files naming a TODO id (not rewritten; the snapshots and the artifacts.plans and artifacts.reviews records are skipped)'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Docs frame the skip as old records only, but in-progress plans are skipped too",
+        "file": "plugins/harness/skills/todo-edit/SKILL.md",
+        "files": [
+          "plugins/harness/skills/todo-edit/SKILL.md",
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/lib/harness_lib/todo_sync/retire.py"
+        ],
+        "lines": "52-53",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "other_references (retire.py:221-222) excludes the whole artifacts.plans and artifacts.reviews folders, so a live, not-yet-executed plan that names a renumbered TODO id is no longer reported by retire or split. SKILL.md:52-53 justifies the omission with 'a TODO id in an old plan or review is not a follow-up', and todo-editor.md:51-52 and the retire.py:219-220 docstring call them 'dated records'. Neither says an in-progress plan is silenced too, so the operator has no cue to check active plans by hand after a renumber. The catalog item behind this PR (docs/TODO/RepoToDo.json:150) asked whether to drop the folders whole or only merged reviews and executed plans; the PR picked the whole folders and should say so in the docs.",
+        "fix": [
+          "Reword SKILL.md:52-53 (and the matching sentence in todo-editor.md:51-52) to say every file under artifacts.plans and artifacts.reviews is skipped, in-progress plans included, so a live plan naming a moved id has to be checked by hand.",
+          "Or narrow the skip to executed plans and merged-PR reviews, as the catalog item's other option proposed."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 96 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"0a2d86c5f9494304c261ebe67e9e4261a4c6d02a\",\"headRefName\":\"1078-repo-todo-artifacts-ignore\",\"headRefOid\":\"1d32402cd18bcdc2b8101cea3c2c3672be2afc37\",\"last_sha\":\"1d32402cd18bcdc2b8101cea3c2c3672be2afc37\",\"mergeCommit\":null,\"number\":96,\"state\":\"OPEN\",\"title\":\"`repo-todo` artifacts ignore\",\"url\":\"https://github.com/t968rs/operator-straps/pull/96\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1078-repo-todo-artifacts-ignore",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1078-repo-todo-artifacts-ignore",
+        "head_ref_name": "1078-repo-todo-artifacts-ignore",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "0a2d86c5f9494304c261ebe67e9e4261a4c6d02a",
+        "head_sha": "1d32402cd18bcdc2b8101cea3c2c3672be2afc37",
+        "base_ancestor_command": "git merge-base --is-ancestor 0a2d86c5f9494304c261ebe67e9e4261a4c6d02a HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 1d32402cd18bcdc2b8101cea3c2c3672be2afc37 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-26",
+      "evidence": "1d32402 (working-tree snapshot; developer commits) - todo_sync.py retire usage text now says the snapshots and the artifacts.plans and artifacts.reviews records are skipped from the reference list; retire.py cited only, its other_references docstring already names the skipped folders"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-26",
+      "evidence": "1d32402 (working-tree snapshot; developer commits) - SKILL.md, todo-editor.md and the other_references docstring now say every file under artifacts.plans and artifacts.reviews is skipped, in-progress plans included, so a live plan naming a moved id needs a check by hand"
+    }
+  ]
+}

@@ -48,7 +48,9 @@ says, the evidence behind a close candidate, and the prose that named an id that
   `related_todo_ids`.** The script computes them; a hand edit fails rules T6-T10. To change a score, edit the
   fields it derives from (`severity`, `impact`, `loe.size`, `blast_radius.level`) and run `TS refresh`.
 - **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split and add spec files. Lines the
-  script prints as `reference (not rewritten):` sit in other files: report them, do not edit them.
+  script prints as `reference (not rewritten):` sit in other files: report them, do not edit them. The script
+  never lists any file under `artifacts.plans` or `artifacts.reviews`, in-progress plans included: after a
+  renumber, flag that a live plan naming a moved id needs a check by hand.
 - **Delete a stub only under `Delete retired: yes`**, and only through the **delete-retired** gate below. No other
   file is ever deleted.
 - **Dry-run first** for retire, split and sync; read its report before the real run.
