@@ -1,0 +1,204 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 99,
+  "pr_title": "Perf(validate-pr-json-schema): exit before harness imports when no args",
+  "branch": "1080-validate-json-schema",
+  "base_branch": "main",
+  "base_sha": "d1ded835ed7f0c2174a7f876656be4613f017db5",
+  "head_sha": "b34133e264db1017d355154780c42a7c5b904e4f",
+  "review_date": "2026-10-26",
+  "verdict": "READY TO MERGE - 4 of 4 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 149,
+    "deletions": 14,
+    "files_changed": 3
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0099/pr99_20261026T223001Z/findings/tests.json",
+    "docs/_scratch/pr_review/0099/pr99_20261026T223001Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0099/pr99_20261026T223001Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Import-guard tests are behavioral: they run the real hook in a child interpreter and inspect sys.modules, so removing the _cannot_target pre-check makes all three fail (harness_lib would load).",
+    "Relocated-plans-dir Bash test fails if the pre-check used only default directories, pinning the config-driven candidate list.",
+    "Shim reports exit code via SystemExit and asserts child returncode 0, so a hook crash cannot masquerade as a clean early exit.",
+    "No mock-chain tests: every new case uses make_project and real subprocess execution.",
+    "Pre-check is fail-safe by construction: unreadable or non-string config, or any doubt, returns False and falls through to the unchanged full path.",
+    "Candidate dirs include plugin defaults plus every ancestor harness.json, so a relocated artifacts dir is not skipped; deep-merge semantics are covered by the defaults inclusion.",
+    "Lazy imports keep module-level names minimal (TYPE_CHECKING for HarnessConfig); tests are subprocess based so removing module attributes breaks no monkeypatch.",
+    "Heavy-import tests assert on sys.modules directly, so the perf claim is pinned, not just the exit code.",
+    "Lazy imports are scoped to the exact function that needs each harness_lib symbol, and HarnessConfig is a TYPE_CHECKING-only import under postponed annotations, so the fast path really is stdlib-only.",
+    "The pre-check fails safe: any unreadable or non-string config value returns None and drops to the full validation path instead of guessing.",
+    "_run_hook_loaded_modules asserts on sys.modules in a real child process, a behavioral test of the perf claim rather than a mock of it; removing the pre-check makes all three skip tests fail.",
+    "test_bash_command_follows_configured_plans_dir discriminates: a pre-check that read only defaults.json would skip planning/active and the test would fail.",
+    "The existing missing-git shim still works because the lazy import in _activate_project picks up the pre-patched harness_lib.project from sys.modules."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Pre-check config discovery branches have no test",
+        "file": "tests/hooks/test_hooks_schema_validation.py",
+        "files": [
+          "tests/hooks/test_hooks_schema_validation.py",
+          "plugins/harness/hooks/validate_pr_json_schema.py"
+        ],
+        "lines": "199,222-255",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_candidate_dirs/_config_dirs (hook lines 264-290) read ancestor .claude/harness.json files, CLAUDE_PROJECT_DIR and fall back to the full path (return None) on an unreadable or non-string artifacts value. The new tests only cover a harness.json at the payload cwd root; _hook_env() (line 42-46) pops CLAUDE_PROJECT_DIR so that branch can never run. A regression that ignores an ancestor config (payload cwd in a subdirectory of a project with a relocated artifacts.plans) or that skips instead of falling back would silently stop validation, the exact silent-no-op class this file's docstring guards against, and no test would fail.\n\nAlso (tests): Line 255 asserts bad.is_file() on a file the test wrote three lines earlier; it cannot fail and proves nothing (the variable is otherwise unused). The _run_hook_loaded_modules docstring (line 199) says 'in-process under runpy' but the hook runs in a child interpreter via sys.executable -c, not in the pytest process. The test docstring at line 223 says 'names no plan or review directory' while the hook rule needs a .json token under such a directory.\n\nAlso (roast): The new tests cover the skip paths and the default/relocated-dir proceed paths, but nothing exercises _config_dirs returning None (unreadable JSON, non-string artifacts.plans) or the tool_response.filePath fallback. The None branch is what keeps a broken harness.json from silently skipping a relocated artifact and swallowing the 'harness config unusable' notice; a refactor that turns None into [] would pass every test in the file. Also, `assert bad.is_file()` at line 255 can only fail if _write itself broke.",
+        "fix": [
+          "Add a test with a relocated artifacts.plans and a payload cwd set to a project subdirectory (e.g. project/src), asserting exit 1 plus SCHEMA VIOLATION for a Bash command naming the relocated plan.",
+          "Add a test where only CLAUDE_PROJECT_DIR points at the project (cwd elsewhere) with a relocated plans dir, passing env via a copy of _hook_env().",
+          "Add a test with {'artifacts': {'plans': 5}} in harness.json asserting exit 0 and the 'harness config' notice, proving the None fallback reaches the full path.",
+          "Drop the 'bad.is_file()' assertion and bind the _write call result only if needed.",
+          "Reword the helper docstring to 'in a child interpreter under runpy' and the test docstring to 'names no .json path under a plan or review directory'.",
+          "Add a test: make_project with files={'.claude/harness.json': '{not json'} (or config with artifacts.plans set to a non-string), Write payload to a non-default directory such as planning/active/bad_ActionPlan.json, and assert exit 0 with 'harness config unusable' in stderr (proves the full path ran).",
+          "Add a test whose payload carries only tool_response.filePath for an invalid plan and assert exit 1 with 'ActionPlan SCHEMA VIOLATION'.",
+          "Drop the no-op `assert bad.is_file()` at line 255."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Superset claim for candidate dirs ignores symlinked cwd",
+        "file": "plugins/harness/hooks/validate_pr_json_schema.py",
+        "files": [
+          "plugins/harness/hooks/validate_pr_json_schema.py",
+          "plugins/harness/lib/harness_lib/project.py"
+        ],
+        "lines": "132-145,277-290",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_candidate_dirs documents itself as a superset of what load_config reads, but load_config reads <project_root>/.claude/harness.json where project_root is git's resolved top level, while the scan walks the unresolved payload cwd and its parents. When cwd reaches the repository through a symlink or junction above the repo root, the resolved root is not among start.parents, a custom artifacts.plans/reviews set there is missed, and a real artifact write is skipped silently (fail-open, no validation).\n\nAlso (roast): _candidate_dirs claims to be 'a superset of what load_config reads', but it walks the parents of the unresolved payload cwd while project_root returns the resolved `git rev-parse --show-toplevel`. When the cwd is a symlink into a subdirectory of a repo (e.g. ~/work -> /srv/repo/packages/app), git finds /srv/repo and load_config reads /srv/repo/.claude/harness.json, but the pre-check only stats ~/work/.claude, ~/.claude, /.claude. A project that relocates artifacts.plans or artifacts.reviews then has its Bash and Write events on real artifacts skipped silently, with no notice. Narrow case, but the docstring promises the superset unconditionally.",
+        "fix": [
+          "Build roots from start.resolve() as well as start (both lists), so the resolved git root is covered.",
+          "Or narrow the docstring to say symlinked cwd paths are not covered.",
+          "In _candidate_dirs, add the resolved path's ancestry as well: `resolved = start.resolve(); roots = [start, *start.parents, resolved, *resolved.parents]` (de-duplicate if desired); stat calls are cheap.",
+          "Or weaken the docstring to name the symlinked-cwd exception and accept the gap."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Pre-check scans config files before the cheap suffix test",
+        "file": "plugins/harness/hooks/validate_pr_json_schema.py",
+        "files": [
+          "plugins/harness/hooks/validate_pr_json_schema.py",
+          "tests/hooks/test_hooks_schema_validation.py"
+        ],
+        "lines": "293-308",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_cannot_target calls _candidate_dirs first, which stats defaults.json and a harness.json for every ancestor of cwd and parses each one, even when the event is a Write of a non-JSON path or a Bash command with no '.json' in it. Those are the commonest events and are decidable from the payload alone. The PR exists to cut per-event cost, so the filesystem walk should run only once a cheap test (path ends with .json, or command contains .json) has passed.\n\nAlso (runtime): The new tests cover project-root cwd with forward-slash paths. Nothing exercises a cwd in a subdirectory (ancestor harness.json discovery), a Windows backslash file_path, or an artifacts.reviews relocation, which are the routes the pre-check regex and ancestor walk were written for. Separately, the _cannot_target docstring says a Bash event needs a '.json' token under a candidate dir, but the code only requires '.json' and '<dir>/' to appear anywhere in the command (a looser, safe superset), so the wording overstates the precision.\n\nAlso (roast): The docstring says a Bash event needs a '.json token ... under a candidate artifact directory', but the code only checks that '.json' appears anywhere and a directory prefix appears anywhere, independently. `git add docs/PLANS/ package.json` passes the pre-check and pays for the full harness_lib import, then _bash_target_pattern finds nothing. Safe (it errs toward validating), just not what the prose claims, and it keeps two diverging definitions of 'Bash target'.",
+        "fix": [
+          "In _cannot_target, return True before calling _candidate_dirs when direct is set and not str(direct).endswith('.json'), or when direct is unset and '.json' not in command; then compute dirs and the under_dir regex only for the survivors.",
+          "Add tests: cwd = project/'sub' with a relocated plans dir; a backslash file_path under docs\\PLANS; a relocated reviews dir.",
+          "Reword the _cannot_target docstring to say '.json' and a candidate directory both appear in the command.",
+          "Build one pattern from a dirs list and use it in both places: e.g. `_bash_pattern(rels)` returning `re.compile(r\"[^\\s'\\\"]*\" + _alternation(rels) + r\"[/\\][^\\s'\\\"]+?\\.json\")`, have _bash_target_pattern call it with the cfg dirs, and have _cannot_target return `not (isinstance(command, str) and _bash_pattern(dirs).search(command))`.",
+          "Or reword the docstring to say the Bash check requires '.json' and a candidate directory prefix anywhere in the command."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Import-guard tests lack a positive control for the shim",
+        "file": "tests/hooks/test_hooks_schema_validation.py",
+        "lines": "198-237",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The three before-heavy-imports tests assert loaded == [] from _run_hook_loaded_modules, but no test proves the same shim reports harness_lib for an event that must load it. If the shim's module scan or runpy handling broke (or the hook exited early for an unrelated reason), these would still pass. Also the Bash case only covers a command with no .json token; a command with .json outside the artifact dirs (cat package.json) and a Bash command naming the directory without .json are untested, though _cannot_target requires both.",
+        "fix": [
+          "Add one test running _run_hook_loaded_modules on a Write payload for docs/PLANS/x_ActionPlan.json and assert 'harness_lib' in report['loaded'].",
+          "Add a Bash case 'cat package.json' to the before-imports tests."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 99 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"b34133e264db1017d355154780c42a7c5b904e4f\",\"headRefName\":\"1080-validate-json-schema\",\"headRefOid\":\"b34133e264db1017d355154780c42a7c5b904e4f\",\"last_sha\":\"b34133e264db1017d355154780c42a7c5b904e4f\",\"mergeCommit\":null,\"number\":99,\"state\":\"OPEN\",\"title\":\"Perf(validate-pr-json-schema): exit before harness imports when no args\",\"url\":\"https://github.com/t968rs/operator-straps/pull/99\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1080-validate-json-schema",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1080-validate-json-schema",
+        "head_ref_name": "1080-validate-json-schema",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b34133e264db1017d355154780c42a7c5b904e4f",
+        "head_sha": "b34133e264db1017d355154780c42a7c5b904e4f",
+        "base_ancestor_command": "git merge-base --is-ancestor b34133e264db1017d355154780c42a7c5b904e4f HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor b34133e264db1017d355154780c42a7c5b904e4f HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-26",
+      "evidence": "b34133e (working-tree snapshot; developer commits) - _candidate_dirs walks the ancestry of the resolved cwd as well as the given one (new _ancestry helper), so git's resolved top-level harness.json is covered; docstring updated; symlinked-cwd test added. project.py cited only: project_root already returns git's resolved top level"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-26",
+      "evidence": "b34133e (working-tree snapshot; developer commits) - _cannot_target runs the payload-only .json test before any config read; docstring now states the Bash check needs .json and a candidate directory prefix anywhere; tests for subdirectory cwd, backslash path and relocated reviews dir added"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-26",
+      "evidence": "b34133e (working-tree snapshot; developer commits) - positive-control test asserts harness_lib loads for a plan write; before-imports Bash case parametrized with 'cat package.json' and 'ls docs/PLANS/'"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-26",
+      "evidence": "b34133e (working-tree snapshot; developer commits) - tests added for ancestor config, CLAUDE_PROJECT_DIR config, non-string artifacts.plans fallback to the full path, and tool_response.filePath; no-op bad.is_file() dropped; helper and test docstrings reworded. Hook cited only: the None fallback and discovery branches it tests need no change"
+    }
+  ]
+}
