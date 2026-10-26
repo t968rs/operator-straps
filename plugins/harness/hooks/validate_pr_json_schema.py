@@ -15,6 +15,9 @@ Review targets get three further layers after the schema check:
   Never blocks.
 - Issue-count tabulation (``validate_issue_counts``) blocks on unaccounted or orphan issue ids.
 
+A stdlib-only pre-check (``_cannot_target``) runs first and exits 0 for an event that cannot name a target,
+so ``harness_lib`` and the validators are imported only when one might.
+
 Exit 1 with a stderr report on a violation; exit 0 otherwise. Failure modes that are not a violation
 (no target, missing schema, malformed stdin, unusable harness config or git missing from PATH, a payload
 without ``tool_input`` such as a Stop event) exit 0. A missing ``jsonschema`` or ``referencing`` exits 0
@@ -28,16 +31,14 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Pattern, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Pattern, Tuple, Union
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from harness_lib.config import ConfigError, HarnessConfig, activate, load_config  # noqa: E402
-from harness_lib.project import project_root, schema_path  # noqa: E402
-from harness_lib.validation.artifact_names import is_review_artifact_name, phase5_sentinel_path  # noqa: E402
-from harness_lib.validation.id_handling import all_issues_dispositioned  # noqa: E402
-from harness_lib.validation.pr_json_validation import IssueTabulationError, validate_issue_counts  # noqa: E402
-from harness_lib.validation.schema_registry import schema_registry  # noqa: E402
+if TYPE_CHECKING:
+    from harness_lib.config import HarnessConfig
+
+_DEFAULTS_PATH = Path(__file__).resolve().parents[1] / "config" / "defaults.json"
 
 _PLAN = ("ActionPlan.schema.json", "ActionPlan")
 _REVIEW = ("PR_REVIEW.schema.json", "PR_REVIEW")
@@ -62,6 +63,8 @@ def _rel_token(rel: str) -> str:
 
 def _target_kind(file_path: str, cfg: HarnessConfig) -> Optional[Tuple[str, str]]:
     """``(schema name, label)`` for a plan or review artifact path, else None."""
+    from harness_lib.validation.artifact_names import is_review_artifact_name
+
     norm = "/" + file_path.replace("\\", "/").lstrip("/")
     if not norm.endswith(".json"):
         return None
@@ -72,10 +75,13 @@ def _target_kind(file_path: str, cfg: HarnessConfig) -> Optional[Tuple[str, str]
     return None
 
 
-def _dirs_alternation(cfg: HarnessConfig) -> str:
-    rels = (cfg.artifacts.plans, cfg.artifacts.reviews)
+def _alternation(rels: Iterable[str]) -> str:
     parts = (re.escape(r.replace("\\", "/").strip("/")).replace("/", r"[/\\]") for r in rels)
     return "(?:" + "|".join(parts) + ")"
+
+
+def _dirs_alternation(cfg: HarnessConfig) -> str:
+    return _alternation((cfg.artifacts.plans, cfg.artifacts.reviews))
 
 
 def _bash_target_pattern(cfg: HarnessConfig) -> Pattern[str]:
@@ -131,6 +137,8 @@ def _schema_check(file_path: str, schema_file: Path, cfg: HarnessConfig,
     """Validate against the schema: ``(data, schema)`` when valid, else the exit code to return."""
     import jsonschema
 
+    from harness_lib.validation.schema_registry import schema_registry
+
     try:
         data = _read_json(Path(file_path))
         schema = _read_json(schema_file)
@@ -169,6 +177,8 @@ def _incoherent(file_path: str, data: Dict[str, Any], schema: Dict[str, Any]) ->
 
 def _closeout_reason(data: Dict[str, Any]) -> Optional[str]:
     """Why the review counts as a Phase 5 closeout, or None when it does not."""
+    from harness_lib.validation.id_handling import all_issues_dispositioned
+
     resolutions = data.get("post_review_resolutions") or []
     verdict = data.get("verdict") or ""
     has_sha_evidence = any(
@@ -187,6 +197,8 @@ def _closeout_reason(data: Dict[str, Any]) -> Optional[str]:
 
 def _clear_sentinel(data: Dict[str, Any], cfg: HarnessConfig) -> None:
     """Layer 3: delete the PR's Phase 5 sentinel on closeout. Never raises, never blocks."""
+    from harness_lib.validation.artifact_names import phase5_sentinel_path
+
     pr_value = data.get("pr")
     reason = _closeout_reason(data) if pr_value is not None else None
     if reason is None:
@@ -202,6 +214,8 @@ def _clear_sentinel(data: Dict[str, Any], cfg: HarnessConfig) -> None:
 
 
 def _issue_count_check(file_path: str, data: Dict[str, Any]) -> int:
+    from harness_lib.validation.pr_json_validation import IssueTabulationError, validate_issue_counts
+
     try:
         validate_issue_counts(data)
     except IssueTabulationError as exc:
@@ -212,6 +226,8 @@ def _issue_count_check(file_path: str, data: Dict[str, Any]) -> int:
 
 
 def _validate_target(file_path: str, cfg: HarnessConfig) -> int:
+    from harness_lib.project import schema_path
+
     kind = _target_kind(file_path, cfg)
     if kind is None:
         return 0
@@ -240,10 +256,64 @@ def _read_payload() -> Dict[str, Any]:
     return payload if isinstance(payload, dict) else {}
 
 
+def _start_dir(payload: Dict[str, Any]) -> Path:
+    cwd = payload.get("cwd")
+    return Path(cwd) if isinstance(cwd, str) and cwd else Path(os.getcwd())
+
+
+def _config_dirs(config_file: Path) -> Optional[List[str]]:
+    """``artifacts.plans`` and ``artifacts.reviews`` named in a config file, plain ``json`` only.
+
+    None when the file is unreadable or the values are not strings, so the caller runs the full path.
+    """
+    try:
+        artifacts = json.loads(config_file.read_text(encoding="utf-8")).get("artifacts") or {}
+        dirs = [artifacts[key] for key in ("plans", "reviews") if key in artifacts]
+    except (OSError, ValueError, AttributeError, TypeError):
+        return None
+    return dirs if all(isinstance(d, str) and d for d in dirs) else None
+
+
+def _candidate_dirs(start: Path) -> Optional[List[str]]:
+    """Every plan or review directory a config near ``start`` could name: the plugin defaults plus each
+    ancestor's (and ``CLAUDE_PROJECT_DIR``'s) ``harness.json``. A superset of what ``load_config`` reads."""
+    roots = [start, *start.parents]
+    if os.environ.get("CLAUDE_PROJECT_DIR"):
+        roots.append(Path(os.environ["CLAUDE_PROJECT_DIR"]))
+    files = [_DEFAULTS_PATH] + [r / ".claude" / "harness.json" for r in roots]
+    out: List[str] = []
+    for config_file in (f for f in files if f.is_file()):
+        dirs = _config_dirs(config_file)
+        if dirs is None:
+            return None
+        out.extend(dirs)
+    return out
+
+
+def _cannot_target(payload: Dict[str, Any], tool_input: Dict[str, Any],
+                   tool_response: Dict[str, Any]) -> bool:
+    """True when the event cannot name a plan or review artifact, decided with the stdlib only.
+
+    Runs before any ``harness_lib`` import. A path event needs a ``.json`` path and a Bash event needs a
+    ``.json`` token, each under a candidate artifact directory; anything uncertain returns False.
+    """
+    dirs = _candidate_dirs(_start_dir(payload))
+    if dirs is None:
+        return False
+    under_dir = re.compile(_alternation(dirs) + r"[/\\]")
+    direct = tool_input.get("file_path") or tool_response.get("filePath")
+    if direct:
+        return not (str(direct).endswith(".json") and under_dir.search(str(direct)))
+    command = tool_input.get("command")
+    return not (isinstance(command, str) and ".json" in command and under_dir.search(command))
+
+
 def _activate_project(payload: Dict[str, Any]) -> Optional[HarnessConfig]:
     """Activate the harness config of the project holding the payload's ``cwd`` (else the process cwd)."""
-    cwd = payload.get("cwd")
-    start = Path(cwd) if isinstance(cwd, str) and cwd else Path(os.getcwd())
+    from harness_lib.config import ConfigError, activate, load_config
+    from harness_lib.project import project_root
+
+    start = _start_dir(payload)
     try:
         return activate(load_config(project_root(start)))
     except (ConfigError, OSError) as exc:  # OSError: git missing from PATH during the project lookup
@@ -267,11 +337,13 @@ def main() -> int:
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
         return 0
+    tool_response = payload.get("tool_response")
+    tool_response = tool_response if isinstance(tool_response, dict) else {}
+    if _cannot_target(payload, tool_input, tool_response):
+        return 0
     cfg = _activate_project(payload)
     if cfg is None:
         return 0
-    tool_response = payload.get("tool_response")
-    tool_response = tool_response if isinstance(tool_response, dict) else {}
     targets = [t for t in _resolve_file_paths(tool_input, tool_response, cfg) if _target_kind(t, cfg)]
     missing = _missing_validator() if targets else None
     if missing:

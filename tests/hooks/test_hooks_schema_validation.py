@@ -192,6 +192,69 @@ def test_missing_validator_warns_once_and_exits_zero(make_project, blocked: str)
     assert f"{blocked} not installed" in lines[0]
 
 
+_HEAVY_PACKAGES = ("harness_lib", "jsonschema", "referencing", "pydantic")
+
+
+def _run_hook_loaded_modules(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Run the hook in-process under runpy; report its exit code and the heavy packages it imported."""
+    shim = (
+        "import json, runpy, sys\n"
+        f"sys.argv = [{str(_HOOK_PY)!r}]\n"
+        "code = 0\n"
+        "try:\n"
+        f"    runpy.run_path({str(_HOOK_PY)!r}, run_name='__main__')\n"
+        "except SystemExit as exc:\n"
+        "    code = exc.code or 0\n"
+        f"heavy = {_HEAVY_PACKAGES!r}\n"
+        "loaded = sorted({m.split('.')[0] for m in sys.modules} & set(heavy))\n"
+        "print(json.dumps({'code': code, 'loaded': loaded}))\n"
+    )
+    result = subprocess.run([sys.executable, "-c", shim], input=json.dumps(payload), capture_output=True,
+                            text=True, env=_hook_env(), check=False)
+    assert result.returncode == 0, f"stderr={result.stderr!r}"
+    return json.loads(result.stdout.strip().splitlines()[-1])
+
+
+def _bash_payload(project: Path, command: str) -> Dict[str, Any]:
+    return {"cwd": str(project), "tool_name": "Bash", "tool_input": {"command": command}}
+
+
+def test_irrelevant_bash_command_exits_before_heavy_imports(make_project) -> None:
+    """A command that names no plan or review directory never pays for harness_lib or the validators."""
+    report = _run_hook_loaded_modules(_bash_payload(make_project(), "git status --short"))
+    assert report == {"code": 0, "loaded": []}
+
+
+def test_non_json_write_exits_before_heavy_imports(make_project) -> None:
+    project = make_project()
+    report = _run_hook_loaded_modules(_write_payload(project, project / "docs" / "PLANS" / "notes.md"))
+    assert report == {"code": 0, "loaded": []}
+
+
+def test_json_outside_artifact_dirs_exits_before_heavy_imports(make_project) -> None:
+    project = make_project()
+    report = _run_hook_loaded_modules(_write_payload(project, project / "package.json"))
+    assert report == {"code": 0, "loaded": []}
+
+
+def test_bash_command_naming_a_plan_still_validates(make_project) -> None:
+    project = make_project()
+    bad = _write(project / "docs" / "PLANS" / "bad_ActionPlan.json", _INVALID_PLAN)
+    result = _run_hook(_bash_payload(project, f"cat {bad}"))
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "ActionPlan SCHEMA VIOLATION" in result.stderr
+
+
+def test_bash_command_follows_configured_plans_dir(make_project) -> None:
+    """The pre-check reads ``artifacts.plans`` from harness.json, so a relocated directory is not skipped."""
+    project = make_project(config={"artifacts": {"plans": "planning/active"}})
+    bad = _write(project / "planning" / "active" / "bad_ActionPlan.json", _INVALID_PLAN)
+    result = _run_hook(_bash_payload(project, "cat planning/active/bad_ActionPlan.json"))
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "ActionPlan SCHEMA VIOLATION" in result.stderr
+    assert bad.is_file()
+
+
 def test_missing_git_exits_zero_with_notice(make_project, tmp_path: Path) -> None:
     """Without git on PATH the project lookup raises OSError; the hook reports it instead of crashing."""
     project = make_project()
