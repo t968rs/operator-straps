@@ -84,7 +84,7 @@ needs a PR fetch of its own or a hand-written file is out of scope (see Stop con
 Report and stop, do not improvise, when:
 
 - A capture exits non-zero: relay its `problem:` lines verbatim and stop.
-- A build exits non-zero: fix the JSON as the skill says and rerun. Relay its `problem:` lines verbatim and
+- A build exits non-zero: fix it as the skill says and rerun. Relay its `problem:` lines verbatim and
   stop when the skill gives no fix for them, or after three failed runs on the same problems.
 - A PR-summary skill was invoked without a PR number.
 - The base branch, merge base or target worktree cannot be determined. Never substitute a guessed branch name.

@@ -68,13 +68,17 @@ bullets, unless the change text names that block: a change that names it rewrite
 
 From the change text and this conversation, list the blocks to rewrite and the paths to move. Touch only what
 the change names and what it forces: a block whose paths changed, a bullet left stale, a message the capture
-emptied. Every other message stays byte for byte. For each block to rewrite, read what is in it now:
+emptied. Every other message stays byte for byte, with one exception: a carried message holding a double quote
+(a draft from before the quote rule) fails `build`, so rewrite that block too, changing only those quotes to
+backticks or single quotes. For each block to rewrite, read what is in it now:
 
 ```bash
-SCRIPT diff "<skeleton>" --block <key>
+SCRIPT diff "<skeleton>" --block <key> [--block <key> ...]
 ```
 
-The conversation says why something changed; the diff says what. State only what the diff shows.
+One call reads every block named, each under a `##### block <key> #####` line (one block prints without the
+header line); name all of them in the one call rather than running it once per block. The conversation says why something changed; the diff says what.
+State only what the diff shows.
 
 ## Step 3: Regroup (only when the change asks for it)
 
@@ -92,8 +96,8 @@ doc-only blocks back into one and empties both messages.
 
 - `note: unplaced bullet for block N: ...`: the target has no message yet; the line belongs in the one written in
   Step 4. With `--to new` the note reads `block new`; reread the skeleton for its number.
-- `note: bullet for <file> is ambiguous ...`: the bullet also names a path staying in the block; move the
-  bullet by hand.
+- `note: bullet for <file> is ambiguous ...`: the bullet also names a path staying in the block; rewrite both
+  blocks' messages in the Step 4 `message --all` call.
 - `note: no bullet for <path> in block K`: no bullet in K names that file; the moved path needs one, written
   in Step 4.
 - Keep the test registry in block 1 when the project configures one, and never leave a block needing a path
@@ -108,16 +112,20 @@ Change only the message strings of the skeleton. Read `${CLAUDE_PLUGIN_ROOT}/ref
 (required). A rewritten block states its change as of now, with one `file: what changed` bullet for every
 non-artifact path in it. When the change text points at the conversation ("the review fixes", "what we just
 did"), replace each reference with the concrete facts it stands for: file names, what changed, why. `build`
-rejects filler and quality claims, so name the change instead.
+rejects filler and quality claims, so name the change instead. It also enforces the double-quote rule of
+`commit_format.md` (Body).
 
-Set each message with the script, one call per block, the full message on stdin (real newlines, no `\n`
-escapes):
+Set the messages with the script in one call: the full messages on stdin (real newlines, no `\n` escapes), each
+after a `##### block <key> #####` line. A block left out keeps its message byte for byte:
 
 ```bash
-SCRIPT message "<skeleton>" --block <key> <<'MSG'
+SCRIPT message "<skeleton>" --all <<'MSG'
+##### block <key> #####
 <subject, blank line, why, then the bullets>
 MSG
 ```
+
+A `problem:` line (an unknown block, a block with no text) writes nothing: fix the text and rerun.
 
 ## Step 5: Build
 
@@ -126,7 +134,7 @@ SCRIPT build "<skeleton>"
 ```
 
 Exit 1: each `problem:` line names a commit and a defect, including `bullet names X, which is in commit K`;
-fix the JSON and rerun. Exit 0 writes the TXT beside the skeleton (same stem, `.txt`), keeps the replaced copy as
+fix the message with `message` (Step 4) or the grouping with `move` (Step 3) and rerun. Exit 0 writes the TXT beside the skeleton (same stem, `.txt`), keeps the replaced copy as
 `<name>.txt.bak`, and prints the receipt. Output the receipt verbatim and nothing else.
 
 ## Common Mistakes

@@ -102,8 +102,13 @@ For each block whose message is `""` (or whose carried message no longer matches
 Skip a block with a canned message: keep it as it stands.
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" diff "<skeleton>" --block <key>
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" diff "<skeleton>" --block <key> [--block <key> ...]
 ```
+
+Name every block with an empty or stale message, and only those: one call prints them all from one capture,
+each under a `##### block <key> #####` line. A single block, named or the only one, prints without the header line.
+Run it once, not once per block: each call costs a round trip. When every block needs a message (a `--fresh`
+capture with no canned block), `--all` in place of the `--block` list names them all.
 
 The script applies line budgets: a path within budget prints in full, a larger one prints as a `summary`
 section (key tallies for JSON, the head of the diff otherwise), and untracked files print as additions. Added
@@ -125,12 +130,29 @@ Format: `${CLAUDE_PLUGIN_ROOT}/reference/commit_format.md` (REQUIRED — read it
 No quality claims. `build` rejects filler: enhance, improve, streamline, robust, reliable/reliability,
 maintainability, readability, seamless, comprehensive, leverage, various. Name the change instead.
 
+The double-quote rule lives in `commit_format.md` (Body); `build` enforces it and names the line.
+
 Type by bucket: Runtime+Test → `Feature`/`Fix`; Runtime → `Refactor` (or `Feature`/`Fix` when the diff says so);
 Test → `Test`; Cicd → `Build`; Docs and Planning → `Docs`; Agent/Other → `Chore` for config and housekeeping, `Feature`
 for a new module or tool, `Refactor` for a behavior-preserving source change; Artifact → subject only (the script
 adds the footer).
 
-Store each message in the JSON as one string (`\n` newlines). No `Branch:` footer — the script adds it.
+Set every message in one call: real newlines (no `\n` escapes) and a `##### block <key> #####` line before each
+block's message. A block left out keeps its message, so omit a canned block. No `Branch:` footer — the script
+adds it.
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" message "<skeleton>" --all <<'MSG'
+##### block 1 #####
+<subject, blank line, why, then the bullets>
+##### block 2 #####
+<subject, blank line, why, then the bullets>
+MSG
+```
+
+A `problem:` line (an unknown block, a block with no text) writes nothing: fix the text and rerun. Never use
+Edit or Write on a message in the skeleton or on the TXT: the script writes both, and each Edit is a round trip
+that prints the changed lines back.
 
 ## Step 4 — Build
 
@@ -138,7 +160,7 @@ Store each message in the JSON as one string (`\n` newlines). No `Branch:` foote
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" build "<skeleton>"
 ```
 
-Exit 1: each `problem:` line names a commit and a defect. Fix the JSON and rerun. Exit 0 writes the TXT named in
+Exit 1: each `problem:` line names a commit and a defect. Fix the message with `message` (Step 3) and rerun. Exit 0 writes the TXT named in
 the Step 1 table beside the skeleton (same stem, `.txt`) and prints the receipt. When that TXT already exists and its content changes, the old copy is kept as
 `<name>.txt.bak` (one generation). Output the receipt verbatim — nothing else.
 
@@ -161,7 +183,10 @@ Output the Step 4 receipt, then the merge receipt, each verbatim — nothing els
 
 | Mistake                                              | Fix                                                                  |
 |------------------------------------------------------|----------------------------------------------------------------------|
-| Writing or patching the TXT by hand                  | Edit the JSON; rerun `build`. The TXT (the Step 1 name) is script output. |
+| Writing or patching the TXT by hand                  | `message`, then rerun `build`. The TXT (the Step 1 name) is script output. |
+| Setting a message with Edit, one block at a time     | `message --all`: one call sets every block.                          |
+| Reading blocks with one `diff --block` call each     | One `diff` call naming every block to write: one capture.            |
+| Reading carried or canned blocks with `diff --all`   | Name only the blocks with an empty or stale message.                 |
 | Subject/bullets derived from filenames ("modify x")  | Read the diff; state the change.                                     |
 | Removing a path from the JSON to silence coverage    | Put it in the block it belongs to.                                   |
 | Leaving a test block before the module it imports    | Step 2 renumber; note it in `split`.                                 |

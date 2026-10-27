@@ -13,7 +13,7 @@ skill body.
 What changed, and why it had to when behavior differed before — 1 sentence.
   - filename: what changed in this file
   - filename: what changed in this file
-  [Optional conclusion: status or result, e.g. "99/99 PASS" or "FCC-0 → COMPLETE"]
+  [Optional conclusion: status or result, e.g. `99/99 PASS` or `FCC-0 → COMPLETE`]
 
 Branch: `<branch-name>`
 ```
@@ -72,6 +72,9 @@ do not make it clear, default to `Feature` and note the ambiguity in the body.
   parse and validate`), never its virtue. Filler such as "enhance", "improve", "streamline", "robust",
   "reliability", "maintainability", "readability", "seamless", "comprehensive", "leverage" or "various" says
   nothing a reader can check; `build` rejects it.
+- **No double quotes.** The commit driver hands the message to `git commit -m` as one argument, and a double
+  quote ends that argument early on some hosts: the rest reaches git as pathspecs and the commit fails. Name a
+  term with backticks or single quotes (`` `--` ``, `'Guidance'`); `build` rejects every `"`, backticked or not.
 - **Read the diff before writing.** A message drafted from filenames alone ("modify converter") is filler too.
 - Optional final line: a status or result when it adds information (`→ COMPLETE`, `99/99 PASS`). Use `→` for state
   transitions.

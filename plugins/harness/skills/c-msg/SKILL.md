@@ -46,7 +46,9 @@ Do not add, drop or split paths. The block is the commit.
 
 With a requested change, rewrite the message to make that change, even when it is carried or canned; keep
 the rest of it as it stands. Without one, skip when the carried message still matches the diff, and keep a
-canned message as it stands: go to Step 3. Otherwise, and whenever the change needs it, read what changed:
+canned message as it stands: go to Step 3. A carried message holding a double quote (a draft from before the
+quote rule) fails `build` even when it matches: set it again with only those quotes changed to backticks or
+single quotes. Otherwise, and whenever the change needs it, read what changed:
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" diff "<skeleton>" --block 1
@@ -55,9 +57,16 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_com
 Read the printed block. The block budget is the script's limit; a path over budget prints as a `summary` section.
 
 Format: `${CLAUDE_PLUGIN_ROOT}/reference/commit_format.md` (REQUIRED — read it). Status-aware bullets, scope
-rules, commit types and the bucket mapping all live there; `build` rejects filler words and bad subjects.
+rules, commit types, the bucket mapping and the double-quote rule all live there; `build` enforces them.
 
-Store the message in the JSON as one string (`\n` newlines). No `Branch:` footer — the script adds it.
+Set the message with the script, the full text on stdin (real newlines, no `\n` escapes). No `Branch:` footer —
+the script adds it. Never use Edit or Write on the skeleton or the TXT.
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" message "<skeleton>" --block 1 <<'MSG'
+<subject, blank line, why, then the bullets>
+MSG
+```
 
 ## Step 3 — Build
 
@@ -65,15 +74,16 @@ Store the message in the JSON as one string (`\n` newlines). No `Branch:` footer
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" build "<skeleton>"
 ```
 
-Exit 1: coverage or branch problems mean rerun Step 1 (capture); message problems mean edit the JSON message and
-rerun build. Exit 0 writes `<branch>_pending.txt` beside the skeleton and prints the receipt. Output the receipt
+Exit 1: coverage or branch problems mean rerun Step 1 (capture); message problems mean set the message again
+(Step 2) and rerun build. Exit 0 writes `<branch>_pending.txt` beside the skeleton and prints the receipt. Output the receipt
 verbatim — nothing else.
 
 ## Common Mistakes
 
 | Mistake                                         | Fix                                                         |
 |-------------------------------------------------|-------------------------------------------------------------|
-| Writing the TXT by hand (Edit, heredoc, `>`)    | Edit the JSON; rerun `build`. The TXT is script output.     |
+| Writing the TXT by hand (Edit, or a heredoc or `>` redirected into the file) | `message`; rerun `build`. The TXT is script output.         |
+| Setting the message with Edit on the JSON       | `message "<skeleton>" --block 1`; Edit is a round trip.     |
 | `git diff` without `HEAD`, or `--cached` only   | `capture --pending` already has staged, unstaged, untracked |
 | Subject/bullets derived from filenames          | Read the diff; state the change.                            |
 | Editing `<branch>.txt`                          | That is the branch ledger; c-msg writes `_pending.txt`.     |
