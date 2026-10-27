@@ -24,7 +24,7 @@ description: |
     assistant: "Dispatching harness:messenger with the harness:pr-sum skill for PR 42."
     <commentary>The script captures facts and builds the markdown; the agent writes only the draft prose.</commentary>
   </example>
-model: haiku
+model: sonnet
 tools: Bash, Read, Edit, Grep
 ---
 
