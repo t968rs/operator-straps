@@ -5,7 +5,7 @@ description: |
   brief's file set, run the brief's non-deferred tests, and end in a single `record_fixes` call that writes the fixer's
   report. The prompt is the four header lines printed by `pr_review.py waves` plus a `Brief:` path; the
   brief holds the issues, fix options, file set, tests, bubble questions and the exact `record_fixes`
-  command. The default model is haiku; the dispatcher passes the model each wave row names.
+  command. The frontmatter model (sonnet) is only a fallback; the dispatcher passes the model each wave row names (haiku for all-mechanical waves, else opus).
   Examples:
   <example>
     Context: pr-review Phase 5, `waves` printed three file-disjoint fixer rows for wave 1.
@@ -19,7 +19,7 @@ description: |
     assistant: "Running waves with the two ids, then dispatching harness:pr-fixer for each printed row."
     <commentary>A follow-up wave is planned by the script; the agent only follows the new brief.</commentary>
   </example>
-model: haiku
+model: sonnet
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 

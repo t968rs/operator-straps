@@ -58,14 +58,14 @@ of every review is the same as any good review: help the code get better.
 
 ## What counts as a real issue
 
-| Category | Example |
-|---|---|
-| Correctness | Off-by-one, race condition, wrong-branch condition, missing `None` guard before deref |
-| Security | SQL injection, path traversal, secret in source, unparameterized shell exec |
-| Footguns | Mutable default args, swallowed exceptions, hardcoded paths, time-of-check/time-of-use, silent fallbacks |
-| Maintainability hazards | Function that does five things, recursive call chain across modules, dead code masquerading as live |
-| Broken invariants | "this is always sorted" comment over an unsorted return; type annotation that doesn't match runtime behavior |
-| Test smells | Test that can't fail (no `assert` reaches a failable state), mocked module-under-test, file-scan test with zero files |
+| Category                | Example                                                                                                               |
+|-------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| Correctness             | Off-by-one, race condition, wrong-branch condition, missing `None` guard before deref                                 |
+| Security                | SQL injection, path traversal, secret in source, unparameterized shell exec                                           |
+| Footguns                | Mutable default args, swallowed exceptions, hardcoded paths, time-of-check/time-of-use, silent fallbacks              |
+| Maintainability hazards | Function that does five things, recursive call chain across modules, dead code masquerading as live                   |
+| Broken invariants       | "this is always sorted" comment over an unsorted return; type annotation that doesn't match runtime behavior          |
+| Test smells             | Test that can't fail (no `assert` reaches a failable state), mocked module-under-test, file-scan test with zero files |
 
 ## What to skip
 
@@ -76,7 +76,7 @@ of every review is the same as any good review: help the code get better.
 
 ## Output Format
 
-```
+````
 <one-sentence verdict, no preamble>
 
 ## Issues
@@ -98,7 +98,7 @@ of every review is the same as any good review: help the code get better.
 ## Top Fix
 
 <the single most important change>
-```
+````
 
 The verdict line is mandatory and goes FIRST, before any section header.
 The Credit section is mandatory — never skip it, even for code you find
