@@ -81,7 +81,7 @@ def test_skill_passes_the_arguments_through() -> None:
 def test_skill_runs_every_subcommand_through_the_launcher() -> None:
     body = _text(_SKILL)
     assert _LAUNCHER in body
-    for subcommand in ("capture", "diff", "move", "build"):
+    for subcommand in ("capture", "diff", "move", "message", "build"):
         assert _commands(subcommand), f"skill never runs {subcommand}"
 
 
@@ -103,6 +103,7 @@ _PLACEHOLDERS = {
 def _argv(line: str) -> List[str]:
     """Argv of a skill command line: launcher dropped, optional repeats stripped, placeholders filled."""
     text = re.sub(rf"^(?:SCRIPT|{re.escape(_LAUNCHER)}) ", "", line)
+    text = re.sub(r"\s*<<'?\w+'?\s*$", "", text)
     text = re.sub(r"\s*\[[^\]]*\]", "", text)
     for placeholder, value in _PLACEHOLDERS.items():
         text = text.replace(placeholder, value)
@@ -110,7 +111,7 @@ def _argv(line: str) -> List[str]:
     return shlex.split(text)
 
 
-@pytest.mark.parametrize("subcommand", ["capture", "diff", "move", "build"])
+@pytest.mark.parametrize("subcommand", ["capture", "diff", "move", "message", "build"])
 def test_skill_command_lines_parse(parser, subcommand) -> None:
     lines = _commands(subcommand)
     assert lines, f"skill never runs {subcommand}"
@@ -130,12 +131,22 @@ def test_hand_picked_argv_parse(parser) -> None:
     assert (moved.path, moved.to) == (["a", "b"], "new")
     assert parser.parse_args(["move", "s.json", "--path", "a", "--to", "2"]).to == 2
     assert parser.parse_args(["build", "s.json"]).skeleton == Path("s.json")
+    message = parser.parse_args(["message", "s.json", "--block", "2"])
+    assert (message.skeleton, message.block) == (Path("s.json"), 2)
 
 
 def test_skill_regroups_only_through_move() -> None:
     body = _text(_SKILL).lower()
     assert "bullet" in body, "no rule that a path's description moves with it"
     assert "never edit the path lists" in body, "no rule against hand-editing the grouping"
+
+
+def test_skill_writes_messages_through_the_script_and_stays_quiet() -> None:
+    body = _text(_SKILL)
+    assert "never use Edit or Write on the skeleton" in body, "no rule against Edit output on the skeleton"
+    assert "Quiet run" in body and "receipt is the only text" in body
+    step = body[body.index("## Step 4"):body.index("## Step 5")]
+    assert _commands("message")[0] in step, "the message command belongs to Step 4"
 
 
 def test_skill_reads_the_diff_and_states_facts() -> None:

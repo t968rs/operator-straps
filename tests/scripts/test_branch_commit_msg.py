@@ -918,6 +918,57 @@ class TestMove:
             script._parser().parse_args(["move", "s.json", "--path", "a", "--to", "abc"])
 
 
+class TestMessage:
+    _NEW = "Fix(io): a, restated\n\nWhy.\n  - a.py: x\n  - test_a.py: y"
+
+    def _skeleton(self, script: ModuleType, clone: Path) -> Path:
+        path = clone / "docs" / "_commit_messages" / "9999-demo.json"
+        script.write_skeleton(path, _drafted(script, clone))
+        return path
+
+    def _set(self, script: ModuleType, clone: Path, path: Path, text: str, block: str,
+             monkeypatch: pytest.MonkeyPatch) -> int:
+        monkeypatch.setattr(sys, "stdin", io.StringIO(text))
+        return script.main(["--repo", str(clone), "message", str(path), "--block", block])
+
+    def test_replaces_one_message_and_leaves_the_rest(
+            self, script: ModuleType, work: Tuple[Path, str], monkeypatch: pytest.MonkeyPatch,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        before = json.loads(skeleton.read_text(encoding="utf-8"))
+        assert self._set(script, clone, skeleton, self._NEW + "\n", "1", monkeypatch) == 0
+        assert capsys.readouterr().out == "set message of block 1\n"
+        after = json.loads(skeleton.read_text(encoding="utf-8"))
+        assert after["commits"]["1"] == [before["commits"]["1"][0], self._NEW]
+        assert after["commits"]["2"] == before["commits"]["2"]
+        out, _ = script.run_build(clone, after)
+        assert "restated" in out.read_text(encoding="utf-8")
+
+    def test_unknown_block_exits_1_and_leaves_the_skeleton(
+            self, script: ModuleType, work: Tuple[Path, str], monkeypatch: pytest.MonkeyPatch,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        before = skeleton.read_text(encoding="utf-8")
+        assert self._set(script, clone, skeleton, self._NEW, "7", monkeypatch) == 1
+        assert "no block 7" in capsys.readouterr().err
+        assert skeleton.read_text(encoding="utf-8") == before
+
+    def test_blank_text_exits_1_and_leaves_the_skeleton(
+            self, script: ModuleType, work: Tuple[Path, str], monkeypatch: pytest.MonkeyPatch,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        before = skeleton.read_text(encoding="utf-8")
+        assert self._set(script, clone, skeleton, " \n", "1", monkeypatch) == 1
+        assert "new text on stdin" in capsys.readouterr().err
+        assert skeleton.read_text(encoding="utf-8") == before
+
+
 class TestSkeletonPayload:
     def test_round_trips_through_document(self, script: ModuleType) -> None:
         commits = {

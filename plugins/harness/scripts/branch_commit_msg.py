@@ -60,6 +60,10 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     attributed or has no message to land in is printed as a ``note:``. Emptied blocks are dropped and the
     blocks renumbered 1..N.
 
+``message``
+    Rewrite one block's commit message in a skeleton in place, from the text on stdin (``--block N``). It
+    stands in for editing the JSON by hand, so the amend flow prints no edit diff.
+
 The project is the git top level of ``--repo`` (default: the working directory); its
 ``.claude/harness.json`` is activated once at startup, and an invalid one exits 1 with a ``problem:``
 line. ``--repo`` goes before or after the subcommand. Usage::
@@ -70,6 +74,7 @@ line. ``--repo`` goes before or after the subcommand. Usage::
     branch_commit_msg.py [--repo DIR] diff FILE --block N
     branch_commit_msg.py [--repo DIR] canned [PATH ...]
     branch_commit_msg.py [--repo DIR] move FILE --path PATH [--path PATH ...] --to N|new
+    branch_commit_msg.py [--repo DIR] message FILE --block N < TEXT
     branch_commit_msg.py [--repo DIR] build FILE [--out TXT]
 """
 from __future__ import annotations
@@ -616,6 +621,11 @@ def _parser() -> argparse.ArgumentParser:
     move.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8); rewritten in place.")
     move.add_argument("--path", action="append", required=True, help="Block entry to move (repeatable).")
     move.add_argument("--to", required=True, type=_target, help="Target block number, or 'new'.")
+    message = sub.add_parser(
+        "message", parents=repo, help="Replace one skeleton block's commit message with the text on stdin.",
+    )
+    message.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8); rewritten in place.")
+    message.add_argument("--block", type=int, required=True, help="Commit key of the block to rewrite.")
     return parser
 
 
@@ -734,6 +744,29 @@ def _cmd_move(repo: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+def set_message(payload: Mapping[str, object], block: int, message: str) -> Dict[str, object]:
+    """Copy of ``payload`` with block ``block``'s message replaced; unknown block or blank text raises."""
+    commits = dict(payload.get("commits") or {})
+    key = str(block)
+    if key not in commits:
+        raise BuildError([f"message: no block {block} in the skeleton"])
+    text = message.strip()
+    if not text:
+        raise BuildError(["message: give the new text on stdin"])
+    commits[key] = [commits[key][0], text]
+    return {**payload, "commits": commits}
+
+
+def _cmd_message(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``message``: rewrite one block's message in the skeleton from stdin."""
+    if sys.stdin.isatty():
+        raise BuildError(["message: pipe the new text on stdin"])
+    payload = json.loads(args.skeleton.read_text(encoding="utf-8"))
+    write_skeleton(args.skeleton, set_message(payload, args.block, sys.stdin.read()))
+    print(f"set message of block {args.block}")
+    return 0
+
+
 def activate_project(start: Optional[Path]) -> Path:
     """Activate the configuration of the project holding ``start`` (default: cwd); return its root."""
     root = project_root(start)
@@ -747,7 +780,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     args = _parser().parse_args(argv)
     commands = {"capture": _cmd_capture, "diff": _cmd_diff, "build": _cmd_build, "move": _cmd_move,
-                "canned": _cmd_canned}
+                "canned": _cmd_canned, "message": _cmd_message}
     try:
         return commands[args.command](activate_project(args.repo), args)
     except BuildError as exc:

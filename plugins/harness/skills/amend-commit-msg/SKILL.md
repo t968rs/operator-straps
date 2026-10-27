@@ -31,6 +31,10 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_com
 
 `SCRIPT` below stands for everything before `<subcommand>`.
 
+**Quiet run.** The only text of the run is the Step 5 receipt. Write no plan, progress note or recap between tool
+calls, and never use Edit or Write on the skeleton or the TXT: their diff output prints every changed line back.
+A usage line, a refusal or a `problem:` report from the script is the one exception, stated in a line.
+
 ## Step 1: Capture
 
 ```bash
@@ -99,11 +103,20 @@ A moved path can change both blocks' buckets, so rewrite both subjects: type by 
 
 ## Step 4: Write the messages
 
-Edit only the message strings of the skeleton JSON. Read `${CLAUDE_PLUGIN_ROOT}/reference/commit_format.md` first
+Change only the message strings of the skeleton. Read `${CLAUDE_PLUGIN_ROOT}/reference/commit_format.md` first
 (required). A rewritten block states its change as of now, with one `file: what changed` bullet for every
 non-artifact path in it. When the change text points at the conversation ("the review fixes", "what we just
 did"), replace each reference with the concrete facts it stands for: file names, what changed, why. `build`
 rejects filler and quality claims, so name the change instead.
+
+Set each message with the script, one call per block, the full message on stdin (real newlines, no `\n`
+escapes):
+
+```bash
+SCRIPT message "<skeleton>" --block <key> <<'MSG'
+<subject, blank line, why, then the bullets>
+MSG
+```
 
 ## Step 5: Build
 
@@ -121,6 +134,8 @@ fix the JSON and rerun. Exit 0 writes the TXT beside the skeleton (same stem, `.
 |------------------------------------------------------|---------------------------------------------------------------------|
 | Rerunning the capture with `--fresh` to start over   | Never; it drops the messages. Edit the blocks that are wrong.       |
 | Moving a path by editing the lists in the JSON       | `move`; the bullet goes with the path.                              |
+| Editing the skeleton JSON with Edit or Write         | `message`; Edit prints the changed lines into the developer's view. |
+| Narrating each step between tool calls               | Quiet run: the receipt is the only text.                            |
 | Rewriting every block to be safe                     | Only blocks the change or a moved path touches.                     |
 | Writing "as discussed" or "the review fixes"         | Name the files and the change.                                      |
 | Pasting the breakdown into chat                      | The receipt is the only chat output.                                |
