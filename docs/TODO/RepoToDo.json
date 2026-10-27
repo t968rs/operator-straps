@@ -56,28 +56,28 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 2,
+    "items": 1,
     "needs_decision": 1,
     "trackers": 0,
     "close_candidates": 10,
     "by_status": {
       "NEEDS_DECISION": 1,
-      "OPEN": 1
+      "OPEN": 0
     },
     "by_impact": {
-      "dev_velocity": 2,
+      "dev_velocity": 1,
       "docs_tooling": 0,
       "maintainability": 0
     },
     "by_loe": {
       "XS": 0,
       "S": 0,
-      "M": 1,
+      "M": 0,
       "L": 1,
       "XL": 0
     },
     "sources_absorbed": {
-      "gh_issue": 2,
+      "gh_issue": 1,
       "impl_stub": 0,
       "research_folder": 0
     },
@@ -87,69 +87,6 @@
     {
       "id": "TODO-001",
       "rank": 1,
-      "title": "pytest-scope: project-level enablement and a project-supplied hint in the broad-run deny message",
-      "kind": "feature",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#18",
-          "url": "https://github.com/t968rs/operator-straps/issues/18"
-        }
-      ],
-      "gh_issues": [
-        18
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "Gap 1: require_test_file and python are plugin options read from user settings only, so a project cannot commit the broad-run deny and a fresh machine gets no deny and no warning. Gap 2: the deny message cannot point at the project's own test lookup. Checked: plugins/pytest-scope/hooks/register.ts:12 reads options.require_test_file only; plugins/harness/hooks/_allow_settings.py:40-43 documents that pluginConfigs lives in user (or managed) settings only; plugins/pytest-scope/hooks/scope.ts:581-590 builds the deny text from the rule line, the git ls-files listing and the override line, with no project input; no pytest_scope or deny_hint key exists under plugins/.",
-      "proposed_change": "Read a pytest_scope object from .claude/harness.json (require_test_file, optionally python and deny_hint), the project value winning over the plugin option and neither set meaning off. Append deny_hint as its own line to denyMessage after the file listing; without it the message stays byte-identical. Add the keys to defaults.json, harness.schema.json, the config dataclass and builder and the README key table, mirror the defaults in the mod with a mirror test, and cover both enablement paths and the hint in scope.test.ts. The optional file-list command in place of git ls-files is lower priority and can stay out of the first change.",
-      "files": [
-        "plugins/pytest-scope/hooks/register.ts",
-        "plugins/pytest-scope/hooks/scope.ts",
-        "plugins/pytest-scope/hooks/scope.test.ts",
-        "plugins/pytest-scope/README.md",
-        "plugins/harness/config/defaults.json",
-        "config/harness.schema.json",
-        "plugins/harness/lib/harness_lib/config.py",
-        "README.md"
-      ],
-      "blast_radius": {
-        "level": "M",
-        "reasoning": "A new harness.json key touches the four config places and the pytest-scope mod; default behavior stays off.",
-        "consumers": [
-          "plugins/pytest-scope/hooks/register.ts",
-          "plugins/harness/lib/harness_lib/config.py"
-        ]
-      },
-      "loe": {
-        "size": "M",
-        "reasoning": "Project-config reading in the TypeScript mod, a new config key in four places, a mirror test and deny-message tests."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 0.9129,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 4,
-          "blast_factor": 1.2,
-          "cost": 4.8,
-          "base_score": 0.9129,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 dev_velocity: a guard a project cannot switch on goes missing silently on new machines; size M for a config key across the plugin and the mod."
-    },
-    {
-      "id": "TODO-002",
-      "rank": 2,
       "title": "pr-review: background execution via a saved workflow (Phases 1-3)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
