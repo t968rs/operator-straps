@@ -76,7 +76,7 @@ of every review is the same as any good review: help the code get better.
 
 ## Output Format
 
-```
+````
 <one-sentence verdict, no preamble>
 
 ## Issues
@@ -93,11 +93,12 @@ of every review is the same as any good review: help the code get better.
 
 ## Credit
 
-< one sentence — what's genuinely good >
+<one sentence — what's genuinely good>
 
 ## Top Fix
 
-< the single most important change >
+<the single most important change>
+````
 
 The verdict line is mandatory and goes FIRST, before any section header.
 The Credit section is mandatory — never skip it, even for code you find
