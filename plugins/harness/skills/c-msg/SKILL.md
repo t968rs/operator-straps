@@ -1,7 +1,7 @@
 ---
 name: c-msg
 description: Use when asked to draft a single commit message for the current pending or staged change. Triggers on "write a commit message", "draft commit msg", "commit message for this", "c-msg". For breaking an entire branch into multiple commits, use harness:branch-commit-msg instead.
-argument-hint: "[what to change in the saved message]"
+argument-hint: "[-- <what to change in the saved message>]"
 model: sonnet
 context: fork
 agent: harness:messenger
@@ -11,6 +11,8 @@ agent: harness:messenger
 
 **Requested change for this run:** `$ARGUMENTS` (blank: none).
 Blank means draft as usual. A requested change is the developer's ask to rewrite the saved message (Step 2).
+The whole value is the change; a leading `--` is dropped, per
+`${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`, so `-- <change>` and `<change>` are one invocation.
 
 `${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py` does the mechanics: capture, layout, validation, save. The
 agent's job is one message.

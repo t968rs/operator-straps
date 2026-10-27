@@ -1,7 +1,7 @@
 ---
 name: pr-sum
 description: 'Use when asked to summarize a PR, describe PR changes, write a PR summary document, or draw one: a visual, diagram, flowchart or "more visual" summary, one "akin to" an earlier visual summary, or a PR that changes runtime behavior, relocates code, migrates call sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule'
-argument-hint: "PR [--level 1|2|3] [--min-viz [N]] [--local | --remote-head] [--committed-only] [--repo DIR]"
+argument-hint: "PR [--level 1|2|3] [--min-viz [N]] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]"
 model: sonnet
 effort: medium
 context: fork
@@ -45,6 +45,11 @@ the project's configured summaries directory: `artifacts.summaries` in `.claude/
 `docs/PR_SUMMARIES`), written below as `<summaries>`.
 
 ## Step 1 — Capture
+
+Split the invocation arguments at the first standalone `--` token, per
+`${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. The part after it is guidance for the prose (what to stress,
+what to leave out of the Summary): it shapes the agent's writing only, never a command or a flag, and never
+breaks a `build` rule. Everything below reads the part before the token.
 
 The PR number comes from the invocation arguments. No number given: report that and stop; never guess one from
 the branch or `gh pr list`. The other arguments are the developer's flags: `--level 1|2|3` and

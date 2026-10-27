@@ -2,10 +2,19 @@
 name: pr-review
 description: Use when requesting agent-driven code review on a PR, when consolidating reviewer findings into a
   verdict JSON, or when fixes from a prior review still need to be applied on the correct branch.
-argument-hint: "<PR number> [--roast yes|no|roll] [--no-fetch]"
+argument-hint: "<PR number> [--roast yes|no|roll] [--no-fetch] [-- <guidance>]"
 ---
 
 # PR Review
+
+Arguments: `$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
+it: the PR number and the `capture` flags (`--roast`, `--no-fetch`), passed to `capture` unchanged. After it: the
+guidance (a focus, a file to check hard, a constraint on fixes). The main session applies it to its own
+judgment calls, and it rides on every reviewer and fixer dispatch prompt as the final `Developer guidance:`
+line (see Prompt and brief contract). It never reaches a script command and never changes a lens, a severity
+rule or the record contract.
 
 ## Overview
 
@@ -248,7 +257,8 @@ to the catalog's `policy.additivity` (`policy.small_pr`); pr-team keeps strict a
 
 ### Prompt and brief contract
 
-Each dispatch prompt is exactly the four run-header lines at column 1, then the brief path, nothing else:
+Each dispatch prompt is exactly the four run-header lines at column 1, then the brief path, plus the optional
+last line below:
 
 ```
 AGENT_ID: <slot id, unique within the run>
@@ -256,6 +266,13 @@ AGENT_ROLE: reviewer
 RUN_ID: pr<N>_<UTC yyyymmddTHHMMSSZ, one value for the whole run>
 PR: <N>
 Brief: <abs path to briefs/<agent_id>.md>
+```
+
+When the invocation carried guidance, every reviewer and fixer prompt gains one last line, the guidance verbatim
+with newlines folded to spaces; without guidance the prompt is exactly the lines above:
+
+```
+Developer guidance: <text after the -- token>
 ```
 
 The brief (written by `capture`) carries: role and lens; scope paths; how to read the tree at the PR head (Read when

@@ -27,7 +27,9 @@ tools: Read, Grep, Glob, Bash
 You review one slot of a pull request for a developer who reads only the merged result. The prompt carries
 four header lines (`AGENT_ID`, `AGENT_ROLE`, `RUN_ID`, `PR`) and a `Brief:` line with an absolute path. The
 brief is the per-run procedure: scope, lens templates, sub-lens, how to read files at the PR head, the diff
-file, and the `record` command. Findings leave this agent only through that one `record` call.
+file, and the `record` command. Findings leave this agent only through that one `record` call. An optional
+last prompt line, `Developer guidance:`, carries the developer's focus for the run; it can sharpen attention
+inside the brief's scope and lens and never changes the scope, the lens or the record contract.
 
 ## Operating rules
 

@@ -1,7 +1,7 @@
 ---
 name: merge-commit-msg
 description: Use when asked to draft a merge commit message for a PR, prepare a PR squash-merge subject and body, or compose the commit text the developer will paste into the merge UI. Triggers on "merge commit msg", "merge message for PR N", "merge-commit-msg".
-argument-hint: "<PR number>"
+argument-hint: "<PR number> [-- <guidance>]"
 model: sonnet
 context: fork
 agent: harness:messenger
@@ -9,9 +9,11 @@ agent: harness:messenger
 
 # merge-commit-msg — PR Merge Message
 
-**Arguments for this run:** `$ARGUMENTS` (the PR number).
-They are the developer's input: the commands below already carry them, so run each exactly as printed. A blank
-or non-numeric argument: report it and stop.
+**Arguments for this run:** `$ARGUMENTS` (the PR number, then optionally `--` and guidance).
+They are the developer's input. Split them at the first standalone `--` token, per
+`${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`: the part before it is `<PR number>` below and goes on
+the commands unchanged; the part after it is the guidance for the prose (emphasis, items to name), which never
+reaches a command. A blank or non-numeric PR number: report it and stop.
 
 `${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py` does the mechanics: the `gh` calls, the review-fix counts, the
 canned message, the lineage, the layout checks and the TXT. The agent's job is the judgment: the prose and the
@@ -29,7 +31,7 @@ Run every command below with the Bash tool from the project root, exactly as wri
 ## Step 1 — Capture
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" capture $ARGUMENTS
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" capture <PR number>
 ```
 
 Exit 1 prints a `problem:` line (PR not open, `gh` failure, invalid config): report it and stop. Exit 0 prints
@@ -59,7 +61,7 @@ Never edit the Facts sections.
 ## Step 3 — Build
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" build $ARGUMENTS
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" build <PR number>
 ```
 
 Exit 1: each `problem:` line names a defect in the fence (placeholder left, indented line, filler word, commit

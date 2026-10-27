@@ -1,7 +1,7 @@
 ---
 name: fold-in-review
 description: Use when a developer hands feedback to an active or nascent harness:pr-review run - free-text notes, pasted failing test or CI output, a GitHub review URL, or another tool's report - and it should become issues in the review. Triggers on "fold in", "add this to the review", "fold-in-review". Verifies each claim against the tree, records findings through the driver and continues the pr-review sequence.
-argument-hint: "<notes> | <pasted test output> | <GitHub review URL>"
+argument-hint: "<notes> | <pasted test output> | <GitHub review URL> [-- <guidance>]"
 ---
 
 # fold-in-review: turn outside feedback into review issues
@@ -16,6 +16,13 @@ edit `draft.json` or the review JSON. Run every command with the Bash tool from 
 Arguments: `$ARGUMENTS`
 
 An empty argument list prints the `argument-hint` line and stops.
+
+The input is everything before a standalone `--` token; what follows is the guidance (which findings to stress,
+a file to check first, a severity ceiling), per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Look for
+the token only on the last line of the arguments: pasted output holds `--` lines of its own (pytest's
+`-- Docs:` line). Guidance with no input before it prints the `argument-hint` line and stops. The guidance
+steers verification and classification; it never lowers what the tree proves, and a finding is recorded only
+as the tree supports it.
 
 ## 1. Locate the run
 

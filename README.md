@@ -129,7 +129,7 @@ compaction bookmark, above the `/compact` instructions, so a constraint or remin
 
 | Form | Effect |
 |---|---|
-| `/harness:add-bookmark <note text>` | Store one note |
+| `/harness:add-bookmark [--] <note text>` | Store one note (a leading `--` is optional) |
 | `/harness:add-bookmark --list` | Print the stored notes, numbered |
 | `/harness:add-bookmark --clear` | Drop every stored note |
 
@@ -143,6 +143,26 @@ compaction bookmark, above the `/compact` instructions, so a constraint or remin
 - The notes file is versioned (`"version": 1`). A file that is not JSON or has another version is refused rather than
   overwritten; run `--clear` to reset it.
 - For what the compaction bookmark prints and how the mod reads the notes, see `plugins/session-bookmark/README.md`.
+
+### Guidance after `--`
+
+Every user-invocable harness skill accepts free-text guidance for the run after a standalone `--` token, next to
+its own arguments:
+
+```text
+/harness:pr-review 106 --no-fetch -- look hard at the Windows path handling in lib/
+/harness:d-w main -- the work is the open-args fix; touch only plugins/harness/skills/
+```
+
+- The split rule and the limits live in `plugins/harness/reference/skill_arguments.md`: text before the token is
+  the skill's own arguments, text after it is guidance. Guidance never reaches a command line and never waives a
+  skill rule, a harness rule or the project's CLAUDE.md.
+- Skills whose whole argument is free text (`c-msg`, `check-runlogs`, `add-bookmark`) accept a leading `--` as
+  optional. `fold-in-review` looks for the token on the last line only, since pasted output holds `--` lines.
+- `pr-review` forwards the guidance to every reviewer and fixer prompt, `pr-team` to each reviewer prompt file,
+  `roast-my-code` to the roast agent; the other skills apply it in the main session or fork.
+- `tests/skills/test_skill_guidance_tail_contract.py` pins the hint, the pointer to the reference and the absence
+  of `$ARGUMENTS` from fenced commands for each skill, and fails when a new skill is not classified.
 
 ### amend-commit-msg
 

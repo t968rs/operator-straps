@@ -1,12 +1,19 @@
 ---
 name: post-forcepush
 description: Use when a PR's branch has been rebased / force-pushed and a previously-written PR-review JSON in the project's review directory has stale commit SHAs that need refreshing to match the new HEAD
-argument-hint: "<PR number> [review JSON path]"
+argument-hint: "<PR number> [review JSON path] [-- <guidance>]"
 model: haiku
 effort: low
 ---
 
 # Post-Forcepush JSON Metadata Refresh
+
+Arguments: `$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
+it: the PR number and an optional review JSON path. After it: guidance, such as a known OLD to NEW SHA mapping or
+the review file to refresh; it joins the dispatch inputs below as the bootstrap hint the agent verifies, and it
+never loosens the refresh to anything beyond SHA references.
 
 Refresh commit SHAs in a PR-review JSON after a `git rebase -i` or `git reset --hard` rewrites history. Mechanical — no judgment about the review's substance, only its metadata.
 

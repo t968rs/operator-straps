@@ -27,7 +27,8 @@ def _body() -> str:
 
 
 def test_argument_hint_names_the_change() -> None:
-    assert skill_parts(_SKILL)[0]["argument-hint"].strip("\"'") == "[what to change in the saved message]"
+    hint = skill_parts(_SKILL)[0]["argument-hint"].strip("\"'")
+    assert hint == "[-- <what to change in the saved message>]"
 
 
 def test_fork_runs_on_sonnet_as_the_messenger() -> None:

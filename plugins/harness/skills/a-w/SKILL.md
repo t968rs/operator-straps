@@ -1,7 +1,7 @@
 ---
 name: a-w
 description: Use when work done in a detached-HEAD worktree (see d-w) is finished and must move onto a target branch, either as the worktree's own commits or as staged, uncommitted changes. Triggers on "attach the worktree", "move the worktree changes to <branch>", "a-w".
-argument-hint: "<target-branch|HEAD> [--committed] [--worktree PATH]"
+argument-hint: "<target-branch|HEAD> [--committed] [--worktree PATH] [-- <guidance>]"
 ---
 
 # a-w: move a worktree's work onto a branch and drop the worktree
@@ -10,8 +10,15 @@ The developer names the target branch, or `HEAD` for the branch checked out in t
 does the rest. On a successful move the developer never
 edits, inspects or removes the worktree; only a three-way conflict (below) hands a step back.
 
+Arguments: `$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. The
+part before it is `<attach arguments>` below (the target, `--committed`, `--worktree`), passed through
+unchanged. The part after it is the guidance, for example a worktree path to attach or a note on what to report;
+it never reaches the command, and it never turns on `--committed`.
+
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/attach_worktree.py" $ARGUMENTS --worktree "<worktree path>"
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/attach_worktree.py" <attach arguments> --worktree "<worktree path>"
 ```
 
 Run it with the Bash tool from the main checkout, naming the worktree the session created with `d-w`. A
