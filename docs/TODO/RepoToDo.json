@@ -56,28 +56,28 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 5,
-    "needs_decision": 4,
+    "items": 2,
+    "needs_decision": 1,
     "trackers": 0,
-    "close_candidates": 7,
+    "close_candidates": 10,
     "by_status": {
-      "NEEDS_DECISION": 4,
+      "NEEDS_DECISION": 1,
       "OPEN": 1
     },
     "by_impact": {
-      "dev_velocity": 4,
-      "docs_tooling": 1,
+      "dev_velocity": 2,
+      "docs_tooling": 0,
       "maintainability": 0
     },
     "by_loe": {
       "XS": 0,
-      "S": 2,
-      "M": 2,
+      "S": 0,
+      "M": 1,
       "L": 1,
       "XL": 0
     },
     "sources_absorbed": {
-      "gh_issue": 5,
+      "gh_issue": 2,
       "impl_stub": 0,
       "research_folder": 0
     },
@@ -87,62 +87,6 @@
     {
       "id": "TODO-001",
       "rank": 1,
-      "title": "`amend-commit-msg` Suppress Output",
-      "kind": "skill",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Run amend-commit-msg as a subagent (quiet, but it loses the conversation that is the reason it runs in the main session), or keep it in the main session and move the skeleton edits into a script call so no Update diff is printed?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#88",
-          "url": "https://github.com/t968rs/operator-straps/issues/88"
-        }
-      ],
-      "gh_issues": [
-        88
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "An amend-commit-msg run prints every Update of the skeleton JSON, with whole message strings, into the session; the issue wants it to run as a subagent or at least skip that output. Checked: plugins/harness/skills/amend-commit-msg/SKILL.md:9-10 runs the skill in the main session on purpose, because branch-commit-msg's fork has no view of the conversation; :98 tells it to edit the message strings of the skeleton JSON, which produces the Update output; its frontmatter (lines 2-4) has no context or agent key. The skill landed in PR #82 for #77.",
-      "proposed_change": "After the decision: either add a script step (for example a branch_commit_msg.py subcommand that sets one block's message from a file or argument) so the skill writes messages with one Bash call instead of Edit, or split the run so a harness:messenger subagent gets the amendment request and the conversation facts it needs and returns only the saved path and commit list.",
-      "files": [
-        "plugins/harness/skills/amend-commit-msg/SKILL.md",
-        "plugins/harness/scripts/branch_commit_msg.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "One skill's execution path; the TXT it saves is unchanged.",
-        "consumers": [
-          "plugins/harness/skills/amend-commit-msg/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "A script subcommand or a frontmatter and dispatch change, plus a contract test."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.4142,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 1.4142,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 dev_velocity: every amendment floods the main session with JSON diffs; size S."
-    },
-    {
-      "id": "TODO-002",
-      "rank": 2,
       "title": "pytest-scope: project-level enablement and a project-supplied hint in the broad-run deny message",
       "kind": "feature",
       "status": "OPEN",
@@ -204,8 +148,8 @@
       "why_ranked": "Severity 2 dev_velocity: a guard a project cannot switch on goes missing silently on new machines; size M for a config key across the plugin and the mod."
     },
     {
-      "id": "TODO-003",
-      "rank": 3,
+      "id": "TODO-002",
+      "rank": 2,
       "title": "pr-review: background execution via a saved workflow (Phases 1-3)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -262,125 +206,6 @@
       "depends_on": [],
       "unblocks": [],
       "why_ranked": "Severity 2 dev_velocity: a foreground pr-review blocks the session through the reviewer fan-out; size L for a new workflow, a capture mode and a schema change."
-    },
-    {
-      "id": "TODO-004",
-      "rank": 4,
-      "title": "Add \"auto-message\" blocks for pre-determined change sets",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Does a change set qualify when every changed file matches some preset pattern (a subset), or only when it matches the preset exactly, and do the presets live in .claude/harness.json (a new config key in four places) or in plugin defaults?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#86",
-          "url": "https://github.com/t968rs/operator-straps/issues/86"
-        }
-      ],
-      "gh_issues": [
-        86
-      ],
-      "related_gh_issues": [
-        87
-      ],
-      "catalog_entry_ids": [],
-      "summary": "branch-commit-msg, c-msg and merge-commit-msg should use a preset commit message when the uncommitted changes, or one commit block, touch only files that match a preset file-name set. The issue sketches a Mapping[Set[str], str] lookup keyed by the set of normalized file names. Checked: c-msg and branch-commit-msg both drive plugins/harness/scripts/branch_commit_msg.py (plugins/harness/skills/c-msg/SKILL.md:11, :25), so one lookup there covers both; merge-commit-msg runs no script (plugins/harness/skills/merge-commit-msg/SKILL.md:24-28). No canned or auto-message code exists under plugins/harness/scripts or lib. As sketched, a set cannot be a dict key (a frozenset can), and exact-set lookup cannot serve a glob such as the TODO_Snapshot_*.md entry in #87.",
-      "proposed_change": "After the decision, add a preset lookup (frozenset or pattern list mapped to a message) read from config, and have branch_commit_msg.py capture fill a block's message from the preset when the block's files all match one preset, leaving other blocks to the drafter; document the presets for c-msg, branch-commit-msg and merge-commit-msg (consolidated by #80 in PR #98, commit 3825e30).",
-      "files": [
-        "plugins/harness/scripts/branch_commit_msg.py",
-        "plugins/harness/skills/branch-commit-msg/SKILL.md",
-        "plugins/harness/skills/c-msg/SKILL.md",
-        "plugins/harness/skills/merge-commit-msg/SKILL.md"
-      ],
-      "blast_radius": {
-        "level": "M",
-        "reasoning": "Changes the shared capture path of two commit-message skills and may add a config key.",
-        "consumers": [
-          "plugins/harness/skills/branch-commit-msg/SKILL.md",
-          "plugins/harness/skills/c-msg/SKILL.md",
-          "plugins/harness/skills/amend-commit-msg/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "M",
-        "reasoning": "Matching logic in the capture driver, a config surface and tests across two skills."
-      },
-      "impact": "dev_velocity",
-      "severity": 1,
-      "priority": {
-        "score": 0.4564,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 1.0,
-          "loe_points": 4,
-          "blast_factor": 1.2,
-          "cost": 4.8,
-          "base_score": 0.4564,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 1 dev_velocity: a convenience for recurring change sets; size M for a shared capture change and config."
-    },
-    {
-      "id": "TODO-005",
-      "rank": 5,
-      "title": "Add argument to `pr-sum` to include local changes",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "pr_sum.py capture already includes staged, unstaged and untracked changes by default whenever the PR branch is checked out (commit 18f883f, PR #34), with --committed-only and --remote-head as opt-outs. Is an opt-in flag still wanted for a checkout that capture does not treat as the PR branch (a branch of another name, a worktree), or is the remaining work only the README, help and argument-hint updates?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#79",
-          "url": "https://github.com/t968rs/operator-straps/issues/79"
-        }
-      ],
-      "gh_issues": [
-        79
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The issue asks for a pr-sum flag that diffs PR base..HEAD plus staged changes, with README, help and the hints block updated. Checked: plugins/harness/scripts/pr_sum.py:8-11 already runs the diff to the working tree (staged, unstaged and untracked) while a branch of the PR head's name whose HEAD contains that head is checked out, and :282-289 add --remote-head and --committed-only to turn it off; that landed in 18f883f (\"PR Capture: defaults to include `--cached` (#34)\", 2026-10-20), before the issue was opened on 2026-10-23. plugins/harness/skills/pr-sum/SKILL.md:60-64 documents it, but the argument-hint at plugins/harness/skills/pr-sum/SKILL.md:4 lists only PR, --level and --min-viz, and the pr-sum row at README.md:19 does not mention local changes.",
-      "proposed_change": "After the decision: either add an explicit flag (for example --local) that forces the working-tree diff from the merge base when the checkout is not recognized as the PR branch, or keep the default and only document it. Either way add --committed-only and --remote-head (and any new flag) to the SKILL.md argument-hint, say in the README.md pr-sum row that a checked-out PR branch includes local changes, and keep the pr_sum.py --help text in step.",
-      "files": [
-        "plugins/harness/scripts/pr_sum.py",
-        "plugins/harness/skills/pr-sum/SKILL.md",
-        "README.md"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "The pr-sum capture options and its docs; existing default behavior is kept.",
-        "consumers": [
-          "plugins/harness/skills/pr-sum/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "Documentation updates, plus at most one capture flag on an existing working-tree path."
-      },
-      "impact": "docs_tooling",
-      "severity": 1,
-      "priority": {
-        "score": 0.4243,
-        "components": {
-          "impact_weight": 0.6,
-          "value": 0.6,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 0.4243,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 1 docs_tooling: the behavior mostly exists and the gap is its documentation or an opt-in flag; size S."
     }
   ],
   "trackers": [],
@@ -446,6 +271,33 @@
       "current_state": "LIKELY_RESOLVED",
       "evidence": "`gh pr view 90` reports MERGED at 2026-10-24T06:06:05Z (merge 66977e3, on main). Its commit 948f23f (\"Feature(commit-msg): add canned messages for pre-determined change sets\", body \"Refs #86, #87\") adds plugins/harness/lib/harness_lib/canned_messages.py, whose lookup maps _IMPL_TODO.md, RepoToDo.json and TODO_Snapshot_*.md (lines 24-28) to \"Chore(todo): refresh TODO catalog, research stubs and snapshot\"; 446823f follows up on the review. The entries use the plugin's default file names (canned_messages.py:8), not the configured todo.* paths the catalog item proposed. `gh issue list` reports #87 CLOSED.",
       "recommended_action": "Already closed on GitHub by PR #90; drop this candidate. Open a new issue if projects with non-default todo.* names need the preset.",
+      "related_todo_ids": []
+    },
+    {
+      "number": 88,
+      "title": "`amend-commit-msg` Suppress Output",
+      "url": "https://github.com/t968rs/operator-straps/issues/88",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "`gh pr view 102` reports MERGED at 2026-10-27T05:11:06Z (merge fed92b4, on main). Its commit 38b6872 (\"Feature(amend-commit-msg): set block messages through a script to suppress edit output\") takes the keep-in-main-session answer to the decision question: plugins/harness/scripts/branch_commit_msg.py:760 (set_message) and :773 (_cmd_message) add a `message` subcommand that replaces one block's message from stdin; plugins/harness/skills/amend-commit-msg/SKILL.md:112-116 writes messages through it and :137 forbids Edit/Write on the skeleton; tests/scripts/test_branch_commit_msg.py and tests/skills/test_amend_commit_msg_skill_contract.py cover it. The PR body is empty, so no closing keyword reached the issue; `gh issue view 88` reports OPEN.",
+      "recommended_action": "Close as completed by PR #102 (commit 38b6872).",
+      "related_todo_ids": []
+    },
+    {
+      "number": 86,
+      "title": "Add \"auto-message\" blocks for pre-determined change sets",
+      "url": "https://github.com/t968rs/operator-straps/issues/86",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "Merge 66977e3 (\"Merge pull request #90 from t968rs/auto-commit-msg\") is on main (`git log --oneline main`). Its commit 948f23f (\"Feature(commit-msg): add canned messages for pre-determined change sets\", body \"Refs #86, #87\") takes the subset-of-patterns, plugin-fixed answer to the decision question: plugins/harness/lib/harness_lib/canned_messages.py:22 defines LOOKUP as a Mapping[FrozenSet[str], str] of file patterns (globs such as TODO_Snapshot_*.md at :27) and :54 get_canned_message returns the message of the first entry covering every changed file; plugins/harness/scripts/branch_commit_msg.py:288-290 prefills an empty block from it during capture and :55-57 add the `canned` subcommand, which plugins/harness/skills/merge-commit-msg/SKILL.md:41 uses. 446823f follows up on the review; tests/lib/test_canned_messages.py and tests/skills/test_canned_message_skill_contract.py cover it. The commit said \"Refs\", so no closing keyword reached the issue.",
+      "recommended_action": "Close as completed by PR #90 (commit 948f23f). Presets are fixed in the plugin, not configurable; open a new issue if per-project presets are wanted.",
+      "related_todo_ids": []
+    },
+    {
+      "number": 79,
+      "title": "Add argument to `pr-sum` to include local changes",
+      "url": "https://github.com/t968rs/operator-straps/issues/79",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "Merge 5ccdee9 (\"Merge pull request #95 from t968rs/1077-pr-local\") is on main (`git log --oneline main`). Its commit b2f8bc4 (\"Feature(pr-sum): add --local capture of the checked-out branch\") adds the opt-in flag the decision question asked about: plugins/harness/scripts/pr_sum.py:310 defines --local, which reads whatever HEAD is checked out from its merge base with the PR base to the working tree, exclusive with --remote-head; 6b563a8 labels --local checkouts by HEAD. The docs gap is closed too: plugins/harness/skills/pr-sum/SKILL.md:4 argument-hint now lists --local, --remote-head and --committed-only, and README.md:19 says the pr-sum row covers uncommitted changes and --local. tests/scripts/test_pr_sum.py covers forced local capture on another branch. The default working-tree capture on the PR branch predates the issue (18f883f, PR #34).",
+      "recommended_action": "Close as completed by PR #95 (commits b2f8bc4, 6b563a8).",
       "related_todo_ids": []
     }
   ]
