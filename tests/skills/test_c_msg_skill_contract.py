@@ -61,6 +61,13 @@ def test_rendered_change_lands_only_on_the_label_line() -> None:
     assert [line for line in lines if value in line] == [f"{_LABEL} `{value}` (blank: none)."]
 
 
+def test_the_message_is_set_through_the_script_never_edit() -> None:
+    body = " ".join(_body().split())
+    assert "branch_commit_msg.py\" message \"<skeleton>\" --block 1 <<'MSG'" in body
+    assert "Never use Edit or Write on the skeleton or the TXT" in body
+    assert "edit the json" not in body.lower()
+
+
 def test_a_requested_change_overrides_a_carried_or_canned_message() -> None:
     body = " ".join(_body().split())
     assert "With a requested change, rewrite the message to make that change" in body

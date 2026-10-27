@@ -181,8 +181,9 @@ The session that runs it knows what changed since the draft, which the forked `b
   name. Pass that SHA or a branch name; a relative ref such as `HEAD~3` moves once more commits land.
 - Files move between blocks with `branch_commit_msg.py move`, which carries each file's `file: what changed`
   bullet with it. An amendment build rejects any bullet that names a file of another block.
-- Messages are set with `branch_commit_msg.py message FILE --block N` (text on stdin), not with Edit, and the run
-  prints nothing but the receipt: no edit diffs, no step-by-step narration.
+- Messages are set with `branch_commit_msg.py message FILE --all` (one stdin text, a `##### block N #####` line
+  before each message; `--block N` sets one), not with Edit, and the run prints nothing but the receipt: no edit
+  diffs, no step-by-step narration. `diff FILE --all` reads every block in one call; repeated `--block N` reads the named blocks in one call.
 - The replaced TXT is kept as `<name>.txt.bak`, one generation.
 
 ### Canned commit messages

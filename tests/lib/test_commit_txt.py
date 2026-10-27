@@ -14,6 +14,7 @@ from harness_lib.commit_txt import (
     filler_words,
     message_problems,
     parse_commit_txt,
+    quote_problems,
     read_commit_txt,
     vendor_names,
 )
@@ -172,6 +173,29 @@ class TestMessageProblems:
         document = _document()
         document.commits[1] = entry_from_message(1, ["src/a.py"], "Fix(a): repair\n\nfirst\n---\nsecond")
         assert any("'---'" in problem for problem in message_problems(document))
+
+    def test_double_quote_flagged_with_its_line(self) -> None:
+        document = _document()
+        message = 'Fix(a): repair\n\nWhy.\n  - a.py: new "Guidance" section'
+        document.commits[1] = entry_from_message(1, ["src/a.py"], message)
+        problems = [problem for problem in message_problems(document) if "double quote" in problem]
+        assert len(problems) == 1
+        assert "commit 1" in problems[0] and "line 4" in problems[0]
+
+    def test_double_quote_inside_backticks_still_flagged(self) -> None:
+        document = _document()
+        document.commits[1] = entry_from_message(1, ["src/a.py"], 'Fix(a): repair\n\nSays `"x"`.')
+        assert any("double quote" in problem for problem in message_problems(document))
+
+    def test_single_quote_and_backtick_allowed(self) -> None:
+        document = _document()
+        document.commits[1] = entry_from_message(1, ["src/a.py"], "Fix(a): repair\n\nIt's the `--` token.")
+        assert message_problems(document) == []
+
+    def test_quote_problems_alone_ignore_other_defects(self) -> None:
+        document = _document()
+        document.commits[1] = entry_from_message(1, ["src/a.py"], 'Plan(a): various "x"')
+        assert len(quote_problems(document)) == 1
 
     def test_filler_word_inside_path_allowed(self) -> None:
         document = _document()

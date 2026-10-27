@@ -234,8 +234,34 @@ def filler_words(text: str) -> List[str]:
     return [match.group(1) for match in _FILLER.finditer(text)]
 
 
+def double_quote_lines(text: str) -> List[int]:
+    """1-based numbers of the lines of ``text`` that hold a double quote."""
+    return [number for number, line in enumerate(text.splitlines(), 1) if '"' in line]
+
+
+def _commit_quote_problems(key: int, commit: CommitEntry) -> List[str]:
+    """A problem per message line of one commit holding a double quote.
+
+    The commit driver passes the message to ``git commit -m`` as one argument, and a double quote ends that
+    argument early on some hosts: the rest of the message reaches git as pathspecs and the commit fails.
+    Backticks do not protect it, so every quote counts; single quotes and backticks are safe.
+    """
+    text = commit.message or commit.header or ""
+    return [
+        f"commit {key}: double quote on message line {number} would split the message in the commit "
+        "driver's git argument; use backticks or single quotes"
+        for number in double_quote_lines(text)
+    ]
+
+
+def quote_problems(document: BranchCommitDocument) -> List[str]:
+    """Return a problem per message line holding a double quote, across the document's commits."""
+    return [problem for key in sorted(document.commits)
+            for problem in _commit_quote_problems(key, document.commits[key])]
+
+
 def _commit_message_problems(key: int, commit: CommitEntry) -> List[str]:
-    """Problems for one commit: subject rule, vendor names, filler prose."""
+    """Problems for one commit: subject rule, vendor names, filler prose, double quotes."""
     header = commit.header or ""
     text = commit.message or header
     problems: List[str] = []
@@ -247,10 +273,10 @@ def _commit_message_problems(key: int, commit: CommitEntry) -> List[str]:
     problems += [f"commit {key}: filler {word!r} - state what changed instead" for word in filler_words(text)]
     if any(line.strip() == GROUP_SEP for line in text.splitlines()):
         problems.append(f"commit {key}: a message line of '{GROUP_SEP}' would split the TXT block; reword it")
-    return problems
+    return problems + _commit_quote_problems(key, commit)
 
 
 def message_problems(document: BranchCommitDocument) -> List[str]:
-    """Return a problem per subject-rule break, vendor name, or filler word across the document's messages."""
+    """Return a problem per subject-rule break, vendor name, filler word or double quote in the messages."""
     return [problem for key in sorted(document.commits)
             for problem in _commit_message_problems(key, document.commits[key])]

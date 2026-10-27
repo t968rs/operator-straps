@@ -126,13 +126,15 @@ def test_skill_command_lines_parse(parser, subcommand) -> None:
 def test_hand_picked_argv_parse(parser) -> None:
     args = parser.parse_args(["capture", "--save", "--edit", "--base", "HEAD", "--no-fetch"])
     assert args.edit is True and args.save is True
-    assert parser.parse_args(["diff", "s.json", "--block", "1"]).block == 1
+    assert parser.parse_args(["diff", "s.json", "--block", "1", "--block", "2"]).block == [1, 2]
+    assert parser.parse_args(["diff", "s.json", "--all"]).all is True
     moved = parser.parse_args(["move", "s.json", "--path", "a", "--path", "b", "--to", "new"])
     assert (moved.path, moved.to) == (["a", "b"], "new")
     assert parser.parse_args(["move", "s.json", "--path", "a", "--to", "2"]).to == 2
     assert parser.parse_args(["build", "s.json"]).skeleton == Path("s.json")
     message = parser.parse_args(["message", "s.json", "--block", "2"])
     assert (message.skeleton, message.block) == (Path("s.json"), 2)
+    assert parser.parse_args(["message", "s.json", "--all"]).all is True
 
 
 def test_skill_regroups_only_through_move() -> None:
@@ -147,6 +149,13 @@ def test_skill_writes_messages_through_the_script_and_stays_quiet() -> None:
     assert "Quiet run" in body and "receipt is the only text" in body
     step = body[body.index("## Step 4"):body.index("## Step 5")]
     assert _commands("message")[0] in step, "the message command belongs to Step 4"
+
+
+def test_a_build_problem_is_fixed_through_the_message_command() -> None:
+    body = _text(_SKILL)
+    step = " ".join(body[body.index("## Step 5"):body.index("## Common Mistakes")].split())
+    assert "fix the json" not in step.lower(), "Step 5 sends a build problem back to Edit"
+    assert "`message`" in step, "Step 5 never names the message command as the fix route"
 
 
 def test_skill_reads_the_diff_and_states_facts() -> None:

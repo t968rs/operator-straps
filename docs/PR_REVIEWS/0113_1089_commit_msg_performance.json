@@ -1,0 +1,497 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 113,
+  "pr_title": "1089 commit msg performance",
+  "branch": "1089-commit-msg-performance",
+  "base_branch": "main",
+  "base_sha": "20f2bbffa6d44cf47a0eb020bbcf95f6163e7ecb",
+  "head_sha": "b8c589a408ad2e50eae656d64126847059eea754",
+  "review_date": "2026-10-27",
+  "verdict": "READY TO MERGE - 18 of 18 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 440,
+    "deletions": 49,
+    "files_changed": 15
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0113/pr113_20261027T203605Z/findings/tests.json",
+    "docs/_scratch/pr_review/0113/pr113_20261027T203605Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0113/pr113_20261027T203605Z/findings/docs.json",
+    "docs/_scratch/pr_review/0113/pr113_20261027T203605Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_utf8_stdin_survives_a_legacy_console_codepage runs the real script in a subprocess with PYTHONIOENCODING=cp1252 for both --block and --all. Without the stdin reconfigure, the arrow decodes to mojibake and the JSON assertion fails, so the test can fail on Linux CI too.",
+    "TestMessageAll.test_a_bad_section_exits_1_and_writes_nothing puts a valid block before the bad one and compares the skeleton bytes, which pins that set_messages applies all sections or none.",
+    "parse_block_messages gets a table of each malformed-input class (no header, stray lead text, duplicate, blank section), and each case matches its own error text.",
+    "The double-quote tests cover the edge cases: a quote inside backticks is still flagged, single quotes and backticks pass, the message line number is reported, and txt_to_commit_dict skips only the bad TXT while still writing the good sibling .ps1.",
+    "The capture-once test wraps the real capture_branch with a counting spy, so the diff output stays real and the test is not a mock chain.",
+    "run_diff_blocks resolves every requested block (_block_paths) before the git capture, so an unknown block fails fast without paying for a capture.",
+    "set_messages chains immutable set_message copies and writes once, so an unknown block in message --all leaves the skeleton untouched, as the docstring promises.",
+    "One quote rule (_commit_quote_problems) feeds both build validation and the .ps1 driver path, so the two cannot drift apart.",
+    "argparse mutually exclusive required groups enforce --block vs --all for both subcommands, and dict.fromkeys dedupes repeated --block values in order.",
+    "block_header is the one source for the ##### block N ##### line in both diff output and message --all input.",
+    "The double-quote rule is stated once in commit_format.md with the real failure mode (the rest of the message reaching git as pathspecs) and matches `_commit_quote_problems` in commit_txt.py exactly, including that backticks do not exempt a quote.",
+    "The `message --all` docs (header line format, block left out keeps its message, unknown or empty block writes nothing) agree with `parse_block_messages` and `set_messages` in branch_commit_msg.py, and the usage synopsis in the script docstring matches the argparse groups.",
+    "branch-commit-msg and c-msg build steps now route message fixes back through `message` rather than JSON edits, and the Common Mistakes tables gained rows naming the per-block round trips the PR removes.",
+    "run_diff_blocks captures once per call and run_diff stays a thin wrapper with byte-identical one-block output, pinned by a test.",
+    "message --all is all-or-nothing: parsing and set_messages raise before write_skeleton, and a test proves the skeleton is unchanged on a bad section.",
+    "The cp1252 stdin test runs the real script in a subprocess with PYTHONIOENCODING=cp1252, so it fails on any OS without the fix.",
+    "Skill contract tests parse the skill command lines with the real parser, so the --all and repeated --block forms cannot drift.",
+    "The quote ban is enforced at build and at driver generation, with a line number in each problem."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Quote ban breaks carried messages that amend keeps byte for byte",
+        "file": "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "plugins/harness/lib/harness_lib/commit_txt.py",
+          "plugins/harness/scripts/txt_to_commit_dict.py",
+          "plugins/harness/skills/c-msg/SKILL.md"
+        ],
+        "lines": "69-71",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "message_problems rejects a double quote in every block (commit_txt.py line 276) and txt_to_commit_dict skips any TXT holding one (lines 159-162). Drafts from before 0.34.0 carry quoted messages forward, so build fails on blocks the change never named. amend Step 2 (lines 69-71) says every other message stays byte for byte, and c-msg skips a carried message that still matches (lines 47-49), so neither skill allows the only fix. No doc warns that old drafts now fail build and .ps1 generation.",
+        "fix": [
+          "amend and c-msg Step 2: a build `double quote` problem forces a rewrite of that block limited to swapping the quotes for backticks or single quotes.",
+          "Have capture print a `note:` per carried block holding a double quote."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "amend-commit-msg Step 5 still says 'fix the JSON' after the skill banned editing the skeleton",
+        "file": "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "plugins/harness/agents/messenger.md",
+          "tests/skills/test_amend_commit_msg_skill_contract.py"
+        ],
+        "lines": "98,134-135",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PR moved message writing in this skill to `message --all` and the sibling skills' build steps were reworded ('Fix the message with `message` (Step 3)' in branch-commit-msg:164, 'set the message again (Step 2)' in c-msg:76), but amend-commit-msg Step 5 still ends with 'fix the JSON and rerun'. The skill's Quiet run rule (line 36) and Common Mistakes row (line 144) forbid Edit/Write on the skeleton, so the build-failure path points the agent at the one action the skill prohibits, and the Edit diff it produces is the round trip this PR is removing. Line 98 ('move the bullet by hand') has the same gap: by hand now means rewriting both messages with `message --all`.\n\nAlso (overall): The PR routes every message write through `message` and bans Edit on the skeleton (amend SKILL.md line 36, branch-commit-msg Step 4, c-msg Step 3). amend-commit-msg Step 5 still says `fix the JSON and rerun`, and agents/messenger.md line 87 says `fix the JSON as the skill says`, steering back to the Edit round trip this PR removes. The new no-Fix-the-JSON contract test covers only branch-commit-msg.",
+        "fix": [
+          "Replace 'fix the JSON and rerun' at line 135 with 'fix it with `message` (Step 4) or `move` (Step 3) and rerun', and at line 98 replace 'move the bullet by hand' with 'rewrite both blocks' messages in the Step 4 `message --all` call'.",
+          "amend SKILL.md line 135: say fix the message with `message` (Step 4) or the grouping with `move` (Step 3). messenger.md line 87: say fix it as the skill says. Add the not-in assertion to test_amend_commit_msg_skill_contract.py."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "branch-commit-msg Step 3 diffs every block while telling the agent to skip carried and canned ones",
+        "file": "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "tests/skills/test_branch_commit_msg_skill_contract.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "101-110,189",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Step 3 opens with 'For each block whose message is empty (or whose carried message no longer matches its diff), read what changed. Skip a block with a canned message', then prescribes `diff \"<skeleton>\" --all`. In `_cmd_diff` (plugins/harness/scripts/branch_commit_msg.py:753) `--all` expands to every key in the skeleton, so a default (non-fresh) capture with mostly carried messages, plus the canned TODO/review-artifact block, prints up to BLOCK_BUDGET (300 lines) per block for blocks the step says to skip. Repeated `--block` already shares one capture (`run_diff_blocks` captures once for any block list), so `--all` buys no round trip over naming the blocks that need a message; it only adds output. For a PR whose goal is cutting the run's cost, the default command contradicts the sentence above it.\n\nAlso (overall): branch-commit-msg Step 3 (lines 101-105) says skip a canned block, then prescribes `diff --all`, and _cmd_diff (branch_commit_msg.py line 753) selects every block, each with its own 300-line budget. On large branches the saved round trips come back as context tokens.",
+        "fix": [
+          "Make the fenced command `diff \"<skeleton>\" --block <key> [--block <key> ...]` naming only the blocks with an empty or stale message, keep `--all` as the case where every block needs a message (a `--fresh` capture), and update the pin at tests/skills/test_branch_commit_msg_skill_contract.py:97 to match.",
+          "Keep `--all` but add one sentence after the command: when the skeleton carries messages or holds a canned block, name only the blocks to write with repeated `--block` instead; one call still covers them all.",
+          "Prescribe `--block` for the non-canned blocks when any block is canned.",
+          "Or have `--all` print a one-line skipped marker for a canned block."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "run_diff equality assertion is tautological",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "files": [
+          "tests/scripts/test_branch_commit_msg.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "734-735,749-755,757-766",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_one_block_matches_run_diff_without_a_header asserts run_diff_blocks(clone, payload, [2]) == run_diff(clone, payload, 2), but at the head run_diff (branch_commit_msg.py:412-414) is a one-line delegate to run_diff_blocks(repo, payload, [block]). The first assertion compares a function with itself and cannot fail. Only the second line (no `#####` in the output) carries the contract, so the single-block output format has no independent pin.\n\nAlso (tests): TestDiffBlocks says `one capture for the whole call`, and test_the_branch_is_captured_once_for_every_block counts only capture_branch. _block_diff (branch_commit_msg.py:386) calls untracked_paths(repo), which runs `git ls-files --others`, once per block, and capture_stats calls it once more. A diff --all over N blocks therefore runs N+1 untracked listings. That per-block git cost is what this performance PR targets, and the test cannot see it.",
+        "fix": [
+          "Replace the equality with an independent expectation of the single-block form: out = script.run_diff_blocks(clone, payload, [2]); assert out.startswith(`=== docs/new.md`) and that `#####` is not in out.",
+          "Or compare against the text _block_diff produces for block 2, built from its own capture, so the test checks the no-header branch rather than the delegate.",
+          "Compute the untracked set once in run_diff_blocks and pass it to _block_diff. Then extend the spy test to also wrap untracked_paths, both on the script module and on harness_lib.branch_capture, and assert it is called a fixed number of times regardless of block count.",
+          "If per-block listing is intended, narrow the class docstring to `one capture_branch call` so it does not claim more than the test checks."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "amend-commit-msg build step still says fix the JSON, and no contract test catches it",
+        "file": "tests/skills/test_amend_commit_msg_skill_contract.py",
+        "files": [
+          "tests/skills/test_amend_commit_msg_skill_contract.py",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md"
+        ],
+        "lines": "146-151",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The PR moves every message write onto the `message` command and pins that route for branch-commit-msg (test_a_build_problem_is_fixed_through_the_message_command asserts `Fix the JSON` is gone from Step 4) and for c-msg (`edit the JSON` absent). The amend contract gets no matching pin, and amend-commit-msg/SKILL.md:135 Step 5 still reads `fix the JSON and rerun` after a build problem. That contradicts the skill rule `never use Edit or Write on the skeleton`, and it is the path most likely to send the session back to hand-editing the skeleton, which this PR set out to remove. test_skill_writes_messages_through_the_script_and_stays_quiet only checks that the Step 4 message command exists.",
+        "fix": [
+          "Add to test_amend_commit_msg_skill_contract.py a Step 5 slice assertion like the branch-commit-msg one: the body between `## Step 5` and `## Common Mistakes` does not contain `fix the json` (compared in lower case) and does name the `message` command as the fix route. Then reword amend-commit-msg/SKILL.md:135 to `fix the message with message (Step 4) and rerun` so the new test passes."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README says repeated --block reads every block",
+        "file": "README.md",
+        "lines": "186",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md:186 reads '`diff FILE --all` (or repeated `--block N`) reads every block in one call.' Repeated `--block N` reads only the blocks named (`_cmd_diff`, plugins/harness/scripts/branch_commit_msg.py:753); the parenthetical makes it sound equivalent to `--all`.",
+        "fix": [
+          "Reword to '`diff FILE --all` reads every block in one call; repeated `--block N` reads the named blocks in one call.'"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Quote rule inlined in three skills against the no-inline rule of the reference",
+        "file": "plugins/harness/reference/commit_format.md",
+        "files": [
+          "plugins/harness/reference/commit_format.md",
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "plugins/harness/skills/c-msg/SKILL.md"
+        ],
+        "lines": "3-6",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "commit_format.md lines 3-6 forbids re-inlining its rules in a skill body. The PR restates the quote rule in branch-commit-msg (lines 132-134), amend (113-114) and c-msg (58-59), pinned by test_commit_text_guidance_bans_double_quotes, and the copies already differ (only branch-commit-msg says not even inside backticks).",
+        "fix": [
+          "Reduce each skill copy to a pointer to commit_format.md and pin only that file.",
+          "Or relax commit_format.md lines 5-6 for build-enforced rules."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "commit_format.md template still shows double-quoted status examples",
+        "file": "plugins/harness/reference/commit_format.md",
+        "lines": "16",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The new Body rule (line 75-77) says no double quote anywhere and that `build` rejects every one, but the Template block at line 16 still reads `[Optional conclusion: status or result, e.g. \"99/99 PASS\" or \"FCC-0 → COMPLETE\"]`. A drafter copying the template's conclusion line verbatim trips `double_quote_lines` (plugins/harness/lib/harness_lib/commit_txt.py:237-239). Line 79 already writes the same examples in backticks.\n\nAlso (overall): commit_format.md line 16, in the message template drafters copy, wraps the conclusion examples (99/99 PASS, FCC-0 -> COMPLETE) in double quotes, while lines 75-77 of the same file now ban every double quote and build rejects it.",
+        "fix": [
+          "Line 16: replace the double quotes with backticks: `e.g. `99/99 PASS` or `FCC-0 → COMPLETE``.",
+          "Wrap the two examples on line 16 in backticks."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "build docstring omits the new double-quote check",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "files": [
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/lib/harness_lib/commit_txt.py"
+        ],
+        "lines": "41-42",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring's `build` section lists what validation covers: null fields, one path per commit, merge-base coverage, subject rules, vendor names, filler and block-separator lines. message_problems (commit_txt.py:263-282) now also rejects any message line that holds a double quote, so build fails on a case the contract never mentions.\n\nAlso (overall): branch_commit_msg.py lines 41-42 list build validation as subject rules, vendor names, filler, block-separator lines. run_build now also rejects double quotes via message_problems.",
+        "fix": [
+          "Add 'double quotes' to the validation list at branch_commit_msg.py:41-42, e.g. '... vendor names, filler, block-separator lines, double quotes)'.",
+          "Add double quotes to the list on line 42."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Multi-block diff still lists untracked files once per block",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "lines": "378-392,395-409",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "run_diff_blocks says the branch is captured once per call, but _block_diff calls untracked_paths(repo) (a `git ls-files --others` subprocess) for every block, on top of the calls inside capture_branch and capture_stats. `diff --all` over N blocks spawns N+2 identical listings, which works against the point of this performance PR.",
+        "fix": [
+          "Compute `untracked = set(untracked_paths(repo))` once in run_diff_blocks and pass it to _block_diff as a parameter in place of the per-block call.",
+          "Derive the untracked set from the captures already taken (the entries merge_capture built from the untracked listing) and pass it to _block_diff."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "stdin decoded as utf-8, not utf-8-sig, so a BOM breaks message --all",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "lines": "858-871,881-885",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "main reconfigures stdin to plain utf-8. A pipe from Windows PowerShell with a UTF-8 $OutputEncoding can start with U+FEFF, and str.strip() does not remove U+FEFF. With --all the first header line then fails _BLOCK_HEADER.fullmatch and the run exits with 'text before the first ##### block N ##### line'. With --block the BOM is stored at the start of the subject, so build later reports a subject-rule error that is hard to trace.",
+        "fix": [
+          "Reconfigure stdin with encoding='utf-8-sig' (stdout stays 'utf-8'), so a leading BOM is dropped on read.",
+          "Strip a leading '﻿' from `text` in _cmd_message before parsing or setting."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Quote ban also blocks the --json dump, which never reaches git",
+        "file": "plugins/harness/scripts/txt_to_commit_dict.py",
+        "lines": "15-18,152-163,222-226",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_load_or_report applies quote_problems to every load, so `txt_to_commit_dict.py <branch> --json` on a TXT with a double quote prints `null` and exits 1. According to _commit_quote_problems, the ban exists because the PowerShell commit driver passes the message to `git commit -m`. JSON output builds no driver, so inspecting a legacy TXT is refused for a reason that does not apply to it.\n\nAlso (overall): _load_or_report (lines 159-162) skips a TXT that parses but holds a double quote, for both .ps1 and --json. The module docstring (lines 15-18) names only validation failures, and --json writes no driver, so the skip hides a document from inspection for a rule that only the PowerShell driver needs.",
+        "fix": [
+          "Run quote_problems only on the .ps1 path (in main, before write_ps1), and keep _load_or_report limited to parse validation.",
+          "Keep the check for both modes, but state in the module docstring (lines 15-18) that a double quote in a message skips the file in --json mode too.",
+          "State the skip in the module docstring.",
+          "Apply quote_problems only on the .ps1 path in main()."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Skills say every block prints under a header; one block prints bare",
+        "file": "plugins/harness/skills/amend-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/amend-commit-msg/SKILL.md",
+          "plugins/harness/skills/branch-commit-msg/SKILL.md"
+        ],
+        "lines": "77",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "amend-commit-msg:77 says 'One call reads every block named, each under a `##### block <key> #####` line' and branch-commit-msg:108 says `--all` prints 'every block ... each under a `##### block <key> #####` line'. `run_diff_blocks` (plugins/harness/scripts/branch_commit_msg.py:407-408) returns the bare text when the block list has one entry, so `--block 3` alone, a duplicated `--block 3 --block 3`, or `--all` on a one-block skeleton prints no header. branch-commit-msg:109 notes the single-block case for `--block` only; amend-commit-msg does not note it at all.",
+        "fix": [
+          "amend-commit-msg:77: append '(one block prints without the header line)'; branch-commit-msg:108-109: move that parenthetical so it covers `--all` on a one-block skeleton too, e.g. 'A single block, named or the only one, prints without the header line.'"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "c-msg Common Mistakes lists 'heredoc' as a wrong way to write while Step 2 now prescribes one",
+        "file": "plugins/harness/skills/c-msg/SKILL.md",
+        "lines": "84",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Row 84 reads 'Writing the TXT by hand (Edit, heredoc, `>`)'. Step 2 (lines 64-68) now sets the message with a `<<'MSG'` heredoc into `message`. The row means a heredoc redirected into the TXT, but a reader scanning the table sees heredoc listed as a mistake next to a step that requires one.",
+        "fix": [
+          "Line 84: change '(Edit, heredoc, `>`)' to '(Edit, or a heredoc or `>` redirected into the file)'."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Stale test name and duplicate parser case in TestDiffBudget",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "lines": "729-731",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_cli_diff_requires_block still says the diff command requires --block. After this PR, --all satisfies the required group too. Its only case (bare `diff f.json` exits) is the [] parametrization of the new TestDiffBlocks.test_cli_wants_all_or_blocks_not_both, so it is now a misnamed duplicate.",
+        "fix": [
+          "Delete test_cli_diff_requires_block; test_cli_wants_all_or_blocks_not_both covers it.",
+          "Or rename it to test_cli_diff_requires_block_or_all."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "diff CLI de-duplication of repeated --block is untested",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "lines": "774-782",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_cmd_diff runs list(dict.fromkeys(blocks)), so `--block 2 --block 2` prints one bare block rather than two headed copies. No test covers it: test_cli_prints_every_named_block only uses distinct keys.",
+        "fix": [
+          "Add a sibling CLI test: main([--repo, clone, diff, skeleton, --block, 2, --block, 2]) returns 0, and the output holds no `#####` line and exactly one `=== docs/new.md` section."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Dead *flags parameter in TestMessageAll._run",
+        "file": "tests/scripts/test_branch_commit_msg.py",
+        "lines": "1079-1082",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_run accepts *flags and falls back to (--all,), but no caller passes flags, so every call runs `message --all`. The unused branch suggests --block coverage that this class does not have.",
+        "fix": [
+          "Drop *flags and pass --all literally in _run."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Negative prose pins are case-sensitive",
+        "file": "tests/skills/test_branch_commit_msg_skill_contract.py",
+        "files": [
+          "tests/skills/test_branch_commit_msg_skill_contract.py",
+          "tests/skills/test_c_msg_skill_contract.py"
+        ],
+        "lines": "103-106",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_a_build_problem_is_fixed_through_the_message_command asserts `Fix the JSON` not in step, and test_the_message_is_set_through_the_script_never_edit asserts `edit the JSON` not in body. Both checks are exact-case, so a capitalization change (`fix the JSON`, `Edit the JSON`) brings back the banned route without failing either test. The amend skill already uses the lowercase form.",
+        "fix": [
+          "Lower-case both sides: check `fix the json` against step.lower() and `edit the json` against body.lower()."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 113 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":6,\"first_sha\":\"6c8bb7237e661c3680e2263eea2275215a1a7973\",\"headRefName\":\"1089-commit-msg-performance\",\"headRefOid\":\"b8c589a408ad2e50eae656d64126847059eea754\",\"last_sha\":\"b8c589a408ad2e50eae656d64126847059eea754\",\"mergeCommit\":null,\"number\":113,\"state\":\"OPEN\",\"title\":\"1089 commit msg performance\",\"url\":\"https://github.com/t968rs/operator-straps/pull/113\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1089-commit-msg-performance",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1089-commit-msg-performance",
+        "head_ref_name": "1089-commit-msg-performance",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "6c8bb7237e661c3680e2263eea2275215a1a7973",
+        "head_sha": "b8c589a408ad2e50eae656d64126847059eea754",
+        "base_ancestor_command": "git merge-base --is-ancestor 6c8bb7237e661c3680e2263eea2275215a1a7973 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor b8c589a408ad2e50eae656d64126847059eea754 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - skill copies of the quote rule reduced to pointers at commit_format.md (Body); quote pin covers commit_format.md only, plus a test that each skill points instead of restating; commit_format.md cited only, it already holds the canonical rule"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - amend Step 2 and c-msg Step 2: a carried message holding a double quote (pre-rule draft) is rewritten, changing only those quotes to backticks or single quotes; commit_txt.py and txt_to_commit_dict.py cited only, their checks stay"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - new contract test: amend Step 5 holds no 'fix the json' and names `message` as the fix route; red until the amend SKILL.md part (other fixer) rewords Step 5; messenger.md build-failure line: 'fix the JSON as the skill says' reworded to 'fix it as the skill says'; amend SKILL.md Step 5 build fix route reworded to message (Step 4) or move (Step 3); ambiguous-bullet note (line 100) now rewrites both blocks via message --all"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - same Step 5 slice test as I2 (no 'fix the json', names `message`); passes once the amend SKILL.md part lands; amend SKILL.md Step 5 no longer says fix the JSON; names the message command as the fix route"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - Step 3 diff command now names only blocks with empty or stale messages via repeated --block; --all kept for a fresh capture with no canned block; Common Mistakes rows and contract pin updated; branch_commit_msg.py cited only, --all behavior unchanged"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - single-block test checks run_diff_blocks output independently (starts with the docs/new.md section, no header); TestDiffBlocks docstring narrowed to one capture_branch call; branch_commit_msg.py cited only, per-block untracked listing left as is"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - README.md:186 reworded: diff FILE --all reads every block; repeated --block N reads the named blocks in one call"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - test_the_message_is_set_through_the_script_never_edit: 'edit the JSON' check now lower-cases the body (edit the json not in body.lower()); test_a_build_problem_is_fixed_through_the_message_command: 'fix the json' checked against step.lower()"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - build docstring validation list now names double quotes (branch_commit_msg.py:42); cited only: commit_txt.py docstrings for message_problems and _commit_message_problems already name double quotes; the build list edit belongs to branch_commit_msg.py"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - untracked listing computed once in run_diff_blocks and passed to _block_diff as a parameter"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - stdin reconfigured to utf-8-sig in main so a leading BOM is dropped; stdout stays utf-8"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - amend-commit-msg diff paragraph notes one block prints without the header line (SKILL.md:79-80); branch-commit-msg SKILL.md Step 3: the single-block no-header note now covers a named or only block on a --all skeleton"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - Template conclusion examples on line 16 now use backticks instead of double quotes"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - Module docstring states a message holding a double quote is skipped (exit 1), in --json mode too"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - Deleted test_cli_diff_requires_block; test_cli_wants_all_or_blocks_not_both [] case covers it"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - Added TestDiffBlocks.test_cli_repeated_block_prints_once_without_a_header (--block 2 --block 2: no ##### line, one docs/new.md section)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - Dropped *flags from TestMessageAll._run; it passes --all literally"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-27",
+      "evidence": "b8c589a (working-tree snapshot; developer commits) - c-msg SKILL.md Common Mistakes row: heredoc or > redirected into the TXT is the wrong way; Edit is listed alongside"
+    }
+  ]
+}

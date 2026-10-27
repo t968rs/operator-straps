@@ -39,7 +39,7 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     Read a filled skeleton (same shape; commits renumbered in key order), construct a
     ``BranchCommitDocument`` from the ``Dict[int, Tuple[List[str], str]]`` commit dictionary (buckets
     derive from paths), validate it (null fields, one path per commit, merge-base coverage, subject
-    rules, vendor names, filler, block-separator lines), render the TXT and re-parse it in memory to
+    rules, vendor names, filler, block-separator lines, double quotes), render the TXT and re-parse it in memory to
     confirm the round trip, then write ``<branch>.txt`` into the ``commit_messages`` directory
     (``<branch>_<sha7>.txt`` for a ``--base`` skeleton, ``<branch>_pending.txt`` for a
     pending skeleton) and print the chat receipt. A ``txt_suffix`` other than ``_<merge_base[:7]>`` is
@@ -48,9 +48,12 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     builds only while HEAD still equals its ``merge_base``.
 
 ``diff``
-    Print the diff of one skeleton block under line budgets (``harness_lib.commit_diff``): paths within
+    Print the diff of skeleton blocks under line budgets (``harness_lib.commit_diff``): paths within
     budget in full, larger ones as a summary (key tallies for JSON, a truncated head otherwise). The
     ``captured`` entries carry ``added``/``deleted`` counts so sizes are known before reading.
+    ``--block N`` names one block (repeatable); ``--all`` names every block. One block prints bare;
+    several print each under a ``##### block N #####`` line, with the line budget applied per block and
+    the branch captured once for the whole call.
 
 ``canned``
     Print the canned commit message (``harness_lib.canned_messages``) for the changed paths given as arguments
@@ -65,8 +68,11 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     blocks renumbered 1..N.
 
 ``message``
-    Rewrite one block's commit message in a skeleton in place, from the text on stdin (``--block N``). It
-    stands in for editing the JSON by hand, so the amend flow prints no edit diff.
+    Rewrite commit messages in a skeleton in place, from the text on stdin. It stands in for editing the
+    JSON by hand, so no flow prints an edit diff. ``--block N`` sets one block from the whole text.
+    ``--all`` reads one text holding a ``##### block N #####`` line before each block's message and sets
+    every block it names in one write (a block left out keeps its message); an unknown block, a block
+    named twice or a section with no text exits 1 and writes nothing.
 
 The project is the git top level of ``--repo`` (default: the working directory); its
 ``.claude/harness.json`` is activated once at startup, and an invalid one exits 1 with a ``problem:``
@@ -75,10 +81,10 @@ line. ``--repo`` goes before or after the subcommand. Usage::
     branch_commit_msg.py [--repo DIR] capture [REF | --base REF] [--no-fetch] [--fresh | --edit]
         [--merge-msg] [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] capture --pending [--out FILE | --save]
-    branch_commit_msg.py [--repo DIR] diff FILE --block N
+    branch_commit_msg.py [--repo DIR] diff FILE (--block N [--block N ...] | --all)
     branch_commit_msg.py [--repo DIR] canned [PATH ...]
     branch_commit_msg.py [--repo DIR] move FILE --path PATH [--path PATH ...] --to N|new
-    branch_commit_msg.py [--repo DIR] message FILE --block N < TEXT
+    branch_commit_msg.py [--repo DIR] message FILE (--block N | --all) < TEXT
     branch_commit_msg.py [--repo DIR] build FILE [--out TXT]
 """
 from __future__ import annotations
@@ -89,7 +95,7 @@ import re
 import shutil
 import sys
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import AbstractSet, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
@@ -130,6 +136,7 @@ from harness_lib.project import project_root
 CommitDict = Dict[int, Tuple[List[str], str]]
 
 _REF_PATTERN = re.compile(r"[A-Za-z0-9/._~^@{}-]+")
+_BLOCK_HEADER = re.compile(r"##### block (\d+) #####")
 
 PENDING_SUFFIX = "_pending"
 PENDING_SPLIT = "single commit: pending change against HEAD"
@@ -360,27 +367,54 @@ def _block_stats(
     return list(ordered.values()), unmatched
 
 
-def run_diff(repo: Path, payload: Mapping[str, object], block: int) -> str:
-    """Diff of one skeleton block under the ``commit_diff`` budgets: ``full`` or ``summary`` per path.
-
-    Glob entries expand against the capture; an entry matching no captured path prints
-    ``=== <entry> [no change captured] ===``.
-    """
+def _merge_base_of(payload: Mapping[str, object]) -> str:
+    """The skeleton's merge base; ``BuildError`` when it has none."""
     merge_base = str(payload.get("merge_base") or "")
     if not merge_base:
         raise BuildError(["skeleton has no merge_base; rerun capture"])
-    entries = _block_paths(payload, block)
-    captures = capture_branch(repo, merge_base)
-    ordered, unmatched = _block_stats(entries, captures, capture_stats(repo, merge_base, captures))
+    return merge_base
+
+
+def _block_diff(
+        repo: Path, merge_base: str, entries: Sequence[str], captures: Sequence[CapturedPath],
+        stats: Mapping[str, DiffStat], untracked: AbstractSet[str],
+) -> str:
+    """Budgeted diff text of one block's ``entries`` against an already-taken capture."""
+    ordered, unmatched = _block_stats(entries, captures, stats)
     modes = plan_reads(ordered)
     olds = {c.path: c.old_path for c in captures if c.old_path}
-    untracked = set(untracked_paths(repo))
     sections = cap_sections([
         diff_section(repo, merge_base, s, modes[s.path], olds.get(s.path), s.path in untracked)
         for s in ordered
     ])
     sections += [f"=== {entry} [no change captured] ===" for entry in unmatched]
     return "\n".join(sections)
+
+
+def run_diff_blocks(repo: Path, payload: Mapping[str, object], blocks: Sequence[int]) -> str:
+    """Diff of each skeleton block in ``blocks`` under the ``commit_diff`` budgets, captured once.
+
+    Each path prints ``full`` or ``summary``; the line budget applies per block. Glob entries expand
+    against the capture; an entry matching no captured path prints ``=== <entry> [no change captured] ===``.
+    One block prints bare; several print each under a ``##### block N #####`` header line.
+    """
+    merge_base = _merge_base_of(payload)
+    entries = {block: _block_paths(payload, block) for block in blocks}
+    captures = capture_branch(repo, merge_base)
+    stats = capture_stats(repo, merge_base, captures)
+    untracked = set(untracked_paths(repo))
+    texts = {
+        block: _block_diff(repo, merge_base, paths, captures, stats, untracked)
+        for block, paths in entries.items()
+    }
+    if len(texts) == 1:
+        return next(iter(texts.values()))
+    return "\n".join(f"{block_header(block)}\n{text}" for block, text in texts.items())
+
+
+def run_diff(repo: Path, payload: Mapping[str, object], block: int) -> str:
+    """Diff of one skeleton block, as ``run_diff_blocks`` prints it for a single block."""
+    return run_diff_blocks(repo, payload, [block])
 
 
 def document_from_commit_dict(
@@ -609,10 +643,14 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     diff = sub.add_parser(
-        "diff", parents=repo, help="Print one skeleton block's diff under the read budgets.",
+        "diff", parents=repo, help="Print skeleton blocks' diffs under the read budgets.",
     )
     diff.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8).")
-    diff.add_argument("--block", type=int, required=True, help="Commit key of the block to read.")
+    which = diff.add_mutually_exclusive_group(required=True)
+    which.add_argument(
+        "--block", type=int, action="append", help="Commit key of a block to read (repeatable).",
+    )
+    which.add_argument("--all", action="store_true", help="Read every block, one capture for the call.")
     build = sub.add_parser("build", parents=repo, help="Validate a filled skeleton and write the TXT.")
     build.add_argument("skeleton", type=Path, help="Filled skeleton JSON (UTF-8).")
     build.add_argument(
@@ -633,10 +671,15 @@ def _parser() -> argparse.ArgumentParser:
     move.add_argument("--path", action="append", required=True, help="Block entry to move (repeatable).")
     move.add_argument("--to", required=True, type=_target, help="Target block number, or 'new'.")
     message = sub.add_parser(
-        "message", parents=repo, help="Replace one skeleton block's commit message with the text on stdin.",
+        "message", parents=repo, help="Replace skeleton blocks' commit messages with the text on stdin.",
     )
     message.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8); rewritten in place.")
-    message.add_argument("--block", type=int, required=True, help="Commit key of the block to rewrite.")
+    scope = message.add_mutually_exclusive_group(required=True)
+    scope.add_argument("--block", type=int, help="Commit key of the one block to rewrite.")
+    scope.add_argument(
+        "--all", action="store_true",
+        help="Stdin holds a '##### block N #####' line before each message; every block named is set.",
+    )
     return parser
 
 
@@ -708,9 +751,10 @@ def _cmd_build(repo: Path, args: argparse.Namespace) -> int:
 
 
 def _cmd_diff(repo: Path, args: argparse.Namespace) -> int:
-    """Run ``diff`` and print the budgeted block diff."""
+    """Run ``diff`` and print the budgeted diff of the named blocks (every block with ``--all``)."""
     payload = json.loads(args.skeleton.read_text(encoding="utf-8"))
-    print(run_diff(repo, payload, args.block))
+    blocks = sorted(_commit_dict(payload)) if args.all else args.block
+    print(run_diff_blocks(repo, payload, list(dict.fromkeys(blocks))))
     return 0
 
 
@@ -770,13 +814,63 @@ def set_message(payload: Mapping[str, object], block: int, message: str) -> Dict
     return {**payload, "commits": commits}
 
 
+def block_header(block: int) -> str:
+    """The ``##### block N #####`` line that opens a block in ``diff`` output and ``message --all`` input."""
+    return f"##### block {block} #####"
+
+
+def parse_block_messages(text: str) -> Dict[int, str]:
+    """Messages by block from ``text``: each ``block_header`` line opens a section, stripped of blank edges.
+
+    Raises ``BuildError`` for text before the first header, no header at all, a block named twice
+    or a section with no text.
+    """
+    sections: Dict[int, List[str]] = {}
+    current: Optional[int] = None
+    stray = False
+    for line in text.splitlines():
+        found = _BLOCK_HEADER.fullmatch(line.strip())
+        if found:
+            current = int(found.group(1))
+            if current in sections:
+                raise BuildError([f"message: block {current} appears twice"])
+            sections[current] = []
+        elif current is not None:
+            sections[current].append(line)
+        else:
+            stray = stray or bool(line.strip())
+    if not sections:
+        raise BuildError(["message: no '##### block N #####' line in the text on stdin"])
+    if stray:
+        raise BuildError(["message: text before the first '##### block N #####' line"])
+    messages = {block: "\n".join(lines).strip() for block, lines in sections.items()}
+    blank = [block for block, message in messages.items() if not message]
+    if blank:
+        raise BuildError([f"message: block {block} has no text" for block in blank])
+    return messages
+
+
+def set_messages(payload: Mapping[str, object], messages: Mapping[int, str]) -> Dict[str, object]:
+    """Copy of ``payload`` with each block in ``messages`` replaced; an unknown block raises, none applies."""
+    updated: Dict[str, object] = dict(payload)
+    for block, message in messages.items():
+        updated = set_message(updated, block, message)
+    return updated
+
+
 def _cmd_message(repo: Path, args: argparse.Namespace) -> int:
-    """Run ``message``: rewrite one block's message in the skeleton from stdin."""
+    """Run ``message``: rewrite one block's message (``--block``) or each block named on stdin (``--all``)."""
     if sys.stdin.isatty():
         raise BuildError(["message: pipe the new text on stdin"])
     payload = json.loads(args.skeleton.read_text(encoding="utf-8"))
-    write_skeleton(args.skeleton, set_message(payload, args.block, sys.stdin.read()))
-    print(f"set message of block {args.block}")
+    text = sys.stdin.read()
+    if args.all:
+        messages = parse_block_messages(text)
+        write_skeleton(args.skeleton, set_messages(payload, messages))
+        print(f"set message of blocks {', '.join(str(block) for block in messages)}")
+    else:
+        write_skeleton(args.skeleton, set_message(payload, args.block, text))
+        print(f"set message of block {args.block}")
     return 0
 
 
@@ -791,6 +885,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     """CLI entry point; return 0 on success, 1 on a validation or git failure."""
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stdin, "reconfigure"):
+        sys.stdin.reconfigure(encoding="utf-8-sig")
     args = _parser().parse_args(argv)
     commands = {"capture": _cmd_capture, "diff": _cmd_diff, "build": _cmd_build, "move": _cmd_move,
                 "canned": _cmd_canned, "message": _cmd_message}
