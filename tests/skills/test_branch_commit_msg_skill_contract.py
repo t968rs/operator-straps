@@ -91,6 +91,35 @@ def test_merge_flag_parses_with_the_capture_command() -> None:
     assert args.merge_msg is True
 
 
+def test_messages_are_read_and_set_in_one_call_each_never_through_edit() -> None:
+    body = _body()
+    step = " ".join(body[body.index("## Step 3"):body.index("## Step 4")].split())
+    assert 'branch_commit_msg.py" diff "<skeleton>" --block <key> [--block <key> ...]' in step
+    assert 'diff "<skeleton>" --all' not in step, "the default read covers carried and canned blocks too"
+    assert "branch_commit_msg.py\" message \"<skeleton>\" --all <<'MSG'" in step
+    assert "##### block <key> #####" in step
+    assert "Never use Edit or Write on a message in the skeleton" in step
+
+
+def test_a_build_problem_is_fixed_through_the_message_command() -> None:
+    step = " ".join(_body()[_body().index("## Step 4"):_body().index("## Step 5")].split())
+    assert "Fix the message with `message`" in step
+    assert "fix the json" not in step.lower()
+
+
+def test_commit_format_bans_double_quotes() -> None:
+    path = _SKILLS.parent / "reference" / "commit_format.md"
+    text = " ".join(path.read_text(encoding="utf-8").split())
+    assert "No double quotes." in text and "single quotes" in text, "no double-quote ban"
+
+
+@pytest.mark.parametrize("skill", ["branch-commit-msg", "c-msg", "amend-commit-msg"])
+def test_skills_point_at_the_quote_rule_instead_of_restating_it(skill: str) -> None:
+    text = " ".join((_SKILLS / skill / "SKILL.md").read_text(encoding="utf-8").split())
+    assert "double-quote rule" in text and "commit_format.md" in text
+    assert "name a term with backticks or single quotes" not in text.lower(), f"{skill} restates the rule"
+
+
 def test_fork_runs_on_sonnet() -> None:
     meta = _frontmatter()
     assert (meta["model"], meta["context"], meta["agent"]) == ("sonnet", "fork", "harness:messenger")
