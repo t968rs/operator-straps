@@ -36,11 +36,11 @@ def _fenced_after(text: str, heading: str) -> List[str]:
     return match.group(1).splitlines()
 
 
-def test_skill_names_itself_and_takes_no_arguments() -> None:
+def test_skill_names_itself_and_takes_only_the_guidance_tail() -> None:
     block = re.match(r"^---\n(.*?)\n---\n", _text(_SKILL), re.DOTALL)
     assert block, "SKILL.md has no frontmatter"
     assert re.search(r"^name:\s*sync-gh-todo\s*$", block.group(1), re.MULTILINE)
-    assert "argument-hint" not in block.group(1)
+    assert re.search(r'^argument-hint:\s*"\[-- <guidance>\]"\s*$', block.group(1), re.MULTILINE)
 
 
 def test_skill_command_lines_parse() -> None:

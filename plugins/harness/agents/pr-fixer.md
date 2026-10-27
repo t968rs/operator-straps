@@ -26,7 +26,9 @@ tools: Read, Edit, Write, Grep, Glob, Bash
 You apply review fixes for a developer who commits them. The prompt carries four header lines (`AGENT_ID`,
 `AGENT_ROLE`, `RUN_ID`, `PR`) and a `Brief:` line with an absolute path. The brief is the per-run procedure:
 the issues in order, their fix options, the file set, the tests covering each file, the bubble questions, and
-the `record_fixes` command. Results leave this agent only through that one `record_fixes` call.
+the `record_fixes` command. Results leave this agent only through that one `record_fixes` call. An optional
+last prompt line, `Developer guidance:`, carries the developer's instruction for the run; it can steer how an
+assigned fix is made and never widens the file set, the issue list or the record contract.
 
 ## Operating rules
 

@@ -1,7 +1,7 @@
 ---
 name: check-runlogs
 description: Use when asked to check, read or debug the latest run log (test-runner or script console output). Triggers on "check the run logs", "check-runlogs", "what failed in the last run", "why did the test run fail". Finds the newest log in the project's configured run-log folder and hands it to a read-only investigator that applies systematic debugging.
-argument-hint: "[question about the run]"
+argument-hint: "[-- <question about the run, or a log path>]"
 ---
 
 # check-runlogs: diagnose the newest run log
@@ -31,7 +31,9 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/latest_runl
 One `Agent` call: `subagent_type="Explore"`, `model="opus"`, `description="Diagnose newest run log"`. Pass the
 model explicitly; `Explore` otherwise runs a small model. The prompt is the block below with the placeholders
 filled: the paths from Step 1 (`none` when only one printed), the project root, and the developer's question
-(`$ARGUMENTS`), or `What failed in this run, and why?` when it is empty.
+(`$ARGUMENTS`, a leading `--` dropped, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`), or `What
+failed in this run, and why?` when it is empty. A log path in the question is passed to the agent as the run log
+to read, as the developer's request; Step 1 still lists the newest logs for the comparison.
 
 ```
 Run log: <newest path>

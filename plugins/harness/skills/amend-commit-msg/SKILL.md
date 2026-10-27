@@ -15,7 +15,8 @@ bisect point. This skill only rewrites the TXT; it never runs `git commit --amen
 
 Arguments: `$ARGUMENTS`
 
-Split them at the first standalone `--` token (at the start, or with spaces on both sides). Before it: the capture
+Split them at the first standalone `--` token (the rule in `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`:
+at the start, or with spaces on both sides). Before it: the capture
 arguments (a bare `REF` or `--base REF`, `--no-fetch`), passed through unchanged; they name the TXT to amend,
 exactly as they named it for `harness:branch-commit-msg`. After it: the change the developer wants. With no change
 text, print `usage: /harness:amend-commit-msg [REF] [--base REF] [--no-fetch] -- <what to change>` and stop. When the

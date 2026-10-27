@@ -1,9 +1,16 @@
 ---
 name: sync-gh-todo
 description: Use when asked to find the open GitHub issues that the project's TODO catalog does not mention and add them as items. Triggers on "sync-gh-todo", "sync GitHub issues to the TODO catalog", "which open issues are not in the TODO catalog", "add the missing issues to RepoToDo". Hands the drafting to the harness:todo-editor agent, which runs todo_sync.py.
+argument-hint: "[-- <guidance>]"
 ---
 
 # sync-gh-todo: add untracked GitHub issues to the TODO catalog
+
+Arguments: `$ARGUMENTS`
+
+The skill takes no flags. A tail after a standalone `--` token is the guidance, per
+`${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md` (how to scope or word the new items, which issues to
+stress). It fills the `Guidance:` line of Step 2's prompt.
 
 The TODO checks compare the catalogs, stubs and snapshot with each other and never read GitHub, so an issue
 reaches the catalog only when someone writes an item for it. `todo_sync.py untracked` lists the open issues no
@@ -43,7 +50,7 @@ TODO items"`, with this prompt, the placeholders filled:
 Operation: sync
 Issues: #<n>, #<n>
 Project root: <absolute project root>
-Guidance: none
+Guidance: <the text after the -- token, or none>
 ```
 
 `Issues:` lists every number from Step 1. The agent drafts from the `untracked.json` Step 1 wrote and reruns

@@ -63,6 +63,8 @@ The prompt always starts with `MODE=PLAN` or `MODE=CONSOLIDATE`. Branch on it.
 - `EXCLUSIONS_FIXTURE` (the project's configured `exclusions` path from `.claude/harness.json`; empty
   string when the project configures none; the skill's `pr_review.py config --get exclusions` call
   seeds the default file, so a non-empty value names a file on disk)
+- `DEVELOPER_GUIDANCE` (optional; the developer's text from the `--` tail of the invocation, newlines folded
+  to spaces; absent when the developer gave none)
 
 **MODE=CONSOLIDATE-only:**
 
@@ -240,6 +242,8 @@ For EACH planned reviewer, write a markdown prompt file at
 - The strict return-contract block reminder (point at `return_contract.md`)
 - Expected output: a JSON file at `{output_file_path}` with structured findings
   (id, severity, category, file:line, finding, suggestion) plus a strengths array
+- When `DEVELOPER_GUIDANCE` is present, a last line `Developer guidance: <text>`, verbatim. It sharpens
+  attention inside the reviewer's scope and lens and never changes them or the output contract.
 
 The shim will pass `{prompt_file_path}` to each reviewer; the reviewer reads its own
 spec. You write the spec but never read it back.

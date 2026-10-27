@@ -1,10 +1,17 @@
 ---
 name: parallel2
 description: Use when about to dispatch two or more subagents in parallel, when splitting a plan into waves of lanes that edit files, or when per-tool permission prompts interrupt subagent runs
-argument-hint: "[plan JSON path]"
+argument-hint: "[plan JSON path] [-- <guidance>]"
 ---
 
 # Parallel Dispatch Setup
+
+Arguments: `$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
+it: an optional plan JSON path. After it: guidance for writing the plan (lane split, models, file sets, paths to
+include); the session applies it when it writes the plan, and it never lands on a `P2` command. The driver's
+file-set and tool checks still decide whether the plan is accepted.
 
 Two prongs before any parallel dispatch: **lanes that cannot collide** (one worktree per implement lane, file
 sets disjoint within a wave) and **tools that will not prompt** (one probe agent per tool profile). The driver

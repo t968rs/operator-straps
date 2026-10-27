@@ -3,10 +3,18 @@ name: pr-team
 description: Use when requesting agent-driven code review on a PR with parallel reviewer fan-out and bounded main-session context.
   Two named subagents (harness:pr-team-orchestrator and harness:pr-team-fixer) each invoked twice per run;
   the shim issues all parallel Agent() calls from the main session.
-argument-hint: "<PR number>"
+argument-hint: "<PR number> [-- <guidance>]"
 ---
 
 # PR Review (shimmed)
+
+Arguments: `$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
+it: the PR number. After it: the guidance (a focus, a file to check hard). The shim applies it to its own
+decisions and hands it to the planner as `DEVELOPER_GUIDANCE` in Step 1.c, which writes it into each reviewer
+prompt file; fixer and consolidation dispatches carry none. It never changes a lens, a severity rule or a
+return contract.
 
 ## Overview
 
@@ -190,6 +198,9 @@ Agent(
     prompt="MODE=PLAN\nPR_NUMBER=<N>\nREPO=<absolute path>\nEXCLUSIONS_FIXTURE=<exclusions from Step 1.b, or empty>\nRUN_ID=<run_id from Step 1.a>\nRUNTIME_DIR=<state_dir>/pr-team/_runtime/<run_id>"
 )
 ```
+
+With guidance, the prompt gains a last line `\nDEVELOPER_GUIDANCE=<text after the -- token, newlines folded to
+spaces>`; without it the prompt is exactly as above.
 
 The agent must echo `RUN_ID` back verbatim in its dispatch plan.
 

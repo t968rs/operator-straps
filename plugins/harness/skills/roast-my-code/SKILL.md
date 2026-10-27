@@ -1,10 +1,17 @@
 ---
 name: roast-my-code
 description: Use when the user asks for a code review, says "review this", "roast my code", or "what do you think of this code".
-argument-hint: "[<path> | PR #<n> | <commit>..<commit>] [brutal|gentle]"
+argument-hint: "[<path> | PR #<n> | <commit>..<commit>] [brutal|gentle] [-- <guidance>]"
 ---
 
 # Roast My Code
+
+Arguments: `$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
+it: the scope and the intensity hint. After it: guidance (an area to dig into, a concern to weigh). Step 2's
+dispatch prompt carries it as a final `Developer guidance:` line and nowhere else; the dispatcher still
+pre-summarizes and pre-filters nothing.
 
 User-facing entry for the roast-my-code review voice. This skill is a thin
 delegator — all review content, tone, and output rules live in the

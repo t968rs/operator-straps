@@ -1,15 +1,22 @@
 ---
 name: d-w
 description: Use when asked to start, move, or do the work in a detached-HEAD worktree, a throwaway worktree, or an isolated checkout cut from HEAD, the base branch, or another ref.
-argument-hint: "[HEAD|<integration-branch>|<ref>] [--name NAME] [--no-fetch]"
+argument-hint: "[HEAD|<integration-branch>|<ref>] [--name NAME] [--no-fetch] [-- <guidance>]"
 ---
 
 # d-w: work in a detached-HEAD worktree
 
+Arguments: `$ARGUMENTS`
+
+Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. The
+part before it is `<worktree arguments>` below (a bare ref, `--name`, `--no-fetch`), passed through unchanged.
+The part after it is the guidance: the task or paths for the work done inside the worktree. It never reaches
+the command.
+
 Create the worktree with the bundled command (Bash tool), then do every later step of the task inside it.
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/new_worktree.py" $ARGUMENTS
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/new_worktree.py" <worktree arguments>
 ```
 
 - Base defaults to the current **HEAD**. The project's integration branches (`integration_branches` in

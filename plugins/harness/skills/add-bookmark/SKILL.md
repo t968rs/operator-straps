@@ -1,7 +1,7 @@
 ---
 name: add-bookmark
 description: Use when asked to add a note, reminder or instruction to the compaction bookmark, or to list or clear the notes already added. Triggers on "add-bookmark", "add to the bookmark", "remember this across compaction", "bookmark note". The notes enter the session-bookmark mod's bookmark above the /compact instructions.
-argument-hint: "<note text> | --list | --clear"
+argument-hint: "-- <note text> | --list | --clear"
 ---
 
 # add-bookmark: add a note to the compaction bookmark
@@ -15,9 +15,13 @@ Arguments: `$ARGUMENTS`
 
 | Arguments | Effect |
 |---|---|
-| `<note text>` | write one note from the text and the session, then store it |
+| `<note text>` or `-- <note text>` | write one note from the text and the session, then store it |
 | `--list` | print the stored notes, numbered |
 | `--clear` | drop every stored note |
+
+The note text is the whole value, so a leading `--` is dropped, per
+`${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. After a leading `--` the rest is always a note, even when it
+begins with a flag: `-- --list` stores the note `--list`.
 
 ## Running the script
 
@@ -35,10 +39,10 @@ pass no `--repo`. The first word of the arguments picks the action:
 |---|---|
 | `--list` | `NOTE list` |
 | `--clear` | `NOTE clear` |
-| anything else | write the note, then `NOTE add '<line>'` |
-| nothing | print the usage line below and stop |
+| anything else, or a leading `--` | write the note, then `NOTE add '<line>'` |
+| nothing (or `--` alone) | print the usage line below and stop |
 
-Usage line: `usage: /harness:add-bookmark <note> | --list | --clear`
+Usage line: `usage: /harness:add-bookmark [--] <note> | --list | --clear`
 
 `add_note.py` stores at most 20 notes, at most 300 characters each.
 

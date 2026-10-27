@@ -1,7 +1,7 @@
 ---
 name: todo-edit
 description: Use when asked to edit the project's TODO catalog structurally - retire finished items, split one item into parts, or refresh scores and ranks after hand edits. Triggers on "todo-edit", "retire TODO-003", "split TODO-001", "refresh the TODO ranking", "re-rank the TODO catalog". Hands the operation to the harness:todo-editor agent, which runs todo_sync.py and fixes the prose the script cannot.
-argument-hint: "--retire ID[, ID ...] [--delete-retired] | --split ID | --refresh  [guidance]"
+argument-hint: "--retire ID[, ID ...] [--delete-retired] | --split ID | --refresh  [-- <guidance>]"
 ---
 
 # todo-edit: retire, split or refresh TODO catalog items
@@ -13,12 +13,14 @@ that named a moved or removed id. The catalog never enters the main session's co
 
 ## Step 1: parse the arguments
 
-`$ARGUMENTS` holds exactly one operation, then optional free-text guidance:
+`$ARGUMENTS` holds exactly one operation, then optional guidance. Split it at the first standalone `--` token,
+per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`: the operation, its ids and flags come before it, the
+guidance (free text, paths) after it. Free text after the ids with no `--` token is read as guidance too.
 
 | Operation | Ids | Example | Model |
 |---|---|---|---|
 | `--retire` | one or more, comma- or space-separated | `--retire 1, 3` | `opus` |
-| `--split` | exactly one | `--split 001 one part per module` | `opus` |
+| `--split` | exactly one | `--split 001 -- one part per module` | `opus` |
 | `--refresh` | none | `--refresh` | `haiku` |
 
 An id may be `TODO-007`, `007` or `7`; normalize each to `TODO-NNN`. `--delete-retired` is a flag of `--retire`
@@ -40,7 +42,7 @@ Operation: <retire | split | refresh>
 Ids: <TODO-NNN, ... or none>
 Delete retired: <yes | no>
 Project root: <absolute project root>
-Guidance: <the free text after the ids, or none>
+Guidance: <the guidance after the -- token (else the free text after the ids), or none>
 ```
 
 ## Step 3: report
