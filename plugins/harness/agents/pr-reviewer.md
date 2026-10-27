@@ -3,9 +3,12 @@ name: pr-reviewer
 description: |
   Use this agent for one reviewer slot of a pr-review run: one lens over one scope of a PR, read-only,
   ending in a single `record` call that writes the slot's findings report. It carries only Read, Grep,
-  Glob and Bash, so a run skips the tool schemas review never uses. The prompt is the four header lines
-  printed by `pr_review.py capture` plus a `Brief:` path; the brief holds the scope, lens, diff and the
-  exact `record` command.
+  Glob and Bash, so a run skips the tool schemas. 
+  
+  Model may be overridden, as-needed.
+  
+  The prompt is the four header lines printed by `pr_review.py capture` plus a `Brief:` path; 
+  the brief holds the scope, lens, diff and the exact `record` command.
   Examples:
   <example>
     Context: pr-review Phase 1 capture printed five dispatch rows for an open PR.
@@ -19,7 +22,7 @@ description: |
     assistant: "Dispatching harness:pr-reviewer for the roast row; its brief carries the OVERALL scope in the roast voice."
     <commentary>The roast voice and scope come from the brief, not from a different agent.</commentary>
   </example>
-model: opus
+model: sonnet
 tools: Read, Grep, Glob, Bash
 ---
 

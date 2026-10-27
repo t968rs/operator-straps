@@ -19,7 +19,7 @@ description: |
     assistant: "Running waves with the two ids, then dispatching harness:pr-fixer for each printed row."
     <commentary>A follow-up wave is planned by the script; the agent only follows the new brief.</commentary>
   </example>
-model: haiku
+model: sonnet
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 
