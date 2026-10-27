@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 1,
-    "needs_decision": 1,
+    "items": 0,
+    "needs_decision": 0,
     "trackers": 0,
     "close_candidates": 10,
     "by_status": {
-      "NEEDS_DECISION": 1,
+      "NEEDS_DECISION": 0,
       "OPEN": 0
     },
     "by_impact": {
-      "dev_velocity": 1,
+      "dev_velocity": 0,
       "docs_tooling": 0,
       "maintainability": 0
     },
@@ -73,78 +73,17 @@
       "XS": 0,
       "S": 0,
       "M": 0,
-      "L": 1,
+      "L": 0,
       "XL": 0
     },
     "sources_absorbed": {
-      "gh_issue": 1,
+      "gh_issue": 0,
       "impl_stub": 0,
       "research_folder": 0
     },
     "merged_items": 0
   },
-  "items": [
-    {
-      "id": "TODO-001",
-      "rank": 1,
-      "title": "pr-review: background execution via a saved workflow (Phases 1-3)",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "Can a plugin ship a saved workflow, or must the pr-review skill write one under the consuming project's .claude/workflows/ (issue Q4)? The answer settles where the Phases 1-3 workflow lives before any of it is built.",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#9",
-          "url": "https://github.com/t968rs/operator-straps/issues/9"
-        }
-      ],
-      "gh_issues": [
-        9
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "pr-review cannot fork like c-msg or pr-sum: Phase 2 fans out harness:pr-reviewer rows from the main session, a fork would break the per-row model floor, the Phase 5 sentinel binds to the session id, the bubble pause needs the developer and fixers write the shared tree. The issue proposes a saved workflow that runs capture, the reviewer fan-out and merge in the background and returns before amend; Phases 4-5 stay in the foreground. Checked: plugins/harness/skills/pr-review/SKILL.md has no context: key (frontmatter lines 2-5), unlike plugins/harness/skills/c-msg/SKILL.md:5-6 (context: fork, agent: harness:messenger); plugins/harness/hooks/check_phase5_sentinel.py:103 defines blocks_session(owner, session_id); plugins/harness/scripts/pr_review.py has no capture --json mode (its only --json is the gh pr view call at :333); dispatch_shape allows only parallel and inline in plugins/pr-review-watch/hooks/matrixRow.ts:15 and plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json:57-61. Unverified: whether a workflow-launched agent inherits the parent's CLAUDE_CODE_SESSION_ID (Q2) and whether anything else parses capture's printed rows (Q1).",
-      "proposed_change": "Settle Q4 first. Then add a capture --json mode to pr_review.py (or build the rows from the plan.json slots capture already writes), ship the Phases 1-3 workflow (capture, parallel harness:pr-reviewer agents with each row's model, merge) that stops after merge, add a Background mode section to the pr-review SKILL.md naming amend as the resume point and Phases 4-5 as foreground, and add dispatch_shape \"workflow\" to matrixRow.ts DISPATCH_SHAPES and the invocation matrix schema enum. Leave the Phase 5 workflow extension for later.",
-      "files": [
-        "plugins/harness/skills/pr-review/SKILL.md",
-        "plugins/harness/scripts/pr_review.py",
-        "plugins/pr-review-watch/hooks/matrixRow.ts",
-        "plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json"
-      ],
-      "blast_radius": {
-        "level": "M",
-        "reasoning": "Touches the pr-review skill, its capture driver and the reviewer-stats row shape shared with the pr-review-watch mod; the foreground path stays as it is.",
-        "consumers": [
-          "plugins/harness/skills/pr-review/SKILL.md",
-          "plugins/pr-review-watch/hooks/matrixRow.ts",
-          "plugins/harness/agents/pr-team-orchestrator.md"
-        ]
-      },
-      "loe": {
-        "size": "L",
-        "reasoning": "A new workflow script, a structured capture output, a skill section, a schema enum and mod change, plus probes of the workflow runtime (Q2, Q4)."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 0.6455,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 8,
-          "blast_factor": 1.2,
-          "cost": 9.6,
-          "base_score": 0.6455,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 dev_velocity: a foreground pr-review blocks the session through the reviewer fan-out; size L for a new workflow, a capture mode and a schema change."
-    }
-  ],
+  "items": [],
   "trackers": [],
   "close_candidates": [
     {
