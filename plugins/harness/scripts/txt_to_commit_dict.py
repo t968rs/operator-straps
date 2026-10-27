@@ -13,9 +13,10 @@ subject line), ``message`` (verbatim, footer removed), ``body``, ``bullets`` (li
 ``{"file", "change"}``), and ``branch``.
 
 Default CLI behavior iterates every digit-prefixed ``*.txt`` in that directory and writes a sibling
-``<stem>.ps1`` holding a ``$commitDict`` for ``commitFactory.ps1``. A file that fails validation is
-reported on stderr and skipped (exit 1). Pass an explicit target to process a single file; pass
-``--json`` to dump the parsed document instead. The project is the git top level of ``--repo``
+``<stem>.ps1`` holding a ``$commitDict`` for ``commitFactory.ps1``. A file that fails validation, or
+whose message holds a double quote, is reported on stderr and skipped (exit 1); the double-quote skip
+applies in ``--json`` mode too. Pass an explicit target to process a single file; pass ``--json`` to
+dump the parsed document instead. The project is the git top level of ``--repo``
 (default: the working directory)::
 
     txt_to_commit_dict.py                         # batch -> .ps1
@@ -34,7 +35,7 @@ from typing import Dict, Iterator, List, Optional, Sequence, Union
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 from harness_lib.branch_commits import BranchCommitDocument, Bucket, CommitEntry
-from harness_lib.commit_txt import read_commit_txt
+from harness_lib.commit_txt import quote_problems, read_commit_txt
 from harness_lib.config import ConfigError, activate, active, load_config
 from harness_lib.project import project_root
 
@@ -152,10 +153,15 @@ def _jsonable(document: BranchCommitDocument) -> Dict[str, object]:
 def _load_or_report(path: Path) -> Optional[BranchCommitDocument]:
     """Parse ``path``; on a validation failure, report it to stderr and return None."""
     try:
-        return txt_to_commit_dict(path)
+        document = txt_to_commit_dict(path)
     except ValueError as exc:
         sys.stderr.write(f"skipped {path.name}: {exc}\n")
         return None
+    problems = quote_problems(document)
+    if problems:
+        sys.stderr.write(f"skipped {path.name}: {'; '.join(problems)}\n")
+        return None
+    return document
 
 
 def _targets(arg: Optional[str]) -> List[Path]:

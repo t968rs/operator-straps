@@ -120,6 +120,20 @@ class TestProjectFolder:
         assert active().project_root == root.resolve()
         assert (root / "docs" / "_commit_messages" / "9999-demo.ps1").is_file()
 
+    def test_a_message_with_a_double_quote_is_skipped_not_written(
+            self, script: ModuleType, make_project: Callable[..., Path], capsys: pytest.CaptureFixture,
+    ) -> None:
+        quoted = _HYPHEN_TXT.replace("new module", 'new "demo" module')
+        root = make_project(files={
+            "docs/_commit_messages/9999-demo.txt": quoted,
+            "docs/_commit_messages/9998-ok.txt": _HYPHEN_TXT.replace("9999-demo", "9998-ok"),
+        }, name="quoted")
+        assert script.main(["--repo", str(root)]) == 1
+        err = capsys.readouterr().err
+        assert "skipped 9999-demo.txt" in err and "double quote" in err and "line 6" in err
+        assert not (root / "docs" / "_commit_messages" / "9999-demo.ps1").exists()
+        assert (root / "docs" / "_commit_messages" / "9998-ok.ps1").is_file()
+
     def test_invalid_project_config_is_a_problem_line(
             self, script: ModuleType, make_project: Callable[..., Path], capsys: pytest.CaptureFixture,
     ) -> None:

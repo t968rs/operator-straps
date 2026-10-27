@@ -726,9 +726,73 @@ class TestDiffBudget:
         with pytest.raises(script.BuildError, match=match):
             script.run_diff(tmp_path, {"merge_base": "m", "commits": commits}, 1)
 
-    def test_cli_diff_requires_block(self, script: ModuleType) -> None:
+
+class TestDiffBlocks:
+    """One ``diff`` call for several blocks: a header per block, one ``capture_branch`` call in all."""
+
+    def _skeleton(self, script: ModuleType, clone: Path) -> Path:
+        path = clone / "docs" / "_commit_messages" / "9999-demo.json"
+        script.write_skeleton(path, script.run_capture(clone, fetch=False))
+        return path
+
+    def test_each_block_prints_under_its_header(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        payload = script.run_capture(clone, fetch=False)
+        out = script.run_diff_blocks(clone, payload, [1, 2])
+        first, second = out.index("##### block 1 #####"), out.index("##### block 2 #####")
+        assert first < out.index("=== scripts/fpm/io/a.py") < second < out.index("=== docs/new.md")
+
+    def test_one_block_matches_run_diff_without_a_header(
+            self, script: ModuleType, work: Tuple[Path, str],
+    ) -> None:
+        clone, _ = work
+        payload = script.run_capture(clone, fetch=False)
+        out = script.run_diff_blocks(clone, payload, [2])
+        assert out.startswith("=== docs/new.md"), out[:200]
+        assert "#####" not in out
+
+    def test_the_branch_is_captured_once_for_every_block(
+            self, script: ModuleType, work: Tuple[Path, str], monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        clone, _ = work
+        payload = script.run_capture(clone, fetch=False)
+        calls = []
+        real = script.capture_branch
+        monkeypatch.setattr(script, "capture_branch", lambda *args: calls.append(args) or real(*args))
+        script.run_diff_blocks(clone, payload, [1, 2])
+        assert len(calls) == 1
+
+    def test_unknown_block_is_reported(self, script: ModuleType, work: Tuple[Path, str]) -> None:
+        clone, _ = work
+        payload = script.run_capture(clone, fetch=False)
+        with pytest.raises(script.BuildError, match="block 99"):
+            script.run_diff_blocks(clone, payload, [1, 99])
+
+    @pytest.mark.parametrize("flags", [["--all"], ["--block", "1", "--block", "2"]])
+    def test_cli_prints_every_named_block(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture, flags: list,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        assert script.main(["--repo", str(clone), "diff", str(skeleton), *flags]) == 0
+        out = capsys.readouterr().out
+        assert "##### block 1 #####" in out and "##### block 2 #####" in out
+
+    def test_cli_repeated_block_prints_once_without_a_header(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        argv = ["--repo", str(clone), "diff", str(skeleton), "--block", "2", "--block", "2"]
+        assert script.main(argv) == 0
+        out = capsys.readouterr().out
+        assert "#####" not in out
+        assert out.count("=== docs/new.md") == 1
+
+    @pytest.mark.parametrize("flags", [[], ["--all", "--block", "1"]])
+    def test_cli_wants_all_or_blocks_not_both(self, script: ModuleType, flags: list) -> None:
         with pytest.raises(SystemExit):
-            script._parser().parse_args(["diff", "f.json"])
+            script._parser().parse_args(["diff", "f.json", *flags])
 
 
 class TestBuild:
@@ -965,6 +1029,23 @@ class TestMessage:
         out, _ = script.run_build(clone, after)
         assert "restated" in out.read_text(encoding="utf-8")
 
+    @pytest.mark.parametrize("flags", [("--block", "1"), ("--all",)])
+    def test_utf8_stdin_survives_a_legacy_console_codepage(
+            self, script: ModuleType, work: Tuple[Path, str], plugin_root: Path, flags: Tuple[str, ...],
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        text = "Chore(a): bump 0.33.0 → 0.34.0\n\n  - a.py: x → y"
+        stdin = (f"##### block 1 #####\n{text}\n" if flags == ("--all",) else text + "\n").encode("utf-8")
+        env = {**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0"}
+        done = subprocess.run(
+            [sys.executable, str(plugin_root / "scripts" / "branch_commit_msg.py"),
+             "--repo", str(clone), "message", str(skeleton), *flags],
+            input=stdin, capture_output=True, env=env,
+        )
+        assert done.returncode == 0, done.stderr.decode("utf-8", errors="replace")
+        assert json.loads(skeleton.read_text(encoding="utf-8"))["commits"]["1"][1] == text
+
     def test_unknown_block_exits_1_and_leaves_the_skeleton(
             self, script: ModuleType, work: Tuple[Path, str], monkeypatch: pytest.MonkeyPatch,
             capsys: pytest.CaptureFixture,
@@ -986,6 +1067,84 @@ class TestMessage:
         assert self._set(script, clone, skeleton, " \n", "1", monkeypatch) == 1
         assert "new text on stdin" in capsys.readouterr().err
         assert skeleton.read_text(encoding="utf-8") == before
+
+
+class TestMessageAll:
+    """``message --all``: every block's message from one stdin text of ``##### block N #####`` sections."""
+
+    _FIRST = "Fix(io): a, restated\n\nWhy.\n  - a.py: x"
+    _SECOND = "Docs(docs): rename\n\nWhy.\n  - docs/new.md: renamed"
+
+    @staticmethod
+    def _text(*sections: Tuple[int, str]) -> str:
+        return "\n".join(f"##### block {key} #####\n{body}" for key, body in sections) + "\n"
+
+    def _skeleton(self, script: ModuleType, clone: Path) -> Path:
+        path = clone / "docs" / "_commit_messages" / "9999-demo.json"
+        script.write_skeleton(path, _drafted(script, clone))
+        return path
+
+    def _run(self, script: ModuleType, clone: Path, path: Path, text: str,
+             monkeypatch: pytest.MonkeyPatch) -> int:
+        monkeypatch.setattr(sys, "stdin", io.StringIO(text))
+        return script.main(["--repo", str(clone), "message", str(path), "--all"])
+
+    def test_parse_splits_the_sections_and_strips_them(self, script: ModuleType) -> None:
+        parsed = script.parse_block_messages(self._text((1, self._FIRST + "\n\n"), (2, self._SECOND)))
+        assert parsed == {1: self._FIRST, 2: self._SECOND}
+
+    @pytest.mark.parametrize("text, match", [
+        ("no header here\n", "no '##### block N #####' line"),
+        ("stray\n##### block 1 #####\nx\n", "before the first"),
+        ("##### block 1 #####\nx\n##### block 1 #####\ny\n", "block 1 appears twice"),
+        ("##### block 1 #####\n \n##### block 2 #####\ny\n", "block 1 has no text"),
+    ])
+    def test_parse_rejects_a_malformed_text(self, script: ModuleType, text: str, match: str) -> None:
+        with pytest.raises(script.BuildError, match=match):
+            script.parse_block_messages(text)
+
+    def test_sets_every_named_block_in_one_call(
+            self, script: ModuleType, work: Tuple[Path, str], monkeypatch: pytest.MonkeyPatch,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        before = json.loads(skeleton.read_text(encoding="utf-8"))
+        text = self._text((1, self._FIRST), (2, self._SECOND))
+        assert self._run(script, clone, skeleton, text, monkeypatch) == 0
+        assert capsys.readouterr().out == "set message of blocks 1, 2\n"
+        after = json.loads(skeleton.read_text(encoding="utf-8"))
+        assert after["commits"]["1"] == [before["commits"]["1"][0], self._FIRST]
+        assert after["commits"]["2"] == [before["commits"]["2"][0], self._SECOND]
+
+    def test_a_block_left_out_keeps_its_message(
+            self, script: ModuleType, work: Tuple[Path, str], monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        before = json.loads(skeleton.read_text(encoding="utf-8"))
+        assert self._run(script, clone, skeleton, self._text((1, self._FIRST)), monkeypatch) == 0
+        assert json.loads(skeleton.read_text(encoding="utf-8"))["commits"]["2"] == before["commits"]["2"]
+
+    @pytest.mark.parametrize("text, err", [
+        ("##### block 1 #####\nGood: text\n##### block 7 #####\ny\n", "no block 7"),
+        ("##### block 1 #####\nGood: text\n##### block 2 #####\n \n", "block 2 has no text"),
+    ])
+    def test_a_bad_section_exits_1_and_writes_nothing(
+            self, script: ModuleType, work: Tuple[Path, str], monkeypatch: pytest.MonkeyPatch,
+            capsys: pytest.CaptureFixture, text: str, err: str,
+    ) -> None:
+        clone, _ = work
+        skeleton = self._skeleton(script, clone)
+        before = skeleton.read_text(encoding="utf-8")
+        assert self._run(script, clone, skeleton, text, monkeypatch) == 1
+        assert err in capsys.readouterr().err
+        assert skeleton.read_text(encoding="utf-8") == before
+
+    @pytest.mark.parametrize("flags", [[], ["--all", "--block", "1"]])
+    def test_cli_wants_all_or_one_block_not_both(self, script: ModuleType, flags: list) -> None:
+        with pytest.raises(SystemExit):
+            script._parser().parse_args(["message", "f.json", *flags])
 
 
 class TestSkeletonPayload:
