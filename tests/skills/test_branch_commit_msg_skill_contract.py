@@ -62,6 +62,31 @@ def test_blank_arguments_read_as_none() -> None:
     assert f"{_LABEL} `` (blank: none)." in _rendered("")
 
 
+def test_argument_hint_lists_the_merge_flag() -> None:
+    assert "[--merge-msg]" in _frontmatter()["argument-hint"]
+
+
+def test_merge_step_runs_after_build_and_names_the_merge_skill() -> None:
+    body = _body()
+    assert body.index("## Step 4") < body.index("## Step 5")
+    step = body[body.index("## Step 5"):body.index("## Common Mistakes")]
+    assert "--merge-msg" in step
+    assert "${CLAUDE_PLUGIN_ROOT}/skills/merge-commit-msg/SKILL.md" in step
+    assert "$ARGUMENTS" not in step, "the arguments value may land only on the label and the capture command"
+
+
+def test_merge_flag_parses_with_the_capture_command() -> None:
+    import importlib.util
+
+    script = _SKILLS.parent / "scripts" / "branch_commit_msg.py"
+    spec = importlib.util.spec_from_file_location("branch_commit_msg_flag_guard", script)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    args = module._parser().parse_args(["capture", "--save", "--merge-msg"])
+    assert args.merge_msg is True
+
+
 def test_fork_runs_on_sonnet() -> None:
     meta = _frontmatter()
     assert (meta["model"], meta["context"], meta["agent"]) == ("sonnet", "fork", "harness:messenger")

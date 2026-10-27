@@ -1,7 +1,7 @@
 ---
 name: branch-commit-msg
 description: Use when asked to draft the full set of commit messages for everything pending on the current branch, as multiple Conventional Commits saved to the project's commit_messages directory (default docs/_commit_messages). Triggers on "break the branch into commits", "draft all commit messages", "commit breakdown", "branch-commit-msg".
-argument-hint: "[REF] [--base REF] [--fresh] [--no-fetch]"
+argument-hint: "[REF] [--base REF] [--fresh] [--no-fetch] [--merge-msg]"
 model: sonnet
 context: fork
 agent: harness:messenger
@@ -36,7 +36,8 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_com
 ```
 
 The arguments line above lists the developer's arguments (any of a bare `REF`, `--base REF`, `--fresh`,
-`--no-fetch`); the command passes them through unchanged. Add none, `--fresh` included, and drop none. A bare
+`--no-fetch`, `--merge-msg`); the command passes them through unchanged. `--merge-msg` does not change the
+plan: it adds Step 5 after the build. Add none, `--fresh` included, and drop none. A bare
 `REF` and `--base REF` are the same (one ref as the merge base); giving both with different refs exits 1. On
 any other flag, or a REF holding anything but letters, digits and `/._-~^@{}`, report it and stop. An argument
 the script rejects is reported, never removed or replaced.
@@ -139,6 +140,21 @@ Exit 1: each `problem:` line names a commit and a defect. Fix the JSON and rerun
 the Step 1 table beside the skeleton (same stem, `.txt`) and prints the receipt. When that TXT already exists and its content changes, the old copy is kept as
 `<name>.txt.bak` (one generation). Output the receipt verbatim — nothing else.
 
+## Step 5 — Merge message (only with `--merge-msg`)
+
+Skip this step when the arguments line holds no `--merge-msg`. Otherwise, once Step 4 exited 0, draft the PR
+merge message for the branch's open PR. Find its number with the skeleton's `branch`:
+
+```bash
+gh pr list --head "<branch>" --state open --json number --jq ".[0].number"
+```
+
+No output means no open PR: say so in one line, keep the Step 4 receipt, and stop; the developer opens the PR
+and runs `harness:merge-commit-msg <PR number>` later. Otherwise read
+`${CLAUDE_PLUGIN_ROOT}/skills/merge-commit-msg/SKILL.md` and follow its Steps 1-3 with the PR number as the
+argument, in this same run. A `problem:` line from a merge step is reported with the Step 4 receipt kept.
+Output the Step 4 receipt, then the merge receipt, each verbatim — nothing else.
+
 ## Common Mistakes
 
 | Mistake                                              | Fix                                                                  |
@@ -147,7 +163,7 @@ the Step 1 table beside the skeleton (same stem, `.txt`) and prints the receipt.
 | Subject/bullets derived from filenames ("modify x")  | Read the diff; state the change.                                     |
 | Removing a path from the JSON to silence coverage    | Put it in the block it belongs to.                                   |
 | Leaving a test block before the module it imports    | Step 2 renumber; note it in `split`.                                 |
-| Pasting the breakdown into chat                      | The receipt is the only chat output.                                 |
+| Pasting the breakdown into chat                      | The receipt is the only chat output (with `--merge-msg`, the merge receipt follows it). |
 
 TXT layout reference (script-owned): `${CLAUDE_SKILL_DIR}/txt_format.md`. Bucket, pairing and split rules:
 `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/branch_commits.py` and `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/commit_grouping.py`;
