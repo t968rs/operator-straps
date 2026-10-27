@@ -26,6 +26,10 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     bullet that names a file of another block and none of its own. ``--base`` must resolve to the drafted
     base (the sha7 in the TXT name), so pass that SHA or a branch rather than a relative ref.
 
+    ``--merge-msg`` is accepted and changes nothing in the skeleton: it tells the ``branch-commit-msg``
+    skill to draft the PR merge message (``merge-commit-msg``) after ``build``. It conflicts with
+    ``--pending``.
+
     ``--pending`` (the ``c-msg`` skill) instead captures the change pending against HEAD (staged,
     unstaged, untracked) as one commit with ``merge_base`` set to HEAD and ``"pending": true``. The
     message carries forward from ``<branch>_pending.txt`` only while HEAD is unchanged; the branch
@@ -69,7 +73,7 @@ The project is the git top level of ``--repo`` (default: the working directory);
 line. ``--repo`` goes before or after the subcommand. Usage::
 
     branch_commit_msg.py [--repo DIR] capture [REF | --base REF] [--no-fetch] [--fresh | --edit]
-        [--out FILE | --save]
+        [--merge-msg] [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] capture --pending [--out FILE | --save]
     branch_commit_msg.py [--repo DIR] diff FILE --block N
     branch_commit_msg.py [--repo DIR] canned [PATH ...]
@@ -597,6 +601,13 @@ def _parser() -> argparse.ArgumentParser:
             "--base, a bare REF, --no-fetch and --fresh are ignored."
         ),
     )
+    cap.add_argument(
+        "--merge-msg", action="store_true",
+        help=(
+            "Marks the run for the branch-commit-msg skill to draft the PR merge message once build "
+            "has written the TXT; the skeleton is unchanged. Conflicts with --pending."
+        ),
+    )
     diff = sub.add_parser(
         "diff", parents=repo, help="Print one skeleton block's diff under the read budgets.",
     )
@@ -669,6 +680,8 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
         raise BuildError(["--edit cannot be combined with --pending: a pending change has no draft to amend"])
     if args.edit and args.fresh:
         raise BuildError(["--edit cannot be combined with --fresh: an amendment keeps the existing messages"])
+    if args.pending and args.merge_msg:
+        raise BuildError(["--merge-msg cannot be combined with --pending: a pending change has no PR"])
     if args.pending:
         payload = run_capture_pending(repo)
     else:

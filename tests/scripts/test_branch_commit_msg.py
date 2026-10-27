@@ -851,6 +851,25 @@ class TestCaptureEdit:
         assert code == 1
         assert "--pending" in capsys.readouterr().err
 
+    def test_cli_merge_msg_with_pending_exits_1(
+            self, script: ModuleType, work: Tuple[Path, str], capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _ = work
+        code = script.main(["--repo", str(clone), "capture", "--merge-msg", "--pending", "--no-fetch"])
+        assert code == 1
+        err = capsys.readouterr().err
+        assert "--merge-msg" in err and "--pending" in err
+
+    def test_cli_merge_msg_leaves_the_saved_skeleton_unchanged(
+            self, script: ModuleType, work: Tuple[Path, str], tmp_path: Path,
+    ) -> None:
+        clone, _ = work
+        plain, flagged = tmp_path / "plain.json", tmp_path / "flagged.json"
+        assert script.main(["--repo", str(clone), "capture", "--no-fetch", "--out", str(plain)]) == 0
+        assert script.main(["--repo", str(clone), "capture", "--no-fetch", "--merge-msg",
+                            "--out", str(flagged)]) == 0
+        assert flagged.read_text(encoding="utf-8") == plain.read_text(encoding="utf-8")
+
 
 class TestBuildEdit:
     def test_stale_bullet_is_a_problem(self, script: ModuleType, work: Tuple[Path, str]) -> None:
