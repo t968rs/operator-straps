@@ -104,9 +104,10 @@ the error band: the direction is likely, the size is not.
 - Model choice per fixer follows the same rule in both trees (haiku only for all-mechanical fixers).
 - Per-wave main-session overhead is the same in both trees.
 
-## Planner tweaks (not applied)
+## Planner tweaks (proposed)
 
-All in `plugins/harness/lib/harness_lib/review_merge.py`.
+All in `plugins/harness/lib/harness_lib/review_merge.py`. What shipped differs from these proposals: see
+Follow-up below.
 
 1. **Cost-aware cut** (saves about 125 s; fixes 645 s to about 520 s).
    - In `_cut` (deferral key near line 671), defer mechanical units and minor issues before important or critical
@@ -128,6 +129,60 @@ All in `plugins/harness/lib/harness_lib/review_merge.py`.
 - The tests slot (7 files, opus, 1144 s) ran 517 s past the next-slowest reviewer.
 - Splitting that bucket at capture would save more than either wave tweak. No change between `f9becaa` and HEAD
   touches it.
+- Corrected in Follow-up: the slot was slow for another reason, and a split would not have helped.
+
+## Follow-up (branch `1093-pr-review-reviewers`)
+
+### The tests reviewer did not run long from its scope
+
+The transcript of the tests reviewer (`agent-a9ba3958c4fecf67c`) shows the time:
+
+- 344 s of normal work: 42 tool calls, all files read in the first minute.
+- **One turn of about 800 s** (14:45:05 to 14:58:25 UTC) that emitted 128,000 output tokens, the output cap, with
+  163 thinking tokens recorded. The session then injected "Output token limit hit. Resume directly", and the
+  reviewer recorded its findings in the next 20 s.
+
+Largest single-turn output per agent in the run: tests 128,000 tokens; every other reviewer and fixer under
+9,000 (overall 8,886, runtime 8,983). The tests slot was a runaway generation, not a scope too large to read.
+Splitting the bucket was dropped: it would not have prevented a runaway turn. Without that turn the reviewer
+phase is bounded by the overall slot (627 s), and the cycle would have run about 1340 s.
+
+The plugin cannot cap a subagent's output per turn. A session can lower the cap with the
+`CLAUDE_CODE_MAX_OUTPUT_TOKENS` environment variable, which bounds the cost of such a turn. Each output token
+also costs time, so the cap trades a runaway's duration against long legitimate turns (record calls run to
+about 9,000 tokens here).
+
+### Planner: tweak 1 as proposed regressed other reviews
+
+Replay over all 29 saved reviews in `docs/PR_REVIEWS/` with the estimate model above (sum over waves of the
+slowest fixer):
+
+| Variant | Total, 29 reviews | PR 117 | Reviews worse than current |
+|---|---|---|---|
+| Current (most-connected cut) | 7732 s | 615 s | - |
+| Tweak 2: kin rule off heavy fixers | 7657 s | 615 s | 0 |
+| Tweak 1: light-first cut | 8352 s | 510 s | 14 |
+| Tweak 1 and 2 | 8312 s | 510 s | 14 |
+| **Cheaper of both cuts, plus tweak 2 (shipped)** | **7517 s** | **510 s** | **0** |
+
+Light-first keeps every linked heavy issue together, which makes one large fixer when the heavy issues share
+files (0015: a 410 s fixer against the current 190 s + 280 s). PR 117 gains because its heavy hub queued behind a
+heavy W1 fixer under the most-connected cut.
+
+Shipped in plugin 0.39.0 (`review_merge.py`):
+
+- `plan_waves` plans the layout under both cuts (`_cut(..., light_first)`) and keeps the one with the lower
+  `_wall_seconds`; a tie keeps the most-connected cut. The estimate constants are `HAIKU_SECONDS` and
+  `OPUS_SECONDS`, the model above.
+- `_place_free` skips the kin rule for a fixer holding a heavy unit (critical or important judgment), and the
+  smallest-fixer fallback prefers a fixer without one.
+- Not implemented or replayed: re-admitting deferred units into groups with room, and letting a judgment group
+  exceed the cap by one. With both cuts planned, PR 117 has no third wave to remove.
+
+PR 117 under the shipped planner: W1 runs the hub {I1, I2, I4, I5, I7, I9} beside C1's fixer {M1, M13, I3, C1},
+a {M1, M2} fixer and a haiku {M6, M12} fixer; W2 runs four fixers of minors and mechanical parts. Estimated fix
+wall 510 s against 615 s for the previous planner (measured 645 s). The model prices C1 at 65 s, against the
+roughly 120 s observed, so these estimates are a comparison between planners, not a forecast.
 
 ## Reproduce
 
