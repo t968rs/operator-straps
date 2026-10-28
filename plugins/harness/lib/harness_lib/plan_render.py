@@ -1,9 +1,11 @@
 """The PIP markdown of a plan, rendered from its ActionPlan JSON and never edited by hand.
 
-One ``### <ID>: <title>`` section per item, which the plan rules (``todo_sync.rules_plans``) find by the
-item id. Each section holds one box per test node, one per command and one for recording the commit; the
-boxes are checked exactly when the item is COMPLETE or CLOSED_NO_ACTION, so the PIP always agrees with the
-JSON.
+One ``### <ID>: <title>`` section per item. The plan rules (``todo_sync.rules_plans``) look a section up
+only through the item's ``markdown_section`` and skip an item without one; the heading starts with the item
+id, so a ``markdown_section`` equal to the id finds it. Each section holds one box per test node, one per
+command and one for recording the commit; the boxes are checked exactly when the item is COMPLETE or
+CLOSED_NO_ACTION, so the PIP always agrees with the JSON. A ``{base}`` in a command is printed as the
+plan's full ``base_commit``, so a copied command runs as written.
 """
 from __future__ import annotations
 
@@ -94,11 +96,18 @@ def _sweeps(plan: Mapping[str, Any]) -> List[str]:
     return ["## Sweeps", "", *rows, ""] if rows else []
 
 
+def _expand_base(plan: Mapping[str, Any], run: Any) -> str:
+    """``run`` with each ``{base}`` replaced by the plan's ``base_commit``, when one is recorded."""
+    base = plan.get("base_commit")
+    return str(run).replace("{base}", base) if isinstance(base, str) and base else str(run)
+
+
 def _boxes(plan: Mapping[str, Any], item: Mapping[str, Any]) -> List[str]:
     mark = "x" if item.get("status") in DONE else " "
     steps = [f"Test {code(str(t.get('node')))} fails with {t.get('red')}, then passes"
              for t in item.get("tests") or []]
-    steps += [f"Run {code(str(c.get('run')))}: {c.get('expect')}" for c in item.get("commands") or []]
+    steps += [f"Run {code(_expand_base(plan, c.get('run')))}: {c.get('expect')}"
+              for c in item.get("commands") or []]
     record = f"plan.py record {plan.get('plan_id')} {item.get('id')} --sha <sha>"
     steps.append(f"Record the commit: {code(record)}")
     return [f"- [{mark}] {step}" for step in steps]

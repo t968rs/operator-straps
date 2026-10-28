@@ -1,10 +1,12 @@
 """Export an action plan's open items as a parallel2 dispatch plan (``{"target", "lanes"}``).
 
 Pure logic over the parsed plan JSON: nothing here runs git or touches the file system. Each open item
-(``PENDING``, ``IN_PROGRESS``, ``BLOCKED``) becomes one ``implement`` lane whose files are the item's files
-plus the file of each planned test node. Waves follow the dependency chains among open items; a lane whose
-files overlap an earlier lane of its wave (``parallel_lanes.entry_overlap``) moves to the next wave, and its
-dependents move with it. The result passes ``parallel_lanes.plan_lanes`` unchanged.
+(``PENDING``, ``IN_PROGRESS``, ``BLOCKED``) becomes one ``implement`` lane whose id is the item id in lower
+case with dots as hyphens (``lane_id``) and whose files are the item's files plus the file of each planned
+test node, each a repo-relative POSIX path (``parallel_lanes.path_problem``). The lane task is the item
+title alone; the dispatcher appends the item's PIP section. Waves follow the dependency chains among open
+items; a lane whose files overlap an earlier lane of its wave (``parallel_lanes.entry_overlap``) moves to
+the next wave, and its dependents move with it. The result passes ``parallel_lanes.plan_lanes`` unchanged.
 """
 from __future__ import annotations
 
@@ -37,6 +39,11 @@ def node_file(node: str) -> str:
     return node.split("::", 1)[0]
 
 
+def lane_id(ident: object) -> str:
+    """The lane id of an item id: lowercase, dots as hyphens (``TASK-3.2`` -> ``task-3-2``)."""
+    return str(ident).lower().replace(".", "-")
+
+
 def lane_files(item: Item) -> List[str]:
     """The item's files, then each test node's file; deduplicated, order kept."""
     nodes = [node_file(test["node"]) for test in item.get("tests") or []]
@@ -55,11 +62,22 @@ def _item_problems(item: Item, known: Iterable[str]) -> List[str]:
     ident, names = item["id"], set(known)
     problems = [f"item {ident}: unknown dependency {dep}"
                 for dep in item.get("dependencies") or [] if dep not in names]
-    if not pl._ID.fullmatch(str(ident).lower()):
+    if pl.id_problem(lane_id(ident)):
         problems.append(f"item {ident}: id does not form a lane id")
-    if not lane_files(item):
+    files = lane_files(item)
+    if not files:
         problems.append(f"item {ident}: no files")
+    problems += [f"item {ident}: path {entry!r} {why}" for entry in files if (why := pl.path_problem(entry))]
     return problems
+
+
+def _shared_lane_ids(items: Sequence[Item]) -> List[str]:
+    """One line per lane id that two or more open items map to."""
+    by_lane: Dict[str, List[str]] = {}
+    for item in items:
+        by_lane.setdefault(lane_id(item["id"]), []).append(str(item["id"]))
+    return [f"items {', '.join(idents)} share lane id {lane}"
+            for lane, idents in by_lane.items() if len(set(idents)) > 1]
 
 
 def _cycles(graph: Mapping[str, Sequence[str]]) -> List[List[str]]:
@@ -96,6 +114,7 @@ def plan_problems(plan: Mapping[str, Any]) -> List[str]:
         return [*problems, "plan has no open items"]
     for item in items:
         problems += _item_problems(item, every)
+    problems += _shared_lane_ids(items)
     problems += [f"dependency cycle: {' -> '.join(cycle)}" for cycle in _cycles(_graph(items))]
     return problems
 
@@ -142,7 +161,7 @@ def assign_waves(items: Sequence[Item]) -> Dict[str, int]:
 def lane_of(item: Item, wave: int) -> Dict[str, Any]:
     """The parallel2 lane dict of one open item."""
     return {
-        "id": str(item["id"]).lower(), "kind": pl.IMPLEMENT, "model": item.get("model") or DEFAULT_MODEL,
+        "id": lane_id(item["id"]), "kind": pl.IMPLEMENT, "model": item.get("model") or DEFAULT_MODEL,
         "task": str(item.get("title") or ""), "files": lane_files(item), "tools": list(IMPLEMENT_TOOLS),
         "wave": wave,
     }

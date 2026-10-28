@@ -130,7 +130,7 @@
     },
     "frozen": {
       "type": ["object", "null"],
-      "description": "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field except item status and evidence. `plan.py check` reports any later edit outside those fields.",
+      "description": "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field except item status, evidence and verification_references, and the top-level completed, frozen, markdown_sync_status and markdown_last_updated. `plan.py check` reports any later edit outside those fields.",
       "required": ["commit", "tree", "date", "digest"],
       "properties": {
         "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},

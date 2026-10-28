@@ -1,7 +1,8 @@
 """Checks a plan's claims against the tree: anchors, lint over commands and decisions, sweeps.
 
 Each function returns one problem line per defect, so a driver prints them all at once. Anchors and sweeps
-read the working tree of ``root``; lint reads the plan, plus the tree only to tell a test file from a folder.
+read the working tree of ``root``; lint reads the plan plus the tree, to tell a test file from a folder and
+to require each test node's file to exist in the tree or among the planned tests.
 """
 from __future__ import annotations
 
@@ -138,16 +139,34 @@ def dependency_problems(plan: Mapping[str, Any]) -> List[str]:
 
 
 def _cycle_members(plan: Mapping[str, Any], known: Set[str]) -> List[str]:
+    """Items on a dependency cycle: the Kahn leftovers that reach themselves, not those merely behind one."""
+    left = _kahn_leftovers(plan, known)
+    return [key for key in sorted(left) if key in _reachable(left, key)]
+
+
+def _kahn_leftovers(plan: Mapping[str, Any], known: Set[str]) -> Dict[str, Set[str]]:
     """Items left after repeatedly removing items whose known dependencies are all removed (Kahn)."""
     deps = {str(i.get("id")): {d for d in i.get("dependencies") or [] if d in known} for i in items_of(plan)}
     while True:
         free = [k for k, v in deps.items() if not v]
         if not free:
-            return sorted(deps)
+            return deps
         for key in free:
             del deps[key]
         for pending in deps.values():
             pending.difference_update(free)
+
+
+def _reachable(deps: Mapping[str, Set[str]], start: str) -> Set[str]:
+    """Every item reachable from ``start`` by following dependencies, one step or more."""
+    seen: Set[str] = set()
+    stack = list(deps.get(start, ()))
+    while stack:
+        key = stack.pop()
+        if key not in seen:
+            seen.add(key)
+            stack.extend(deps.get(key, ()))
+    return seen
 
 
 def planned_test_problems(plan: Mapping[str, Any], root: Path, plans_dir: Path) -> List[str]:
