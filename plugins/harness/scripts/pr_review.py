@@ -163,6 +163,7 @@ from harness_lib import review_edit  # noqa: E402
 from harness_lib import review_merge as rmg  # noqa: E402
 from harness_lib import review_models as rm  # noqa: E402
 from harness_lib import review_plan as rp  # noqa: E402
+from harness_lib import review_waves as rwv  # noqa: E402
 from harness_lib.branch_capture import CaptureError, git, git_out  # noqa: E402
 from harness_lib.config import HarnessConfig, activate, active, load_config  # noqa: E402
 from harness_lib.default_exclusions import ensure_default_exclusions  # noqa: E402
@@ -1666,7 +1667,7 @@ def part_lines(issue: Mapping[str, object], part: Sequence[str]) -> List[str]:
     waves."""
     patterns = active().review.tracking_paths
     rest = [f for f in issue_files(issue) if f not in part]
-    tracked = [f for f in rest if rmg.is_tracking(f, patterns)]
+    tracked = [f for f in rest if rwv.is_tracking(f, patterns)]
     others = [f for f in rest if f not in tracked]
     lines = [f"Your part: {', '.join(part)}"]
     lines += [f"Other parts: {', '.join(others)} (another fixer)"] if others else []
@@ -1812,8 +1813,8 @@ def _cmd_waves(repo: Path, args: argparse.Namespace) -> int:
     shown = [h for h in held if h in {str(i["id"]) for i in issues}]
     print(f"held: {', '.join(shown) if shown else 'none'}")
     patterns = active().review.tracking_paths
-    tracking = tracking_lines(rmg.tracking_rows(issues, held, done, patterns),
-                              rmg.mixed_tracking_rows(issues, held, done, patterns))
+    tracking = tracking_lines(rwv.tracking_rows(issues, held, done, patterns),
+                              rwv.mixed_tracking_rows(issues, held, done, patterns))
     if tracking:
         print("\n".join(tracking))
     notice = ceiling_line(repo)
@@ -1867,8 +1868,8 @@ def widened_waves(repo: Path, issues: Sequence[Dict[str, object]], held: Sequenc
     paths its fix options name that exist in ``repo``, tracking paths left out (``review.tracking_paths``)
     and ``locks`` (see ``serial_locks``) keeping units whose tests hold the same serial flag in one fixer
     or in different waves."""
-    existing = {p for i in issues for p in rmg.fix_paths(i) if (repo / p).is_file()}
-    return rmg.plan_waves(issues, held, done, start_wave=start, registry=dict(entries), existing=existing,
+    existing = {p for i in issues for p in rwv.fix_paths(i) if (repo / p).is_file()}
+    return rwv.plan_waves(issues, held, done, start_wave=start, registry=dict(entries), existing=existing,
                           tracking=active().review.tracking_paths, test_locks=locks)
 
 

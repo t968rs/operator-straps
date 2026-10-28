@@ -1,7 +1,7 @@
 """Guard test: the pr-review README stays aligned with the fix-wave planner it illustrates.
 
 The README draws the wave layout of one worked example and names the planner's caps, helpers and config keys.
-The test replans that example with ``review_merge.plan_waves`` and pins each name the prose shares with it.
+The test replans that example with ``review_waves.plan_waves`` and pins each name the prose shares with it.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import pytest
-from harness_lib import review_merge as rmg
+from harness_lib import review_waves as rwv
 
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2] / "plugins" / "harness"
 _SKILL_DIR = _PLUGIN_ROOT / "skills" / "pr-review"
@@ -55,9 +55,9 @@ def _seconds(fixer: Dict[str, object], by_id: Dict[str, Dict[str, object]]) -> i
     """The README's fixer estimate, recomputed from the fixer row and the public cost constants."""
     ids = list(map(str, fixer["issue_ids"]))  # type: ignore[call-overload]
     if fixer["model"] == "haiku":
-        base, per_unit = rmg.HAIKU_SECONDS
+        base, per_unit = rwv.HAIKU_SECONDS
         return base + per_unit * len(ids)
-    opus = rmg.OPUS_SECONDS
+    opus = rwv.OPUS_SECONDS
     kinds = ["mechanical" if by_id[i]["fix_kind"] == "mechanical" else "judgment" if i[0] == "M" else "heavy"
              for i in ids]
     return opus["base"] + sum(opus[kind] for kind in kinds)
@@ -66,7 +66,7 @@ def _seconds(fixer: Dict[str, object], by_id: Dict[str, Dict[str, object]]) -> i
 @pytest.mark.parametrize("criticals", [False, True])
 def test_worked_example_lanes_match_the_planner(criticals: bool) -> None:
     issues = _example_issues(criticals)
-    waves = rmg.plan_waves(issues, held=[], done=[])
+    waves = rwv.plan_waves(issues, held=[], done=[])
     text = _text()
     assert len(waves) == 2, "the README draws two waves per example"
     for wave in _lanes(waves):
@@ -79,16 +79,16 @@ def test_worked_example_lanes_match_the_planner(criticals: bool) -> None:
 
 def test_caps_in_the_prose_are_the_planner_constants() -> None:
     text = _text()
-    assert f"{rmg.MAX_ISSUES_PER_FIXER} units" in text
-    assert f"up to {rmg.FIXERS_PER_WAVE} fixers" in text
-    assert f"fewer than {rmg.FIXERS_PER_WAVE} fixers" in text
-    assert f"group of exactly {rmg.MAX_ISSUES_PER_FIXER + 1} units" in text
+    assert f"{rwv.MAX_ISSUES_PER_FIXER} units" in text
+    assert f"up to {rwv.FIXERS_PER_WAVE} fixers" in text
+    assert f"fewer than {rwv.FIXERS_PER_WAVE} fixers" in text
+    assert f"group of exactly {rwv.MAX_ISSUES_PER_FIXER + 1} units" in text
 
 
 def test_cost_figures_in_the_prose_are_the_planner_constants() -> None:
     text = _text()
-    base, per_unit = rmg.HAIKU_SECONDS
-    opus = rmg.OPUS_SECONDS
+    base, per_unit = rwv.HAIKU_SECONDS
+    opus = rwv.OPUS_SECONDS
     assert f"haiku fixer    {base} s + {per_unit} s per unit" in text
     line = (f"opus fixer     {opus['base']} s + {opus['heavy']} s per heavy unit + "
             f"{opus['judgment']} s per minor judgment unit + {opus['mechanical']} s per mechanical part")
@@ -99,7 +99,7 @@ def test_every_planner_helper_the_readme_names_exists() -> None:
     names = re.findall(r"\((_\w+)\)", _text())
     assert names, "README names no planner helper"
     for name in names:
-        assert hasattr(rmg, name), f"README names {name}, which review_merge no longer defines"
+        assert hasattr(rwv, name), f"README names {name}, which review_waves no longer defines"
 
 
 def test_config_keys_in_the_table_exist_in_the_defaults() -> None:

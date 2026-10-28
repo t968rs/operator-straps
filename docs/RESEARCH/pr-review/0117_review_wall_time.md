@@ -106,7 +106,8 @@ the error band: the direction is likely, the size is not.
 
 ## Planner tweaks (proposed)
 
-All in `plugins/harness/lib/harness_lib/review_merge.py`. What shipped differs from these proposals: see
+All in `plugins/harness/lib/harness_lib/review_merge.py` at the time of writing; the planner now lives in
+`review_waves.py`. What shipped differs from these proposals: see
 Follow-up below.
 
 1. **Cost-aware cut** (saves about 125 s; fixes 645 s to about 520 s).
@@ -169,7 +170,7 @@ Light-first keeps every linked heavy issue together, which makes one large fixer
 files (0015: a 410 s fixer against the current 190 s + 280 s). PR 117 gains because its heavy hub queued behind a
 heavy W1 fixer under the most-connected cut.
 
-Shipped in plugin 0.39.0 (`review_merge.py`):
+Shipped in plugin 0.39.0 (`review_waves.py`, split out of `review_merge.py` in the same release):
 
 - `plan_waves` plans the layout under both cuts (`_cut(..., light_first)`) and keeps the one with the lower
   `_wall_seconds`; a tie keeps the most-connected cut. The estimate constants are `HAIKU_SECONDS` and
@@ -182,7 +183,7 @@ Shipped in plugin 0.39.0 (`review_merge.py`):
   (`_Rules`) and keeps the lowest estimate. On the 29 saved reviews neither rule ever wins: the total stays
   7517 s and every layout is unchanged. A random search over small issue sets found cases where each one removes
   a wave (readmit: 230 s to 210 s; stretch: 250 s to 230 s), and those cases are pinned in
-  `tests/lib/test_review_merge.py`. They cover shapes these reviews have not produced.
+  `tests/lib/test_review_waves.py`. They cover shapes these reviews have not produced.
 
 PR 117 under the shipped planner: W1 runs the hub {I1, I2, I4, I5, I7, I9} beside C1's fixer {M1, M13, I3, C1},
 a {M1, M2} fixer and a haiku {M6, M12} fixer; W2 runs four fixers of minors and mechanical parts. Estimated fix
@@ -220,4 +221,4 @@ print(json.dumps({"held": held, "registry": len(entries), "waves": waves}, inden
 ```
 
 Line numbers in this note refer to `review_merge.py` at the time of writing. Old line numbers are in the
-`f9becaa` blob.
+`f9becaa` blob; the planner code has since moved to `review_waves.py`.

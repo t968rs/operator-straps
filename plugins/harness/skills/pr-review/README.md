@@ -230,6 +230,7 @@ The README table at the repository root documents each key.
 
 - `SKILL.md`: the procedure.
 - `operating_rules.md`: standing rules for review JSON fields, folding, Phase 5 flow and branch checks.
-- `../../lib/harness_lib/review_merge.py`: the planner (`plan_waves`).
+- `../../lib/harness_lib/review_waves.py`: the planner (`plan_waves`).
+- `../../lib/harness_lib/review_merge.py`: merge, verdict and closeout over the fixer reports.
 - `../../scripts/pr_review.py`: the driver.
 - `../fold-in-review/README.md`: folding outside findings into a run.
