@@ -1177,14 +1177,21 @@ class TestTrackingPaths:
 
     def test_mixed_issue_brief_names_the_tracking_file(
             self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+            capsys: pytest.CaptureFixture,
     ) -> None:
         clone, head = _make_pr(make_project, config=_TRACKING_CONFIG)
         mixed = _finding("src/pkg/b.py", None, name="mixed", also=["docs/a.md"], fix_kind="judgment")
         _built(script, monkeypatch, clone, head, [mixed])
+        capsys.readouterr()
         assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        out = capsys.readouterr().out
+        [[fixer]] = _waves(clone)
+        [issue_id] = fixer["issue_ids"]
+        assert f"tracking (after its fixer): {issue_id} (docs/a.md)" in out
+        assert "tracking: " not in out
         brief = _normalized(_brief(clone, "w1_fix_1", "fix_briefs"))
         assert "Your part: src/pkg/b.py" in brief
-        assert "Tracking files: docs/a.md (main session, after the waves; do not edit)" in brief
+        assert "Tracking files: docs/a.md (main session, during or after the waves; do not edit)" in brief
         assert "Other parts:" not in brief
 
     def test_without_tracking_paths_the_doc_issue_is_planned(
