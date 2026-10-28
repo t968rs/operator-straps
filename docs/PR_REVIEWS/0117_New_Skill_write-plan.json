@@ -1,0 +1,671 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 117,
+  "pr_title": "New Skill: `write-plan`",
+  "branch": "1092-writing-plans",
+  "base_branch": "main",
+  "base_sha": "92e3b1073ab2657a2c45adf0b3983524c95bbe13",
+  "head_sha": "e4ce565f67ff0dabe943f5ba82332f3079d783a8",
+  "review_date": "2026-10-28",
+  "verdict": "READY TO MERGE - 25 of 25 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2757,
+    "deletions": 2,
+    "files_changed": 17
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0117/pr117_20261028T143937Z/findings/config.json",
+    "docs/_scratch/pr_review/0117/pr117_20261028T143937Z/findings/tests.json",
+    "docs/_scratch/pr_review/0117/pr117_20261028T143937Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0117/pr117_20261028T143937Z/findings/docs.json",
+    "docs/_scratch/pr_review/0117/pr117_20261028T143937Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "New definitions (anchor, command, test, decision, value, format, sweep) use additionalProperties false and required lists, so a typo in a plan fails schema validation.",
+    "Patterns and enums agree with the code: anchor `at` matches plan_checks._AT, test `node` fits plan_lanes.node_file splitting, `model` default matches DEFAULT_MODEL, and `frozen` null matches the `plan.py new` skeleton.",
+    "New top-level fields are all optional, so existing plans stay valid.",
+    "End-to-end red run on a real detached worktree with real pytest; checks the checkout stays clean and the worktree is removed.",
+    "classify is tested against realistic pytest output: Windows paths, collection ImportError versus SyntaxError, conftest failure, missing nodes.",
+    "The lanes export is checked against the real parallel_lanes.plan_lanes validator.",
+    "The rendered PIP is parsed with the todo_sync pip_sections parser, which checks the format across modules.",
+    "Driver tests run plan.py main in-process against throwaway git repos, with no stubs.",
+    "plan_red runs one pytest process per node, so a planned collection ImportError cannot hide other nodes.",
+    "The freeze digest is canonical (sort_keys) and excludes only named execution fields.",
+    "assign_waves orders by dependency depth and pushes overlaps forward, keeping waves contiguous and dependents after moved dependencies.",
+    "Checks return one problem line per defect and the driver prints all of them with exit 1.",
+    "commit_problems checks both directions: SHA changes an item file since base, and the tree (incl. untracked) still matches SHA.",
+    "SKILL.md check/red/freeze descriptions (steps 5-8) match plan.py and plan_checks.py, including the open: lines, the refreeze path and the four freeze refusal classes.",
+    "Step 6 explains why a passing or wrongly failing red test proves nothing, the rationale an agent needs to fix the test instead of the check.",
+    "The field table mirrors ActionPlan.schema.json field names and shapes ({at, expect}, {node, red}, {run, expect, writes}) exactly.",
+    "Argument split follows the shared skill_arguments.md reference, and every invocation uses the hpy launcher form the project rules require.",
+    "check returns schema problems alone, so later checks never see a malformed shape.",
+    "red runs one pytest process per node in a throwaway worktree.",
+    "The freeze digest is canonical and refreeze is explicit.",
+    "lanes output is validated by parallel_lanes.plan_lanes itself.",
+    "Driver tests run main() against real throwaway git repositories, refusals included."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "run_red one-node-per-call test is a mock-chain wiring test",
+        "file": "tests/lib/test_plan_red.py",
+        "files": [
+          "tests/lib/test_plan_red.py",
+          "plugins/harness/lib/harness_lib/plan_red.py"
+        ],
+        "lines": "279-290",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Stubs pr.pytest_output, the helper run_red delegates to, then asserts only the argv the stub got; no behavior runs. The isolation it stands for (plan_red.py:9-10) is already proven by test_run_red_classifies_every_open_node_in_the_tree: test_mul.py fails collection, yet test_add still comes back PASSED.\n\nAlso (overall): test_run_red_runs_one_node_per_pytest_call stubs pytest_output and asserts only the args the stub received. The claim it stands for (plan_red.py:9-10: a module-level ImportError in one file must not hide other nodes) is never exercised against real pytest.",
+        "fix": [
+          "Delete it; the end-to-end test at lines 253-276 covers the isolation (add a comment saying so).",
+          "Or convert: a real tree with one import-failing file and one passing node, both through run_red, asserting ImportError and PASSED.",
+          "Replace with a cross_os test: overlay one planned file failing at import and one failing with AssertionError on a make_tree worktree, and assert run_red returns both planned exceptions."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "record does not rerun tests at the commit",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "20",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "README line 20 says `record` reruns the tests of the item at the commit, and SKILL.md line 17 says record reruns its tests at the commit. plan.py run_tests (scripts/plan.py:315-325) runs pytest with cwd=repo, i.e. the live checkout at HEAD plus uncommitted changes. commit_problems (plan.py:299-312) only pins the files and test files of the item to SHA; every other module the tests import can differ (later commits, uncommitted edits). The evidence then stores `tree <SHA tree>` (plan.py:337-340), naming a tree that was never the one tested.\n\nAlso (docs): README.md:20 (Items are marked done only with a commit whose tests pass) and SKILL.md:17. An item proven only by `commands` (allowed by freeze, plan.py:233-235) is marked COMPLETE by `record --sha` without running any command or checking its `expect` (plan.py:315-319 returns early with no nodes); `--closed` also yields a done status (pd.DONE includes CLOSED_NO_ACTION) with no commit at all.",
+        "fix": [
+          "Run the item nodes in a throwaway detached worktree at SHA (reuse plan_red.make_tree / drop_tree as red does) so the documented claim holds.",
+          "Or reword README.md:20 and SKILL.md:17 to: reruns the item tests in the checkout, with the item files unchanged since the commit; and drop or relabel the `tree` reference in the evidence.",
+          "Reword: an item with tests is marked COMPLETE only when they pass at a commit that changed its files; command-only items are recorded on the commit alone.",
+          "Or have record run the item commands and compare `expect` before marking COMPLETE."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Schema-legal dotted item ids cannot become lanes",
+        "file": "plugins/harness/lib/harness_lib/plan_lanes.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_lanes.py",
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/parallel_lanes.py",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ],
+        "lines": "54-62,142-148",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The schema allows `^[A-Z]{2,4}-[0-9.]+$` and cites `TASK-3.2`; _item_problems matches the lowercased id against private `pl._ID` `[a-z0-9][a-z0-9-]*`, so lanes refuses any plan that check and freeze accept with a dotted id. The docstring claim that output passes plan_lanes unchanged also misses files: no `pl.path_problem` check, so a backslash or `./` entry yields a lane plan_lanes rejects.\n\nAlso (overall): lane_of sets task to the title, which render_brief (parallel_lanes.py:416-417) prints as the whole Task. The agent never sees the action, anchors, commands, or that the planned test lives under the plans folder and must be copied in, so the SKILL.md:56-58 parallel path loses the planned red tests.\n\nAlso (overall): The item id pattern allows dots (schema 199-202 cites TASK-3.2) and freeze accepts them, but parallel_lanes._ID has no dot, so lanes refuses the frozen plan only at hand-off.",
+        "fix": [
+          "Map ids to lane ids (lowercase, `.` to `-`), check collisions, expose a public id check in parallel_lanes.",
+          "Run `pl.path_problem` over lane_files in _item_problems.",
+          "Build the task from title, action, planned test source paths, commands and a PIP section pointer.",
+          "Or have SKILL.md append the item PIP section to each lane prompt.",
+          "Map dots to hyphens in lane_of and _item_problems.",
+          "Or lint lane-id form in plan_checks so check catches it before freeze."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "red classification breaks under project pytest addopts",
+        "file": "plugins/harness/lib/harness_lib/plan_red.py",
+        "lines": "12-15,31",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "plan_red.py:12-15 assumes default --tb=auto output but PYTEST_ARGS does not pin it. Under addopts --tb=short an assertion failure matches neither _LOCATION nor _E_LINE, so a planned AssertionError becomes FAILED and red and freeze reject a correct plan.",
+        "fix": [
+          "Append --tb=auto to PYTEST_ARGS and add a classify case built from --tb=short output."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Hand-set COMPLETE status is never detected",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_doc.py",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "README.md"
+        ],
+        "lines": "25-28,151-165,233-235",
+        "reviewer": "overall, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:16-18,53-54 and README.md:20 say items are marked done only by record and check reports other edits. frozen_digest excludes status, evidence and verification_references (plan_doc.py:25,113-121) and check never inspects COMPLETE items, so a hand edit passes check and satisfies dependents. Pre-freeze, unproven_items and red skip DONE items, so an item written COMPLETE freezes unproven.\n\nAlso (runtime): Freeze docstring and digest_problems say every field but status and evidence; frozen_digest also skips verification_references, completed, frozen, markdown_sync_status, markdown_last_updated.",
+        "fix": [
+          "In check, require each COMPLETE item to carry the record shape (40-hex commit reachable from HEAD plus tree entry), and refuse freeze while any item is not PENDING.",
+          "Name the execution fields, or point to plan_doc.MUTABLE_TOP and MUTABLE_ITEM."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "record --sha tests the working tree, not the recorded commit",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "README.md",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ],
+        "lines": "299-325,336-340",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "run_tests runs pytest in the live checkout; commit_problems only pins the item files to SHA. Unlisted uncommitted edits, or later commits when SHA is older than HEAD, can make nodes pass that fail at SHA, yet evidence says `commit <sha>: N test node(s) passed` with the SHA tree. Docstring lines 34-38 present this as proof for SHA.\n\nAlso (overall): README.md:20 and SKILL.md:17-18 say record reruns the tests at the commit, but run_tests uses cwd=repo and commit_problems pins only item and test-node files to SHA. Later commits or uncommitted helper or conftest edits can make nodes pass while SHA fails, yet evidence records the SHA tree.",
+        "fix": [
+          "Run the nodes in a detached worktree at SHA (reuse plan_red.make_tree/drop_tree).",
+          "Or require a clean tree and SHA == HEAD, and word the evidence as a working-tree run.",
+          "Or reword README, SKILL and the docstring to say tests run in the working tree."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "Empty --sha or --blocked closes the item as CLOSED_NO_ACTION",
+        "file": "plugins/harness/scripts/plan.py",
+        "lines": "344-350",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "apply_record branches on truthiness. `--sha \"\"` (an unset `$SHA`) or `--blocked \"\"` passes the required group, skips every gate and falls to the else arm: status CLOSED_NO_ACTION, evidence None. The item is DONE with no proof, and null evidence breaks the schema (string), so the next check fails.",
+        "fix": [
+          "Branch on `is not None` and reject empty strings for --sha, --blocked and --closed with a PlanError."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "parallel2 handoff cannot reach record and drops the planned tests",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_lanes.py",
+          "plugins/harness/lib/harness_lib/plan_render.py",
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "56-61",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:56-61 sends open items through `PLAN lanes <id> | P2 plan -`, then records each with `--sha <commit>` reachable from HEAD. parallel2 stages a lane diff uncommitted into the target and never commits (parallel2/SKILL.md:67-70); the lane commit sits on `p2/<id>`, not reachable from the target HEAD, and is deleted by cleanup. The skill never says the SHA to record is the developer commit of the staged work. Separately, plan_lanes.lane_of (plan_lanes.py:142-148) sets the lane task to the item title only: no action, no anchors, no pointer to `<plans dir>/<plan_id>/tests/<path>`, and the PIP boxes (plan_render.py:97-104) do not name the planned file either, so a lane implementer writes the test file from scratch instead of copying the planned one that the red run validated.\n\nAlso (docs): SKILL.md:56-58 says `PLAN lanes` turns the open items into lanes. ActionPlan.schema.json:201-202 allows ids like TASK-3.2 (its own example), but plan_lanes._item_problems (plan_lanes.py:58-59) checks the lowercased id against parallel_lanes._ID `[a-z0-9][a-z0-9-]*`, so any dotted id fails with: id does not form a lane id. This surfaces only after freeze, when renaming ids forces `freeze --refreeze`.\n\nAlso (docs): SKILL.md:59-60 says record needs the commit changing one of the item files. commit_problems (plan.py:304-305) diffs base_commit..SHA, so any later commit passes once an earlier commit since the base touched an item file; the plan.py docstring (line 36) correctly says since the base.",
+        "fix": [
+          "Add to step 9: record waits until the developer commits the staged lane changes, and `--sha` names that commit, not the `p2/<id>` lane commit.",
+          "Have lane_of build the task from the item title, action, PIP path and planned test source paths (copy `<plans dir>/<plan_id>/tests/<path>` to `<path>`), or have step 9 write the lanes JSON to a scratch file and extend each task with those before `P2 plan`.",
+          "Map . to - in the lane_of id and in the _item_problems check.",
+          "Or state in the SKILL.md table that item ids for parallel execution carry no periods, and narrow the schema pattern and example to match.",
+          "SKILL.md:59-60: the commit reachable from HEAD, with one of the item files changed between the plan base and it."
+        ]
+      },
+      {
+        "id": "I8",
+        "name": "Schema short-circuit test cannot fail on the claim it names",
+        "file": "tests/scripts/test_plan_driver.py",
+        "files": [
+          "tests/scripts/test_plan_driver.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "151-154",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_check_stops_at_schema_problems asserts the word anchor is absent from err, but its plan has a valid anchor and no other defect, so it passes even if all_problems (plan.py:159-165) ran every check after the schema failure.",
+        "fix": [
+          "Also give the item a stale anchor (expect def plus(a, b):) next to the bad red value, so the absence check fails when later checks run."
+        ]
+      },
+      {
+        "id": "I9",
+        "name": "Documented driver guards and modes have no test",
+        "file": "tests/scripts/test_plan_driver.py",
+        "files": [
+          "tests/scripts/test_plan_driver.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "183-298,350-358",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "Nothing tests the record --sha refusal of a non-commit or a SHA unreachable from HEAD (plan.py:289-296), record --start / --blocked, or the render subcommand (plan.py:17-18, 34-38).\n\nAlso (tests): freeze runs red through git worktree add/remove (plan.py:199-209, 254), but only the three red tests carry cross_os; the freeze, record and lanes tests do not, so the Windows job skips the freeze-to-record flow.",
+        "fix": [
+          "Add driver tests for a bogus SHA, a SHA on an unrelated branch, --start, --blocked REASON and render.",
+          "Mark those tests cross_os (at least test_freeze_records_head_and_renders and test_record_runs_the_tests_and_completes_the_item)."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Docstring drift in plan_checks and test_plan_red",
+        "file": "plugins/harness/lib/harness_lib/plan_checks.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_checks.py",
+          "tests/lib/test_plan_red.py"
+        ],
+        "lines": "3-4",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "plan_checks.py:3-4 says lint reads the tree only to tell files from folders, but planned_test_problems also requires node files to exist. test_plan_red.py:1 says base commit; the driver uses HEAD.",
+        "fix": [
+          "Reword both docstrings."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Cycle message names dependents as cycle members",
+        "file": "plugins/harness/lib/harness_lib/plan_checks.py",
+        "lines": "136-150",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "_cycle_members returns all Kahn leftovers: with A and B mutually dependent and C on A, lint says `dependency cycle among A, B, C`.",
+        "fix": [
+          "Report strongly connected components of size > 1, or reword to in or behind a cycle."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "red worktree may import code from the main checkout",
+        "file": "plugins/harness/lib/harness_lib/plan_red.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_red.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "152-167",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "With an editable src-layout install the package resolves to the main checkout, so red tests the live checkout, not HEAD as plan.py:21-23 states.",
+        "fix": [
+          "Prepend worktree source roots to PYTHONPATH for pytest_output, or document the limit."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "PIP docstring says rules find sections by item id",
+        "file": "plugins/harness/lib/harness_lib/plan_render.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_render.py",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py"
+        ],
+        "lines": "3-6",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "rules_plans._p1_item looks up sections only via `markdown_section` and skips items without it; the driver never sets it, so P1 skips driver plans unless the author fills it.\n\nAlso (overall): plan_render.py:3-4 claims rules_plans finds sections by id, but _p1_item (rules_plans.py:36-39) reads only markdown_section, which the driver never sets, so P1 skips driver plans.",
+        "fix": [
+          "Reword the docstring, or have lint require `markdown_section` equal to the item id.",
+          "Correct the docstring.",
+          "Or require markdown_section equal to the id and lint it."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Nothing expands the {base} placeholder",
+        "file": "plugins/harness/lib/harness_lib/plan_render.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_render.py",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ],
+        "lines": "101",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "Schema line 129, SKILL.md:40 and plan_checks.py:113 tell authors to write {base}, but plan_render prints commands verbatim and shows only a 7-character base, so a copied command fails.",
+        "fix": [
+          "Substitute base_commit for {base} in plan_render._boxes.",
+          "Or define {base} in SKILL.md and print the full base."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "frozen description understates the digest's excluded fields",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_doc.py",
+          "plugins/harness/schemas/README.md"
+        ],
+        "lines": "126-161,292-311",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The `frozen` description says the digest covers 'every field except item status and evidence'. plan_doc.frozen_digest also drops the top-level MUTABLE_TOP fields (completed, frozen, markdown_sync_status, markdown_last_updated) and the item field verification_references (MUTABLE_ITEM). A plan author reading the schema would think edits to verification_references or completed trip `plan.py check`; they do not.\n\nAlso (config): The ActionPlan section of the schemas README still lists only the pre-PR fields. It does not mention base_commit, frozen, decisions, values, formats, sweeps, or the per-item model, anchors, commands and tests that this PR adds to the schema, so the one prose reference for the schema is stale.",
+        "fix": [
+          "Reword to: 'a digest of every field except item status, evidence and verification_references, and the top-level completed, frozen, markdown_sync_status and markdown_last_updated'.",
+          "Add a bullet list for the new top-level and per-item fields to section 2 of plugins/harness/schemas/README.md, pointing to the write-plan skill and plan.py."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Non-suffixed plan path writes a mangled PIP",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_doc.py"
+        ],
+        "lines": "86-93",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "locate accepts any `.json`; pip_path strips 16 characters unchecked, so `render notes/my_plan.json` writes `notes/_PIP.md`.",
+        "fix": [
+          "Require `name.endswith(pd.PLAN_SUFFIX)` in locate, or raise PlanError in pd.pip_path."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Reopening an item keeps the plan completed date",
+        "file": "plugins/harness/scripts/plan.py",
+        "lines": "359-360",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "cmd_record sets `completed` when all items are DONE and never clears it; a later --start or --blocked leaves a completed plan with open items.\n\nAlso (overall): cmd_record sets completed when all items are done but never clears it after --start or --blocked reopens one.",
+        "fix": [
+          "Pop `completed` (or null it) when any item is open.",
+          "Set completed to today() when all items are done, else None, on every record."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "argument-hint omits --no-fetch",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "lines": "4",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:4 argument-hint lists `[--spec PATH] [--base BRANCH]`; line 12 and plan.py:400 also accept `--no-fetch`.",
+        "fix": [
+          "SKILL.md:4: <title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]"
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Field table omits schema constraints an author trips on",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/schemas/ActionPlan.schema.json"
+        ],
+        "lines": "32-41",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:32-41: `items[].tests.red` is an enum of five names (ImportError, AttributeError, AssertionError, NotImplementedError, TypeError; schema line 353), `model` is haiku, sonnet or opus, item ids are 2-4 uppercase letters, a dash and digits, decision ids `D<n>`, sweep ids `S<n>`. The table states none of these, and its last row says known ids, no cycle for files/dependencies/model although only dependencies are checked that way (files are unchecked, model is a schema enum). Plan authors learn these only from `schema:` refusals.",
+        "fix": [
+          "Add the red enum to the tests row, the id patterns to the decisions, sweeps and items rows, and change the last row check column to: dependencies known ids, no cycle; model haiku, sonnet or opus."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "check reports any other edit overstates the freeze digest",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "53-54",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:53-54: after freeze, check reports any other edit. frozen_digest (plan_doc.py:24-25,113-121) also excludes verification_references, completed, markdown_sync_status and markdown_last_updated, so hand edits to those are not reported. The schema (line 133) and plan.py docstring (lines 27-28) say every field but status and evidence, which understates the excluded set too.",
+        "fix": [
+          "SKILL.md:53-54: check reports any edit outside item status, evidence and verification references and the plan completion and markdown sync fields; align ActionPlan.schema.json:133 and plan.py:27-28."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Digest test name says decision field but edits an anchor",
+        "file": "tests/lib/test_plan_doc.py",
+        "lines": "89-93",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_digest_changes_when_a_decision_field_changes edits items[0].anchors[0].expect, not a decision.",
+        "fix": [
+          "Rename it test_digest_changes_when_a_fixed_field_changes.",
+          "Or edit decisions[0].chosen instead."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "test_plan_red docstring names the base commit; the code uses HEAD",
+        "file": "tests/lib/test_plan_red.py",
+        "lines": "1",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Line 1 says the tests are overlaid on the base commit of the plan; plan_red.py:4-5 and plan.py:200-204 use HEAD, and the tests set base_commit to an empty string.",
+        "fix": [
+          "Reword line 1 to: planned tests overlaid on the worktree of a commit and run red."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "filled fixture docstring omits its item parameter",
+        "file": "tests/scripts/test_plan_driver.py",
+        "lines": "83",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstring says filled(**top); the function is _fill(item=None, **top) and most callers pass an item.",
+        "fix": [
+          "Document it as filled(item=None, **top)."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Freeze refusal tests skip the writes-nothing-on-refusal contract",
+        "file": "tests/scripts/test_plan_driver.py",
+        "lines": "168-180,196-201,327-332",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "plan.py:6 promises a refusal writes nothing; the freeze refusal tests check only exit code and stderr.",
+        "fix": [
+          "After each refused freeze, assert that read_plan(project)[\"frozen\"] is still None (or unchanged)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 117 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"3ac4b7c953be5d9ecb62d7353528d9eafe50a120\",\"headRefName\":\"1092-writing-plans\",\"headRefOid\":\"e4ce565f67ff0dabe943f5ba82332f3079d783a8\",\"last_sha\":\"e4ce565f67ff0dabe943f5ba82332f3079d783a8\",\"mergeCommit\":null,\"number\":117,\"state\":\"OPEN\",\"title\":\"New Skill: `write-plan`\",\"url\":\"https://github.com/t968rs/operator-straps/pull/117\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1092-writing-plans",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1092-writing-plans",
+        "head_ref_name": "1092-writing-plans",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "3ac4b7c953be5d9ecb62d7353528d9eafe50a120",
+        "head_sha": "e4ce565f67ff0dabe943f5ba82332f3079d783a8",
+        "base_ancestor_command": "git merge-base --is-ancestor 3ac4b7c953be5d9ecb62d7353528d9eafe50a120 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor e4ce565f67ff0dabe943f5ba82332f3079d783a8 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - locate accepts only paths ending in the ActionPlan suffix (pd.PLAN_SUFFIX); a non-suffixed .json now falls through to the plan-id check and is refused, so render cannot write a mangled PIP; pip_path raises PlanError when the plan file name does not end with PLAN_SUFFIX, so no mangled _PIP.md is written"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - cmd_record pops the completed key when any item is open, sets it to today() only when all items are DONE"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - freeze docstring and digest_problems message now list the excluded set: item status, evidence, verification references and plan completed, frozen, markdown sync fields; SKILL.md step 8: check reports any edit outside item status, evidence and verification references and the plan's completion and markdown sync fields; frozen description (schema line 133) now names the excluded verification_references and top-level completed, markdown_sync_status and markdown_last_updated fields"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - apply_record branches on is not None and reject_empty raises PlanError for empty or blank --sha, --blocked or --closed"
+    },
+    {
+      "id": "I8",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - cited only: the stale-anchor fixture belongs to the test part; all_problems (plan.py:159-165) is unchanged; test_check_stops_at_schema_problems gives the item a stale anchor so the absence check fails if later checks run"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - plan_checks module docstring now says lint also requires each test node's file in the tree or planned tests; test_plan_red line 1 names the worktree of a commit, not the base commit"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - _cycle_members keeps only Kahn leftovers that reach themselves (new _kahn_leftovers, _reachable), so items merely behind a cycle are not named; new test file covers A<->B with C on A, a self-loop and an acyclic chain"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - line 1 docstring reworded to: planned tests overlaid on the worktree of a commit and run red"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - PYTEST_ARGS ends with --tb=auto so it overrides project addopts; _exception_name maps a bare E assert line to AssertionError; module docstring updated; SHORT classify cases added from real --tb=short output"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - mock-chain argv test replaced by a cross_os run_red test on a make_tree worktree with addopts --tb=short: one planned file failing at import and one failing with a bare AssertionError, asserting ImportError and AssertionError and no red problems; plan_red.py cited only, its isolation claim at lines 9-10 holds as written and needed no edit for C1"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - plan_render docstring now says the plan rules look a section up only through markdown_section and skip items without one, and a markdown_section equal to the item id finds the rendered heading; rules_plans cited only, its _p1_item behaviour is correct and the docstring was the defect"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - plan_render._boxes substitutes the full base_commit for {base} in each command (new _expand_base helper); SKILL.md commands row states render prints {base} as the full base commit"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - SKILL.md argument-hint adds [--no-fetch]"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - SKILL.md field table: red enum on the tests row, D<n> and S<n> id patterns on decisions and sweeps, item id pattern on the items row, check column now 'dependencies known ids, no cycle; model haiku, sonnet or opus'; cited only: the field constraints (red enum, id patterns, model enum) already live in the schema; the table edit is in write-plan/SKILL.md, another part"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - filled fixture docstring now documents the signature filled(item=None, **top)"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - each of the four freeze refusal tests now asserts the plan JSON is unchanged after the refusal"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - renamed test_digest_changes_when_a_decision_field_changes to test_digest_changes_when_a_fixed_field_changes"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - pytest runs in a plan worktree go through plan_red.run_pytest with tree_env, which puts a src-layout src/ first on PYTHONPATH ahead of an editable install; plan_red and plan.py red docstrings state the rule and its limit"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - record runs the item nodes on a throwaway detached worktree at SHA (tests_at via plan_red.make_tree/run_pytest/drop_tree), so the tree evidence names the tree tested; README, SKILL and the record docstring say tested items complete only at a commit that changed their files, command-only items record on the commit alone, --closed on its rationale"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - plan_lanes.lane_id maps ids to lowercase with dots as hyphens (lane_of and _item_problems), _item_problems runs pl.path_problem over lane_files, plan_problems reports items sharing a lane id; parallel_lanes exposes id_problem (used by _lane_problems); SKILL.md states the id mapping and tells the dispatcher to append the item PIP section and copy the planned tests in; ActionPlan.schema.json cited only: the dotted id pattern stays legal now that lanes maps dots to hyphens"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - check and require_frozen report a COMPLETE item lacking record's 40-hex commit reachable from HEAD plus matching tree entry (completion_problems); a first freeze refuses any item not PENDING (started_items); freeze/check docstrings, SKILL step 8 and README name the execution fields via plan_doc.MUTABLE_TOP/MUTABLE_ITEM; plan_doc.py cited only: MUTABLE_TOP and MUTABLE_ITEM already name the execution fields (plan_doc.py:23-25)"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - run_tests runs the nodes in a detached worktree at SHA (tests_at), so a passing uncommitted helper no longer proves SHA; README, SKILL and the record docstring say the tests run on a throwaway worktree at the commit"
+    },
+    {
+      "id": "I9",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - driver tests for a non-commit SHA, a SHA unreachable from HEAD, --start and --blocked, render, a hand-set COMPLETE, a non-PENDING first freeze, a dotted lane id and a record that fails at SHA despite an uncommitted helper; cross_os on the freeze and record --sha worktree tests; plan.py cited only: the guards and render subcommand under test already exist"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - SKILL.md step 9: record waits for the developer commit of the staged lane work and --sha names it, not the p2/<id> lane commit; record needs an item file changed between the plan base and the commit. Already present: lane_id maps dots to hyphens (plan_lanes.py:42-44, used by _item_problems:65) and step 9 tells lanes to append the PIP section and copy the planned test files; plan_render.py, ActionPlan.schema.json and plan.py docstring cited only, no edit needed"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "e4ce565 (working-tree snapshot; developer commits) - schema frozen description lists every digest-excluded field; plan_doc.frozen_digest docstring names MUTABLE_TOP and MUTABLE_ITEM; schemas README documents the v2 plan, design and per-item fields (outside fixer waves)"
+    }
+  ]
+}
