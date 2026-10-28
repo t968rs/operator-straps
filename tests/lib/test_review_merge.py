@@ -598,6 +598,40 @@ class TestPlanWaves:
         waves = rmg.plan_waves(self._hub_and_leaves(), held=[], done=[], cap=2)
         assert [[f["issue_ids"] for f in wave] for wave in waves] == [[["M1"], ["M2"], ["M3"]], [["I1"]]]
 
+    @staticmethod
+    def _heavy_pair(*extra: Dict[str, object]) -> List[Dict[str, object]]:
+        """Two judgment importants over a.py and b.py, a mechanical leaf on each file, plus ``extra``."""
+        pair = [_issue(i, "a.py", fix_kind="judgment", files=["a.py", "b.py"]) for i in ("I1", "I2")]
+        return [*pair, _issue("M1", "a.py"), _issue("M2", "b.py"), *extra]
+
+    def test_tied_estimates_keep_the_most_connected_cut(self) -> None:
+        waves = rmg.plan_waves(self._heavy_pair(), held=[], done=[], cap=2)
+        assert [[f["issue_ids"] for f in wave] for wave in waves] == [[["M1"], ["M2"]], [["I1", "I2"]]]
+
+    def test_light_first_cut_wins_when_heavy_work_would_queue_behind_heavy_work(self) -> None:
+        critical = _issue("C1", "z.py", fix_kind="judgment")
+        waves = rmg.plan_waves(self._heavy_pair(critical), held=[], done=[], cap=2)
+        lanes = [[f["issue_ids"] for f in wave] for wave in waves]
+        assert lanes == [[["I1", "I2"], ["C1"]], [["M1"], ["M2"]]]
+
+    def test_all_heavy_group_defers_its_most_connected_unit(self) -> None:
+        issues = [_issue("I1", "a.py", fix_kind="judgment", files=["a.py", "b.py"]),
+                  _issue("I2", "a.py", fix_kind="judgment"), _issue("I3", "b.py", fix_kind="judgment")]
+        waves = rmg.plan_waves(issues, held=[], done=[], cap=1)
+        assert [[f["issue_ids"] for f in wave] for wave in waves] == [[["I2"], ["I3"]], [["I1"]]]
+
+    def test_split_part_skips_a_fixer_holding_a_heavy_issue(self) -> None:
+        issues = [_issue("M1", "a.py", files=["a.py", "b.py"]), _issue("I1", "a.py", fix_kind="judgment")]
+        waves = rmg.plan_waves(issues, held=[], done=[])
+        assert [(f["issue_ids"], f["parts"]) for f in waves[0]] == [
+            (["M1", "I1"], {"M1": ["a.py"], "I1": ["a.py"]}), (["M1"], {"M1": ["b.py"]})]
+
+    def test_overflow_chunk_avoids_a_fixer_holding_a_heavy_issue(self) -> None:
+        pairs = (("I1", "a.py"), ("M2", "b.py"), ("M3", "c.py"))
+        issues = [_issue(i, f, fix_kind="judgment") for i, f in pairs]
+        waves = rmg.plan_waves(issues, held=[], done=[], fixers=2)
+        assert [f["issue_ids"] for f in waves[0]] == [["I1"], ["M2", "M3"]]
+
     def test_group_within_the_cap_runs_whole_in_one_fixer(self) -> None:
         waves = rmg.plan_waves(self._hub_and_leaves(), held=[], done=[], cap=6)
         assert [f["issue_ids"] for f in waves[0]] == [["M1", "M2", "M3", "I1"]] and len(waves) == 1

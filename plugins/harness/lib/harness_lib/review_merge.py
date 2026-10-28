@@ -20,13 +20,17 @@ severity after the review's highest, nothing renumbered or merged; ``cross_candi
 
 Fix waves: a mechanical multi-file issue splits into one single-file part per file; a judgment multi-file
 issue stays whole. Units link through a shared owned file or serial-test lock; a linked group of at most
-``MAX_ISSUES_PER_FIXER`` units runs whole in the first wave. A larger group is cut: the most connected unit
-(ties: the least severe) is deferred until every remaining group fits, the deferred units re-enter the pool
-for the next wave, and the units that hung on a deferred hub run in parallel before it. A group sharing
-nothing with the wave's fixers joins the fixer holding another part of one of its issues when it fits; otherwise
-it opens a fixer of its own while the wave holds fewer than ``FIXERS_PER_WAVE``, and past that it joins the
-smallest fixer with room, preferring one of its own fix kind, so a wave spreads its work across fixers instead
-of filling one to the cap. Fixers within a wave are file-disjoint over the
+``MAX_ISSUES_PER_FIXER`` units runs whole in the first wave. A larger group is cut: units are deferred until
+every remaining group fits, and the deferred units re-enter the pool for the next wave. The most-connected cut
+defers the most connected unit (ties: the least severe), so the units that hung on a deferred hub run in
+parallel before it; the light-first cut defers light units (mechanical parts, minor issues) before heavy ones
+(critical or important judgment fixes), so heavy work runs in the first wave. The layout is planned under both
+cuts and the one with the lower estimated wall time (``HAIKU_SECONDS``, ``OPUS_SECONDS``) wins, the
+most-connected cut on a tie. A group sharing nothing with the wave's fixers joins the fixer holding another
+part of one of its issues when it fits and that fixer holds no heavy unit; otherwise it opens a fixer of its
+own while the wave holds fewer than ``FIXERS_PER_WAVE``, and past that it joins the smallest fixer with room,
+preferring one of its own fix kind, then one without a heavy unit, so a wave spreads its work across fixers
+instead of filling one to the cap. Fixers within a wave are file-disjoint over the
 files they own and never hold the same serial-test lock; tracking paths belong to no fixer. Given a test
 registry map, each unit also owns the registered tests targeting its files and the existing paths its
 ``fix`` text names (widened files: in the fixer's ``files`` and the disjointness check, never in ``parts``).
@@ -63,6 +67,11 @@ if TYPE_CHECKING:
 MERGE_WINDOW = 3
 MAX_ISSUES_PER_FIXER = 6
 FIXERS_PER_WAVE = 4
+# Estimated fixer seconds, calibrated on recorded fixer runs: a haiku fixer's base and per-unit cost; an opus
+# fixer's base and its cost per heavy unit (a critical or important judgment fix), per minor judgment unit and
+# per mechanical part. Only the ratios steer the layout choice.
+HAIKU_SECONDS = (25, 7)
+OPUS_SECONDS = {"base": 20, "heavy": 65, "judgment": 30, "mechanical": 10}
 PENDING = "pending - to be populated in Phase 4"
 SCHEMA_NAME = "PR_REVIEW.schema.json"
 SCHEMA_VERSION = "2.1.0"
@@ -657,34 +666,48 @@ def _degree(unit: _Unit, units: Sequence[_Unit]) -> int:
     return sum(1 for other in units if other is not unit and _keys(unit) & _keys(other))
 
 
-def _cut(group: Sequence[_Unit], cap: int) -> Tuple[List[List[_Unit]], List[_Unit]]:
+def _heavy(unit: _Unit) -> bool:
+    """True for a judgment fix of a critical or important issue: the work that sets a fixer's wall time."""
+    return unit.issue.get("fix_kind") != "mechanical" and _tier(unit.id) != "minor"
+
+
+def _holds_heavy(chunk: Sequence[_Unit]) -> bool:
+    """True when ``chunk`` holds a heavy unit (``_heavy``)."""
+    return any(_heavy(u) for u in chunk)
+
+
+def _cut(group: Sequence[_Unit], cap: int,
+         light_first: bool = False) -> Tuple[List[List[_Unit]], List[_Unit]]:
     """Cut a group over ``cap`` units: defer the most connected unit (ties: the least severe) until every
     remaining group fits ``cap``. Returns the groups that run now and the deferred units, which fall to a
     later wave. Removing a deferred hub removes the links through it, so neighbours that shared only the hub
     fall into separate groups and run in parallel instead of queueing behind the fixer that owns the hub;
     neighbours that also share a file or lock stay in one component, and that component is cut again if
-    it is still over ``cap``."""
+    it is still over ``cap``. With ``light_first``, a heavy unit (``_heavy``) is deferred only when the
+    crowded groups hold no light one, so heavy work stays in the earliest wave and the later waves carry
+    the cheap units."""
     kept, deferred = list(group), []
     groups = [list(kept)]
     while any(len(g) > cap for g in groups):
         crowded = [u for g in groups if len(g) > cap for u in g]
-        hub = max(crowded, key=lambda u: (_degree(u, kept), _id_key(u.id)))
+        hub = max(crowded, key=lambda u: (light_first and not _heavy(u), _degree(u, kept), _id_key(u.id)))
         kept = [u for u in kept if u is not hub]
         deferred.append(hub)
         groups = _components(kept)
     return groups, deferred
 
 
-def _schedule(units: Sequence[_Unit], cap: int) -> List[List[List[_Unit]]]:
+def _schedule(units: Sequence[_Unit], cap: int, light_first: bool = False) -> List[List[List[_Unit]]]:
     """Waves of file-disjoint groups, each at most ``cap`` units: a group that fits runs whole in the first
-    wave, a larger one is cut (``_cut``) and its deferred units re-enter the pool for the next wave."""
+    wave, a larger one is cut (``_cut``, passing ``light_first``) and its deferred units re-enter the pool
+    for the next wave."""
     waves: List[List[List[_Unit]]] = []
     pool = list(units)
     while pool:
         wave: List[List[_Unit]] = []
         pool, later = [], pool
         for group in _components(later):
-            run, deferred = ([group], []) if len(group) <= cap else _cut(group, cap)
+            run, deferred = ([group], []) if len(group) <= cap else _cut(group, cap, light_first)
             wave.extend(run)
             pool.extend(deferred)
         waves.append(sorted(wave, key=lambda g: (-len(g), min(_id_key(u.id) for u in g))))
@@ -708,18 +731,46 @@ def _mechanical(chunk: Sequence[_Unit]) -> bool:
 
 def _place_free(wave: List[List[_Unit]], chunk: List[_Unit], cap: int, target: int) -> None:
     """Place a group that shares nothing with the fixers of ``wave``: the fixer already holding another part
-    of one of its issues (a split issue stays whole while it fits), else a new fixer while the wave holds
-    fewer than ``target``, else the smallest fixer with room (one of the group's own fix kind first), else a
-    new fixer."""
+    of one of its issues (a split issue stays whole while it fits) unless that fixer holds a heavy unit,
+    else a new fixer while the wave holds fewer than ``target``, else the smallest fixer with room (one of
+    the group's own fix kind first, then one without a heavy unit), else a new fixer. A fixer holding heavy
+    work is the slowest of its wave, so it takes no more than its own group while another place exists."""
     roomy = [b for b in wave if len(b) + len(chunk) <= cap]
     ids = {u.id for u in chunk}
-    kin = [b for b in roomy if ids & {u.id for u in b}]
+    kin = [b for b in roomy if ids & {u.id for u in b} and not _holds_heavy(b)]
     if kin:
         kin[0].extend(chunk)
     elif len(wave) < target or not roomy:
         wave.append(list(chunk))
     else:
-        min(roomy, key=lambda b: (_mechanical(b) != _mechanical(chunk), len(b))).extend(chunk)
+        kind = _mechanical(chunk)
+        min(roomy, key=lambda b: (_mechanical(b) != kind, _holds_heavy(b), len(b))).extend(chunk)
+
+
+def _fixer_seconds(chunk: Sequence[_Unit]) -> int:
+    """Estimated wall seconds of one fixer over ``chunk`` (``HAIKU_SECONDS``, ``OPUS_SECONDS``)."""
+    if _mechanical(chunk):
+        base, per_unit = HAIKU_SECONDS
+        return base + per_unit * len(chunk)
+    costs = [OPUS_SECONDS["mechanical"] if u.issue.get("fix_kind") == "mechanical"
+             else OPUS_SECONDS["heavy" if _heavy(u) else "judgment"] for u in chunk]
+    return OPUS_SECONDS["base"] + sum(costs)
+
+
+def _wall_seconds(waves: Sequence[Sequence[Sequence[_Unit]]]) -> int:
+    """Estimated wall seconds of a layout: the slowest fixer of each wave, summed over the waves."""
+    return sum(max(_fixer_seconds(chunk) for chunk in wave) for wave in waves)
+
+
+def _layout(units: Sequence[_Unit], cap: int, fixers: int, light_first: bool) -> List[List[List[_Unit]]]:
+    """Waves of fixers (unit lists): ``_schedule`` with the given cut, each wave's groups placed on fixers."""
+    waves: List[List[List[_Unit]]] = []
+    for groups in _schedule(units, cap, light_first):
+        wave: List[List[_Unit]] = []
+        for group in groups:
+            _place_free(wave, group, cap, fixers)
+        waves.append(wave)
+    return waves
 
 
 def _parts(chunk: Sequence[_Unit]) -> Dict[str, List[str]]:
@@ -764,16 +815,14 @@ def plan_waves(issues: Sequence[Issue], held: Sequence[str], done: Sequence[str]
     each other like a shared file, so they never share a wave; a fixer record names its ``locks``.
     ``fixers`` is the number of fixers a wave opens for unrelated chunks before they start sharing a fixer
     (``_place_free``); a wave may exceed it when no fixer has room for a group.
+    Two layouts are planned, one per cut (``_cut``: most connected first, or light units first); the one
+    with the lower estimated wall time (``_wall_seconds``) is returned, the most-connected cut on a tie.
     """
     skip = set(held) | set(done)
     units = [u for i in issues if i["id"] not in skip
              for u in _units(i, registry or {}, existing or set(), tracking, test_locks)]
-    waves: List[List[List[_Unit]]] = []
-    for groups in _schedule(units, cap):
-        wave: List[List[_Unit]] = []
-        for group in groups:
-            _place_free(wave, group, cap, fixers)
-        waves.append(wave)
+    layouts = [_layout(units, cap, fixers, light_first) for light_first in (False, True)]
+    waves = min(layouts, key=_wall_seconds)
     return [[_fixer(start_wave + w, k, b) for k, b in enumerate(wave, start=1)]
             for w, wave in enumerate(waves)]
 
