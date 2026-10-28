@@ -24,7 +24,8 @@
     "registry_names": [],
     "timings": null,
     "fixer_test_seconds": null,
-    "defer_flags": []
+    "defer_flags": [],
+    "serial_flags": []
   },
   "review": {
     "guard_suite": [],
@@ -34,7 +35,8 @@
     "structural_guard_prefixes": [],
     "content_pin_pattern": null,
     "lenses": null,
-    "domain_pointers": []
+    "domain_pointers": [],
+    "tracking_paths": []
   },
   "commit_buckets": [
     {"bucket": "Artifact", "prefixes": ["docs/PR_REVIEWS/", "docs/PR_SUMMARIES/"], "names": [], "suffixes": ["matrix.jsonl", "agent_usage.jsonl"]},

@@ -1,0 +1,380 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 114,
+  "pr_title": "1090 parallel dispatches",
+  "branch": "1090-parallel-dispatches",
+  "base_branch": "main",
+  "base_sha": "f9becaafd080e2a8499de1e9aa4ce05fdd186baa",
+  "head_sha": "4230c4da0d12d2762c85ba29b96ecab8583b9d6d",
+  "review_date": "2026-10-27",
+  "verdict": "READY TO MERGE - 13 of 13 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 498,
+    "deletions": 75,
+    "files_changed": 12
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0114/pr114_20261028T055032Z/findings/config.json",
+    "docs/_scratch/pr_review/0114/pr114_20261028T055032Z/findings/tests.json",
+    "docs/_scratch/pr_review/0114/pr114_20261028T055032Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0114/pr114_20261028T055032Z/findings/docs.json",
+    "docs/_scratch/pr_review/0114/pr114_20261028T055032Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Both new keys (tests.serial_flags, review.tracking_paths) land in schema, defaults.json, config.py dataclasses and builders, and the README table together, as the four-place rule requires.",
+    "Schema types match the builders and defaults: serial_flags reuses the strings def (non-empty, unique) and tracking_paths reuses relPaths (no absolute or drive paths), with tests covering empty, absolute and scalar rejects.",
+    "Schema descriptions agree with the README rows and the driver behavior: tracking-only issues go to the main session via closeout --resolved, tracking paths a fix option names never join a fixer file set, and serial tests are planned into different waves or one fixer.",
+    "New plan_waves tests are discriminating: test_overflow_chunk_prefers_a_fixer_of_its_own_kind and test_past_the_fixer_target_chunks_share_the_smallest each fail under the naive 'first roomy fixer' rule, pinning both keys of `_place_free`.",
+    "Every lock and tracking behavior has a paired control test (test_without_locks_the_same_issues_share_a_wave, test_without_the_flag_the_same_fixers_share_a_wave, test_without_tracking_paths_the_doc_issue_is_planned), so the feature, not the fixture, causes the asserted difference.",
+    "test_tracking_issue_is_left_to_the_main_session runs the real driver end to end (waves, record_fixes, closeout --resolved) and checks the review document, with only gh and phase-4 checks stubbed; no mock-chain wiring tests in scope.",
+    "test_is_tracking_uses_fnmatch pins that `*` crosses `/` (docs/PLANS/a/b.md), documenting the fnmatch rather than glob semantics.",
+    "Config tests cover default, override and rejection (empty string, absolute path, bare string instead of list) for tracking_paths.",
+    "Union-find components over file and lock keys make fixer disjointness hold by construction instead of being re-checked at each placement.",
+    "Deferring the hub (most connected unit, least severe on ties) turns star-shaped groups into parallel singletons; old chunk-by-file packing serialized them.",
+    "Serial locks exclude deferred tests, so a test fixers never run cannot force serialization.",
+    "Tracking paths are filtered both from unit files and from fix-named widening, so a plan or tracker never leaks into a fixer's file set by either route.",
+    "Placement is deterministic despite set-valued keys: groups keep first-seen order and the fixer files and locks are sorted.",
+    "README key table gains rows for both new keys (tests.serial_flags, review.tracking_paths), in step with the defaults, schema and config changes, and notes that a deferred test holds no lock, which matches serial_locks.",
+    "SKILL.md, operating_rules.md and the review_merge module docstring all describe the cut rule (most connected unit, ties to the least severe) and the 4-fixer spread exactly as _cut, _id_key and _place_free implement them.",
+    "Stale wording from the old chunk planner (`placed first`, file chunks) was removed from every in-scope doc, and none of it remains in the plugin docs.",
+    "Both new keys (tests.serial_flags, review.tracking_paths) land in all four required places (defaults, schema, config dataclass/builder, README), and bad values have rejection tests.",
+    "Locks use the same key mechanism as files in _keys/_components, so wave disjointness follows one rule instead of two parallel checks.",
+    "serial_locks drops deferred tests, so a test no fixer will run cannot serialize the waves.",
+    "Tests are behavioral: plan_waves cases assert concrete wave layouts, and the driver tests run waves -> record_fixes -> closeout against a real built project.",
+    "The hub-cut docs (module docstring, SKILL.md, operating_rules.md) agree with _cut/_schedule/_place_free on the cap, tie-break, FIXERS_PER_WAVE and same-issue preference."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Tracking files of a mixed issue are orphaned: closeout resolves the issue and the main session is never told",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "tests/scripts/test_pr_review_driver.py",
+          "plugins/harness/skills/pr-review/operating_rules.md",
+          "tests/lib/test_review_merge.py"
+        ],
+        "lines": "561-567,601-614",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "For an issue with both tracking and non-tracking files, _units drops the tracking files from the unit, so the fixer's parts hold only the non-tracking files. Closeout then treats the issue as split (_is_split: a fixer owns less than the full file set) and _coverage_problem only checks planned.required(), i.e. the planned parts, so the issue goes RESOLVED as soon as the fixer edits its part. The fixer brief (part_lines) says the tracking files are for the 'main session, after the waves; do not edit', but tracking_rows only reports issues whose EVERY file is tracking, so waves never lists a mixed issue's tracking files to the main session. Net result: the tracking-file half of the fix is never assigned to anyone and the issue is marked resolved anyway. test_mixed_issue_brief_names_the_tracking_file only checks the brief line, not the hand-off or closeout.\n\nAlso (roast): An issue with both code files and tracking files (e.g. a.py plus docs/PLANS/plan.md) gets its tracking file dropped from its unit in _units, and tracking_rows only reports issues whose every file is tracking. So waves prints no tracking: row for it, and closeout resolves it once the fixer covers a.py: _split_parts/required() only cover planned files, so the plan edit is never required. The fixer brief tells the fixer the main session will edit the tracking file after the waves (pr_review.py part_lines), and SKILL.md says the brief names it, but nothing tells the main session, and the issue is already RESOLVED by then. tests/lib/test_review_merge.py test_mixed_issue_plans_only_its_other_files asserts tracking_rows(...) == [], which locks the gap in. The plan update is promised and then quietly dropped.",
+        "fix": [
+          "Make tracking_rows also emit mixed issues (id plus only their tracking files, e.g. a 'tracking (after its fixer):' row), and have tracking_lines print them so the main session gets the to-do; add a driver test that a mixed issue appears in the waves output.",
+          "Or keep a mixed issue open at closeout until one of its tracking files changed since build (e.g. add the tracking files to required coverage, satisfied only by --resolved or a changed tracking file), and say so in part_lines and SKILL.md.",
+          "Have tracking_rows report every undone issue with at least one tracking file, naming the tracking files and whether a fixer owns the rest; tracking_lines then tells the main session to edit those files for mixed ids too. Update test_mixed_issue_plans_only_its_other_files to expect the row.",
+          "Keep a mixed issue open until the tracking part is done: closeout leaves it partially fixed (tracking files count as required, covered only by closeout --resolved), and waves prints the tracking: row until it closes."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Tracking files of mixed issues are never handed to the main session",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/skills/pr-review/operating_rules.md",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "799-803",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md says that for an issue with other files the fixer takes the non-tracking files and its brief names the tracking files as not its own. The brief line (pr_review.py part_lines) says `main session, after the waves; do not edit`. Nothing hands that edit to the main session, though. `tracking_rows` (review_merge.py) lists only issues whose files are all tracking. `remaining_parts`/closeout require only the planned (non-tracking) parts, so the fixer's entry closes the id RESOLVED with the plan or tracker file untouched. A later `closeout --resolved` for that id is then skipped silently because the id is already closed. The documented flow (operating_rules.md also says the main session edits only the `tracking:` row issues) loses the tracking half of every mixed issue. Separately, `the fixer plans the others` misnames the actor: `waves` plans the parts and the fixer fixes them.",
+        "fix": [
+          "Have `waves` also list mixed issues' tracking files (e.g. a `tracking (after fixer):` row naming id and files) and state in SKILL.md and operating_rules.md that the main session edits those files after the wave returns. Reword `the fixer plans the others` to `waves plans the other files for a fixer`.",
+          "At minimum, document in SKILL.md (Tracking paths bullet) and operating_rules.md that the fixer's entry resolves a mixed issue and its tracking files get no `tracking:` row: after closeout, the main session must edit them from the fixer briefs' `Tracking files:` lines. Fix the `fixer plans` wording."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "tracking_paths docs omit that fnmatch * crosses /",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "339",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "is_tracking uses fnmatch, where * matches across /. test_is_tracking_uses_fnmatch relies on this (docs/PLANS/a/b.md matches docs/PLANS/*.md), and the driver config uses 'docs/*.md', which takes every nested markdown file under docs/ away from all fixers. The exclusions row in the same README table warns about this. The tracking_paths row (README.md:339) and the schema description do not, so a user writing docs/*.md to mean top-level only removes far more from the fixers' reach than intended.",
+        "fix": [
+          "Add '(`fnmatch` `*` crosses `/`, so `docs/*.md` also matches nested files)' to the review.tracking_paths row in README.md and the same clause to the tracking_paths description in plugins/harness/config/harness.schema.json."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "ReviewConfig docstring does not cover the new tracking_paths field",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "lines": "71",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "ReviewConfig is described as 'Project guard suites and review-brief additions for pr-review'. tracking_paths is neither: it is a fix-wave ownership rule (files no fixer owns). TestsConfig's docstring was updated for serial_flags, but ReviewConfig's was not updated for tracking_paths.",
+        "fix": [
+          "Extend the docstring: '... and the tracking paths (plans, trackers) no pr-review fixer owns'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Fix-waves prose omits the kin rule that runs before the per-wave fixer target",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "lines": "26-28,749-750",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says a group sharing nothing with the wave's fixers 'opens a fixer of its own while the wave holds fewer than FIXERS_PER_WAVE', and plan_waves says 'fixers is the number of fixers a wave opens for unrelated chunks before they start sharing a fixer'. _place_free first merges a group into a roomy fixer already holding another part of the same issue (kin), even when the wave has fewer than `target` fixers, and it opens a fixer past the target when no fixer has room. Both docstrings disagree with the code.",
+        "fix": [
+          "Add the kin step to the module docstring (lines 26-28): 'joins the fixer holding another part of one of its issues when it fits; otherwise opens a fixer of its own while ...', and in plan_waves (lines 749-750) say the target can be exceeded when no fixer has room."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "_cut docstring claims a deferred hub leaves its neighbours file-disjoint",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "lines": "647-651",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_cut's docstring says 'A hub deferred this way leaves the units that hung on it file-disjoint, so they run in parallel'. Removing the hub only breaks the links that go through the hub. Neighbours that also share a file or lock with each other stay in one component (and in one fixer, or get cut again). The loop is correct; the guarantee in the prose is not.",
+        "fix": [
+          "Reword to 'removes the links through the hub, so neighbours that shared only the hub fall into separate groups and run in parallel'."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Three answers to when the main session edits tracking files",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "README.md",
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "tests/scripts/test_pr_review_driver.py"
+        ],
+        "lines": "1663-1673",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The fixer brief says tracking files are edited by the main session after the waves (pr_review.py part_lines, 1672, and its docstring at 1665). SKILL.md:801 says during or after the waves, and README.md:339 says after or beside the waves. Because no fixer owns those paths, editing them during the waves is safe, so after the waves is the outlier. The driver test pins the brief wording.",
+        "fix": [
+          "Use one phrase everywhere, e.g. 'main session, during or after the waves; do not edit' in part_lines and its docstring, 'during or after the waves' in README.md:339, and update the assertion in tests/scripts/test_pr_review_driver.py test_mixed_issue_brief_names_the_tracking_file."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "waves prints a stray blank line when no issue is tracking-only",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "1813",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_cmd_waves runs print(\"\n\".join(tracking_lines(...))) unconditionally. tracking_lines returns [] in the common case (no tracking_paths configured), so every waves run prints an empty line between 'held:' and the next block. pending_lines never returns empty, so this pattern is new.",
+        "fix": [
+          "Store the tracking_lines result and print it only when it is non-empty, matching the 'notice' handling a few lines below."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "widened_waves docstring misstates the lock rule",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "1850-1852",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The docstring says locks keep 'fixers that share a serial test in different waves'. Fixers that share a test already collide on the file key. A lock links different tests that are true at the same serial flag, and _components may put those units in ONE fixer rather than in different waves (the schema description says '(or one fixer)').",
+        "fix": [
+          "Reword to: 'locks (see serial_locks) keeping units whose tests hold the same serial flag in one fixer or in different waves'."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Spread-over-fixers bullet states a condition that is always true",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "789-791",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:789 opens with `A group that touches no fixer of its wave opens a fixer of its own...`. That implies some groups do touch a fixer and are handled differently. In plan_waves every group of a wave comes from _components (or _cut), so groups are disjoint by construction and none ever touches another fixer. The _place_free docstring makes the same assumption. The condition is vacuous and suggests a branch that does not exist.",
+        "fix": [
+          "Reword SKILL.md:789-790 to `Groups of a wave share no file or lock. Each group opens a fixer of its own while the wave holds fewer than 4; past that it joins the smallest fixer with room...`."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "operating_rules serial-test and grouping rules are stated too broadly or too narrowly",
+        "file": "plugins/harness/skills/pr-review/operating_rules.md",
+        "lines": "97-98,105",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "operating_rules.md:105 says `Fixers that hold a test flagged at one of tests.serial_flags never share a wave`. The code (_keys/_components keyed by lock name) separates only fixers holding the same flag, and lets one fixer take both. Fixers with different serial flags can share a wave, and deferred tests hold no lock (serial_locks). Lines 97-98 say `units sharing a file run in one fixer`, but the code also links units through a shared widened file or serial-test lock, as SKILL.md:784-785 states.",
+        "fix": [
+          "Line 105: replace the sentence with `Fixers whose (non-deferred) tests share a tests.serial_flags flag never share a wave (or one fixer takes both).` Lines 97-98: change `units sharing a file run in one fixer` to `units sharing a file, a widened file or a serial-test lock run in one fixer`."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "serial_flags rejection cases live in the deferral test",
+        "file": "tests/lib/test_config.py",
+        "lines": "157-162",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`{'serial_flags': ['']}` and `{'serial_flags': 'properties.arcpy'}` were appended to the parametrize list of test_fixer_test_deferral_rejects_bad_values, but serial flags are not a deferral setting (they produce wave locks). The test name now misdescribes a third of its cases, while the new tracking_paths key got its own rejection test.",
+        "fix": [
+          "Move the two serial_flags cases into a new `test_fixer_serial_flags_rejects_bad_values` parametrized test beside test_fixer_serial_flags_default_and_override.",
+          "Or rename the existing test to `test_tests_section_rejects_bad_values`."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Cut tie-break test claims severity ordering but feeds only minor ids",
+        "file": "tests/lib/test_review_merge.py",
+        "lines": "605-608,610-618",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_cut_defers_the_least_severe_of_equally_connected_units plans eight issues that are all M-tier, so the tie-break `_id_key` exercised is only the number component. `_cut` (review_merge.py:656) breaks degree ties by tier first (`_RANK`, critical=0), which is what the test name promises; flipping or dropping the tier component of the key would leave this test green. The severity half of the contract has no test.\n\nAlso (tests): test_cut_recurses_until_every_group_fits asserts only that no fixer exceeds two issue ids and that all six ids are planned. A regression in `_cut`/`_components` that put two groups sharing a.py or b.py into different fixers of the same wave (the exact invariant the cut exists to keep) would still pass, as would a planner that put every unit in its own wave.",
+        "fix": [
+          "Add a case with mixed tiers on one file, e.g. `[_issue('C1'), _issue('I1'), _issue('M1')]` with cap=2, and assert the M issue is the one deferred to wave 2 (C1 and I1 stay in wave 1).",
+          "Or rename the existing test to `test_cut_defers_the_highest_numbered_of_equally_connected_units` and add the mixed-tier case separately.",
+          "After the existing asserts, add the disjointness loop already used by test_pr1558_fixture: for each wave, `seen = set()`; for each fixer `assert not set(f['files']) & seen; seen |= set(f['files'])`, plus `assert len(waves) == 2`."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 114 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"1191ddb1988462ac76486c2f560d5256337aa0fd\",\"headRefName\":\"1090-parallel-dispatches\",\"headRefOid\":\"4230c4da0d12d2762c85ba29b96ecab8583b9d6d\",\"last_sha\":\"4230c4da0d12d2762c85ba29b96ecab8583b9d6d\",\"mergeCommit\":null,\"number\":114,\"state\":\"OPEN\",\"title\":\"1090 parallel dispatches\",\"url\":\"https://github.com/t968rs/operator-straps/pull/114\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1090-parallel-dispatches",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1090-parallel-dispatches",
+        "head_ref_name": "1090-parallel-dispatches",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "1191ddb1988462ac76486c2f560d5256337aa0fd",
+        "head_sha": "4230c4da0d12d2762c85ba29b96ecab8583b9d6d",
+        "base_ancestor_command": "git merge-base --is-ancestor 1191ddb1988462ac76486c2f560d5256337aa0fd HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 4230c4da0d12d2762c85ba29b96ecab8583b9d6d HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - tracking_paths row in README.md and tracking_paths schema description now state that fnmatch * crosses /, so docs/*.md also matches nested files"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - part_lines and its docstring in pr_review.py and the README tracking_paths row now say 'during or after the waves'; Tracking-file assertion in test_mixed_issue_brief_names_the_tracking_file now pins 'main session, during or after the waves; do not edit' to match pr_review.py part_lines (already updated by the other part). SKILL.md Tracking paths bullet already says 'during or after the waves'."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - _cmd_waves stores tracking_lines result and prints it only when non-empty"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - widened_waves docstring reworded to 'units whose tests hold the same serial flag in one fixer or in different waves'"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - review_merge module docstring and plan_waves docstring now state the kin join step and that a wave may exceed the fixer target when no fixer has room"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - _cut docstring reworded: removing a deferred hub removes only links through it; neighbours sharing a file or lock stay in one component and are cut again if over cap"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - serial_flags rejection cases moved out of test_fixer_test_deferral_rejects_bad_values into new test_fixer_serial_flags_rejects_bad_values beside test_fixer_serial_flags_default_and_override"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - Spread-over-fixers bullet reworded to 'Groups of a wave share no file or lock.' and dropped the vacuous touches-no-fixer condition"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - ReviewConfig docstring now covers tracking_paths (plans, trackers no pr-review fixer owns)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - operating_rules.md: units sharing a file, widened file or serial-test lock run in one fixer; serial-flag rule now scoped to non-deferred tests sharing a flag"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - test_review_merge.py: added mixed-tier cut case (M1 deferred, C1/I1 stay in wave 1); recurse test now asserts two waves and per-wave file disjointness"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - new mixed_tracking_rows lists a mixed issue's tracking files; waves prints them as a 'tracking (after its fixer):' row via tracking_lines; SKILL.md and operating_rules.md tell the main session to edit them after the fixer's wave; lib and driver tests cover the row"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "4230c4d (working-tree snapshot; developer commits) - waves hands mixed issues' tracking files to the main session ('tracking (after its fixer):' row); SKILL.md Tracking paths bullet and operating_rules.md document it, and 'the fixer plans the others' now reads 'waves plans the other files for a fixer'"
+    }
+  ]
+}

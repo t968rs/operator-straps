@@ -41,7 +41,8 @@ class Artifacts:
 @dataclass(frozen=True)
 class TestsConfig:
     """Where the project's tests live, how a path is recognized as one, and which registered tests
-    pr-review fixers defer (measured slower than ``fixer_test_seconds`` in ``timings``, or flagged)."""
+    pr-review fixers defer (measured slower than ``fixer_test_seconds`` in ``timings``, or flagged) or never
+    run side by side (``serial_flags``)."""
 
     roots: Tuple[str, ...]
     file_pattern: str
@@ -50,6 +51,7 @@ class TestsConfig:
     timings: Optional[str]
     fixer_test_seconds: Optional[float]
     defer_flags: Tuple[str, ...]
+    serial_flags: Tuple[str, ...]
 
     def is_test_path(self, path: str) -> bool:
         """Return True for a repo-relative POSIX path under a test root or matching ``file_pattern``."""
@@ -66,7 +68,8 @@ class DomainPointer:
 
 @dataclass(frozen=True)
 class ReviewConfig:
-    """Project guard suites and review-brief additions for pr-review."""
+    """Project guard suites and review-brief additions for pr-review, and the tracking paths (plans, trackers) no
+    pr-review fixer owns."""
 
     guard_suite: Tuple[str, ...]
     local_guards: Tuple[str, ...]
@@ -76,6 +79,7 @@ class ReviewConfig:
     content_pin_pattern: Optional[str]
     lenses: Optional[str]
     domain_pointers: Tuple[DomainPointer, ...]
+    tracking_paths: Tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -373,14 +377,15 @@ def _artifacts(a: Dict[str, Any]) -> Artifacts:
 def _tests(t: Dict[str, Any]) -> TestsConfig:
     ceiling = t["fixer_test_seconds"]
     return TestsConfig(tuple(t["roots"]), t["file_pattern"], t["registry"], tuple(t["registry_names"]),
-                       t["timings"], None if ceiling is None else float(ceiling), tuple(t["defer_flags"]))
+                       t["timings"], None if ceiling is None else float(ceiling), tuple(t["defer_flags"]),
+                       tuple(t["serial_flags"]))
 
 
 def _review(r: Dict[str, Any]) -> ReviewConfig:
     pointers = tuple(DomainPointer(p["prefix"], p["pointer"]) for p in r["domain_pointers"])
     return ReviewConfig(tuple(r["guard_suite"]), tuple(r["local_guards"]), r["local_test_pattern"],
                         tuple(r["registry_guards"]), tuple(r["structural_guard_prefixes"]),
-                        r["content_pin_pattern"], r["lenses"], pointers)
+                        r["content_pin_pattern"], r["lenses"], pointers, tuple(r["tracking_paths"]))
 
 
 def _bucket(b: Dict[str, Any]) -> BucketRule:

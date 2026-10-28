@@ -1135,6 +1135,110 @@ class TestDeferredTests:
         assert "(measured " not in _brief(clone, "w1_fix_1", "fix_briefs")
 
 
+_TRACKING_CONFIG = {**_CONFIG, "review": {**_CONFIG["review"], "tracking_paths": ["docs/*.md"]}}
+_SERIAL_REGISTRY = {"tests": [
+    {"file": "tests/test_a.py", "properties": {"arcpy": True, "test_target_paths": ["src/pkg/a.py"]}},
+    {"file": "tests/test_b.py", "properties": {"arcpy": True, "test_target_paths": ["src/pkg/b.py"]}},
+]}
+
+
+def _serial_config(flags: List[str]) -> dict:
+    """``_CONFIG`` with the registry and the given ``tests.serial_flags``."""
+    return {**_CONFIG, "tests": {"registry": "tests/registry.json", "serial_flags": flags}}
+
+
+def _serial_findings() -> List[Dict[str, object]]:
+    """Six findings on a.py fill one fixer; the seventh, on b.py, would otherwise get a second fixer."""
+    return [_finding("src/pkg/a.py", None, name=f"a{n}") for n in range(6)] + [_finding("src/pkg/b.py", None)]
+
+
+class TestTrackingPaths:
+    def test_tracking_issue_is_left_to_the_main_session(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, head = _make_pr(make_project, config=_TRACKING_CONFIG)
+        path = _built(script, monkeypatch, clone, head, [_finding("src/pkg/a.py"), _finding("docs/a.md")])
+        capsys.readouterr()
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        out = capsys.readouterr().out
+        [[fixer]] = _waves(clone)
+        assert fixer["issue_ids"] == ["M2"] and "docs/a.md" not in fixer["files"]
+        assert "tracking: M1 (docs/a.md)" in out
+        assert "closeout --resolved for M1" in out
+        _write(clone, "src/pkg/a.py", "def f0():\n    return 0\n")
+        rm.record_fixes(_PR, "w1_fix_1", [{"id": "M2", "what": "fixed a", "files": ["src/pkg/a.py"]}],
+                        repo=clone)
+        _write(clone, "docs/a.md", "# A\n\nplan updated\n")
+        assert _run(script, clone, "closeout", "--pr", str(_PR), "--resolved",
+                    "M1=updated the plan in the main session") == 0
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        assert sorted(r["id"] for r in doc["post_review_resolutions"]) == ["M1", "M2"]
+
+    def test_mixed_issue_brief_names_the_tracking_file(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, head = _make_pr(make_project, config=_TRACKING_CONFIG)
+        mixed = _finding("src/pkg/b.py", None, name="mixed", also=["docs/a.md"], fix_kind="judgment")
+        _built(script, monkeypatch, clone, head, [mixed])
+        capsys.readouterr()
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        out = capsys.readouterr().out
+        [[fixer]] = _waves(clone)
+        [issue_id] = fixer["issue_ids"]
+        assert f"tracking (after its fixer): {issue_id} (docs/a.md)" in out
+        assert "tracking: " not in out
+        brief = _normalized(_brief(clone, "w1_fix_1", "fix_briefs"))
+        assert "Your part: src/pkg/b.py" in brief
+        assert "Tracking files: docs/a.md (main session, during or after the waves; do not edit)" in brief
+        assert "Other parts:" not in brief
+
+    def test_without_tracking_paths_the_doc_issue_is_planned(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+            capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, head = _make_pr(make_project)
+        _built(script, monkeypatch, clone, head, [_finding("src/pkg/a.py"), _finding("docs/a.md")])
+        capsys.readouterr()
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        assert "tracking:" not in capsys.readouterr().out
+        assert sorted(i for w in _waves(clone) for f in w for i in f["issue_ids"]) == ["M1", "M2"]
+
+
+class TestSerialFlags:
+    def test_serial_locks_skip_deferred_and_unflagged_tests(self, script: ModuleType, make_project) -> None:
+        rows = _SERIAL_REGISTRY["tests"] + [{"file": "tests/test_c.py", "properties": {}}]
+        repo = make_project(_serial_config(["properties.arcpy"]), {"tests/registry.json": {"tests": rows}})
+        activate(load_config(repo))
+        assert script.serial_locks(repo, {}) == {"tests/test_a.py": ("properties.arcpy",),
+                                                 "tests/test_b.py": ("properties.arcpy",)}
+        assert script.serial_locks(repo, {"tests/test_b.py": "measured"}) == {
+            "tests/test_a.py": ("properties.arcpy",)}
+
+    def test_fixers_sharing_a_flagged_test_flag_run_in_separate_waves(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+    ) -> None:
+        clone, head = _make_pr(make_project, config=_serial_config(["properties.arcpy"]),
+                               base_extra={"tests/registry.json": _SERIAL_REGISTRY})
+        _built(script, monkeypatch, clone, head, _serial_findings())
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        waves = _waves(clone)
+        assert [[f["id"] for f in w] for w in waves] == [["w1_fix_1"], ["w2_fix_1"]]
+        assert [f["locks"] for w in waves for f in w] == [["properties.arcpy"], ["properties.arcpy"]]
+
+    def test_without_the_flag_the_same_fixers_share_a_wave(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+    ) -> None:
+        clone, head = _make_pr(make_project, config=_serial_config([]),
+                               base_extra={"tests/registry.json": _SERIAL_REGISTRY})
+        _built(script, monkeypatch, clone, head, _serial_findings())
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        waves = _waves(clone)
+        assert [[f["id"] for f in w] for w in waves] == [["w1_fix_1", "w1_fix_2"]]
+        assert all("locks" not in f for w in waves for f in w)
+
+
 class TestFollowUpWaves:
     def test_partially_fixed_split_issue_replans_missing_part(self, script: ModuleType,
                                                               monkeypatch: pytest.MonkeyPatch,

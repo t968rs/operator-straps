@@ -780,15 +780,32 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
 
 - **Parts and whole issues.** A mechanical multi-file issue splits into one single-file part per file, owned by that
   file's fixer, so one id can appear in several fixers of a wave (the brief shows `Your part` / `Other parts`). A
-  judgment multi-file issue stays whole over primary + `also`, with one owner, and is placed first.
-- **At most 6 units (whole issues or parts) per fixer;** the remaining units group by file, and a file with more
-  splits into chunks of at most 6.
+  judgment multi-file issue stays whole over primary + `also`, with one owner.
+- **At most 6 units (whole issues or parts) per fixer.** Units that share a file, a widened file or a serial-test
+  lock form a group that runs in one fixer. A group of up to 6 runs whole in the first wave. A larger group is cut:
+  its most connected unit (ties: the least severe) waits for a later wave, repeatedly, until each remaining
+  group fits, so the units that hung on that unit run in parallel first and a judgment issue that spans many
+  files can land after the minors around it.
+- **Spread over fixers.** Groups of a wave share no file or lock. Each group opens a fixer of its own while the wave
+  holds fewer than 4; past that it joins the smallest fixer with room (one of its own fix kind first), and a fixer
+  already holding another part of the same issue takes that group first. A wave runs as many fixers in parallel as
+  its files allow, so its slowest fixer, not its fixer count, sets the wall time.
 - **File-disjoint within a wave** over the files each fixer owns, so a wave's fixers run in parallel; a later wave
   runs only after the earlier one returns.
 - **Widened file set.** Each fixer also owns the registered tests (entries of the project's `tests.registry` whose
   `test_target_paths` include one of its issues' files) and the existing repo paths its issues' `fix` options name
   (`a/b/c.ext` tokens), so a fix can carry the test and doc edits it needs. Widened files count in the wave's
   disjointness check and closeout's file-set validation; parts and the split rule are unchanged.
+- **Tracking paths.** A path matching `review.tracking_paths` (plans, trackers) belongs to no fixer: it never
+  widens a file set, and an issue whose files are all tracking is not planned. `waves` prints it as a
+  `tracking:` row; the main session edits those files, during or after the waves, then records each id with
+  `closeout --resolved <id>="what changed"`. For an issue with other files, `waves` plans the other files for a
+  fixer, whose brief names the tracking files as not its own, and prints the tracking files as a
+  `tracking (after its fixer):` row. The fixer's entry resolves that id at closeout, so the main session edits
+  those tracking files after the fixer's wave returns, without `closeout --resolved`.
+- **Serial tests.** A registered test that is `true` at a `tests.serial_flags` path (and is not deferred) holds
+  that flag as a lock. Fixers holding the same lock never share a wave (or one fixer takes both), so those
+  tests never run at the same time; the fixer record in `waves.json` names its `locks`.
 - **Deferred tests.** A registered test whose summed seconds in the project's `tests.timings` report exceed
   `tests.fixer_test_seconds`, or whose registry entry is `true` at one of the `tests.defer_flags` paths, is listed
   in the brief as `deferred, do not run` with its reason. It is editable when the file set lists it, but no fixer runs it;
