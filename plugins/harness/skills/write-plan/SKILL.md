@@ -1,7 +1,7 @@
 ---
 name: write-plan
 description: Use when a spec or agreed design for multi-step work needs an implementation plan, before touching code, or when an existing plan's items need their status recorded with evidence. Triggers on "write a plan", "plan this", "write-plan", "record TASK-3".
-argument-hint: "<title> [--spec PATH] [--base BRANCH] [-- <guidance>]"
+argument-hint: "<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]"
 ---
 
 # write-plan: a plan whose claims are checked
@@ -14,8 +14,10 @@ guidance for writing the plan (scope, a constraint, files to read first); it nev
 
 A plan here is an ActionPlan JSON the driver checks, not prose. Every claim about existing code is an
 **anchor** the driver opens; every search the plan relies on is a **sweep** the driver reruns; every test is
-a **real file** the plan holds, and every item is marked done only by `record`, which reruns its tests at the
-commit. The PIP markdown is rendered from the JSON and never edited by hand.
+a **real file** the plan holds, and every item changes state only through `record`: an item with tests is
+marked COMPLETE only when they pass on a throwaway worktree at a commit that changed its files, a command-only
+item is recorded on the commit alone (its commands are not run), and `--closed` needs a rationale, no commit.
+The PIP markdown is rendered from the JSON and never edited by hand.
 
 `PLAN` below stands for `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/plan.py"`,
 run with the Bash tool from the project checkout. Every refusal is a `problem:` line and exit 1.
@@ -31,14 +33,14 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
 
    | Field | Carries | Checked by `check` |
    |---|---|---|
-   | `decisions[]` | each design question, its options and `chosen` (null = open) | chosen is one of its options |
+   | `decisions[]` | each design question (id `D<n>`), its options and `chosen` (null = open) | chosen is one of its options |
    | `values[]` | every threshold, count or band copied from the spec or the code, with `assumes` | no value assumes a rejected option |
    | `formats[]` | every literal format another component parses, with `source` (an anchor at its producer or parser) | the source anchor |
-   | `sweeps[]` | every search the plan relies on (old names, moved paths) with each hit file classified | reruns the pattern; unclassified hits and stale classifications fail |
+   | `sweeps[]` | every search the plan relies on (id `S<n>`; old names, moved paths) with each hit file classified | reruns the pattern; unclassified hits and stale classifications fail |
    | `items[].anchors` | `{at: "path:12-18", expect: "<text>"}` for each fact about existing code the item uses | opens the range, compares the text |
-   | `items[].tests` | `{node, red}`: the pytest node and the exception that fails it before the work | the node's file exists or is planned |
-   | `items[].commands` | `{run, expect, writes}`: generation and verification commands | no commit SHA (use `{base}`), no pytest run of a directory or of no file |
-   | `items[].files`, `dependencies`, `model` | the item's file set, order and implementing model | known ids, no cycle |
+   | `items[].tests` | `{node, red}`: the pytest node and the exception that fails it before the work (`ImportError`, `AttributeError`, `AssertionError`, `NotImplementedError` or `TypeError`) | the node's file exists or is planned |
+   | `items[].commands` | `{run, expect, writes}`: generation and verification commands | no commit SHA (use `{base}`, which `render` prints as the full base commit), no pytest run of a directory or of no file |
+   | `items[].id`, `files`, `dependencies`, `model` | the item id (2-4 uppercase letters, a dash, digits and dots: `TASK-3`), its file set, order and implementing model | dependencies known ids, no cycle; model `haiku`, `sonnet` or `opus` |
 
 4. **Write the planned tests** as real files under `<plans dir>/<plan_id>/tests/<repo-relative path>`, the full
    content each test file will have. No test code goes in the JSON or the PIP.
@@ -50,15 +52,24 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
    Fix the test file or the planned `red`, never the check.
 7. **Settle open decisions with the developer.** No decision defaults to an answer; an open one blocks freeze.
 8. **`PLAN freeze <id>`**. It refuses any check problem, any open decision, any open item with neither a test
-   nor a command, and any red problem. After the freeze only `record` changes the plan; `check` reports any
-   other edit. A change of design after the freeze is an edit plus `freeze --refreeze`, stated to the
-   developer.
+   nor a command, any red problem, and, on a first freeze, any item not `PENDING`. After the freeze only
+   `record` changes the plan; `check` reports any edit outside the execution fields (`plan_doc.MUTABLE_TOP`
+   and `MUTABLE_ITEM`: item status, evidence and verification references; the plan's completed, frozen and
+   markdown sync fields), and any COMPLETE item without the commit and tree `record` writes. A change of
+   design after the freeze is an edit plus `freeze --refreeze`, stated to the developer.
 9. **Hand off** the PIP path for review and an execution method. For parallel execution,
    `PLAN lanes <id> | P2 plan -` (with `P2` as in `harness:parallel2`) turns the open items into lanes, waved
-   by dependency and file overlap. Each implemented item is recorded with
-   `PLAN record <id> <ITEM> --sha <commit>`: it needs the item's dependencies done, the commit reachable from
-   HEAD and changing one of the item's files, the item's files unchanged since that commit, and the item's
-   test nodes passing. `--start`, `--blocked "<reason>"` and `--closed "<rationale>"` set the other states.
+   by dependency and file overlap. A lane id is the item id in lower case with dots as hyphens (`TASK-3.2`
+   is `task-3-2`), and its task is the item title alone: append the item's PIP section (action, anchors,
+   tests, commands) to each lane prompt, with the instruction to copy each planned test file from
+   `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first. parallel2 stages each lane's
+   changes uncommitted in the target and deletes the `p2/<id>` lane branch, so `record` waits until the
+   developer commits the staged work, and `--sha` names that commit, never the lane commit. Each implemented
+   item is recorded with `PLAN record <id> <ITEM> --sha <commit>`: it needs the item's dependencies done, the
+   commit reachable from HEAD with one of the item's files changed between the plan base and it, the item's
+   files unchanged since that commit, and the item's test nodes passing on a throwaway worktree at that
+   commit. `--start`,
+   `--blocked "<reason>"` and `--closed "<rationale>"` set the other states.
 
 ## What an item must carry
 
