@@ -49,6 +49,11 @@ Execution tracking:
 - `pr_attributes[]` — zero or more PR references (uses `prAttributes.schema.json` per element). Project-scoped plans (research, refactor, incident) may omit this entirely.
 - `items[]` — one entry per action item, with `id`, `priority`, `title`, `action` (exact remediation steps), `files[]`, `status`, `evidence`; optional add-ons are `verification_references[]` + `markdown_section`
 - Optional markdown sync metadata: `markdown_sync_status` + `markdown_last_updated`
+- Plan-level fields written by `plan.py`: `base_commit` (merge base, `{base}` stands in for it in commands), `frozen` (commit, tree, date and digest set by `plan.py freeze`), `completed`
+- Design fields: `decisions[]` (open until `chosen` is set, which blocks freeze), `values[]` (thresholds with the options they assume), `formats[]` (literal layouts copied from a producer or parser), `sweeps[]` (searches `plan.py check` runs)
+- Per-item fields: `model` (agent model for dispatch), `anchors[]` (line ranges checked against code), `commands[]` (commands with the output that means pass), `tests[]` (pytest node ids with the failure that precedes the fix)
+
+The write-plan skill (`plugins/harness/skills/write-plan/SKILL.md`) and `plugins/harness/scripts/plan.py` own the authoring and checks for these fields.
 
 **Status rules:**
 - `COMPLETE` requires commit SHA(s) in evidence — never a claim

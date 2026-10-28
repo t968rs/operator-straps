@@ -101,6 +101,13 @@ def path_problem(entry: str) -> Optional[str]:
     return None
 
 
+def id_problem(ident: object) -> Optional[str]:
+    """Why ``ident`` is not a lane id (``[a-z0-9][a-z0-9-]*``), or None."""
+    if isinstance(ident, str) and _ID.fullmatch(ident):
+        return None
+    return "id must match [a-z0-9][a-z0-9-]*"
+
+
 def _wave_value(raw: object) -> Optional[int]:
     return raw if isinstance(raw, int) and not isinstance(raw, bool) and raw >= 1 else None
 
@@ -113,8 +120,9 @@ def _string_list(raw: object) -> Optional[List[str]]:
 def _lane_problems(raw: Mapping[str, Any], label: str) -> List[str]:
     """Defects of one raw lane dict (``label`` names it in messages)."""
     problems: List[str] = []
-    if not isinstance(raw.get("id"), str) or not _ID.fullmatch(raw["id"]):
-        problems.append(f"{label}: id must match [a-z0-9][a-z0-9-]*")
+    why = id_problem(raw.get("id"))
+    if why:
+        problems.append(f"{label}: {why}")
     if raw.get("kind") not in KINDS:
         problems.append(f"{label}: kind must be one of {', '.join(KINDS)}")
     if not isinstance(raw.get("model"), str) or not raw["model"]:
