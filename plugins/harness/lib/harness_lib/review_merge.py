@@ -23,9 +23,10 @@ issue stays whole. Units link through a shared owned file or serial-test lock; a
 ``MAX_ISSUES_PER_FIXER`` units runs whole in the first wave. A larger group is cut: the most connected unit
 (ties: the least severe) is deferred until every remaining group fits, the deferred units re-enter the pool
 for the next wave, and the units that hung on a deferred hub run in parallel before it. A group sharing
-nothing with the wave's fixers opens a fixer of its own while the wave holds fewer than ``FIXERS_PER_WAVE``;
-past that it joins the smallest fixer with room, preferring one of its own fix kind, so a wave spreads its
-work across fixers instead of filling one to the cap. Fixers within a wave are file-disjoint over the
+nothing with the wave's fixers joins the fixer holding another part of one of its issues when it fits; otherwise
+it opens a fixer of its own while the wave holds fewer than ``FIXERS_PER_WAVE``, and past that it joins the
+smallest fixer with room, preferring one of its own fix kind, so a wave spreads its work across fixers instead
+of filling one to the cap. Fixers within a wave are file-disjoint over the
 files they own and never hold the same serial-test lock; tracking paths belong to no fixer. Given a test
 registry map, each unit also owns the registered tests targeting its files and the existing paths its
 ``fix`` text names (widened files: in the fixer's ``files`` and the disjointness check, never in ``parts``).
@@ -567,6 +568,18 @@ def tracking_rows(issues: Sequence[Issue], held: Sequence[str], done: Sequence[s
     return [(issue_id, files) for issue_id, files in rows if all(is_tracking(f, patterns) for f in files)]
 
 
+def mixed_tracking_rows(issues: Sequence[Issue], held: Sequence[str], done: Sequence[str],
+                        patterns: Sequence[str]) -> List[Tuple[str, List[str]]]:
+    """(id, tracking files) of each issue, minus ``held`` and ``done`` ids, holding both tracking and other
+    files: a fixer owns the others and its entry resolves the id, so the main session edits the tracking
+    files after that fixer's wave."""
+    skip = set(held) | set(done)
+    rows = [(str(i["id"]), list(_union(_files(i)))) for i in issues if i["id"] not in skip]
+    split = [(issue_id, [f for f in files if is_tracking(f, patterns)], len(files))
+             for issue_id, files in rows]
+    return [(issue_id, tracked) for issue_id, tracked, total in split if 0 < len(tracked) < total]
+
+
 def _widening(issue: Issue, files: Sequence[str], registry: Mapping[str, Sequence[str]],
               existing: Set[str], tracking: Sequence[str] = ()) -> Tuple[str, ...]:
     """Files a unit's fixer may also edit: tests targeting ``files`` or the existing paths the fix names, and
@@ -647,8 +660,10 @@ def _degree(unit: _Unit, units: Sequence[_Unit]) -> int:
 def _cut(group: Sequence[_Unit], cap: int) -> Tuple[List[List[_Unit]], List[_Unit]]:
     """Cut a group over ``cap`` units: defer the most connected unit (ties: the least severe) until every
     remaining group fits ``cap``. Returns the groups that run now and the deferred units, which fall to a
-    later wave. A hub deferred this way leaves the units that hung on it file-disjoint, so they run in
-    parallel instead of queueing behind the fixer that owns the hub."""
+    later wave. Removing a deferred hub removes the links through it, so neighbours that shared only the hub
+    fall into separate groups and run in parallel instead of queueing behind the fixer that owns the hub;
+    neighbours that also share a file or lock stay in one component, and that component is cut again if
+    it is still over ``cap``."""
     kept, deferred = list(group), []
     groups = [list(kept)]
     while any(len(g) > cap for g in groups):
@@ -744,10 +759,11 @@ def plan_waves(issues: Sequence[Issue], held: Sequence[str], done: Sequence[str]
     ``registry`` tests (test file -> ``test_target_paths``) targeting its files and by the ``fix_paths``
     found in ``existing``; widened files join the fixer's ``files`` and the disjointness check, never
     ``parts``. ``tracking`` globs name files no fixer owns: they drop out of every unit and out of the
-    widening (``tracking_rows`` lists the issues left to the main session). ``test_locks`` (test file ->
-    serial-test lock names) makes two fixers that hold the same lock touch each other like a shared file, so
-    they never share a wave; a fixer record names its ``locks``. ``fixers`` is the number of fixers a wave
-    opens for unrelated chunks before they start sharing a fixer (``_place_free``).
+    widening (``tracking_rows`` and ``mixed_tracking_rows`` list them for the main session).
+    ``test_locks`` (test file -> serial-test lock names) makes two fixers that hold the same lock touch
+    each other like a shared file, so they never share a wave; a fixer record names its ``locks``.
+    ``fixers`` is the number of fixers a wave opens for unrelated chunks before they start sharing a fixer
+    (``_place_free``); a wave may exceed it when no fixer has room for a group.
     """
     skip = set(held) | set(done)
     units = [u for i in issues if i["id"] not in skip

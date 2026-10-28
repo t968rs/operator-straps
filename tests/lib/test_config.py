@@ -155,8 +155,7 @@ def test_fixer_test_deferral_default_and_override(make_project) -> None:
 
 
 @pytest.mark.parametrize("bad", [{"fixer_test_seconds": 0}, {"fixer_test_seconds": "60"},
-                                 {"timings": "/abs/t.json"}, {"defer_flags": [""]},
-                                 {"serial_flags": [""]}, {"serial_flags": "properties.arcpy"}])
+                                 {"timings": "/abs/t.json"}, {"defer_flags": [""]}])
 def test_fixer_test_deferral_rejects_bad_values(make_project, bad: dict) -> None:
     with pytest.raises(ConfigError):
         load_config(make_project({"tests": bad}))
@@ -167,6 +166,12 @@ def test_fixer_serial_flags_default_and_override(make_project) -> None:
     tests = {"serial_flags": ["properties.arcpy", "properties.slow"]}
     cfg = load_config(make_project({"tests": tests}, name="p2")).tests
     assert cfg.serial_flags == ("properties.arcpy", "properties.slow")
+
+
+@pytest.mark.parametrize("bad", [{"serial_flags": [""]}, {"serial_flags": "properties.arcpy"}])
+def test_fixer_serial_flags_rejects_bad_values(make_project, bad: dict) -> None:
+    with pytest.raises(ConfigError):
+        load_config(make_project({"tests": bad}))
 
 
 def test_review_tracking_paths_default_and_override(make_project) -> None:

@@ -68,7 +68,8 @@ class DomainPointer:
 
 @dataclass(frozen=True)
 class ReviewConfig:
-    """Project guard suites and review-brief additions for pr-review."""
+    """Project guard suites and review-brief additions for pr-review, and the tracking paths (plans, trackers) no
+    pr-review fixer owns."""
 
     guard_suite: Tuple[str, ...]
     local_guards: Tuple[str, ...]

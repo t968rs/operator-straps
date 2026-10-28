@@ -607,6 +607,11 @@ class TestPlanWaves:
         assert [[f["issue_ids"] for f in wave] for wave in waves] == [[["M1", "M2", "M3"]],
                                                                        [["M4", "M5", "M6"]], [["M7", "M8"]]]
 
+    def test_cut_defers_the_less_severe_of_mixed_tier_units(self) -> None:
+        issues = [_issue("C1", "a.py"), _issue("I1", "a.py"), _issue("M1", "a.py")]
+        waves = rmg.plan_waves(issues, held=[], done=[], cap=2)
+        assert [[sorted(f["issue_ids"]) for f in wave] for wave in waves] == [[["C1", "I1"]], [["M1"]]]
+
     def test_cut_recurses_until_every_group_fits(self) -> None:
         issues = [_issue(f"M{n}", "a.py") for n in range(1, 4)]
         issues += [_issue("I1", "a.py", fix_kind="judgment", files=["a.py", "b.py"]),
@@ -616,6 +621,12 @@ class TestPlanWaves:
         assert all(len(f["issue_ids"]) <= 2 for wave in waves for f in wave)
         planned = sorted(i for wave in waves for f in wave for i in f["issue_ids"])
         assert planned == ["I1", "I2", "M1", "M2", "M3", "M4"]
+        assert len(waves) == 2
+        for wave in waves:
+            seen: set = set()
+            for fixer in wave:
+                assert not set(fixer["files"]) & seen
+                seen |= set(fixer["files"])
 
     def test_units_linked_through_a_widened_test_share_a_group(self) -> None:
         registry = {"tests/test_ab.py": ["a.py", "b.py"]}
@@ -1071,6 +1082,12 @@ class TestTrackingPaths:
         waves = rmg.plan_waves([issue], [], [], tracking=_TRACKING)
         assert waves[0][0]["parts"] == {"I1": ["a.py"]} and waves[0][0]["files"] == ["a.py"]
         assert rmg.tracking_rows([issue], [], [], _TRACKING) == []
+        assert rmg.mixed_tracking_rows([issue], [], [], _TRACKING) == [("I1", [_PLAN])]
+
+    def test_mixed_tracking_rows_skip_pure_held_and_done_ids(self) -> None:
+        issues = [_issue(n, "a.py", files=["a.py", _PLAN]) for n in ("I1", "I2", "I3")]
+        issues += [_issue("M1", _PLAN), _issue("M2", "b.py")]
+        assert rmg.mixed_tracking_rows(issues, ["I1"], ["I2"], _TRACKING) == [("I3", [_PLAN])]
 
     def test_named_tracking_path_never_widens(self) -> None:
         issue = _issue("M1", "a.py", fix=["record both in docs/PLANS/plan.md", "edit docs/a.md"])
