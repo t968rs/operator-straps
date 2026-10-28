@@ -44,11 +44,18 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
    content each test file will have. No test code goes in the JSON or the PIP.
 5. **`PLAN check <id>`** until it passes. A stale anchor means the plan's picture of the code is wrong: reread
    the code and fix the plan, not the anchor's text alone. `open:` lines are decisions still to settle.
-6. **Settle open decisions with the developer.** No decision defaults to an answer; an open one blocks freeze.
-7. **`PLAN freeze <id>`**. It refuses any check problem, any open decision and any open item with neither a
-   test nor a command. After the freeze only `record` changes the plan; `check` reports any other edit. A
-   change of design after the freeze is an edit plus `freeze --refreeze`, stated to the developer.
-8. **Hand off** the PIP path for review and an execution method. Each implemented item is recorded with
+6. **`PLAN red <id>`** until it passes. It lays the planned test files over a throwaway worktree at HEAD and
+   runs each open item's nodes: each must fail with its planned exception. A test that passes proves nothing
+   about the item; one that fails for another reason (a typo, a wrong import path) tests the wrong thing.
+   Fix the test file or the planned `red`, never the check.
+7. **Settle open decisions with the developer.** No decision defaults to an answer; an open one blocks freeze.
+8. **`PLAN freeze <id>`**. It refuses any check problem, any open decision, any open item with neither a test
+   nor a command, and any red problem. After the freeze only `record` changes the plan; `check` reports any
+   other edit. A change of design after the freeze is an edit plus `freeze --refreeze`, stated to the
+   developer.
+9. **Hand off** the PIP path for review and an execution method. For parallel execution,
+   `PLAN lanes <id> | P2 plan -` (with `P2` as in `harness:parallel2`) turns the open items into lanes, waved
+   by dependency and file overlap. Each implemented item is recorded with
    `PLAN record <id> <ITEM> --sha <commit>`: it needs the item's dependencies done, the commit reachable from
    HEAD and changing one of the item's files, the item's files unchanged since that commit, and the item's
    test nodes passing. `--start`, `--blocked "<reason>"` and `--closed "<rationale>"` set the other states.

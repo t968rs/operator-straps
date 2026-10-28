@@ -37,8 +37,10 @@ def driver(plugin_root: Path) -> ModuleType:
 
 
 @pytest.fixture()
-def project(make_project) -> Path:
-    root = make_project({"base_branch": "main"}, files={**BASE_FILES, "src/__init__.py": ""})
+def project(make_project, tmp_path: Path) -> Path:
+    """A project on ``feat-x``; red-run worktrees land in ``tmp_path/trees``."""
+    config = {"base_branch": "main", "worktree_root": (tmp_path / "trees").as_posix()}
+    root = make_project(config, files={**BASE_FILES, "src/__init__.py": ""})
     git(root, "checkout", "-q", "-b", "feat-x")
     return root
 
@@ -293,3 +295,64 @@ def test_record_closed_needs_no_commit(run: Run, filled: Fill,
     assert code == 0, err
     item = read_plan(project)["items"][0]
     assert item["status"] == "CLOSED_NO_ACTION" and item["evidence"] == reason
+
+
+# --- red --------------------------------------------------------------------------------------------------
+
+def trees(tmp_path: Path) -> list:
+    folder = tmp_path / "trees"
+    return list(folder.iterdir()) if folder.is_dir() else []
+
+
+@pytest.mark.cross_os
+def test_red_passes_when_each_planned_test_fails_as_declared(run: Run, filled: Fill, project: Path,
+                                                             tmp_path: Path) -> None:
+    filled()
+    code, out, err = run("red", "1")
+    assert code == 0, err
+    assert "TASK-1 tests/test_calc_sub.py::test_sub: ImportError (planned ImportError)" in out
+    assert out.startswith("red [ok] | plan 0001 | 1 nodes fail as planned")
+    assert trees(tmp_path) == [] and not (project / "tests" / "test_calc_sub.py").exists()
+
+
+@pytest.mark.cross_os
+def test_red_reports_a_test_that_fails_for_another_reason(run: Run, filled: Fill, tmp_path: Path) -> None:
+    filled(sub_item(tests=[{"node": "tests/test_calc_sub.py::test_sub", "red": "AssertionError"}]))
+    code, _, err = run("red", "1")
+    assert code == 1 and "problem: red: TASK-1 tests/test_calc_sub.py::test_sub: expected AssertionError, " \
+                         "got ImportError" in err
+    assert trees(tmp_path) == []
+
+
+@pytest.mark.cross_os
+def test_freeze_refuses_a_planned_test_that_already_passes(run: Run, filled: Fill) -> None:
+    filled(sub_item(tests=[{"node": "tests/test_calc.py::test_add", "red": "AssertionError"}]))
+    code, _, err = run("freeze", "1")
+    expected = "red: TASK-1 tests/test_calc.py::test_add: expected AssertionError, got PASSED"
+    assert code == 1 and expected in err
+
+
+def test_red_with_no_tests_has_nothing_to_run(run: Run, filled: Fill) -> None:
+    command = {"run": "python -m pytest tests/test_calc.py -q", "expect": "1 passed"}
+    filled(sub_item(tests=[], commands=[command]))
+    code, out, _ = run("red", "1")
+    assert code == 0 and out.startswith("red [ok] | plan 0001 | no planned test nodes")
+
+
+# --- lanes ------------------------------------------------------------------------------------------------
+
+def test_lanes_needs_a_frozen_plan(run: Run, filled: Fill) -> None:
+    filled()
+    code, _, err = run("lanes", "1")
+    assert code == 1 and "problem: plan 0001 is not frozen" in err
+
+
+def test_lanes_prints_a_parallel2_plan_of_the_open_items(run: Run, filled: Fill) -> None:
+    filled()
+    run("freeze", "1")
+    code, out, err = run("lanes", "1", "--target", "feat-x")
+    assert code == 0, err
+    lanes = json.loads(out)
+    assert lanes["target"] == "feat-x"
+    assert [(lane["id"], lane["wave"]) for lane in lanes["lanes"]] == [("task-1", 1)]
+    assert lanes["lanes"][0]["files"] == ["src/calc.py", "tests/test_calc_sub.py"]

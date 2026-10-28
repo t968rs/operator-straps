@@ -17,9 +17,19 @@ with exit 1; success exits 0 and writes nothing on a refusal.
 ``render PLAN``
     Write the PIP from the plan JSON.
 
+``red PLAN``
+    Copy the planned test files onto a throwaway detached worktree at HEAD, run every open item's test
+    nodes there (one pytest process per node) and require each to fail with its planned exception. The
+    worktree is removed afterwards; the checkout is never written.
+
 ``freeze PLAN [--refreeze]``
-    Refuse while ``check`` has a problem, a decision is open, or an open item has neither a test nor a
-    command; otherwise record HEAD, its tree, the date and the digest of every field but status and evidence.
+    Refuse while ``check`` has a problem, a decision is open, an open item has neither a test nor a command,
+    or ``red`` has a problem; otherwise record HEAD, its tree, the date and the digest of every field but
+    status and evidence.
+
+``lanes PLAN [--target BRANCH]``
+    Print the ``parallel2`` plan JSON of a frozen plan's open items (waves from dependencies and file
+    overlap), ready for ``parallel2.py plan -``.
 
 ``record PLAN ITEM (--sha SHA | --start | --blocked REASON | --closed RATIONALE)``
     On a frozen, unedited plan: ``--sha`` needs every dependency done, ``SHA`` reachable from HEAD and
@@ -33,28 +43,34 @@ directory) names a directory inside the project. Usage::
     plan.py [--repo DIR] new TITLE [--spec PATH] [--base BRANCH] [--no-fetch]
     plan.py [--repo DIR] check PLAN
     plan.py [--repo DIR] render PLAN
+    plan.py [--repo DIR] red PLAN
     plan.py [--repo DIR] freeze PLAN [--refreeze]
+    plan.py [--repo DIR] lanes PLAN [--target BRANCH]
     plan.py [--repo DIR] record PLAN ITEM (--sha SHA | --start | --blocked REASON | --closed RATIONALE)
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence
+from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
+from harness_lib import parallel_lanes as pl
 from harness_lib import plan_checks as pc
 from harness_lib import plan_doc as pd
+from harness_lib import plan_lanes as plx
+from harness_lib import plan_red as pr
 from harness_lib.branch_capture import CaptureError, current_branch, git, git_out, resolve_merge_base
 from harness_lib.config import ConfigError, active, activate, load_config
 from harness_lib.plan_render import render_pip
 from harness_lib.project import project_root
 
-PROBLEMS = (pd.PlanError, CaptureError, ConfigError)
+PROBLEMS = (pd.PlanError, pl.PlanError, CaptureError, ConfigError)
 
 
 def today() -> str:
@@ -174,6 +190,44 @@ def cmd_render(repo: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+# --- red --------------------------------------------------------------------------------------------------
+
+def planned_nodes(plan: Dict[str, Any]) -> int:
+    return sum(len(item.get("tests") or []) for item in plx.open_items(plan))
+
+
+def red_results(repo: Path, plan: Dict[str, Any]) -> List[pr.RedResult]:
+    """Run the open items' test nodes on a throwaway worktree at HEAD with the planned files laid over it."""
+    if not planned_nodes(plan):
+        return []
+    head = git_out(repo, "rev-parse", "HEAD").strip()
+    tree = pr.make_tree(repo, head, active().resolve_worktree_root())
+    try:
+        pr.overlay(pr.test_sources(plan, plans_dir()), tree)
+        return pr.run_red(plan, tree, sys.executable)
+    finally:
+        pr.drop_tree(repo, tree)
+
+
+def red_problems(repo: Path, plan: Dict[str, Any]) -> Tuple[List[pr.RedResult], List[str]]:
+    results = red_results(repo, plan)
+    return results, [f"red: {p}" for p in pr.red_problems(results)]
+
+
+def cmd_red(repo: Path, args: argparse.Namespace) -> int:
+    plan = pd.load_plan(locate(repo, args.plan))
+    results, problems = red_problems(repo, plan)
+    if problems:
+        raise pd.PlanError(problems)
+    head = f"red [ok] | plan {plan.get('plan_id')}"
+    if not results:
+        print(f"{head} | no planned test nodes in open items")
+        return 0
+    rows = [f"{r.item} {r.node}: {r.got} (planned {r.expected})" for r in results]
+    print("\n".join([f"{head} | {len(results)} nodes fail as planned", *rows]))
+    return 0
+
+
 # --- freeze -----------------------------------------------------------------------------------------------
 
 def unproven_items(plan: Dict[str, Any]) -> List[str]:
@@ -195,6 +249,9 @@ def cmd_freeze(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
     problems = freeze_problems(repo, plan, args.refreeze)
+    if problems:
+        raise pd.PlanError(problems)
+    problems = red_problems(repo, plan)[1]
     if problems:
         raise pd.PlanError(problems)
     head = git_out(repo, "rev-parse", "HEAD").strip()
@@ -307,6 +364,18 @@ def cmd_record(repo: Path, args: argparse.Namespace) -> int:
     return 0
 
 
+# --- lanes ------------------------------------------------------------------------------------------------
+
+def cmd_lanes(repo: Path, args: argparse.Namespace) -> int:
+    plan = pd.load_plan(locate(repo, args.plan))
+    require_frozen(plan)
+    target = args.target or current_branch(repo)
+    if not target:
+        raise CaptureError(["detached HEAD: check out the target branch or pass --target"])
+    print(json.dumps(plx.lanes_plan(plan, target), indent=2))
+    return 0
+
+
 # --- command line -----------------------------------------------------------------------------------------
 
 def _record_parser(sub: Any) -> None:
@@ -329,17 +398,22 @@ def _parser() -> argparse.ArgumentParser:
     new.add_argument("--spec", help="Repo-relative path of the spec the plan implements.")
     new.add_argument("--base", help="Base branch (default: the configured base branch).")
     new.add_argument("--no-fetch", action="store_true", help="Do not fetch the base branch from origin.")
-    for name, text in (("check", "Check the plan against the tree."), ("render", "Write the PIP.")):
+    for name, text in (("check", "Check the plan against the tree."), ("render", "Write the PIP."),
+                       ("red", "Run the planned tests and require each to fail as planned.")):
         sub.add_parser(name, help=text).add_argument("plan", help="Plan id or plan file.")
-    freeze = sub.add_parser("freeze", help="Freeze a plan that passes check.")
+    freeze = sub.add_parser("freeze", help="Freeze a plan that passes check and red.")
     freeze.add_argument("plan", help="Plan id or plan file.")
     freeze.add_argument("--refreeze", action="store_true", help="Freeze a frozen plan again after a change.")
+    lanes = sub.add_parser("lanes", help="Print the parallel2 plan of a frozen plan's open items.")
+    lanes.add_argument("plan", help="Plan id or plan file.")
+    lanes.add_argument("--target", help="Target branch of the lanes (default: the checked-out branch).")
     _record_parser(sub)
     return parser
 
 
 COMMANDS: Dict[str, Callable[[Path, argparse.Namespace], int]] = {
-    "new": cmd_new, "check": cmd_check, "render": cmd_render, "freeze": cmd_freeze, "record": cmd_record,
+    "new": cmd_new, "check": cmd_check, "render": cmd_render, "red": cmd_red, "freeze": cmd_freeze,
+    "lanes": cmd_lanes, "record": cmd_record,
 }
 
 
