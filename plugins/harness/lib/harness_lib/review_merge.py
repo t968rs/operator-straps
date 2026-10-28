@@ -22,9 +22,9 @@ Fix waves: a mechanical multi-file issue splits into one single-file part per fi
 issue stays whole. Whole multi-file issues are placed first, widest first; the remaining units group by file,
 groups over ``MAX_ISSUES_PER_FIXER`` units split into chunks, and chunks are placed largest first into the
 first wave where they touch at most one fixer with room. Fixers within a wave are file-disjoint over the
-files they own. Given a test registry map, each unit also owns the registered tests targeting its files and
-the existing paths its ``fix`` text names (widened files: in the fixer's ``files`` and the disjointness
-check, never in ``parts``).
+files they own and never hold the same serial-test lock; tracking paths belong to no fixer. Given a test
+registry map, each unit also owns the registered tests targeting its files and the existing paths its
+``fix`` text names (widened files: in the fixer's ``files`` and the disjointness check, never in ``parts``).
 
 Closeout: a fixer may resolve only the ids its planned parts assign it; a split issue (some fixer owns less
 than its file set, or a mechanical issue planned over more than one file, all parts in one fixer included)
@@ -38,6 +38,7 @@ inputs, ``remaining_parts`` counts only the entries closeout accepts, so a rejec
 from __future__ import annotations
 
 import copy
+import fnmatch
 import functools
 import json
 import math
@@ -547,12 +548,26 @@ def registry_tests(files: Iterable[str], registry: Mapping[str, Sequence[str]]) 
     return [test for test, targets in registry.items() if any(_target_covers(t, wanted) for t in targets)]
 
 
+def is_tracking(path: str, patterns: Sequence[str]) -> bool:
+    """True when ``path`` matches a tracking-path glob (``fnmatch``, the rule of the exclusions file)."""
+    return any(fnmatch.fnmatch(path, pattern) for pattern in patterns)
+
+
+def tracking_rows(issues: Sequence[Issue], held: Sequence[str], done: Sequence[str],
+                  patterns: Sequence[str]) -> List[Tuple[str, List[str]]]:
+    """(id, files) of each issue, minus ``held`` and ``done`` ids, whose every file is a tracking path: no
+    fixer owns it, so the main session edits it."""
+    skip = set(held) | set(done)
+    rows = [(str(i["id"]), list(_union(_files(i)))) for i in issues if i["id"] not in skip]
+    return [(issue_id, files) for issue_id, files in rows if all(is_tracking(f, patterns) for f in files)]
+
+
 def _widening(issue: Issue, files: Sequence[str], registry: Mapping[str, Sequence[str]],
-              existing: Set[str]) -> Tuple[str, ...]:
+              existing: Set[str], tracking: Sequence[str] = ()) -> Tuple[str, ...]:
     """Files a unit's fixer may also edit: tests targeting ``files`` or the existing paths the fix names, and
-    those named paths themselves, minus the issue's own files."""
+    those named paths themselves, minus the issue's own files; a tracking path is never named in."""
     own = set(_files(issue))
-    named = [p for p in fix_paths(issue) if p in existing]
+    named = [p for p in fix_paths(issue) if p in existing and not is_tracking(p, tracking)]
     found = [*registry_tests([*files, *named], registry), *named]
     return tuple(f for f in _union(found) if f not in own)
 
@@ -565,6 +580,7 @@ class _Unit:
     issue: Issue
     files: Tuple[str, ...]
     extra: Tuple[str, ...] = ()
+    locks: Tuple[str, ...] = ()
 
     @property
     def id(self) -> str:
@@ -572,12 +588,24 @@ class _Unit:
         return str(self.issue["id"])
 
 
-def _units(issue: Issue, registry: Mapping[str, Sequence[str]], existing: Set[str]) -> List[_Unit]:
-    """One part per file of a mechanical multi-file issue, else the whole issue; each widened."""
-    files = _union(_files(issue))
+def _locks(files: Sequence[str], test_locks: Mapping[str, Sequence[str]]) -> Tuple[str, ...]:
+    """Lock names held by the registered tests among ``files`` (a unit's files and widened files)."""
+    return _union(lock for f in files for lock in test_locks.get(f, ()))
+
+
+def _units(issue: Issue, registry: Mapping[str, Sequence[str]], existing: Set[str],
+           tracking: Sequence[str] = (),
+           test_locks: Optional[Mapping[str, Sequence[str]]] = None) -> List[_Unit]:
+    """One part per file of a mechanical multi-file issue, else the whole issue; each widened. Tracking files
+    belong to no unit, so an issue with only tracking files has none."""
+    files = tuple(f for f in _union(_files(issue)) if not is_tracking(f, tracking))
     split = issue.get("fix_kind") == "mechanical" and len(files) > 1
-    parts = [(f,) for f in files] if split else [files]
-    return [_Unit(issue, part, _widening(issue, part, registry, existing)) for part in parts]
+    parts = [(f,) for f in files] if split else ([files] if files else [])
+    units = []
+    for part in parts:
+        extra = _widening(issue, part, registry, existing, tracking)
+        units.append(_Unit(issue, part, extra, _locks((*part, *extra), test_locks or {})))
+    return units
 
 
 def _by_id(units: Iterable[_Unit]) -> List[_Unit]:
@@ -602,10 +630,16 @@ def _chunk_files(chunk: Sequence[_Unit]) -> Set[str]:
     return {f for unit in chunk for f in (*unit.files, *unit.extra)}
 
 
+def _chunk_locks(chunk: Sequence[_Unit]) -> Set[str]:
+    """Serial-test locks held by a chunk."""
+    return {lock for unit in chunk for lock in unit.locks}
+
+
 def _place_in_wave(wave: List[List[_Unit]], chunk: List[_Unit], cap: int) -> bool:
-    """Place ``chunk`` in ``wave`` when it touches at most one fixer with room; False otherwise."""
-    files = _chunk_files(chunk)
-    touching = [b for b in wave if _chunk_files(b) & files]
+    """Place ``chunk`` in ``wave`` when it touches at most one fixer with room; False otherwise. A chunk
+    touches a fixer that owns one of its files or holds one of its serial-test locks."""
+    files, locks = _chunk_files(chunk), _chunk_locks(chunk)
+    touching = [b for b in wave if _chunk_files(b) & files or _chunk_locks(b) & locks]
     if len(touching) > 1 or (touching and len(touching[0]) + len(chunk) > cap):
         return False
     roomy = touching or [b for b in wave if len(b) + len(chunk) <= cap]
@@ -631,14 +665,19 @@ def _fixer(wave: int, number: int, chunk: Sequence[_Unit]) -> Dict[str, object]:
     """Fixer row: id, model, issue ids (minor, then important, then critical), parts and owned files."""
     mechanical = all(u.issue.get("fix_kind") == "mechanical" for u in chunk)
     parts = _parts(chunk)
-    return {"id": f"w{wave}_fix_{number}", "model": "haiku" if mechanical else "opus",
-            "issue_ids": list(parts), "parts": parts, "files": sorted(_chunk_files(chunk))}
+    row: Dict[str, object] = {"id": f"w{wave}_fix_{number}", "model": "haiku" if mechanical else "opus",
+                              "issue_ids": list(parts), "parts": parts,
+                              "files": sorted(_chunk_files(chunk))}
+    if _chunk_locks(chunk):
+        row["locks"] = sorted(_chunk_locks(chunk))
+    return row
 
 
 def plan_waves(issues: Sequence[Issue], held: Sequence[str], done: Sequence[str],
                cap: int = MAX_ISSUES_PER_FIXER, start_wave: int = 1,
                registry: Optional[Mapping[str, Sequence[str]]] = None,
-               existing: Optional[Set[str]] = None) -> List[List[Dict[str, object]]]:
+               existing: Optional[Set[str]] = None, tracking: Sequence[str] = (),
+               test_locks: Optional[Mapping[str, Sequence[str]]] = None) -> List[List[Dict[str, object]]]:
     """Fix waves (lists of file-disjoint fixers) over ``issues`` minus ``held`` and ``done`` ids.
 
     A mechanical multi-file issue is planned as one part per file; ``cap`` counts parts and whole issues.
@@ -646,10 +685,14 @@ def plan_waves(issues: Sequence[Issue], held: Sequence[str], done: Sequence[str]
     first wave, so follow-up waves never reuse an earlier fixer id. Each unit's file set widens by the
     ``registry`` tests (test file -> ``test_target_paths``) targeting its files and by the ``fix_paths``
     found in ``existing``; widened files join the fixer's ``files`` and the disjointness check, never
-    ``parts``.
+    ``parts``. ``tracking`` globs name files no fixer owns: they drop out of every unit and out of the
+    widening (``tracking_rows`` lists the issues left to the main session). ``test_locks`` (test file ->
+    serial-test lock names) makes two fixers that hold the same lock touch each other like a shared file, so
+    they never share a wave; a fixer record names its ``locks``.
     """
     skip = set(held) | set(done)
-    units = [u for i in issues if i["id"] not in skip for u in _units(i, registry or {}, existing or set())]
+    units = [u for i in issues if i["id"] not in skip
+             for u in _units(i, registry or {}, existing or set(), tracking, test_locks)]
     waves: List[List[List[_Unit]]] = []
     for chunk in _chunks(units, cap):
         if not any(_place_in_wave(wave, chunk, cap) for wave in waves):

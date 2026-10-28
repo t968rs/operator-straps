@@ -789,6 +789,14 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
   `test_target_paths` include one of its issues' files) and the existing repo paths its issues' `fix` options name
   (`a/b/c.ext` tokens), so a fix can carry the test and doc edits it needs. Widened files count in the wave's
   disjointness check and closeout's file-set validation; parts and the split rule are unchanged.
+- **Tracking paths.** A path matching `review.tracking_paths` (plans, trackers) belongs to no fixer: it never
+  widens a file set, and an issue whose files are all tracking is not planned. `waves` prints it as a
+  `tracking:` row; the main session edits those files, during or after the waves, then records each id with
+  `closeout --resolved <id>="what changed"`. For an issue with other files, the fixer plans the others and its
+  brief names the tracking files as not its own.
+- **Serial tests.** A registered test that is `true` at a `tests.serial_flags` path (and is not deferred) holds
+  that flag as a lock. Fixers holding the same lock never share a wave (or one fixer takes both), so those
+  tests never run at the same time; the fixer record in `waves.json` names its `locks`.
 - **Deferred tests.** A registered test whose summed seconds in the project's `tests.timings` report exceed
   `tests.fixer_test_seconds`, or whose registry entry is `true` at one of the `tests.defer_flags` paths, is listed
   in the brief as `deferred, do not run` with its reason. It is editable when the file set lists it, but no fixer runs it;

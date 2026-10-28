@@ -45,7 +45,8 @@
         "registry_names": {"$ref": "#/$defs/strings", "description": "File names that count as registry files for review bucketing."},
         "timings": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Test timing report JSON: rows under tests with file (repo-relative) and duration (seconds), summed per file; a row's file must equal the registry entry's file exactly (same characters, forward slashes, no ./ prefix, no ::nodeid suffix) or its time is not matched; null means none."},
         "fixer_test_seconds": {"oneOf": [{"type": "number", "exclusiveMinimum": 0}, {"type": "null"}], "description": "pr-review fixers defer a registered test whose summed timings exceed this many seconds; null disables the runtime rule."},
-        "defer_flags": {"$ref": "#/$defs/strings", "description": "Dotted paths into a registry entry (e.g. properties.super_slow); a test whose value at any of them is true is deferred out of fixer runs."}
+        "defer_flags": {"$ref": "#/$defs/strings", "description": "Dotted paths into a registry entry (e.g. properties.super_slow); a test whose value at any of them is true is deferred out of fixer runs."},
+        "serial_flags": {"$ref": "#/$defs/strings", "description": "Dotted paths into a registry entry (e.g. properties.licensed); fixers whose file sets reach tests that are true at the same path are planned into different waves (or one fixer), so those tests never run at the same time."}
       }
     },
     "review": {
@@ -70,7 +71,8 @@
               "pointer": {"type": "string", "minLength": 1, "description": "Rule text added to a reviewer brief whose scope touches prefix."}
             }
           }
-        }
+        },
+        "tracking_paths": {"$ref": "#/$defs/relPaths", "description": "fnmatch globs over repo-relative POSIX paths of tracking documents (plans, trackers). No pr-review fixer owns them: an issue whose files are all tracking is left to the main session (closeout --resolved), and a path a fix option names never joins a fixer's file set."}
       }
     },
     "commit_buckets": {

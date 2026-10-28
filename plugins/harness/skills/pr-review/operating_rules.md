@@ -98,7 +98,10 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   splits into chunks), fixers file-disjoint within a wave over the files they own, later waves dispatched only after
   the earlier one returns, `haiku` only when every issue is `fix_kind: mechanical`. Each fixer's file set also
   holds the registered tests targeting its issues' files and the existing paths their `fix` options name, so tests
-  and docs a fix requires stay inside the fixer. Tests over the `tests.fixer_test_seconds` ceiling or matching a
+  and docs a fix requires stay inside the fixer, except `review.tracking_paths` files: no fixer owns them, `waves`
+  prints the issues that hold only such files as a `tracking:` row, and the main session edits them and runs
+  `closeout --resolved`. Fixers that hold a test flagged at one of `tests.serial_flags` never share a wave.
+  Tests over the `tests.fixer_test_seconds` ceiling or matching a
   `tests.defer_flags` path are listed as deferred: editable, never run by a fixer, printed by `closeout`. Never
   hand-split a plan or hand-write a fixer prompt. A bare `waves` re-plan skips ids already covered by fixer reports of the run and plans
   only the missing parts of a partially fixed split issue; after a closeout, only entries closeout accepted count.

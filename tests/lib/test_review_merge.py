@@ -992,6 +992,91 @@ def _widened(issues: Sequence[Dict[str, object]], existing: Sequence[str] = ()) 
     return [[(f["issue_ids"], f["parts"], f["files"]) for f in wave] for wave in waves]
 
 
+_TRACKING = ["docs/PLANS/*.md"]
+_PLAN = "docs/PLANS/plan.md"
+
+
+class TestTrackingPaths:
+    def test_is_tracking_uses_fnmatch(self) -> None:
+        assert rmg.is_tracking(_PLAN, _TRACKING) and rmg.is_tracking("docs/PLANS/a/b.md", _TRACKING)
+        assert not rmg.is_tracking("docs/guide.md", _TRACKING) and not rmg.is_tracking(_PLAN, [])
+
+    def test_tracking_only_issue_is_not_planned(self) -> None:
+        issues = [_issue("M1", _PLAN), _issue("M2", "a.py")]
+        waves = rmg.plan_waves(issues, [], [], tracking=_TRACKING)
+        assert [f["issue_ids"] for w in waves for f in w] == [["M2"]]
+        assert rmg.tracking_rows(issues, [], [], _TRACKING) == [("M1", [_PLAN])]
+
+    def test_tracking_rows_skip_held_and_done_ids(self) -> None:
+        issues = [_issue("M1", _PLAN), _issue("M2", _PLAN), _issue("M3", _PLAN)]
+        assert rmg.tracking_rows(issues, ["M1"], ["M2"], _TRACKING) == [("M3", [_PLAN])]
+
+    def test_mixed_issue_plans_only_its_other_files(self) -> None:
+        issue = _issue("I1", "a.py", files=["a.py", _PLAN], fix_kind="judgment")
+        waves = rmg.plan_waves([issue], [], [], tracking=_TRACKING)
+        assert waves[0][0]["parts"] == {"I1": ["a.py"]} and waves[0][0]["files"] == ["a.py"]
+        assert rmg.tracking_rows([issue], [], [], _TRACKING) == []
+
+    def test_named_tracking_path_never_widens(self) -> None:
+        issue = _issue("M1", "a.py", fix=["record both in docs/PLANS/plan.md", "edit docs/a.md"])
+        waves = rmg.plan_waves([issue], [], [], existing={_PLAN, "docs/a.md"}, tracking=_TRACKING)
+        assert waves[0][0]["files"] == ["a.py", "docs/a.md"]
+
+    def test_tracking_doc_no_longer_forces_a_second_wave(self) -> None:
+        big = _issue("C1", "a.py", fix_kind="judgment", files=["a.py", "b.py"],
+                     fix=["or record both in docs/PLANS/plan.md"])
+        docs = [_issue(f"M{n}", _PLAN) for n in (1, 2, 3)]
+        before = rmg.plan_waves([big, *docs], [], [], cap=2, existing={_PLAN})
+        after = rmg.plan_waves([big, *docs], [], [], cap=2, existing={_PLAN}, tracking=_TRACKING)
+        assert len(before) == 2 and len(after) == 1
+        assert after[0][0]["issue_ids"] == ["C1"]
+
+
+class TestSerialLocks:
+    _LOCKS = {"tests/test_a.py": ("properties.arcpy",), "tests/test_b.py": ("properties.arcpy",),
+              "tests/test_c.py": ("properties.slow",)}
+    _REG = {"tests/test_a.py": ["a.py"], "tests/test_b.py": ["b.py"], "tests/test_c.py": ["c.py"],
+            "tests/test_d.py": ["d.py"]}
+
+    def _plan(self, issues: Sequence[Dict[str, object]], cap: int = 1) -> List[List[Dict[str, object]]]:
+        return rmg.plan_waves(issues, [], [], cap=cap, registry=self._REG, test_locks=self._LOCKS)
+
+    @staticmethod
+    def _ids(waves: Sequence[Sequence[Dict[str, object]]]) -> List[List[List[str]]]:
+        return [[f["issue_ids"] for f in wave] for wave in waves]
+
+    def test_fixers_sharing_a_lock_go_to_different_waves(self) -> None:
+        issues = [_issue("M1", "a.py"), _issue("M2", "b.py")]
+        assert self._ids(self._plan(issues)) == [[["M1"]], [["M2"]]]
+
+    def test_different_locks_share_a_wave(self) -> None:
+        issues = [_issue("M1", "a.py"), _issue("M2", "c.py")]
+        assert self._ids(self._plan(issues)) == [[["M1"], ["M2"]]]
+
+    def test_lock_free_fixer_runs_beside_a_locked_one(self) -> None:
+        issues = [_issue("M1", "a.py"), _issue("M2", "d.py")]
+        assert self._ids(self._plan(issues)) == [[["M1"], ["M2"]]]
+
+    def test_without_locks_the_same_issues_share_a_wave(self) -> None:
+        issues = [_issue("M1", "a.py"), _issue("M2", "b.py")]
+        plain = rmg.plan_waves(issues, [], [], cap=1, registry=self._REG)
+        assert self._ids(plain) == [[["M1"], ["M2"]]]
+
+    def test_test_file_in_the_issue_files_holds_its_lock(self) -> None:
+        issues = [_issue("M1", "tests/test_a.py"), _issue("M2", "b.py")]
+        assert self._ids(self._plan(issues)) == [[["M1"]], [["M2"]]]
+
+    def test_lock_holder_with_room_takes_the_next_holder(self) -> None:
+        issues = [_issue("M1", "a.py"), _issue("M2", "b.py"), _issue("M3", "d.py")]
+        assert self._ids(self._plan(issues, cap=2)) == [[["M1", "M2"], ["M3"]]]
+
+    def test_fixer_record_names_its_locks(self) -> None:
+        waves = self._plan([_issue("M1", "a.py"), _issue("M2", "c.py"), _issue("M3", "d.py")], cap=6)
+        assert [(f["issue_ids"], f["locks"]) for w in waves for f in w] == [
+            (["M1", "M2", "M3"], ["properties.arcpy", "properties.slow"])]
+        assert all("locks" not in f for w in self._plan([_issue("M3", "d.py")]) for f in w)
+
+
 class TestFixPaths:
     def test_tokens_in_fix_text(self) -> None:
         issue = _issue("M1", fix=["Edit docs/guide.md and `scripts/x/y.py:12`.",

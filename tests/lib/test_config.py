@@ -155,10 +155,32 @@ def test_fixer_test_deferral_default_and_override(make_project) -> None:
 
 
 @pytest.mark.parametrize("bad", [{"fixer_test_seconds": 0}, {"fixer_test_seconds": "60"},
-                                 {"timings": "/abs/t.json"}, {"defer_flags": [""]}])
+                                 {"timings": "/abs/t.json"}, {"defer_flags": [""]},
+                                 {"serial_flags": [""]}, {"serial_flags": "properties.arcpy"}])
 def test_fixer_test_deferral_rejects_bad_values(make_project, bad: dict) -> None:
     with pytest.raises(ConfigError):
         load_config(make_project({"tests": bad}))
+
+
+def test_fixer_serial_flags_default_and_override(make_project) -> None:
+    assert load_config(make_project()).tests.serial_flags == ()
+    tests = {"serial_flags": ["properties.arcpy", "properties.slow"]}
+    cfg = load_config(make_project({"tests": tests}, name="p2")).tests
+    assert cfg.serial_flags == ("properties.arcpy", "properties.slow")
+
+
+def test_review_tracking_paths_default_and_override(make_project) -> None:
+    assert load_config(make_project()).review.tracking_paths == ()
+    review = {"tracking_paths": ["docs/PLANS/*.md"]}
+    cfg = load_config(make_project({"review": review}, name="p2")).review
+    assert cfg.tracking_paths == ("docs/PLANS/*.md",)
+
+
+@pytest.mark.parametrize("bad", [{"tracking_paths": [""]}, {"tracking_paths": ["/abs/plan.md"]},
+                                 {"tracking_paths": "docs/PLANS/*.md"}])
+def test_review_tracking_paths_rejects_bad_values(make_project, bad: dict) -> None:
+    with pytest.raises(ConfigError):
+        load_config(make_project({"review": bad}))
 
 
 def test_runlogs_default_and_override(make_project) -> None:
