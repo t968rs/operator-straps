@@ -786,8 +786,8 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
   its most connected unit (ties: the least severe) waits for a later wave, repeatedly, until each remaining
   group fits, so the units that hung on that unit run in parallel first and a judgment issue that spans many
   files can land after the minors around it.
-- **Spread over fixers.** A group that touches no fixer of its wave opens a fixer of its own while the wave holds
-  fewer than 4; past that it joins the smallest fixer with room (one of its own fix kind first), and a fixer
+- **Spread over fixers.** Groups of a wave share no file or lock. Each group opens a fixer of its own while the wave
+  holds fewer than 4; past that it joins the smallest fixer with room (one of its own fix kind first), and a fixer
   already holding another part of the same issue takes that group first. A wave runs as many fixers in parallel as
   its files allow, so its slowest fixer, not its fixer count, sets the wall time.
 - **File-disjoint within a wave** over the files each fixer owns, so a wave's fixers run in parallel; a later wave
@@ -799,8 +799,10 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
 - **Tracking paths.** A path matching `review.tracking_paths` (plans, trackers) belongs to no fixer: it never
   widens a file set, and an issue whose files are all tracking is not planned. `waves` prints it as a
   `tracking:` row; the main session edits those files, during or after the waves, then records each id with
-  `closeout --resolved <id>="what changed"`. For an issue with other files, the fixer plans the others and its
-  brief names the tracking files as not its own.
+  `closeout --resolved <id>="what changed"`. For an issue with other files, `waves` plans the other files for a
+  fixer, whose brief names the tracking files as not its own, and prints the tracking files as a
+  `tracking (after its fixer):` row. The fixer's entry resolves that id at closeout, so the main session edits
+  those tracking files after the fixer's wave returns, without `closeout --resolved`.
 - **Serial tests.** A registered test that is `true` at a `tests.serial_flags` path (and is not deferred) holds
   that flag as a lock. Fixers holding the same lock never share a wave (or one fixer takes both), so those
   tests never run at the same time; the fixer record in `waves.json` names its `locks`.
