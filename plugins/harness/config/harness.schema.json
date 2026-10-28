@@ -72,7 +72,7 @@
             }
           }
         },
-        "tracking_paths": {"$ref": "#/$defs/relPaths", "description": "fnmatch globs over repo-relative POSIX paths of tracking documents (plans, trackers). No pr-review fixer owns them: an issue whose files are all tracking is left to the main session (closeout --resolved), and a path a fix option names never joins a fixer's file set."}
+        "tracking_paths": {"$ref": "#/$defs/relPaths", "description": "fnmatch globs over repo-relative POSIX paths of tracking documents (plans, trackers). fnmatch `*` crosses `/`, so `docs/*.md` also matches nested files. No pr-review fixer owns them: an issue whose files are all tracking is left to the main session (closeout --resolved), and a path a fix option names never joins a fixer's file set."}
       }
     },
     "commit_buckets": {

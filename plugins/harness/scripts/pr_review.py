@@ -1662,15 +1662,16 @@ def issue_files(issue: Mapping[str, object]) -> List[str]:
 
 def part_lines(issue: Mapping[str, object], part: Sequence[str]) -> List[str]:
     """``Your part`` and, when other fixers own the rest of the issue, ``Other parts``; tracking files
-    (``review.tracking_paths``) are named apart, since the main session edits them after the waves."""
+    (``review.tracking_paths``) are named apart, since the main session edits them during or after the
+    waves."""
     patterns = active().review.tracking_paths
     rest = [f for f in issue_files(issue) if f not in part]
     tracked = [f for f in rest if rmg.is_tracking(f, patterns)]
     others = [f for f in rest if f not in tracked]
     lines = [f"Your part: {', '.join(part)}"]
     lines += [f"Other parts: {', '.join(others)} (another fixer)"] if others else []
-    return lines + ([f"Tracking files: {', '.join(tracked)} (main session, after the waves; do not edit)"]
-                    if tracked else [])
+    note = f"Tracking files: {', '.join(tracked)} (main session, during or after the waves; do not edit)"
+    return lines + ([note] if tracked else [])
 
 
 def _issue_block(issue: Mapping[str, object], part: Sequence[str]) -> List[str]:
@@ -1810,7 +1811,11 @@ def _cmd_waves(repo: Path, args: argparse.Namespace) -> int:
     print("\n".join(wave_rows(ctx, run, waves) or ["nothing to plan"]))
     shown = [h for h in held if h in {str(i["id"]) for i in issues}]
     print(f"held: {', '.join(shown) if shown else 'none'}")
-    print("\n".join(tracking_lines(rmg.tracking_rows(issues, held, done, active().review.tracking_paths))))
+    patterns = active().review.tracking_paths
+    tracking = tracking_lines(rmg.tracking_rows(issues, held, done, patterns),
+                              rmg.mixed_tracking_rows(issues, held, done, patterns))
+    if tracking:
+        print("\n".join(tracking))
     notice = ceiling_line(repo)
     if notice:
         print(notice)
@@ -1819,15 +1824,26 @@ def _cmd_waves(repo: Path, args: argparse.Namespace) -> int:
     return 0
 
 
-def tracking_lines(rows: Sequence[Tuple[str, Sequence[str]]]) -> List[str]:
-    """The ``tracking:`` report of issues left to the main session; empty when there are none."""
-    if not rows:
-        return []
-    named = "; ".join(f"{issue_id} ({', '.join(files)})" for issue_id, files in rows)
-    ids = ", ".join(issue_id for issue_id, _ in rows)
-    return [f"tracking: {named}",
-            "next: edit the tracking files in the main session (no fixer owns them), then "
-            f"closeout --resolved for {ids}"]
+def _named_rows(rows: Sequence[Tuple[str, Sequence[str]]]) -> str:
+    """``id (file, file); id (file)`` for tracking report rows."""
+    return "; ".join(f"{issue_id} ({', '.join(files)})" for issue_id, files in rows)
+
+
+def tracking_lines(rows: Sequence[Tuple[str, Sequence[str]]],
+                   mixed: Sequence[Tuple[str, Sequence[str]]] = ()) -> List[str]:
+    """The ``tracking:`` report of issues left to the main session and the ``tracking (after its fixer):``
+    report of mixed issues' tracking files; empty when there are none."""
+    lines: List[str] = []
+    if rows:
+        ids = ", ".join(issue_id for issue_id, _ in rows)
+        lines += [f"tracking: {_named_rows(rows)}",
+                  "next: edit the tracking files in the main session (no fixer owns them), then "
+                  f"closeout --resolved for {ids}"]
+    if mixed:
+        lines += [f"tracking (after its fixer): {_named_rows(mixed)}",
+                  "next: after each id's fixer wave returns, edit these tracking files in the main session; "
+                  "the fixer's entry resolves the id, so no closeout --resolved"]
+    return lines
 
 
 def saved_deferrals(run: Path) -> Dict[str, str]:
@@ -1849,7 +1865,8 @@ def widened_waves(repo: Path, issues: Sequence[Dict[str, object]], held: Sequenc
                   locks: Optional[Mapping[str, Sequence[str]]] = None) -> List[List[Dict[str, object]]]:
     """``plan_waves`` with each fixer's file set widened by the registry tests targeting its files and the
     paths its fix options name that exist in ``repo``, tracking paths left out (``review.tracking_paths``)
-    and ``locks`` (see ``serial_locks``) keeping fixers that share a serial test in different waves."""
+    and ``locks`` (see ``serial_locks``) keeping units whose tests hold the same serial flag in one fixer
+    or in different waves."""
     existing = {p for i in issues for p in rmg.fix_paths(i) if (repo / p).is_file()}
     return rmg.plan_waves(issues, held, done, start_wave=start, registry=dict(entries), existing=existing,
                           tracking=active().review.tracking_paths, test_locks=locks)
