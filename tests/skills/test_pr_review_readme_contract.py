@@ -30,12 +30,16 @@ def _issue(issue_id: str, file: str, **extra: object) -> Dict[str, object]:
             "fix_kind": "mechanical", "summary": "s", "fix": ["f"], **extra}
 
 
-def _example_issues() -> List[Dict[str, object]]:
-    """The README's worked example: a hub over seven files, a leaf per file, a critical and a lone minor."""
+def _example_issues(criticals: bool) -> List[Dict[str, object]]:
+    """The README's worked examples: a hub over seven files, a leaf per file and a lone minor; the second adds
+    two judgment criticals sharing ``cli.py``."""
     names = [f"mod_{letter}.py" for letter in "abcdefg"]
     issues = [_issue("I1", names[0], fix_kind="judgment", files=names)]
     issues += [_issue(f"M{n}", name) for n, name in enumerate(names, start=1)]
-    return [*issues, _issue("C1", "cli.py", fix_kind="judgment"), _issue("M8", "docs_x.py")]
+    issues.append(_issue("M8", "docs_x.py"))
+    if criticals:
+        issues += [_issue(c, "cli.py", fix_kind="judgment") for c in ("C1", "C2")]
+    return issues
 
 
 def _lane(ids: List[str]) -> str:
@@ -47,15 +51,30 @@ def _lanes(waves: List[List[Dict[str, object]]]) -> List[List[List[str]]]:
     return [[list(map(str, fixer["issue_ids"])) for fixer in wave] for wave in waves]  # type: ignore[call-overload]
 
 
-def test_worked_example_lanes_match_the_planner() -> None:
-    lanes = _lanes(rmg.plan_waves(_example_issues(), held=[], done=[]))
+def _seconds(fixer: Dict[str, object], by_id: Dict[str, Dict[str, object]]) -> int:
+    """The README's fixer estimate, recomputed from the fixer row and the public cost constants."""
+    ids = list(map(str, fixer["issue_ids"]))  # type: ignore[call-overload]
+    if fixer["model"] == "haiku":
+        base, per_unit = rmg.HAIKU_SECONDS
+        return base + per_unit * len(ids)
+    opus = rmg.OPUS_SECONDS
+    kinds = ["mechanical" if by_id[i]["fix_kind"] == "mechanical" else "judgment" if i[0] == "M" else "heavy"
+             for i in ids]
+    return opus["base"] + sum(opus[kind] for kind in kinds)
+
+
+@pytest.mark.parametrize("criticals", [False, True])
+def test_worked_example_lanes_match_the_planner(criticals: bool) -> None:
+    issues = _example_issues(criticals)
+    waves = rmg.plan_waves(issues, held=[], done=[])
     text = _text()
-    assert len(lanes) == 2, "the README draws two waves"
-    for wave in lanes:
+    assert len(waves) == 2, "the README draws two waves per example"
+    for wave in _lanes(waves):
         for ids in wave:
             assert _lane(ids) in text, f"README never draws the lane {ids}"
-    longest = [max(len(ids) for ids in wave) for wave in lanes]
-    assert longest == [3, 1] and f"critical path: {longest[0]} + {longest[1]} = {sum(longest)} ids" in text
+    by_id = {str(i["id"]): i for i in issues}
+    walls = [max(_seconds(fixer, by_id) for fixer in wave) for wave in waves]
+    assert f"estimated wall: {walls[0]} + {walls[1]} = {sum(walls)} s" in text
 
 
 def test_caps_in_the_prose_are_the_planner_constants() -> None:
@@ -63,6 +82,16 @@ def test_caps_in_the_prose_are_the_planner_constants() -> None:
     assert f"{rmg.MAX_ISSUES_PER_FIXER} units" in text
     assert f"up to {rmg.FIXERS_PER_WAVE} fixers" in text
     assert f"fewer than {rmg.FIXERS_PER_WAVE} fixers" in text
+
+
+def test_cost_figures_in_the_prose_are_the_planner_constants() -> None:
+    text = _text()
+    base, per_unit = rmg.HAIKU_SECONDS
+    opus = rmg.OPUS_SECONDS
+    assert f"haiku fixer    {base} s + {per_unit} s per unit" in text
+    line = (f"opus fixer     {opus['base']} s + {opus['heavy']} s per heavy unit + "
+            f"{opus['judgment']} s per minor judgment unit + {opus['mechanical']} s per mechanical part")
+    assert line in text
 
 
 def test_every_planner_helper_the_readme_names_exists() -> None:
