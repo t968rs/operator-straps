@@ -94,9 +94,11 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   bubble answers into a follow-up wave with `waves --ids <ids>`.
 - **Waves come from `waves`, sized by unit count.** A mechanical multi-file issue splits into one single-file part per
   file (parts of one issue may sit in different fixers of a wave); a judgment multi-file issue stays whole over
-  primary + `also`, with one owner, placed first. At most 6 units (whole issues or parts) per fixer (a file with more
-  splits into chunks), fixers file-disjoint within a wave over the files they own, later waves dispatched only after
-  the earlier one returns, `haiku` only when every issue is `fix_kind: mechanical`. Each fixer's file set also
+  primary + `also`, with one owner. At most 6 units (whole issues or parts) per fixer; units sharing a file run
+  in one fixer, and a group over 6 is cut by deferring its most connected unit to a later wave (ties: the least
+  severe), so a hub issue can land after the units around it. A wave opens up to 4 fixers before any fixer takes
+  a second unrelated group; fixers are file-disjoint within a wave over the files they own, later waves are
+  dispatched only after the earlier one returns, and `haiku` runs only when every issue is `fix_kind: mechanical`. Each fixer's file set also
   holds the registered tests targeting its issues' files and the existing paths their `fix` options name, so tests
   and docs a fix requires stay inside the fixer, except `review.tracking_paths` files: no fixer owns them, `waves`
   prints the issues that hold only such files as a `tracking:` row, and the main session edits them and runs

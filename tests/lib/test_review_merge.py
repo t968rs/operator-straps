@@ -569,9 +569,64 @@ class TestPlanWaves:
         waves = rmg.plan_waves([_issue(f"M{n}") for n in range(1, 9)], held=[], done=[])
         assert [[len(f["issue_ids"]) for f in wave] for wave in waves] == [[6], [2]]
 
-    def test_disjoint_chunks_share_a_fixer(self) -> None:
+    def test_disjoint_chunks_get_their_own_fixers(self) -> None:
         waves = rmg.plan_waves([_issue("M1", "a.py"), _issue("M2", "b.py")], held=[], done=[])
+        assert [f["issue_ids"] for f in waves[0]] == [["M1"], ["M2"]]
+
+    def test_past_the_fixer_target_chunks_share_the_smallest(self) -> None:
+        issues = [_issue("M1", "a.py"), _issue("M2", "a.py"), _issue("M3", "b.py"), _issue("M4", "c.py")]
+        waves = rmg.plan_waves(issues, held=[], done=[], fixers=2)
+        assert [f["issue_ids"] for f in waves[0]] == [["M1", "M2"], ["M3", "M4"]]
+
+    def test_target_of_one_fills_a_fixer_to_the_cap(self) -> None:
+        issues = [_issue(f"M{n}", f"f{n}.py") for n in range(1, 4)]
+        waves = rmg.plan_waves(issues, held=[], done=[], fixers=1)
+        assert [f["issue_ids"] for f in waves[0]] == [["M1", "M2", "M3"]]
+
+    def test_overflow_chunk_prefers_a_fixer_of_its_own_kind(self) -> None:
+        issues = [_issue("M1", "a.py", fix_kind="judgment"), _issue("M2", "b.py"), _issue("M3", "c.py")]
+        waves = rmg.plan_waves(issues, held=[], done=[], fixers=2)
+        assert [(f["issue_ids"], f["model"]) for f in waves[0]] == [(["M1"], "opus"), (["M2", "M3"], "haiku")]
+
+    @staticmethod
+    def _hub_and_leaves(leaves: int = 3) -> List[Dict[str, object]]:
+        names = [f"{c}.py" for c in "abcdefgh"[:leaves]]
+        hub = _issue("I1", names[0], fix_kind="judgment", files=names)
+        return [hub, *(_issue(f"M{n}", name) for n, name in enumerate(names, start=1))]
+
+    def test_over_cap_hub_waits_so_its_leaves_run_in_parallel(self) -> None:
+        waves = rmg.plan_waves(self._hub_and_leaves(), held=[], done=[], cap=2)
+        assert [[f["issue_ids"] for f in wave] for wave in waves] == [[["M1"], ["M2"], ["M3"]], [["I1"]]]
+
+    def test_group_within_the_cap_runs_whole_in_one_fixer(self) -> None:
+        waves = rmg.plan_waves(self._hub_and_leaves(), held=[], done=[], cap=6)
+        assert [f["issue_ids"] for f in waves[0]] == [["M1", "M2", "M3", "I1"]] and len(waves) == 1
+
+    def test_cut_defers_the_least_severe_of_equally_connected_units(self) -> None:
+        waves = rmg.plan_waves([_issue(f"M{n}") for n in range(1, 9)], held=[], done=[], cap=3)
+        assert [[f["issue_ids"] for f in wave] for wave in waves] == [[["M1", "M2", "M3"]],
+                                                                       [["M4", "M5", "M6"]], [["M7", "M8"]]]
+
+    def test_cut_recurses_until_every_group_fits(self) -> None:
+        issues = [_issue(f"M{n}", "a.py") for n in range(1, 4)]
+        issues += [_issue("I1", "a.py", fix_kind="judgment", files=["a.py", "b.py"]),
+                   _issue("I2", "b.py", fix_kind="judgment", files=["b.py", "c.py"]),
+                   _issue("M4", "c.py")]
+        waves = rmg.plan_waves(issues, held=[], done=[], cap=2)
+        assert all(len(f["issue_ids"]) <= 2 for wave in waves for f in wave)
+        planned = sorted(i for wave in waves for f in wave for i in f["issue_ids"])
+        assert planned == ["I1", "I2", "M1", "M2", "M3", "M4"]
+
+    def test_units_linked_through_a_widened_test_share_a_group(self) -> None:
+        registry = {"tests/test_ab.py": ["a.py", "b.py"]}
+        issues = [_issue("M1", "a.py"), _issue("M2", "b.py")]
+        waves = rmg.plan_waves(issues, held=[], done=[], registry=registry)
         assert [f["issue_ids"] for f in waves[0]] == [["M1", "M2"]]
+
+    def test_a_full_wave_still_opens_a_fixer_for_an_unrelated_chunk(self) -> None:
+        issues = [_issue(f"M{n}", f"f{n}.py") for n in range(1, 4)]
+        waves = rmg.plan_waves(issues, held=[], done=[], cap=1, fixers=1)
+        assert [[f["issue_ids"] for f in wave] for wave in waves] == [[["M1"], ["M2"], ["M3"]]]
 
     def test_held_and_done_excluded(self) -> None:
         waves = rmg.plan_waves([_issue("M1"), _issue("M2"), _issue("M3")], held=["M1"], done=["M3"])
@@ -1071,7 +1126,8 @@ class TestSerialLocks:
         assert self._ids(self._plan(issues, cap=2)) == [[["M1", "M2"], ["M3"]]]
 
     def test_fixer_record_names_its_locks(self) -> None:
-        waves = self._plan([_issue("M1", "a.py"), _issue("M2", "c.py"), _issue("M3", "d.py")], cap=6)
+        issues = [_issue("M1", "a.py"), _issue("M2", "c.py"), _issue("M3", "d.py")]
+        waves = rmg.plan_waves(issues, [], [], cap=6, fixers=1, registry=self._REG, test_locks=self._LOCKS)
         assert [(f["issue_ids"], f["locks"]) for w in waves for f in w] == [
             (["M1", "M2", "M3"], ["properties.arcpy", "properties.slow"])]
         assert all("locks" not in f for w in self._plan([_issue("M3", "d.py")]) for f in w)
