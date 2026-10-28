@@ -614,6 +614,29 @@ class TestPlanWaves:
         lanes = [[f["issue_ids"] for f in wave] for wave in waves]
         assert lanes == [[["I1", "I2"], ["C1"]], [["M1"], ["M2"]]]
 
+    def test_readmit_returns_a_unit_the_cut_no_longer_needs(self) -> None:
+        spec = [("M1", ["b.py"], "mechanical"), ("I1", ["b.py", "c.py"], "judgment"),
+                ("I2", ["d.py"], "judgment"), ("M2", ["c.py"], "judgment"),
+                ("C1", ["c.py"], "mechanical"), ("C2", ["c.py", "d.py"], "judgment")]
+        issues = [_issue(i, files[0], files=files, fix_kind=kind) for i, files, kind in spec]
+        waves = rmg.plan_waves(issues, held=[], done=[], cap=2)
+        lanes = [[f["issue_ids"] for f in wave] for wave in waves]
+        assert lanes == [[["M2", "I1"], ["I2"]], [["C1", "C2"], ["M1"]]]
+
+    def test_judgment_group_one_over_the_cap_runs_whole(self) -> None:
+        issues = [_issue(f"M{n}", "a.py", fix_kind="judgment") for n in range(1, 8)]
+        waves = rmg.plan_waves(issues, held=[], done=[])
+        assert [[f["issue_ids"] for f in wave] for wave in waves] == [[[f"M{n}" for n in range(1, 8)]]]
+
+    def test_mechanical_group_one_over_the_cap_is_still_cut(self) -> None:
+        waves = rmg.plan_waves([_issue(f"M{n}") for n in range(1, 8)], held=[], done=[])
+        assert [[len(f["issue_ids"]) for f in wave] for wave in waves] == [[6], [1]]
+
+    def test_judgment_group_two_over_the_cap_is_still_cut(self) -> None:
+        issues = [_issue(f"M{n}", "a.py", fix_kind="judgment") for n in range(1, 9)]
+        waves = rmg.plan_waves(issues, held=[], done=[])
+        assert all(len(f["issue_ids"]) <= rmg.MAX_ISSUES_PER_FIXER for wave in waves for f in wave)
+
     def test_all_heavy_group_defers_its_most_connected_unit(self) -> None:
         issues = [_issue("I1", "a.py", fix_kind="judgment", files=["a.py", "b.py"]),
                   _issue("I2", "a.py", fix_kind="judgment"), _issue("I3", "b.py", fix_kind="judgment")]

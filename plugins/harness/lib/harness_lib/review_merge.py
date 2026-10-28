@@ -24,10 +24,12 @@ issue stays whole. Units link through a shared owned file or serial-test lock; a
 every remaining group fits, and the deferred units re-enter the pool for the next wave. The most-connected cut
 defers the most connected unit (ties: the least severe), so the units that hung on a deferred hub run in
 parallel before it; the light-first cut defers light units (mechanical parts, minor issues) before heavy ones
-(critical or important judgment fixes), so heavy work runs in the first wave. The layout is planned under both
-cuts and the one with the lower estimated wall time (``HAIKU_SECONDS``, ``OPUS_SECONDS``) wins, the
-most-connected cut on a tie. A group sharing nothing with the wave's fixers joins the fixer holding another
-part of one of its issues when it fits and that fixer holds no heavy unit; otherwise it opens a fixer of its
+(critical or important judgment fixes), so heavy work runs in the first wave. Either cut may return the
+deferred units it no longer needs (``_readmit``), and a judgment-only group one unit over the cap may run
+whole (``_fits``). The layout is planned under every mix of these rules and the one with the lowest estimated
+wall time (``HAIKU_SECONDS``, ``OPUS_SECONDS``) wins, the plain most-connected cut on a tie. A group
+sharing nothing with the wave's fixers joins the fixer holding another part of one of its issues when it fits
+and that fixer holds no heavy unit; otherwise it opens a fixer of its
 own while the wave holds fewer than ``FIXERS_PER_WAVE``, and past that it joins the smallest fixer with room,
 preferring one of its own fix kind, then one without a heavy unit, so a wave spreads its work across fixers
 instead of filling one to the cap. Fixers within a wave are file-disjoint over the
@@ -49,6 +51,7 @@ from __future__ import annotations
 import copy
 import fnmatch
 import functools
+import itertools
 import json
 import math
 import os
@@ -676,38 +679,81 @@ def _holds_heavy(chunk: Sequence[_Unit]) -> bool:
     return any(_heavy(u) for u in chunk)
 
 
-def _cut(group: Sequence[_Unit], cap: int,
-         light_first: bool = False) -> Tuple[List[List[_Unit]], List[_Unit]]:
+@dataclass(frozen=True)
+class _Rules:
+    """Options one candidate layout is planned under; ``plan_waves`` plans every mix and keeps the cheapest.
+
+    ``light_first``: the cut defers light units before heavy ones (``_cut``). ``readmit``: deferred units the
+    finished cut no longer needs rejoin the wave (``_readmit``). ``stretch``: a judgment-only group one unit
+    over the cap runs whole instead of leaving one unit for a later wave (``_schedule``)."""
+
+    light_first: bool = False
+    readmit: bool = False
+    stretch: bool = False
+
+
+def _readmit(groups: Sequence[List[_Unit]], deferred: Sequence[_Unit],
+             cap: int) -> Tuple[List[List[_Unit]], List[_Unit]]:
+    """Return deferred units to the wave, in deferral order: a unit linked to no group starts a group of its
+    own, a unit linked to exactly one group with room joins it, and a unit linked to two or more groups stays
+    deferred (rejoining would merge them). The greedy cut can defer a unit early that a later deferral made
+    unnecessary; every group still fits ``cap`` and groups stay disjoint."""
+    kept = [list(g) for g in groups]
+    left: List[_Unit] = []
+    for unit in deferred:
+        keys = _keys(unit)
+        linked = [g for g in kept if any(keys & _keys(u) for u in g)]
+        if not linked:
+            kept.append([unit])
+        elif len(linked) == 1 and len(linked[0]) < cap:
+            linked[0].append(unit)
+        else:
+            left.append(unit)
+    return kept, left
+
+
+def _cut(group: Sequence[_Unit], cap: int, rules: _Rules = _Rules()) -> Tuple[List[List[_Unit]], List[_Unit]]:
     """Cut a group over ``cap`` units: defer the most connected unit (ties: the least severe) until every
     remaining group fits ``cap``. Returns the groups that run now and the deferred units, which fall to a
     later wave. Removing a deferred hub removes the links through it, so neighbours that shared only the hub
     fall into separate groups and run in parallel instead of queueing behind the fixer that owns the hub;
     neighbours that also share a file or lock stay in one component, and that component is cut again if
-    it is still over ``cap``. With ``light_first``, a heavy unit (``_heavy``) is deferred only when the
+    it is still over ``cap``. With ``rules.light_first``, a heavy unit (``_heavy``) is deferred only when the
     crowded groups hold no light one, so heavy work stays in the earliest wave and the later waves carry
-    the cheap units."""
+    the cheap units. With ``rules.readmit``, the finished cut returns the units it no longer needs
+    (``_readmit``)."""
     kept, deferred = list(group), []
     groups = [list(kept)]
+    light_first = rules.light_first
     while any(len(g) > cap for g in groups):
         crowded = [u for g in groups if len(g) > cap for u in g]
         hub = max(crowded, key=lambda u: (light_first and not _heavy(u), _degree(u, kept), _id_key(u.id)))
         kept = [u for u in kept if u is not hub]
         deferred.append(hub)
         groups = _components(kept)
-    return groups, deferred
+    return _readmit(groups, deferred, cap) if rules.readmit else (groups, deferred)
 
 
-def _schedule(units: Sequence[_Unit], cap: int, light_first: bool = False) -> List[List[List[_Unit]]]:
-    """Waves of file-disjoint groups, each at most ``cap`` units: a group that fits runs whole in the first
-    wave, a larger one is cut (``_cut``, passing ``light_first``) and its deferred units re-enter the pool
-    for the next wave."""
+def _fits(group: Sequence[_Unit], cap: int, rules: _Rules) -> bool:
+    """True when ``group`` runs whole: at most ``cap`` units, or, with ``rules.stretch``, exactly one over
+    ``cap`` with no mechanical unit."""
+    if len(group) <= cap:
+        return True
+    judgment_only = not any(u.issue.get("fix_kind") == "mechanical" for u in group)
+    return rules.stretch and len(group) == cap + 1 and judgment_only
+
+
+def _schedule(units: Sequence[_Unit], cap: int, rules: _Rules = _Rules()) -> List[List[List[_Unit]]]:
+    """Waves of file-disjoint groups, each at most ``cap`` units (one more under ``rules.stretch``, see
+    ``_fits``): a group that fits runs whole in the first wave, a larger one is cut (``_cut``) and its
+    deferred units re-enter the pool for the next wave."""
     waves: List[List[List[_Unit]]] = []
     pool = list(units)
     while pool:
         wave: List[List[_Unit]] = []
         pool, later = [], pool
         for group in _components(later):
-            run, deferred = ([group], []) if len(group) <= cap else _cut(group, cap, light_first)
+            run, deferred = ([group], []) if _fits(group, cap, rules) else _cut(group, cap, rules)
             wave.extend(run)
             pool.extend(deferred)
         waves.append(sorted(wave, key=lambda g: (-len(g), min(_id_key(u.id) for u in g))))
@@ -762,10 +808,10 @@ def _wall_seconds(waves: Sequence[Sequence[Sequence[_Unit]]]) -> int:
     return sum(max(_fixer_seconds(chunk) for chunk in wave) for wave in waves)
 
 
-def _layout(units: Sequence[_Unit], cap: int, fixers: int, light_first: bool) -> List[List[List[_Unit]]]:
-    """Waves of fixers (unit lists): ``_schedule`` with the given cut, each wave's groups placed on fixers."""
+def _layout(units: Sequence[_Unit], cap: int, fixers: int, rules: _Rules) -> List[List[List[_Unit]]]:
+    """Waves of fixers (unit lists): ``_schedule`` under ``rules``, each wave's groups placed on fixers."""
     waves: List[List[List[_Unit]]] = []
-    for groups in _schedule(units, cap, light_first):
+    for groups in _schedule(units, cap, rules):
         wave: List[List[_Unit]] = []
         for group in groups:
             _place_free(wave, group, cap, fixers)
@@ -815,14 +861,16 @@ def plan_waves(issues: Sequence[Issue], held: Sequence[str], done: Sequence[str]
     each other like a shared file, so they never share a wave; a fixer record names its ``locks``.
     ``fixers`` is the number of fixers a wave opens for unrelated chunks before they start sharing a fixer
     (``_place_free``); a wave may exceed it when no fixer has room for a group.
-    Two layouts are planned, one per cut (``_cut``: most connected first, or light units first); the one
-    with the lower estimated wall time (``_wall_seconds``) is returned, the most-connected cut on a tie.
+    One layout is planned per mix of ``_Rules`` (cut most connected first or light units first; deferred
+    units returned or not; a judgment-only group one over ``cap`` stretched or cut); the one with the lowest
+    estimated wall time (``_wall_seconds``) is returned. A tie keeps the earlier mix in
+    ``itertools.product`` order, so the plain most-connected cut wins every tie it is part of.
     """
     skip = set(held) | set(done)
     units = [u for i in issues if i["id"] not in skip
              for u in _units(i, registry or {}, existing or set(), tracking, test_locks)]
-    layouts = [_layout(units, cap, fixers, light_first) for light_first in (False, True)]
-    waves = min(layouts, key=_wall_seconds)
+    mixes = [_Rules(*flags) for flags in itertools.product((False, True), repeat=3)]
+    waves = min((_layout(units, cap, fixers, rules) for rules in mixes), key=_wall_seconds)
     return [[_fixer(start_wave + w, k, b) for k, b in enumerate(wave, start=1)]
             for w, wave in enumerate(waves)]
 

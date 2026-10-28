@@ -82,6 +82,7 @@ def test_caps_in_the_prose_are_the_planner_constants() -> None:
     assert f"{rmg.MAX_ISSUES_PER_FIXER} units" in text
     assert f"up to {rmg.FIXERS_PER_WAVE} fixers" in text
     assert f"fewer than {rmg.FIXERS_PER_WAVE} fixers" in text
+    assert f"group of exactly {rmg.MAX_ISSUES_PER_FIXER + 1} units" in text
 
 
 def test_cost_figures_in_the_prose_are_the_planner_constants() -> None:

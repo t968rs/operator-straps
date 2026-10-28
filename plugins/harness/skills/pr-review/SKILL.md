@@ -785,8 +785,10 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
   lock form a group that runs in one fixer. A group of up to 6 runs whole in the first wave. A larger group is cut:
   units wait for a later wave, repeatedly, until each remaining group fits. `waves` plans the layout under two
   cuts, the most connected unit first (ties: the least severe) and light units (mechanical parts, minor issues)
-  before heavy ones (critical or important judgment fixes), and keeps the one with the lower estimated wall time.
-  Either way an issue can land before or after the issues around it.
+  before heavy ones (critical or important judgment fixes), each with and without returning deferred units the
+  finished cut no longer needs, and with and without running a judgment-only group of 7 whole, then keeps the
+  layout with the lowest estimated wall time. A stretched group is the one fixer that may hold 7 units. Either
+  way an issue can land before or after the issues around it.
 - **Spread over fixers.** Groups of a wave share no file or lock. Each group opens a fixer of its own while the wave
   holds fewer than 4; past that it joins the smallest fixer with room (one of its own fix kind first, then one
   holding no heavy unit), and a fixer already holding another part of the same issue takes that group first unless

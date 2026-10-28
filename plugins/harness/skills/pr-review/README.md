@@ -38,7 +38,7 @@ groups         units linked by a shared key (_components)
 cut            group over 6 units: defer units until every group fits (_cut), by one of two rules
 wave           groups that fit; deferred units re-enter the pool (_schedule)
 fixer          up to 4 per wave, then the smallest with room (_place_free)
-choice         the whole layout is planned once per cut rule; the lower estimated wall time wins (_wall_seconds)
+choice         the whole layout is planned once per rule mix; the lower estimated wall time wins (_wall_seconds)
 ```
 
 A **heavy** unit is a judgment fix of a critical or important issue (`_heavy`). Mechanical parts and minor issues
@@ -75,10 +75,20 @@ The most-connected cut breaks a hub's group apart, so its leaves run in parallel
 light-first cut keeps heavy work in the first wave, beside the other groups' fixers rather than after them, and
 leaves the cheap units for later waves.
 
+Two options adjust the cut:
+
+- **Readmit** (`_readmit`). The cut is greedy, so a unit deferred early can become unnecessary once a later
+  deferral splits its group. After the cut, each deferred unit, in deferral order, rejoins the wave: as a group of
+  its own when it links to no group, or into the one group it links to when that group has room. A unit linked to
+  two or more groups stays deferred, since rejoining would merge them.
+- **Stretch** (`_fits`). A group of exactly 7 units with no mechanical unit runs whole on one fixer instead of
+  leaving one unit for a later wave.
+
 ### Choosing the layout
 
-`waves` plans the full layout under each cut and keeps the one with the lower estimated wall time; a tie keeps
-the most-connected cut. A wave lasts as long as its slowest fixer, and the waves run one after another:
+`waves` plans the full layout under every mix of the two cuts, readmit and stretch (eight layouts) and keeps the
+one with the lowest estimated wall time. A tie keeps the earlier mix, so the plain most-connected cut wins every
+tie it is part of. A wave lasts as long as its slowest fixer, and the waves run one after another:
 
 ```
 haiku fixer    25 s + 7 s per unit
@@ -202,7 +212,8 @@ groups share a wave; the fixer record in waves.json lists its locks
   close in estimate can trade places on real runs.
 - **Links.** Units link only through shared files and locks. Two fixes that depend on each other through behavior
   alone are not linked.
-- **Cap.** Six units per fixer bounds one fixer's load; the units the cut defers wait for a later wave.
+- **Cap.** Six units per fixer bounds one fixer's load; the units the cut defers wait for a later wave. The one
+  exception is a stretched judgment-only group of 7, chosen only when the estimate says it saves a wave.
 
 ## Config keys
 

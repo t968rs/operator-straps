@@ -176,8 +176,13 @@ Shipped in plugin 0.39.0 (`review_merge.py`):
   `OPUS_SECONDS`, the model above.
 - `_place_free` skips the kin rule for a fixer holding a heavy unit (critical or important judgment), and the
   smallest-fixer fallback prefers a fixer without one.
-- Not implemented or replayed: re-admitting deferred units into groups with room, and letting a judgment group
-  exceed the cap by one. With both cuts planned, PR 117 has no third wave to remove.
+- Added after the first commit: `readmit` (`_readmit`) and `stretch` (`_fits`). Readmit returns deferred units
+  the finished cut no longer needs: a unit with no links starts its own group, and one linked to a single group
+  with room joins it. Stretch runs a judgment-only group of 7 whole. `plan_waves` now plans all eight mixes
+  (`_Rules`) and keeps the lowest estimate. On the 29 saved reviews neither rule ever wins: the total stays
+  7517 s and every layout is unchanged. A random search over small issue sets found cases where each one removes
+  a wave (readmit: 230 s to 210 s; stretch: 250 s to 230 s), and those cases are pinned in
+  `tests/lib/test_review_merge.py`. They cover shapes these reviews have not produced.
 
 PR 117 under the shipped planner: W1 runs the hub {I1, I2, I4, I5, I7, I9} beside C1's fixer {M1, M13, I3, C1},
 a {M1, M2} fixer and a haiku {M6, M12} fixer; W2 runs four fixers of minors and mechanical parts. Estimated fix
