@@ -80,7 +80,10 @@ def sub_item(**extra: Any) -> Dict[str, Any]:
 
 @pytest.fixture()
 def filled(run: Run, project: Path) -> Callable[..., Dict[str, Any]]:
-    """``filled(**top)``: run ``new``, then write one item (and ``top`` fields) into the plan."""
+    """``filled(item=None, **top)``: run ``new``, then write one item and the ``top`` fields.
+
+    ``item`` defaults to ``sub_item()``.
+    """
     def _fill(item: Optional[Dict[str, Any]] = None, **top: Any) -> Dict[str, Any]:
         code, _, err = run("new", "Add subtraction", "--spec", "docs/spec.md")
         assert code == 0, err
@@ -149,7 +152,8 @@ def test_check_reports_a_stale_anchor(run: Run, filled: Fill) -> None:
 
 
 def test_check_stops_at_schema_problems(run: Run, filled: Fill) -> None:
-    filled(sub_item(tests=[{"node": "tests/test_calc_sub.py::test_sub", "red": "Oops"}]))
+    stale = [{"at": "src/calc.py:1", "expect": "def plus(a, b):"}]
+    filled(sub_item(tests=[{"node": "tests/test_calc_sub.py::test_sub", "red": "Oops"}], anchors=stale))
     code, _, err = run("check", "1")
     assert code == 1 and "problem: schema: items/0/tests/0/red:" in err and "anchor" not in err
 
@@ -163,23 +167,38 @@ def test_check_lists_open_decisions_without_failing(run: Run,
     assert code == 0 and "open: D1: Name it sub?" in out
 
 
+def test_render_writes_the_pip_from_the_plan(run: Run, filled: Fill, project: Path) -> None:
+    filled()
+    pip = project / PLANS / "0001_Add_subtraction_PIP.md"
+    pip.unlink()
+    code, out, err = run("render", "1")
+    assert code == 0, err
+    assert out == f"render [done] | {PLANS}/0001_Add_subtraction_PIP.md\n"
+    assert "TASK-1" in pip.read_text(encoding="utf-8")
+
+
 # --- freeze -----------------------------------------------------------------------------------------------
 
-def test_freeze_refuses_an_open_decision(run: Run, filled: Fill) -> None:
+def test_freeze_refuses_an_open_decision(run: Run, filled: Fill, project: Path) -> None:
     decision = {"id": "D1", "question": "Name it sub?", "chosen": None,
                 "options": [{"id": "sub", "summary": "sub"}, {"id": "minus", "summary": "minus"}]}
     filled(decisions=[decision])
+    before = read_plan(project)
     code, _, err = run("freeze", "1")
     assert code == 1 and "problem: decision D1 is open: Name it sub?" in err
+    assert read_plan(project) == before
 
 
 def test_freeze_refuses_an_item_nothing_proves(run: Run,
-                                              filled: Fill) -> None:
+                                              filled: Fill, project: Path) -> None:
     filled(sub_item(tests=[]))
+    before = read_plan(project)
     code, _, err = run("freeze", "1")
     assert code == 1 and "problem: TASK-1 has no test and no command" in err
+    assert read_plan(project) == before
 
 
+@pytest.mark.cross_os
 def test_freeze_records_head_and_renders(run: Run, filled: Fill,
                                          project: Path) -> None:
     filled()
@@ -193,11 +212,13 @@ def test_freeze_records_head_and_renders(run: Run, filled: Fill,
     assert "**Frozen:** " + frozen["date"] in pip
 
 
-def test_a_second_freeze_needs_refreeze(run: Run, filled: Fill) -> None:
+def test_a_second_freeze_needs_refreeze(run: Run, filled: Fill, project: Path) -> None:
     filled()
     run("freeze", "1")
+    before = read_plan(project)
     code, _, err = run("freeze", "1")
     assert code == 1 and "already frozen" in err
+    assert read_plan(project) == before
     assert run("freeze", "1", "--refreeze")[0] == 0
 
 
@@ -212,6 +233,24 @@ def test_check_flags_an_edit_after_freeze(run: Run, filled: Fill,
     assert code == 1 and "problem: plan changed after freeze" in err
 
 
+def test_check_flags_a_hand_set_complete_item(run: Run, filled: Fill, project: Path) -> None:
+    filled()
+    run("freeze", "1")
+    plan = read_plan(project)
+    plan["items"][0]["status"] = "COMPLETE"
+    write_plan(project, plan)
+    code, _, err = run("check", "1")
+    assert code == 1 and "problem: TASK-1 is COMPLETE without the record of record --sha" in err
+
+
+def test_freeze_refuses_an_item_that_is_not_pending(run: Run, filled: Fill, project: Path) -> None:
+    filled(sub_item(status="IN_PROGRESS"))
+    before = read_plan(project)
+    code, _, err = run("freeze", "1")
+    assert code == 1 and "problem: TASK-1 is IN_PROGRESS: a first freeze needs every item PENDING" in err
+    assert read_plan(project) == before
+
+
 # --- record -----------------------------------------------------------------------------------------------
 
 def test_record_refuses_an_unfrozen_plan(run: Run, filled: Fill,
@@ -222,6 +261,7 @@ def test_record_refuses_an_unfrozen_plan(run: Run, filled: Fill,
     assert code == 1 and "problem: plan 0001 is not frozen" in err
 
 
+@pytest.mark.cross_os
 def test_record_runs_the_tests_and_completes_the_item(run: Run,
                                                      filled: Fill, project: Path) -> None:
     filled()
@@ -236,8 +276,60 @@ def test_record_runs_the_tests_and_completes_the_item(run: Run,
     pip = (project / PLANS / "0001_Add_subtraction_PIP.md").read_text(encoding="utf-8")
     assert "- [ ] " not in pip and "- [x] Test `tests/test_calc_sub.py::test_sub`" in pip
     assert out.startswith("record [done] | TASK-1 COMPLETE")
+    assert run("check", "1")[0] == 0
 
 
+@pytest.mark.cross_os
+def test_record_runs_the_tests_at_the_commit_not_the_working_tree(run: Run, filled: Fill, project: Path,
+                                                                  tmp_path: Path) -> None:
+    filled()
+    run("freeze", "1")
+    source = project / PLANS / "0001" / "tests" / "tests" / "test_calc_sub.py"
+    (project / "tests" / "test_calc_sub.py").write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    calc = project / "src" / "calc.py"
+    body = "\n\ndef sub(a, b):\n    from src.helper import minus\n    return minus(a, b)\n"
+    calc.write_text(calc.read_text(encoding="utf-8") + body, encoding="utf-8")
+    git(project, "add", "src/calc.py", "tests/test_calc_sub.py")
+    git(project, "commit", "-q", "-m", "add sub on an uncommitted helper")
+    sha = git(project, "rev-parse", "HEAD")
+    (project / "src" / "helper.py").write_text("def minus(a, b):\n    return a - b\n", encoding="utf-8")
+    code, _, err = run("record", "1", "TASK-1", "--sha", sha)
+    assert code == 1 and f"problem: TASK-1 tests failed at {sha[:7]}" in err
+    assert read_plan(project)["items"][0]["status"] == "PENDING" and trees(tmp_path) == []
+
+
+def test_record_refuses_a_name_that_is_no_commit(run: Run, filled: Fill) -> None:
+    filled()
+    run("freeze", "1")
+    code, _, err = run("record", "1", "TASK-1", "--sha", "deadbeef")
+    assert code == 1 and "problem: deadbeef does not name a commit" in err
+
+
+def test_record_refuses_a_commit_unreachable_from_head(run: Run, filled: Fill, project: Path) -> None:
+    filled()
+    run("freeze", "1")
+    git(project, "checkout", "-q", "-b", "side")
+    sha = implement(project)
+    git(project, "checkout", "-q", "feat-x")
+    code, _, err = run("record", "1", "TASK-1", "--sha", sha)
+    assert code == 1 and f"problem: commit {sha[:7]} is not reachable from HEAD" in err
+
+
+def test_record_start_and_blocked_set_their_states(run: Run, filled: Fill, project: Path) -> None:
+    filled()
+    run("freeze", "1")
+    code, _, err = run("record", "1", "TASK-1", "--start")
+    assert code == 0, err
+    item = read_plan(project)["items"][0]
+    assert item["status"] == "IN_PROGRESS" and item["evidence"].startswith("started ")
+    code, out, err = run("record", "1", "TASK-1", "--blocked", "waits on the operator module")
+    assert code == 0, err
+    item = read_plan(project)["items"][0]
+    assert item["status"] == "BLOCKED" and item["evidence"] == "waits on the operator module"
+    assert out.startswith("record [done] | TASK-1 BLOCKED | open: TASK-1")
+
+
+@pytest.mark.cross_os
 def test_record_refuses_failing_tests(run: Run, filled: Fill,
                                      project: Path) -> None:
     filled()
@@ -325,11 +417,13 @@ def test_red_reports_a_test_that_fails_for_another_reason(run: Run, filled: Fill
 
 
 @pytest.mark.cross_os
-def test_freeze_refuses_a_planned_test_that_already_passes(run: Run, filled: Fill) -> None:
+def test_freeze_refuses_a_planned_test_that_already_passes(run: Run, filled: Fill, project: Path) -> None:
     filled(sub_item(tests=[{"node": "tests/test_calc.py::test_add", "red": "AssertionError"}]))
+    before = read_plan(project)
     code, _, err = run("freeze", "1")
     expected = "red: TASK-1 tests/test_calc.py::test_add: expected AssertionError, got PASSED"
     assert code == 1 and expected in err
+    assert read_plan(project) == before
 
 
 def test_red_with_no_tests_has_nothing_to_run(run: Run, filled: Fill) -> None:
@@ -356,3 +450,12 @@ def test_lanes_prints_a_parallel2_plan_of_the_open_items(run: Run, filled: Fill)
     assert lanes["target"] == "feat-x"
     assert [(lane["id"], lane["wave"]) for lane in lanes["lanes"]] == [("task-1", 1)]
     assert lanes["lanes"][0]["files"] == ["src/calc.py", "tests/test_calc_sub.py"]
+
+
+def test_lanes_maps_a_dotted_item_id_to_a_lane_id(run: Run, filled: Fill) -> None:
+    filled(sub_item(id="TASK-1.2"))
+    code, _, err = run("freeze", "1")
+    assert code == 0, err
+    code, out, err = run("lanes", "1", "--target", "feat-x")
+    assert code == 0, err
+    assert [lane["id"] for lane in json.loads(out)["lanes"]] == ["task-1-2"]
