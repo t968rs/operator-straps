@@ -123,6 +123,42 @@
       },
       "description": "Array of action items, one per issue/task"
     },
+    "base_commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$",
+      "description": "Commit the plan was written against: the merge base of the base branch and HEAD, recorded by `plan.py new`. Commands name `{base}` instead of a SHA."
+    },
+    "frozen": {
+      "type": ["object", "null"],
+      "description": "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field except item status and evidence. `plan.py check` reports any later edit outside those fields.",
+      "required": ["commit", "tree", "date", "digest"],
+      "properties": {
+        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "date": {"type": "string", "format": "date"},
+        "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "decisions": {
+      "type": "array",
+      "description": "Design questions the plan settles. `chosen` null means open, which blocks `plan.py freeze`. Every option not chosen counts as rejected.",
+      "items": {"$ref": "#/definitions/decision"}
+    },
+    "values": {
+      "type": "array",
+      "description": "Thresholds, counts and bands the plan copies from the spec or the code, with the options each assumes. A value assuming a rejected option fails `plan.py check`.",
+      "items": {"$ref": "#/definitions/value"}
+    },
+    "formats": {
+      "type": "array",
+      "description": "Literal formats another component parses (delimited strings, file layouts, CLI arguments). Each cites the existing producer or parser it is copied from.",
+      "items": {"$ref": "#/definitions/format"}
+    },
+    "sweeps": {
+      "type": "array",
+      "description": "Searches the plan relies on (old names, moved paths). `plan.py check` runs each pattern and fails on a file with hits that `hits` does not classify, or a classified file with none.",
+      "items": {"$ref": "#/definitions/sweep"}
+    },
     "deferred_to_future_plans": {
       "type": "array",
       "description": "Optional log of scope deferrals - what was considered and explicitly pushed out of this plan.",
@@ -252,6 +288,129 @@
             "null"
           ],
           "description": "Optional additional context, decision rationale, or legacy ID mapping (e.g., 'Was C1 in pre-unification schema')"
+        },
+        "model": {
+          "type": "string",
+          "enum": ["haiku", "sonnet", "opus"],
+          "description": "Model of the agent that implements the item when it is dispatched (default sonnet)."
+        },
+        "anchors": {
+          "type": "array",
+          "description": "Claims about existing code the item relies on: each names a line range and the text expected there. `plan.py check` opens every one.",
+          "items": {"$ref": "#/definitions/anchor"}
+        },
+        "commands": {
+          "type": "array",
+          "description": "Commands the item runs (generation, verification), each with the output that means it passed. Lint rejects a hard-coded commit SHA and a pytest run of a directory.",
+          "items": {"$ref": "#/definitions/command"}
+        },
+        "tests": {
+          "type": "array",
+          "description": "Pytest node ids that prove the item, each with the exception that fails it before the item is implemented. A planned test file lives at `<plans dir>/<plan_id>/tests/<repo-relative path>`.",
+          "items": {"$ref": "#/definitions/test"}
+        }
+      }
+    },
+    "anchor": {
+      "type": "object",
+      "required": ["at", "expect"],
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "type": "string",
+          "pattern": "^[^:]+:[0-9]+(-[0-9]+)?$",
+          "description": "Repo-relative path and 1-based line or line range: `src/x.py:12` or `src/x.py:12-18`."
+        },
+        "expect": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Text the range must contain; runs of whitespace compare as one space."
+        }
+      }
+    },
+    "command": {
+      "type": "object",
+      "required": ["run", "expect"],
+      "additionalProperties": false,
+      "properties": {
+        "run": {"type": "string", "minLength": 1},
+        "expect": {"type": "string", "minLength": 1, "description": "The output that means the command passed."},
+        "writes": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Files a generation command writes, default output paths and working-directory side effects included."
+        }
+      }
+    },
+    "test": {
+      "type": "object",
+      "required": ["node", "red"],
+      "additionalProperties": false,
+      "properties": {
+        "node": {"type": "string", "pattern": "^[^:]+\\.py(::[^:]+)+$"},
+        "red": {
+          "type": "string",
+          "enum": ["ImportError", "AttributeError", "AssertionError", "NotImplementedError", "TypeError"],
+          "description": "The exception that fails the test before the item is implemented."
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "required": ["id", "question", "options", "chosen"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^D[0-9]+$"},
+        "question": {"type": "string", "minLength": 1},
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["id", "summary"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+$"},
+              "summary": {"type": "string", "minLength": 1}
+            }
+          }
+        },
+        "chosen": {"type": ["string", "null"]},
+        "rationale": {"type": ["string", "null"]}
+      }
+    },
+    "value": {
+      "type": "object",
+      "required": ["name", "value", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "value": {"type": "string", "minLength": 1},
+        "source": {"type": "string", "minLength": 1, "description": "Where the value comes from: a spec section or a `path:line`."},
+        "assumes": {"type": "array", "items": {"type": "string"}, "description": "Option ids the value depends on."}
+      }
+    },
+    "format": {
+      "type": "object",
+      "required": ["name", "example", "source"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "example": {"type": "string", "minLength": 1},
+        "source": {"$ref": "#/definitions/anchor"}
+      }
+    },
+    "sweep": {
+      "type": "object",
+      "required": ["id", "pattern", "hits"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {"type": "string", "pattern": "^S[0-9]+$"},
+        "pattern": {"type": "string", "minLength": 1, "description": "Extended regular expression run with `git grep -E` over tracked and untracked files."},
+        "hits": {
+          "type": "object",
+          "additionalProperties": {"type": "string", "minLength": 1},
+          "description": "Repo-relative file -> classification (`rewrite`, `keep`, `frozen` or any word the plan defines)."
         }
       }
     }
