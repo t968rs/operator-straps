@@ -8,14 +8,19 @@ exception that failed the node with the item's planned ``red`` reason (``red_pro
 
 One process per node keeps the nodes independent: pytest aborts a whole session on a collection error, so
 an expected module-level ``ImportError`` in one file would otherwise hide every other node of the run.
+Each run imports the code of the tree, not of the main checkout: the tree is the working directory, and a
+src-layout root goes first on ``PYTHONPATH`` (``tree_env``), ahead of an editable install.
 
-``classify`` reads pytest's default (``--tb=auto``) output. ``ModuleNotFoundError`` counts as
+``classify`` reads pytest's ``--tb=auto`` output; ``run_red`` passes that option last, so it overrides a
+project's ``addopts``. Under ``--tb=short`` a bare ``E   assert`` line still counts as ``AssertionError``.
+``ModuleNotFoundError`` counts as
 ``ImportError``, its base class, since a planned red names the import failing rather than its cause. A
 collection error counts as ``ImportError`` when pytest reports it as an ``ImportError while importing test
 module`` (a test file importing what the task has yet to write), else as ``COLLECTION``.
 """
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -28,12 +33,14 @@ from harness_lib.plan_lanes import node_file, open_items
 
 PASSED, COLLECTION, MISSING, FAILED = "PASSED", "COLLECTION", "MISSING", "FAILED"
 NOT_RED = (PASSED, COLLECTION, MISSING)
-PYTEST_ARGS = ("-m", "pytest", "-q", "-p", "no:cacheprovider")
+# ``--tb=auto`` pins the traceback style ``classify`` reads, whatever the project's ``addopts`` say.
+PYTEST_ARGS = ("-m", "pytest", "-q", "-p", "no:cacheprovider", "--tb=auto")
 ALIASES = {"ModuleNotFoundError": "ImportError"}
 
 _HEADER = re.compile(r"^_{2,} (.+?) _{2,}$")
 _LOCATION = re.compile(r"^\S.*:\d+: (\w+)$", re.MULTILINE)
 _E_LINE = re.compile(r"^E\s+(\w+):", re.MULTILINE)
+_E_ASSERT = re.compile(r"^E\s+assert\b", re.MULTILINE)
 _COUNT_PASSED = re.compile(r"^.*\b\d+ passed\b.*$", re.MULTILINE)
 _NOT_FOUND = re.compile(r"^ERROR: (?:file or directory )?not found: (.+?)\s*$", re.MULTILINE)
 _COLLECTING = "ERROR collecting "
@@ -116,8 +123,11 @@ def _failure_text(sections: Mapping[str, str], node: str, passed: bool) -> Optio
 
 
 def _exception_name(text: str) -> str:
-    """The class that failed a section: its crash location line, else its last ``E   Name:`` line."""
+    """The class that failed a section: its crash location line, else its last ``E   Name:`` line.
+    A bare ``E   assert`` line (a rewritten assertion under ``--tb=short``) counts as ``AssertionError``."""
     found = _LOCATION.findall(text) or _E_LINE.findall(text)
+    if not found and _E_ASSERT.search(text):
+        found = ["AssertionError"]
     name = found[-1] if found else FAILED
     return ALIASES.get(name, name)
 
@@ -149,11 +159,27 @@ def classify(output: str, node: str) -> str:
 
 # --- running ----------------------------------------------------------------------------------------------
 
+def tree_env(tree: Path) -> Dict[str, str]:
+    """The environment for a run in ``tree``: a src-layout root (``src/`` without ``__init__.py``) goes
+    first on ``PYTHONPATH``, ahead of an editable install that resolves the package to the main checkout.
+    The working directory already leads ``sys.path`` under ``python -m``; other source roots resolve
+    wherever the environment installs them."""
+    env = dict(os.environ)
+    src = tree / "src"
+    if src.is_dir() and not (src / "__init__.py").is_file():
+        env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(src), env.get("PYTHONPATH")]))
+    return env
+
+
+def run_pytest(args: Sequence[str], tree: Path) -> "subprocess.CompletedProcess[str]":
+    """One pytest run in ``tree`` with ``tree_env``; stdout holds stdout and stderr combined."""
+    return subprocess.run(list(args), cwd=tree, env=tree_env(tree), stdout=subprocess.PIPE,
+                          stderr=subprocess.STDOUT, text=True, encoding="utf-8", errors="replace")
+
+
 def pytest_output(args: Sequence[str], cwd: Path) -> str:
     """Combined stdout and stderr of one pytest run (stderr carries ``ERROR: not found``)."""
-    done = subprocess.run(list(args), cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                          encoding="utf-8", errors="replace")
-    return done.stdout
+    return run_pytest(args, cwd).stdout
 
 
 def run_red(plan: Mapping[str, Any], tree: Path, python: str) -> List[RedResult]:

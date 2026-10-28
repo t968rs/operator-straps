@@ -1,9 +1,9 @@
-"""Tests of ``harness_lib.plan_red``: planned tests overlaid on the plan's base commit and run red."""
+"""Tests of ``harness_lib.plan_red``: planned tests overlaid on the worktree of a commit and run red."""
 from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import pytest
 from conftest import git
@@ -129,6 +129,26 @@ ERROR: not found: C:\\r\\tests\\test_mix.py::test_nope
 
 NO_FILE = "\nno tests ran in 0.00s\nERROR: file or directory not found: tests/test_gone.py::test_x\n"
 
+# --tb=short output, as a project's addopts may force it: no crash location line names the class.
+SHORT = """\
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_________________________________ test_assert _________________________________
+tests\\test_short.py:6: in test_assert
+    helper()
+tests\\test_short.py:2: in helper
+    assert 1 == 2
+E   assert 1 == 2
+__________________________________ test_key ___________________________________
+tests\\test_short.py:10: in test_key
+    raise KeyError("k")
+E   KeyError: 'k'
+=========================== short test summary info ===========================
+FAILED tests/test_short.py::test_assert
+FAILED tests/test_short.py::test_key
+2 failed in 0.06s
+"""
+
 
 # --- classify ---------------------------------------------------------------------------------------------
 
@@ -167,6 +187,14 @@ def test_classify_falls_back_to_the_only_failure_of_a_single_node_run() -> None:
 
 def test_classify_a_class_method_with_parameters() -> None:
     assert pr.classify(CLASS_FAIL, "tests/test_q.py::TestQ::test_c[1]") == "KeyError"
+
+
+@pytest.mark.parametrize(("node", "expected"), [
+    ("tests/test_short.py::test_assert", "AssertionError"),
+    ("tests/test_short.py::test_key", "KeyError"),
+])
+def test_classify_reads_short_tracebacks(node: str, expected: str) -> None:
+    assert pr.classify(SHORT, node) == expected
 
 
 # --- red problems -----------------------------------------------------------------------------------------
@@ -276,15 +304,24 @@ def test_run_red_classifies_every_open_node_in_the_tree(make_project, tmp_path: 
     assert not (repo / "tests" / "test_mul.py").exists()
 
 
-def test_run_red_runs_one_node_per_pytest_call(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: List[List[str]] = []
+# A bare raise prints no ``E   Name:`` line under --tb=short, so only the pinned --tb=auto names the class.
+PLANNED_SUM = ("from calc import add\n\n\ndef test_sum():\n"
+               "    if add(1, 2) != 4:\n        raise AssertionError\n")
 
-    def fake(args: List[str], cwd: Path) -> str:
-        calls.append(list(args))
-        return PASS
 
-    monkeypatch.setattr(pr, "pytest_output", fake)
-    data = plan(item("TASK-1", {"tests/a.py::t1": "ImportError", "tests/a.py::t2": "ImportError"}))
-    pr.run_red(data, tmp_path, "py")
-    assert calls == [["py", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/a.py::t1"],
-                     ["py", "-m", "pytest", "-q", "-p", "no:cacheprovider", "tests/a.py::t2"]]
+@pytest.mark.cross_os
+def test_run_red_isolates_an_import_failure_under_short_tracebacks(make_project, tmp_path: Path) -> None:
+    repo = make_project(files={**BASE, "pytest.ini": "[pytest]\naddopts = --tb=short\n"})
+    plans = tmp_path / "PLANS"
+    write(plans, "0007/tests/tests/test_mul.py", PLANNED)
+    write(plans, "0007/tests/tests/test_sum.py", PLANNED_SUM)
+    data = plan(item("TASK-1", {"tests/test_mul.py::test_mul": "ImportError",
+                                "tests/test_sum.py::test_sum": "AssertionError"}))
+    tree = pr.make_tree(repo, git(repo, "rev-parse", "HEAD"), tmp_path / "trees")
+    try:
+        pr.overlay(pr.test_sources(data, plans), tree)
+        results = pr.run_red(data, tree, sys.executable)
+    finally:
+        pr.drop_tree(repo, tree)
+    assert [r.got for r in results] == ["ImportError", "AssertionError"]
+    assert pr.red_problems(results) == []

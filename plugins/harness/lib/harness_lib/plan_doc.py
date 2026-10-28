@@ -53,7 +53,9 @@ def plan_path(plans_dir: Path, plan_id: str, slug: str) -> Path:
 
 
 def pip_path(plan_file: Path) -> Path:
-    """The PIP beside a plan file."""
+    """The PIP beside a plan file; a problem when the file name lacks the plan suffix."""
+    if not plan_file.name.endswith(PLAN_SUFFIX):
+        raise PlanError([f"{plan_file.name} does not end with {PLAN_SUFFIX}"])
     return plan_file.with_name(plan_file.name[: -len(PLAN_SUFFIX)] + PIP_SUFFIX)
 
 
@@ -111,7 +113,7 @@ def schema_problems(plan: Mapping[str, Any], cfg: HarnessConfig) -> List[str]:
 
 
 def frozen_digest(plan: Mapping[str, Any]) -> str:
-    """SHA-256 of the plan without the fields that change during execution."""
+    """SHA-256 of the plan without MUTABLE_TOP at the top level and MUTABLE_ITEM in each item."""
     fixed = {k: v for k, v in plan.items() if k not in MUTABLE_TOP}
     items = fixed.get("items")
     if isinstance(items, list):

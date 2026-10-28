@@ -86,7 +86,7 @@ def test_digest_ignores_status_and_evidence() -> None:
     assert pd.frozen_digest(plan) == pd.frozen_digest(moved)
 
 
-def test_digest_changes_when_a_decision_field_changes() -> None:
+def test_digest_changes_when_a_fixed_field_changes() -> None:
     plan = sample_plan()
     edited = copy.deepcopy(plan)
     edited["items"][0]["anchors"][0]["expect"] = "def write"
