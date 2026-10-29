@@ -143,6 +143,8 @@ def review_lines(pr: int) -> List[str]:
         return []
     rel = path.resolve().relative_to(active().project_root.resolve()).as_posix()
     lines = [f"Review artifacts: {rel}."]
+    if len(lines[0]) > LINE_WIDTH:
+        lines = ["Review artifacts:", f"{rel}."]
     counts = review_fix_counts(path)
     if sum(counts.values()):
         tiers = ", ".join(f"{t.title()}: {counts[t]}" for t in TIERS)

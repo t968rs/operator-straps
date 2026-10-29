@@ -37,7 +37,8 @@ Includes N review fixes (Critical: N, Important: N, Minor: N).
 6. Optional `Companion docs:` followed by comma-separated repo-relative paths with parenthetical annotations,
    only when the diff holds companion documentation. Never URLs.
 7. `Review artifacts:` and `Includes N review fixes (...)` (script-filled, only when a review JSON exists). No
-   verdict prefix; no individual issue IDs (C1, I2, M3).
+   verdict prefix; no individual issue IDs (C1, I2, M3). A path too long for one line moves to its own line under
+   `Review artifacts:`.
 
 ## Rules
 

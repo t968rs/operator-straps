@@ -142,6 +142,16 @@ class TestCapture:
         assert "Review artifacts: docs/PR_REVIEWS/0007_Bug_worker.json." in fence
         assert "Includes 3 review fixes (Critical: 1, Important: 1, Minor: 1)." in fence
 
+    def test_long_review_path_moves_to_its_own_line(self, module, make_project, monkeypatch) -> None:
+        name = "0007_" + "A_long_title_" * 6 + "end.json"
+        root = _project(make_project, {f"docs/PR_REVIEWS/{name}": json.dumps({"issues": {}})})
+        monkeypatch.setattr(module, "gh", _gh())
+        assert _run(module, root, "capture", "7") == 0
+        fence = _fence(_md(root).read_text(encoding="utf-8"))
+        at = fence.index("Review artifacts:")
+        assert fence[at + 1] == f"docs/PR_REVIEWS/{name}."
+        assert max(len(line) for line in fence) <= module.LINE_WIDTH
+
     def test_no_review_json_means_no_trailer(self, module, make_project, monkeypatch) -> None:
         root = _project(make_project)
         monkeypatch.setattr(module, "gh", _gh())

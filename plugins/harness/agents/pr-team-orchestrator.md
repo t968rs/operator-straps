@@ -350,7 +350,9 @@ order):
 (1) replace every backtick (`` ` ``) and colon (`:`) with nothing;
 (2) replace every run of one-or-more whitespace chars with a single underscore;
 (3) replace every char outside `[A-Za-z0-9._-]` with nothing;
-(4) trim leading/trailing underscores.
+(4) trim leading/trailing underscores;
+(5) when the result is longer than 60 characters, cut it at the last underscore within the first 61 characters
+(a hard cut at 60 when there is none) and trim trailing underscores.
 
 Example: PR #1116's title `` Skill-Add: `pr-review-boss` `` slugifies to
 `Skill-Add_pr-review-boss`. The filename uses 4-digit zero-padded PR.

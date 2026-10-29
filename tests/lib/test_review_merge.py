@@ -335,6 +335,24 @@ class TestSlugify:
     def test_rule(self, title: str, slug: str) -> None:
         assert rmg.slugify_title(title) == slug
 
+    def test_long_title_is_cut_at_a_word_boundary(self) -> None:
+        title = "Enforce filename length limits for the PR review JSON and resolve the merge message wrap"
+        slug = rmg.slugify_title(title)
+        assert slug == "Enforce_filename_length_limits_for_the_PR_review_JSON_and"
+        assert len(slug) <= rmg.MAX_SLUG_LEN
+
+    def test_long_unbroken_title_is_hard_cut(self) -> None:
+        slug = rmg.slugify_title("x" * 200)
+        assert slug == "x" * rmg.MAX_SLUG_LEN
+
+    def test_cut_leaves_no_trailing_underscore(self) -> None:
+        title = "a" * (rmg.MAX_SLUG_LEN - 1) + " tail"
+        assert rmg.slugify_title(title) == "a" * (rmg.MAX_SLUG_LEN - 1)
+
+    def test_title_at_the_limit_is_kept(self) -> None:
+        title = "b" * rmg.MAX_SLUG_LEN
+        assert rmg.slugify_title(title) == title
+
 
 def _meta() -> Dict[str, object]:
     """Review metadata for ``review_document``."""
