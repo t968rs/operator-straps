@@ -783,13 +783,18 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
   judgment multi-file issue stays whole over primary + `also`, with one owner.
 - **At most 6 units (whole issues or parts) per fixer.** Units that share a file, a widened file or a serial-test
   lock form a group that runs in one fixer. A group of up to 6 runs whole in the first wave. A larger group is cut:
-  its most connected unit (ties: the least severe) waits for a later wave, repeatedly, until each remaining
-  group fits, so the units that hung on that unit run in parallel first and a judgment issue that spans many
-  files can land after the minors around it.
+  units wait for a later wave, repeatedly, until each remaining group fits. `waves` plans the layout under two
+  cuts, the most connected unit first (ties: the least severe) and light units (mechanical units, whole issues
+  or parts; minor issues) before heavy ones (critical or important judgment fixes), each with and without
+  returning deferred units the
+  finished cut no longer needs, and with and without running a judgment-only group of 7 whole, then keeps the
+  layout with the lowest estimated wall time. A stretched group is the one fixer that may hold 7 units. Either
+  way an issue can land before or after the issues around it.
 - **Spread over fixers.** Groups of a wave share no file or lock. Each group opens a fixer of its own while the wave
-  holds fewer than 4; past that it joins the smallest fixer with room (one of its own fix kind first), and a fixer
-  already holding another part of the same issue takes that group first. A wave runs as many fixers in parallel as
-  its files allow, so its slowest fixer, not its fixer count, sets the wall time.
+  holds fewer than 4; past that it joins the smallest fixer with room (one holding no heavy unit first, then one
+  of its own fix kind), and a fixer already holding another part of the same issue takes that group first unless
+  it holds a heavy unit. A wave runs as many fixers in parallel as its files allow, so its slowest fixer, not its
+  fixer count, sets the wall time.
 - **File-disjoint within a wave** over the files each fixer owns, so a wave's fixers run in parallel; a later wave
   runs only after the earlier one returns.
 - **Widened file set.** Each fixer also owns the registered tests (entries of the project's `tests.registry` whose
@@ -816,8 +821,8 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
   edited file (never a deferred test), and records once with `record_fixes`.
 
 **Rule 3 — Work up the severity chain inside each fixer.** A fixer brief orders its issues **M → I → C**, so I/C work
-lands on a quality-checked surface. Waves are sized by issue count and file overlap, not by severity tier; do not
-re-split a plan by tier by hand.
+lands on a quality-checked surface. Waves are sized by unit count, file overlap and the estimated cost severity
+sets for judgment fixes (README, Fix waves); do not re-split a plan by tier by hand.
 
 **Rule 4 — Continue until input genuinely needed.** After each wave returns, dispatch the next, then closeout. Stop
 only at:

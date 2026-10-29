@@ -1,0 +1,335 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 118,
+  "pr_title": "PR Review Performance Enhacements (wall-clock focus)",
+  "branch": "1093-pr-review-reviewers",
+  "base_branch": "main",
+  "base_sha": "113b4672914d9aec7c6c4d2e13a25364c4c811a8",
+  "head_sha": "edfcc980d342b120330ce5c0f19d9f92201e7dea",
+  "review_date": "2026-10-28",
+  "verdict": "READY TO MERGE - 10 of 10 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1183,
+    "deletions": 677,
+    "files_changed": 11
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0118/pr118_20261029T051040Z/findings/tests.json",
+    "docs/_scratch/pr_review/0118/pr118_20261029T051040Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0118/pr118_20261029T051040Z/findings/docs.json",
+    "docs/_scratch/pr_review/0118/pr118_20261029T051040Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The planner tests move from test_review_merge.py to test_review_waves.py verbatim (rmg -> rwv only), with the fixture helpers moved alongside; no planner case was lost and the closeout widened-file tests kept a class of their own.",
+    "New planner cases pin the cost-driven layout choice on both sides: a tie keeps the most-connected cut (182 s each way) and a heavy critical flips it to light-first, plus readmit, stretch and heavy-avoidance cases.",
+    "Every test in scope is behavioral against the real planner or closeout code; no mock-chain wiring tests.",
+    "The README contract test now pins the cost constants and the 'group of exactly N units' stretch prose to the planner, so documented figures cannot drift from the code silently.",
+    "The extraction leaves no stale callers: pr_review.py, the README contract test and closeout's docstring all point at review_waves, and review_merge's removed fnmatch import and constants leave nothing dangling.",
+    "plan_waves's tie rule holds: itertools.product((False, True), repeat=3) puts _Rules() first and min() keeps the first minimum, so the plain most-connected cut wins every tie, as both docstrings say.",
+    "_readmit cannot break file and lock disjointness: a deferred unit rejoins only when it links to no kept group or to exactly one group with room, and deferred units come from a single component, so they cannot link across components.",
+    "The cost-table comment is accurate: scaling HAIKU_SECONDS and OPUS_SECONDS uniformly leaves the argmin over layouts unchanged, so only the ratios matter, as it says.",
+    "Both README worked examples check out against review_waves.py: 124 s vs 167 s, and 235 s vs 182 s, including the M7/M6 tie-break and the placement order.",
+    "The tie rule (first mix in itertools.product order, so the plain most-connected cut wins its ties) is stated identically in README, SKILL and the plan_waves docstring.",
+    "The readmit and stretch descriptions (deferral order, the two-or-more-groups exclusion, the exactly-cap+1 judgment-only rule) match _readmit and _fits line for line.",
+    "The research note's arithmetic holds (645 s fix wall, 1855 s cycle, 517 s reviewer gap, 61% hub share, haiku predictions against waves.json part counts), and it marks its own superseded proposals as corrected.",
+    "Related links now point the planner at review_waves.py and keep review_merge.py for merge, verdict and closeout; plugin.json is bumped to 0.39.0 as the note claims.",
+    "The planner split is complete: pr_review.py switches every wave call (is_tracking, tracking_rows, mixed_tracking_rows, fix_paths, plan_waves) to review_waves, and nothing outside it still reaches review_merge for wave code.",
+    "The wave tests moved verbatim into test_review_waves.py, so the split loses no coverage, and each new rule (light-first, readmit, stretch, heavy-skip kin) has a pinned behavioral case that runs the real plan_waves.",
+    "The README worked examples are machine-checked: both layouts are replanned and the 'estimated wall' sums and cost constants are asserted against HAIKU_SECONDS and OPUS_SECONDS. Spot-checked by hand: 39+85=124 s and 150+32=182 s are correct.",
+    "Tie-breaking is deterministic and conservative: itertools.product order makes the plain most-connected cut win every tie it is part of, so existing reviews keep their layouts unless the estimate says otherwise.",
+    "The research note is candid that the cost model prices C1 at 65 s against roughly 120 s observed, and it frames the estimates as a comparison between planners, not a forecast."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Heavy-fixer avoidance in _place_free is ranked below fix-kind, contradicting its docstring and the README",
+        "file": "plugins/harness/lib/harness_lib/review_waves.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_waves.py",
+          "plugins/harness/skills/pr-review/README.md",
+          "tests/lib/test_review_waves.py"
+        ],
+        "lines": "278-293",
+        "reviewer": "roast, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The _place_free docstring (review_waves.py:282-283) and README.md:124-125 promise that a fixer holding a heavy unit 'takes no more than its own group while another place exists'. The fallback key at review_waves.py:293 is (_mechanical(b) != kind, _holds_heavy(b), len(b)), so kind wins first and heavy avoidance only breaks ties. Concrete trace with fixers=2: C1 judgment a.py, M1 mechanical b.py, M2 judgment-minor c.py. C1 and M1 open the two fixers. M2 then picks C1's fixer, (False, True, 1), over M1's haiku fixer, (True, False, 1). Wave wall is 115 s (20+65+30), where the documented rule gives 85 s (C1 alone; M1+M2 on opus at 60 s). All eight _Rules mixes share this placement, so the layout choice cannot recover it. The only covering test (test_overflow_chunk_avoids_a_fixer_holding_a_heavy_issue) uses an all-judgment wave, where kind never competes with heaviness. The prose describes a rule that is not the one running.\n\nAlso (runtime): The docstring's last sentence (review_waves.py:282-283) says a fixer holding heavy work 'takes no more than its own group while another place exists'. The fallback at line 293 sorts roomy fixers by (fix-kind mismatch, _holds_heavy, size), so fix kind outranks heaviness: a judgment group picks a heavy opus fixer over a roomy heavy-free haiku fixer. Once the wave holds `target` fixers and every roomy fixer is heavy, the group also joins a heavy fixer instead of opening a new one, even though a new fixer is another place. The module docstring (lines 15-16: 'preferring one of its own fix kind, then one without a heavy unit') matches the code; only the _place_free sentence overclaims.",
+        "fix": [
+          "Reorder the fallback key in plugins/harness/lib/harness_lib/review_waves.py:293 to (_holds_heavy(b), _mechanical(b) != kind, len(b)) so a heavy fixer is the last resort, and add a test in tests/lib/test_review_waves.py with a heavy opus fixer and a haiku fixer competing for a minor judgment chunk.",
+          "Keep the current order and rewrite the _place_free docstring (review_waves.py:279-283), README.md:115-125 and the SKILL.md 'Spread over fixers' bullet to say heavy avoidance only breaks ties among fixers of the group's own kind.",
+          "Replace the sentence 'A fixer holding heavy work is the slowest of its wave, so it takes no more than its own group while another place exists.' in plugins/harness/lib/harness_lib/review_waves.py with 'A fixer holding heavy work is the slowest of its wave, so it is never a kin target and, among roomy fixers of the group's fix kind, is chosen last.'",
+          "Or make the code match the claim: order the fallback key as (_holds_heavy(b), _mechanical(b) != kind, len(b)), open a new fixer when every roomy fixer is heavy, and update the module docstring and README to the new preference order."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Research note cites a _cut signature that did not ship",
+        "file": "docs/RESEARCH/pr-review/0117_review_wall_time.md",
+        "lines": "175-177",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "0117_review_wall_time.md:175 describes the shipped 0.39.0 planner as '_cut(..., light_first)'. At the head, _cut takes a _Rules value (review_waves.py:215, rules.light_first); the same paragraph later names _Rules (line 182), so the note gives two signatures for one release.\n\nAlso (roast): 0117_review_wall_time.md:175 says plan_waves runs both cuts via `_cut(..., light_first)`. At the head, _cut takes `rules: _Rules` (review_waves.py:215), and light_first is a field of _Rules. The same section later says all eight _Rules mixes are planned. The first bullet describes the first commit's signature and was not updated when the follow-up landed.",
+        "fix": [
+          "Change '(`_cut(..., light_first)`)' to '(`_cut(..., rules)`, `_Rules.light_first`)'.",
+          "Replace '`_cut(..., light_first)`' in docs/RESEARCH/pr-review/0117_review_wall_time.md:175 with '`_cut(..., rules)` with `_Rules.light_first`'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "review_waves imports five private helpers from review_merge",
+        "file": "plugins/harness/lib/harness_lib/review_waves.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_waves.py",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "33",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The split makes the planner depend on review_merge internals: `from harness_lib.review_merge import _RANK, Issue, _files, _id_key, _tier, _union` (review_waves.py:33). Those underscore names are now a cross-module API that nothing marks as such, so renaming or reshaping one in review_merge (for example _files's fallback to `[file]`, or _id_key's tuple) breaks the planner. The only other library module that imports a private name is pr_viz.py:11.\n\nAlso (roast): review_waves.py:33 imports _RANK, _files, _id_key, _tier and _union from review_merge. These underscore helpers now act as a cross-module API without being declared one: a rename or signature change in review_merge, which its docstring now scopes to merge/verdict/closeout, breaks the planner with no sign at the definition site that another module depends on them. The new module is a separate file, but it still depends on review_merge's private helpers.",
+        "fix": [
+          "Move _union, _files, _tier, _id_key and _RANK (plus Issue and TIERS) into a small shared module, for example harness_lib/review_ids.py, and import them from there in both review_merge and review_waves.",
+          "Or give them public names in review_merge (union, issue_files, tier_of, id_key, RANK) and keep the underscored aliases for internal callers.",
+          "Promote the five helpers to public names in review_merge (or move them to a small shared module such as harness_lib/review_ids.py) and import them under those names in review_waves.py.",
+          "Keep them private but add a short comment block at their definitions in review_merge.py naming review_waves as a consumer."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Light and cost rules say 'mechanical parts' where the code means every mechanical unit",
+        "file": "plugins/harness/skills/pr-review/README.md",
+        "files": [
+          "plugins/harness/skills/pr-review/README.md",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "44-45,95",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "_heavy and _fixer_seconds (review_waves.py:172-175, 301-303) treat every unit with fix_kind mechanical as light and price it at OPUS_SECONDS['mechanical'], including a whole single-file mechanical critical or important issue. README.md:44-45 ('Mechanical parts and minor issues are light'), README.md:95 ('10 s per mechanical part') and SKILL.md:787 ('light units (mechanical parts, minor issues)') name only split parts, so a reader classifies a single-file mechanical critical as heavy, which the cut and the placement do not.",
+        "fix": [
+          "Say 'mechanical units (whole issues or parts)' instead of 'mechanical parts' at README.md:44, README.md:95 and SKILL.md:787."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "README overstates the heavy-fixer placement rule",
+        "file": "plugins/harness/skills/pr-review/README.md",
+        "files": [
+          "plugins/harness/skills/pr-review/README.md",
+          "plugins/harness/lib/harness_lib/review_waves.py"
+        ],
+        "lines": "123-125",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md:124-125 says a fixer holding a heavy unit 'takes no extra group while another place exists'. _place_free (review_waves.py:293) sorts the smallest-fixer fallback by (_mechanical(b) != kind, _holds_heavy(b), len(b)), so fix kind outranks heaviness: a judgment group in a full wave (4 fixers) whose only same-kind roomy fixer holds a heavy unit joins that heavy fixer even when a roomy haiku fixer without heavy work exists. The flow chart above (lines 117-118) and SKILL.md:793-794 state the order correctly; the summary sentence contradicts them. The module docstring of _place_free (review_waves.py:283) repeats the same overclaim.",
+        "fix": [
+          "Reword README.md:124-125 to: 'A fixer holding a heavy unit is usually that slowest fixer, so among fixers of the group's own fix kind it is the last to take an extra group.' and align the last sentence of the _place_free docstring in plugins/harness/lib/harness_lib/review_waves.py the same way."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Stretch is described as chosen only when it saves a wave",
+        "file": "plugins/harness/skills/pr-review/README.md",
+        "lines": "215-217",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:215-216 says the stretched group of 7 is 'chosen only when the estimate says it saves a wave'. plan_waves (review_waves.py:372-373) keeps whichever of the eight mixes has the strictly lowest _wall_seconds; a stretch mix can win by shortening a later wave that other deferrals keep alive, without removing any wave, and it is not chosen on a tie even when it would remove one.\n\nAlso (roast): README.md:216-217 says a stretched judgment-only group of 7 is 'chosen only when the estimate says it saves a wave'. plan_waves (review_waves.py:372-373) keeps the stretch layout whenever _wall_seconds is lower. That can happen without removing a wave: if wave 1's slowest fixer is another, slower fixer, stretching moves the 7th unit into wave 1 for free and only shortens wave 2's slowest fixer. The rule is wall time, not wave count.",
+        "fix": [
+          "Replace 'chosen only when the estimate says it saves a wave' with 'chosen only when its layout has a strictly lower estimated wall time'.",
+          "Change README.md:216-217 to: 'The one exception is a stretched judgment-only group of 7, chosen only when the estimate says it lowers the wall time.'"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Rule 3 still says waves ignore severity tier",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "822-824",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:822-824 (Rule 3) says 'Waves are sized by issue count and file overlap, not by severity tier'. With this PR the planner reads the tier: _heavy (review_waves.py:172-175) uses _tier to mark critical/important judgment units, the light-first cut defers by it, _place_free steers groups away from heavy fixers and _wall_seconds prices it. The unchanged sentence now contradicts the bullets above it (SKILL.md:784-796).",
+        "fix": [
+          "Reword to: 'Waves are sized by unit count, file overlap and the estimated cost severity sets for judgment fixes (README, Fix waves); do not re-split a plan by tier by hand.'"
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "_check_fixer cap invariant is stricter than the planner's stretch rule",
+        "file": "tests/lib/test_review_waves.py",
+        "lines": "56-59",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_check_fixer asserts 1 <= units <= MAX_ISSUES_PER_FIXER for every fixer of the PR #1558 fixture plan, but the planner contract (review_waves module docstring, _fits) lets a judgment-only group one unit over the cap run whole, which test_judgment_group_one_over_the_cap_runs_whole (line 177-180) pins as a 7-issue fixer. The fixture passes only because it holds no such group; a fixture refresh hitting the stretch rule would fail a correct plan.",
+        "fix": [
+          "Allow MAX_ISSUES_PER_FIXER + 1 when every issue in the fixer is judgment: limit = rwv.MAX_ISSUES_PER_FIXER + (1 if kinds == {'judgment'} else 0), and update the docstring to name the stretch."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "README contract docstring still describes one worked example",
+        "file": "tests/skills/test_pr_review_readme_contract.py",
+        "lines": "3-4",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says the README draws the wave layout of 'one worked example' and that the test replans 'that example', and lists only caps, helpers and config keys as the pinned names. At the head the test parametrizes over two worked examples (criticals False/True, asserting 'two waves per example') and a new test pins the HAIKU_SECONDS/OPUS_SECONDS cost lines, so the docstring contradicts the code it introduces.",
+        "fix": [
+          "Reword lines 3-4 to: 'The README draws the wave layouts of two worked examples and names the planner's caps, cost figures, helpers and config keys. The test replans both examples with ``review_waves.plan_waves`` and pins each name and figure the prose shares with it.'"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "README contract test checks single-id lanes against the whole README, so example 2's wave layout is mostly unchecked",
+        "file": "tests/skills/test_pr_review_readme_contract.py",
+        "files": [
+          "tests/skills/test_pr_review_readme_contract.py",
+          "plugins/harness/skills/pr-review/README.md",
+          "plugins/harness/lib/harness_lib/review_waves.py"
+        ],
+        "lines": "45-46,54-63,66-79",
+        "reviewer": "roast, tests",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_lane (test_pr_review_readme_contract.py:45-46) renders a single-id lane as an open prefix such as '[M6', and the test only asserts `_lane(ids) in text` against the full README. '[M6', '[M7', '[M8' and '[I1' already appear in example 1's drawings ('[M2][M6]', '[M4][M8]', '[I1: mod_a.py'). For the light-first example, the planner could move M8 into wave 2 or swap which singles run in which wave, and the lane check would still pass. Only the summed 'estimated wall' line constrains it. The per-fixer seconds column and the prose alternatives ('135 s, then 32 s ... 167 s', '150 s, then 85 s: 235 s') are pinned by nothing. The guard passes, but mostly because the strings it looks for appear somewhere in the file.\n\nAlso (tests): test_worked_example_lanes_match_the_planner searches the whole README for each lane, so with two examples in one file a lane drawn under the wrong example (or the wrong wave) still passes; the single-id form '[I1' also matches the second example's '[M1][M2]...[I1]' row. Only the 'estimated wall' total is pinned, so a per-fixer figure that is not a wave maximum (e.g. README line 138 '39 s' or 155 '135 s') can drift silently while the test stays green.\n\nAlso (tests): The helper's docstring claims it recomputes 'the README's fixer estimate', but it charges HAIKU per_unit * len(issue_ids) and one OPUS cost per id, while review_waves._fixer_seconds (review_waves.py:296-303) charges per _Unit, i.e. per part of a split mechanical issue. The two agree only because neither README example holds a multi-file mechanical issue; adding one to the examples would make the test assert a wall figure the planner never computes.",
+        "fix": [
+          "Split the README text at the second example's code fence and check each example's lanes only inside its own block, per wave line (the 'wave N' row and its continuation rows), and assert each drawn fixer row's trailing seconds equals _seconds(fixer).",
+          "At minimum, render single-id lanes with the padding the README uses ('[M6        ]') or a closing bracket, so they cannot match inside a multi-id lane.",
+          "Slice the README text per example (e.g. split on the 'estimated wall:' lines) and assert each example's lanes inside its own slice.",
+          "Assert each fixer row as a lane plus its seconds figure (f\"{_lane(ids)}...{_seconds(fixer, by_id)} s\" via a regex on the row) so per-fixer estimates are pinned, not only the wave maxima.",
+          "Count units from fixer['parts'] (len(files) for a mechanical multi-file issue, else 1) when computing the haiku and mechanical opus costs.",
+          "Narrow the docstring to state the helper assumes no split mechanical issues in the examples and assert that precondition on the example issues."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I1",
+      "classification": "architectural_ambiguity",
+      "reason": "Reorder the _place_free fallback key (planner behavior changes; trace 115 s to 85 s) or reword the docstring and README to the current order. A planner-semantics call."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 118 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":8,\"first_sha\":\"49bab1373b6fc7955c86c1881796d3fddeed4d43\",\"headRefName\":\"1093-pr-review-reviewers\",\"headRefOid\":\"edfcc980d342b120330ce5c0f19d9f92201e7dea\",\"last_sha\":\"edfcc980d342b120330ce5c0f19d9f92201e7dea\",\"mergeCommit\":null,\"number\":118,\"state\":\"OPEN\",\"title\":\"PR Review Performance Enhacements (wall-clock focus)\",\"url\":\"https://github.com/t968rs/operator-straps/pull/118\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1093-pr-review-reviewers",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1093-pr-review-reviewers",
+        "head_ref_name": "1093-pr-review-reviewers",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "49bab1373b6fc7955c86c1881796d3fddeed4d43",
+        "head_sha": "edfcc980d342b120330ce5c0f19d9f92201e7dea",
+        "base_ancestor_command": "git merge-base --is-ancestor 49bab1373b6fc7955c86c1881796d3fddeed4d43 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor edfcc980d342b120330ce5c0f19d9f92201e7dea HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - review_merge.py: comment block at _RANK plus a 'Used by review_waves' note at _union, _tier, _files and _id_key, so the cross-module dependency is visible at each definition; review_waves.py cited only, its import unchanged"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - README.md: light rule now says 'Mechanical units (whole issues or parts)'; opus cost line says 'per mechanical part or whole mechanical issue' (keeps the substring test_pr_review_readme_contract.py asserts); SKILL.md light-unit list now says 'mechanical units (whole issues or parts)' instead of 'mechanical parts'"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - README.md placement summary and _place_free docstring now say a heavy fixer is the last of the group's own fix kind to take an extra group"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - README.md: stretched group of 7 is 'chosen only when its layout has a strictly lower estimated wall time'"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - Rule 3 rewritten: waves are sized by unit count, file overlap and the estimated cost severity sets for judgment fixes (README, Fix waves)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - 0117 note line 175: _cut(..., light_first) changed to _cut(..., rules) with _Rules.light_first, matching the head signature at review_waves.py:215"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - README contract docstring lines 2-4 reworded to two worked examples, cost figures, and plan_waves replanning both examples"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - _check_fixer cap now MAX_ISSUES_PER_FIXER + 1 for a judgment-only fixer (planner stretch rule); docstring names the stretch; kinds computed before the cap check"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - README contract test now slices the Worked examples section into its two fenced blocks, parses each fixer row per wave as (issue ids, seconds) and asserts it equals the planner's layout, with the estimated-wall line checked inside that block; _seconds counts units from fixer['parts'] (one per owned file of a split mechanical issue), matching review_waves._fixer_seconds. Cited only: README drawings already match the planner per wave and per fixer, and review_waves._fixer_seconds is the reference the test mirrors, so neither needed an edit"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-28",
+      "evidence": "edfcc98 (working-tree snapshot; developer commits) - _place_free fallback key reordered to (_holds_heavy, kind mismatch, size) with a heavy-opus vs haiku test; docstrings, README and SKILL.md restated to heavy avoidance before fix kind (fixer w3_fix_1 edit, SKILL.md was outside its set) (outside fixer waves)"
+    }
+  ]
+}
