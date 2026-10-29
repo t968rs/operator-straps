@@ -313,7 +313,7 @@ Create stamp.ts (engine glue, function declarations where `$` is passed, every h
 
 ### BM-9: Register the mod and the skill; bump versions
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** BM-5, BM-6, BM-8
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** BM-5, BM-6, BM-8
 **Files:** `.claude-plugin/marketplace.json`, `.github/workflows/ci.yml`, `README.md`, `CLAUDE.md`, `plugins/harness/.claude-plugin/plugin.json`, `plugins/pr-review-watch/.claude-plugin/plugin.json`
 
 **Anchors:**
@@ -328,13 +328,17 @@ Create stamp.ts (engine glue, function declarations where `$` is passed, every h
 
 Add the bubble-stamp entry to .claude-plugin/marketplace.json after todo-watch; add bubble-stamp to the CI mod-test loop in ci.yml; add README rows (the mods table row for bubble-stamp, the harness skills table row for bubble-memo, the install line and, if the activation notes list mods, one for bubble-stamp); CLAUDE.md: the mod count in the first paragraph becomes six, the list gains bubble-stamp, and the config-mirror sentence names bubble-stamp; bump harness to 0.40.0 and pr-review-watch to 0.4.2 (its contract.ts changed). .claude/settings.json enables the published marketplace and is left alone until the mod is published.
 
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_the_marketplace_lists_the_mod` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_ci_runs_the_mod_tests` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_the_readme_documents_and_installs_the_mod` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_claude_md_counts_six_mods` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_the_harness_version_moved_past_the_old_one` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_pr_review_watch_moved_past_its_old_version` fails with AssertionError, then passes
-- [ ] Run `claude plugin validate --strict .`: validation passes for the marketplace
-- [ ] Record the commit: `plan.py record 0001 BM-9 --sha <sha>`
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_the_marketplace_lists_the_mod` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_ci_runs_the_mod_tests` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_the_readme_documents_and_installs_the_mod` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_claude_md_counts_six_mods` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_the_harness_version_moved_past_the_old_one` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_pr_review_watch_moved_past_its_old_version` fails with AssertionError, then passes
+- [x] Run `claude plugin validate --strict .`: validation passes for the marketplace
+- [x] Record the commit: `plan.py record 0001 BM-9 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit e4c7e94: 6 test node(s) passed
+
+- `e4c7e94a111a59d85b6e3829273e7a7d58decbff`
+- `tree 72a60488fe56c9df34c77171f8ca4efc3f6d6d19`
+- `python -m pytest -q tests/contract/test_bubble_stamp_registration.py::test_the_marketplace_lists_the_mod tests/contract/test_bubble_stamp_registration.py::test_ci_runs_the_mod_tests tests/contract/test_bubble_stamp_registration.py::test_the_readme_documents_and_installs_the_mod tests/contract/test_bubble_stamp_registration.py::test_claude_md_counts_six_mods tests/contract/test_bubble_stamp_registration.py::test_the_harness_version_moved_past_the_old_one tests/contract/test_bubble_stamp_registration.py::test_pr_review_watch_moved_past_its_old_version`

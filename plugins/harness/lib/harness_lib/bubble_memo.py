@@ -21,11 +21,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Collection, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 from pydantic import BaseModel, ConfigDict, ValidationError, model_validator
 
-from harness_lib.review_merge import CLOSED_STATUSES, TIERS
+from harness_lib.review_bubbles import closed_ids
+from harness_lib.review_merge import TIERS
 
 MEMO_SUFFIX = "_Bubbles.md"
 INDEX_HEADER = "| ID | Class | Status | Decision | Tracked in |"
@@ -45,8 +46,8 @@ _EXPECTED, _RECOMMENDATION, _DECISION = "Expected behavior per fix", "Recommenda
 _FENCE = "  ```"
 
 _HEADING_RE = re.compile(r"^" + re.escape(ENTRY_PREFIX) + r"([A-Z]+[0-9]+)\.(?:\s|$)")
-_REF_RE = re.compile(r"(.+?):(\d+)(?:-(\d+))?")
-_LINES_RE = re.compile(r"\d+(?:-\d+)?")
+REF_RE = re.compile(r"(.+?):(\d+)(?:-(\d+))?")
+LINES_RE = re.compile(r"(\d+)(?:-(\d+))?")
 _TOKEN_RE = re.compile(r"`([^`]*)`")
 _OPTION_RE = re.compile(r"^\s*- \(\w+\) ")
 _STEP_NUMBER_RE = re.compile(r"^\d+[.)]\s+")
@@ -77,7 +78,7 @@ def memo_name(pr: Union[int, str]) -> str:
     return f"PR_{pr}{MEMO_SUFFIX}"
 
 
-def _one_line(value: Any) -> str:
+def one_line(value: Any) -> str:
     return " ".join(str(value).split())
 
 
@@ -85,7 +86,7 @@ def _lf(text: str) -> str:
     return text.replace("\r\n", "\n")
 
 
-def _label(index: int) -> str:
+def label(index: int) -> str:
     return chr(ord("a") + index) if index < 26 else str(index + 1)
 
 
@@ -126,15 +127,6 @@ def reviewer_model(flagged: Sequence[str]) -> str:
     return "opus" if flagged else "sonnet"
 
 
-def decided_ids(doc: Mapping[str, Any]) -> List[str]:
-    """Ids whose latest post-review resolution closes them."""
-    # Integration switches this to review_bubbles.closed_ids.
-    latest: Dict[str, str] = {}
-    for entry in doc.get("post_review_resolutions") or []:
-        latest[str(entry.get("id"))] = str(entry.get("status"))
-    return [i for i, status in latest.items() if status in CLOSED_STATUSES]
-
-
 def currently_bubbled(doc: Mapping[str, Any], pending: Sequence[Tuple[str, str, str]]) -> List[Bubbled]:
     """`bubbles` in order, then pending fixer bubbles not already listed.
 
@@ -166,7 +158,7 @@ def _reference_line(issue: Optional[Mapping[str, Any]]) -> str:
     if not files:
         return STUB
     lines = issue.get("lines") if issue else None
-    usable = len(files) == 1 and lines is not None and _LINES_RE.fullmatch(str(lines).strip())
+    usable = len(files) == 1 and lines is not None and LINES_RE.fullmatch(str(lines).strip())
     line = str(lines).strip() if usable else STUB
     return ", ".join(f"`{name}:{line}`" for name in files)
 
@@ -177,13 +169,13 @@ def _chain_stub_lines() -> List[str]:
 
 def _expected_stub_lines(issue: Optional[Mapping[str, Any]]) -> List[str]:
     fixes = (issue or {}).get("fix") or []
-    return [f"    - ({_label(i)}) {_one_line(fix)} -> {STUB}" for i, fix in enumerate(fixes)]
+    return [f"    - ({label(i)}) {one_line(fix)} -> {STUB}" for i, fix in enumerate(fixes)]
 
 
 def render_entry(doc: Mapping[str, Any], bubbled: Bubbled) -> str:
     """One memo entry with the sources' facts filled in and the rest stubbed."""
     issue = find_issue(doc, bubbled.id)
-    name = _one_line((issue or {}).get("name") or STUB)
+    name = one_line((issue or {}).get("name") or STUB)
     lines = [f"{ENTRY_PREFIX}{bubbled.id}. {name}", "",
              f"{_FIELD_PREFIX}{_CLASS}:** {bubbled.cls}",
              f"{_FIELD_PREFIX}{_DESCRIPTION}:** {STUB}",
@@ -207,7 +199,7 @@ def scaffold_memo(doc: Mapping[str, Any], bubbled: Sequence[Bubbled], *,
     scope = f"Issues bubbled for decision in the review of PR #{doc.get('pr')}"
     scope += f", review file {review_file}" if review_file else ""
     scope += (f", head {sha}" if sha else "") + "."
-    lines = [f"# PR #{doc.get('pr')} Bubbles: {_one_line(doc.get('pr_title') or '')}", "",
+    lines = [f"# PR #{doc.get('pr')} Bubbles: {one_line(doc.get('pr_title') or '')}", "",
              f"- **Scope:** {scope}", f"- **Verified against:** {STUB}",
              f"- **Sources:** {STUB}", f"- **Not bubbled:** {STUB}", "",
              "## Index", "", INDEX_HEADER, INDEX_RULE, *(_row(b) for b in bubbled), "",
@@ -336,7 +328,7 @@ def add_missing(text: str, doc: Mapping[str, Any], bubbled: Sequence[Bubbled]) -
 
 def reference_problem(at: str, root: Path) -> Optional[str]:
     """Why a `path:line` or `path:start-end` reference is wrong, or None when it checks out."""
-    match = _REF_RE.fullmatch(at.strip())
+    match = REF_RE.fullmatch(at.strip())
     if match is None:
         return f"reference `{at}` is not path:line or path:start-end"
     path, first = match.group(1), int(match.group(2))
@@ -366,14 +358,14 @@ def _file_reference_problem(at: str, path: str, first: int, last: int, root: Pat
 
 def _reference_tokens(field: str) -> List[str]:
     """Backticked `path:line` or `path:start-end` spans; other code spans are prose."""
-    return [t.strip() for t in _TOKEN_RE.findall(field) if _REF_RE.fullmatch(t.strip())]
+    return [t.strip() for t in _TOKEN_RE.findall(field) if REF_RE.fullmatch(t.strip())]
 
 
 def _reference_files(tokens: Sequence[str]) -> List[str]:
     """Distinct normalised paths of the reference tokens, in order."""
     files: List[str] = []
     for token in tokens:
-        match = _REF_RE.fullmatch(token)
+        match = REF_RE.fullmatch(token)
         path = str(PurePosixPath(match.group(1).replace("\\", "/"))) if match else token
         if path not in files:
             files.append(path)
@@ -451,7 +443,7 @@ def _anchor_problems(text: str, rows: Sequence[IndexRow]) -> List[str]:
 
 
 def _stale_notes(text: str, rows: Sequence[IndexRow], current: Sequence[str],
-                 decided: Sequence[str]) -> List[str]:
+                 decided: Collection[str]) -> List[str]:
     ids = [r.id for r in rows] + list(entry_blocks(text))
     stale: List[str] = []
     for item_id in ids:
@@ -474,7 +466,7 @@ def check_memo(text: str, bubbled: Sequence[Bubbled], doc: Mapping[str, Any],
     problems = _anchor_problems(text, rows)
     for item in bubbled:
         problems += _entry_problems(item.id, blocks.get(item.id), item.id in row_ids, doc, root)
-    notes = _stale_notes(text, rows, [b.id for b in bubbled], decided_ids(doc))
+    notes = _stale_notes(text, rows, [b.id for b in bubbled], closed_ids(doc))
     return problems, notes
 
 
@@ -526,7 +518,7 @@ class Facts(BaseModel):
         return self
 
 
-def _format_errors(exc: ValidationError) -> str:
+def format_errors(exc: ValidationError) -> str:
     parts = []
     for err in exc.errors():
         where = ".".join(str(p) for p in err["loc"])
@@ -545,7 +537,7 @@ def _facts_problems(facts: Facts, issue: Mapping[str, Any], root: Path) -> List[
     else:
         problems += [f"fix_effects[{i}].option does not match fix option {i + 1} of the issue"
                      for i, (eff, fix) in enumerate(zip(facts.fix_effects, fixes))
-                     if _one_line(eff.option) != _one_line(fix)]
+                     if one_line(eff.option) != one_line(fix)]
     for ref in facts.references:
         why = reference_problem(ref.at, root)
         problems += [why] if why else []
@@ -557,7 +549,7 @@ def validate_facts(raw: Any, issue: Mapping[str, Any], root: Path) -> Facts:
     try:
         facts = Facts.model_validate(raw)
     except ValidationError as exc:
-        raise ValueError(_format_errors(exc)) from exc
+        raise ValueError(format_errors(exc)) from exc
     problems = _facts_problems(facts, issue, root)
     if problems:
         raise ValueError("; ".join(problems))
@@ -566,14 +558,15 @@ def validate_facts(raw: Any, issue: Mapping[str, Any], root: Path) -> Facts:
 
 # ---------------------------------------------------------------- apply_facts
 
-def _replace_stubbed(block: List[str], name: str, new_lines: Sequence[str]) -> None:
+def _replace_field(block: List[str], name: str, new_lines: Sequence[str],
+                   *, stubbed_only: bool = True) -> None:
     span = _field_range(block, name)
-    if span and STUB in "\n".join(block[span[0]:span[1]]):
+    if span and (not stubbed_only or STUB in "\n".join(block[span[0]:span[1]])):
         block[span[0]:span[1]] = list(new_lines)
 
 
 def _chain_lines(facts: Facts) -> List[str]:
-    steps = [f"  {n}. {_STEP_NUMBER_RE.sub('', _one_line(s))}" for n, s in enumerate(facts.chain, 1)]
+    steps = [f"  {n}. {_STEP_NUMBER_RE.sub('', one_line(s))}" for n, s in enumerate(facts.chain, 1)]
     raw_flow = facts.flow.replace("```", "'''").strip("\n").split("\n")
     flow = [f"  {ln}" if ln.strip() else "" for ln in raw_flow]
     return [f"{_FIELD_PREFIX}{_CHAIN}:**", *steps, _FENCE, *flow, _FENCE]
@@ -588,29 +581,32 @@ def _fill_effects(block: List[str], facts: Facts) -> None:
         if not _OPTION_RE.match(block[i]):
             continue
         if block[i].endswith(f"-> {STUB}") and seen < len(facts.fix_effects):
-            block[i] = block[i][:-len(STUB)] + _one_line(facts.fix_effects[seen].effect)
+            block[i] = block[i][:-len(STUB)] + one_line(facts.fix_effects[seen].effect)
         seen += 1
 
 
 def _reference_text(facts: Facts) -> str:
-    notes = [_one_line(r.note).replace("`", "'") for r in facts.references]
+    notes = [one_line(r.note).replace("`", "'") for r in facts.references]
     return ", ".join(f"`{r.at.strip()}` ({n})" for r, n in zip(facts.references, notes))
 
 
 def apply_facts(text: str, facts: Facts) -> str:
-    """Fill the stubs of the facts' entry: References, Current behavior, When, Chain, flow, Expected behavior.
+    """Write the facts into their entry: References, Current behavior, When, Chain, flow, Expected behavior.
 
-    Description, Recommendation and every other entry stay as they are.
+    References are replaced even when the scaffold pre-filled them from the review JSON: the facts' references
+    are verified against the working tree, the pre-filled ones are not. The other fields change only over a
+    stub. Description, Recommendation and every other entry stay as they are.
     """
     lines = _lf(text).split("\n")
     span = entry_spans(lines).get(facts.id)
     if span is None:
         return text
     block = lines[span[0]:span[1]]
-    _replace_stubbed(block, _REFERENCES, [f"{_FIELD_PREFIX}{_REFERENCES}:** {_reference_text(facts)}"])
-    _replace_stubbed(block, _CURRENT, [f"{_FIELD_PREFIX}{_CURRENT}:** {_one_line(facts.current_behavior)}"])
-    _replace_stubbed(block, _WHEN, [f"{_FIELD_PREFIX}{_WHEN}:** {_one_line(facts.when)}"])
-    _replace_stubbed(block, _CHAIN, _chain_lines(facts))
+    _replace_field(block, _REFERENCES, [f"{_FIELD_PREFIX}{_REFERENCES}:** {_reference_text(facts)}"],
+                   stubbed_only=False)
+    _replace_field(block, _CURRENT, [f"{_FIELD_PREFIX}{_CURRENT}:** {one_line(facts.current_behavior)}"])
+    _replace_field(block, _WHEN, [f"{_FIELD_PREFIX}{_WHEN}:** {one_line(facts.when)}"])
+    _replace_field(block, _CHAIN, _chain_lines(facts))
     _fill_effects(block, facts)
     lines[span[0]:span[1]] = block
     return "\n".join(lines)

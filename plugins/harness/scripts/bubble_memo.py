@@ -4,7 +4,7 @@ The memo ``<artifacts.reviews>/PR_<N>_Bubbles.md`` lists each issue a pr-review 
 decision. Pure parsing and rendering live in ``harness_lib.bubble_memo``; this script wires files and runs
 read-only git. Every defect is one ``problem: ...`` line on stderr with exit 1.
 
-``scaffold --pr N [--guidance TEXT]``
+``scaffold --pr N``
     Read the newest ``<NNNN>_*.json`` review of PR N and, when a pr-review run exists, its pending fixer
     bubbles. Create the memo, or append the entries and index rows it lacks. Print the added and flagged ids
     and one investigator dispatch row per newly added flagged id. Without a bubbled issue, print
@@ -20,19 +20,19 @@ read-only git. Every defect is one ``problem: ...`` line on stderr with exit 1.
 ``apply --pr N``
     Write each recorded facts report into its memo entry, over the ``TODO(fill)`` stubs.
 
-``check --pr N [--guidance TEXT]``
+``check --pr N``
     Exit 1 with one problem line per defect; ``note:`` lines never fail. When clean, print ``check [ok]`` and
     the reviewer dispatch row.
 
 ``--repo`` (default: the working directory) names a directory inside the project. Usage::
 
-    bubble_memo.py [--repo DIR] scaffold --pr N [--guidance TEXT]
+    bubble_memo.py [--repo DIR] scaffold --pr N
     bubble_memo.py [--repo DIR] init --pr N --role investigator --id ID
     bubble_memo.py [--repo DIR] init --pr N --role reviewer
     bubble_memo.py [--repo DIR] record --pr N --role investigator --id ID < facts.json
     bubble_memo.py [--repo DIR] record --pr N --role reviewer < findings.json
     bubble_memo.py [--repo DIR] apply --pr N
-    bubble_memo.py [--repo DIR] check --pr N [--guidance TEXT]
+    bubble_memo.py [--repo DIR] check --pr N
 """
 import argparse
 import json
@@ -61,9 +61,7 @@ CONTEXT_LINES = 5
 CONTEXT_MAX = 200
 SCRIPT_DIR = Path(__file__).resolve().parent
 _SHA_RE = re.compile(r"[0-9a-f]{7,40}")
-_LINES_RE = re.compile(r"(\d+)(?:-(\d+))?")
 _TOKEN_RE = re.compile(r"`([^`]+?:\d+(?:-\d+)?)`")
-_REF_RE = re.compile(r"(.+?):(\d+)(?:-(\d+))?")
 
 NonEmpty = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -128,10 +126,6 @@ def _write(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8", newline="\n")
 
 
-def _one_line(value: object) -> str:
-    return " ".join(str(value).split())
-
-
 # --- review and bubbled set -------------------------------------------------------------------------------
 
 def find_review(pr: int) -> Path:
@@ -190,23 +184,17 @@ def read_memo(pr: int) -> str:
 
 # --- dispatch rows ----------------------------------------------------------------------------------------
 
-def _guidance_line(guidance: Optional[str]) -> List[str]:
-    text = _one_line(guidance or "")
-    return [f"Developer guidance: {text}"] if text else []
-
-
 def _context(review: Review, item: bm.Bubbled) -> str:
     issue = bm.find_issue(review.doc, item.id) or {}
-    text = _one_line(f"{issue.get('name') or item.id}; {item.cls}; {item.reason}")
+    text = bm.one_line(f"{issue.get('name') or item.id}; {item.cls}; {item.reason}")
     return text if len(text) <= CONTEXT_MAX else text[:CONTEXT_MAX - 3] + "..."
 
 
-def investigator_row(review: Review, item: bm.Bubbled, guidance: Optional[str]) -> str:
+def investigator_row(review: Review, item: bm.Bubbled) -> str:
     issue = bm.find_issue(review.doc, item.id) or {}
     files = ", ".join(bm.issue_files(issue))
     return "\n".join([f"agent={INVESTIGATOR_AGENT} model={INVESTIGATOR_MODEL}", f"PR: {review.pr}",
-                      f"ISSUE: {item.id}", f"FILES: {files}", f"CONTEXT: {_context(review, item)}",
-                      *_guidance_line(guidance)])
+                      f"ISSUE: {item.id}", f"FILES: {files}", f"CONTEXT: {_context(review, item)}"])
 
 
 def entry_flagged(doc: Mapping[str, Any], ident: str, block: str) -> bool:
@@ -215,12 +203,12 @@ def entry_flagged(doc: Mapping[str, Any], ident: str, block: str) -> bool:
     return bm.needs_chain(ident, bm.find_issue(doc, ident)) or len(files) > 1
 
 
-def reviewer_row(review: Review, guidance: Optional[str]) -> str:
+def reviewer_row(review: Review) -> str:
     blocks = bm.entry_blocks(read_memo(review.pr))
     flagged = [b.id for b in review.bubbled if entry_flagged(review.doc, b.id, blocks.get(b.id, ""))]
     model = bm.reviewer_model(flagged)
     return "\n".join([f"agent={REVIEWER_AGENT} model={model}", f"PR: {review.pr}",
-                      f"Memo: {memo_path(review.pr).as_posix()}", *_guidance_line(guidance)])
+                      f"Memo: {memo_path(review.pr).as_posix()}"])
 
 
 # --- scaffold ---------------------------------------------------------------------------------------------
@@ -247,7 +235,7 @@ def cmd_scaffold(args: argparse.Namespace) -> int:
     flagged = bm.flagged_ids(review.doc, [i for i in added if i not in had])
     print(f"scaffold [done] | memo: {memo_path(args.pr).as_posix()} | added: {', '.join(added) or '-'} "
           f"| flagged: {', '.join(flagged) or '-'}")
-    rows = [investigator_row(review, b, args.guidance) for b in review.bubbled if b.id in flagged]
+    rows = [investigator_row(review, b) for b in review.bubbled if b.id in flagged]
     if rows:
         print("\n\n".join(rows))
     return 0
@@ -310,7 +298,7 @@ def excerpt(rel_path: str, first: int, last: int) -> List[str]:
 
 
 def _span(value: str) -> Optional[Tuple[int, int]]:
-    match = _LINES_RE.fullmatch(value.strip().lstrip("~").strip())
+    match = bm.LINES_RE.fullmatch(value.strip().lstrip("~").strip())
     return (int(match.group(1)), int(match.group(2) or match.group(1))) if match else None
 
 
@@ -323,7 +311,7 @@ def cited_ranges(issue: Mapping[str, Any]) -> List[Tuple[str, int, int]]:
 
 def _fix_lines(issue: Mapping[str, Any]) -> List[str]:
     fixes = issue.get("fix") or []
-    return [f"  ({chr(97 + i) if i < 26 else i + 1}) {_one_line(fix)}" for i, fix in enumerate(fixes)]
+    return [f"  ({bm.label(i)}) {bm.one_line(fix)}" for i, fix in enumerate(fixes)]
 
 
 def _record_command(args: argparse.Namespace, ident: Optional[str]) -> str:
@@ -346,15 +334,15 @@ def _save_brief(pr: int, name: str, text: str) -> None:
 def _facts_template(issue: Mapping[str, Any], ident: str) -> str:
     template = {"id": ident, "current_behavior": "...", "when": "...", "chain": ["step one", "step two"],
                 "flow": "a -> b", "references": [{"at": "path:line or path:start-end", "note": "..."}],
-                "fix_effects": [{"option": _one_line(f), "effect": "..."} for f in issue.get("fix") or []],
+                "fix_effects": [{"option": bm.one_line(f), "effect": "..."} for f in issue.get("fix") or []],
                 "confidence": "high|medium|low"}
     return json.dumps(template, indent=2)
 
 
 def _issue_section(item: bm.Bubbled, issue: Mapping[str, Any]) -> List[str]:
-    return ["## Issue", "", f"- Id: {item.id}", f"- Name: {_one_line(issue.get('name') or '')}",
+    return ["## Issue", "", f"- Id: {item.id}", f"- Name: {bm.one_line(issue.get('name') or '')}",
             f"- Class: {item.cls}", f"- Reason bubbled: {item.reason or '(none given)'}",
-            f"- Summary: {_one_line(issue.get('summary') or '')}",
+            f"- Summary: {bm.one_line(issue.get('summary') or '')}",
             f"- Files: {', '.join(bm.issue_files(issue)) or '(none named)'}",
             f"- Lines: {issue.get('lines') or '(none named)'}", "- Fix options:", *_fix_lines(issue), ""]
 
@@ -389,7 +377,7 @@ def memo_references(block: str) -> List[Tuple[str, int, int]]:
     """``(file, first, last)`` of each backticked `path:line` span of a memo entry."""
     out = []
     for token in _TOKEN_RE.findall(block):
-        match = _REF_RE.fullmatch(token)
+        match = bm.REF_RE.fullmatch(token)
         if match:
             out.append((match.group(1), int(match.group(2)), int(match.group(3) or match.group(2))))
     return out
@@ -444,10 +432,6 @@ def _stdin_json() -> Any:
         raise ValueError(f"stdin is not valid JSON: {exc}") from exc
 
 
-def _errors(exc: ValidationError) -> str:
-    return "; ".join(f"{'.'.join(str(p) for p in e['loc']) or '<report>'}: {e['msg']}" for e in exc.errors())
-
-
 def return_block(role: str, output: Path) -> str:
     return "\n".join(["---", "SIGNAL: DONE", f"AGENT_ROLE: {role}", f"OUTPUT: {_rel(output)}", "---"])
 
@@ -467,7 +451,7 @@ def _record_reviewer(review: Review) -> Path:
     try:
         report = MemoFindings.model_validate(_stdin_json())
     except ValidationError as exc:
-        raise ValueError(_errors(exc)) from exc
+        raise ValueError(bm.format_errors(exc)) from exc
     known = set(bm.entry_blocks(read_memo(review.pr)))
     unknown = sorted({f.id for f in report.findings if f.id not in known})
     if unknown:
@@ -493,7 +477,7 @@ def _load_facts(report: Path) -> bm.Facts:
     try:
         return bm.Facts.model_validate_json(report.read_text(encoding="utf-8"))
     except ValidationError as exc:
-        raise ValueError(f"{report.name}: {_errors(exc)}") from exc
+        raise ValueError(f"{report.name}: {bm.format_errors(exc)}") from exc
 
 
 def cmd_apply(args: argparse.Namespace) -> int:
@@ -524,7 +508,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         raise CaptureError(problems)
     print(f"check [ok] | PR {args.pr} | {len(review.bubbled)} entries "
           f"| memo: {memo_path(args.pr).as_posix()}")
-    print(reviewer_row(review, args.guidance))
+    print(reviewer_row(review))
     return 0
 
 
@@ -537,7 +521,6 @@ def _parser() -> argparse.ArgumentParser:
     for name, text in (("scaffold", "Create or extend the memo."), ("check", "Check the memo is complete.")):
         cmd = sub.add_parser(name, help=text)
         cmd.add_argument("--pr", type=int, required=True)
-        cmd.add_argument("--guidance", default=None, help="One line of developer guidance for the agents.")
     apply_cmd = sub.add_parser("apply", help="Write recorded facts into the memo.")
     apply_cmd.add_argument("--pr", type=int, required=True)
     for name, text in (("init", "Print and save an agent's brief."), ("record", "Record an agent's report.")):

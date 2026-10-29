@@ -14,9 +14,9 @@ description: |
     <commentary>Each row is one issue; the agent reports facts about that issue and writes no memo prose.</commentary>
   </example>
   <example>
-    Context: The bubble-memo skill ran with the tail "-- focus on the retry path", so the printed rows carry a `Developer guidance:` line.
+    Context: The bubble-memo skill ran with the tail "-- focus on the retry path", so the session adds a `Developer guidance:` line to each printed row's prompt.
     user: "write the bubble memo for PR 1561 -- focus on the retry path"
-    assistant: "Dispatching harness:bubble-memo-investigator once per printed row, each prompt ending in the row's Developer guidance line."
+    assistant: "Dispatching harness:bubble-memo-investigator once per printed row, each prompt ending in a Developer guidance line."
     <commentary>Guidance sharpens attention inside the issue's files; the brief and the report format stay the same.</commentary>
   </example>
 model: opus

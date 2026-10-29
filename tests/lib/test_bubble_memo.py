@@ -18,7 +18,8 @@ def _issue(issue_id: str, name: str, *, file: Optional[str] = None, files: Optio
     return out
 
 
-def _doc(bubbles: Sequence[str] = ("C1", "I2", "I3"), resolutions: Sequence[Dict[str, str]] = ()) -> Dict[str, Any]:
+def _doc(bubbles: Sequence[str] = ("C1", "I2", "I3"),
+         resolutions: Sequence[Dict[str, str]] = ()) -> Dict[str, Any]:
     issues = {
         "critical": [_issue("C1", "Crash on load", file="src/a.py", lines="3-5")],
         "important": [_issue("I2", "Stale cache", file="src/a.py", lines="10-12",
@@ -223,6 +224,15 @@ def test_apply_facts_fills_the_flagged_entry_but_not_prose(root: Path) -> None:
     assert "- **Description:** " + bm.STUB in block
     assert "- **Recommendation:** " + bm.STUB in block
     assert bm.entry_blocks(text)["I2"] == bm.entry_blocks(_scaffold())["I2"]
+
+
+def test_apply_facts_replaces_the_prefilled_references(root: Path) -> None:
+    prefilled = bm.entry_blocks(_scaffold())["C1"]
+    assert "`src/a.py:3-5`" in prefilled
+    refs = [{"at": "src/a.py:10-12", "note": "moved by the fix wave"}]
+    facts = bm.validate_facts(_facts(references=refs), _doc()["issues"]["critical"][0], root)
+    block = bm.entry_blocks(bm.apply_facts(_scaffold(), facts))["C1"]
+    assert "`src/a.py:10-12` (moved by the fix wave)" in block and "`src/a.py:3-5`" not in block
 
 
 # ---------------------------------------------------------------- review follow-ups
