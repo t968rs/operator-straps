@@ -5,7 +5,7 @@ pr-team-orchestrator.md CONSOLIDATE Step 4 (the actual producer). A guard test p
 them byte-identical; if they ever drift, the agent's copy wins."
 
 This test enforces that claim. The extracted slug rule is the run of text starting
-at "(1) replace every backtick" through "(4) trim leading/trailing underscores." inclusive.
+at "(1) replace every backtick" through "(5) ... and trim trailing underscores." inclusive.
 
 **Single-occurrence constraint:** the regex extracts EXACTLY ONE match per file. If
 a future maintainer copies the slug-rule paragraph into a third location inside either
@@ -24,7 +24,7 @@ SKILL_PATH = PLUGIN_ROOT / "skills" / "pr-team" / "SKILL.md"
 ORCHESTRATOR_PATH = PLUGIN_ROOT / "agents" / "pr-team-orchestrator.md"
 
 SLUG_RULE_PATTERN = re.compile(
-    r"\(1\) replace every backtick.*?\(4\) trim leading/trailing underscores\.",
+    r"\(1\) replace every backtick.*?and trim trailing underscores\.",
     re.DOTALL,
 )
 

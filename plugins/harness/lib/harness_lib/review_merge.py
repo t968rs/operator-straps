@@ -64,6 +64,7 @@ _LINES = re.compile(r"^\d+(-\d+)?(,\s*\d+(-\d+)?)*$")
 _ISSUE_ID = re.compile(r"^([CIM])(\d+)$")
 _TOKEN = re.compile(r"[a-z0-9]+")
 _SLUG_DROP = re.compile(r"[^A-Za-z0-9._-]")
+MAX_SLUG_LEN = 60
 
 Issue = Dict[str, object]
 Range = Tuple[int, int]
@@ -417,10 +418,19 @@ def merge_ids(issues: Sequence[Issue], keep: str, drop: Sequence[str]) -> List[I
 
 
 def slugify_title(title: str) -> str:
-    """Filename slug of a PR title (pr-team rule: strip backticks and colons, ``_`` runs, keep ``._-``)."""
+    """Filename slug of a PR title (pr-team rule: strip backticks and colons, ``_`` runs, keep ``._-``).
+
+    A slug longer than ``MAX_SLUG_LEN`` is cut at the last ``_`` inside the limit (hard cut without one), so
+    the ``Review artifacts:`` line of a merge message stays within its column budget.
+    """
     text = title.replace("`", "").replace(":", "")
     text = re.sub(r"\s+", "_", text)
-    return _SLUG_DROP.sub("", text).strip("_")
+    slug = _SLUG_DROP.sub("", text).strip("_")
+    if len(slug) <= MAX_SLUG_LEN:
+        return slug
+    head = slug[:MAX_SLUG_LEN + 1]
+    cut = head.rfind("_")
+    return (head[:cut] if cut > 0 else slug[:MAX_SLUG_LEN]).rstrip("_")
 
 
 def default_schema_ref() -> str:
