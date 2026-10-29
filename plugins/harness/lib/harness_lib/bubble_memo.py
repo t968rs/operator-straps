@@ -2,8 +2,9 @@
 
 The memo is the developer's decision sheet for issues a pr-review bubbled up. Anchors (index header,
 status words, Decision line, entry heading, stub marker) are the contract that the stamping mod mirrors;
-prose between the anchors is free. Everything here is pure: text in, text or problem lines out. The
-project root is always an argument, and nothing is read from configuration.
+prose between the anchors is free. Parsing and rendering are pure: text in, text or problem lines out.
+The reference checks (`check_memo`, `validate_facts`, `reference_problem`) read files under the project
+root, which is always an argument; nothing is read from configuration.
 
 Format rules that other implementations (the stamping mod) mirror:
 
@@ -372,6 +373,12 @@ def _reference_files(tokens: Sequence[str]) -> List[str]:
     return files
 
 
+def reference_files(block: str) -> List[str]:
+    """Distinct files named in an entry's References field; more than one flags the entry for `check`."""
+    lines = _lf(block).split("\n")
+    return _reference_files(_reference_tokens(_field_text(lines, _REFERENCES) or ""))
+
+
 # ---------------------------------------------------------------- check
 
 def _stub_problems(item_id: str, block: str) -> List[str]:
@@ -419,11 +426,10 @@ def _entry_problems(item_id: str, block: Optional[str], has_row: bool,
     lines = block.split("\n")
     issue = find_issue(doc, item_id)
     tokens = _reference_tokens(_field_text(lines, _REFERENCES) or "")
-    files = _reference_files(tokens)
     problems += _stub_problems(item_id, block) + _reference_problems(item_id, tokens, root)
     if not any(ln.startswith(DECISION_PREFIX) for ln in lines):
         problems.append(f"{item_id}: no Decision line")
-    if needs_chain(item_id, issue) or len(files) > 1:
+    if needs_chain(item_id, issue) or len(reference_files(block)) > 1:
         why = "critical id" if item_id.startswith("C") else "several code files"
         problems += [] if tokens else [f"{item_id}: a flagged entry needs at least one `path:line` reference"]
         problems += _chain_problems(item_id, lines, why)
@@ -590,23 +596,34 @@ def _reference_text(facts: Facts) -> str:
     return ", ".join(f"`{r.at.strip()}` ({n})" for r, n in zip(facts.references, notes))
 
 
+def _facts_pending(block: Sequence[str]) -> bool:
+    """True while a field the facts fill (other than References) still holds a stub."""
+    fields = (_field_text(block, name) for name in (_CURRENT, _WHEN, _CHAIN, _EXPECTED))
+    return any(STUB in field for field in fields if field is not None)
+
+
 def apply_facts(text: str, facts: Facts) -> str:
     """Write the facts into their entry: References, Current behavior, When, Chain, flow, Expected behavior.
 
-    References are replaced even when the scaffold pre-filled them from the review JSON: the facts' references
-    are verified against the working tree, the pre-filled ones are not. The other fields change only over a
-    stub. Description, Recommendation and every other entry stay as they are.
+    While the facts have not landed (Current behavior, When, Chain or an expected-behavior line still holds a
+    stub), References are replaced even when the scaffold pre-filled them from the review JSON: the facts'
+    references are verified against the working tree, the pre-filled ones are not. Once those stubs are gone,
+    References change only over a stub, so a hand correction survives a later apply. The other fields change
+    only over a stub. Description, Recommendation and every other entry stay as they are. The text comes back
+    unchanged, original line endings included, when no field changed.
     """
-    lines = _lf(text).split("\n")
+    source = _lf(text)
+    lines = source.split("\n")
     span = entry_spans(lines).get(facts.id)
     if span is None:
         return text
     block = lines[span[0]:span[1]]
     _replace_field(block, _REFERENCES, [f"{_FIELD_PREFIX}{_REFERENCES}:** {_reference_text(facts)}"],
-                   stubbed_only=False)
+                   stubbed_only=not _facts_pending(block))
     _replace_field(block, _CURRENT, [f"{_FIELD_PREFIX}{_CURRENT}:** {one_line(facts.current_behavior)}"])
     _replace_field(block, _WHEN, [f"{_FIELD_PREFIX}{_WHEN}:** {one_line(facts.when)}"])
     _replace_field(block, _CHAIN, _chain_lines(facts))
     _fill_effects(block, facts)
     lines[span[0]:span[1]] = block
-    return "\n".join(lines)
+    out = "\n".join(lines)
+    return text if out == source else out

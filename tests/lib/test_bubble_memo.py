@@ -235,6 +235,26 @@ def test_apply_facts_replaces_the_prefilled_references(root: Path) -> None:
     assert "`src/a.py:10-12` (moved by the fix wave)" in block and "`src/a.py:3-5`" not in block
 
 
+def test_a_second_apply_keeps_hand_corrected_references(root: Path) -> None:
+    facts = bm.validate_facts(_facts(), _doc()["issues"]["critical"][0], root)
+    first = bm.apply_facts(_scaffold(), facts)
+    edited = first.replace("`src/a.py:3-5` (the read)", "`src/a.py:4` (corrected by hand)")
+    assert edited != first
+    assert bm.apply_facts(edited, facts) == edited
+
+
+def test_an_apply_that_changes_nothing_keeps_crlf_text(root: Path) -> None:
+    facts = bm.validate_facts(_facts(), _doc()["issues"]["critical"][0], root)
+    applied = bm.apply_facts(_scaffold(), facts).replace("\n", "\r\n")
+    assert bm.apply_facts(applied, facts) is applied
+
+
+def test_reference_files_reads_only_the_references_field() -> None:
+    block = bm.entry_blocks(_scaffold())["I2"]
+    cited = block.replace(f"- **Current behavior:** {bm.STUB}", "- **Current behavior:** see `src/b.py:2`")
+    assert bm.reference_files(cited) == ["src/a.py"]
+
+
 # ---------------------------------------------------------------- review follow-ups
 
 _FLOW = "  ```\n  filled\n  ```"
