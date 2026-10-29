@@ -1,0 +1,589 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 122,
+  "pr_title": "1095 bubble memos",
+  "branch": "1095-bubble-memos",
+  "base_branch": "main",
+  "base_sha": "439db207a572bdd6f42c7fb9adb57c2e528ddacc",
+  "head_sha": "42ef74769c42aee36813eab614aa9ec2f7701f50",
+  "review_date": "2026-10-29",
+  "verdict": "READY TO MERGE - 20 of 20 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 6192,
+    "deletions": 42,
+    "files_changed": 47
+  },
+  "reviewers": [
+    "cicd (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0122/pr122_20261029T211352Z/findings/cicd.json",
+    "docs/_scratch/pr_review/0122/pr122_20261029T211352Z/findings/tests.json",
+    "docs/_scratch/pr_review/0122/pr122_20261029T211352Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0122/pr122_20261029T211352Z/findings/docs.json",
+    "docs/_scratch/pr_review/0122/pr122_20261029T211352Z/findings/overall.json",
+    "docs/_scratch/pr_review/0122/pr122_20261029T211352Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0122/pr122_20261029T211352Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "ci.yml:126 adds plugins/bubble-stamp to the mod test loop; the directory exists with a manifest, hooks and *.test.ts files, matching the todo-watch pattern.",
+    "The change is one token appended to the existing for-loop; select_tests.py treats any plugins/ path as a plugins-job trigger, so the new mod's changes reach the job without further wiring.",
+    "stamp.test.ts drives the real plugin through the engine with an in-memory world beneath it: refused read/write/stat/list/toast, concurrent triggers, re-read before write and mtime-gated reads are all covered behaviorally; no test in scope is a mock-chain wiring test.",
+    "memo.test.ts pins stampMemo byte for byte, including idempotence, line-count preservation, CRLF and mixed endings, pipe escaping and the Tracked-in precedence rules with the working-tree snapshot exclusion.",
+    "The anchors and config-mirror contract tests pin the TypeScript constants to harness_lib and defaults.json, and render a real memo to prove that the mod anchors appear in what the script writes.",
+    "test_bubble_memo_driver.py runs main() in-process against throwaway git projects and covers the injection guards (option-like head_sha, path-traversal ids), a malformed facts file and the rerun paths.",
+    "test_bubble_memo.py exercises check_memo through real files on disk (line bounds, missing files, newline-only line counting, CRLF), not stubs.",
+    "memo.ts mirrors the Python entry-boundary and index rules exactly, pinned by an anchors contract test.",
+    "stampMemo keeps per-line endings and never touches Decided rows, so a rerun is a no-op.",
+    "stampFile re-reads before writing, never overwrites an unreadable memo, and serial() prevents interleaved writes.",
+    "review_bubbles gives pr_review.py and bubble_memo.py one closed-id rule without an import cycle.",
+    "reference_problem and _safe_file reject absolute and out-of-project paths before reading.",
+    "The bubble-stamp README stamp rule (the Tracked-in precedence, which skips the snapshot SHA; the Decision cell and line format; DOWNGRADED reopening) matches memo.ts and review.ts line for line.",
+    "The agent docs follow the driver's real CLI and output: the init/record flags, the reviewer row printing only PR and Memo, the record return block and the facts/findings validation all agree.",
+    "The skill's chain-and-flow layout instructions (two-space indent, a fenced flow block with two-space fences) match the library's _FENCE and _chain_lines rendering, so a hand-written chain passes check.",
+    "The root README, CLAUDE.md and the install list register bubble-stamp consistently, the config-mirror sentence names it, and the mirror test it names exists.",
+    "Memo anchors live in one library module; test_bubble_stamp_anchors_contract.py pins the mod copies and renders a memo to prove them.",
+    "review_bubbles extraction is a clean move: pr_review.py keeps its call sites and test_review_bubbles.py covers the helpers directly.",
+    "stamp.ts write safety: re-read before write, write only on change, never overwrite an unreadable memo, serialized triggers, fail open; stamp.test.ts covers each path against a fake host.",
+    "Driver tests run main() against real throwaway git projects, covering validation, off-disk refusal and BOM input end to end.",
+    "Registration (marketplace, CI, README, CLAUDE.md, DEFINED_AGENTS, guidance tail, version bumps) is complete and contract-tested.",
+    "Memo anchors live in one Python module and are pinned to the TypeScript mirror by test_bubble_stamp_anchors_contract.py, which also renders a memo with the library to prove the mod anchors appear in real output.",
+    "The review_bubbles extraction keeps the pr_review.py call sites under the same names, so the pending-bubble rule cannot drift between the two drivers.",
+    "Registration landed in lockstep: marketplace, CI loop, README rows and install line, CLAUDE.md config-mirror sentence, version bumps and DEFINED_AGENTS, each covered by a contract test.",
+    "stamp.test.ts exercises the engine glue against a fake host world (refused reads, writes, stats, listings, toasts, concurrent triggers) rather than stubbing the functions under test.",
+    "No new config key: the memo path derives from artifacts.reviews and the mod mirrors only that default, with its own mirror test.",
+    "test_bubble_stamp_anchors_contract.py pins the mod's anchors to the library and also renders a memo, so drift on either side fails a test instead of breaking a stamp silently.",
+    "stamp.test.ts drives an in-memory host (fs, stat, list, toast) through refused reads, writes, stats and listings, and through concurrent triggers. These are real behavioral tests with no mock chains.",
+    "stampMemo keeps each line's own ending, re-reads the memo before writing, and treats a Decided row as final, which meets the spec's write-safety and no-overwrite goals.",
+    "The review_bubbles extraction is clean: pr_review.py imports the same names, and nothing in tests reached through the old module attributes.",
+    "The driver checks head_sha and issue ids before they reach git arguments or paths (test_an_option_like_head_sha_is_refused), which closes the obvious injection route."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Engine tests never exercise the git top-level probe or the root-candidate order in watch.ts",
+        "file": "plugins/bubble-stamp/hooks/stamp.test.ts",
+        "files": [
+          "plugins/bubble-stamp/hooks/stamp.test.ts",
+          "plugins/bubble-stamp/hooks/watch.ts",
+          "plugins/bubble-stamp/hooks/root.test.ts"
+        ],
+        "lines": "72-76,184-202",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "`world()` always answers `process.run` with exit 128 and sets CLAUDE_PROJECT_DIR and `session.cwd` to the same ROOT. The `toplevelOf` branch of `resolveWatch` (the argv, the exitCode and stdout trim handling, the per-start cache) and the rule that the git top level of a linked worktree is probed before CLAUDE_PROJECT_DIR and the cwd are never reached at engine level. root.test.ts covers only the pure `rootCandidates` ordering. A regression in watch.ts, such as ignoring a successful git answer, swapping env and cwd in the call, or failing to trim the trailing newline, would leave a worktree session silently inactive while every test passes. The root.ts header promises that behavior.",
+        "fix": [
+          "Add activation tests in stamp.test.ts with a `process.run` handler that answers `/wt` plus a trailing newline (exit 0) for `git -C ROOT rev-parse --show-toplevel`, with harness.json and the memo only under /wt; assert `seen.lists` contains `/wt/docs/PR_REVIEWS` and the memo stamps.",
+          "Add a test where git fails, CLAUDE_PROJECT_DIR is /other (no harness.json) and `session.cwd` holds the harness file, asserting the cwd fallback activates; and one asserting a second trigger does not re-run git (cache)."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "apply overwrites hand-edited References on every rerun",
+        "file": "plugins/harness/lib/harness_lib/bubble_memo.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/bubble_memo.py",
+          "plugins/harness/scripts/bubble_memo.py",
+          "plugins/harness/skills/bubble-memo/SKILL.md",
+          "tests/lib/test_bubble_memo.py",
+          "docs/plans/0001_Bubble_memos_ActionPlan.json",
+          "docs/plans/0001_Bubble_memos_PIP.md"
+        ],
+        "lines": "14-15,593-612",
+        "reviewer": "runtime, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The driver docstring says apply writes facts over TODO(fill) stubs, but apply_facts replaces References with stubbed_only=False, and cmd_apply replays every facts/*.json each run. After a scaffold rerun plus apply, earlier References corrections by the developer or memo reviewer are silently lost.\n\nAlso (overall): apply_facts replaces References unconditionally (stubbed_only=False, bubble_memo.py:605-606) and cmd_apply feeds it every facts/*.json in scratch (scripts/bubble_memo.py:483-497). On a skill rerun (new bubble, scaffold, investigator, apply), every older flagged entry has its References reverted to the investigator list, undoing step 4 or step 7 corrections, and check does not notice. Contradicts SKILL.md step 3 (touches only entries whose stubs remain), the snapshot rule, the driver docstring and plan BM-3. test_bubble_memo.py:229-235 pins the overwrite; no rerun test.\n\nAlso (system_shape): apply_facts (commit 42ef747) replaces the References field of an entry whenever a facts file exists (stubbed_only=False), and cmd_apply replays every facts/*.json on each run. The skill Step 3 (writes each report over the TODO(fill) stubs and touches only entries whose facts exist and whose stubs remain), the driver docstring (apply writes each report into its memo entry over the TODO(fill) stubs) and plan BM-3 (apply_facts replaces only the flagged entry stubs) all promise the opposite. Skill Step 4 tells the session to correct References that moved and Step 7 applies reviewer accuracy corrections by hand; any later apply (for example after a redispatched investigator) silently reverts those corrections to the investigator text, the spec anti-goal of overwriting the drafting agent prose.\n\nAlso (roast): apply_facts calls _replace_field(block, _REFERENCES, ..., stubbed_only=False), so every `apply` run overwrites the References line of each entry that has a facts report, even when no stub is left. The rest of the PR says otherwise: SKILL.md step 3 says apply 'touches only entries whose facts exist and whose stubs remain', the driver docstring (scripts/bubble_memo.py:20-21) says it writes 'over the TODO(fill) stubs', plan BM-3 says it 'replaces only the flagged entry's ... stubs', and spec Section 1 repeats that. The result is that References corrected by hand in step 4 or after a reviewer accuracy finding in step 7 go back to the investigator's version when apply runs again, and cmd_apply reports that id as 'applied'. On a CRLF memo, apply_facts also returns LF text even when nothing changed, so every rerun rewrites the file. No test covers a second apply after a hand edit. The memo's whole job is to be correct, and this quietly undoes corrections.\n\nAlso (runtime): The docstring says LF endings only when text changed, yet apply_facts returns the LF join whenever the entry exists. On a CRLF memo cmd_apply lists the first id as applied and rewrites the file with no field filled.\n\nAlso (system_shape): The module docstring says text returned by apply_facts uses LF endings only when it changed, but apply_facts always returns the LF-joined lines once the entry exists. cmd_apply compares updated != text, so on a CRLF memo the first facts report is listed under applied and the memo is rewritten on every run even when the facts were already applied.",
+        "fix": [
+          "Replace References only while it still holds the scaffold pre-fill (_reference_line output) or a TODO(fill) stub.",
+          "Or skip facts whose entry has no stub left, and fix the driver docstring to say References are replaced.",
+          "In apply_facts, leave an entry with no TODO(fill) untouched, and replace References only when it still equals the scaffold prefill or holds a stub; add a driver test that hand-edits References between two apply runs and asserts the edit survives.",
+          "Have cmd_apply skip entries with no stub left and report only ids whose stubs it filled.",
+          "Gate the References replacement: replace only when the field still holds a STUB or still equals the scaffold-rendered _reference_line(issue) text, so a hand-corrected References survives a rerun of apply.",
+          "Or keep the behavior and update SKILL.md Step 3, the scripts/bubble_memo.py module docstring and plan BM-3 (through plan.py, then re-render the PIP) to say References are always replaced from the facts, and tell the skill never to rerun apply after hand edits.",
+          "In apply_facts, return the text unchanged when the entry block holds no STUB (an early `return text` when STUB is absent from the joined block lines). The first apply still replaces the pre-filled References, as commit 42ef747 intends, and later runs leave hand edits alone. Add a lib test: apply, hand-edit References, apply again, and assert the text is unchanged.",
+          "Or keep the behavior and make the documents match it: SKILL.md step 3, the driver docstring for `apply`, and plan BM-3 (through plan.py) say that References are always replaced and that apply must not run after hand corrections.",
+          "Return the original text when the rebuilt block equals the original span lines.",
+          "In apply_facts, build the output and return the original text when the output equals _lf(text)."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "entry_flagged claims to apply check's rule but scans the whole entry, not References",
+        "file": "plugins/harness/scripts/bubble_memo.py",
+        "files": [
+          "plugins/harness/scripts/bubble_memo.py",
+          "plugins/harness/lib/harness_lib/bubble_memo.py",
+          "tests/scripts/test_bubble_memo_driver.py"
+        ],
+        "lines": "64,200-203,206-211,376-383,386-389",
+        "reviewer": "roast, runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The entry_flagged docstring says it applies 'the rule `check` applies: the JSON rule, or References naming several files'. In fact it runs memo_references(block) over the whole entry: Current behavior, Chain, Expected behavior and Recommendation. check_memo (_entry_problems) counts files only in the References field. Take a non-flagged entry whose Current behavior cites a second file in backticks. check passes it without a Chain, but reviewer_row marks it flagged and dispatches opus, and the reviewer brief prints '(flagged: yes)' for an entry with no Chain. The reviewer will likely file an accuracy finding for the missing chain, which forces the second round that decision D9 tries to avoid. These are two copies of one rule that disagree, and the docstring says they agree.\n\nAlso (runtime): entry_flagged claims the rule check applies, but memo_references uses the driver _TOKEN_RE, which does not strip spaces in a code span, while check_memo strips spans before REF_RE.fullmatch. A space-padded path:line span changes the file count only in check, so the reviewer model can disagree with check.\n\nAlso (overall): Docstring: the rule check applies (References naming several files). Code: memo_references over the whole block (scripts/bubble_memo.py:200-203, 376-383), while check reads only the References field (bubble_memo.py:421-426). A second-file path:line in Current behavior or Chain makes reviewer_row print opus and the brief say flagged: yes for an entry check treats as unflagged.\n\nAlso (system_shape): The entry_flagged docstring says it applies the check rule (the JSON rule, or References naming several files), but memo_references(block) collects every backticked path:line span anywhere in the entry (Current behavior, Chain, expected-behavior lines). check_memo counts only the References field (_field_text(lines, _REFERENCES)). An entry whose Chain cites a second file is reported as flagged: yes in the reviewer brief and pushes the reviewer model to opus, while check never demanded a chain for it.",
+        "fix": [
+          "Add a public helper to harness_lib.bubble_memo, `reference_files(block: str) -> List[str]`, defined as _reference_files(_reference_tokens(_field_text(lines, _REFERENCES) or '')). Use it in both _entry_problems and the driver's entry_flagged so the flag rule exists in one place. Keep memo_references over the whole block only for the reviewer's excerpts.",
+          "Build memo_references from bm._TOKEN_RE spans, stripped, that fullmatch bm.REF_RE; drop the driver _TOKEN_RE.",
+          "Add one public helper in harness_lib.bubble_memo that returns the distinct files of the References field and use it in both _entry_problems and entry_flagged.",
+          "Move the entry-level flag into harness_lib.bubble_memo (one function reading _reference_files(_reference_tokens(_field_text(lines, _REFERENCES)))) and call it from both _entry_problems and the driver entry_flagged / reviewer_row / _entry_table."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Skill says apply only fills stubs, but apply_facts always rewrites References",
+        "file": "plugins/harness/skills/bubble-memo/SKILL.md",
+        "files": [
+          "plugins/harness/skills/bubble-memo/SKILL.md",
+          "plugins/harness/lib/harness_lib/bubble_memo.py",
+          "plugins/harness/scripts/bubble_memo.py"
+        ],
+        "lines": "27-29,71-79",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md step 3 says apply writes each report 'over the TODO(fill) stubs' and 'touches only entries whose facts exist and whose stubs remain'. At the head, apply_facts calls _replace_field(..., _REFERENCES, ..., stubbed_only=False) (bubble_memo.py:605-606), and its docstring says References are replaced even when the scaffold pre-filled them. cmd_apply also loops over every facts/*.json in the PR's scratch folder. So any rerun of apply (a redispatched investigator, or a second skill run after scaffold appends new bubbles) puts the investigator's old References back into every earlier flagged entry. That undoes corrections the session made in step 4 or step 7 from reviewer findings, and apply counts those ids as applied. The skill's snapshot rule ('never regenerated over existing text') and the driver docstring ('over the TODO(fill) stubs') both say this cannot happen.",
+        "fix": [
+          "Limit the References overwrite in apply_facts to entries that still hold a TODO(fill) stub, for example by checking STUB in the entry block before replacing, so a finished entry is left alone. Then the skill text is accurate as written.",
+          "Or keep the overwrite and correct the docs: SKILL.md step 3 says References are always replaced from the recorded facts, even outside stubs, and warns that rerunning apply undoes hand corrections to References of entries that have facts. Change the bubble_memo.py module docstring for apply to match."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "CLAUDE.md mod count omits band-line",
+        "file": "CLAUDE.md",
+        "files": [
+          "CLAUDE.md",
+          "tests/contract/test_bubble_stamp_registration.py",
+          ".github/workflows/ci.yml"
+        ],
+        "lines": "3-4",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The edited first paragraph says six TypeScript mods and lists six, but plugins/band-line is a TypeScript mod (hooks/register.ts, banner.ts) that the same CI loop tests; the true count is seven. test_claude_md_counts_six_mods pins the wrong number.",
+        "fix": [
+          "Change CLAUDE.md to seven TypeScript mods and add band-line to the list; update test_claude_md_counts_six_mods to assert seven."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Plan BM-7 stamp rule no longer matches the shipped Tracked-in rule",
+        "file": "docs/plans/0001_Bubble_memos_ActionPlan.json",
+        "files": [
+          "docs/plans/0001_Bubble_memos_ActionPlan.json",
+          "docs/plans/0001_Bubble_memos_PIP.md",
+          "plugins/bubble-stamp/hooks/memo.ts",
+          "plugins/bubble-stamp/README.md"
+        ],
+        "lines": "842",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "Plan BM-7 (and the spec stamp rule) say Tracked in takes the first #<n> or 7-40 hex SHA in the evidence, else a dash. memo.ts trackedIn and the mod README add two rules the plan never states: a developer-filled cell outranks a SHA, and the working-tree snapshot SHA is skipped. The plan is the source of truth after the freeze, so the shipped behavior is undocumented there.",
+        "fix": [
+          "Amend the BM-7 action through plan.py to state the developer-filled precedence and the snapshot-SHA exclusion, then re-render the PIP."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "README says a memo the host refuses to read at a listing stays active, but a new one is never added",
+        "file": "plugins/bubble-stamp/README.md",
+        "files": [
+          "plugins/bubble-stamp/README.md",
+          "plugins/bubble-stamp/hooks/stamp.ts"
+        ],
+        "lines": "60-61",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "bubble-stamp README:60-61 says 'a memo whose read the host refuses at a listing stays active'. memoRecord (hooks/stamp.ts:91-92) returns `prior` when the read is refused, and `prior` is undefined for a memo not yet in the active set. So a refused read keeps a memo that was already active, but a newly listed memo whose read is refused is left out until a later listing.",
+        "fix": [
+          "Reword to: 'a memo already active whose read the host refuses at a listing stays active; a new memo whose read is refused is picked up at a later listing'."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "session.start pass-through test never compares against the host value",
+        "file": "plugins/bubble-stamp/hooks/stamp.test.ts",
+        "lines": "256-291,293-301",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The test `session.start returns the host result unchanged` asserts only that an active start and an inactive start return equal values. Both go through the mod, so a handler that replaced the result with a constant (or undefined) in both paths still passes. The trigger test at line 397 pins the host value directly with `toMatchObject({ result: TOOL_RESULT })`; this one does not.\n\nAlso (tests): Three tests (a refused listing keeps the active set; a memo read the host refuses at a listing stays active; a memo that parsed with no Open row is dropped at a listing) drive the listing through a Bash REVIEW_SCRIPT trigger after start. The describe label says they test session.start, which misleads a reader looking for trigger-listing coverage.",
+        "fix": [
+          "Add `expect(active).toMatchObject({ cwd: ROOT })` (the value the world session.start handler returns) alongside the active/inactive comparison.",
+          "Move the three tests into the `triggers` describe block, or into a new `listing` describe block."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Edit/Write trigger misses undiscovered memos",
+        "file": "plugins/bubble-stamp/hooks/stamp.ts",
+        "files": [
+          "plugins/bubble-stamp/hooks/stamp.ts",
+          "plugins/bubble-stamp/README.md",
+          "plugins/bubble-stamp/hooks/stamp.test.ts"
+        ],
+        "lines": "28-29,193-204",
+        "reviewer": "runtime, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "discover() runs only from afterShell (REVIEW_SCRIPT: pr_review.py, review_edit.py) and session.start; bubble_memo.py scaffold does not match. A memo scaffolded mid-session whose review JSON is then changed by Edit/Write is not in the active set, so afterFile returns and turn.complete checks an empty set; the stamp waits for the next session or review-script call.\n\nAlso (overall): Spec Section 4 and plan BM-8: list the folder whenever a trigger shows an unknown memo. Only session.start and shell calls naming pr_review.py or review_edit.py run discover (stamp.ts:29, 182-196); bubble_memo.py scaffold is not matched, and Edit/Write and turn.complete only check known memos (stamp.ts:199-204, 232-236). A decision recorded by editing the review JSON in the same session waits for the next session start. README.md:77-78 documents it.\n\nAlso (system_shape): Spec Section 4 says the folder is listed whenever a trigger shows a memo not yet known, but only shell calls naming pr_review.py or review_edit.py run discover; bubble_memo.py scaffold (the only writer of memos) does not match REVIEW_SCRIPT, and Edit/Write of a review JSON and turn.complete only run checkAll over the already-known set. A decision recorded by editing the review JSON right after scaffolding stays unstamped until the next session start or pr_review.py call. The README lists this as a known limitation rather than closing it.\n\nAlso (roast): REVIEW_SCRIPT matches only pr_review.py and review_edit.py, and turn.complete only checks memos already known; it never lists the folder. A memo created mid-session by `bubble_memo.py scaffold`, which is the only command that creates memos, stays unknown until the next session start or the next pr_review.py or review_edit.py call. Until then, an Edit or Write of its review JSON stamps nothing, because afterFile matches only active memos. Spec Section 4 says the folder is listed 'whenever a trigger shows a memo not yet known'. The README lists this gap under known limitations when the fix is a single regex alternative.",
+        "fix": [
+          "Add bubble_memo.py as a REVIEW_SCRIPT alternative.",
+          "Or have afterFile run scan through serial() when the path is a NNNN_*.json in the reviews folder that no active memo names.",
+          "Add bubble_memo.py to the REVIEW_SCRIPT regex, add a stamp.test.ts case, and narrow the README limitation.",
+          "Add bubble_memo.py (escaped dot) to the REVIEW_SCRIPT regex in stamp.ts and to the README trigger table, then drop the first Known limitations bullet.",
+          "Or run discover in afterFile when the edited path lies under the reviews folder and matches <NNNN>_*.json.",
+          "Add a bubble_memo.py alternative to the REVIEW_SCRIPT regex, update the README trigger row and known limitations, and add a stamp.test.ts case where a Bash call naming bubble_memo.py discovers a new memo."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Malformed review JSON read marks the mtime seen",
+        "file": "plugins/bubble-stamp/hooks/stamp.ts",
+        "lines": "150-154",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "In checkOne an undefined closedResolutions (file read mid-write) falls back to an empty list and returns next: seen with the new mtime, so a same-millisecond completed write is never stamped.",
+        "fix": [
+          "Return unchanged when closedResolutions(text) is undefined; keep the empty-list branch."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Investigator is told to start from excerpts its brief does not carry for multi-file issues",
+        "file": "plugins/harness/agents/bubble-memo-investigator.md",
+        "files": [
+          "plugins/harness/agents/bubble-memo-investigator.md",
+          "plugins/harness/scripts/bubble_memo.py"
+        ],
+        "lines": "38-39,70-71",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "bubble-memo-investigator.md:38-39 says 'Start from the brief's excerpts of each file in FILES', and :70-71 says 'The brief already holds excerpts around the cited lines'. cited_ranges (scripts/bubble_memo.py:305-309) returns excerpts only when the issue names exactly one file and has `lines`. For an issue with more than one file, which is one of the two reasons an entry gets flagged and an investigator gets dispatched, the brief prints '(no cited range; read the files)' instead.",
+        "fix": [
+          "Reword lines 38-39 and 70-71 along these lines: 'Start from the brief's excerpts when it has them; when it prints `(no cited range; read the files)`, open each file in FILES and find the code the issue describes.'"
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Library docstring claims purity but reads files",
+        "file": "plugins/harness/lib/harness_lib/bubble_memo.py",
+        "lines": "5-6,329-356",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says everything is pure, text in and text out; reference_problem reads files under root, and check_memo and validate_facts go through it.",
+        "fix": [
+          "Reword: parsing and rendering are pure; the reference checks read files under the root argument."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Driver and mod choose different review JSONs",
+        "file": "plugins/harness/scripts/bubble_memo.py",
+        "files": [
+          "plugins/harness/scripts/bubble_memo.py",
+          "plugins/bubble-stamp/hooks/review.ts",
+          "plugins/bubble-stamp/hooks/review.test.ts"
+        ],
+        "lines": "131-138",
+        "reviewer": "runtime, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "find_review also globs unpadded {pr}_*.json and ties on name; reviewFileFor accepts only the padded prefix and sorts by mtime alone. A legacy 122_x.json is scaffolded against by the driver but never watched by the mod.\n\nAlso (overall): find_review also globs the unpadded PR prefix (scripts/bubble_memo.py:131-138); reviewFileFor accepts only the four-digit padded prefix (review.ts:51-55, pinned by review.test.ts:89-95). With a newer unpadded review JSON the driver builds the memo from one file and the mod watches another or none, so decisions never stamp. The spec names the padded rule for both.\n\nAlso (system_shape): find_review globs both the padded <NNNN>_*.json and the unpadded <N>_*.json and breaks mtime ties by name; the mod reviewFileFor (the rule the spec names for both sides) accepts only the zero-padded prefix and breaks ties by listing order, and review.test.ts pins unpadded names as skipped. A memo scaffolded from an unpadded review file is never stamped (the mod record has review null), and on an mtime tie the two halves can read different files.\n\nAlso (roast): The find_review docstring says 'the newest <NNNN>_*.json', but the function also globs the unpadded `{pr}_*.json` and breaks ties by name. The mod's reviewFileFor matches only the zero-padded prefix (review.test.ts asserts '42_X.json' is skipped) and sorts by mtime alone. When an unpadded file is the newest, the driver scaffolds and checks against one review JSON while the mod stamps from another, or from none.",
+        "fix": [
+          "Drop the unpadded glob from find_review (review_target always pads).",
+          "Or accept the unpadded prefix and the name tie-break in reviewFileFor.",
+          "Drop the unpadded pattern from find_review (pr_review.py writes padded names).",
+          "Teach reviewFileFor the unpadded spelling and pin the shared rule in a contract test.",
+          "Drop the unpadded pattern from find_review so both sides use the padded prefix only, and break ties the same way on both sides (or document the tie rule in both).",
+          "Drop the unpadded `{pr}_*.json` glob so find_review matches its docstring and the mod. review_target always writes the padded name."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Skill step 2 calls the investigator output a findings JSON",
+        "file": "plugins/harness/skills/bubble-memo/SKILL.md",
+        "lines": "65-66",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:65 says to 'read the findings JSON at its OUTPUT: path' for an investigator reply. The investigator's record writes the facts report to <artifacts.scratch>/bubble_memo/<N>/facts/<ID>.json (scripts/bubble_memo.py:445). Only the reviewer writes findings (findings/<N>.json). Using one word for both reports makes it unclear which file the session should read.\n\nAlso (overall): SKILL.md:65 says read the findings JSON at the OUTPUT path after an investigator returns; the investigator writes a facts report (facts/ID.json), findings are the reviewer output.\n\nAlso (system_shape): Step 2 says to read the findings JSON at the OUTPUT: path of an investigator reply, but record --role investigator writes facts/<ID>.json (a facts report); findings are the reviewer output (Step 6).",
+        "fix": [
+          "Change 'read the findings JSON at its `OUTPUT:` path' to 'read the facts report at its `OUTPUT:` path'.",
+          "Replace findings JSON with facts report in SKILL.md step 2.",
+          "In SKILL.md Step 2, replace findings JSON with facts JSON."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Registration test pins the mod version to exactly 0.1.0",
+        "file": "tests/contract/test_bubble_stamp_registration.py",
+        "lines": "31-33",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`test_the_mod_manifest_and_hooks` asserts the manifest version equals 0.1.0. CLAUDE.md requires a version bump on every change to the plugin, so the first bubble-stamp fix fails this test until someone also edits it. The neighbouring tests in the same file use a monotonic `_version(...) > (...)` check instead.",
+        "fix": [
+          "Assert `_version(<plugin.json text>) >= (0, 1, 0)` instead of string equality, or drop the version clause."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "test_other_markdown_stays_reviewable checks only the new pattern",
+        "file": "tests/lib/test_default_exclusions_bubbles.py",
+        "lines": "50-54",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`test_other_markdown_stays_reviewable` filters `default_patterns(cfg)` down to the single `*_Bubbles.md` entry before matching. Its name claims the other markdown names stay reviewable under the defaults, but an over-broad sibling default pattern would exclude them and the test would still pass.",
+        "fix": [
+          "Match against the full `default_patterns(cfg)` list (drop the row filter).",
+          "Or rename the test to say the memo pattern alone does not match these names."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "The CONTEXT cap test cannot fail on the 200-character limit",
+        "file": "tests/scripts/test_bubble_memo_driver.py",
+        "files": [
+          "tests/scripts/test_bubble_memo_driver.py",
+          "plugins/harness/scripts/bubble_memo.py"
+        ],
+        "lines": "98-104",
+        "reviewer": "overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_context truncates at CONTEXT_MAX = 200 (scripts/bubble_memo.py:187-190). The only test bounds the line at prefix plus 300 on a context of about 45 characters (tests/scripts/test_bubble_memo_driver.py:104), so dropping the truncation still passes.\n\nAlso (roast): test_scaffold_prints_one_investigator_row_per_flagged_id asserts len(tail[4]) <= len('CONTEXT: ') + 300, but CONTEXT_MAX is 200. A regression that raised the cap up to 300 would pass, and no test feeds a reason long enough to exercise the truncation branch in _context.",
+        "fix": [
+          "Add a test with a reason over 200 characters asserting a 200-character CONTEXT value ending in an ellipsis; tighten the bound to 200.",
+          "Assert against driver.CONTEXT_MAX, and add a case whose bubble_up reason is longer than 200 characters that checks the truncated line ends in '...' and is exactly CONTEXT_MAX characters after 'CONTEXT: '."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "BOM test uses an invisible raw U+FEFF byte sequence",
+        "file": "tests/scripts/test_bubble_memo_driver.py",
+        "lines": "293",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`test_record_accepts_a_utf8_bom` prefixes stdin with a literal EF BB BF character inside the quotes, which no editor shows. If a formatter or a careless edit drops it, the test still passes on plain JSON and stops testing BOM handling without any visible diff.",
+        "fix": [
+          "Replace the invisible literal with the Python escape sequence for U+FEFF (backslash-ufeff) so the prefix is visible in source."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Agent prose checks rest on near-universal words; the both-lenses test asserts three",
+        "file": "tests/skills/test_bubble_memo_agents_contract.py",
+        "files": [
+          "tests/skills/test_bubble_memo_agents_contract.py",
+          "plugins/harness/agents/bubble-memo-investigator.md"
+        ],
+        "lines": "61-69",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`test_the_investigator_reports_facts_not_prose` asserts that the words `when` and `does not` appear anywhere in the body. The word `when` already occurs in the stop conditions and reading rules, so it cannot pin the fact contract. The load-bearing rule is the line `No recommendation and no memo prose.`, which the test never names. `test_the_reviewer_names_both_lenses` says two lenses but asserts accuracy, clarity and simplicity.",
+        "fix": [
+          "Assert the rule phrase itself (`No recommendation and no memo prose`) and `current behavior`, and drop the bare `when` / `does not` checks.",
+          "Rename the reviewer test to match its three words, or assert only the two lens names the driver brief uses."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Agent contract test never names the agent files, so PR CI skips it on agent edits",
+        "file": "tests/skills/test_bubble_memo_agents_contract.py",
+        "files": [
+          "tests/skills/test_bubble_memo_agents_contract.py",
+          "tools/select_tests.py"
+        ],
+        "lines": "12,16-19",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The test builds each path as `f{name}.md` from `_AGENTS = (bubble-memo-investigator, bubble-memo-reviewer)`. `tools/select_tests.py` `mentions()` matches a changed file by its full basename (the bare-stem fallback applies only to .py files), and this test does not walk the tree. Neither `bubble-memo-investigator.md` nor `bubble-memo-reviewer.md` appears in the source. A PR that edits only `plugins/harness/agents/bubble-memo-*.md` therefore never selects this test, and a broken frontmatter or a dropped read-only rule shows up only after the merge to main. CLAUDE.md requires a test that reaches a file through a runtime-built path to spell the file name out.",
+        "fix": [
+          "Spell the basenames out: a tuple `_AGENT_FILES` holding the literals `bubble-memo-investigator.md` and `bubble-memo-reviewer.md`, derive the name with `Path(f).stem`, and have `_agent()` join the literal file name.",
+          "Keep `_AGENTS` and add a module-level tuple of the two literal .md basenames that `_agent()` asserts against, so select_tests sees them in the source."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 122 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":7,\"first_sha\":\"2c431e7ec0265e4f7338a076590bed019609a551\",\"headRefName\":\"1095-bubble-memos\",\"headRefOid\":\"42ef74769c42aee36813eab614aa9ec2f7701f50\",\"last_sha\":\"42ef74769c42aee36813eab614aa9ec2f7701f50\",\"mergeCommit\":null,\"number\":122,\"state\":\"OPEN\",\"title\":\"1095 bubble memos\",\"url\":\"https://github.com/t968rs/operator-straps/pull/122\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1095-bubble-memos",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1095-bubble-memos",
+        "head_ref_name": "1095-bubble-memos",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "2c431e7ec0265e4f7338a076590bed019609a551",
+        "head_sha": "42ef74769c42aee36813eab614aa9ec2f7701f50",
+        "base_ancestor_command": "git merge-base --is-ancestor 2c431e7ec0265e4f7338a076590bed019609a551 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 42ef74769c42aee36813eab614aa9ec2f7701f50 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - SKILL.md step 2: 'findings JSON' at the investigator OUTPUT path now reads 'facts report'"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - apply_facts replaces References only while Current behavior/When/Chain/Expected stubs remain (_facts_pending), else only over a stub, and returns the original text when nothing changed (CRLF no-op); driver apply docstring and SKILL step 3 say so; lib tests pin hand-edit survival across two applies and the CRLF no-op; plan BM-3 text ('replaces only ... stubs') is now accurate, no edit"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - new public bm.reference_files(block) reads only the References field; _entry_problems and the driver entry_flagged both use it (driver PurePosixPath import dropped); memo_references stays for reviewer excerpts; lib test added; added regression test: a second file in Current behavior does not flag the entry (flagged: no, model sonnet)"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - same fix as I2: apply_facts gates the References overwrite on remaining fact stubs, so SKILL step 3 and the driver docstring hold (both updated to name the References rule)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - session.start pass-through test pins the host value with toMatchObject({ cwd: ROOT }); the three listing tests moved into a new 'listing at a trigger' describe block"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - world() takes a Place (projectDir, cwd, git toplevel) and records process.run argv; added activation tests: linked-worktree top level (stdout with trailing newline) beats CLAUDE_PROJECT_DIR with exact git argv, cwd fallback when git fails and CLAUDE_PROJECT_DIR lacks harness.json, and a cached top level not re-asked on a later trigger. watch.ts and root.test.ts cited only: behavior already correct, coverage added at engine level. Note: 'a malformed review JSON stamps nothing and is not retried until it moves' is red from the other fixer's stamp.ts checkOne change (malformed JSON no longer records the mtime), not from these edits"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - manifest version check is now a monotonic >= (0, 1, 0) via _version instead of string equality"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - BOM test prefix written as the visible ﻿ escape instead of a literal U+FEFF byte"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - BM-7 action now states the Tracked in order: first #<n>, else the developer-filled cell, else the first 7-40 hex SHA that is not the working-tree snapshot SHA, else '-'; PIP re-rendered via plan.py render (freeze digest left as recorded: refreeze is blocked by pre-existing anchor drift); memo.ts trackedIn/firstSha and README lines 52-53 cited only, they already state the shipped rule"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - CLAUDE.md lists seven mods with band-line; ci.yml needed no change (already loops bubble-stamp) (outside fixer waves)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - README states a known memo whose read is refused stays active and a new one is picked up at a later listing (outside fixer waves)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - REVIEW_SCRIPT also matches bubble_memo.py so a scaffold run lists the folder; README table updated; trigger test added (outside fixer waves)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - checkOne returns unchanged on a malformed review JSON so the mtime is not recorded and the read is retried; test updated (outside fixer waves)"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - investigator rules start from excerpts only when the brief prints them (agent file); driver needed no change (outside fixer waves)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - library docstring says parsing and rendering are pure and the reference checks read files under the root (outside fixer waves)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - driver find_review globs the padded name only; review.ts ties on mtime to the larger name like the driver; tie test added (outside fixer waves)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - exclusion test asserts against every default pattern, not only the new row (outside fixer waves)"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - CONTEXT cap test uses driver.CONTEXT_MAX with a 200-char reason; driver needed no change (outside fixer waves)"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - agents contract asserts a distinctive investigator phrase and the reviewer pair clarity and simplicity (outside fixer waves)"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "42ef747 (working-tree snapshot; developer commits) - agents contract test spells the agent file names so select_tests.py selects it; select_tools.py unchanged (outside fixer waves)"
+    }
+  ]
+}
