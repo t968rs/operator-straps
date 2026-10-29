@@ -185,7 +185,7 @@ If validation passes, capture the literal `SCHEMA OK` line as evidence.
 
 ## Step 6 — verification-before-completion skill
 
-Invoke the `superpowers:verification-before-completion` skill via the
+Invoke the `superpowers-lt:verification-before-completion` skill via the
 Skill tool. Pass it your work summary:
 - Files modified (one: the review JSON).
 - Schema validation result.
@@ -230,7 +230,7 @@ The most reliable identity signal across a rebase is the files-touched signature
 | Agent overwrites JSON's old SHAs before reading them | Step 2 explicitly captures OLD before Step 3 mutates |
 | Trusting bootstrap-hint mapping blindly | Agent verifies every hint via `git show --stat` |
 | Treating squashed commits as MAPPED 1:1 | Three-mode resolution (`MAPPED` / `SQUASHED` / `NEEDS USER VERIFICATION`) is mandatory |
-| Skipping `superpowers:verification-before-completion` | Step 6 is non-negotiable |
+| Skipping `superpowers-lt:verification-before-completion` | Step 6 is non-negotiable |
 
 ## Worked Example
 

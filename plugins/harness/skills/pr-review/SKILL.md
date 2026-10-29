@@ -78,7 +78,7 @@ field semantics, grading rules and the Phase 5 dispatch order.
 
 - You are requesting review from HUMAN GitHub reviewers via `gh pr edit --add-reviewer`. That is a different workflow
   and does not belong here. Run `gh pr edit <N> --add-reviewer @user` directly — no skill needed.
-- You are reviewing code as a reviewer. See `superpowers:receiving-code-review`.
+- You are reviewing code as a reviewer. See `superpowers-lt:receiving-code-review`.
 
 ## The Rule
 
@@ -998,9 +998,9 @@ Example report format:
 
 **Upstream (these skills lead into this one):**
 
-- `superpowers:executing-plans` — invoke this skill when a plan phase completes
-- `superpowers:subagent-driven-development` — dispatch tasks, then invoke this skill on completion
-- `superpowers:finishing-a-development-branch` — safety gate before merging
+- `superpowers-lt:executing-plans` — invoke this skill when a plan phase completes
+- `superpowers-lt:subagent-driven-development` — dispatch tasks, then invoke this skill on completion
+- `superpowers-lt:finishing-a-development-branch` — safety gate before merging
 
 **Downstream (this skill dispatches these):**
 

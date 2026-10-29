@@ -41,7 +41,7 @@ Previous run log: <second path, or none>
 Project root: <absolute project root>
 Question: <question>
 
-Load the superpowers:systematic-debugging skill; if it is not available, load harness:strap-debugging (the same
+Load the superpowers-lt:systematic-debugging skill; if it is not available, load harness:strap-debugging (the same
 process). Apply its Phases 1-3 (root cause investigation, pattern analysis, hypothesis) to this run, through
 the steps below. Diagnose only: propose no patch and change nothing, because the fix belongs to the main
 session.

@@ -26,8 +26,8 @@ _INVOCABLE = [
     "roast-my-code", "sync-gh-todo", "todo-edit", "write-plan",
 ]
 _KNOWLEDGE = [
-    "agent-permissions", "consumer-contract-audit", "decompose-module", "dev-pipeline",
-    "efficient-file-reading", "searching-sourcegraph", "spatialist", "strap-debugging", "subagent-reporting",
+    "agent-permissions", "consumer-contract-audit", "decompose-module", "efficient-file-reading",
+    "searching-sourcegraph", "spatialist", "strap-debugging", "subagent-reporting",
 ]
 
 

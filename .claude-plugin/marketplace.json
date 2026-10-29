@@ -49,6 +49,14 @@
       "name": "bubble-stamp",
       "source": "./plugins/bubble-stamp",
       "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION) into the bubble memo, PR_<N>_Bubbles.md"
+    },
+    {
+      "name": "superpowers-lt",
+      "source": {
+        "source": "github",
+        "repo": "t968rs/superpowers-lt"
+      },
+      "description": "Trimmed fork of the superpowers skills library, renamed so its skills do not collide with the upstream plugin"
     }
   ]
 }

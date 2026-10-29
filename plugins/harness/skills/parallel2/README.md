@@ -78,13 +78,13 @@ Skills that apply per wave (those outside this plugin apply when installed):
 
 | Wave | Concern | Skill |
 |---|---|---|
-| W0 | Worktree conventions, IDE file locks | `superpowers:using-git-worktrees` |
+| W0 | Worktree conventions, IDE file locks | `superpowers-lt:using-git-worktrees` |
 | W1, W2 dispatch | Mechanical overlap and permissions | `harness:parallel2` |
-| W1, W2 dispatch | Conceptual overlap: lanes on different files sharing an invariant | `superpowers:dispatching-parallel-agents` |
-| W1A, W2A | A failing test before runtime code | `superpowers:test-driven-development` |
+| W1, W2 dispatch | Conceptual overlap: lanes on different files sharing an invariant | `superpowers-lt:dispatching-parallel-agents` |
+| W1A, W2A | A failing test before runtime code | `superpowers-lt:test-driven-development` |
 | W1A, W1B | One evidence shape per lane for the merge decision | `harness:subagent-reporting` |
 | W1C | CI and guard-suite edits | the project's CI-discipline skill, if any |
-| W4 | Evidence before claiming done | `superpowers:verification-before-completion` |
+| W4 | Evidence before claiming done | `superpowers-lt:verification-before-completion` |
 
 Reading the example:
 

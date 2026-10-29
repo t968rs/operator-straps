@@ -97,7 +97,7 @@ the configured `schemas_dir`. Work that is not tracked explicitly is work going 
 Skills outside this plugin apply when installed.
 
 - **Writing code:** test-driven development; write or adapt the test, watch it fail, then fix.
-- **Troubleshooting:** systematic debugging (`superpowers:systematic-debugging`, else the bundled
+- **Troubleshooting:** systematic debugging (`superpowers-lt:systematic-debugging`, else the bundled
   `harness:strap-debugging`); finish the diagnosis before proposing a fix.
 - **Creating plans:** a written plan for any multi-task work.
 - **Parallel subagent dispatch:** `harness:parallel2` first (vets the dispatch plan, prevents overlapping file
