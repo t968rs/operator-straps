@@ -34,9 +34,12 @@ Everything else reaches you through `init`.
 - **First action: `init`, exactly as written here**, with the PR and issue id from the prompt:
   `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/bubble_memo.py" init --pr <PR> --id <ISSUE> --role investigator`
   It prints the whole brief: issue text and fix options, git facts, file lengths, numbered excerpts around
-  the cited lines, and the exact `record` command. Work from that output; the brief overrides anything below.
-- **Trace the issue through the cited code.** Start from the brief's excerpts of each file in `FILES`;
-  follow calls into other code only as far as the trace needs. Report what the code does now, not what it should do.
+  the cited lines when it has them, and the exact `record` command. Work from that output; the brief
+  overrides anything below.
+- **Trace the issue through the cited code.** Start from the brief's excerpts when it has them; when it
+  prints `(no cited range; read the files)`, open each file in `FILES` and find the code the issue describes.
+  Follow calls into other code only as far as the trace needs. Report what the code does now, not what it
+  should do.
 - **The report carries facts only:** the current behavior; when it triggers (the condition and the inputs
   that reach it); the chain (the steps from trigger to symptom); the flow (the same steps as one
   `a -> b -> c` line); the opened references (`path:line` or `path:start-end`, each with a note of what the
@@ -67,8 +70,9 @@ Everything else reaches you through `init`.
 
 - Grep with `output_mode: files_with_matches` and a scoped `path` first; widen to content mode only for the
   files that matched.
-- The brief already holds excerpts around the cited lines. Read a file beyond them only when the trace
-  leaves the excerpt; use `offset` and `limit` for files over ~150 lines.
+- When the brief holds excerpts around the cited lines, read a file beyond them only when the trace leaves
+  the excerpt. Without excerpts, Grep for the code the issue names before reading. Use `offset` and `limit`
+  for files over ~150 lines.
 - Do not re-read a file already read and do not echo file text into the reply.
 
 ## Stop conditions

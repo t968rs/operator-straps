@@ -62,7 +62,7 @@ is a `problem:` line and exit 1, and `note:` lines never fail a run.
    `Agent(subagent_type=<agent>, model=<model>, prompt=<the lines after the agent= line>)`
 
    The `agent=` line itself is not part of the prompt. The model is the one printed on that line; never
-   substitute another. Each reply is a return block; read the findings JSON at its `OUTPUT:` path (relative to
+   substitute another. Each reply is a return block; read the facts report at its `OUTPUT:` path (relative to
    the project root) when the facts need a look, since the session never sees the agent's brief. A reply with
    no `SIGNAL:` line is a failed run: redispatch that row once. When it fails again, stop filling that entry,
    finish the rest, and in the hand-off give the memo path, the failed ids and the agent's `problem:` lines,
@@ -76,7 +76,8 @@ is a `problem:` line and exit 1, and `note:` lines never fail a run.
 
    It writes each recorded report into its entry over the `TODO(fill)` stubs: References, Current behavior,
    When, Chain, the flow block and the expected behavior per fix. It touches only entries whose facts exist and
-   whose stubs remain.
+   whose stubs remain. The scaffold's pre-filled References give way to the verified ones only while the
+   entry's other fact stubs remain, so a rerun of `apply` keeps a References line corrected by hand.
 
 4. **Fill what remains.** Read the memo, then every `TODO(fill)` left in it:
    - **Non-flagged entries, in full:** open the code at the cited lines and write Current behavior, When
