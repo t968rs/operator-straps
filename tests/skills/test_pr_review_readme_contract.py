@@ -1,14 +1,15 @@
 """Guard test: the pr-review README stays aligned with the fix-wave planner it illustrates.
 
-The README draws the wave layout of one worked example and names the planner's caps, helpers and config keys.
-The test replans that example with ``review_waves.plan_waves`` and pins each name the prose shares with it.
+The README draws the wave layouts of two worked examples and names the planner's caps, cost figures, helpers
+and config keys. The test replans both examples with ``review_waves.plan_waves`` and pins each name and figure
+the prose shares with it: each example's fixer rows, wave by wave, with their seconds.
 """
 from __future__ import annotations
 
 import json
 import re
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import pytest
 from harness_lib import review_waves as rwv
@@ -42,39 +43,67 @@ def _example_issues(criticals: bool) -> List[Dict[str, object]]:
     return issues
 
 
-def _lane(ids: List[str]) -> str:
-    return "".join(f"[{i}]" for i in ids) if len(ids) > 1 else f"[{ids[0]}"
+_FIXER_ROW = re.compile(r"^(?:wave (\d+))?\s+fixer \d+\s+(\[.*\])\s.*?(\d+) s$")
+
+Drawn = List[List[Tuple[List[str], int]]]
 
 
-def _lanes(waves: List[List[Dict[str, object]]]) -> List[List[List[str]]]:
-    """Issue ids of every fixer, grouped by wave."""
-    return [[list(map(str, fixer["issue_ids"])) for fixer in wave] for wave in waves]  # type: ignore[call-overload]
+def _example_blocks(text: str) -> List[str]:
+    """The fenced blocks of the Worked examples section, one per example, in README order."""
+    section = text.split("### Worked examples", 1)[1].split("\n### ", 1)[0]
+    return section.split("```")[1::2]
+
+
+def _drawn(block: str) -> Drawn:
+    """Each drawn fixer row of one example block as (issue ids, seconds), grouped by its 'wave N' row."""
+    waves: Drawn = []
+    for line in block.splitlines():
+        row = _FIXER_ROW.match(line)
+        if not row:
+            continue
+        if row.group(1):
+            waves.append([])
+        waves[-1].append((re.findall(r"\[(\w+)", row.group(2)), int(row.group(3))))
+    return waves
+
+
+def _units(fixer: Dict[str, object], issue_id: str, by_id: Dict[str, Dict[str, object]]) -> int:
+    """Units ``issue_id`` places on ``fixer``: one per owned file of a split mechanical issue, else one."""
+    parts: Dict[str, List[str]] = fixer["parts"]  # type: ignore[assignment]
+    return len(parts[issue_id]) if by_id[issue_id]["fix_kind"] == "mechanical" else 1
 
 
 def _seconds(fixer: Dict[str, object], by_id: Dict[str, Dict[str, object]]) -> int:
-    """The README's fixer estimate, recomputed from the fixer row and the public cost constants."""
+    """The README's fixer estimate, recomputed per unit from the fixer row and the public cost constants."""
     ids = list(map(str, fixer["issue_ids"]))  # type: ignore[call-overload]
+    units = {i: _units(fixer, i, by_id) for i in ids}
     if fixer["model"] == "haiku":
         base, per_unit = rwv.HAIKU_SECONDS
-        return base + per_unit * len(ids)
+        return base + per_unit * sum(units.values())
     opus = rwv.OPUS_SECONDS
-    kinds = ["mechanical" if by_id[i]["fix_kind"] == "mechanical" else "judgment" if i[0] == "M" else "heavy"
-             for i in ids]
-    return opus["base"] + sum(opus[kind] for kind in kinds)
+    kinds = {i: "mechanical" if by_id[i]["fix_kind"] == "mechanical"
+             else "judgment" if i[0] == "M" else "heavy" for i in ids}
+    return opus["base"] + sum(opus[kinds[i]] * units[i] for i in ids)
+
+
+def _planned(waves: List[List[Dict[str, object]]], by_id: Dict[str, Dict[str, object]]) -> Drawn:
+    """Issue ids and estimated seconds of every planned fixer, grouped by wave."""
+    return [[(list(map(str, f["issue_ids"])), _seconds(f, by_id)) for f in wave]  # type: ignore[call-overload]
+            for wave in waves]
 
 
 @pytest.mark.parametrize("criticals", [False, True])
 def test_worked_example_lanes_match_the_planner(criticals: bool) -> None:
     issues = _example_issues(criticals)
-    waves = rwv.plan_waves(issues, held=[], done=[])
-    text = _text()
-    assert len(waves) == 2, "the README draws two waves per example"
-    for wave in _lanes(waves):
-        for ids in wave:
-            assert _lane(ids) in text, f"README never draws the lane {ids}"
     by_id = {str(i["id"]): i for i in issues}
-    walls = [max(_seconds(fixer, by_id) for fixer in wave) for wave in waves]
-    assert f"estimated wall: {walls[0]} + {walls[1]} = {sum(walls)} s" in text
+    planned = _planned(rwv.plan_waves(issues, held=[], done=[]), by_id)
+    blocks = _example_blocks(_text())
+    assert len(blocks) == 2, "the README draws two worked examples"
+    block = blocks[int(criticals)]
+    assert _drawn(block) == planned, "README example draws a wave layout the planner does not produce"
+    walls = [max(seconds for _, seconds in wave) for wave in planned]
+    assert len(walls) == 2, "the README draws two waves per example"
+    assert f"estimated wall: {walls[0]} + {walls[1]} = {sum(walls)} s" in block
 
 
 def test_caps_in_the_prose_are_the_planner_constants() -> None:

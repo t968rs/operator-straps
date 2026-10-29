@@ -41,8 +41,8 @@ fixer          up to 4 per wave, then the smallest with room (_place_free)
 choice         the whole layout is planned once per rule mix; the lower estimated wall time wins (_wall_seconds)
 ```
 
-A **heavy** unit is a judgment fix of a critical or important issue (`_heavy`). Mechanical parts and minor issues
-are light. Heavy units set a fixer's wall time, so the cut and the placement both steer around them.
+A **heavy** unit is a judgment fix of a critical or important issue (`_heavy`). Mechanical units (whole issues or parts)
+and minor issues are light. Heavy units set a fixer's wall time, so the cut and the placement both steer around them.
 
 ### Grouping and the cut
 
@@ -92,7 +92,7 @@ tie it is part of. A wave lasts as long as its slowest fixer, and the waves run 
 
 ```
 haiku fixer    25 s + 7 s per unit
-opus fixer     20 s + 65 s per heavy unit + 30 s per minor judgment unit + 10 s per mechanical part
+opus fixer     20 s + 65 s per heavy unit + 30 s per minor judgment unit + 10 s per mechanical part or whole mechanical issue
 layout         sum over the waves of the slowest fixer
 ```
 
@@ -114,15 +114,15 @@ and no heavy unit? ──yes──► joins that fixer
 wave holds fewer than 4 fixers? ──yes──► new fixer
      │no
      ▼
-some fixer has room? ──yes──► smallest fixer: one of the group's own fix kind first,
-     │no                       then one holding no heavy unit
+some fixer has room? ──yes──► smallest fixer: one holding no heavy unit first,
+     │no                       then one of the group's own fix kind
      ▼
 new fixer
 ```
 
 Wall time follows the slowest fixer of each wave, so the plan spreads work over fixers instead of filling one to
-the cap of 6 units. A fixer holding a heavy unit is usually that slowest fixer, so it takes no extra group while
-another place exists.
+the cap of 6 units. A fixer holding a heavy unit is usually that slowest fixer, so among fixers with room it is
+the last to take an extra group, whatever its fix kind.
 
 ### Worked examples
 
@@ -213,7 +213,7 @@ groups share a wave; the fixer record in waves.json lists its locks
 - **Links.** Units link only through shared files and locks. Two fixes that depend on each other through behavior
   alone are not linked.
 - **Cap.** Six units per fixer bounds one fixer's load; the units the cut defers wait for a later wave. The one
-  exception is a stretched judgment-only group of 7, chosen only when the estimate says it saves a wave.
+  exception is a stretched judgment-only group of 7, chosen only when its layout has a strictly lower estimated wall time.
 
 ## Config keys
 

@@ -56,6 +56,9 @@ TIERS = ("critical", "important", "minor")
 CLOSED_STATUSES = ("RESOLVED", "CLOSED_NO_ACTION")
 _LETTER = {"critical": "C", "important": "I", "minor": "M"}
 _TIER_OF = {v: k for k, v in _LETTER.items()}
+# Shared with review_waves: _RANK, _union, _tier, _files and _id_key are imported by the fix-wave planner
+# (harness_lib.review_waves). Each carries a "used by review_waves" note; a rename or signature change here
+# must update that module too.
 _RANK = {tier: n for n, tier in enumerate(TIERS)}
 _LINES = re.compile(r"^\d+(-\d+)?(,\s*\d+(-\d+)?)*$")
 _ISSUE_ID = re.compile(r"^([CIM])(\d+)$")
@@ -90,6 +93,7 @@ def same_issue(a: Finding, b: Finding) -> bool:
     return a.file == b.file and _near(line_ranges(a.lines), line_ranges(b.lines))
 
 
+# Used by review_waves.
 def _union(items: Iterable[str]) -> Tuple[str, ...]:
     """Distinct ``items`` in first-seen order."""
     return tuple(dict.fromkeys(items))
@@ -106,11 +110,13 @@ def _merge_ranges(ranges: Iterable[Range]) -> Tuple[Range, ...]:
     return tuple(out)
 
 
+# Used by review_waves.
 def _tier(issue_id: str) -> str:
     """Tier name of an issue id (``I3`` -> ``important``)."""
     return _TIER_OF[issue_id[0]]
 
 
+# Used by review_waves (unit ownership relies on the ``[file]`` fallback).
 def _files(issue: Mapping[str, object]) -> List[str]:
     """Full file list of a schema issue: ``files`` when present, else ``[file]``."""
     files = issue.get("files") or [issue["file"]]
@@ -276,6 +282,7 @@ def cross_candidates(existing: Sequence[Issue], new: Sequence[Issue]) -> List[Tu
 # --- verdict ------------------------------------------------------------------------------------------------
 
 
+# Used by review_waves (cut tie-breaks and group ordering).
 def _id_key(issue_id: str) -> Tuple[int, int]:
     """Natural id order: tier, then number."""
     return _RANK[_tier(issue_id)], int(issue_id[1:])

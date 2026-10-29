@@ -172,7 +172,7 @@ heavy W1 fixer under the most-connected cut.
 
 Shipped in plugin 0.39.0 (`review_waves.py`, split out of `review_merge.py` in the same release):
 
-- `plan_waves` plans the layout under both cuts (`_cut(..., light_first)`) and keeps the one with the lower
+- `plan_waves` plans the layout under both cuts (`_cut(..., rules)`, `_Rules.light_first`) and keeps the one with the lower
   `_wall_seconds`; a tie keeps the most-connected cut. The estimate constants are `HAIKU_SECONDS` and
   `OPUS_SECONDS`, the model above.
 - `_place_free` skips the kin rule for a fixer holding a heavy unit (critical or important judgment), and the

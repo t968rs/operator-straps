@@ -13,7 +13,7 @@ wall time (``HAIKU_SECONDS``, ``OPUS_SECONDS``) wins, the plain most-connected c
 sharing nothing with the wave's fixers joins the fixer holding another part of one of its issues when it fits
 and that fixer holds no heavy unit; otherwise it opens a fixer of its
 own while the wave holds fewer than ``FIXERS_PER_WAVE``, and past that it joins the smallest fixer with room,
-preferring one of its own fix kind, then one without a heavy unit, so a wave spreads its work across fixers
+preferring one without a heavy unit, then one of its own fix kind, so a wave spreads its work across fixers
 instead of filling one to the cap. Fixers within a wave are file-disjoint over the
 files they own and never hold the same serial-test lock; tracking paths belong to no fixer. Given a test
 registry map, each unit also owns the registered tests targeting its files and the existing paths its
@@ -278,9 +278,10 @@ def _mechanical(chunk: Sequence[_Unit]) -> bool:
 def _place_free(wave: List[List[_Unit]], chunk: List[_Unit], cap: int, target: int) -> None:
     """Place a group that shares nothing with the fixers of ``wave``: the fixer already holding another part
     of one of its issues (a split issue stays whole while it fits) unless that fixer holds a heavy unit,
-    else a new fixer while the wave holds fewer than ``target``, else the smallest fixer with room (one of
-    the group's own fix kind first, then one without a heavy unit), else a new fixer. A fixer holding heavy
-    work is the slowest of its wave, so it takes no more than its own group while another place exists."""
+    else a new fixer while the wave holds fewer than ``target``, else the smallest fixer with room (one
+    without a heavy unit first, then one of the group's own fix kind), else a new fixer. A fixer holding
+    heavy work is usually the slowest of its wave, so among fixers with room it is the last to take an
+    extra group, whatever its fix kind."""
     roomy = [b for b in wave if len(b) + len(chunk) <= cap]
     ids = {u.id for u in chunk}
     kin = [b for b in roomy if ids & {u.id for u in b} and not _holds_heavy(b)]
@@ -290,7 +291,7 @@ def _place_free(wave: List[List[_Unit]], chunk: List[_Unit], cap: int, target: i
         wave.append(list(chunk))
     else:
         kind = _mechanical(chunk)
-        min(roomy, key=lambda b: (_mechanical(b) != kind, _holds_heavy(b), len(b))).extend(chunk)
+        min(roomy, key=lambda b: (_holds_heavy(b), _mechanical(b) != kind, len(b))).extend(chunk)
 
 
 def _fixer_seconds(chunk: Sequence[_Unit]) -> int:

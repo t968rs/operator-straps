@@ -54,9 +54,12 @@ def _assigned(waves: Sequence[Sequence[Mapping[str, object]]]) -> List[tuple]:
 
 
 def _check_fixer(fixer: Mapping[str, object], by_id: Mapping[str, Mapping[str, object]], number: int) -> None:
-    """Per-fixer invariants: id, cap in units, parts keys and order, files and model."""
+    """Per-fixer invariants: id, cap in units (one over the cap for a judgment-only fixer, the stretch rule),
+    parts keys and order, files and model."""
+    kinds = {by_id[i]["fix_kind"] for i in fixer["issue_ids"]}
+    limit = rwv.MAX_ISSUES_PER_FIXER + (1 if kinds == {"judgment"} else 0)
     assert fixer["id"].startswith(f"w{number}_fix_")
-    assert 1 <= _units_of(fixer, by_id) <= rwv.MAX_ISSUES_PER_FIXER
+    assert 1 <= _units_of(fixer, by_id) <= limit
     assert list(fixer["parts"]) == fixer["issue_ids"]
     assert fixer["issue_ids"] == sorted(fixer["issue_ids"], key=lambda i: ("MIC".index(i[0]), int(i[1:])))
     for issue_id, files in fixer["parts"].items():
@@ -64,7 +67,6 @@ def _check_fixer(fixer: Mapping[str, object], by_id: Mapping[str, Mapping[str, o
         if not _is_split(by_id[issue_id]):
             assert set(files) == _files_of(by_id[issue_id])
     assert set(fixer["files"]) == {f for files in fixer["parts"].values() for f in files}
-    kinds = {by_id[i]["fix_kind"] for i in fixer["issue_ids"]}
     assert fixer["model"] == ("haiku" if kinds == {"mechanical"} else "opus")
 
 
@@ -205,6 +207,12 @@ class TestPlanWaves:
         issues = [_issue(i, f, fix_kind="judgment") for i, f in pairs]
         waves = rwv.plan_waves(issues, held=[], done=[], fixers=2)
         assert [f["issue_ids"] for f in waves[0]] == [["I1"], ["M2", "M3"]]
+
+    def test_overflow_judgment_chunk_prefers_a_haiku_fixer_over_a_heavy_one(self) -> None:
+        issues = [_issue("C1", "a.py", fix_kind="judgment"), _issue("M1", "b.py"),
+                  _issue("M2", "c.py", fix_kind="judgment")]
+        waves = rwv.plan_waves(issues, held=[], done=[], fixers=2)
+        assert [(f["model"], f["issue_ids"]) for f in waves[0]] == [("opus", ["C1"]), ("opus", ["M1", "M2"])]
 
     def test_group_within_the_cap_runs_whole_in_one_fixer(self) -> None:
         waves = rwv.plan_waves(self._hub_and_leaves(), held=[], done=[], cap=6)
