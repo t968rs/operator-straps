@@ -580,8 +580,8 @@
         "BM-2",
         "BM-3"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit 9d8fa76: 13 test node(s) passed",
       "model": "sonnet",
       "anchors": [
         {
@@ -664,6 +664,11 @@
           "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/bubble_memo.py --help",
           "expect": "usage text listing scaffold, init, record, apply and check"
         }
+      ],
+      "verification_references": [
+        "9d8fa76e089737d858fb5fa7c319cb57ea15f5f6",
+        "tree cc92297796daea2ade6ec7aeaca4f24761f61ff4",
+        "python -m pytest -q tests/scripts/test_bubble_memo_driver.py::test_scaffold_covers_bubbles_and_pending_fixer_bubbles tests/scripts/test_bubble_memo_driver.py::test_scaffold_prints_one_investigator_row_per_flagged_id tests/scripts/test_bubble_memo_driver.py::test_scaffold_rerun_changes_nothing tests/scripts/test_bubble_memo_driver.py::test_scaffold_without_anything_bubbled_writes_no_memo tests/scripts/test_bubble_memo_driver.py::test_a_missing_review_is_a_problem tests/scripts/test_bubble_memo_driver.py::test_check_fails_on_stubs_and_passes_once_filled tests/scripts/test_bubble_memo_driver.py::test_check_prints_the_reviewer_row_with_the_model_rule tests/scripts/test_bubble_memo_driver.py::test_init_prints_the_brief_and_saves_it tests/scripts/test_bubble_memo_driver.py::test_record_writes_facts_and_prints_the_return_block tests/scripts/test_bubble_memo_driver.py::test_record_refuses_a_reference_off_disk tests/scripts/test_bubble_memo_driver.py::test_apply_writes_facts_into_the_entry_and_leaves_prose_stubs tests/scripts/test_bubble_memo_driver.py::test_reviewer_init_lists_every_entry tests/scripts/test_bubble_memo_driver.py::test_reviewer_record_validates_findings"
       ]
     },
     {
@@ -838,8 +843,8 @@
       "dependencies": [
         "BM-3"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit 9d8fa76: 4 test node(s) passed",
       "model": "sonnet",
       "anchors": [
         {
@@ -894,6 +899,11 @@
           "run": "claude plugin test plugins/bubble-stamp",
           "expect": "the config, root, review and memo tests pass; exit code 0"
         }
+      ],
+      "verification_references": [
+        "9d8fa76e089737d858fb5fa7c319cb57ea15f5f6",
+        "tree cc92297796daea2ade6ec7aeaca4f24761f61ff4",
+        "python -m pytest -q tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirrored_reviews_folder_equals_defaults_json tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirror_equals_an_unconfigured_project tests/mods/test_bubble_stamp_anchors_contract.py::test_the_mod_anchor_equals_the_library_anchor tests/mods/test_bubble_stamp_anchors_contract.py::test_a_rendered_memo_carries_every_anchor_the_mod_reads"
       ]
     },
     {

@@ -155,7 +155,7 @@ Create harness_lib/bubble_memo.py, pure (no config reads at import time; the roo
 
 ### BM-4: Driver: scaffold, init, record, apply, check
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** BM-2, BM-3
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** BM-2, BM-3
 **Files:** `plugins/harness/scripts/bubble_memo.py`
 
 **Anchors:**
@@ -166,24 +166,28 @@ Create harness_lib/bubble_memo.py, pure (no config reads at import time; the roo
 
 Create scripts/bubble_memo.py following plan.py's shape: sys.path insert of ../lib, argparse with --repo and subcommands, main(argv) returning 0 or 1, one 'problem: ...' line per defect on stderr, activate(load_config(project_root(...))) once. Commands per spec Section 1: scaffold --pr N (reads the newest <NNNN>_*.json for N from artifacts.reviews, the pending fixer bubbles through review_bubbles when a pr-review run exists and falls back to bubbles alone when it does not; creates or extends <artifacts.reviews>/PR_<N>_Bubbles.md; prints a 'scaffold [done]' line, the added and flagged ids and one investigator dispatch row per newly added flagged id; prints 'nothing currently bubbled' and writes no memo when the set is empty); init --pr N --id ID --role investigator and init --pr N --role reviewer (print the brief and save it under the agent scratch folder; git facts via read-only git, excerpts from the working tree, the exact record command); record --pr N [--id ID] --role investigator|reviewer (JSON on stdin; validate through the library, refuse off-disk references, write facts/<ID>.json or findings/<N>.json, print the fenced return block with SIGNAL: DONE); apply --pr N; check --pr N (exit 1 with '<ID>: <what>' problem lines, 'note:' lines never fail; when clean print 'check [ok]' and the reviewer dispatch row with model from reviewer_model and a 'Memo: <abs path>' prompt line). Dispatch rows: agent=<type> model=<m>, then PR, ISSUE (investigator), FILES (comma-separated), CONTEXT (one line, name plus class plus reason) and an optional Developer guidance line. The prompt never carries RUN_ID or AGENT_ID header lines.
 
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_scaffold_covers_bubbles_and_pending_fixer_bubbles` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_scaffold_prints_one_investigator_row_per_flagged_id` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_scaffold_rerun_changes_nothing` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_scaffold_without_anything_bubbled_writes_no_memo` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_a_missing_review_is_a_problem` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_check_fails_on_stubs_and_passes_once_filled` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_check_prints_the_reviewer_row_with_the_model_rule` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_init_prints_the_brief_and_saves_it` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_record_writes_facts_and_prints_the_return_block` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_record_refuses_a_reference_off_disk` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_apply_writes_facts_into_the_entry_and_leaves_prose_stubs` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_reviewer_init_lists_every_entry` fails with ImportError, then passes
-- [ ] Test `tests/scripts/test_bubble_memo_driver.py::test_reviewer_record_validates_findings` fails with ImportError, then passes
-- [ ] Run `python -m ruff check plugins/harness/scripts/bubble_memo.py --no-cache`: All checks passed
-- [ ] Run `sh plugins/harness/scripts/hpy plugins/harness/scripts/bubble_memo.py --help`: usage text listing scaffold, init, record, apply and check
-- [ ] Record the commit: `plan.py record 0001 BM-4 --sha <sha>`
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_scaffold_covers_bubbles_and_pending_fixer_bubbles` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_scaffold_prints_one_investigator_row_per_flagged_id` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_scaffold_rerun_changes_nothing` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_scaffold_without_anything_bubbled_writes_no_memo` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_a_missing_review_is_a_problem` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_check_fails_on_stubs_and_passes_once_filled` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_check_prints_the_reviewer_row_with_the_model_rule` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_init_prints_the_brief_and_saves_it` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_record_writes_facts_and_prints_the_return_block` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_record_refuses_a_reference_off_disk` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_apply_writes_facts_into_the_entry_and_leaves_prose_stubs` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_reviewer_init_lists_every_entry` fails with ImportError, then passes
+- [x] Test `tests/scripts/test_bubble_memo_driver.py::test_reviewer_record_validates_findings` fails with ImportError, then passes
+- [x] Run `python -m ruff check plugins/harness/scripts/bubble_memo.py --no-cache`: All checks passed
+- [x] Run `sh plugins/harness/scripts/hpy plugins/harness/scripts/bubble_memo.py --help`: usage text listing scaffold, init, record, apply and check
+- [x] Record the commit: `plan.py record 0001 BM-4 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit 9d8fa76: 13 test node(s) passed
+
+- `9d8fa76e089737d858fb5fa7c319cb57ea15f5f6`
+- `tree cc92297796daea2ade6ec7aeaca4f24761f61ff4`
+- `python -m pytest -q tests/scripts/test_bubble_memo_driver.py::test_scaffold_covers_bubbles_and_pending_fixer_bubbles tests/scripts/test_bubble_memo_driver.py::test_scaffold_prints_one_investigator_row_per_flagged_id tests/scripts/test_bubble_memo_driver.py::test_scaffold_rerun_changes_nothing tests/scripts/test_bubble_memo_driver.py::test_scaffold_without_anything_bubbled_writes_no_memo tests/scripts/test_bubble_memo_driver.py::test_a_missing_review_is_a_problem tests/scripts/test_bubble_memo_driver.py::test_check_fails_on_stubs_and_passes_once_filled tests/scripts/test_bubble_memo_driver.py::test_check_prints_the_reviewer_row_with_the_model_rule tests/scripts/test_bubble_memo_driver.py::test_init_prints_the_brief_and_saves_it tests/scripts/test_bubble_memo_driver.py::test_record_writes_facts_and_prints_the_return_block tests/scripts/test_bubble_memo_driver.py::test_record_refuses_a_reference_off_disk tests/scripts/test_bubble_memo_driver.py::test_apply_writes_facts_into_the_entry_and_leaves_prose_stubs tests/scripts/test_bubble_memo_driver.py::test_reviewer_init_lists_every_entry tests/scripts/test_bubble_memo_driver.py::test_reviewer_record_validates_findings`
 
 ### BM-5: Agents: investigator and reviewer, and the usage-log list
 
@@ -240,7 +244,7 @@ Create skills/bubble-memo/SKILL.md modelled on write-plan: frontmatter name bubb
 
 ### BM-7: Mod core: config mirror, root rule, review reading, memo parse and stamp
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** BM-3
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** BM-3
 **Files:** `plugins/bubble-stamp/hooks/config.ts`, `plugins/bubble-stamp/hooks/config.test.ts`, `plugins/bubble-stamp/hooks/root.ts`, `plugins/bubble-stamp/hooks/root.test.ts`, `plugins/bubble-stamp/hooks/review.ts`, `plugins/bubble-stamp/hooks/review.test.ts`, `plugins/bubble-stamp/hooks/memo.ts`, `plugins/bubble-stamp/hooks/memo.test.ts`
 
 **Anchors:**
@@ -254,14 +258,18 @@ Create skills/bubble-memo/SKILL.md modelled on write-plan: frontmatter name bubb
 
 Create plugins/bubble-stamp/hooks/config.ts (DEFAULT_REVIEWS = 'docs/PR_REVIEWS' and a readConfig of artifacts.reviews, copied from pr-review-watch's config.ts shape), root.ts (copy of the project-root rule), review.ts (closedOf and reviewFileFor ported from pr-review-watch's bubbles.ts, plus the latest resolution per id with its status, date and evidence), and memo.ts (pure): the anchor constants as single-line single-quoted exports (INDEX_HEADER, STATUS_OPEN, STATUS_DECIDED, DECISION_OPEN, DECISION_PREFIX, ENTRY_PREFIX, MEMO_SUFFIX) matching harness_lib.bubble_memo exactly; parseMemo (index rows and entry boundaries, undefined when the anchors are missing); openIds; and stampMemo(text, resolutions) applying the spec stamp rule: only Open rows with a RESOLVED or CLOSED_NO_ACTION latest resolution, Status to Decided, Decision cell '<STATUS> <date>: <evidence>' on one line with | escaped, Tracked in from the first #<n> or 7-40 hex SHA in the evidence else '-', and the entry's Decision line; nothing else changes; a second run changes nothing. Write config.test.ts, root.test.ts, review.test.ts and memo.test.ts first (red), using the engine's testing helpers as phase5Scan.test.ts does.
 
-- [ ] Test `tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirrored_reviews_folder_equals_defaults_json` fails with AssertionError, then passes
-- [ ] Test `tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirror_equals_an_unconfigured_project` fails with AssertionError, then passes
-- [ ] Test `tests/mods/test_bubble_stamp_anchors_contract.py::test_the_mod_anchor_equals_the_library_anchor` fails with ImportError, then passes
-- [ ] Test `tests/mods/test_bubble_stamp_anchors_contract.py::test_a_rendered_memo_carries_every_anchor_the_mod_reads` fails with ImportError, then passes
-- [ ] Run `claude plugin test plugins/bubble-stamp`: the config, root, review and memo tests pass; exit code 0
-- [ ] Record the commit: `plan.py record 0001 BM-7 --sha <sha>`
+- [x] Test `tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirrored_reviews_folder_equals_defaults_json` fails with AssertionError, then passes
+- [x] Test `tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirror_equals_an_unconfigured_project` fails with AssertionError, then passes
+- [x] Test `tests/mods/test_bubble_stamp_anchors_contract.py::test_the_mod_anchor_equals_the_library_anchor` fails with ImportError, then passes
+- [x] Test `tests/mods/test_bubble_stamp_anchors_contract.py::test_a_rendered_memo_carries_every_anchor_the_mod_reads` fails with ImportError, then passes
+- [x] Run `claude plugin test plugins/bubble-stamp`: the config, root, review and memo tests pass; exit code 0
+- [x] Record the commit: `plan.py record 0001 BM-7 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit 9d8fa76: 4 test node(s) passed
+
+- `9d8fa76e089737d858fb5fa7c319cb57ea15f5f6`
+- `tree cc92297796daea2ade6ec7aeaca4f24761f61ff4`
+- `python -m pytest -q tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirrored_reviews_folder_equals_defaults_json tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirror_equals_an_unconfigured_project tests/mods/test_bubble_stamp_anchors_contract.py::test_the_mod_anchor_equals_the_library_anchor tests/mods/test_bubble_stamp_anchors_contract.py::test_a_rendered_memo_carries_every_anchor_the_mod_reads`
 
 ### BM-8: Mod engine glue: hooks, state, manifest, README
 
