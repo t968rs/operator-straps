@@ -780,8 +780,8 @@
         "BM-4",
         "BM-5"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit cd84027: 7 test node(s) passed",
       "model": "sonnet",
       "anchors": [
         {
@@ -828,6 +828,11 @@
           "run": "python -m pytest tests/skills/test_skill_guidance_tail_contract.py -q",
           "expect": "passed (every invocable skill takes the guidance tail, bubble-memo included)"
         }
+      ],
+      "verification_references": [
+        "cd840274f09a2be4641b00dea9fe5ed57f4e8d92",
+        "tree f9f62c67a4e7bd822b55b06000196c72b6b77bac",
+        "python -m pytest -q tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified tests/skills/test_bubble_memo_skill_contract.py::test_frontmatter_and_guidance_tail tests/skills/test_bubble_memo_skill_contract.py::test_split_rule_cited_no_raw_arguments tests/skills/test_bubble_memo_skill_contract.py::test_every_driver_command_goes_through_the_launcher tests/skills/test_bubble_memo_skill_contract.py::test_the_loop_runs_the_driver_commands_in_order tests/skills/test_bubble_memo_skill_contract.py::test_agents_are_dispatched_by_the_printed_rows tests/skills/test_bubble_memo_skill_contract.py::test_the_skill_keeps_prose_and_the_snapshot_rule"
       ]
     },
     {

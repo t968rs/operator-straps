@@ -44,6 +44,11 @@
       "name": "todo-watch",
       "source": "./plugins/todo-watch",
       "description": "The next TODO items and a live sync status line in a band above the prompt (kept until dismissed, or optionally one toast at session start), TODO_SYNC drift context and /todo, backed by the harness todo_sync checks"
+    },
+    {
+      "name": "bubble-stamp",
+      "source": "./plugins/bubble-stamp",
+      "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION) into the bubble memo, PR_<N>_Bubbles.md"
     }
   ]
 }

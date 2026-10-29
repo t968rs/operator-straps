@@ -1,7 +1,7 @@
 # operator-straps
 
-Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) plus five TypeScript mods
-(`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`). Layout and install:
+Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) plus six TypeScript mods
+(`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`, `bubble-stamp`). Layout and install:
 `README.md`.
 
 ## Rules for changes
@@ -15,7 +15,7 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 - **A new config key** touches four places together: `plugins/harness/config/defaults.json`,
   `config/harness.schema.json`, the dataclass and builder in `lib/harness_lib/config.py`, and the README key
   table. When a mod reads the key, also mirror its default in that mod's `hooks/config.ts`
-  (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `pr-review-watch` and `todo-watch` have one).
+  (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `pr-review-watch`, `todo-watch` and `bubble-stamp` have one).
   `session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead, checked by
   `tests/mods/test_session_bookmark_notes_contract.py`.
 - **Drivers activate, library code reads.** Scripts, hooks and skill commands call

@@ -225,7 +225,7 @@ Create agents/bubble-memo-investigator.md and agents/bubble-memo-reviewer.md in 
 
 ### BM-6: Skill: bubble-memo
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** BM-4, BM-5
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** BM-4, BM-5
 **Files:** `plugins/harness/skills/bubble-memo/SKILL.md`, `tests/skills/test_skill_guidance_tail_contract.py`
 
 **Anchors:**
@@ -234,17 +234,21 @@ Create agents/bubble-memo-investigator.md and agents/bubble-memo-reviewer.md in 
 
 Create skills/bubble-memo/SKILL.md modelled on write-plan: frontmatter name bubble-memo, a 'Use when ...' description, argument-hint ending in '-- <guidance>'; the body points at ${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md for the split rule and passes guidance to agents only as the 'Developer guidance:' line. Every command is a fenced line starting with sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/bubble_memo.py". Flow per spec Section 2: scaffold (empty set: say so and stop); dispatch the printed investigator rows in one message under harness:parallel2, each row's model as printed; apply; fill the remaining TODO(fill) (non-flagged entries in full, Description and Recommendation everywhere) from the code at the cited lines and record the verified-against header (HEAD SHA, 'uncommitted fixes included'); check until clean; dispatch the reviewer row check printed; apply its findings by hand; check again; hand the memo path to the developer. Add bubble-memo to _INVOCABLE in the guidance-tail contract test (the planned copy under this plan's tests folder already has it).
 
-- [ ] Test `tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_skill_contract.py::test_frontmatter_and_guidance_tail` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_skill_contract.py::test_split_rule_cited_no_raw_arguments` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_skill_contract.py::test_every_driver_command_goes_through_the_launcher` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_skill_contract.py::test_the_loop_runs_the_driver_commands_in_order` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_skill_contract.py::test_agents_are_dispatched_by_the_printed_rows` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_skill_contract.py::test_the_skill_keeps_prose_and_the_snapshot_rule` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/skills/test_skill_guidance_tail_contract.py -q`: passed (every invocable skill takes the guidance tail, bubble-memo included)
-- [ ] Record the commit: `plan.py record 0001 BM-6 --sha <sha>`
+- [x] Test `tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_skill_contract.py::test_frontmatter_and_guidance_tail` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_skill_contract.py::test_split_rule_cited_no_raw_arguments` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_skill_contract.py::test_every_driver_command_goes_through_the_launcher` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_skill_contract.py::test_the_loop_runs_the_driver_commands_in_order` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_skill_contract.py::test_agents_are_dispatched_by_the_printed_rows` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_skill_contract.py::test_the_skill_keeps_prose_and_the_snapshot_rule` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/skills/test_skill_guidance_tail_contract.py -q`: passed (every invocable skill takes the guidance tail, bubble-memo included)
+- [x] Record the commit: `plan.py record 0001 BM-6 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit cd84027: 7 test node(s) passed
+
+- `cd840274f09a2be4641b00dea9fe5ed57f4e8d92`
+- `tree f9f62c67a4e7bd822b55b06000196c72b6b77bac`
+- `python -m pytest -q tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified tests/skills/test_bubble_memo_skill_contract.py::test_frontmatter_and_guidance_tail tests/skills/test_bubble_memo_skill_contract.py::test_split_rule_cited_no_raw_arguments tests/skills/test_bubble_memo_skill_contract.py::test_every_driver_command_goes_through_the_launcher tests/skills/test_bubble_memo_skill_contract.py::test_the_loop_runs_the_driver_commands_in_order tests/skills/test_bubble_memo_skill_contract.py::test_agents_are_dispatched_by_the_printed_rows tests/skills/test_bubble_memo_skill_contract.py::test_the_skill_keeps_prose_and_the_snapshot_rule`
 
 ### BM-7: Mod core: config mirror, root rule, review reading, memo parse and stamp
 
