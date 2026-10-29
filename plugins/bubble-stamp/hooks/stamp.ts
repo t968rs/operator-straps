@@ -26,7 +26,7 @@ type Stamped = { stamped: string[]; isOpen: boolean }
 const memosAtom = atom({ plugin: 'bubble-stamp', key: 'memos' } as const, {})
 
 /** A shell command that drives pr-review's script or the review editor; its result can close an id. */
-const REVIEW_SCRIPT = /pr_review\.py|review_edit\.py/
+const REVIEW_SCRIPT = /pr_review\.py|review_edit\.py|bubble_memo\.py/
 
 const regexEscaped = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 const MEMO_NAME = new RegExp(`^PR_(\\d+)${regexEscaped(MEMO_SUFFIX)}$`)
@@ -149,10 +149,11 @@ async function checkOne($: Dollar, m: ActiveMemo): Promise<Outcome> {
   if (st === undefined || st.mtimeMs === m.mtimeMs) return unchanged
   const text = await readText($, m.review)
   if (text === undefined) return unchanged
+  const resolved = closedResolutions(text)
+  if (resolved === undefined) return unchanged
   const seen: ActiveMemo = { ...m, mtimeMs: st.mtimeMs }
-  const closed = closedResolutions(text) ?? []
-  if (closed.length === 0) return { next: seen, stamped: [] }
-  const done = await stampFile($, m.memo, closed)
+  if (resolved.length === 0) return { next: seen, stamped: [] }
+  const done = await stampFile($, m.memo, resolved)
   if (done === undefined) return unchanged
   return { next: done.isOpen ? seen : undefined, stamped: done.stamped }
 }

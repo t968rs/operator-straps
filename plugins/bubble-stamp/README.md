@@ -35,7 +35,7 @@ with no `Open` row, or without the memo anchors, is not active.
 | Trigger | Does |
 |---------|------|
 | `session.start` | Lists `<artifacts.reviews>`, builds the active set, then checks it. |
-| `tool.call` on `Bash` or `PowerShell` whose command names `pr_review.py` or `review_edit.py` | Lists the folder again (a memo may be new, a review JSON may have appeared), then checks. |
+| `tool.call` on `Bash` or `PowerShell` whose command names `pr_review.py`, `review_edit.py` or `bubble_memo.py` | Lists the folder again (a memo may be new, a review JSON may have appeared), then checks. |
 | `tool.call` on `Edit` or `Write` whose `file_path` is an active memo's review JSON | Checks. |
 | `turn.complete` (the main conversation) | Checks. |
 
@@ -57,9 +57,9 @@ Nothing else in the file changes, and a second run changes nothing. A later entr
 id, so `DOWNGRADED_TO_*` never stamps. The memo is re-read immediately before the write and stamped afresh when
 it moved; it is written only when its text changed. A memo that exists but cannot be read is never overwritten;
 a refused read or write is retried at the next trigger. A memo deleted while active (its read fails and a `stat`
-fails too) leaves the active set. A refused folder listing keeps the active set as it was, and a memo whose
-read the host refuses at a listing stays active; a memo that parsed and has no `Open` row, or lacks the anchors,
-is dropped. One toast per check names the ids stamped.
+fails too) leaves the active set. A refused folder listing keeps the active set as it was. A memo already
+active whose read the host refuses at a listing stays active; a new memo whose read is refused is picked up at a
+later listing. A memo that parsed and has no `Open` row, or lacks the anchors, is dropped. One toast per check names the ids stamped.
 
 `tests/mods/test_bubble_stamp_anchors_contract.py` pins the anchors the mod matches (table header, status words,
 Decision line prefix, entry heading pattern) to `harness_lib/bubble_memo.py`.
@@ -74,8 +74,6 @@ Decision line prefix, entry heading pattern) to `harness_lib/bubble_memo.py`.
 
 ## Known limitations
 
-- A memo created by a command that names neither `pr_review.py` nor `review_edit.py` is found at the next
-  session start or the next such command, not the moment it appears.
 - A stale `Open` row (an id renamed in the review JSON) keeps its memo active, at the cost of one `stat` per
   turn. The developer settles it by hand.
 - Only the newest review JSON of a PR is watched; resolutions kept in an older one stay unstamped.

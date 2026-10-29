@@ -47,9 +47,15 @@ export const latestResolutions = (text: string): Resolution[] | undefined => {
 export const closedResolutions = (text: string): Resolution[] | undefined =>
   latestResolutions(text)?.filter(r => CLOSING_STATUSES.includes(r.status))
 
-/** The newest `<NNNN>_*.json` file entry for a PR, or undefined. */
+/**
+ * The newest `<NNNN>_*.json` file entry for a PR, or undefined. An mtime tie goes to the larger name, the same
+ * tie rule as `find_review` in `plugins/harness/scripts/bubble_memo.py`.
+ */
 export const reviewFileFor = (pr: number, entries: readonly Listed[]): Listed | undefined => {
   const prefix = `${String(pr).padStart(4, '0')}_`
   const hits = entries.filter(e => e.kind === 'file' && e.name.startsWith(prefix) && e.name.endsWith('.json'))
-  return [...hits].sort((a, b) => b.mtimeMs - a.mtimeMs)[0]
+  return [...hits].sort(newestFirst)[0]
 }
+
+const newestFirst = (a: Listed, b: Listed): number =>
+  b.mtimeMs - a.mtimeMs || (a.name < b.name ? 1 : a.name > b.name ? -1 : 0)

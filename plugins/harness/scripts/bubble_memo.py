@@ -18,7 +18,9 @@ read-only git. Every defect is one ``problem: ...`` line on stderr with exit 1.
     ``findings`` (reviewer) and print the fenced return block.
 
 ``apply --pr N``
-    Write each recorded facts report into its memo entry, over the ``TODO(fill)`` stubs.
+    Write each recorded facts report into its memo entry, over the ``TODO(fill)`` stubs. References are
+    replaced by the verified ones only while the entry's other fact stubs remain, so a rerun keeps hand
+    corrections. Only ids whose entry changed are listed as applied.
 
 ``check --pr N``
     Exit 1 with one problem line per defect; ``note:`` lines never fail. When clean, print ``check [ok]`` and
@@ -39,7 +41,7 @@ import json
 import re
 import sys
 from dataclasses import dataclass
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Annotated, Any, Callable, Dict, List, Literal, Mapping, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
@@ -131,8 +133,7 @@ def _write(path: Path, text: str) -> None:
 def find_review(pr: int) -> Path:
     """The newest ``<NNNN>_*.json`` of PR ``pr`` under ``artifacts.reviews``."""
     folder = _reviews_dir()
-    names = {f"{pr:04d}_*.json", f"{pr}_*.json"}
-    found = [p for n in names for p in folder.glob(n)] if folder.is_dir() else []
+    found = list(folder.glob(f"{pr:04d}_*.json")) if folder.is_dir() else []
     if not found:
         raise CaptureError([f"no review JSON for PR {pr} under {_rel(folder)}"])
     return max(found, key=lambda p: (p.stat().st_mtime_ns, p.name))
@@ -199,8 +200,7 @@ def investigator_row(review: Review, item: bm.Bubbled) -> str:
 
 def entry_flagged(doc: Mapping[str, Any], ident: str, block: str) -> bool:
     """Entry-level flag, the rule `check` applies: the JSON rule, or References naming several files."""
-    files = {PurePosixPath(name.replace("\\", "/")).as_posix() for name, _, _ in memo_references(block)}
-    return bm.needs_chain(ident, bm.find_issue(doc, ident)) or len(files) > 1
+    return bm.needs_chain(ident, bm.find_issue(doc, ident)) or len(bm.reference_files(block)) > 1
 
 
 def reviewer_row(review: Review) -> str:
