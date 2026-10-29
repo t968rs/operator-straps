@@ -684,8 +684,8 @@
       "dependencies": [
         "BM-4"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit cd3bc00: 12 test node(s) passed",
       "model": "sonnet",
       "anchors": [
         {
@@ -760,6 +760,11 @@
           "run": "python -m pytest tests/mods/test_pr_review_watch_usage_contract.py -q",
           "expect": "passed (DEFINED_AGENTS equals the agent files on disk)"
         }
+      ],
+      "verification_references": [
+        "cd3bc00b9e4ead4f9a07c1c57c972336c7f8ff64",
+        "tree 95c76668e711b4ac33d3de35b1ec3e79fe3da70e",
+        "python -m pytest -q tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_the_reviewer_names_both_lenses tests/skills/test_bubble_memo_agents_contract.py::test_the_investigator_reports_facts_not_prose"
       ]
     },
     {
@@ -926,8 +931,8 @@
       "dependencies": [
         "BM-7"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit cd3bc00: 4 test node(s) passed",
       "model": "sonnet",
       "anchors": [
         {
@@ -994,6 +999,11 @@
           "run": "claude plugin test plugins/bubble-stamp",
           "expect": "every mod test passes; exit code 0"
         }
+      ],
+      "verification_references": [
+        "cd3bc00b9e4ead4f9a07c1c57c972336c7f8ff64",
+        "tree 95c76668e711b4ac33d3de35b1ec3e79fe3da70e",
+        "python -m pytest -q tests/contract/test_bubble_stamp_registration.py::test_the_mod_manifest_and_hooks tests/contract/test_bubble_stamp_registration.py::test_the_mod_has_a_readme tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[tsconfig] tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[gitignore]"
       ]
     },
     {

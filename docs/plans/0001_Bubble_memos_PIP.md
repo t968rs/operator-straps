@@ -191,7 +191,7 @@ Create scripts/bubble_memo.py following plan.py's shape: sys.path insert of ../l
 
 ### BM-5: Agents: investigator and reviewer, and the usage-log list
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** BM-4
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** BM-4
 **Files:** `plugins/harness/agents/bubble-memo-investigator.md`, `plugins/harness/agents/bubble-memo-reviewer.md`, `plugins/pr-review-watch/hooks/contract.ts`
 
 **Anchors:**
@@ -202,22 +202,26 @@ Create scripts/bubble_memo.py following plan.py's shape: sys.path insert of ../l
 
 Create agents/bubble-memo-investigator.md and agents/bubble-memo-reviewer.md in pr-reviewer's shape: frontmatter name equal to the file stem, tools 'Read, Grep, Glob, Bash', a fallback model (investigator opus, reviewer sonnet; the dispatcher passes the model each printed row names), examples. Body: the prompt is a few header lines (PR, ISSUE, FILES, CONTEXT, Memo for the reviewer, optional Developer guidance); the first action is the `init` call exactly as the prompt's launcher writes it (sh hpy bubble_memo.py init ...); work from its output; run `record` exactly once; reply with the printed block verbatim and nothing else; 'Never write files', 'Read-only git' (show, diff, log, status, merge-base, rev-parse, ls-files, grep only), one command per Bash call, stop with 'problem:' lines when init fails or record fails three times. Investigator: trace the issue through the cited code and report current behavior, when it triggers, chain, flow, opened references and one effect per fix option; it does not write a recommendation or memo prose. Reviewer: accuracy (references exist and say what the entry claims, claims agree with the code, expected behavior follows from each fix, nothing contradicts the review JSON) and clarity and simplicity (ordinary words, one claim per bullet, nothing repeated, the recommendation stated once); findings are {id, kind, what, suggested}. Add both names to DEFINED_AGENTS in pr-review-watch's contract.ts in sorted order (they sort before harness:messenger).
 
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-investigator]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-reviewer]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-investigator]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-reviewer]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-investigator]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-reviewer]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-investigator]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-reviewer]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-investigator]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-reviewer]` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_the_reviewer_names_both_lenses` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_bubble_memo_agents_contract.py::test_the_investigator_reports_facts_not_prose` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/mods/test_pr_review_watch_usage_contract.py -q`: passed (DEFINED_AGENTS equals the agent files on disk)
-- [ ] Record the commit: `plan.py record 0001 BM-5 --sha <sha>`
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-investigator]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-reviewer]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-investigator]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-reviewer]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-investigator]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-reviewer]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-investigator]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-reviewer]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-investigator]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-reviewer]` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_the_reviewer_names_both_lenses` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_bubble_memo_agents_contract.py::test_the_investigator_reports_facts_not_prose` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/mods/test_pr_review_watch_usage_contract.py -q`: passed (DEFINED_AGENTS equals the agent files on disk)
+- [x] Record the commit: `plan.py record 0001 BM-5 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit cd3bc00: 12 test node(s) passed
+
+- `cd3bc00b9e4ead4f9a07c1c57c972336c7f8ff64`
+- `tree 95c76668e711b4ac33d3de35b1ec3e79fe3da70e`
+- `python -m pytest -q tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_the_reviewer_names_both_lenses tests/skills/test_bubble_memo_agents_contract.py::test_the_investigator_reports_facts_not_prose`
 
 ### BM-6: Skill: bubble-memo
 
@@ -273,7 +277,7 @@ Create plugins/bubble-stamp/hooks/config.ts (DEFAULT_REVIEWS = 'docs/PR_REVIEWS'
 
 ### BM-8: Mod engine glue: hooks, state, manifest, README
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** BM-7
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** BM-7
 **Files:** `plugins/bubble-stamp/hooks/stamp.ts`, `plugins/bubble-stamp/hooks/stamp.test.ts`, `plugins/bubble-stamp/hooks/watch.ts`, `plugins/bubble-stamp/hooks/register.ts`, `plugins/bubble-stamp/hooks/hooks.json`, `plugins/bubble-stamp/.claude-plugin/plugin.json`, `plugins/bubble-stamp/tsconfig.json`, `plugins/bubble-stamp/.gitignore`, `plugins/bubble-stamp/types/index.d.ts`, `plugins/bubble-stamp/README.md`
 
 **Anchors:**
@@ -289,15 +293,19 @@ Create plugins/bubble-stamp/hooks/config.ts (DEFAULT_REVIEWS = 'docs/PR_REVIEWS'
 
 Create stamp.ts (engine glue, function declarations where `$` is passed, every host call guarded with .catch so every hook fails open), watch.ts (resolveWatch as in pr-review-watch, returning the project root and config, no sentinel root), register.ts (export const register: Register = on => registerStamp(on)), hooks/hooks.json ({"modules": ["./register.ts"]}), .claude-plugin/plugin.json (name bubble-stamp, version 0.1.0, types ./types/index.d.ts), tsconfig.json (extends ./.claude-plugin/types/tsconfig.json), .gitignore (.claude-plugin/types/), types/index.d.ts (PluginState entry 'bubble-stamp' with the active-memo map), README.md (activation, triggers, stamp rule, state, known limitations, checks, loading), and stamp.test.ts (red first). Behavior per spec Section 4: active memos listed from <artifacts.reviews> on session.start and whenever a trigger shows an unknown memo; triggers are tool.call on Bash and PowerShell whose command names pr_review.py or review_edit.py, tool.call on Edit and Write whose file_path is an active memo's review JSON, and turn.complete; each trigger stats the review JSON and reads it only when the mtime moved; the memo is re-read just before the write and written only when the text changed; an unreadable memo is never overwritten; one toast names the ids stamped.
 
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_the_mod_manifest_and_hooks` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_the_mod_has_a_readme` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[tsconfig]` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[gitignore]` fails with AssertionError, then passes
-- [ ] Run `claude plugin validate --strict plugins/bubble-stamp`: validation passes
-- [ ] Run `claude plugin test plugins/bubble-stamp`: every mod test passes; exit code 0
-- [ ] Record the commit: `plan.py record 0001 BM-8 --sha <sha>`
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_the_mod_manifest_and_hooks` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_the_mod_has_a_readme` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[tsconfig]` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[gitignore]` fails with AssertionError, then passes
+- [x] Run `claude plugin validate --strict plugins/bubble-stamp`: validation passes
+- [x] Run `claude plugin test plugins/bubble-stamp`: every mod test passes; exit code 0
+- [x] Record the commit: `plan.py record 0001 BM-8 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit cd3bc00: 4 test node(s) passed
+
+- `cd3bc00b9e4ead4f9a07c1c57c972336c7f8ff64`
+- `tree 95c76668e711b4ac33d3de35b1ec3e79fe3da70e`
+- `python -m pytest -q tests/contract/test_bubble_stamp_registration.py::test_the_mod_manifest_and_hooks tests/contract/test_bubble_stamp_registration.py::test_the_mod_has_a_readme tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[tsconfig] tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[gitignore]`
 
 ### BM-9: Register the mod and the skill; bump versions
 
