@@ -1,0 +1,1109 @@
+{
+  "plan_id": "0001",
+  "plan_created": "2026-10-29",
+  "execution_model": "staged: library and exclusion first, then driver, agents and skill, then the mod; registration last",
+  "source_document": "E:/automation/operator-straps/docs/superpowers/specs/2026-10-29-bubble-memo-design.md",
+  "documentation": "docs/plans/0001_Bubble_memos_PIP.md",
+  "branch": "1095-bubble-memos",
+  "base_branch": "main",
+  "base_commit": "439db207a572bdd6f42c7fb9adb57c2e528ddacc",
+  "frozen": {
+    "commit": "439db207a572bdd6f42c7fb9adb57c2e528ddacc",
+    "tree": "3a1690b5289cfd52d35e1a9410455f02386ac1cc",
+    "date": "2026-10-29",
+    "digest": "93af24be63482b1a007d668c673703ba5a0ed265118a0ed99c93e106881e793d"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Which bubbles does a memo cover?",
+      "options": [
+        {
+          "id": "bubbles-plus-pending",
+          "summary": "The review JSON's bubbles plus the pending fixer bubbles pr_review.py bubbles lists"
+        },
+        {
+          "id": "bubbles-only",
+          "summary": "Only the review JSON's bubbles, so the skill would have to run after closeout"
+        }
+      ],
+      "chosen": "bubbles-plus-pending",
+      "rationale": "Developer 2026-10-29: fixer bubbles reach bubbles only at closeout, after the Step 5 decision pause."
+    },
+    {
+      "id": "D2",
+      "question": "Where does decision stamping run?",
+      "options": [
+        {
+          "id": "mod",
+          "summary": "A TypeScript mod, bubble-stamp, modelled on pr-review-watch"
+        },
+        {
+          "id": "skill-step",
+          "summary": "A scripted step of the skill or of closeout"
+        }
+      ],
+      "chosen": "mod",
+      "rationale": "Developer 2026-10-29: stamping is a ts-based mod, not a step after review closeout."
+    },
+    {
+      "id": "D3",
+      "question": "What wakes the mod?",
+      "options": [
+        {
+          "id": "events",
+          "summary": "tool.call (driver shell calls, Edit/Write of the review JSON) plus turn.complete, with an mtime gate"
+        },
+        {
+          "id": "poll",
+          "summary": "A $.clock.every timer polling the review JSON"
+        }
+      ],
+      "chosen": "events",
+      "rationale": "Developer 2026-10-29: tool plus turn.complete triggers."
+    },
+    {
+      "id": "D4",
+      "question": "How is the memo index and stamp shaped?",
+      "options": [
+        {
+          "id": "one-table-final-rows",
+          "summary": "One index table with a Status column; entries never move; a stamp is final for a row"
+        },
+        {
+          "id": "moving-sections",
+          "summary": "Open and Decided sections; a stamp moves the entry"
+        }
+      ],
+      "chosen": "one-table-final-rows",
+      "rationale": "Developer 2026-10-29 confirmed the three format calls."
+    },
+    {
+      "id": "D5",
+      "question": "Which models run the memo work?",
+      "options": [
+        {
+          "id": "model-split",
+          "summary": "Main session as is; opus investigators for flagged entries; reviewer opus when any entry is flagged, else sonnet, printed by the script"
+        },
+        {
+          "id": "opus-everywhere",
+          "summary": "Opus for the main session and every agent"
+        }
+      ],
+      "chosen": "model-split",
+      "rationale": "Developer 2026-10-29 agreed with the split."
+    },
+    {
+      "id": "D6",
+      "question": "How do the agents get their context?",
+      "options": [
+        {
+          "id": "scripted-init-record",
+          "summary": "A short prompt; first call is a script that prints the brief; last call is a script that validates and writes the report and prints the return block"
+        },
+        {
+          "id": "prompt-carried",
+          "summary": "The dispatcher writes the whole brief into the prompt"
+        }
+      ],
+      "chosen": "scripted-init-record",
+      "rationale": "Developer 2026-10-29: minimal passed context; git and file discovery scripted."
+    },
+    {
+      "id": "D7",
+      "question": "How does bubble_memo.py reach the pending fixer bubbles that pr_review.py computes?",
+      "options": [
+        {
+          "id": "extract-to-lib",
+          "summary": "Move closed_ids, fixer_bubbles and pending_bubbles into harness_lib/review_bubbles.py; pr_review.py imports them under the same names"
+        },
+        {
+          "id": "import-script",
+          "summary": "bubble_memo.py imports the scripts/pr_review.py module"
+        }
+      ],
+      "chosen": "extract-to-lib",
+      "rationale": "Developer 2026-10-29: extract into harness_lib/review_bubbles.py; pr_review.py imports the names it already calls."
+    },
+    {
+      "id": "D8",
+      "question": "Where do the agents' briefs and reports live?",
+      "options": [
+        {
+          "id": "scratch-subfolder",
+          "summary": "<artifacts.scratch>/bubble_memo/<PR>/ (inside the existing run-scratch exclusion)"
+        },
+        {
+          "id": "state-dir",
+          "summary": "<state_dir>/bubble-memo/<PR>/"
+        }
+      ],
+      "chosen": "scratch-subfolder",
+      "rationale": "Developer 2026-10-29: agreed with the recommendation."
+    },
+    {
+      "id": "D9",
+      "question": "How many reviewer rounds does the skill run?",
+      "options": [
+        {
+          "id": "one-round",
+          "summary": "One reviewer round, a second only after an accuracy finding"
+        },
+        {
+          "id": "until-clean",
+          "summary": "Repeat review until a round returns no findings"
+        }
+      ],
+      "chosen": "one-round",
+      "rationale": "Developer 2026-10-29: agreed with the recommendation."
+    }
+  ],
+  "values": [
+    {
+      "name": "flagged entry rule",
+      "value": "id starts with C, or the issue's file/files (or the entry's References) name more than one distinct path",
+      "source": "spec Decision 2",
+      "assumes": []
+    },
+    {
+      "name": "investigator model",
+      "value": "opus",
+      "source": "spec Decision 8",
+      "assumes": [
+        "model-split"
+      ]
+    },
+    {
+      "name": "reviewer model rule",
+      "value": "opus when any entry is flagged, else sonnet",
+      "source": "spec Decision 8",
+      "assumes": [
+        "model-split"
+      ]
+    },
+    {
+      "name": "bubble reason cap",
+      "value": "200 characters",
+      "source": "plugins/harness/schemas/PR_REVIEW.schema.json:181",
+      "assumes": []
+    },
+    {
+      "name": "agent scratch folder",
+      "value": "<artifacts.scratch>/bubble_memo/<PR>/{briefs,facts,findings}",
+      "source": "spec Section 1 (init, record)",
+      "assumes": [
+        "scratch-subfolder"
+      ]
+    },
+    {
+      "name": "closing statuses the mod stamps",
+      "value": "RESOLVED, CLOSED_NO_ACTION",
+      "source": "plugins/harness/lib/harness_lib/review_merge.py:56",
+      "assumes": [
+        "one-table-final-rows"
+      ]
+    },
+    {
+      "name": "mod trigger scripts",
+      "value": "pr_review.py, review_edit.py",
+      "source": "spec Section 4 triggers",
+      "assumes": [
+        "events"
+      ]
+    },
+    {
+      "name": "harness plugin version",
+      "value": "0.40.0",
+      "source": "plugins/harness/.claude-plugin/plugin.json:3",
+      "assumes": []
+    },
+    {
+      "name": "pr-review-watch plugin version",
+      "value": "0.4.2",
+      "source": "plugins/pr-review-watch/.claude-plugin/plugin.json:3",
+      "assumes": []
+    },
+    {
+      "name": "bubble-stamp first version",
+      "value": "0.1.0",
+      "source": "spec Constraints (Releases)",
+      "assumes": []
+    }
+  ],
+  "formats": [
+    {
+      "name": "dispatch row",
+      "example": "agent=harness:bubble-memo-investigator model=opus",
+      "source": {
+        "at": "plugins/harness/scripts/pr_review.py:567",
+        "expect": "lines = [f\"agent={agent_type} model={model}\""
+      }
+    },
+    {
+      "name": "return block",
+      "example": "---\nSIGNAL: DONE\nAGENT_ROLE: investigator\nOUTPUT: <path>\n---",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/review_models.py:410",
+        "expect": "\"---\", \"SIGNAL: DONE\", \"AGENT_ROLE: fixer\","
+      }
+    },
+    {
+      "name": "snapshot evidence",
+      "example": "1a2b3c4 (working-tree snapshot; developer commits) - kept lenient equality",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/review_edit.py:396",
+        "expect": "return f\"{sha} {rmg.EVIDENCE_NOTE} - {text.strip()}\""
+      }
+    },
+    {
+      "name": "review file name",
+      "example": "1514_Feature_x.json",
+      "source": {
+        "at": "plugins/pr-review-watch/hooks/bubbles.ts:100",
+        "expect": "const prefix = `${String(pr).padStart(4, '0')}_`"
+      }
+    },
+    {
+      "name": "driver script in a shell command",
+      "example": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py\" bubbles --pr 1514",
+      "source": {
+        "at": "plugins/pr-review-watch/hooks/tracker.ts:67",
+        "expect": "const PR_REVIEW_SCRIPT = /pr_review\\.py/"
+      }
+    },
+    {
+      "name": "edited file path of an Edit or Write call",
+      "example": "{ tool: 'Edit', file_path: '/repo/docs/PR_REVIEWS/1514_Feature_x.json' }",
+      "source": {
+        "at": "plugins/todo-watch/hooks/checks.ts:204",
+        "expect": "e.file_path"
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "five TypeScript m[o]ds",
+      "hits": {
+        "CLAUDE.md": "rewrite",
+        "docs/superpowers/specs/2026-10-29-bubble-memo-design.md": "keep"
+      }
+    }
+  ],
+  "deferred_to_future_plans": [
+    {
+      "topic": "Migrating the three hand-made floodplain memos to the new format",
+      "rationale": "Non-goal in the spec; the mod skips memos without the anchors.",
+      "affected_sites": [
+        "docs/PR_REVIEWS/PR_1490_Bubbles.md",
+        "PR_1510_Bubbles.md",
+        "PR_1514_Bubbles.md (consuming project)"
+      ]
+    },
+    {
+      "topic": "A poll trigger for edits made outside the session",
+      "rationale": "Developer chose event triggers; revisit only if hand edits of review JSONs outside the session become common."
+    }
+  ],
+  "items": [
+    {
+      "id": "BM-1",
+      "title": "Exclude *_Bubbles.md by default",
+      "category": "code",
+      "action": "In default_exclusions.py add the row (\"*_Bubbles.md\", \"bubble memos (point-in-time snapshots)\") to _entries, before the row for the seeded file. harness_patterns and with_harness_patterns then carry it with no further change. Do not touch the module docstring's claims beyond naming the memos among the machine-generated paths.",
+      "files": [
+        "plugins/harness/lib/harness_lib/default_exclusions.py"
+      ],
+      "dependencies": null,
+      "status": "COMPLETE",
+      "evidence": "commit c6457e2: 4 test node(s) passed",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/default_exclusions.py:38",
+          "expect": "(DEFAULT_EXCLUSIONS, \"this file, seeded by the harness\"),"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/default_exclusions.py:66",
+          "expect": "return merged + [p for p in harness_patterns(cfg) if p not in merged]"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_default_exclusions_bubbles.py::test_default_patterns_carry_the_memo_pattern",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_default_exclusions_bubbles.py::test_the_pattern_matches_a_memo_in_any_folder",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_default_exclusions_bubbles.py::test_a_seeded_file_holds_the_pattern",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_default_exclusions_bubbles.py::test_an_older_seeded_list_gains_it_in_memory",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/lib/test_default_exclusions.py tests/lib/test_review_plan.py -q",
+          "expect": "passed, no failures (the existing exclusion consumers still hold)"
+        }
+      ],
+      "verification_references": [
+        "c6457e2706ee6a32168e41911af05d016fc33228",
+        "tree 5fc72cc386dc16dc4f6061d25c2eb8cf990a5567",
+        "python -m pytest -q tests/lib/test_default_exclusions_bubbles.py::test_default_patterns_carry_the_memo_pattern tests/lib/test_default_exclusions_bubbles.py::test_the_pattern_matches_a_memo_in_any_folder tests/lib/test_default_exclusions_bubbles.py::test_a_seeded_file_holds_the_pattern tests/lib/test_default_exclusions_bubbles.py::test_an_older_seeded_list_gains_it_in_memory"
+      ]
+    },
+    {
+      "id": "BM-2",
+      "title": "Extract the pending-fixer-bubble helpers into a library module",
+      "category": "code",
+      "action": "Create harness_lib/review_bubbles.py holding closed_ids, fixer_bubbles and pending_bubbles, moved verbatim from scripts/pr_review.py (same signatures and behavior). pr_review.py imports the three names from it and drops the local definitions, so its call sites (closed_ids at the Phase 5 summary and the closeout paths, pending_bubbles in the bubbles and waves commands) keep working unchanged. pending_lines stays in pr_review.py. No behavior change; tests/scripts/test_pr_review_driver.py is the regression guard.",
+      "files": [
+        "plugins/harness/lib/harness_lib/review_bubbles.py",
+        "plugins/harness/scripts/pr_review.py"
+      ],
+      "dependencies": null,
+      "status": "COMPLETE",
+      "evidence": "commit c6457e2: 4 test node(s) passed",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/pr_review.py:945",
+          "expect": "def closed_ids(doc: Mapping[str, object]) -> Set[str]:"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_review.py:1489",
+          "expect": "def fixer_bubbles(run: Path) -> List[Tuple[str, rm.FixBubble]]:"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_review.py:1494",
+          "expect": "def pending_bubbles(doc: Mapping[str, object], run: Path) -> List[Tuple[str, rm.FixBubble]]:"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_review.py:1473",
+          "expect": "if args.id in closed_ids(doc):"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_review.py:1881",
+          "expect": "pending_lines(pending_bubbles(doc, run))"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_models.py:513",
+          "expect": "def load_fix_reports(directory: Path) -> Tuple[FixReport, ...]:"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_review_bubbles.py::test_closed_ids_follow_the_latest_resolution",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_review_bubbles.py::test_fixer_bubbles_pair_each_bubble_with_its_fixer",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_review_bubbles.py::test_fixer_bubbles_of_a_run_without_reports_are_empty",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_review_bubbles.py::test_pending_bubbles_skip_ids_the_review_already_holds",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/scripts/test_pr_review_driver.py -q -k bubbles",
+          "expect": "passed, no failures (pr_review.py bubbles and waves still print the pending lines)"
+        }
+      ],
+      "verification_references": [
+        "c6457e2706ee6a32168e41911af05d016fc33228",
+        "tree 5fc72cc386dc16dc4f6061d25c2eb8cf990a5567",
+        "python -m pytest -q tests/lib/test_review_bubbles.py::test_closed_ids_follow_the_latest_resolution tests/lib/test_review_bubbles.py::test_fixer_bubbles_pair_each_bubble_with_its_fixer tests/lib/test_review_bubbles.py::test_fixer_bubbles_of_a_run_without_reports_are_empty tests/lib/test_review_bubbles.py::test_pending_bubbles_skip_ids_the_review_already_holds"
+      ]
+    },
+    {
+      "id": "BM-3",
+      "title": "Library: memo format, scaffold, check, facts and reviewer model",
+      "category": "code",
+      "action": "Create harness_lib/bubble_memo.py, pure (no config reads at import time; the root is an argument). Anchors as constants: MEMO_SUFFIX, INDEX_HEADER, STATUS_OPEN, STATUS_DECIDED, DECISION_OPEN, DECISION_PREFIX, ENTRY_PREFIX, STUB. Functions: memo_name(pr); currently_bubbled(doc, pending) -> Bubbled(id, cls, reason) (bubbles in order, then pending pairs not already present; class from bubble_up, else the pending pair, else 'unclassified'); flagged_ids(doc, ids) and needs_chain; reviewer_model(flagged); scaffold_memo(doc, bubbled); add_missing(text, doc, bubbled) -> (text, added) that appends entries and index rows and never edits existing text; parse_index and entry_blocks; check_memo(text, bubbled, doc, root) -> (problems, notes) with the rules of spec Section 1 (check) and problem lines formatted '<ID>: <what>'; Facts (pydantic) with validate_facts(raw, issue, root) that refuses an empty field, a fix_effects count different from the issue's fix list, and any reference whose file or line is not on disk; apply_facts(text, facts) that replaces only the flagged entry's References, Current behavior, When, Chain, flow and Expected-behavior stubs. Entry layout: spec 'Memo format'; a reference is a backticked path:line or path:start-end; an expected-behavior line is '- (a) <fix text> -> <effect>'. Python 3.11, Optional/Union, functions under 50 lines, no first or second person in comments.",
+      "files": [
+        "plugins/harness/lib/harness_lib/bubble_memo.py"
+      ],
+      "dependencies": null,
+      "status": "COMPLETE",
+      "evidence": "commit c6457e2: 23 test node(s) passed",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:177",
+          "expect": "def path(self, rel: str) -> Path:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_merge.py:55",
+          "expect": "TIERS = (\"critical\", \"important\", \"minor\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_merge.py:56",
+          "expect": "CLOSED_STATUSES = (\"RESOLVED\", \"CLOSED_NO_ACTION\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_edit.py:72",
+          "expect": "def load_review(path: Union[str, Path]) -> Doc:"
+        },
+        {
+          "at": "plugins/harness/schemas/PR_REVIEW.schema.json:181",
+          "expect": "\"maxLength\": 200,"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_the_anchors_are_pinned",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_flagged_means_critical_or_several_files",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_currently_bubbled_adds_pending_fixer_bubbles_once",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_an_unlisted_class_reads_unclassified",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_scaffold_writes_index_rows_headings_and_stubs",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_references_without_lines_are_stubbed",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_only_flagged_entries_carry_chain_and_flow",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_parse_index_reads_the_scaffolded_rows",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_add_missing_appends_new_entries_and_leaves_old_text_alone",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_add_missing_with_everything_present_changes_nothing",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_a_filled_memo_passes",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_unfilled_stubs_fail",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_a_bubbled_id_without_an_entry_fails",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_a_flagged_entry_without_a_chain_fails",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_an_entry_citing_two_files_needs_a_chain_even_when_the_json_names_one",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_a_line_past_the_end_of_the_file_fails",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_a_missing_file_fails",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_a_dropped_fix_option_fails",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_a_stale_id_is_a_note_not_a_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_a_decided_id_is_neither_problem_nor_note",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_valid_facts_pass",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_invalid_facts_are_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_bubble_memo.py::test_apply_facts_fills_the_flagged_entry_but_not_prose",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check plugins/harness/lib/harness_lib/bubble_memo.py --no-cache",
+          "expect": "All checks passed"
+        }
+      ],
+      "verification_references": [
+        "c6457e2706ee6a32168e41911af05d016fc33228",
+        "tree 5fc72cc386dc16dc4f6061d25c2eb8cf990a5567",
+        "python -m pytest -q tests/lib/test_bubble_memo.py::test_the_anchors_are_pinned tests/lib/test_bubble_memo.py::test_flagged_means_critical_or_several_files tests/lib/test_bubble_memo.py::test_currently_bubbled_adds_pending_fixer_bubbles_once tests/lib/test_bubble_memo.py::test_an_unlisted_class_reads_unclassified tests/lib/test_bubble_memo.py::test_scaffold_writes_index_rows_headings_and_stubs tests/lib/test_bubble_memo.py::test_references_without_lines_are_stubbed tests/lib/test_bubble_memo.py::test_only_flagged_entries_carry_chain_and_flow tests/lib/test_bubble_memo.py::test_parse_index_reads_the_scaffolded_rows tests/lib/test_bubble_memo.py::test_add_missing_appends_new_entries_and_leaves_old_text_alone tests/lib/test_bubble_memo.py::test_add_missing_with_everything_present_changes_nothing tests/lib/test_bubble_memo.py::test_a_filled_memo_passes tests/lib/test_bubble_memo.py::test_unfilled_stubs_fail tests/lib/test_bubble_memo.py::test_a_bubbled_id_without_an_entry_fails tests/lib/test_bubble_memo.py::test_a_flagged_entry_without_a_chain_fails tests/lib/test_bubble_memo.py::test_an_entry_citing_two_files_needs_a_chain_even_when_the_json_names_one tests/lib/test_bubble_memo.py::test_a_line_past_the_end_of_the_file_fails tests/lib/test_bubble_memo.py::test_a_missing_file_fails tests/lib/test_bubble_memo.py::test_a_dropped_fix_option_fails tests/lib/test_bubble_memo.py::test_a_stale_id_is_a_note_not_a_problem tests/lib/test_bubble_memo.py::test_a_decided_id_is_neither_problem_nor_note tests/lib/test_bubble_memo.py::test_valid_facts_pass tests/lib/test_bubble_memo.py::test_invalid_facts_are_refused tests/lib/test_bubble_memo.py::test_apply_facts_fills_the_flagged_entry_but_not_prose"
+      ]
+    },
+    {
+      "id": "BM-4",
+      "title": "Driver: scaffold, init, record, apply, check",
+      "category": "code",
+      "action": "Create scripts/bubble_memo.py following plan.py's shape: sys.path insert of ../lib, argparse with --repo and subcommands, main(argv) returning 0 or 1, one 'problem: ...' line per defect on stderr, activate(load_config(project_root(...))) once. Commands per spec Section 1: scaffold --pr N (reads the newest <NNNN>_*.json for N from artifacts.reviews, the pending fixer bubbles through review_bubbles when a pr-review run exists and falls back to bubbles alone when it does not; creates or extends <artifacts.reviews>/PR_<N>_Bubbles.md; prints a 'scaffold [done]' line, the added and flagged ids and one investigator dispatch row per newly added flagged id; prints 'nothing currently bubbled' and writes no memo when the set is empty); init --pr N --id ID --role investigator and init --pr N --role reviewer (print the brief and save it under the agent scratch folder; git facts via read-only git, excerpts from the working tree, the exact record command); record --pr N [--id ID] --role investigator|reviewer (JSON on stdin; validate through the library, refuse off-disk references, write facts/<ID>.json or findings/<N>.json, print the fenced return block with SIGNAL: DONE); apply --pr N; check --pr N (exit 1 with '<ID>: <what>' problem lines, 'note:' lines never fail; when clean print 'check [ok]' and the reviewer dispatch row with model from reviewer_model and a 'Memo: <abs path>' prompt line). Dispatch rows: agent=<type> model=<m>, then PR, ISSUE (investigator), FILES (comma-separated), CONTEXT (one line, name plus class plus reason) and an optional Developer guidance line. The prompt never carries RUN_ID or AGENT_ID header lines.",
+      "files": [
+        "plugins/harness/scripts/bubble_memo.py"
+      ],
+      "dependencies": [
+        "BM-2",
+        "BM-3"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 9d8fa76: 13 test node(s) passed",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/plan.py:69",
+          "expect": "sys.path.insert(0, str(Path(__file__).resolve().parents[1] / \"lib\"))"
+        },
+        {
+          "at": "plugins/harness/scripts/plan.py:484",
+          "expect": "def main(argv: Optional[Sequence[str]] = None) -> int:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_models.py:356",
+          "expect": "return _pr_dir(pr, repo) / run_id"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_models.py:347",
+          "expect": "def run_dir(pr: int, repo: Optional[Path] = None, run_id: Optional[str] = None) -> Path:"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_scaffold_covers_bubbles_and_pending_fixer_bubbles",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_scaffold_prints_one_investigator_row_per_flagged_id",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_scaffold_rerun_changes_nothing",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_scaffold_without_anything_bubbled_writes_no_memo",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_a_missing_review_is_a_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_check_fails_on_stubs_and_passes_once_filled",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_check_prints_the_reviewer_row_with_the_model_rule",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_init_prints_the_brief_and_saves_it",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_record_writes_facts_and_prints_the_return_block",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_record_refuses_a_reference_off_disk",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_apply_writes_facts_into_the_entry_and_leaves_prose_stubs",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_reviewer_init_lists_every_entry",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_bubble_memo_driver.py::test_reviewer_record_validates_findings",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check plugins/harness/scripts/bubble_memo.py --no-cache",
+          "expect": "All checks passed"
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/bubble_memo.py --help",
+          "expect": "usage text listing scaffold, init, record, apply and check"
+        }
+      ],
+      "verification_references": [
+        "9d8fa76e089737d858fb5fa7c319cb57ea15f5f6",
+        "tree cc92297796daea2ade6ec7aeaca4f24761f61ff4",
+        "python -m pytest -q tests/scripts/test_bubble_memo_driver.py::test_scaffold_covers_bubbles_and_pending_fixer_bubbles tests/scripts/test_bubble_memo_driver.py::test_scaffold_prints_one_investigator_row_per_flagged_id tests/scripts/test_bubble_memo_driver.py::test_scaffold_rerun_changes_nothing tests/scripts/test_bubble_memo_driver.py::test_scaffold_without_anything_bubbled_writes_no_memo tests/scripts/test_bubble_memo_driver.py::test_a_missing_review_is_a_problem tests/scripts/test_bubble_memo_driver.py::test_check_fails_on_stubs_and_passes_once_filled tests/scripts/test_bubble_memo_driver.py::test_check_prints_the_reviewer_row_with_the_model_rule tests/scripts/test_bubble_memo_driver.py::test_init_prints_the_brief_and_saves_it tests/scripts/test_bubble_memo_driver.py::test_record_writes_facts_and_prints_the_return_block tests/scripts/test_bubble_memo_driver.py::test_record_refuses_a_reference_off_disk tests/scripts/test_bubble_memo_driver.py::test_apply_writes_facts_into_the_entry_and_leaves_prose_stubs tests/scripts/test_bubble_memo_driver.py::test_reviewer_init_lists_every_entry tests/scripts/test_bubble_memo_driver.py::test_reviewer_record_validates_findings"
+      ]
+    },
+    {
+      "id": "BM-5",
+      "title": "Agents: investigator and reviewer, and the usage-log list",
+      "category": "docs",
+      "action": "Create agents/bubble-memo-investigator.md and agents/bubble-memo-reviewer.md in pr-reviewer's shape: frontmatter name equal to the file stem, tools 'Read, Grep, Glob, Bash', a fallback model (investigator opus, reviewer sonnet; the dispatcher passes the model each printed row names), examples. Body: the prompt is a few header lines (PR, ISSUE, FILES, CONTEXT, Memo for the reviewer, optional Developer guidance); the first action is the `init` call exactly as the prompt's launcher writes it (sh hpy bubble_memo.py init ...); work from its output; run `record` exactly once; reply with the printed block verbatim and nothing else; 'Never write files', 'Read-only git' (show, diff, log, status, merge-base, rev-parse, ls-files, grep only), one command per Bash call, stop with 'problem:' lines when init fails or record fails three times. Investigator: trace the issue through the cited code and report current behavior, when it triggers, chain, flow, opened references and one effect per fix option; it does not write a recommendation or memo prose. Reviewer: accuracy (references exist and say what the entry claims, claims agree with the code, expected behavior follows from each fix, nothing contradicts the review JSON) and clarity and simplicity (ordinary words, one claim per bullet, nothing repeated, the recommendation stated once); findings are {id, kind, what, suggested}. Add both names to DEFINED_AGENTS in pr-review-watch's contract.ts in sorted order (they sort before harness:messenger).",
+      "files": [
+        "plugins/harness/agents/bubble-memo-investigator.md",
+        "plugins/harness/agents/bubble-memo-reviewer.md",
+        "plugins/pr-review-watch/hooks/contract.ts"
+      ],
+      "dependencies": [
+        "BM-4"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit cd3bc00: 12 test node(s) passed",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/pr-review-watch/hooks/contract.ts:121",
+          "expect": "export const DEFINED_AGENTS = ["
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/contract.ts:122",
+          "expect": "'harness:messenger', 'harness:pr-fixer',"
+        },
+        {
+          "at": "plugins/harness/agents/pr-reviewer.md:24",
+          "expect": "tools: Read, Grep, Glob, Bash"
+        },
+        {
+          "at": "tests/mods/test_pr_review_watch_usage_contract.py:87",
+          "expect": "assert ts_string_array(contract_ts, \"DEFINED_AGENTS\") == defined"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-investigator]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-reviewer]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-investigator]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-reviewer]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-investigator]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-reviewer]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-investigator]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-reviewer]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-investigator]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-reviewer]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_the_reviewer_names_both_lenses",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_agents_contract.py::test_the_investigator_reports_facts_not_prose",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/mods/test_pr_review_watch_usage_contract.py -q",
+          "expect": "passed (DEFINED_AGENTS equals the agent files on disk)"
+        }
+      ],
+      "verification_references": [
+        "cd3bc00b9e4ead4f9a07c1c57c972336c7f8ff64",
+        "tree 95c76668e711b4ac33d3de35b1ec3e79fe3da70e",
+        "python -m pytest -q tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_frontmatter_is_read_only[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_init_comes_first_record_last[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_reply_is_the_record_block[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_never_writes_read_only_git[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-investigator] tests/skills/test_bubble_memo_agents_contract.py::test_usage_log_knows_the_agent[bubble-memo-reviewer] tests/skills/test_bubble_memo_agents_contract.py::test_the_reviewer_names_both_lenses tests/skills/test_bubble_memo_agents_contract.py::test_the_investigator_reports_facts_not_prose"
+      ]
+    },
+    {
+      "id": "BM-6",
+      "title": "Skill: bubble-memo",
+      "category": "docs",
+      "action": "Create skills/bubble-memo/SKILL.md modelled on write-plan: frontmatter name bubble-memo, a 'Use when ...' description, argument-hint ending in '-- <guidance>'; the body points at ${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md for the split rule and passes guidance to agents only as the 'Developer guidance:' line. Every command is a fenced line starting with sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/scripts/bubble_memo.py\". Flow per spec Section 2: scaffold (empty set: say so and stop); dispatch the printed investigator rows in one message under harness:parallel2, each row's model as printed; apply; fill the remaining TODO(fill) (non-flagged entries in full, Description and Recommendation everywhere) from the code at the cited lines and record the verified-against header (HEAD SHA, 'uncommitted fixes included'); check until clean; dispatch the reviewer row check printed; apply its findings by hand; check again; hand the memo path to the developer. Add bubble-memo to _INVOCABLE in the guidance-tail contract test (the planned copy under this plan's tests folder already has it).",
+      "files": [
+        "plugins/harness/skills/bubble-memo/SKILL.md",
+        "tests/skills/test_skill_guidance_tail_contract.py"
+      ],
+      "dependencies": [
+        "BM-4",
+        "BM-5"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit cd84027: 7 test node(s) passed",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/write-plan/SKILL.md:4",
+          "expect": "argument-hint: \"<title> [--spec PATH] [--base BRANCH] [--no-fetch] [-- <guidance>]\""
+        },
+        {
+          "at": "tests/skills/test_skill_guidance_tail_contract.py:23",
+          "expect": "_INVOCABLE = ["
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_skill_contract.py::test_frontmatter_and_guidance_tail",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_skill_contract.py::test_split_rule_cited_no_raw_arguments",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_skill_contract.py::test_every_driver_command_goes_through_the_launcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_skill_contract.py::test_the_loop_runs_the_driver_commands_in_order",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_skill_contract.py::test_agents_are_dispatched_by_the_printed_rows",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_bubble_memo_skill_contract.py::test_the_skill_keeps_prose_and_the_snapshot_rule",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_skill_guidance_tail_contract.py -q",
+          "expect": "passed (every invocable skill takes the guidance tail, bubble-memo included)"
+        }
+      ],
+      "verification_references": [
+        "cd840274f09a2be4641b00dea9fe5ed57f4e8d92",
+        "tree f9f62c67a4e7bd822b55b06000196c72b6b77bac",
+        "python -m pytest -q tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified tests/skills/test_bubble_memo_skill_contract.py::test_frontmatter_and_guidance_tail tests/skills/test_bubble_memo_skill_contract.py::test_split_rule_cited_no_raw_arguments tests/skills/test_bubble_memo_skill_contract.py::test_every_driver_command_goes_through_the_launcher tests/skills/test_bubble_memo_skill_contract.py::test_the_loop_runs_the_driver_commands_in_order tests/skills/test_bubble_memo_skill_contract.py::test_agents_are_dispatched_by_the_printed_rows tests/skills/test_bubble_memo_skill_contract.py::test_the_skill_keeps_prose_and_the_snapshot_rule"
+      ]
+    },
+    {
+      "id": "BM-7",
+      "title": "Mod core: config mirror, root rule, review reading, memo parse and stamp",
+      "category": "code",
+      "action": "Create plugins/bubble-stamp/hooks/config.ts (DEFAULT_REVIEWS = 'docs/PR_REVIEWS' and a readConfig of artifacts.reviews, copied from pr-review-watch's config.ts shape), root.ts (copy of the project-root rule), review.ts (closedOf and reviewFileFor ported from pr-review-watch's bubbles.ts, plus the latest resolution per id with its status, date and evidence), and memo.ts (pure): the anchor constants as single-line single-quoted exports (INDEX_HEADER, STATUS_OPEN, STATUS_DECIDED, DECISION_OPEN, DECISION_PREFIX, ENTRY_PREFIX, MEMO_SUFFIX) matching harness_lib.bubble_memo exactly; parseMemo (index rows and entry boundaries, undefined when the anchors are missing); openIds; and stampMemo(text, resolutions) applying the spec stamp rule: only Open rows with a RESOLVED or CLOSED_NO_ACTION latest resolution, Status to Decided, Decision cell '<STATUS> <date>: <evidence>' on one line with | escaped, Tracked in from the first #<n> in the evidence, else the cell the developer already filled (neither empty nor '-'), else the first 7-40 hex SHA in the evidence that is not the working-tree snapshot SHA the harness leads its evidence with (a SHA followed by ' (working-tree snapshot'), else '-', and the entry's Decision line; nothing else changes; a second run changes nothing. Write config.test.ts, root.test.ts, review.test.ts and memo.test.ts first (red), using the engine's testing helpers as phase5Scan.test.ts does.",
+      "files": [
+        "plugins/bubble-stamp/hooks/config.ts",
+        "plugins/bubble-stamp/hooks/config.test.ts",
+        "plugins/bubble-stamp/hooks/root.ts",
+        "plugins/bubble-stamp/hooks/root.test.ts",
+        "plugins/bubble-stamp/hooks/review.ts",
+        "plugins/bubble-stamp/hooks/review.test.ts",
+        "plugins/bubble-stamp/hooks/memo.ts",
+        "plugins/bubble-stamp/hooks/memo.test.ts"
+      ],
+      "dependencies": [
+        "BM-3"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 9d8fa76: 4 test node(s) passed",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/pr-review-watch/hooks/config.ts:10",
+          "expect": "export const DEFAULT_REVIEWS = 'docs/PR_REVIEWS'"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/config.ts:47",
+          "expect": "export const readConfig = (text: string): WatchConfig => {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/root.ts:19",
+          "expect": "export const rootCandidates = ("
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/bubbles.ts:57",
+          "expect": "const CLOSING_STATUSES: readonly unknown[] = ['RESOLVED', 'CLOSED_NO_ACTION']"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/bubbles.ts:60",
+          "expect": "const closedOf = (doc: Record<string, unknown>): string[] => {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/bubbles.ts:99",
+          "expect": "export const reviewFileFor = (pr: number, entries: readonly Listed[]): Listed | undefined => {"
+        },
+        {
+          "at": "tests/mods/_mods_helpers.py:15",
+          "expect": "def ts_string(source: str, name: str) -> str:"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirrored_reviews_folder_equals_defaults_json",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirror_equals_an_unconfigured_project",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_bubble_stamp_anchors_contract.py::test_the_mod_anchor_equals_the_library_anchor",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/mods/test_bubble_stamp_anchors_contract.py::test_a_rendered_memo_carries_every_anchor_the_mod_reads",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin test plugins/bubble-stamp",
+          "expect": "the config, root, review and memo tests pass; exit code 0"
+        }
+      ],
+      "verification_references": [
+        "9d8fa76e089737d858fb5fa7c319cb57ea15f5f6",
+        "tree cc92297796daea2ade6ec7aeaca4f24761f61ff4",
+        "python -m pytest -q tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirrored_reviews_folder_equals_defaults_json tests/mods/test_bubble_stamp_config_mirror.py::test_the_mirror_equals_an_unconfigured_project tests/mods/test_bubble_stamp_anchors_contract.py::test_the_mod_anchor_equals_the_library_anchor tests/mods/test_bubble_stamp_anchors_contract.py::test_a_rendered_memo_carries_every_anchor_the_mod_reads"
+      ]
+    },
+    {
+      "id": "BM-8",
+      "title": "Mod engine glue: hooks, state, manifest, README",
+      "category": "code",
+      "action": "Create stamp.ts (engine glue, function declarations where `$` is passed, every host call guarded with .catch so every hook fails open), watch.ts (resolveWatch as in pr-review-watch, returning the project root and config, no sentinel root), register.ts (export const register: Register = on => registerStamp(on)), hooks/hooks.json ({\"modules\": [\"./register.ts\"]}), .claude-plugin/plugin.json (name bubble-stamp, version 0.1.0, types ./types/index.d.ts), tsconfig.json (extends ./.claude-plugin/types/tsconfig.json), .gitignore (.claude-plugin/types/), types/index.d.ts (PluginState entry 'bubble-stamp' with the active-memo map), README.md (activation, triggers, stamp rule, state, known limitations, checks, loading), and stamp.test.ts (red first). Behavior per spec Section 4: active memos listed from <artifacts.reviews> on session.start and whenever a trigger shows an unknown memo; triggers are tool.call on Bash and PowerShell whose command names pr_review.py or review_edit.py, tool.call on Edit and Write whose file_path is an active memo's review JSON, and turn.complete; each trigger stats the review JSON and reads it only when the mtime moved; the memo is re-read just before the write and written only when the text changed; an unreadable memo is never overwritten; one toast names the ids stamped.",
+      "files": [
+        "plugins/bubble-stamp/hooks/stamp.ts",
+        "plugins/bubble-stamp/hooks/stamp.test.ts",
+        "plugins/bubble-stamp/hooks/watch.ts",
+        "plugins/bubble-stamp/hooks/register.ts",
+        "plugins/bubble-stamp/hooks/hooks.json",
+        "plugins/bubble-stamp/.claude-plugin/plugin.json",
+        "plugins/bubble-stamp/tsconfig.json",
+        "plugins/bubble-stamp/.gitignore",
+        "plugins/bubble-stamp/types/index.d.ts",
+        "plugins/bubble-stamp/README.md"
+      ],
+      "dependencies": [
+        "BM-7"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit cd3bc00: 4 test node(s) passed",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/pr-review-watch/hooks/register.ts:7",
+          "expect": "export const register: Register = on => {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/watch.ts:45",
+          "expect": "export async function resolveWatch($: EngineInterface): Promise<Watch | undefined> {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:570",
+          "expect": "on('tool.call', { tool: 'Bash' }, async ($, e, next) => {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:576",
+          "expect": "on('tool.call', { tool: 'PowerShell' }, async ($, e, next) => {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:585",
+          "expect": "on('turn.complete', async ($, e, next) => {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:592",
+          "expect": "on('session.start', async ($, e, next) => {"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:262",
+          "expect": "await Promise.resolve($.ui.toast(text)).catch(noop)"
+        },
+        {
+          "at": "plugins/pr-review-watch/.claude-plugin/plugin.json:8",
+          "expect": "\"types\": \"./types/index.d.ts\""
+        },
+        {
+          "at": "plugins/pr-review-watch/.gitignore:2",
+          "expect": ".claude-plugin/types/"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_the_mod_manifest_and_hooks",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_the_mod_has_a_readme",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[tsconfig]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[gitignore]",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/bubble-stamp",
+          "expect": "validation passes"
+        },
+        {
+          "run": "claude plugin test plugins/bubble-stamp",
+          "expect": "every mod test passes; exit code 0"
+        }
+      ],
+      "verification_references": [
+        "cd3bc00b9e4ead4f9a07c1c57c972336c7f8ff64",
+        "tree 95c76668e711b4ac33d3de35b1ec3e79fe3da70e",
+        "python -m pytest -q tests/contract/test_bubble_stamp_registration.py::test_the_mod_manifest_and_hooks tests/contract/test_bubble_stamp_registration.py::test_the_mod_has_a_readme tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[tsconfig] tests/contract/test_bubble_stamp_registration.py::test_engine_scaffolding[gitignore]"
+      ]
+    },
+    {
+      "id": "BM-9",
+      "title": "Register the mod and the skill; bump versions",
+      "category": "config",
+      "action": "Add the bubble-stamp entry to .claude-plugin/marketplace.json after todo-watch; add bubble-stamp to the CI mod-test loop in ci.yml; add README rows (the mods table row for bubble-stamp, the harness skills table row for bubble-memo, the install line and, if the activation notes list mods, one for bubble-stamp); CLAUDE.md: the mod count in the first paragraph becomes six, the list gains bubble-stamp, and the config-mirror sentence names bubble-stamp; bump harness to 0.40.0 and pr-review-watch to 0.4.2 (its contract.ts changed). .claude/settings.json enables the published marketplace and is left alone until the mod is published.",
+      "files": [
+        ".claude-plugin/marketplace.json",
+        ".github/workflows/ci.yml",
+        "README.md",
+        "CLAUDE.md",
+        "plugins/harness/.claude-plugin/plugin.json",
+        "plugins/pr-review-watch/.claude-plugin/plugin.json"
+      ],
+      "dependencies": [
+        "BM-5",
+        "BM-6",
+        "BM-8"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit e4c7e94: 6 test node(s) passed",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": ".claude-plugin/marketplace.json:44",
+          "expect": "\"name\": \"todo-watch\""
+        },
+        {
+          "at": ".github/workflows/ci.yml:126",
+          "expect": "plugins/todo-watch; do claude plugin test \"$p\"; done"
+        },
+        {
+          "at": "CLAUDE.md:3",
+          "expect": "scripts) plus five"
+        },
+        {
+          "at": "CLAUDE.md:4",
+          "expect": "`todo-watch`). Layout and install:"
+        },
+        {
+          "at": "README.md:100",
+          "expect": "claude plugin install todo-watch@operator-straps"
+        },
+        {
+          "at": "README.md:20",
+          "expect": "| Plan multi-step work from a spec | `harness`: `write-plan` |"
+        },
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.39.1\","
+        },
+        {
+          "at": "plugins/pr-review-watch/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.4.1\","
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_the_marketplace_lists_the_mod",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_ci_runs_the_mod_tests",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_the_readme_documents_and_installs_the_mod",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_claude_md_counts_six_mods",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_the_harness_version_moved_past_the_old_one",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_pr_review_watch_moved_past_its_old_version",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict .",
+          "expect": "validation passes for the marketplace"
+        }
+      ],
+      "verification_references": [
+        "e4c7e94a111a59d85b6e3829273e7a7d58decbff",
+        "tree 72a60488fe56c9df34c77171f8ca4efc3f6d6d19",
+        "python -m pytest -q tests/contract/test_bubble_stamp_registration.py::test_the_marketplace_lists_the_mod tests/contract/test_bubble_stamp_registration.py::test_ci_runs_the_mod_tests tests/contract/test_bubble_stamp_registration.py::test_the_readme_documents_and_installs_the_mod tests/contract/test_bubble_stamp_registration.py::test_claude_md_counts_six_mods tests/contract/test_bubble_stamp_registration.py::test_the_harness_version_moved_past_the_old_one tests/contract/test_bubble_stamp_registration.py::test_pr_review_watch_moved_past_its_old_version"
+      ]
+    }
+  ],
+  "completed": "2026-10-29"
+}

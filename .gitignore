@@ -4,6 +4,7 @@
 docs/_commit_messages/
 .artifacts/
 docs/PR_SUMMARIES/
+logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -233,4 +234,5 @@ __marimo__/
 
 # Runtime state written by the harness into consuming projects never belongs here.
 .claude/state/
-/.superpowers/
+.superpowers/
+docs/plans/**/*.py

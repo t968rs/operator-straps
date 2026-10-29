@@ -123,7 +123,9 @@ import sys
 from dataclasses import asdict, dataclass
 from datetime import date, datetime, timezone
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Mapping, NoReturn, Optional, Sequence, Set, Tuple
+from typing import (
+    Callable, Dict, Iterable, List, Mapping, NoReturn, Optional, Sequence, Set, Tuple, Union, cast,
+)
 
 _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
@@ -170,6 +172,7 @@ from harness_lib.default_exclusions import ensure_default_exclusions  # noqa: E4
 from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, file_patches  # noqa: E402
 from harness_lib.pr_summary import PrFacts, PrFile  # noqa: E402
 from harness_lib.project import plugin_root, project_root  # noqa: E402
+from harness_lib.review_bubbles import closed_ids, pending_bubbles  # noqa: E402
 
 REVIEWER_AGENT = "harness:pr-reviewer"
 FIXER_AGENT = "harness:pr-fixer"
@@ -352,11 +355,21 @@ def metadata_check(pr: int, data: Mapping[str, object], raw: str, allow_closed: 
     return {"command": gh_command(pr), "stdout": raw, "result": result}
 
 
+def pr_number(value: object) -> int:
+    """A PR number read from JSON (an int, or a digit string) as an int."""
+    return int(cast(Union[int, str], value))
+
+
+def catalog_rows(catalog: Mapping[str, object], key: str) -> List[Mapping[str, object]]:
+    """The lens catalog's list of row objects under ``key``."""
+    return cast(List[Mapping[str, object]], catalog[key])
+
+
 def pr_meta(data: Mapping[str, object]) -> PrMeta:
     """``PrMeta`` from the projected gh object."""
     merge = data.get("mergeCommit")
-    return PrMeta(int(data["number"]), str(data["title"]), str(data["baseRefName"]), str(data["headRefName"]),
-                  str(data["headRefOid"]), str(merge) if merge else None)
+    return PrMeta(pr_number(data["number"]), str(data["title"]), str(data["baseRefName"]),
+                  str(data["headRefName"]), str(data["headRefOid"]), str(merge) if merge else None)
 
 
 def split_reviewable(facts: PrFacts, patterns: Sequence[str]) -> Tuple[Tuple[str, ...], Tuple[str, ...]]:
@@ -657,13 +670,14 @@ def _scope_text(slot: rp.Slot) -> str:
 
 def lens_section(ctx: BriefContext, slot: rp.Slot) -> str:
     """Scope sentence, catalog lens templates, triggered skills and the default sub-lens templates."""
-    templates = {str(lens["name"]): str(lens["scope_template"]) for lens in ctx.catalog["lenses"]}
+    lenses = catalog_rows(ctx.catalog, "lenses")
+    templates = {str(lens["name"]): str(lens["scope_template"]) for lens in lenses}
     lines = ["## Lens", ""] + ([_scope_text(slot), ""] if _scope_text(slot) else [])
     for name in slot.templates:
         lines += [f"### {name}", "", templates.get(name, f"(no catalog template named {name})"), ""]
     if slot.lens == rp.SKILL_PACKAGE and ctx.skills:
         lines += [f"Triggered skills (substitute each for `<name>`): {', '.join(ctx.skills)}", ""]
-    for sub in ctx.catalog["default_sub_lenses"]:
+    for sub in catalog_rows(ctx.catalog, "default_sub_lenses"):
         lines += [f"### Default sub-lens: {sub['name']}", "", str(sub["scope_template"]), ""]
     return "\n".join(lines).rstrip()
 
@@ -940,12 +954,6 @@ def load_review(repo: Path, plan: Mapping[str, object]) -> Tuple[Path, Dict[str,
 def all_issues(doc: Mapping[str, object]) -> List[Dict[str, object]]:
     """Every issue of a review, critical first."""
     return [i for tier in rmg.TIERS for i in doc["issues"].get(tier, [])]  # type: ignore[union-attr]
-
-
-def closed_ids(doc: Mapping[str, object]) -> Set[str]:
-    """Ids whose latest resolution is RESOLVED or CLOSED_NO_ACTION."""
-    latest = {str(r["id"]): r.get("status") for r in doc.get("post_review_resolutions") or []}  # type: ignore
-    return {i for i, status in latest.items() if status in rmg.CLOSED_STATUSES}
 
 
 # --- fold: outside reviews as findings sources --------------------------------------------------------------
@@ -1263,7 +1271,7 @@ def review_target(repo: Path, plan: Mapping[str, object]) -> Path:
     """``<artifacts.reviews>/<NNNN>_<slug>.json`` for the plan's PR."""
     meta = plan["meta"]
     slug = rmg.slugify_title(str(meta["pr_title"]))  # type: ignore[index]
-    return review_dir(repo) / f"{int(plan['pr']):04d}_{slug}.json"
+    return review_dir(repo) / f"{pr_number(plan['pr']):04d}_{slug}.json"
 
 
 def straggler_check(repo: Path, pr: int, target: Path, replace: bool) -> None:
@@ -1484,18 +1492,6 @@ def _cmd_bubble(repo: Path, args: argparse.Namespace) -> int:
 
 
 # --- waves --------------------------------------------------------------------------------------------------
-
-
-def fixer_bubbles(run: Path) -> List[Tuple[str, rm.FixBubble]]:
-    """(fixer, bubble) for every bubble a fixer of this run recorded, by report file name."""
-    return [(r.fixer, b) for r in rm.load_fix_reports(run / "fixes") for b in r.bubbled]
-
-
-def pending_bubbles(doc: Mapping[str, object], run: Path) -> List[Tuple[str, rm.FixBubble]]:
-    """Fixer bubbles whose id is not closed and in neither the review's ``bubbles`` nor its ``bubble_up``."""
-    known = {str(b) for b in doc.get("bubbles") or []} | closed_ids(doc)  # type: ignore[union-attr]
-    known |= {str(b["id"]) for b in doc.get("bubble_up") or []}  # type: ignore[union-attr, index]
-    return [(fixer, b) for fixer, b in fixer_bubbles(run) if b.id not in known]
 
 
 def pending_lines(pending: Sequence[Tuple[str, rm.FixBubble]]) -> List[str]:
@@ -1769,10 +1765,10 @@ def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[
 def wave_context(repo: Path, plan: Mapping[str, object]) -> BriefContext:
     """A brief context rebuilt from ``plan.json`` (facts carry only what fixer briefs read)."""
     meta = plan["meta"]
-    facts = PrFacts(int(plan["pr"]), str(meta["pr_title"]), str(meta["branch"]),  # type: ignore[index]
+    facts = PrFacts(pr_number(plan["pr"]), str(meta["pr_title"]), str(meta["branch"]),  # type: ignore[index]
                     str(meta["base_branch"]), str(meta["head_sha"]), str(meta["base_sha"]),  # type: ignore[index]
                     "", (), ())
-    return BriefContext(repo.as_posix(), _LIB.as_posix(), int(plan["pr"]),
+    return BriefContext(repo.as_posix(), _LIB.as_posix(), pr_number(plan["pr"]),
                         str(plan["run_id"]), facts, bool(plan["tree_at_head"]), {}, ())
 
 
