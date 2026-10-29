@@ -95,13 +95,29 @@ def test_scaffold_covers_bubbles_and_pending_fixer_bubbles(run: Callable[..., Re
     assert "I2" in out and "I3" in out
 
 
-def test_scaffold_prints_one_investigator_row_per_flagged_id(run: Callable[..., Result]) -> None:
+def test_scaffold_prints_one_investigator_row_per_flagged_id(driver: ModuleType,
+                                                            run: Callable[..., Result]) -> None:
     _, out, _ = run("scaffold", "--pr", "1514")
     rows = out.count("agent=harness:bubble-memo-investigator model=opus")
     assert rows == 1
     tail = out[out.index("agent=harness:bubble-memo-investigator"):].splitlines()
     assert tail[1:4] == ["PR: 1514", "ISSUE: I3", "FILES: src/a.py, src/b.py"]
-    assert tail[4].startswith("CONTEXT: ") and len(tail[4]) <= len("CONTEXT: ") + 300
+    assert tail[4].startswith("CONTEXT: ") and len(tail[4]) <= len("CONTEXT: ") + driver.CONTEXT_MAX
+
+
+def test_a_reason_past_the_context_cap_is_cut_to_exactly_the_cap(
+        driver: ModuleType, make_project: Callable[..., Path], capsys: pytest.CaptureFixture,
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    fixer = {**FIXER, "bubbled": [{"id": "I3", "classification": "needs_follow_up", "reason": "r" * 200}]}
+    fixer_path = f"{SCRATCH}/1514/{RUN_ID}/fixes/fixer_a.json"
+    root = make_project({"base_branch": "main"}, files={**_files(), fixer_path: fixer})
+    monkeypatch.setattr("sys.stdin", io.StringIO(""))
+    assert driver.main(["--repo", str(root), "scaffold", "--pr", "1514"]) == 0
+    lines = capsys.readouterr().out.splitlines()
+    context = lines[lines.index("ISSUE: I3") + 2]
+    assert context.startswith("CONTEXT: ")
+    text = context[len("CONTEXT: "):]
+    assert len(text) == driver.CONTEXT_MAX and text.endswith("...")
 
 
 def test_scaffold_rerun_changes_nothing(run: Callable[..., Result], project: Path) -> None:
@@ -251,6 +267,21 @@ def test_entry_level_flag_drives_the_reviewer_model_and_brief(
     assert "### I2 (flagged: yes)" in brief
 
 
+def test_a_second_file_outside_references_does_not_flag_the_entry(
+        custom: Callable[..., Tuple[Path, Callable[..., Result]]]) -> None:
+    root, run = custom({"issues": _single_file_issues(lines="10-12")})
+    run("scaffold", "--pr", "1514")
+    _fill_all(root)
+    lines = _memo(root).split("\n")
+    idx = next(i for i, ln in enumerate(lines) if ln.startswith("- **Current behavior:**"))
+    lines[idx] += " it also reads `src/b.py:1`"
+    (root / MEMO_PATH).write_text("\n".join(lines), encoding="utf-8")
+    code, out, _ = run("check", "--pr", "1514")
+    assert code == 0 and "agent=harness:bubble-memo-reviewer model=sonnet" in out
+    _, brief, _ = run("init", "--pr", "1514", "--role", "reviewer")
+    assert "### I2 (flagged: no)" in brief
+
+
 def test_a_bad_issue_id_is_refused_and_writes_nothing(
         custom: Callable[..., Tuple[Path, Callable[..., Result]]]) -> None:
     root, run = custom({"bubbles": ["../x"], "bubble_up": []})
@@ -290,7 +321,7 @@ def test_apply_reports_a_malformed_facts_file_as_one_problem(
 def test_record_accepts_a_utf8_bom(run: Callable[..., Result], project: Path) -> None:
     run("scaffold", "--pr", "1514")
     code, out, _ = run("record", "--pr", "1514", "--id", "I3", "--role", "investigator",
-                       stdin="﻿" + _facts())
+                       stdin="\ufeff" + _facts())
     assert code == 0 and "SIGNAL: DONE" in out
 
 

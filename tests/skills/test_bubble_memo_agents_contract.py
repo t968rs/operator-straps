@@ -10,11 +10,15 @@ import pytest
 from mods._mods_helpers import ts_string_array
 
 _AGENTS = ("bubble-memo-investigator", "bubble-memo-reviewer")
+# The file names are spelled out so tools/select_tests.py selects this test when an agent file changes.
+_AGENT_FILES = ("bubble-memo-investigator.md", "bubble-memo-reviewer.md")
 _CONTRACT_REL = "plugins/pr-review-watch/hooks/contract.ts"
 
 
 def _agent(repo_root: Path, name: str) -> Path:
-    path = repo_root / "plugins" / "harness" / "agents" / f"{name}.md"
+    file_name = f"{name}.md"
+    assert file_name in _AGENT_FILES, f"{file_name} is not a listed agent file"
+    path = repo_root / "plugins" / "harness" / "agents" / file_name
     assert path.is_file(), f"{path} does not exist"
     return path
 
@@ -60,13 +64,13 @@ def test_never_writes_read_only_git(repo_root: Path, name: str) -> None:
 
 def test_the_reviewer_names_both_lenses(repo_root: Path) -> None:
     body = _agent(repo_root, "bubble-memo-reviewer").read_text(encoding="utf-8")
-    assert "accuracy" in body and "clarity" in body and "simplicity" in body
+    assert "accuracy" in body and "clarity and simplicity" in body
 
 
 def test_the_investigator_reports_facts_not_prose(repo_root: Path) -> None:
     body = _agent(repo_root, "bubble-memo-investigator").read_text(encoding="utf-8")
-    assert "current behavior" in body.lower() and "when" in body.lower()
-    assert "recommendation" in body.lower() and "does not" in body.lower()
+    assert "current behavior" in body.lower()
+    assert "No recommendation and no memo prose" in body
 
 
 @pytest.mark.parametrize("name", _AGENTS)

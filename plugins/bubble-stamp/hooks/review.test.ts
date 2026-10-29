@@ -81,6 +81,11 @@ describe('reviewFileFor (the pr-review-watch rule)', () => {
     expect(reviewFileFor(43, entries)?.name).toBe('0043_Other.json')
   })
 
+  test('an mtime tie goes to the larger name, as the driver picks', async () => {
+    const entries = [file('0042_B.json', 5), file('0042_C.json', 5), file('0042_A.json', 5)]
+    expect(reviewFileFor(42, entries)?.name).toBe('0042_C.json')
+  })
+
   test('the number pads to four digits; a longer number is not padded', async () => {
     expect(reviewFileFor(7, [file('0007_X.json', 1)])?.name).toBe('0007_X.json')
     expect(reviewFileFor(12345, [file('12345_X.json', 1)])?.name).toBe('12345_X.json')

@@ -45,8 +45,13 @@ type Seen = {
   order: string[]
   /** Called before a read is answered (the read is already in `order`). */
   onRead?: (path: string) => void
+  /** Every process.run argv, in call order. */
+  runs: string[][]
   tick: number
 }
+
+/** Where the session runs: CLAUDE_PROJECT_DIR, the session cwd, and git's top level of that cwd (unset: git fails). */
+type Place = { projectDir?: string; cwd?: string; toplevel?: string }
 
 const ran = (stdout: string, exitCode = 0): ProcessRunResult => ({
   exitCode, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false,
@@ -63,17 +68,22 @@ const listed = (files: Files, dir: string) => {
 }
 
 /** Files, env, git, clock and the terminal handlers beneath the plugin; the harness file holds `config`. */
-const world = (on: On, config: string | null = '{}'): Seen => {
+const world = (on: On, config: string | null = '{}', place: Place = {}): Seen => {
   const seen: Seen = {
     files: new Map(), unreadable: new Set(), unwritable: new Set(), unstattable: new Set(), refuseList: false,
-    refuseToast: false, toasts: [], writes: [], reads: [], lists: [], stats: [], denied: [], order: [], tick: 1000,
+    refuseToast: false, toasts: [], writes: [], reads: [], lists: [], stats: [], denied: [], order: [], runs: [],
+    tick: 1000,
   }
   if (config !== null) seen.files.set(HARNESS, { text: config, mtimeMs: 1 })
-  mock.env(on, { CLAUDE_PROJECT_DIR: ROOT })
+  mock.env(on, { CLAUDE_PROJECT_DIR: place.projectDir ?? ROOT })
   mock.clock(on, { now: 1_800_000_000_000 })
-  on('session.cwd', () => ({ value: ROOT }))
+  on('session.cwd', () => ({ value: place.cwd ?? ROOT }))
   on('session.start', (_$, e) => ({ cwd: e.cwd }))
-  on('process.run', () => ({ value: ran('', 128) }))
+  on('process.run', (_$, e) => {
+    seen.runs.push([...e.argv])
+    const top = place.toplevel
+    return { value: top === undefined || e.argv[3] !== 'rev-parse' ? ran('', 128) : ran(`${top}\n`) }
+  })
   on('fs.read', (_$, e) => {
     const path = slash(e.path)
     seen.reads.push(path)
@@ -170,6 +180,7 @@ const fileTool = ($: Engine, tool: 'Edit' | 'Write', path: string) =>
 
 const REVIEW_SCRIPT = 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" closeout 7'
 const EDIT_SCRIPT = 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" add 7'
+const SCAFFOLD_SCRIPT = 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/bubble_memo.py" scaffold --pr 7'
 
 describe('memoPrOf', () => {
   test('reads N from PR_<N>_Bubbles.md and nothing else', () => {
@@ -198,6 +209,37 @@ describe('activation', () => {
     await start($)
     expect(seen.lists).toContain(`${ROOT}/notes/reviews`)
     expect(text(seen, `${ROOT}/notes/reviews/PR_7_Bubbles.md`)).toContain(STAMPED_ROW)
+  })
+
+  test('the git top level of the cwd (a linked worktree) is probed before CLAUDE_PROJECT_DIR', async ($, on) => {
+    // Both /repo (CLAUDE_PROJECT_DIR) and /wt hold the harness file; only /wt holds the memo.
+    const seen = world(on, '{}', { cwd: '/wt/sub', toplevel: '/wt' })
+    put(seen, '/wt/.claude/harness.json', '{}')
+    put(seen, '/wt/docs/PR_REVIEWS/PR_7_Bubbles.md', memoOf([['I1', 'Open']]))
+    put(seen, '/wt/docs/PR_REVIEWS/0007_title.json', reviewOf(resolution('I1')))
+    await start($)
+    expect(seen.runs).toEqual([['git', '-C', '/wt/sub', 'rev-parse', '--show-toplevel']])
+    expect(seen.lists).toEqual(['/wt/docs/PR_REVIEWS'])
+    expect(text(seen, '/wt/docs/PR_REVIEWS/PR_7_Bubbles.md')).toContain(STAMPED_ROW)
+  })
+
+  test('git failing and CLAUDE_PROJECT_DIR lacking the harness file, the cwd is the root', async ($, on) => {
+    const seen = world(on, '{}', { projectDir: '/other' })
+    seeded(seen, resolution('I1'))
+    await start($)
+    expect(seen.runs).toEqual([['git', '-C', ROOT, 'rev-parse', '--show-toplevel']])
+    expect(seen.reads.slice(0, 2)).toEqual(['/other/.claude/harness.json', HARNESS])
+    expect(seen.lists).toEqual([REVIEWS])
+    expect(text(seen)).toContain(STAMPED_ROW)
+  })
+
+  test('a known top level is not asked again on a later trigger', async ($, on) => {
+    const seen = world(on, '{}', { cwd: '/wt2', toplevel: '/wt2' })
+    put(seen, '/wt2/.claude/harness.json', '{}')
+    await start($)
+    await shell($, 'Bash', REVIEW_SCRIPT)
+    expect(seen.lists).toEqual(['/wt2/docs/PR_REVIEWS', '/wt2/docs/PR_REVIEWS'])
+    expect(seen.runs).toHaveLength(1)
   })
 })
 
@@ -253,6 +295,19 @@ describe('session.start', () => {
     expect(seen.writes).toEqual([])
   })
 
+  test('session.start returns the host result unchanged', async ($, on) => {
+    const seen = world(on)
+    seeded(seen, resolution('I1'))
+    const active = await start($)
+    expect(seen.writes).toEqual([MEMO])
+    expect(active).toMatchObject({ cwd: ROOT })
+    seen.files.delete(HARNESS)
+    const inactive = await start($)
+    expect(active).toEqual(inactive)
+  })
+})
+
+describe('listing at a trigger', () => {
   test('a refused listing keeps the active set, so a later turn still stamps', async ($, on) => {
     const seen = world(on)
     seeded(seen)
@@ -288,16 +343,6 @@ describe('session.start', () => {
     const stats = seen.stats.filter(p => p === REVIEW).length
     await endTurn($)
     expect(seen.stats.filter(p => p === REVIEW).length).toBe(stats)
-  })
-
-  test('session.start returns the host result unchanged', async ($, on) => {
-    const seen = world(on)
-    seeded(seen, resolution('I1'))
-    const active = await start($)
-    expect(seen.writes).toEqual([MEMO])
-    seen.files.delete(HARNESS)
-    const inactive = await start($)
-    expect(active).toEqual(inactive)
   })
 })
 
@@ -342,6 +387,17 @@ describe('triggers', () => {
     seeded(seen, resolution('I1'))
     await shell($, 'Bash', REVIEW_SCRIPT)
     expect(text(seen)).toContain(STAMPED_ROW)
+  })
+
+  test('a memo scaffolded mid-session stamps when its review JSON is then edited', async ($, on) => {
+    const seen = world(on)
+    await start($)
+    seeded(seen)
+    await shell($, 'Bash', SCAFFOLD_SCRIPT)
+    put(seen, REVIEW, reviewOf(resolution('I1')))
+    await fileTool($, 'Edit', REVIEW)
+    expect(text(seen)).toContain(STAMPED_ROW)
+    expect(seen.writes).toEqual([MEMO])
   })
 
   test('Edit and Write of an active review JSON stamp; other paths do not', async ($, on) => {
@@ -539,14 +595,14 @@ describe('write safety', () => {
     expect(seen.toasts).toHaveLength(1)
   })
 
-  test('a malformed review JSON stamps nothing and is not retried until it moves', async ($, on) => {
+  test('a malformed review JSON stamps nothing and is read again at the next trigger', async ($, on) => {
     const seen = world(on)
     put(seen, MEMO, memoOf([['I1', 'Open']]))
     put(seen, REVIEW, '{ not json')
     await start($)
     await endTurn($)
     expect(seen.writes).toEqual([])
-    expect(seen.reads.filter(p => p === REVIEW).length).toBe(1)
+    expect(seen.reads.filter(p => p === REVIEW).length).toBe(2)
     put(seen, REVIEW, reviewOf(resolution('I1')))
     await endTurn($)
     expect(text(seen)).toContain(STAMPED_ROW)

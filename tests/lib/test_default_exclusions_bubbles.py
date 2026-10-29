@@ -49,6 +49,6 @@ def test_an_older_seeded_list_gains_it_in_memory(make_project: _MakeProject) -> 
 
 def test_other_markdown_stays_reviewable(make_project: _MakeProject) -> None:
     cfg = load_config(make_project(config={}))
-    row = [p for p in default_patterns(cfg) if p == PATTERN]
+    patterns = default_patterns(cfg)
     for name in ("docs/Bubbles.md", "docs/guide_Bubbles.txt", "docs/PR_1_Bubbles.md.bak", "docs/guide.md"):
-        assert not _hit(name, row), name
+        assert not _hit(name, patterns), name
