@@ -57,7 +57,7 @@ OUTPUT: <path>
 
 ### BM-1: Exclude *_Bubbles.md by default
 
-**Status:** PENDING | **Model:** haiku | **Depends on:** none
+**Status:** COMPLETE | **Model:** haiku | **Depends on:** none
 **Files:** `plugins/harness/lib/harness_lib/default_exclusions.py`
 
 **Anchors:**
@@ -66,18 +66,22 @@ OUTPUT: <path>
 
 In default_exclusions.py add the row ("*_Bubbles.md", "bubble memos (point-in-time snapshots)") to _entries, before the row for the seeded file. harness_patterns and with_harness_patterns then carry it with no further change. Do not touch the module docstring's claims beyond naming the memos among the machine-generated paths.
 
-- [ ] Test `tests/lib/test_default_exclusions_bubbles.py::test_default_patterns_carry_the_memo_pattern` fails with AssertionError, then passes
-- [ ] Test `tests/lib/test_default_exclusions_bubbles.py::test_the_pattern_matches_a_memo_in_any_folder` fails with AssertionError, then passes
-- [ ] Test `tests/lib/test_default_exclusions_bubbles.py::test_a_seeded_file_holds_the_pattern` fails with AssertionError, then passes
-- [ ] Test `tests/lib/test_default_exclusions_bubbles.py::test_an_older_seeded_list_gains_it_in_memory` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/lib/test_default_exclusions.py tests/lib/test_review_plan.py -q`: passed, no failures (the existing exclusion consumers still hold)
-- [ ] Record the commit: `plan.py record 0001 BM-1 --sha <sha>`
+- [x] Test `tests/lib/test_default_exclusions_bubbles.py::test_default_patterns_carry_the_memo_pattern` fails with AssertionError, then passes
+- [x] Test `tests/lib/test_default_exclusions_bubbles.py::test_the_pattern_matches_a_memo_in_any_folder` fails with AssertionError, then passes
+- [x] Test `tests/lib/test_default_exclusions_bubbles.py::test_a_seeded_file_holds_the_pattern` fails with AssertionError, then passes
+- [x] Test `tests/lib/test_default_exclusions_bubbles.py::test_an_older_seeded_list_gains_it_in_memory` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/lib/test_default_exclusions.py tests/lib/test_review_plan.py -q`: passed, no failures (the existing exclusion consumers still hold)
+- [x] Record the commit: `plan.py record 0001 BM-1 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit c6457e2: 4 test node(s) passed
+
+- `c6457e2706ee6a32168e41911af05d016fc33228`
+- `tree 5fc72cc386dc16dc4f6061d25c2eb8cf990a5567`
+- `python -m pytest -q tests/lib/test_default_exclusions_bubbles.py::test_default_patterns_carry_the_memo_pattern tests/lib/test_default_exclusions_bubbles.py::test_the_pattern_matches_a_memo_in_any_folder tests/lib/test_default_exclusions_bubbles.py::test_a_seeded_file_holds_the_pattern tests/lib/test_default_exclusions_bubbles.py::test_an_older_seeded_list_gains_it_in_memory`
 
 ### BM-2: Extract the pending-fixer-bubble helpers into a library module
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** none
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** none
 **Files:** `plugins/harness/lib/harness_lib/review_bubbles.py`, `plugins/harness/scripts/pr_review.py`
 
 **Anchors:**
@@ -90,18 +94,22 @@ In default_exclusions.py add the row ("*_Bubbles.md", "bubble memos (point-in-ti
 
 Create harness_lib/review_bubbles.py holding closed_ids, fixer_bubbles and pending_bubbles, moved verbatim from scripts/pr_review.py (same signatures and behavior). pr_review.py imports the three names from it and drops the local definitions, so its call sites (closed_ids at the Phase 5 summary and the closeout paths, pending_bubbles in the bubbles and waves commands) keep working unchanged. pending_lines stays in pr_review.py. No behavior change; tests/scripts/test_pr_review_driver.py is the regression guard.
 
-- [ ] Test `tests/lib/test_review_bubbles.py::test_closed_ids_follow_the_latest_resolution` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_review_bubbles.py::test_fixer_bubbles_pair_each_bubble_with_its_fixer` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_review_bubbles.py::test_fixer_bubbles_of_a_run_without_reports_are_empty` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_review_bubbles.py::test_pending_bubbles_skip_ids_the_review_already_holds` fails with ImportError, then passes
-- [ ] Run `python -m pytest tests/scripts/test_pr_review_driver.py -q -k bubbles`: passed, no failures (pr_review.py bubbles and waves still print the pending lines)
-- [ ] Record the commit: `plan.py record 0001 BM-2 --sha <sha>`
+- [x] Test `tests/lib/test_review_bubbles.py::test_closed_ids_follow_the_latest_resolution` fails with ImportError, then passes
+- [x] Test `tests/lib/test_review_bubbles.py::test_fixer_bubbles_pair_each_bubble_with_its_fixer` fails with ImportError, then passes
+- [x] Test `tests/lib/test_review_bubbles.py::test_fixer_bubbles_of_a_run_without_reports_are_empty` fails with ImportError, then passes
+- [x] Test `tests/lib/test_review_bubbles.py::test_pending_bubbles_skip_ids_the_review_already_holds` fails with ImportError, then passes
+- [x] Run `python -m pytest tests/scripts/test_pr_review_driver.py -q -k bubbles`: passed, no failures (pr_review.py bubbles and waves still print the pending lines)
+- [x] Record the commit: `plan.py record 0001 BM-2 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit c6457e2: 4 test node(s) passed
+
+- `c6457e2706ee6a32168e41911af05d016fc33228`
+- `tree 5fc72cc386dc16dc4f6061d25c2eb8cf990a5567`
+- `python -m pytest -q tests/lib/test_review_bubbles.py::test_closed_ids_follow_the_latest_resolution tests/lib/test_review_bubbles.py::test_fixer_bubbles_pair_each_bubble_with_its_fixer tests/lib/test_review_bubbles.py::test_fixer_bubbles_of_a_run_without_reports_are_empty tests/lib/test_review_bubbles.py::test_pending_bubbles_skip_ids_the_review_already_holds`
 
 ### BM-3: Library: memo format, scaffold, check, facts and reviewer model
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** none
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** none
 **Files:** `plugins/harness/lib/harness_lib/bubble_memo.py`
 
 **Anchors:**
@@ -113,33 +121,37 @@ Create harness_lib/review_bubbles.py holding closed_ids, fixer_bubbles and pendi
 
 Create harness_lib/bubble_memo.py, pure (no config reads at import time; the root is an argument). Anchors as constants: MEMO_SUFFIX, INDEX_HEADER, STATUS_OPEN, STATUS_DECIDED, DECISION_OPEN, DECISION_PREFIX, ENTRY_PREFIX, STUB. Functions: memo_name(pr); currently_bubbled(doc, pending) -> Bubbled(id, cls, reason) (bubbles in order, then pending pairs not already present; class from bubble_up, else the pending pair, else 'unclassified'); flagged_ids(doc, ids) and needs_chain; reviewer_model(flagged); scaffold_memo(doc, bubbled); add_missing(text, doc, bubbled) -> (text, added) that appends entries and index rows and never edits existing text; parse_index and entry_blocks; check_memo(text, bubbled, doc, root) -> (problems, notes) with the rules of spec Section 1 (check) and problem lines formatted '<ID>: <what>'; Facts (pydantic) with validate_facts(raw, issue, root) that refuses an empty field, a fix_effects count different from the issue's fix list, and any reference whose file or line is not on disk; apply_facts(text, facts) that replaces only the flagged entry's References, Current behavior, When, Chain, flow and Expected-behavior stubs. Entry layout: spec 'Memo format'; a reference is a backticked path:line or path:start-end; an expected-behavior line is '- (a) <fix text> -> <effect>'. Python 3.11, Optional/Union, functions under 50 lines, no first or second person in comments.
 
-- [ ] Test `tests/lib/test_bubble_memo.py::test_the_anchors_are_pinned` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_flagged_means_critical_or_several_files` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_currently_bubbled_adds_pending_fixer_bubbles_once` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_an_unlisted_class_reads_unclassified` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_scaffold_writes_index_rows_headings_and_stubs` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_references_without_lines_are_stubbed` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_only_flagged_entries_carry_chain_and_flow` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_parse_index_reads_the_scaffolded_rows` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_add_missing_appends_new_entries_and_leaves_old_text_alone` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_add_missing_with_everything_present_changes_nothing` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_a_filled_memo_passes` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_unfilled_stubs_fail` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_a_bubbled_id_without_an_entry_fails` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_a_flagged_entry_without_a_chain_fails` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_an_entry_citing_two_files_needs_a_chain_even_when_the_json_names_one` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_a_line_past_the_end_of_the_file_fails` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_a_missing_file_fails` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_a_dropped_fix_option_fails` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_a_stale_id_is_a_note_not_a_problem` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_a_decided_id_is_neither_problem_nor_note` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_valid_facts_pass` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_invalid_facts_are_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_bubble_memo.py::test_apply_facts_fills_the_flagged_entry_but_not_prose` fails with ImportError, then passes
-- [ ] Run `python -m ruff check plugins/harness/lib/harness_lib/bubble_memo.py --no-cache`: All checks passed
-- [ ] Record the commit: `plan.py record 0001 BM-3 --sha <sha>`
+- [x] Test `tests/lib/test_bubble_memo.py::test_the_anchors_are_pinned` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_flagged_means_critical_or_several_files` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_currently_bubbled_adds_pending_fixer_bubbles_once` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_an_unlisted_class_reads_unclassified` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_scaffold_writes_index_rows_headings_and_stubs` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_references_without_lines_are_stubbed` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_only_flagged_entries_carry_chain_and_flow` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_parse_index_reads_the_scaffolded_rows` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_add_missing_appends_new_entries_and_leaves_old_text_alone` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_add_missing_with_everything_present_changes_nothing` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_a_filled_memo_passes` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_unfilled_stubs_fail` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_a_bubbled_id_without_an_entry_fails` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_a_flagged_entry_without_a_chain_fails` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_an_entry_citing_two_files_needs_a_chain_even_when_the_json_names_one` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_a_line_past_the_end_of_the_file_fails` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_a_missing_file_fails` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_a_dropped_fix_option_fails` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_a_stale_id_is_a_note_not_a_problem` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_a_decided_id_is_neither_problem_nor_note` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_valid_facts_pass` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_invalid_facts_are_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_bubble_memo.py::test_apply_facts_fills_the_flagged_entry_but_not_prose` fails with ImportError, then passes
+- [x] Run `python -m ruff check plugins/harness/lib/harness_lib/bubble_memo.py --no-cache`: All checks passed
+- [x] Record the commit: `plan.py record 0001 BM-3 --sha <sha>`
 
-**Evidence:** 
+**Evidence:** commit c6457e2: 23 test node(s) passed
+
+- `c6457e2706ee6a32168e41911af05d016fc33228`
+- `tree 5fc72cc386dc16dc4f6061d25c2eb8cf990a5567`
+- `python -m pytest -q tests/lib/test_bubble_memo.py::test_the_anchors_are_pinned tests/lib/test_bubble_memo.py::test_flagged_means_critical_or_several_files tests/lib/test_bubble_memo.py::test_currently_bubbled_adds_pending_fixer_bubbles_once tests/lib/test_bubble_memo.py::test_an_unlisted_class_reads_unclassified tests/lib/test_bubble_memo.py::test_scaffold_writes_index_rows_headings_and_stubs tests/lib/test_bubble_memo.py::test_references_without_lines_are_stubbed tests/lib/test_bubble_memo.py::test_only_flagged_entries_carry_chain_and_flow tests/lib/test_bubble_memo.py::test_parse_index_reads_the_scaffolded_rows tests/lib/test_bubble_memo.py::test_add_missing_appends_new_entries_and_leaves_old_text_alone tests/lib/test_bubble_memo.py::test_add_missing_with_everything_present_changes_nothing tests/lib/test_bubble_memo.py::test_a_filled_memo_passes tests/lib/test_bubble_memo.py::test_unfilled_stubs_fail tests/lib/test_bubble_memo.py::test_a_bubbled_id_without_an_entry_fails tests/lib/test_bubble_memo.py::test_a_flagged_entry_without_a_chain_fails tests/lib/test_bubble_memo.py::test_an_entry_citing_two_files_needs_a_chain_even_when_the_json_names_one tests/lib/test_bubble_memo.py::test_a_line_past_the_end_of_the_file_fails tests/lib/test_bubble_memo.py::test_a_missing_file_fails tests/lib/test_bubble_memo.py::test_a_dropped_fix_option_fails tests/lib/test_bubble_memo.py::test_a_stale_id_is_a_note_not_a_problem tests/lib/test_bubble_memo.py::test_a_decided_id_is_neither_problem_nor_note tests/lib/test_bubble_memo.py::test_valid_facts_pass tests/lib/test_bubble_memo.py::test_invalid_facts_are_refused tests/lib/test_bubble_memo.py::test_apply_facts_fills_the_flagged_entry_but_not_prose`
 
 ### BM-4: Driver: scaffold, init, record, apply, check
 
