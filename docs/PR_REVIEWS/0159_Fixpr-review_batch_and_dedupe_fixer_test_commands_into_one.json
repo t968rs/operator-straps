@@ -1,0 +1,250 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 159,
+  "pr_title": "Fix(pr-review): batch and dedupe fixer test commands into one pytest run",
+  "branch": "1106-pr-review-pytest",
+  "base_branch": "main",
+  "base_sha": "44ceeba80a83b68ba78eca06938d7e14cd2ce6dc",
+  "head_sha": "23d5f6cbb85f7b3924abaaf34041c569de92897e",
+  "review_date": "2026-10-30",
+  "verdict": "READY TO MERGE - 6 of 6 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 71,
+    "deletions": 15,
+    "files_changed": 4
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0159/pr159_20261030T223137Z/findings/tests.json",
+    "docs/_scratch/pr_review/0159/pr159_20261030T223137Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0159/pr159_20261030T223137Z/findings/docs.json",
+    "docs/_scratch/pr_review/0159/pr159_20261030T223137Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "New tests drive the real capture, merge, build and waves pipeline and assert on the generated fixer brief text; only gh and the Phase 4 script are stubbed through the driver's documented seams, so none is a mock-chain wiring test.",
+    "test_files_sharing_tests_get_one_pytest_command checks the dedupe contract directly (test_a.py and test_shared.py each appear once in the single run line, the deferred slow test is absent) with a registry where a test is reachable both as its own file and through a folder target.",
+    "The updated assertion in test_waves_rows_and_fix_brief tracks the new per-file mapping format ('- tests/test_a.py: tests/test_a.py') rather than being loosened.",
+    "_tests_block dedupes the runnable tests with dict.fromkeys in first-seen order, so files sharing a registry test produce one pytest process, and deferred tests are filtered before the command is built.",
+    "Deferred tests keep their per-file 'deferred, do not run' lines with reasons, so the marker text the agent doc and SKILL.md rely on is unchanged.",
+    "The _fixer_rules list keeps its element count, so the rules[:4] / rules[4:] split around the bubble questions still lands correctly.",
+    "New TestBatchedFixerTests cases cover one-command dedupe, the plain-text per-file mapping and per-file deferred listing; SKILL.md and the pr-fixer Test-before-recording bullet were updated to the batched flow.",
+    "pr-fixer.md:49-52 matches the brief's fixer rule in pr_review.py:1741-1746 (batched run once, targeted rerun on red, batched once more), so the agent prompt and the generated brief give the same procedure.",
+    "SKILL.md:831-834 dispatch summary is updated together with the agent prompt, so the skill's description of fixer behavior does not lag behind the code change.",
+    "The red-path wording keeps the existing fixer_failed contract (fix inside the file set or undo and bubble naming the test), so the batching change does not touch bubble classification.",
+    "Dedupe uses dict.fromkeys over first-seen order, so the batched command is deterministic and the widened file set's self-matching tests do not appear twice.",
+    "TestBatchedFixerTests drives the real `waves` command against a built project and reads the written brief, so the tests are behavioral rather than wiring checks; the count==1 assertions would fail without the dedupe.",
+    "Deferred tests stay listed per file with their reason and are kept out of the batch, so the no-slow-test rule survives the reshuffle.",
+    "The brief generator, pr-fixer.md Test-before-recording rule and SKILL.md dispatch line were updated together in one change."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Harness plugin version not bumped",
+        "file": "plugins/harness/.claude-plugin/plugin.json",
+        "lines": "3",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The PR changes what the harness plugin does (fixer brief layout, fixer agent procedure) but leaves plugins/harness/.claude-plugin/plugin.json at 0.45.0. The project Releases rule requires a bump, and the previous fix (8973926) followed it. Consumers of the published marketplace will not pick up the new fixer contract without a new version.",
+        "fix": [
+          "Bump `version` in plugins/harness/.claude-plugin/plugin.json from 0.45.0 to 0.45.1 (or 0.46.0 if the brief-format change counts as a feature)."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "pr-fixer agent doc still promises a per-file test command",
+        "file": "plugins/harness/agents/pr-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-fixer.md",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "49-52,75-76",
+        "reviewer": "runtime, docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plugins/harness/agents/pr-fixer.md:75-76 says tests run 'with the exact command the brief lists for each file' (`... -m pytest <abs test file> ...`). After this PR the brief lists one batched command plus a plain-text per-file mapping with no per-file command (pr_review.py:1721-1729), and pr-fixer.md:49-52 in the same file already describes the batched run. The Environment bullet contradicts the Test-before-recording bullet and the generated brief.\n\nAlso (docs): pr-fixer.md:75-76 says tests run 'with the exact command the brief lists for each file' and shows a single-file template (`-m pytest <abs test file> -q -p no:cacheprovider`). After this PR the brief (pr_review.py:1720-1729, _tests_block) lists one batched command over every non-deferred test, then a 'Per file' list of repo-relative test paths with no command at all. The agent prompt now contradicts itself: Operating rules line 49-52 say run the batched command and, on a red, rerun only the named files' tests, while the Environment section points to per-file commands that no longer exist. A fixer (often haiku) that follows line 75 for the red rerun finds no command to copy and has to assemble one from repo-relative paths, which the prompt never explains.\n\nAlso (roast): After a red, the brief tells the fixer to rerun only the tests of the files the failure names, but the per-file lines (pr_review.py:1724-1729) list bare repo-relative paths, not commands. pr-fixer.md:75-76 still says tests run 'with the exact command the brief lists for each file', a command that no longer exists. So the fixer has to build an absolute-path hpy pytest call itself. A haiku fixer with a reset cwd will grab bare `python -m pytest tests/x.py`, the exact interpreter trap the Environment section warns about. The phrase 'the tests of the files it names' is also ambiguous: a red names test files, while the mapping is keyed by source file. Two docs, two different test procedures.",
+        "fix": [
+          "Reword pr-fixer.md:75-76 to: tests run by file, never by directory, through the brief's batched command; a rerun of a subset reuses that command's `hpy -m pytest <abs test files> -q -p no:cacheprovider` form with only the named test files.",
+          "Rewrite pr-fixer.md:75-76 to: 'Tests run by file, never by directory. The brief's batched command (`sh \"<plugin>/scripts/hpy\" -m pytest <abs test file> ... -q -p no:cacheprovider`) names every test file; a rerun after a red uses the same command form over only the named test files, each as `<repo>/<path from the brief's Per file list>`.'",
+          "Alternatively have _tests_block (pr_review.py:1724-1728) emit a ready rerun command per file and change line 75 to 'with the exact batched command, or a per-file rerun command, the brief lists'.",
+          "Rewrite pr-fixer.md:75-76 to say the fixer runs the brief's batched command, and that a rerun after a red uses that same command with its path list cut down to the failing test files (absolute paths kept). Reword pr_review.py:1724 and :1741-1742 the same way: 'rerun the batched command over only the failing test files'.",
+          "Have _tests_block emit a ready-made pytest_command(ctx.repo, mine) per file (or per failing-test group) next to the plain-text mapping, so the rerun is copy-paste and pr-fixer.md:75 stays true."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Batched-test rule silent on briefs with no runnable test",
+        "file": "plugins/harness/agents/pr-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-fixer.md",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "49-52",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "pr-fixer.md:49 and SKILL.md:832 tell the fixer to run 'the brief's batched test command once', but _tests_block (pr_review.py:1721-1723) emits that command only when at least one non-deferred test exists. A file set with no registered or only deferred tests yields a brief with no batched command, and the prompt does not say that the run is then skipped, so a literal fixer may search for a command or bubble needlessly.",
+        "fix": [
+          "Append to the pr-fixer.md:49-52 bullet: 'When the brief lists no batched command (every file shows no runnable or no registered test), skip the run.'"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Rerun-after-red rule gives the fixer no command and uses ambiguous wording",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "tests/scripts/test_pr_review_driver.py"
+        ],
+        "lines": "1721-1729,1741-1746",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The rule at pr_review.py:1741-1743 (and the heading at 1724) says 'rerun only the tests of the files it names'. The per-file mapping lists source files to repo-relative test names, not commands, so after a red the fixer must hand-assemble the hpy/pytest invocation with absolute quoted paths; before this change each test had a ready command. 'the files it names' is also unclear: a pytest failure names test files, while the mapping is keyed by edited source files.\n\nAlso (runtime): When `runnable` is empty (every registered test deferred, or no registered test for the file set), _tests_block omits the batched command (pr_review.py:1721) but still prints the 'Per file (after a red, rerun ...)' heading, and _fixer_rules (1741) still says 'Run the batched test command once after the last edit'. The fixer is told to run a command that does not exist.\n\nAlso (runtime): pr_review.py:1744-1746 breaks the test rule as `\"bubble the id `fixer_failed`, ... Never run a test marked \" / \"deferred: it is too \" / \"slow for a fix wave, ...\"`. The extra short literal `\"deferred: it is too \"` is a leftover of the edit and reads as a hard-wrap accident.\n\nAlso (roast): When every test of the file set is deferred or none is registered, _tests_block (pr_review.py:1721) leaves out the batched line. The rules at :1741 still say 'Run the batched test command once', and the per-file heading still talks about reruns after a red. The fixer is told to run a command that is not there. Neither the 'no runnable test' nor the 'no registered test' label (pr_review.py:1728) is asserted by any test in tests/scripts/test_pr_review_driver.py, so either label could change silently.",
+        "fix": [
+          "Say 'rerun only the failing test files, with the batched command's form (same prefix and flags, only those paths)'.",
+          "Or print a one-line pytest_command(ctx.repo, mine) per file in the mapping so each file's subset is copyable.",
+          "In _tests_block, when runnable is empty add a line such as 'No runnable test for this file set; nothing to run.' and skip the 'after a red' heading.",
+          "Or phrase the rule conditionally: 'When the brief lists a batched test command, run it once ...'.",
+          "Join the fragment: `\"... Never run a test marked deferred: it is too slow for a fix wave, and closeout lists it for one run after the waves.\"` wrapped to the line limit.",
+          "In _tests_block, when `runnable` is empty, emit 'No runnable test in the file set: record without a test run.' in place of the batched block. Add a TestBatchedFixerTests case for a file set whose only test is deferred, asserting that line and the 'no runnable test' label."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Per-file fallback branches of the new tests block are untested",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "files": [
+          "tests/scripts/test_pr_review_driver.py",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "1086-1121",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "_tests_block in pr_review.py (1719-1729) gained three new outcomes: no runnable command when every test of the set is deferred, 'no runnable test' for a file whose tests are all deferred, and 'no registered test' for a file with none. TestBatchedFixerTests only exercises the mixed case (a.py and b.py both have a runnable test plus one deferred test). A grep of tests/ finds no assertion on 'no runnable test', 'no registered test' or the 'Run once after the last edit' line, so a regression in those branches (for example a deferred-only file set still emitting an empty pytest command) would pass.\n\nAlso (tests): test_deferred_tests_stay_listed_per_file asserts tests.count(note) == 3, explained by a comment: a.py and b.py reach test_slow.py through src/pkg/, and the widened file set also holds tests/test_slow.py itself. The number depends on how plan_waves widens a fixer's file set with registered tests (tests_for matches f == path), not on the deferral contract the test is named for. A change to widening (for example leaving deferred tests out of the file set) would fail it for a reason unrelated to listing deferred tests per file. It also cannot say which per-file entries carry the note.\n\nAlso (tests): _brief_tests (1087-1098) runs _make_pr (git init plus commits), capture, record, merge, build and waves for every one of the three tests, though all three read the same brief section. This repeats the module's most expensive setup three times (the module otherwise uses the pr_template/copy_project pattern to avoid repeated git calls). The helper docstring also says 'one fixer owning a.py and b.py' but nothing asserts the finding landed in a single fixer.",
+        "fix": [
+          "Add a test with a registry whose only target test for the fixed file is slow (all deferred) asserting _run_lines(tests) == [], that the per-file line reads '- src/pkg/a.py: no runnable test', and that the deferred note is still listed.",
+          "Add a case for a fixed file with no registry entry asserting '- <file>: no registered test'.",
+          "Assert the note appears directly under the a.py and b.py entries (split tests on '\\n- ' and check the blocks starting '- src/pkg/a.py:' and '- src/pkg/b.py:' each hold the note), and drop the exact count.",
+          "Keep the count but also assert the three owning entries by name so the 3 is explained by the checks rather than a comment.",
+          "Build the brief section once per class (a class-scoped fixture or functools-cached helper keyed on nothing, returning the string) and let the three tests assert on it.",
+          "Or fold the three assertion groups into one test with the shared setup."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "One pytest process breaks on same-named test files in different folders",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/agents/pr-fixer.md"
+        ],
+        "lines": "1718-1723",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "The batched command at pr_review.py:1719-1723 puts every test of the file set into one pytest process. Under pytest's default `prepend` import mode, two test files with the same basename in different folders that have no `__init__.py` (e.g. tests/mods/test_config.py and tests/scripts/test_config.py) stop collection with 'import file mismatch'. The old one-process-per-file commands never hit this. A fixer then sees a red its edit did not cause and may bubble `fixer_failed` for a perfectly good fix. Isolation between files is gone too: state leaking from one module can now redden another. That is the price of batching, but nothing in the brief tells the fixer this kind of red is not its fault.",
+        "fix": [
+          "Split `runnable` into several pytest_command lines so no two paths in one command share a basename, keeping first-seen order. Most file sets still get a single command.",
+          "Keep one command, but tell the fixer in _fixer_rules (pr_review.py:1741) and pr-fixer.md:49 that a collection error or 'import file mismatch' red means the edit is fine: rerun the colliding files as separate commands before treating it as a red."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 159 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"23d5f6cbb85f7b3924abaaf34041c569de92897e\",\"headRefName\":\"1106-pr-review-pytest\",\"headRefOid\":\"23d5f6cbb85f7b3924abaaf34041c569de92897e\",\"last_sha\":\"23d5f6cbb85f7b3924abaaf34041c569de92897e\",\"mergeCommit\":null,\"number\":159,\"state\":\"OPEN\",\"title\":\"Fix(pr-review): batch and dedupe fixer test commands into one pytest run\",\"url\":\"https://github.com/t968rs/operator-straps/pull/159\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1106-pr-review-pytest",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1106-pr-review-pytest",
+        "head_ref_name": "1106-pr-review-pytest",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "23d5f6cbb85f7b3924abaaf34041c569de92897e",
+        "head_sha": "23d5f6cbb85f7b3924abaaf34041c569de92897e",
+        "base_ancestor_command": "git merge-base --is-ancestor 23d5f6cbb85f7b3924abaaf34041c569de92897e HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 23d5f6cbb85f7b3924abaaf34041c569de92897e HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "23d5f6c (working-tree snapshot; developer commits) - pr-fixer.md Test-before-recording bullet now says to skip the run when the brief lists no batched command; SKILL.md dispatch bullet now says to skip the batched test run when the brief lists no batched command; pr-fixer.md (other part) not edited"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "23d5f6c (working-tree snapshot; developer commits) - _tests_block emits NO_RUNNABLE_TESTS and a plain 'Per file:' heading when nothing is runnable; rerun rule is conditional on a batched command and says to rerun it cut down to the failing test files; split 'deferred: it is too' literal joined; new test asserts the no-run line and both labels"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "23d5f6c (working-tree snapshot; developer commits) - TestBatchedFixerTests folds the mixed case into one test with shared setup, asserts a single fixer owns a.py and b.py, checks the deferred note inside the a.py and b.py entries instead of an exact count, and adds a _tests_block unit test for deferred-only and unregistered files; pr_review.py: the new branches it covers were edited under M2"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "23d5f6c (working-tree snapshot; developer commits) - _fixer_rules and pr-fixer.md tell the fixer a collection error such as 'import file mismatch' is not its edit's fault and to run the colliding files as separate commands of the same form first"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "23d5f6c (working-tree snapshot; developer commits) - pr-fixer.md Environment bullet now points to the brief's batched command and a subset rerun in the same form with absolute <repo>/<path> test files; pr_review.py per-file heading and rule reworded to rerun the batched command over only the failing test files"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "23d5f6c (working-tree snapshot; developer commits) - Bumped harness plugin version 0.45.0 to 0.45.1 at plugins/harness/.claude-plugin/plugin.json:3 (fixer brief layout and fixer agent procedure changed; Releases rule)."
+    }
+  ]
+}

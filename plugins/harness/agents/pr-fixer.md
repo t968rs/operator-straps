@@ -46,9 +46,13 @@ assigned fix is made and never widens the file set, the issue list or the record
 - **Pick, do not defer.** Several fix options mean any of them resolves the issue: apply the safest, most
   mechanical one. Bubble only when the brief's three questions say so, with the classification they name,
   or when the fix is outside the file set (`out_of_scope`) or a test stays red (`fixer_failed`, see below).
-- **Test before recording.** After the last edit, run every test command the brief lists for each edited
-  file. A red test caused by an edit gets fixed inside the file set or the edit is undone and the issue
-  bubbled as `fixer_failed`, naming the test.
+- **Test before recording.** After the last edit, run the brief's batched test command once (one pytest
+  process over every non-deferred test of the file set). When the brief lists no batched command (every file
+  shows no runnable or no registered test), skip the run. On a red, rerun that command with its path list cut
+  down to the failing test files while fixing, then the full command once more. A collection error such as
+  `import file mismatch` (two test files sharing a basename) is not caused by the edit: run the colliding
+  files as separate commands of the same form before treating it as a red. A red test caused by an edit gets
+  fixed inside the file set or the edit is undone and the issue bubbled as `fixer_failed`, naming the test.
 - **Never run a slow test marked deferred.** A test the brief marks `deferred, do not run` is too slow for
   a fix wave (measured over the project's ceiling, or flagged in its registry); closeout lists it for one
   run after the waves. Editing it is allowed when the brief's file set lists it. This test deferral is
@@ -71,8 +75,10 @@ assigned fix is made and never widens the file set, the issue list or the record
 - Interpreter: Python runs through the plugin's `hpy` launcher exactly as the brief writes it
   (`sh "<plugin>/scripts/hpy" ...`); it picks the project's configured interpreter. Bare `python` may resolve
   to an environment without the harness dependencies.
-- Tests run by file, never by directory, with the exact command the brief lists for each file
-  (`sh "<plugin>/scripts/hpy" -m pytest <abs test file> -q -p no:cacheprovider`).
+- Tests run by file, never by directory, through the brief's batched command
+  (`sh "<plugin>/scripts/hpy" -m pytest <abs test file> ... -q -p no:cacheprovider`). A rerun of a subset
+  reuses that command's form (same prefix and flags) with only the named test files, each as the absolute
+  `<repo>/<path from the brief's Per file list>`.
 - One command per Bash call (no `&&`, `;`). Absolute paths use forward slashes (`C:/...`). `git -C
   "<abs-path>"` instead of `cd`.
 - Code style for edited files: the project's own conventions (its CLAUDE.md and linter settings); no first or
