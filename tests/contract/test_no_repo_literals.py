@@ -14,7 +14,7 @@ import pytest
 from conftest import REPO_ROOT
 
 PLUGINS = REPO_ROOT / "plugins"
-TEXT_SUFFIXES = {".py", ".md", ".json", ".jsonl", ".ts", ".tsx", ".sh", ".txt", ".yaml", ".yml"}
+TEXT_SUFFIXES = {".py", ".md", ".json", ".jsonl", ".ts", ".tsx", ".sh", ".txt", ".yaml", ".yml", ".tmpl"}
 SKIP_DIRS = {"node_modules", "__pycache__", ".claude-plugin-cache"}
 
 BANNED: Tuple[Tuple[str, re.Pattern], ...] = (
@@ -34,7 +34,7 @@ BANNED: Tuple[Tuple[str, re.Pattern], ...] = (
 # Agents ship namespaced; a dispatch naming the bare id resolves to nothing once installed.
 BARE_AGENT = re.compile(
     r"subagent_type[\"'`]?\s*[:=]\s*[\"'`]?(?!harness:)(pr-reviewer|pr-fixer|pr-team-orchestrator|pr-team-fixer"
-    r"|messenger|roast-my-code)\b")
+    r"|messenger|roast-my-code|strap-scenario-runner|strap-judge)\b")
 
 
 def _plugin_files() -> Iterator[Path]:
@@ -60,6 +60,11 @@ def test_scan_sees_the_plugins() -> None:
     assert len(FILES) > 100, f"only {len(FILES)} plugin files found under {PLUGINS}"
 
 
+def test_templates_are_scanned() -> None:
+    templates = [p for p in FILES if p.suffix == ".tmpl"]
+    assert templates, f"no .tmpl file under {PLUGINS} reaches the literal scan"
+
+
 @pytest.mark.parametrize("label,pattern", BANNED, ids=[b[0] for b in BANNED])
 def test_no_consumer_literal(label: str, pattern: re.Pattern) -> None:
     hits = _hits(pattern, FILES)
@@ -82,3 +87,10 @@ def test_bare_agent_pattern() -> None:
     assert BARE_AGENT.search('subagent_type: "pr-fixer"')
     assert BARE_AGENT.search("subagent_type=`messenger`")
     assert not BARE_AGENT.search('subagent_type: "harness:pr-fixer"')
+
+
+def test_bare_strap_agent_ids() -> None:
+    assert BARE_AGENT.search('subagent_type: "strap-judge"')
+    assert BARE_AGENT.search("subagent_type='strap-scenario-runner'")
+    assert not BARE_AGENT.search('subagent_type: "harness:strap-judge"')
+    assert not BARE_AGENT.search('subagent_type: "harness:strap-scenario-runner"')

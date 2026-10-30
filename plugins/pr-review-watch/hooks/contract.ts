@@ -121,7 +121,7 @@ const slotDispatch = (h: Header, runId: string, runtimeBase: string): Dispatch |
 export const DEFINED_AGENTS = [
   'harness:bubble-memo-investigator', 'harness:bubble-memo-reviewer', 'harness:messenger', 'harness:pr-fixer',
   'harness:pr-reviewer', 'harness:pr-team-fixer', 'harness:pr-team-orchestrator', 'harness:roast-my-code',
-  'harness:todo-editor',
+  'harness:strap-judge', 'harness:strap-scenario-runner', 'harness:todo-editor',
 ] as const
 
 export const isDefinedAgent = (subagentType: string | undefined): boolean =>
