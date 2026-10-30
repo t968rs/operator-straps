@@ -329,7 +329,7 @@ def test_worktree_root_from_linked_worktree_names_main_repo(make_project, tmp_pa
     assert load_config(wt).resolve_worktree_root() == tmp_path / "trees" / "gizmo"
 
 
-def test_worktree_steps_default_to_none(make_project) -> None:
+def test_worktree_steps_default_to_empty(make_project) -> None:
     cfg = load_config(make_project())
     assert cfg.worktree_setup == ()
     assert cfg.worktree_baseline == ()
@@ -344,11 +344,23 @@ def test_worktree_steps_load_as_argv_tuples(make_project) -> None:
     assert cfg.worktree_baseline == (("python", "-m", "pytest", "tests/test_a.py", "-q"), ("python", "-V"))
 
 
-@pytest.mark.parametrize("bad", [{"worktree_setup": ["pip install -e ."]}, {"worktree_setup": [[]]},
-                                 {"worktree_baseline": [[""]]}, {"worktree_baseline": "pytest"},
-                                 {"worktree_setup": [[1]]}])
+BAD_WORKTREE_STEPS = [{"worktree_setup": ["pip install -e ."]}, {"worktree_setup": [[]]},
+                      {"worktree_baseline": [[""]]}, {"worktree_baseline": "pytest"},
+                      {"worktree_setup": [[1]]}]
+
+
+@pytest.mark.parametrize("bad", BAD_WORKTREE_STEPS)
 def test_invalid_worktree_steps_raise(make_project, bad: dict) -> None:
     with pytest.raises(ConfigError):
+        load_config(make_project(bad))
+
+
+@pytest.mark.parametrize("bad", BAD_WORKTREE_STEPS)
+def test_invalid_worktree_steps_raise_without_jsonschema(make_project, monkeypatch: pytest.MonkeyPatch,
+                                                         bad: dict) -> None:
+    monkeypatch.setitem(sys.modules, "jsonschema", None)
+    key = next(iter(bad))
+    with pytest.raises(ConfigError, match=key):
         load_config(make_project(bad))
 
 

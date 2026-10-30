@@ -93,8 +93,8 @@
     },
     "auto_approve_python_c": {"type": "boolean", "description": "Auto-approve `python -c` Bash commands in this project."},
     "worktree_root": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}], "description": "Directory linked worktrees are created under; a leading ~ expands and {repo} is the main checkout's folder name. null: ~/.config/harness/worktrees/{repo}."},
-    "worktree_setup": {"$ref": "#/$defs/argvList", "description": "Commands d-w runs, in order, in each new worktree (dependency install). Each command is an argv array, run without a shell; the first failure stops the list. A failure is reported, never fatal."},
-    "worktree_baseline": {"$ref": "#/$defs/argvList", "description": "Commands d-w runs after worktree_setup succeeds, to record the test state before any change (name test files, never a directory). A failure is reported, never fatal."},
+    "worktree_setup": {"$ref": "#/$defs/argvList", "description": "Commands d-w runs, in order, in each new worktree (dependency install). Each command is an argv array, run without a shell and with stdin closed; a bare program is looked up on PATH (.cmd shims included on Windows), a relative program path resolves against the new worktree. Each step is killed with its process tree after 600 s; the first failure stops the list. A failure is reported, never fatal."},
+    "worktree_baseline": {"$ref": "#/$defs/argvList", "description": "Commands d-w runs after worktree_setup succeeds, to record the test state before any change (name test files, never a directory). Runs like worktree_setup (PATH lookup, stdin closed, 600 s per-step kill). A failure is reported, never fatal. The first failure stops the list; each later command is reported as baseline [skipped]."},
     "runlogs": {
       "type": "object",
       "additionalProperties": false,

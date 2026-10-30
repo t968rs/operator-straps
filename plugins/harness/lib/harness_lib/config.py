@@ -294,7 +294,8 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
         auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
-        worktree_setup=_argv_list(m["worktree_setup"]), worktree_baseline=_argv_list(m["worktree_baseline"]),
+        worktree_setup=_argv_list(m["worktree_setup"], "worktree_setup"),
+        worktree_baseline=_argv_list(m["worktree_baseline"], "worktree_baseline"),
         runlogs=_runlogs(m["runlogs"]), todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
     )
 
@@ -309,9 +310,20 @@ def _require_group(pattern: str, group: str, where: str) -> None:
         raise ConfigError(f"{where}: no named group '{group}'")
 
 
-def _argv_list(commands: List[List[str]]) -> Tuple[Tuple[str, ...], ...]:
-    """Each configured command as an immutable argv tuple."""
+def _argv_list(commands: List[List[str]], where: str) -> Tuple[Tuple[str, ...], ...]:
+    """Each configured command as an immutable argv tuple; ConfigError unless each is a non-empty str list.
+
+    Repeats the schema's ``argvList`` shape check, so a load without ``jsonschema`` never splits a
+    command string into one-character argv entries.
+    """
+    if not isinstance(commands, list) or not all(_is_argv(argv) for argv in commands):
+        raise ConfigError(f"{where}: must be a list of non-empty lists of non-empty strings")
     return tuple(tuple(argv) for argv in commands)
+
+
+def _is_argv(argv: Any) -> bool:
+    """True when ``argv`` is a non-empty list of non-empty strings."""
+    return isinstance(argv, list) and bool(argv) and all(isinstance(a, str) and a for a in argv)
 
 
 def _runlogs(r: Dict[str, Any]) -> RunLogsConfig:

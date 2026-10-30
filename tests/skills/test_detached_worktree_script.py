@@ -286,6 +286,7 @@ def test_run_from_a_linked_worktree_warns_before_creating_another(script_path: P
     done = subprocess.run(cmd, capture_output=True, text=True, env={**os.environ, **_GIT_ENV})
     assert done.returncode == 0, done.stderr
     assert "linked worktree" in done.stderr
+    assert done.stderr.index("linked worktree") < done.stderr.index("detached worktree at")
     assert Path(done.stdout.strip()).is_dir()
     assert len(done.stdout.strip().splitlines()) == 1
 
@@ -346,7 +347,12 @@ def test_failing_setup_skips_the_baseline(script_path: Path, repos: dict) -> Non
 def test_a_failing_setup_command_stops_the_later_ones(script_path: Path, repos: dict) -> None:
     _with_steps(repos, setup=[_py("import sys; sys.exit(1)"), _py("open('second.txt', 'w').write('x')")])
     done = _run(script_path, repos)
-    assert not (Path(done.stdout.strip()) / "second.txt").exists()
+    assert done.returncode == 0, done.stderr
+    wt = Path(done.stdout.strip())
+    assert wt.is_dir()
+    assert done.stderr.count("setup [") == 1
+    assert "setup [fail]" in done.stderr
+    assert not (wt / "second.txt").exists()
 
 
 def test_missing_executable_is_a_reported_failure(script_path: Path, repos: dict) -> None:
@@ -354,6 +360,12 @@ def test_missing_executable_is_a_reported_failure(script_path: Path, repos: dict
     done = _run(script_path, repos)
     assert done.returncode == 0, done.stderr
     assert "setup [fail]" in done.stderr
+
+
+def test_step_timeout_is_a_reported_failure(module, monkeypatch, capsys, tmp_path: Path) -> None:
+    monkeypatch.setattr(module, "STEP_TIMEOUT_SECONDS", 0.5)
+    assert module.run_step("setup", _py("import time; time.sleep(30)"), tmp_path) is False
+    assert "setup [fail]" in capsys.readouterr().err
 
 
 def test_no_setup_flag_skips_setup_and_baseline(script_path: Path, repos: dict) -> None:
@@ -364,11 +376,13 @@ def test_no_setup_flag_skips_setup_and_baseline(script_path: Path, repos: dict) 
     wt = Path(done.stdout.strip())
     assert not (wt / "setup_marker.txt").exists()
     assert not (wt / "baseline_marker.txt").exists()
-    assert "setup" not in done.stderr
-    assert "baseline" not in done.stderr
+    assert "setup [" not in done.stderr
+    assert "baseline [" not in done.stderr
 
 
 def test_no_configured_steps_prints_no_step_lines(script_path: Path, repos: dict) -> None:
     done = _run(script_path, repos)
-    assert "setup" not in done.stderr
-    assert "baseline" not in done.stderr
+    assert done.returncode == 0, done.stderr
+    assert Path(done.stdout.strip()).is_dir()
+    assert "setup [" not in done.stderr
+    assert "baseline [" not in done.stderr
