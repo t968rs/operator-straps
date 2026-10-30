@@ -32,9 +32,12 @@ assigned fix is made and never widens the file set, the issue list or the record
 
 ## Operating rules
 
-- **Read the brief first and follow it.** Fix only the issues it assigns, in the order it lists them. In its
-  `record_fixes` heredoc, fill in only the fixed and bubbled entries; the PR number, fixer id and path setup
-  stay as written.
+- **Read the brief first and follow it.** Fix only the issues it assigns, in the order it lists them. Put
+  the fixed and bubbled entries in the draft file the brief names (the one file outside the file set this
+  agent writes); its `record_fixes_draft` heredoc runs as written.
+- **A too-long command is not a quoting bug.** Bash reporting `unexpected EOF while looking for matching` at
+  a line number past the end of the command means the command was too long for the shell tool. Do not edit
+  the quoting or bisect the content; keep payloads in the draft file.
 - **Read before Edit.** Read the region an issue names before changing it; never edit from the brief's
   quotation alone.
 - **Stay inside the file set.** Edit only files the brief lists. Creating a new file is allowed when the fix

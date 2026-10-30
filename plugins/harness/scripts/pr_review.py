@@ -709,7 +709,12 @@ def rules_section(slot: rp.Slot) -> str:
     return "\n".join(["## Rules", ""] + [f"- {rule}" for rule in rules])
 
 
-def record_heredoc(ctx: BriefContext, call: str, lists: Sequence[Tuple[str, Sequence[str]]]) -> str:
+TOO_LONG_RULE = ("A Bash error `unexpected EOF while looking for matching` at a line number past the end of "
+                 "the command means the command was too long for the shell tool, not misquoted: do not edit "
+                 "the quoting or bisect the content. Record through the draft file, or in smaller pieces.")
+
+
+def record_heredoc(ctx: BriefContext, call: str, lists: Sequence[Tuple[str, Sequence[str]]] = ()) -> str:
     """A ``sh "<plugin>/scripts/hpy" - <<'EOF'`` heredoc runnable from any directory, ending with ``call``."""
     name = call.split("(", 1)[0]
     lines = [f"{hpy_command()} - <<'EOF'", "import sys", "from pathlib import Path",
@@ -719,18 +724,31 @@ def record_heredoc(ctx: BriefContext, call: str, lists: Sequence[Tuple[str, Sequ
     return "\n".join(lines + [call, "EOF"])
 
 
+def _draft_json(ctx: BriefContext, agent: str, lists: Sequence[Tuple[str, Sequence[str]]]) -> List[str]:
+    """The Write-the-draft step: the draft's path and a JSON skeleton with one example per list."""
+    path = rm.draft_path(ctx.pr, agent, Path(ctx.repo), ctx.run_id).as_posix()
+    body = [f'  "{key.lower()}": [\n' + ",\n".join(f"    {e.rstrip(',')}" for e in examples) + "\n  ]"
+            for key, examples in lists]
+    return [f"Write the report with the Write tool to `{path}`: one JSON object holding these lists and "
+            "nothing else (the examples show each item's shape). It is the only file this brief lets you "
+            "write.", "", "```json", "{\n" + ",\n".join(body) + "\n}", "```"]
+
+
 def record_section(ctx: BriefContext, slot: rp.Slot) -> str:
-    """The exact ``record`` heredoc and the reply rule."""
-    call = (f'record({ctx.pr}, "{slot.id}", FINDINGS, STRENGTHS, repo=Path(r"{ctx.repo}"), '
-            f'run_id="{ctx.run_id}")')
-    example = ('{"severity": "important", "name": "...", "summary": "...", "fix": ["..."],',
-               ' "file": "src/pkg/x.py", "lines": "12-18", "also": [], "fix_kind": "mechanical"},')
+    """The draft file, the exact ``record_draft`` heredoc, the ``record_add`` option and the reply rule."""
+    tail = f'repo=Path(r"{ctx.repo}"), run_id="{ctx.run_id}")'
+    example = ('{"severity": "important", "name": "...", "summary": "...", "fix": ["..."],'
+               ' "file": "src/pkg/x.py", "lines": "12-18", "also": [], "fix_kind": "mechanical"},',)
     lists = (("FINDINGS", example), ("STRENGTHS", ('"one line per strength",',)))
-    return "\n".join(["## Record (once, after the analysis)", "",
-                      "Fill FINDINGS and STRENGTHS, then run this once from any directory; a rerun replaces "
-                      "the report. An error names the failing finding index.", "", "```bash",
-                      record_heredoc(ctx, call, lists), "```", "",
-                      "Reply with the block `record` prints, verbatim, and nothing else."])
+    add = f'record_add({ctx.pr}, "{slot.id}", FINDINGS, STRENGTHS, {tail}'
+    return "\n".join(["## Record (once, after the analysis)", "", *_draft_json(ctx, slot.id, lists), "",
+                      "Then run this once from any directory; a rerun replaces the report. An error names "
+                      "the failing finding index.", "", "```bash",
+                      record_heredoc(ctx, f'record_draft({ctx.pr}, "{slot.id}", {tail}'), "```", "",
+                      "To record in pieces instead, run the same heredoc with the lists filled inline and "
+                      f"this call, a few findings per call: `{add}`. Each call appends (an identical item is "
+                      "skipped); `record_draft` replaces everything.", "", TOO_LONG_RULE, "",
+                      "Reply with the block the last record call prints, verbatim, and nothing else."])
 
 
 def reviewer_brief(ctx: BriefContext, slot: rp.Slot, diff_path: Path, partial: Sequence[str]) -> str:
@@ -1751,14 +1769,14 @@ def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[
     for issue_id in fixer["issue_ids"]:  # type: ignore[union-attr]
         issue = issues[str(issue_id)]
         lines += _issue_block(issue, fixer_part(fixer, issue))
-    call = (f'record_fixes({ctx.pr}, "{agent}", FIXED, BUBBLED, repo=Path(r"{ctx.repo}"), '
-            f'run_id="{ctx.run_id}")')
+    call = f'record_fixes_draft({ctx.pr}, "{agent}", repo=Path(r"{ctx.repo}"), run_id="{ctx.run_id}")'
     fixed = '{"id": "M2", "what": "one line: what changed", "files": ["src/pkg/x.py"]},'
     cited = '{"id": "M2", "what": "cited only: why no edit", "no_change": ["src/pkg/y.py"]},'
     bubbled = '{"id": "I3", "classification": "architectural_ambiguity", "reason": "one line"},'
     lists = (("FIXED", (fixed, cited)), ("BUBBLED", (bubbled,)))
     lines += _tests_block(ctx, files, entries, deferred) + [""] + _fixer_rules()
-    lines += ["", "## Record (once)", "", "```bash", record_heredoc(ctx, call, lists), "```"]
+    lines += ["", "## Record (once)", "", *_draft_json(ctx, agent, lists), "", "Then run this once:", "",
+              "```bash", record_heredoc(ctx, call), "```", "", TOO_LONG_RULE]
     return "\n".join(lines) + "\n"
 
 

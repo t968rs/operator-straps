@@ -313,6 +313,96 @@ class TestRecordFixes:
             rm.record_fixes(_PR, "w1_fix_1", [{"id": "Z9", "what": "w", "files": ["a.py"]}], repo=run_repo)
 
 
+def _write_draft(path: Path, data: object) -> None:
+    """``data`` as JSON at ``path``, parents created."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data), encoding="utf-8")
+
+
+class TestRecordDraft:
+    def test_draft_path_sits_in_the_run(self, run_repo: Path) -> None:
+        path = rm.draft_path(_PR, "runtime", repo=run_repo, run_id=_RUN_ID)
+        assert path == rm.run_dir(_PR, run_repo, _RUN_ID) / "drafts" / "runtime.json"
+
+    def test_record_draft_round_trips(self, run_repo: Path, capsys: pytest.CaptureFixture) -> None:
+        draft = rm.draft_path(_PR, "docs", repo=run_repo)
+        _write_draft(draft, {"findings": [_finding(), _finding(severity="m")], "strengths": ["s1"]})
+        block = rm.record_draft(_PR, "docs", repo=run_repo)
+        assert "COUNTS: findings=2 critical=0 important=1 minor=1" in block.splitlines()
+        assert capsys.readouterr().out.strip() == block.strip()
+        report = rm.load_report(rm.run_dir(_PR, repo=run_repo) / "findings" / "docs.json")
+        assert report.strengths == ("s1",)
+
+    def test_missing_draft_names_the_path(self, run_repo: Path) -> None:
+        with pytest.raises(ValueError, match=r"drafts[/\\]docs\.json"):
+            rm.record_draft(_PR, "docs", repo=run_repo)
+
+    @pytest.mark.parametrize("data", [[], {"findings": [], "extra": 1}, {"findings": {}}])
+    def test_bad_draft_shape_rejected(self, run_repo: Path, data: object) -> None:
+        _write_draft(rm.draft_path(_PR, "docs", repo=run_repo), data)
+        with pytest.raises(ValueError):
+            rm.record_draft(_PR, "docs", repo=run_repo)
+
+    def test_invalid_json_rejected(self, run_repo: Path) -> None:
+        path = rm.draft_path(_PR, "docs", repo=run_repo)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text('{"findings": [', encoding="utf-8")
+        with pytest.raises(ValueError, match="JSON"):
+            rm.record_draft(_PR, "docs", repo=run_repo)
+
+    def test_bad_finding_names_index(self, run_repo: Path) -> None:
+        data = {"findings": [_finding(), _finding(lines="x")]}
+        _write_draft(rm.draft_path(_PR, "docs", repo=run_repo), data)
+        with pytest.raises(ValueError, match=r"finding\[1\]"):
+            rm.record_draft(_PR, "docs", repo=run_repo)
+
+    def test_record_fixes_draft(self, run_repo: Path) -> None:
+        data = {"fixed": [{"id": "M2", "what": "w", "files": ["a.py"]}],
+                "bubbled": [{"id": "C1", "classification": "architectural_ambiguity", "reason": "r"}]}
+        _write_draft(rm.draft_path(_PR, "w1_fix_1", repo=run_repo, run_id=_RUN_ID), data)
+        block = rm.record_fixes_draft(_PR, "w1_fix_1", repo=run_repo, run_id=_RUN_ID)
+        assert "FIXED: M2" in block.splitlines() and "BUBBLED: C1" in block.splitlines()
+
+
+class TestRecordAdd:
+    def _report(self, repo: Path) -> rm.ReviewerReport:
+        return rm.load_report(rm.run_dir(_PR, repo=repo) / "findings" / "runtime.json")
+
+    def test_first_add_creates_the_report(self, run_repo: Path) -> None:
+        block = rm.record_add(_PR, "runtime", [_finding()], repo=run_repo)
+        assert "COUNTS: findings=1 critical=0 important=1 minor=0" in block.splitlines()
+
+    def test_adds_append(self, run_repo: Path) -> None:
+        rm.record_add(_PR, "runtime", [_finding()], ["s1"], repo=run_repo)
+        block = rm.record_add(_PR, "runtime", [_finding(name="Second", severity="C")], ["s2"], repo=run_repo)
+        assert "COUNTS: findings=2 critical=1 important=1 minor=0" in block.splitlines()
+        assert self._report(run_repo).strengths == ("s1", "s2")
+
+    def test_add_after_record_appends(self, run_repo: Path) -> None:
+        rm.record(_PR, "runtime", [_finding()], repo=run_repo)
+        rm.record_add(_PR, "runtime", [_finding(name="Second")], repo=run_repo)
+        assert len(self._report(run_repo).findings) == 2
+
+    def test_identical_items_skipped(self, run_repo: Path) -> None:
+        rm.record_add(_PR, "runtime", [_finding()], ["s1"], repo=run_repo)
+        rm.record_add(_PR, "runtime", [_finding()], ["s1"], repo=run_repo)
+        report = self._report(run_repo)
+        assert len(report.findings) == 1 and report.strengths == ("s1",)
+
+    def test_bad_finding_leaves_file_unchanged(self, run_repo: Path) -> None:
+        rm.record_add(_PR, "runtime", [_finding()], repo=run_repo)
+        path = rm.run_dir(_PR, repo=run_repo) / "findings" / "runtime.json"
+        before = path.read_bytes()
+        with pytest.raises(ValueError, match=r"finding\[0\]"):
+            rm.record_add(_PR, "runtime", [_finding(lines="bad")], repo=run_repo)
+        assert path.read_bytes() == before
+
+    def test_named_run(self, run_repo: Path) -> None:
+        rm.start_run(_PR, _OTHER_RUN, repo=run_repo)
+        rm.record_add(_PR, "runtime", [_finding()], repo=run_repo, run_id=_RUN_ID)
+        assert (rm.run_dir(_PR, run_repo, _RUN_ID) / "findings" / "runtime.json").is_file()
+
+
 _OTHER_RUN = "pr1558_20261011T080000Z"
 
 

@@ -279,8 +279,11 @@ The brief (written by `capture`) carries: role and lens; scope paths; how to rea
 HEAD is the PR head and the paths are clean, else `git -C <repo> show <head_sha>:<path>`); the budgeted diff file; new
 files listed as `new file, N lines - read it` and left out of the diff; every summarized or omitted path with its exact
 `git diff` command; the catalog scope templates; the default sub-lens; the clauses below; each
-`review.domain_pointers` text whose prefix starts an in-scope path; the roast voice for the roast slot; and the exact
-`record` heredoc (run through the plugin's `hpy` launcher).
+`review.domain_pointers` text whose prefix starts an in-scope path; the roast voice for the roast slot; the draft file
+(`<run>/drafts/<slot>.json`) the reviewer writes its findings to; the exact `record_draft` heredoc that reads it (run
+through the plugin's `hpy` launcher); the `record_add` call for recording in pieces; and the too-long-command rule. The
+payload travels in the draft, never on the command line: the Bash tool fails a command past a session-dependent size
+(as low as ~4.4K characters) with a misleading `unexpected EOF while looking for matching` error.
 
 **Artifact ownership clause** (every brief, verbatim):
 
@@ -818,7 +821,8 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
 - **Model per fixer:** `haiku` when every issue is `fix_kind: mechanical`, else `opus`.
 - Dispatch each row as `Agent(subagent_type="harness:pr-fixer", model=<row model>, prompt=<row prompt>)`. The fixer reads
   before it edits, stays inside its brief's file set (new files allowed), runs the brief's test commands for each
-  edited file (never a deferred test), and records once with `record_fixes`.
+  edited file (never a deferred test), writes its entries to its draft file and records once with
+  `record_fixes_draft`.
 
 **Rule 3 — Work up the severity chain inside each fixer.** A fixer brief orders its issues **M → I → C**, so I/C work
 lands on a quality-checked surface. Waves are sized by unit count, file overlap and the estimated cost severity
