@@ -329,6 +329,29 @@ def test_worktree_root_from_linked_worktree_names_main_repo(make_project, tmp_pa
     assert load_config(wt).resolve_worktree_root() == tmp_path / "trees" / "gizmo"
 
 
+def test_worktree_steps_default_to_none(make_project) -> None:
+    cfg = load_config(make_project())
+    assert cfg.worktree_setup == ()
+    assert cfg.worktree_baseline == ()
+
+
+def test_worktree_steps_load_as_argv_tuples(make_project) -> None:
+    cfg = load_config(make_project({
+        "worktree_setup": [["python", "-m", "pip", "install", "-e", "."]],
+        "worktree_baseline": [["python", "-m", "pytest", "tests/test_a.py", "-q"], ["python", "-V"]],
+    }))
+    assert cfg.worktree_setup == (("python", "-m", "pip", "install", "-e", "."),)
+    assert cfg.worktree_baseline == (("python", "-m", "pytest", "tests/test_a.py", "-q"), ("python", "-V"))
+
+
+@pytest.mark.parametrize("bad", [{"worktree_setup": ["pip install -e ."]}, {"worktree_setup": [[]]},
+                                 {"worktree_baseline": [[""]]}, {"worktree_baseline": "pytest"},
+                                 {"worktree_setup": [[1]]}])
+def test_invalid_worktree_steps_raise(make_project, bad: dict) -> None:
+    with pytest.raises(ConfigError):
+        load_config(make_project(bad))
+
+
 def test_activate_and_active(make_project, monkeypatch: pytest.MonkeyPatch) -> None:
     configured = load_config(make_project({"base_branch": "dev"}))
     assert activate(configured) is configured

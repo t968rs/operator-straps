@@ -78,7 +78,7 @@ Skills that apply per wave (those outside this plugin apply when installed):
 
 | Wave | Concern | Skill |
 |---|---|---|
-| W0 | Worktree conventions, IDE file locks | `superpowers-lt:using-git-worktrees` |
+| W0 | Worktree conventions, IDE file locks | `harness:d-w` |
 | W1, W2 dispatch | Mechanical overlap and permissions | `harness:parallel2` |
 | W1, W2 dispatch | Conceptual overlap: lanes on different files sharing an invariant | `superpowers-lt:dispatching-parallel-agents` |
 | W1A, W2A | A failing test before runtime code | `superpowers-lt:test-driven-development` |

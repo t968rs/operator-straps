@@ -1,7 +1,7 @@
 ---
 name: d-w
 description: Use when asked to start, move, or do the work in a detached-HEAD worktree, a throwaway worktree, or an isolated checkout cut from HEAD, the base branch, or another ref.
-argument-hint: "[HEAD|<integration-branch>|<ref>] [--name NAME] [--no-fetch] [-- <guidance>]"
+argument-hint: "[HEAD|<integration-branch>|<ref>] [--name NAME] [--no-fetch] [--no-setup] [-- <guidance>]"
 ---
 
 # d-w: work in a detached-HEAD worktree
@@ -9,7 +9,8 @@ argument-hint: "[HEAD|<integration-branch>|<ref>] [--name NAME] [--no-fetch] [--
 Arguments: `$ARGUMENTS`
 
 Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. The
-part before it is `<worktree arguments>` below (a bare ref, `--name`, `--no-fetch`), passed through unchanged.
+part before it is `<worktree arguments>` below (a bare ref, `--name`, `--no-fetch`, `--no-setup`), passed through
+unchanged.
 The part after it is the guidance: the task or paths for the work done inside the worktree. It never reaches
 the command.
 
@@ -28,10 +29,24 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/new_worktre
   lists the rest.
 - The path lands under the project's `worktree_root` (default `~/.config/harness/worktrees/<repo>/`; `--root`
   overrides); collisions get `-2`, `-3`.
+- **Run from a linked worktree**, the command warns on stderr (`... is itself a linked worktree`) and still cuts
+  the new worktree as a sibling under `worktree_root`. Say so in the report and confirm a second worktree is
+  wanted before building on it; a worktree that already holds the task needs no second one.
+- **Setup and baseline.** After the cut, the project's `worktree_setup` commands run in the new worktree (a
+  dependency install), then its `worktree_baseline` commands (test files that name what they prove). Both are
+  argv lists in `.claude/harness.json`; with neither set, nothing runs. stderr reports each as
+  `setup [ok|fail]` or `baseline [ok|fail|skipped]`, with the output tail of a failure. A failed setup skips the
+  baseline. A failed step never fails the command: the worktree exists and the exit code stays 0. `--no-setup`
+  skips both.
+- **Why `EnterWorktree` is not used.** The host tool creates its worktree inside the project
+  (`.claude/worktrees/`), on a new branch, which the project-directory rule forbids (an IDE indexing the
+  workspace holds file locks on Windows). This command keeps worktrees under `worktree_root`, detached, and
+  `harness:a-w` owns the branch. Do not substitute `EnterWorktree` for this command.
 
 ## Afterward
 
-- Report the path and the base sha in one line.
+- Report the path and the base sha in one line, then each `setup` and `baseline` line from stderr. A failed
+  baseline means those failures exist before any change: record them and do not fix them as part of the task.
 - Every Read / Edit / Write uses absolute paths under that worktree; every git call is `git -C "<path>" ...`.
   Do not `cd`. Do not touch the main checkout.
 - Commits in the worktree are allowed. They sit on a detached HEAD until the work moves.

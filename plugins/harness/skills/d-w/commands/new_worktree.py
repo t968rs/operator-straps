@@ -1,6 +1,6 @@
 """Create a detached-HEAD git worktree and print its absolute path.
 
-Usage: new_worktree.py [BASE] [--name NAME] [--no-fetch] [--repo PATH] [--root PATH]
+Usage: new_worktree.py [BASE] [--name NAME] [--no-fetch] [--no-setup] [--repo PATH] [--root PATH]
 
 BASE defaults to HEAD. The project's integration branches (``integration_branches`` in
 ``.claude/harness.json``, else the configured or ``origin/HEAD`` base branch plus ``main``) fetch ``origin``
@@ -8,6 +8,12 @@ first and cut from ``origin/<base>``; a failed fetch is an error. Without a remo
 they cut from the local branch, else the existing ``origin/<base>``. Any other git ref is cut as given.
 Worktrees land in ``<root>/<name>``: ``--root``, else the project's ``worktree_root``, else
 ``~/.config/harness/worktrees/<repo-name>``. stdout carries only the path.
+
+A ``--repo`` that is itself a linked worktree draws a warning on stderr; the new worktree is still cut.
+After the cut, the project's ``worktree_setup`` commands run in the new worktree, then its
+``worktree_baseline`` commands (skipped when a setup command failed); ``--no-setup`` skips both. Each step
+is reported on stderr as ``setup|baseline [ok|fail|skipped]``. A failed step never fails the command: the
+worktree exists, so the exit code stays 0.
 """
 from __future__ import annotations
 
@@ -22,6 +28,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
 if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
+
+
+STEP_TIMEOUT_SECONDS = 600
+TAIL_LINES = 15
 
 
 class GitError(RuntimeError):
@@ -82,6 +92,51 @@ def free_path(root: Path, name: str) -> Path:
     return candidate
 
 
+def linked_worktree_top(repo: Path) -> Optional[Path]:
+    """Top level of ``repo`` when it is a linked worktree (git dir differs from the common dir), else None.
+
+    A submodule keeps one git dir that is also its common dir, so it never reads as a linked worktree.
+    """
+    git_dir = git(repo, "rev-parse", "--path-format=absolute", "--git-dir", check=False)
+    common = git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir", check=False)
+    if not git_dir or not common or Path(git_dir).resolve() == Path(common).resolve():
+        return None
+    top = git(repo, "rev-parse", "--show-toplevel", check=False)
+    return Path(top) if top else None
+
+
+def run_step(label: str, argv: Sequence[str], cwd: Path) -> bool:
+    """Run one configured command in ``cwd``, report it on stderr; True when it exited 0."""
+    shown = " ".join(argv)
+    try:
+        done = subprocess.run(list(argv), cwd=cwd, capture_output=True, text=True, errors="replace",
+                              timeout=STEP_TIMEOUT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"{label} [fail] {shown}: {exc}", file=sys.stderr)
+        return False
+    if done.returncode == 0:
+        print(f"{label} [ok] {shown}", file=sys.stderr)
+        return True
+    print(f"{label} [fail] {shown} (exit {done.returncode})", file=sys.stderr)
+    for line in (done.stdout + done.stderr).strip().splitlines()[-TAIL_LINES:]:
+        print(f"  {line}", file=sys.stderr)
+    return False
+
+
+def run_steps(label: str, commands: Sequence[Sequence[str]], cwd: Path) -> bool:
+    """Run ``commands`` in order, stopping at the first failure; True when all passed."""
+    return all(run_step(label, argv, cwd) for argv in commands)
+
+
+def prepare(cfg: HarnessConfig, path: Path) -> None:
+    """Run the project's setup commands, then its baseline commands when setup passed."""
+    if not run_steps("setup", cfg.worktree_setup, path):
+        if cfg.worktree_baseline:
+            print("baseline [skipped] setup failed", file=sys.stderr)
+        return
+    run_steps("baseline", cfg.worktree_baseline, path)
+
+
 def default_name(base: str, sha: str) -> str:
     slug = re.sub(r"[^A-Za-z0-9._-]+", "-", base).strip("-").lower() or "wt"
     return f"{slug}-{sha[:9]}"
@@ -94,6 +149,8 @@ def parse_args(argv: Optional[list]) -> argparse.Namespace:
     parser.add_argument("--name", help="worktree directory name (default: <base>-<short-sha>)")
     parser.add_argument("--no-fetch", action="store_true",
                         help="skip fetching origin for integration branches")
+    parser.add_argument("--no-setup", action="store_true",
+                        help="skip the project's worktree_setup and worktree_baseline commands")
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="repository to cut from (default: cwd)")
     parser.add_argument("--root", type=Path, help="parent directory (default: the project's worktree_root)")
     return parser.parse_args(argv)
@@ -107,8 +164,14 @@ def create(args: argparse.Namespace) -> Path:
     root = args.root or cfg.resolve_worktree_root()
     root.mkdir(parents=True, exist_ok=True)
     path = free_path(root, args.name or default_name(args.base, sha)).resolve()
+    inside = linked_worktree_top(args.repo)
+    if inside is not None:
+        print(f"new_worktree: {inside} is itself a linked worktree; cutting another under {root}",
+              file=sys.stderr)
     git(args.repo, "worktree", "add", "--quiet", "--detach", str(path), sha)
     print(f"detached worktree at {sha[:9]} ({ref})", file=sys.stderr)
+    if not args.no_setup:
+        prepare(cfg, path)
     return path
 
 

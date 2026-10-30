@@ -12,7 +12,7 @@ import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 CONFIG_REL = Path(".claude") / "harness.json"
 _CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
@@ -171,6 +171,8 @@ class HarnessConfig:
     commit_buckets: Tuple[BucketRule, ...]
     auto_approve_python_c: bool
     worktree_root: Optional[str]
+    worktree_setup: Tuple[Tuple[str, ...], ...]
+    worktree_baseline: Tuple[Tuple[str, ...], ...]
     runlogs: RunLogsConfig
     todo: TodoConfig
 
@@ -292,6 +294,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
         auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
+        worktree_setup=_argv_list(m["worktree_setup"]), worktree_baseline=_argv_list(m["worktree_baseline"]),
         runlogs=_runlogs(m["runlogs"]), todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
     )
 
@@ -304,6 +307,11 @@ def _require_group(pattern: str, group: str, where: str) -> None:
         raise ConfigError(f"{where}: {exc}") from exc
     if group not in compiled.groupindex:
         raise ConfigError(f"{where}: no named group '{group}'")
+
+
+def _argv_list(commands: List[List[str]]) -> Tuple[Tuple[str, ...], ...]:
+    """Each configured command as an immutable argv tuple."""
+    return tuple(tuple(argv) for argv in commands)
 
 
 def _runlogs(r: Dict[str, Any]) -> RunLogsConfig:
