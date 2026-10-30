@@ -114,6 +114,50 @@ def test_exported_override_wins_over_an_unexported_option(tmp_path: Path) -> Non
     assert check.status == doctor.OK
 
 
+def test_unexported_option_fix_names_the_settings_file_it_was_read_from(tmp_path: Path) -> None:
+    settings = tmp_path / "cfg" / "settings.json"
+    elsewhere = str(tmp_path / "envs" / "other" / "python.exe")
+    check = doctor.check_interpreter({}, elsewhere, settings)
+    assert settings.as_posix() in (check.fix or "")
+    assert "~/.claude/settings.json" not in (check.fix or "")
+
+
+def test_run_checks_reads_the_option_from_claude_config_dir(make_project, tmp_path: Path) -> None:
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    elsewhere = str(tmp_path / "envs" / "other" / "python.exe")
+    _user_settings(cfg, {"python": elsewhere})
+    check = _by_name(doctor.run_checks(make_project(None), {"CLAUDE_CONFIG_DIR": str(cfg)}), "interpreter")
+    assert check.status == doctor.WARN
+    assert elsewhere in check.detail
+    assert (cfg / "settings.json").as_posix() in (check.fix or "")
+
+
+def test_run_checks_falls_back_to_the_home_settings_file(make_project, tmp_path: Path,
+                                                         monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    elsewhere = str(tmp_path / "envs" / "other" / "python.exe")
+    _user_settings(home / ".claude", {"python": elsewhere})
+    monkeypatch.setattr(doctor.Path, "home", staticmethod(lambda: home))
+    check = _by_name(doctor.run_checks(make_project(None), {}), "interpreter")
+    assert check.status == doctor.WARN
+    assert elsewhere in check.detail
+    assert (home / ".claude" / "settings.json").as_posix() in (check.fix or "")
+
+
+def test_run_checks_ignores_home_settings_when_claude_config_dir_is_set(
+        make_project, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    _user_settings(home / ".claude", {"python": str(tmp_path / "envs" / "other" / "python.exe")})
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    monkeypatch.setattr(doctor.Path, "home", staticmethod(lambda: home))
+    check = _by_name(doctor.run_checks(make_project(None), {"CLAUDE_CONFIG_DIR": str(cfg)}), "interpreter")
+    assert check.status == doctor.OK
+
+
 def test_missing_gh_warns_and_missing_git_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(doctor.shutil, "which", lambda name: None)
     assert doctor.check_tool("gh", doctor.WARN, "pr-review needs it").status == doctor.WARN

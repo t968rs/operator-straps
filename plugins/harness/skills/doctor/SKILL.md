@@ -42,4 +42,4 @@ least one check failed; warnings exit 0.
 - To pin one for every project, `HARNESS_PY` goes under `env` in `~/.claude/settings.json`. Prefer `HARNESS_PY`
   to the plugin's `python` option for skill commands: `settings.json` `env` reaches every shell command, while
   the option (`pluginConfigs` > `harness@<marketplace>` > `options` > `python`, set with
-  `claude plugin configure harness`) was not exported to the shell skill commands run in, so `hpy` never saw it.
+  `claude plugin configure harness`) is not exported to the shell skill commands run in, so `hpy` does not see it.

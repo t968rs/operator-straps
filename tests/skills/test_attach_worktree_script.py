@@ -218,15 +218,81 @@ def test_staged_from_a_foreign_cut_with_no_edits_has_nothing_to_move(script_path
     assert done.returncode == 1
     assert "nothing to move" in done.stderr
     assert repos["wt"].exists()
+    assert _staged(repos["main"]) == []
+    assert not (repos["main"] / "foreign.txt").exists()
+
+
+def _head_log(wt: Path) -> Path:
+    return Path(_git(wt, "rev-parse", "--absolute-git-dir")) / "logs" / "HEAD"
+
+
+def _drop_creation_entry(wt: Path) -> None:
+    """Drop the first HEAD reflog line, the way reflog expiry drops the worktree's creation entry."""
+    log = _head_log(wt)
+    lines = log.read_text(encoding="utf-8").splitlines(keepends=True)
+    assert lines[0].split()[0].strip("0") == "", "the first line is the creation entry"
+    log.write_text("".join(lines[1:]), encoding="utf-8")
 
 
 def test_staged_without_a_reflog_falls_back_to_the_merge_base(script_path: Path, repos: dict) -> None:
     wt, main = repos["wt"], repos["main"]
     _commit(wt, "a.txt", "a")
-    (Path(_git(wt, "rev-parse", "--absolute-git-dir")) / "logs" / "HEAD").unlink()
+    _head_log(wt).unlink()
+    _commit(main, "other.txt", "other", "target edit")
     done = _attach(script_path, repos)
     assert done.returncode == 0, done.stderr
-    assert _staged(main) == ["a.txt"]
+    assert _staged(main) == ["a.txt"], "measured from the merge base, not the target head"
+    assert (main / "other.txt").exists()
+
+
+def test_staged_from_a_foreign_cut_without_a_reflog_measures_from_the_merge_base(script_path: Path,
+                                                                                repos: dict) -> None:
+    _cut_from_foreign_commit(repos, squashed=False)
+    wt, main = repos["wt"], repos["main"]
+    (wt / "mine.txt").write_text("mine\n", encoding="utf-8")
+    _head_log(wt).unlink()
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    assert sorted(_staged(main)) == ["foreign.txt", "mine.txt"]
+
+
+def test_staged_with_an_expired_creation_entry_keeps_every_worktree_commit(script_path: Path,
+                                                                          repos: dict) -> None:
+    wt, main = repos["wt"], repos["main"]
+    _commit(wt, "w1.txt", "w1", "first")
+    _commit(wt, "w2.txt", "w2", "second")
+    _drop_creation_entry(wt)
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    assert sorted(_staged(main)) == ["w1.txt", "w2.txt"]
+
+
+def test_staged_after_head_left_the_cut_history_measures_from_the_merge_base(script_path: Path,
+                                                                            repos: dict) -> None:
+    main, wt = repos["main"], repos["wt"]
+    _git(main, "worktree", "remove", "--force", str(wt))
+    cut = _commit(main, "cut.txt", "cut", "target commit the worktree is cut from")
+    _git(main, "worktree", "add", "--quiet", "--detach", str(wt), cut)
+    _git(wt, "switch", "-q", "--detach", repos["base"])
+    (wt / "mine.txt").write_text("mine\n", encoding="utf-8")
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    assert _staged(main) == ["mine.txt"], "a cut no longer behind HEAD would stage cut.txt as a deletion"
+    assert (main / "cut.txt").exists()
+
+
+def test_staged_after_taking_in_target_commits_never_undoes_a_target_revert(script_path: Path,
+                                                                           repos: dict) -> None:
+    wt, main = repos["wt"], repos["main"]
+    _commit(main, "x.txt", "x", "target adds x")
+    _git(wt, "merge", "-q", "--ff-only", "feature")
+    _commit(wt, "mine.txt", "mine", "worktree work")
+    _git(main, "rm", "-q", "x.txt")
+    _git(main, "commit", "-q", "-m", "target reverts x")
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    assert _staged(main) == ["mine.txt"]
+    assert not (main / "x.txt").exists()
 
 
 def test_a_target_branch_checked_out_in_the_worktree_itself_is_refused(script_path: Path,

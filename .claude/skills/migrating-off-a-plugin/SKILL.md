@@ -37,7 +37,7 @@ An interim bridge is allowed: a renamed fork in the marketplace lets references 
 
 ## 3. Land the change
 
-- **Cut the worktree from the branch that receives it** when possible. `harness:a-w` measures only the worktree's own changes from its cut commit, so a cut from another branch, or from a base since squash-merged, still attaches; conflicts arise only on paths the worktree and the target both changed. Expect those when the cut base differs, and resolve them in the target.
+- **Cut the worktree from the branch that receives it** when possible. `harness:a-w` measures only the worktree's own changes from its cut commit, so a cut from another branch, or from a base since squash-merged, still attaches while the worktree's HEAD reflog still holds the cut commit (its creation entry, which reflog expiry drops after about 90 days); conflicts arise only on paths the worktree and the target both changed. Expect those when the cut base differs, and resolve them in the target.
 - **Version** is the target branch's current plugin version plus a patch, never the worktree's. A `marketplace.json` conflict keeps both sides.
 - Run the contract tests by file, every test that enumerates skills, and `claude plugin validate --strict` on the root and the changed plugin.
 

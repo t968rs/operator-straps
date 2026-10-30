@@ -1,0 +1,338 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 126,
+  "pr_title": "Fix(harness): `attach_worktree` patch base",
+  "branch": "1098-aw",
+  "base_branch": "main",
+  "base_sha": "02bd8f75a8dd060df94e601467d317cc9d88d8a3",
+  "head_sha": "29e77a2c18f40a0cda6ecf8da25dd2ba05d59b8f",
+  "review_date": "2026-10-29",
+  "verdict": "READY TO MERGE - 10 of 10 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 168,
+    "deletions": 17,
+    "files_changed": 10
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0126/pr126_20261030T044311Z/findings/tests.json",
+    "docs/_scratch/pr_review/0126/pr126_20261030T044311Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0126/pr126_20261030T044311Z/findings/docs.json",
+    "docs/_scratch/pr_review/0126/pr126_20261030T044311Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The foreign-cut tests fail on the old merge-base patch base: without squashing, the old code staged foreign.txt too, and with no edits it moved foreign.txt instead of reporting nothing to move.",
+    "The squashed parametrization models the real squash-merge case, and the docstring of _cut_from_foreign_commit states the setup exactly as the code builds it.",
+    "All attach tests run against real git repositories under tmp_path through the script's CLI, with no mocks: integration tests against the real dependency.",
+    "test_exported_override_wins_over_an_unexported_option pins the precedence order, so moving the configured-option check ahead of the environment loop would break it.",
+    "configured_python tests cover the key prefix filter, a missing file and malformed JSON against real files.",
+    "cut_point verifies the reflog candidate is an ancestor of HEAD, so a worktree rebased away from its cut falls back to the merge base instead of producing a bogus patch.",
+    "patch_base keeps the merge-base fallback for worktrees without a usable reflog, so behavior degrades to the previous rule rather than failing.",
+    "configured_python tolerates a missing file, malformed JSON and unexpected shapes at every level, returning None instead of raising inside doctor.",
+    "The unexported-option warning fires only after every override variable was absent, so it never masks the skipped-override warnings above it.",
+    "doctor SKILL.md interpreter row matches check_interpreter: the unexported-option warning fires only when no override variable reached the shell and the configured option differs from the running interpreter.",
+    "README, doctor SKILL and the doctor fix text agree on the remedy (HARNESS_PY under env in settings.local.json or ~/.claude/settings.json) and on the pluginConfigs > harness@<marketplace> > options path the code reads.",
+    "a-w SKILL.md default-mode row now mirrors the attach_worktree.py module docstring, including that history the cut commit carried stays behind.",
+    "migrating-off-a-plugin drops the now-obsolete 'worktree is fresh enough' red flag instead of leaving a stale rule beside the revised Section 3 bullet.",
+    "attach_worktree tests are behavioral against real git repositories, with parametrized foreign and squash-merged cuts covering the failure the PR targets.",
+    "configured_python tolerates missing files, bad JSON, odd shapes and other plugin entries, each tested.",
+    "check_interpreter keeps exported overrides authoritative and adds the unexported-option warning only after them.",
+    "Docstring, a-w and doctor skills, the migration skill and README moved together, and the version was bumped."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "--committed still measures 'the cut' from the merge base and fast-forwards foreign history",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "lines": "10-15,105-119",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The module docstring now defines the cut as the oldest HEAD reflog entry (line 11) and says history the cut commit carried that the target lacks stays behind, then says --committed refuses a target that moved since the cut (line 15). move_committed (105-119) ignores the cut point and uses merge-base(head, target): for a worktree cut from a commit the target never held (the case this PR fixes for staged mode), base == target_head passes, the target fast-forwards onto the cut commit's whole foreign history, and the reported count includes those commits.",
+        "fix": [
+          "In move_committed, compute cut_point(worktree, head) and refuse when it exists and `git merge-base --is-ancestor <cut> <target_head>` fails, pointing to the default staged mode.",
+          "Or state in the module docstring that --committed carries the cut commit's history onto the target, and that only the default mode leaves it behind."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "cut_point trusts the oldest surviving reflog entry, which after reflog expiry is not the cut",
+        "file": "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "files": [
+          "plugins/harness/skills/a-w/commands/attach_worktree.py",
+          "plugins/harness/skills/d-w/commands/new_worktree.py",
+          "plugins/harness/skills/a-w/SKILL.md",
+          ".claude/skills/migrating-off-a-plugin/SKILL.md",
+          "tests/skills/test_attach_worktree_script.py"
+        ],
+        "lines": "10-14,161-178",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "cut_point takes shas[-1] of the worktree's HEAD reflog as the commit the worktree was cut from, and only checks that it is an ancestor of HEAD. Once gc expires old entries (gc.reflogExpire, 90 days by default; per-worktree HEAD logs are expired too), the oldest surviving entry is a later commit of the worktree's own history. It still passes the ancestry check, so patch_base measures from it, the patch silently omits every commit made before that point, and attach then removes the worktree, leaving those commits dangling on a detached HEAD. The docstring's claim that the oldest entry is the cut holds only while the creation entry survives.\n\nAlso (overall): patch_base prefers the oldest HEAD reflog entry whenever it is an ancestor of HEAD. If the worktree merged, rebased onto or switched to a newer target commit B after the cut A, the patch is measured from A and carries the target A..B changes. When the target then reverts part of B (say deletes a file B added), git apply --3way re-creates it: the revert is undone and staged. The old merge-base rule measured from B and was correct. Contradicts the docstring (10-14), a-w SKILL.md:31 and migrating-off-a-plugin SKILL.md:40 (never reverted, conflicts only on paths the worktree changed). Untested.\n\nAlso (overall): Reflog entries expire (gc.reflogExpire, 90 days, via gc --auto). On an old worktree the oldest surviving entry can be its own commit W2, which passes the is-ancestor check, so the changes of the earlier commit W1 are left out of the patch, the attach reports success and remove_worktree force-removes the detached worktree, orphaning W1. The merge-base rule could not lose committed work this way.",
+        "fix": [
+          "Accept the oldest entry only when it is the creation entry: read the file at `git rev-parse --git-path logs/HEAD` and require its first line's old oid to be all zeros (new_worktree.py creates it with `worktree add --detach`), else return None and fall back.",
+          "Have new_worktree.py record the cut sha at creation (for example a file under the worktree's git dir or `git config --worktree`), and have patch_base read that record before the reflog.",
+          "In patch_base also compute the merge base and use the cut point only when it is NOT an ancestor of that merge base (a foreign or squash-merged cut), else the merge base. Add a test: target adds X.txt, worktree fast-forwards to it and adds mine.txt, target deletes X.txt, attach stages only mine.txt.",
+          "Trust the reflog only when its first line (git rev-parse --git-path logs/HEAD) has an all-zero old sha, the creation entry, else return None. Add a test that drops that first line after two worktree commits and asserts both files are staged."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README option table and hpy order still present the python option as reaching scripts",
+        "file": "README.md",
+        "lines": "245,252",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The new README paragraph (lines 259-262) says the shell skill commands run in does not receive the harness `python` option, so hpy falls through to PATH python. The same section still says otherwise: the harness options table (line 245) describes `python` as 'Interpreter for harness scripts and hooks', and the hpy order (line 252) lists 'HARNESS_PY (project settings env), then the python option' with no qualifier, while line 259 now also allows HARNESS_PY in ~/.claude/settings.json. Hooks do receive CLAUDE_PLUGIN_OPTION_* (bash_discipline.py, session_rules.py), so the option works for hooks only. A reader of the table gets the contradicted contract first.",
+        "fix": [
+          "README.md line 245: change the meaning to 'Interpreter for harness hooks; skill commands do not receive it, so pin those with HARNESS_PY. Needs jsonschema, referencing, pydantic>=2'.",
+          "README.md line 252: change '`HARNESS_PY` (project settings `env`), then the `python` option' to '`HARNESS_PY` (settings `env`), then the `python` option (hooks only)'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "README doctor paragraph line breaks the section's wrap width",
+        "file": "README.md",
+        "lines": "264-266",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md line 265 runs to about 170 characters after the inserted clause, while the surrounding paragraphs wrap near 115; the edit appended text without rewrapping.\n\nAlso (overall): README.md:265 is about 165 characters while the paragraph wraps near 115.",
+        "fix": [
+          "Rewrap README.md lines 264-266 to the section's width, e.g. break after 'reached the shell,' and after 'that interpreter),'.",
+          "Rewrap README.md:264-266."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "python option descriptions still promise it drives harness scripts",
+        "file": "plugins/harness/.claude-plugin/plugin.json",
+        "files": [
+          "plugins/harness/.claude-plugin/plugin.json",
+          "README.md",
+          "plugins/harness/lib/harness_lib/doctor.py"
+        ],
+        "lines": "12",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "README.md:261 and doctor SKILL.md:42-45 now say the option never reaches skill command shells, yet plugin.json:12 (userConfig description shown by claude plugin configure) and README.md:245 still say Interpreter for harness scripts and hooks, README.md:252 lists it as an hpy candidate without the hooks-only caveat, and doctor.py:108-109 still suggests pointing the python option at a working interpreter.",
+        "fix": [
+          "Reword plugin.json:12 and README.md:245 to hooks only with HARNESS_PY for skill commands, add the caveat at README.md:252, and drop the python-option alternative from the fix text at doctor.py:108-109."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Unexported-option fix text names ~/.claude/settings.json even when CLAUDE_CONFIG_DIR moved it",
+        "file": "plugins/harness/lib/harness_lib/doctor.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/doctor.py",
+          "tests/skills/test_doctor_script.py"
+        ],
+        "lines": "76-83,195-200",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "run_checks reads the option from $CLAUDE_CONFIG_DIR/settings.json when that variable is set, but _unexported_option's fix always tells the user to edit ~/.claude/settings.json, which is not the user settings file in that setup.\n\nAlso (overall): No test covers the CLAUDE_CONFIG_DIR or home settings.json lookup in run_checks. tests/skills/test_doctor_script.py runs with the real environment, so its interpreter result now depends on the machine user settings, against the agent-permissions guidance to point CLAUDE_CONFIG_DIR at an empty directory.",
+        "fix": [
+          "Pass the settings path into check_interpreter/_unexported_option and name it in the fix text instead of the literal ~/.claude/settings.json.",
+          "Set CLAUDE_CONFIG_DIR to an empty tmp directory in test_doctor_script._run, and add a subprocess test with a settings.json naming another python under the harness plugin entry that asserts the interpreter warning."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "a-w docs omit the merge-base fallback of the patch base",
+        "file": "plugins/harness/skills/a-w/SKILL.md",
+        "files": [
+          "plugins/harness/skills/a-w/SKILL.md",
+          ".claude/skills/migrating-off-a-plugin/SKILL.md",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py"
+        ],
+        "lines": "31",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "a-w SKILL.md line 31 states the staged patch is measured 'from its cut commit, not from the merge base with the target' unconditionally, and migrating-off-a-plugin SKILL.md line 40 promises that a cut from another branch or a squash-merged base 'still attaches'. The code (attach_worktree.py patch_base, lines 171-178; cut_point lines 161-168) uses the oldest HEAD reflog entry only when it exists and is an ancestor of HEAD, and otherwise falls back to the merge base with the target. With an expired or unusable reflog the old merge-base behavior returns, which is exactly the squash-merge case the migrating skill now says is safe. The module docstring (lines 10-12) documents the fallback; the skill prose does not.",
+        "fix": [
+          "In plugins/harness/skills/a-w/SKILL.md line 31, after 'from its cut commit' add '(the oldest entry of its HEAD reflog; without a usable reflog, the merge base with the target)'.",
+          "In .claude/skills/migrating-off-a-plugin/SKILL.md line 40, qualify 'still attaches' with 'while the worktree's HEAD reflog still holds the cut commit'."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "doctor SKILL afterward bullet uses past tense for a standing behavior",
+        "file": "plugins/harness/skills/doctor/SKILL.md",
+        "lines": "45",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/skills/doctor/SKILL.md line 45 says the option 'was not exported to the shell skill commands run in, so `hpy` never saw it', which reads as an incident note rather than the standing contract. The doctor's own fix text (doctor.py line 83) states it in present tense: 'the python option is not exported to the shell skill commands run in'.",
+        "fix": [
+          "Change line 45 to '`claude plugin configure harness`) is not exported to the shell skill commands run in, so `hpy` does not see it.'"
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Reflog-fallback test cannot tell the merge base from the target head",
+        "file": "tests/skills/test_attach_worktree_script.py",
+        "files": [
+          "tests/skills/test_attach_worktree_script.py",
+          "plugins/harness/skills/a-w/commands/attach_worktree.py"
+        ],
+        "lines": "199-229",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_staged_without_a_reflog_falls_back_to_the_merge_base deletes logs/HEAD but leaves the target at the cut commit, so the merge base, the target HEAD and the cut point are all repos['base']. A fallback that used the target head (or any of these) instead of the merge base would pass the same assertions; the test only proves that some fallback exists.\n\nAlso (tests): cut_point (plugins/harness/skills/a-w/commands/attach_worktree.py:161-168) rejects the oldest reflog entry when it is not an ancestor of HEAD (the worktree was reset or switched elsewhere after the cut) and falls back to the merge base. The new tests cover a usable reflog and a missing reflog, not this third path, so dropping the --is-ancestor guard would go unnoticed.\n\nAlso (tests): test_staged_from_a_foreign_cut_with_no_edits_has_nothing_to_move asserts the exit code, the message and that wt survives, but not that the target index stayed empty; the sibling success test checks _staged(main), this one does not.\n\nAlso (overall): In test_staged_without_a_reflog_falls_back_to_the_merge_base the cut commit equals the merge base, so the result is the same whichever base is used. It only proves a missing logs/HEAD does not crash.",
+        "fix": [
+          "Move the target before attaching (e.g. _commit(main, 'other.txt', 'other', 'target edit')) and assert _staged(main) == ['a.txt'] and that other.txt is not staged as a deletion; a base taken from the target head would then stage a reverse of other.txt or fail.",
+          "Add a test that commits in wt, then runs git -C wt switch --detach to a commit on an unrelated orphan or sibling history (or reset --hard to a commit not descending from the cut), makes an edit, attaches, and asserts only the edit is staged.",
+          "Add assert _staged(repos['main']) == [] and assert not (repos['main'] / 'foreign.txt').exists().",
+          "Use the foreign-cut helper, delete logs/HEAD, and assert foreign.txt is staged with the worktree file, proving the merge base was used."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Settings-path wiring of the new interpreter warning is untested",
+        "file": "tests/lib/test_doctor.py",
+        "files": [
+          "tests/lib/test_doctor.py",
+          "plugins/harness/lib/harness_lib/doctor.py"
+        ],
+        "lines": "80-114",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The new tests call configured_python(path) and check_interpreter(environ, configured) directly, but the only production caller, run_checks (plugins/harness/lib/harness_lib/doctor.py:197-200), builds the settings path from CLAUDE_CONFIG_DIR or ~/.claude and passes it through. No test reaches run_checks, so a wrong path (wrong file name, ignoring CLAUDE_CONFIG_DIR, dropping the configured argument) would leave the feature silently dead while every test in the PR still passes.",
+        "fix": [
+          "Add a test that writes settings.json under tmp_path / 'cfg' with pluginConfigs['harness@x'].options.python set to a non-existent interpreter, calls doctor.run_checks(make_project(None), {'CLAUDE_CONFIG_DIR': str(tmp_path / 'cfg')}), and asserts the 'interpreter' check (via _by_name) is WARN with that path in its detail."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I1",
+      "classification": "architectural_ambiguity",
+      "reason": "Refuse --committed on a foreign cut, or document that it carries the cut's history: a semantics call on --committed, which issue 120 leaves unchanged."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 126 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"0eb4167334fcfcbd67f1cab91ba9a04ccd08f7dd\",\"headRefName\":\"1098-aw\",\"headRefOid\":\"29e77a2c18f40a0cda6ecf8da25dd2ba05d59b8f\",\"last_sha\":\"29e77a2c18f40a0cda6ecf8da25dd2ba05d59b8f\",\"mergeCommit\":null,\"number\":126,\"state\":\"OPEN\",\"title\":\"Fix(harness): `attach_worktree` patch base\",\"url\":\"https://github.com/t968rs/operator-straps/pull/126\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1098-aw",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1098-aw",
+        "head_ref_name": "1098-aw",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "0eb4167334fcfcbd67f1cab91ba9a04ccd08f7dd",
+        "head_sha": "29e77a2c18f40a0cda6ecf8da25dd2ba05d59b8f",
+        "base_ancestor_command": "git merge-base --is-ancestor 0eb4167334fcfcbd67f1cab91ba9a04ccd08f7dd HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 29e77a2c18f40a0cda6ecf8da25dd2ba05d59b8f HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - a-w SKILL.md default row now names the cut commit as the HEAD reflog creation entry and the merge-base fallback; migrating-off-a-plugin qualifies 'still attaches' with 'while the worktree's HEAD reflog still holds the cut commit'; attach_worktree.py cited only, its docstring already documented the fallback"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - no-reflog test moves the target first and asserts other.txt is neither staged nor deleted; foreign no-edit test asserts an empty target index and no foreign.txt; new tests cover a foreign cut without a reflog (foreign.txt staged, proving the merge base) and HEAD switched off the cut history (guard path); attach_worktree.py cited only"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - cut_point trusts only the logs/HEAD creation entry (all-zero old oid) still behind HEAD; patch_base uses the merge base when it already contains the cut, the cut otherwise; docstring and both skill docs updated; tests for an expired creation entry (both commits staged) and a target revert after a fast-forward (x.txt not re-created); new_worktree.py cited only, its worktree add --detach already writes the creation entry"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - plugin.json userConfig python description now says hooks only and points skill commands at HARNESS_PY; doctor.py override fix drops the python-option alternative; README python option row (line 245) and hpy order (line 252) reworded to hooks only with HARNESS_PY for skill commands; plugin.json and doctor.py are another fixer's part"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - doctor.py _unexported_option names the settings file run_checks read (CLAUDE_CONFIG_DIR or home) via new user_settings_path; test_doctor_script._run pins CLAUDE_CONFIG_DIR to an empty tmp dir and adds a settings.json python-option warning subprocess test; test_doctor.py adds run_checks CLAUDE_CONFIG_DIR and home lookup tests"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - tests/lib/test_doctor.py adds run_checks tests for the CLAUDE_CONFIG_DIR path, the home fallback, and CLAUDE_CONFIG_DIR overriding home; doctor.py run_checks passes its settings path into check_interpreter"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - README harness options table python row and hpy order now say hooks only; skill commands need HARNESS_PY"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - rewrapped the doctor paragraph (README.md lines 264-267) to the section's width"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "29e77a2 (working-tree snapshot; developer commits) - doctor SKILL afterward bullet: past-tense incident wording changed to present-tense standing contract ('is not exported ... so hpy does not see it')"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-29",
+      "evidence": "b5ccdf7 (working-tree snapshot; developer commits) - move_committed computes cut_point(worktree, head) and refuses when the cut commit is not an ancestor of the target head, pointing to the default staged mode; module docstring states the new refusal"
+    }
+  ]
+}
