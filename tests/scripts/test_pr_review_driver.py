@@ -28,7 +28,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 
 import pytest
@@ -1083,42 +1083,47 @@ _BATCH_REGISTRY = {"tests": [
 _BATCH_TIMINGS = {"tests": [{"file": "tests/test_slow.py", "duration": 90.0}]}
 
 
+def _file_entry(tests: str, path: str) -> str:
+    """The per-file entry of ``path`` in a ``Files and tests`` section, its deferred notes included."""
+    [entry] = [block for block in tests.split("\n- ") if block.startswith(f"{path}:")]
+    return entry
+
+
 class TestBatchedFixerTests:
-    def _brief_tests(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project) -> str:
-        """The ``Files and tests`` section of the brief for one fixer owning a.py and b.py."""
+    def test_one_fixer_gets_one_command_and_a_per_file_mapping(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+    ) -> None:
         extra = {"tests/test_shared.py": "def test_shared():\n    assert True\n",
                  "tests/test_slow.py": "def test_slow():\n    assert True\n"}
         base: Dict[str, object] = {"tests/registry.json": _BATCH_REGISTRY,
                                    "reports/timings.json": _BATCH_TIMINGS}
         clone, head = _make_pr(make_project, extra, _DEFER_CONFIG, base)
-        runtime = [_finding("src/pkg/a.py", None, also=["src/pkg/b.py"])]
-        _built(script, monkeypatch, clone, head, runtime)
+        _built(script, monkeypatch, clone, head, [_finding("src/pkg/a.py", None, also=["src/pkg/b.py"])])
         assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        [[fixer]] = _waves(clone)
+        assert {"src/pkg/a.py", "src/pkg/b.py"} <= set(fixer["files"])  # type: ignore[arg-type]
         brief = _brief(clone, "w1_fix_1", "fix_briefs")
-        return brief.split("## Files and tests", 1)[1].split("## Rules", 1)[0]
-
-    def test_files_sharing_tests_get_one_pytest_command(
-            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
-    ) -> None:
-        tests = self._brief_tests(script, monkeypatch, make_project)
+        tests = brief.split("## Files and tests", 1)[1].split("## Rules", 1)[0]
         [run] = _run_lines(tests)
         assert run.count("tests/test_a.py") == 1 and run.count("tests/test_shared.py") == 1
         assert "tests/test_slow.py" not in run
-
-    def test_per_file_mapping_names_each_files_tests_in_plain_text(
-            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
-    ) -> None:
-        tests = self._brief_tests(script, monkeypatch, make_project)
-        assert "- src/pkg/a.py: tests/test_a.py, tests/test_shared.py" in tests
-        assert "- src/pkg/b.py: tests/test_shared.py" in tests
-
-    def test_deferred_tests_stay_listed_per_file(
-            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
-    ) -> None:
-        tests = self._brief_tests(script, monkeypatch, make_project)
+        assert "Run once after the last edit" in tests and script.NO_RUNNABLE_TESTS not in tests
+        a_entry, b_entry = _file_entry(tests, "src/pkg/a.py"), _file_entry(tests, "src/pkg/b.py")
+        assert a_entry.startswith("src/pkg/a.py: tests/test_a.py, tests/test_shared.py")
+        assert b_entry.startswith("src/pkg/b.py: tests/test_shared.py")
         note = "- deferred, do not run: `tests/test_slow.py` (measured 90 s > 60 s)"
-        # a.py and b.py reach it through src/pkg/; the widened file set also holds the test itself
-        assert tests.count(note) == 3
+        assert note in a_entry and note in b_entry
+
+    def test_deferred_only_file_set_gets_no_run_and_keeps_its_labels(self, script: ModuleType) -> None:
+        entries = [("tests/test_slow.py", ("src/pkg/a.py",))]
+        deferred = {"tests/test_slow.py": "measured 90 s > 60 s"}
+        ctx = SimpleNamespace(repo="C:/repo")
+        tests = "\n".join(script._tests_block(ctx, ["src/pkg/a.py", "src/pkg/b.py"], entries, deferred))
+        assert _run_lines(tests) == []
+        assert script.NO_RUNNABLE_TESTS in tests and "after a red" not in tests
+        assert _file_entry(tests, "src/pkg/a.py").startswith("src/pkg/a.py: no runnable test")
+        assert "- deferred, do not run: `tests/test_slow.py` (measured 90 s > 60 s)" in tests
+        assert _file_entry(tests, "src/pkg/b.py") == "src/pkg/b.py: no registered test"
 
 
 class TestDeferredTests:
