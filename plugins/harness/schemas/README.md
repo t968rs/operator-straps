@@ -100,6 +100,14 @@ This is a worked specimen (originally produced for Issue #747's CICD-Decompose-c
 
 **Finding:** `rule` (`S*` research, `P*` plans, `T*` TODO catalog, `G*` GitHub), `severity` (`error` / `warn`), `counted`, `file` (repo-relative POSIX or null), optional `line`, `subject`, `fix`, and a one-line `message`. `tests/mods/test_todo_watch_report_contract.py` pins every key the mod reads to this schema and checks that the mod's finding parser reads those keys and the severity enum through the pinned constants. A `--rules` run marks each left-out rule `not selected` in `rules_skipped`; the mod ignores such a subset report.
 
+### 8. `SkillSpec.schema.json`
+
+**Applies to:** The strap-skills design spec (`SkillSpec`): the model in `plugins/harness/lib/harness_lib/strap_models.py` that the skill-authoring driver reads and writes.
+
+**Generated, never hand-edited.** The file is `strap_models.schema_text()` written by `tools/gen_skillspec_schema.py` (repo-only; `--check` exits 1 on drift). Regenerate after any model change; `tests/schemas/test_skillspec_schema_drift.py` pins the committed file to the generator byte for byte (CRLF folded to LF), so `pydantic` is pinned in `requirements-dev.txt`. Draft 2020-12, with `$schema` and `$id` first.
+
+**Driver-owned markers:** top-level properties the driver writes (`strap_models.DRIVER_OWNED_TOP`) carry `driver_owned: true`; an author never sets them.
+
 ---
 
 ## Catalog Schemas (`catalogs/`)

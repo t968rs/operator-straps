@@ -1,0 +1,67 @@
+"""$title: the document the ``$name`` skill saves, its enums and validators.
+
+Enums are ``str`` enums, so a value serializes as its plain string. Every model forbids extra keys, so a
+misspelled field is a validation error instead of a silently dropped value. The API module
+(``${snake}_api``) is the only writer of the document; this module imports no other ``harness_lib`` module.
+
+TODO(fill): replace ``EntryKind`` and ``Entry`` with the skill's own records.
+"""
+from __future__ import annotations
+
+import json
+from enum import Enum
+from pathlib import Path
+from typing import List, Optional
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+NAME_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$$"
+DOCUMENT_FILE = "${snake}.json"
+ENTRY_PREFIX = "E"
+_ENTRY_ID = r"^E\d+$$"
+_MODEL_CONFIG = ConfigDict(extra="forbid")
+
+
+class EntryKind(str, Enum):
+    """Kind of one entry."""
+
+    FIRST = "first"
+    SECOND = "second"
+
+
+class Entry(BaseModel):
+    """One record of the document; ``id`` is assigned by the API."""
+
+    model_config = _MODEL_CONFIG
+
+    id: str = Field(pattern=_ENTRY_ID)
+    kind: EntryKind
+    text: str = Field(min_length=1)
+    note: Optional[str] = None
+
+
+class Document(BaseModel):
+    """The ``$name`` document: a name and its entries."""
+
+    model_config = _MODEL_CONFIG
+
+    name: str = Field(pattern=NAME_PATTERN)
+    entries: List[Entry] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _unique_entry_ids(self) -> "Document":
+        ids = [entry.id for entry in self.entries]
+        duplicates = sorted({ident for ident in ids if ids.count(ident) > 1})
+        if duplicates:
+            raise ValueError(f"duplicate entry ids: {', '.join(duplicates)}")
+        return self
+
+
+def load_document(path: Path) -> Document:
+    """Read and validate the document at ``path``; raises ``ValidationError`` or ``OSError``."""
+    return Document.model_validate_json(path.read_text(encoding="utf-8"))
+
+
+def dump_document(document: Document) -> str:
+    """Canonical file text of ``document``: indented JSON and a trailing newline."""
+    return json.dumps(document.model_dump(mode="json"), indent=2) + "\n"

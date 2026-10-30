@@ -133,6 +133,16 @@ def _parallel2_plan_args(root: Path, tmp: Path) -> List[str]:
     return ["scripts/parallel2.py", "--repo", str(root), "plan", str(plan)]
 
 
+def _strap_new_args(root: Path) -> List[str]:
+    """Seed a ``harness`` plugin source tree so ``strap.py new`` finds its plugin dir instead of refusing."""
+    manifest = root / "plugins" / "harness" / ".claude-plugin" / "plugin.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(json.dumps({"name": "harness"}) + "\n", encoding="utf-8", newline="\n")
+    git(root, "add", "-A")
+    git(root, "commit", "-q", "-m", "plugin manifest")
+    return ["scripts/strap.py", "--repo", str(root), "new", "demo-skill"]
+
+
 CASES = {
     "parallel2 plan": lambda r, t: (_parallel2_plan_args(r, t), None),
     "todo_sync check": lambda r, t: (_todo_args(r, "check"), None),
@@ -160,7 +170,11 @@ CASES = {
                                        {"cwd": str(r), "session_id": "s"}),
     "bash discipline hook": lambda r, t: (["hooks/bash_discipline.py"], {
         "cwd": str(r), "tool_name": "Bash", "tool_input": {"command": "git status && git log"}}),
+    "strap new": lambda r, t: (_strap_new_args(r), None),
 }
+
+# Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
+MUST_EXIT_ZERO = frozenset({"strap new"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
@@ -168,6 +182,8 @@ def test_entry_point_writes_nothing_under_plugins(name: str, project: Path, tmp_
     script, payload = CASES[name](project, tmp_path)
     before = _snapshot()
     done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project, payload)
+    if name in MUST_EXIT_ZERO:
+        assert done.returncode == 0, f"{name} exited {done.returncode}:\n{done.stderr}"
     changes = _diff(before, _snapshot())
     assert not changes, f"{name} wrote under plugins/ (rc={done.returncode}):\n" + "\n".join(changes)
     assert "Traceback" not in done.stderr, done.stderr

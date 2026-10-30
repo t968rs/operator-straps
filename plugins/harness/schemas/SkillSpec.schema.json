@@ -1,0 +1,667 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/SkillSpec.schema.json",
+  "$defs": {
+    "Arm": {
+      "description": "Run arm: without the skill text (baseline) or with it (green).",
+      "enum": [
+        "baseline",
+        "green"
+      ],
+      "title": "Arm",
+      "type": "string"
+    },
+    "Behavior": {
+      "additionalProperties": false,
+      "description": "One behavior the skill must produce, pinned by planned tests or by drawn scenarios.",
+      "properties": {
+        "id": {
+          "pattern": "^B\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "statement": {
+          "title": "Statement",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/BehaviorKind"
+        },
+        "type": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/JudgmentType"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "tests": {
+          "items": {
+            "$ref": "#/$defs/PlannedTest"
+          },
+          "title": "Tests",
+          "type": "array"
+        },
+        "scenarios": {
+          "items": {
+            "$ref": "#/$defs/Scenario"
+          },
+          "title": "Scenarios",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/BehaviorState",
+          "default": "open",
+          "driver_owned": true
+        },
+        "dropped_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dropped Reason"
+        }
+      },
+      "required": [
+        "id",
+        "statement",
+        "kind",
+        "rationale"
+      ],
+      "title": "Behavior",
+      "type": "object"
+    },
+    "BehaviorKind": {
+      "description": "Mechanical behaviors are pinned by planned tests; judgment behaviors by drawn scenarios.",
+      "enum": [
+        "mechanical",
+        "judgment"
+      ],
+      "title": "BehaviorKind",
+      "type": "string"
+    },
+    "BehaviorState": {
+      "description": "Driver-tracked progress of a behavior.",
+      "enum": [
+        "open",
+        "drawn",
+        "red",
+        "green",
+        "retest",
+        "dropped"
+      ],
+      "title": "BehaviorState",
+      "type": "string"
+    },
+    "Check": {
+      "additionalProperties": false,
+      "description": "A machine-evaluated scenario fact and what each arm is expected to observe.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/CheckKind"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "expect_baseline": {
+          "title": "Expect Baseline",
+          "type": "boolean"
+        },
+        "expect_green": {
+          "title": "Expect Green",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "target",
+        "expect_baseline",
+        "expect_green"
+      ],
+      "title": "Check",
+      "type": "object"
+    },
+    "CheckKind": {
+      "description": "Observable fact a scenario check evaluates after a run.",
+      "enum": [
+        "file_unchanged",
+        "file_changed",
+        "path_present",
+        "path_absent",
+        "head_unchanged",
+        "reply_matches",
+        "reply_lacks"
+      ],
+      "title": "CheckKind",
+      "type": "string"
+    },
+    "CheckResult": {
+      "additionalProperties": false,
+      "description": "Outcome of one scenario check on one run.",
+      "properties": {
+        "index": {
+          "title": "Index",
+          "type": "integer"
+        },
+        "held": {
+          "title": "Held",
+          "type": "boolean"
+        },
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index",
+        "held",
+        "detail"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "Draw": {
+      "additionalProperties": false,
+      "description": "A seeded scenario draw for a behavior.",
+      "properties": {
+        "behavior": {
+          "title": "Behavior",
+          "type": "string"
+        },
+        "scenario": {
+          "title": "Scenario",
+          "type": "string"
+        },
+        "seed": {
+          "title": "Seed",
+          "type": "integer"
+        },
+        "reason": {
+          "$ref": "#/$defs/DrawReason"
+        },
+        "at": {
+          "title": "At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "behavior",
+        "scenario",
+        "seed",
+        "reason",
+        "at"
+      ],
+      "title": "Draw",
+      "type": "object"
+    },
+    "DrawReason": {
+      "description": "Why a scenario was drawn.",
+      "enum": [
+        "initial",
+        "retest"
+      ],
+      "title": "DrawReason",
+      "type": "string"
+    },
+    "Frozen": {
+      "additionalProperties": false,
+      "description": "The seal: the skill hash and grader the spec was frozen with.",
+      "properties": {
+        "skill_hash": {
+          "title": "Skill Hash",
+          "type": "string"
+        },
+        "grader": {
+          "$ref": "#/$defs/Grader"
+        },
+        "at": {
+          "title": "At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill_hash",
+        "grader",
+        "at"
+      ],
+      "title": "Frozen",
+      "type": "object"
+    },
+    "Grade": {
+      "additionalProperties": false,
+      "description": "A grade of one judged item of one run, with the verbatim quote that supports it.",
+      "properties": {
+        "run": {
+          "title": "Run",
+          "type": "string"
+        },
+        "item": {
+          "title": "Item",
+          "type": "integer"
+        },
+        "value": {
+          "$ref": "#/$defs/GradeValue"
+        },
+        "quote": {
+          "title": "Quote",
+          "type": "string"
+        },
+        "grader": {
+          "$ref": "#/$defs/Grader"
+        }
+      },
+      "required": [
+        "run",
+        "item",
+        "value",
+        "quote",
+        "grader"
+      ],
+      "title": "Grade",
+      "type": "object"
+    },
+    "GradeValue": {
+      "description": "Outcome of grading one judged item.",
+      "enum": [
+        "present",
+        "absent",
+        "unclear"
+      ],
+      "title": "GradeValue",
+      "type": "string"
+    },
+    "Grader": {
+      "description": "Who graded: the author's session or the independent judge agent.",
+      "enum": [
+        "session",
+        "judge"
+      ],
+      "title": "Grader",
+      "type": "string"
+    },
+    "JudgedItem": {
+      "additionalProperties": false,
+      "description": "A reply act graded by reading; ``UNCLEAR`` is a grade outcome, never an expectation.",
+      "properties": {
+        "act": {
+          "$ref": "#/$defs/ReplyAct"
+        },
+        "of": {
+          "title": "Of",
+          "type": "string"
+        },
+        "expect_baseline": {
+          "$ref": "#/$defs/GradeValue"
+        },
+        "expect_green": {
+          "$ref": "#/$defs/GradeValue"
+        }
+      },
+      "required": [
+        "act",
+        "of",
+        "expect_baseline",
+        "expect_green"
+      ],
+      "title": "JudgedItem",
+      "type": "object"
+    },
+    "JudgmentType": {
+      "description": "Kind of judgment behavior; discipline behaviors need pressure scenarios.",
+      "enum": [
+        "discipline",
+        "technique",
+        "pattern",
+        "reference"
+      ],
+      "title": "JudgmentType",
+      "type": "string"
+    },
+    "Part": {
+      "additionalProperties": false,
+      "description": "One file of the deliverable set; ``path`` is repo-relative POSIX.",
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/PartKind"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "path"
+      ],
+      "title": "Part",
+      "type": "object"
+    },
+    "PartKind": {
+      "description": "Role of a file in the skill's deliverable set.",
+      "enum": [
+        "skill_md",
+        "models",
+        "api",
+        "driver",
+        "agent",
+        "contract_test",
+        "reference"
+      ],
+      "title": "PartKind",
+      "type": "string"
+    },
+    "PlannedTest": {
+      "additionalProperties": false,
+      "description": "A pytest node id and the exception it raises in the red phase.",
+      "properties": {
+        "node": {
+          "title": "Node",
+          "type": "string"
+        },
+        "red": {
+          "$ref": "#/$defs/RedException"
+        }
+      },
+      "required": [
+        "node",
+        "red"
+      ],
+      "title": "PlannedTest",
+      "type": "object"
+    },
+    "Pressure": {
+      "description": "Pressure a scenario applies to tempt the agent.",
+      "enum": [
+        "time",
+        "sunk_cost",
+        "authority",
+        "exhaustion",
+        "social",
+        "pragmatic"
+      ],
+      "title": "Pressure",
+      "type": "string"
+    },
+    "RedException": {
+      "description": "Exception a planned test is expected to raise before the code exists.",
+      "enum": [
+        "ImportError",
+        "AttributeError",
+        "AssertionError",
+        "NotImplementedError",
+        "TypeError"
+      ],
+      "title": "RedException",
+      "type": "string"
+    },
+    "ReplyAct": {
+      "description": "Act a grader looks for in a reply.",
+      "enum": [
+        "refuses",
+        "asks_developer",
+        "redirects",
+        "defers",
+        "rationalizes",
+        "proceeds"
+      ],
+      "title": "ReplyAct",
+      "type": "string"
+    },
+    "Run": {
+      "additionalProperties": false,
+      "description": "One scenario run on one arm; ``tree`` and ``start`` locate the working tree the run used.",
+      "properties": {
+        "id": {
+          "pattern": "^R-\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "behavior": {
+          "title": "Behavior",
+          "type": "string"
+        },
+        "scenario": {
+          "title": "Scenario",
+          "type": "string"
+        },
+        "arm": {
+          "$ref": "#/$defs/Arm"
+        },
+        "skill_hash": {
+          "title": "Skill Hash",
+          "type": "string"
+        },
+        "reply": {
+          "default": "",
+          "title": "Reply",
+          "type": "string"
+        },
+        "reply_sha256": {
+          "default": "",
+          "title": "Reply Sha256",
+          "type": "string"
+        },
+        "diff": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Diff",
+          "type": "array"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/CheckResult"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "recorded": {
+          "default": false,
+          "title": "Recorded",
+          "type": "boolean"
+        },
+        "tree": {
+          "default": "",
+          "title": "Tree",
+          "type": "string"
+        },
+        "start": {
+          "default": "",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "behavior",
+        "scenario",
+        "arm",
+        "skill_hash"
+      ],
+      "title": "Run",
+      "type": "object"
+    },
+    "Scenario": {
+      "additionalProperties": false,
+      "description": "A pressure scenario: a task that tempts a move, with checks and judged items for both arms.",
+      "properties": {
+        "id": {
+          "pattern": "^SC-\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "task": {
+          "title": "Task",
+          "type": "string"
+        },
+        "pressures": {
+          "items": {
+            "$ref": "#/$defs/Pressure"
+          },
+          "title": "Pressures",
+          "type": "array"
+        },
+        "tempts": {
+          "title": "Tempts",
+          "type": "string"
+        },
+        "fixture": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Fixture"
+        },
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/Check"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "judged": {
+          "items": {
+            "$ref": "#/$defs/JudgedItem"
+          },
+          "title": "Judged",
+          "type": "array"
+        },
+        "role": {
+          "default": "session",
+          "title": "Role",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "task",
+        "tempts"
+      ],
+      "title": "Scenario",
+      "type": "object"
+    },
+    "SpecMode": {
+      "description": "Whether the spec creates a skill or edits an existing one.",
+      "enum": [
+        "new",
+        "edit"
+      ],
+      "title": "SpecMode",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The strap-skills document for one skill.",
+  "properties": {
+    "name": {
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+      "title": "Name",
+      "type": "string"
+    },
+    "mode": {
+      "$ref": "#/$defs/SpecMode"
+    },
+    "base": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Base"
+    },
+    "judge": {
+      "default": false,
+      "title": "Judge",
+      "type": "boolean"
+    },
+    "plugin_dir": {
+      "title": "Plugin Dir",
+      "type": "string"
+    },
+    "parts": {
+      "items": {
+        "$ref": "#/$defs/Part"
+      },
+      "title": "Parts",
+      "type": "array"
+    },
+    "behaviors": {
+      "items": {
+        "$ref": "#/$defs/Behavior"
+      },
+      "title": "Behaviors",
+      "type": "array"
+    },
+    "draws": {
+      "driver_owned": true,
+      "items": {
+        "$ref": "#/$defs/Draw"
+      },
+      "title": "Draws",
+      "type": "array"
+    },
+    "runs": {
+      "driver_owned": true,
+      "items": {
+        "$ref": "#/$defs/Run"
+      },
+      "title": "Runs",
+      "type": "array"
+    },
+    "grades": {
+      "driver_owned": true,
+      "items": {
+        "$ref": "#/$defs/Grade"
+      },
+      "title": "Grades",
+      "type": "array"
+    },
+    "frozen": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Frozen"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "driver_owned": true
+    },
+    "driver_digest": {
+      "default": "",
+      "driver_owned": true,
+      "title": "Driver Digest",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "mode",
+    "plugin_dir"
+  ],
+  "title": "SkillSpec",
+  "type": "object"
+}

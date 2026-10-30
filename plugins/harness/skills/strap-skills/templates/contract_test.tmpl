@@ -1,0 +1,59 @@
+"""Contract test for the ``$name`` skill: its SKILL.md frontmatter, its API launcher and its models.
+
+The skill's models and API are imported, never copied: a literal pinned here would drift from the module that
+defines it. A skill without a models or an API module skips the tests that need one.
+"""
+from __future__ import annotations
+
+from types import ModuleType
+
+import pytest
+from pydantic import ValidationError
+
+from harness_lib.project import plugin_root
+from harness_lib.skill_parts import skill_parts
+
+NAME = "$name"
+SKILL = plugin_root() / "skills" / NAME / "SKILL.md"
+MODELS = "harness_lib.${snake}_models"
+API = "harness_lib.${snake}_api"
+LAUNCHER = 'scripts/skill_api.py" ${snake}_api'
+
+
+def _module(dotted: str) -> ModuleType:
+    """The module ``dotted``; the calling test is skipped when the skill has no such part."""
+    return pytest.importorskip(dotted)
+
+
+def test_frontmatter_names_the_skill_folder() -> None:
+    keys = skill_parts(SKILL)[0]
+    assert keys["name"].strip("\"'") == NAME
+
+
+def test_description_is_filled() -> None:
+    description = skill_parts(SKILL)[0].get("description", "").strip("\"'")
+    assert description.startswith("Use when"), description
+
+
+def test_api_heredoc_launches_the_skill_api() -> None:
+    body = skill_parts(SKILL)[1]
+    assert LAUNCHER in body
+
+
+def test_api_exports_existing_names() -> None:
+    api = _module(API)
+    missing = [name for name in api.__all__ if not hasattr(api, name)]
+    assert not missing, missing
+
+
+def test_models_forbid_extra_keys() -> None:
+    models = _module(MODELS)
+    with pytest.raises(ValidationError):
+        models.Document.model_validate({"name": NAME, "unexpected": 1})
+
+
+def test_document_round_trips_through_its_dump() -> None:
+    models = _module(MODELS)
+    entry = models.Entry(id=f"{models.ENTRY_PREFIX}1", kind=models.EntryKind.FIRST, text="first entry")
+    document = models.Document(name=NAME, entries=[entry])
+    assert models.Document.model_validate_json(models.dump_document(document)) == document

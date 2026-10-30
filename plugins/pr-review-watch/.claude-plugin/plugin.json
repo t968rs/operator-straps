@@ -1,6 +1,6 @@
 {
   "name": "pr-review-watch",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "pr-review / pr-team run tracking: Phase 5 band, engine-measured matrix and agent usage rows, bubble Stop guard",
   "author": {
     "name": "Kevin Gabelman"
