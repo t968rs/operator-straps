@@ -1,0 +1,99 @@
+"""$title: the author's API over the ``$name`` document, as validating factories and operations.
+
+Every operation takes the document name first, loads ``<artifacts.plans>/$name/<name>/${snake}.json``,
+applies one change, re-validates the whole document from its dump and only then writes the file. A refusal
+or a failed validation writes nothing. Refusals raise ``ApiError``, a ``ValueError``.
+
+``__all__`` is the surface ``skill_api.py`` binds for an api heredoc; a name left out of it is not reachable
+from the heredoc. Requires an activated config.
+"""
+from __future__ import annotations
+
+import re
+from pathlib import Path
+from typing import Callable, Iterable, Optional, Union
+
+from harness_lib.config import active
+from harness_lib.${snake}_models import (
+    DOCUMENT_FILE, ENTRY_PREFIX, NAME_PATTERN, Document, Entry, EntryKind, dump_document, load_document,
+)
+
+__all__ = ["ApiError", "document_path", "new_entry", "create", "load", "validate", "add_entry"]
+
+
+class ApiError(ValueError):
+    """A refused ``$name`` operation; the message names the defect."""
+
+
+def document_path(name: str) -> Path:
+    """Location of the document: ``<artifacts.plans>/$name/<name>/${snake}.json``."""
+    if not re.fullmatch(NAME_PATTERN, name):
+        raise ApiError(f"{name!r} is not a document name")
+    cfg = active()
+    return cfg.path(cfg.artifacts.plans) / "$name" / name / DOCUMENT_FILE
+
+
+# --- factories ------------------------------------------------------------------------------------------
+
+def new_entry(kind: Union[EntryKind, str], text: str, note: Optional[str] = None) -> Entry:
+    """A validated entry with the placeholder id ``E0``; ``add_entry`` assigns the real one."""
+    return Entry(id=f"{ENTRY_PREFIX}0", kind=kind, text=text, note=note)
+
+
+# --- load, validate, save -------------------------------------------------------------------------------
+
+def load(name: str) -> Document:
+    """The document as stored; refused when it does not exist."""
+    path = document_path(name)
+    if not path.is_file():
+        raise ApiError(f"no document {name} at {path.as_posix()}")
+    return load_document(path)
+
+
+def validate(name: str) -> Document:
+    """The stored document, refused when its file text is not the canonical dump (a hand edit)."""
+    document = load(name)
+    if document_path(name).read_text(encoding="utf-8") != dump_document(document):
+        raise ApiError(f"{name} was edited outside the API")
+    return document
+
+
+def _save(name: str, changed: Document) -> Document:
+    """Re-validate ``changed`` from its dump, then write; nothing is written on failure."""
+    checked = Document.model_validate(changed.model_dump())
+    path = document_path(name)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(dump_document(checked), encoding="utf-8", newline="\n")
+    return checked
+
+
+def _apply(name: str, change: Callable[[Document], Document]) -> Document:
+    """Validate ``name``'s document, apply ``change`` and save the result."""
+    return _save(name, change(validate(name)))
+
+
+# --- operations -----------------------------------------------------------------------------------------
+
+def create(name: str) -> Document:
+    """Write a new, empty document; an existing one is refused."""
+    if document_path(name).exists():
+        raise ApiError(f"{name} already exists")
+    return _save(name, Document(name=name))
+
+
+def _next_id(taken: Iterable[str]) -> str:
+    """``ENTRY_PREFIX`` plus one more than the highest number already used with it."""
+    numbers = [int(ident[len(ENTRY_PREFIX):]) for ident in taken if ident[len(ENTRY_PREFIX):].isdigit()]
+    return f"{ENTRY_PREFIX}{max(numbers, default=0) + 1}"
+
+
+def add_entry(name: str, entry: Entry) -> Document:
+    """Append ``entry`` as the next ``E<n>``."""
+    if not isinstance(entry, Entry):
+        raise ApiError("add_entry takes an Entry built by new_entry")
+
+    def change(document: Document) -> Document:
+        fresh = entry.model_copy(update={"id": _next_id(e.id for e in document.entries)})
+        return document.model_copy(update={"entries": [*document.entries, fresh]})
+
+    return _apply(name, change)
