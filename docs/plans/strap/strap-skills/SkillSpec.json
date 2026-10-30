@@ -1,0 +1,39 @@
+{
+  "name": "strap-skills",
+  "mode": "edit",
+  "base": "697dce28554978c9d1fa2cf45036cf662350fbef",
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/strap-skills/SKILL.md"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/api.tmpl"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/contract_test.tmpl"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/models.tmpl"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/skill_md.tmpl"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_strap_skills_skill_contract.py"
+    }
+  ],
+  "behaviors": [],
+  "draws": [],
+  "runs": [],
+  "grades": [],
+  "frozen": null,
+  "driver_digest": "9c74dd04a2f320a4e97830327a4e65996ae9de53b700260873271247527919e8"
+}
