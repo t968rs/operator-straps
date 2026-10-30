@@ -56,34 +56,1194 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 0,
-    "needs_decision": 0,
+    "items": 20,
+    "needs_decision": 9,
     "trackers": 0,
-    "close_candidates": 10,
+    "close_candidates": 11,
     "by_status": {
-      "NEEDS_DECISION": 0,
-      "OPEN": 0
+      "NEEDS_DECISION": 9,
+      "OPEN": 11
     },
     "by_impact": {
-      "dev_velocity": 0,
-      "docs_tooling": 0,
-      "maintainability": 0
+      "dev_velocity": 8,
+      "docs_tooling": 10,
+      "maintainability": 1,
+      "runtime_failure": 1
     },
     "by_loe": {
-      "XS": 0,
-      "S": 0,
-      "M": 0,
-      "L": 0,
+      "XS": 2,
+      "S": 8,
+      "M": 6,
+      "L": 4,
       "XL": 0
     },
     "sources_absorbed": {
-      "gh_issue": 0,
+      "gh_issue": 20,
       "impl_stub": 0,
       "research_folder": 0
     },
     "merged_items": 0
   },
-  "items": [],
+  "items": [
+    {
+      "id": "TODO-001",
+      "rank": 1,
+      "title": "post-forcepush Step 6 hard-depends on superpowers-lt:verification-before-completion",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#133",
+          "url": "https://github.com/t968rs/operator-straps/issues/133"
+        }
+      ],
+      "gh_issues": [
+        133
+      ],
+      "related_gh_issues": [
+        142
+      ],
+      "catalog_entry_ids": [],
+      "summary": "Checked: plugins/harness/skills/post-forcepush/SKILL.md:186-188 makes Step 6 invoke `superpowers-lt:verification-before-completion` through the Skill tool, :206 makes its VERIFIED result a report field, and :233 calls skipping it non-negotiable, so a project without superpowers-lt cannot finish the skill. Soft references: plugins/harness/skills/strap-debugging/SKILL.md:189 and plugins/harness/skills/parallel2/README.md:87. HARNESS_RULES.md \"Verification\" (:83) carries one sentence of the principle; the 5-step gate, the claim-to-evidence table, the red-green-revert check and the hedge-word stop list are lost on retirement.",
+      "proposed_change": "Port as harness:verification-before-completion (MIT, as strap-debugging was) with the evidence-per-claim table and hedge-word stop list, or inline a checklist into post-forcepush Step 6; repoint post-forcepush :188, :206, :233, strap-debugging :189 and parallel2 README :87, and add LICENSE and a docs/PROVENANCE.md row if ported.",
+      "files": [
+        "plugins/harness/skills/post-forcepush/SKILL.md",
+        "plugins/harness/skills/strap-debugging/SKILL.md",
+        "plugins/harness/skills/parallel2/README.md",
+        "docs/PROVENANCE.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "post-forcepush plus two soft references.",
+        "consumers": [
+          "plugins/harness/skills/post-forcepush/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A short skill port or an inline checklist, plus five reference edits."
+      },
+      "impact": "runtime_failure",
+      "severity": 3,
+      "priority": {
+        "score": 2.7577,
+        "components": {
+          "impact_weight": 1.3,
+          "value": 3.9,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 2.7577,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 block of post-forcepush in any project without superpowers-lt, runtime_failure impact, S size."
+    },
+    {
+      "id": "TODO-002",
+      "rank": 2,
+      "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
+      "kind": "test",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "What limit applies (the 20,000-character post-compaction cut is unconfirmed against the current host), and do pr-review and pr-team get split into references/ or allowlisted?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#143",
+          "url": "https://github.com/t968rs/operator-straps/issues/143"
+        }
+      ],
+      "gh_issues": [
+        143
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "superpowers-lt fails any SKILL.md of 20,000 bytes or more because the host re-attaches skills truncated after a compaction. Checked with wc -c: plugins/harness/skills/pr-review/SKILL.md is 76,148 bytes (the issue measured 75,648), plugins/harness/skills/pr-team/SKILL.md 45,907, plugins/harness/skills/pr-sum/SKILL.md 19,072. No test under tests/ checks SKILL.md size (the only st_size asserts are tests/contract/test_plugin_icons.py:53 and tests/contract/test_root_separation.py:33). Unverified: the host's current truncation limit.",
+      "proposed_change": "Confirm the truncation limit, add a contract test that enumerates plugins/*/skills/*/SKILL.md and fails above it with an allowlist, and record the plan for pr-review and pr-team (split into references/ or allowlist).",
+      "files": [
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/skills/pr-team/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new contract test; splitting the two skills is sized after the decision.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A short contract test and an allowlist; the splits would be separate L work."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing guard, dev_velocity impact, S size."
+    },
+    {
+      "id": "TODO-003",
+      "rank": 3,
+      "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Is bypassing the host's native EnterWorktree tool in d-w deliberate, and should d-w run (or only document) a dependency-install and test-baseline step?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#141",
+          "url": "https://github.com/t968rs/operator-straps/issues/141"
+        }
+      ],
+      "gh_issues": [
+        141
+      ],
+      "related_gh_issues": [
+        130
+      ],
+      "catalog_entry_ids": [],
+      "summary": "Parts of using-git-worktrees that d-w and a-w lack: detecting an existing linked worktree, project setup and a clean test baseline, preferring the native EnterWorktree tool, a sandbox-denial fallback and named-branch worktrees. Checked: the only `--git-common-dir` use is plugins/harness/lib/harness_lib/project.py:39 (finding the main checkout); plugins/harness/skills/d-w/commands/new_worktree.py and plugins/harness/skills/d-w/SKILL.md have no git-dir, common-dir, EnterWorktree or baseline text, so d-w creates a worktree from inside another; plugins/harness/skills/parallel2/README.md:81 names `superpowers-lt:using-git-worktrees`. Unverified: how new_worktree.py reports a permission failure.",
+      "proposed_change": "Make new_worktree.py detect that it runs inside a linked worktree (git-dir differs from common-dir, submodule guard) and say so before creating another; document or optionally run setup and a baseline; record the EnterWorktree answer in d-w/SKILL.md; repoint parallel2/README.md:81.",
+      "files": [
+        "plugins/harness/skills/d-w/commands/new_worktree.py",
+        "plugins/harness/skills/d-w/SKILL.md",
+        "plugins/harness/skills/parallel2/README.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "d-w only; a-w and parallel2 read its worktrees but not its checks.",
+        "consumers": [
+          "plugins/harness/skills/parallel2/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A detection check with cross-OS tests, a setup step and documentation."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.0,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 1.0,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 latent nested-worktree defect, dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-004",
+      "rank": 4,
+      "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Today `--base REF` (and a bare REF) is the merge base itself (plugins/harness/skills/branch-commit-msg/SKILL.md:43). The issue makes `--base` the tip ref when `--merge-base` is given, and reads two positionals as merge-base then base. Keep `--base` meaning the merge base and name the tip differently (for example `--tip`), or change `--base` as the issue writes it?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#110",
+          "url": "https://github.com/t968rs/operator-straps/issues/110"
+        }
+      ],
+      "gh_issues": [
+        110
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks branch-commit-msg to take `--merge-base <ref> --base <ref2>` and capture `git diff $(git merge-base ref ref2)..ref2`, with two positionals read as merge-base then base and one positional as base. Checked: the skill accepts `[REF] [--base REF]` (plugins/harness/skills/branch-commit-msg/SKILL.md:4) where REF is one ref used as the merge base (:43); plugins/harness/scripts/branch_commit_msg.py:255-259 resolves that one ref and capture_branch (:153-159) captures every path differing from it, committed, staged, unstaged and untracked, so there is no committed-range-only capture between two refs. The flag name clashes with the current meaning of `--base`. Unverified: whether amend-commit-msg and merge-commit-msg need the same argument.",
+      "proposed_change": "Settle the flag naming. Then add a two-ref mode to branch_commit_msg.py capture: resolve merge-base(REF1, REF2), capture only the committed paths in that range (no worktree, no untracked), store both SHAs in the skeleton and the TXT suffix, and accept two positionals; update the SKILL.md argument-hint and table, and add tests for the one- and two-positional forms.",
+      "files": [
+        "plugins/harness/scripts/branch_commit_msg.py",
+        "plugins/harness/skills/branch-commit-msg/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Changes the capture arguments and skeleton of branch-commit-msg; amend-commit-msg reads the same skeleton and TXT names.",
+        "consumers": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/skills/amend-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A new capture mode over a committed range, argument parsing for two positionals, a suffix rule for two refs, docs and tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing capability with a concrete cost, dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-005",
+      "rank": 5,
+      "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#135",
+          "url": "https://github.com/t968rs/operator-straps/issues/135"
+        }
+      ],
+      "gh_issues": [
+        135
+      ],
+      "related_gh_issues": [
+        137,
+        138
+      ],
+      "catalog_entry_ids": [],
+      "summary": "executing-plans (one-item-at-a-time loop, continuous execution with stop conditions, `Ruling: what / why / cost` records listed at the end, Expected-line checks, a fresh final review) has no harness replacement. Checked: plugins/harness/skills/write-plan/SKILL.md:87-97 step 9 describes only the parallel hand-off through `PLAN lanes | P2 plan -` (the issue cited :60); plugins/harness/skills/pr-review/SKILL.md:1006 still names `superpowers-lt:executing-plans` (issue cited :1001); plugins/harness/schemas/PLANS_PIP_Template.md:14 names `superpowers-lt:subagent-driven-development` in text copied into consumers' plans. plugins/harness/schemas/README.md no longer names either skill (the issue's :167,:180 do not reproduce). Friction from the issue: `record --sha` needs the developer's commit, so an inline loop stops each item until then (inferred, unverified).",
+      "proposed_change": "Add an inline-execution section to write-plan or a sibling skill: per-item loop (`--start`, implement, developer commits, `record --sha`), the stop conditions, where rulings are recorded and listed at the end, a check of `commands[].expect` or a documented gap, and a final review that works without a PR (#138); repoint pr-review/SKILL.md:1006 and PLANS_PIP_Template.md:14.",
+      "files": [
+        "plugins/harness/skills/write-plan/SKILL.md",
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/schemas/PLANS_PIP_Template.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "write-plan and the PIP template text that propagates into consumers' plan files.",
+        "consumers": [
+          "plugins/harness/skills/parallel2/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A new execution section with stop conditions and a rulings record, plus reference edits; the PR-free review is #138."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing workflow with a concrete cost, dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-006",
+      "rank": 6,
+      "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#136",
+          "url": "https://github.com/t968rs/operator-straps/issues/136"
+        }
+      ],
+      "gh_issues": [
+        136
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "receiving-code-review governed responses to review feedback: no performative agreement, clarify all unclear items first, technical pushback, YAGNI check, replies in the GitHub thread. harness covers verification and fix order only inside a run (fold-in-review needs an active run). Checked: plugins/harness/skills/pr-review/SKILL.md:81 reads \"You are reviewing code as a reviewer. See `superpowers-lt:receiving-code-review`.\", which is off-target and dangles; plugins/harness/skills/consumer-contract-audit/SKILL.md:156 is a soft pointer to it.",
+      "proposed_change": "Add a harness skill or a fold-in-review section for feedback arriving in chat, from a human or from the built-in code-review: verify, clarify all first, push back with reasons, no performative agreement, reply in-thread. Repoint pr-review/SKILL.md:81 and consumer-contract-audit/SKILL.md:156 so `superpowers-lt:receiving-code-review` has no hits outside history.",
+      "files": [
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/skills/consumer-contract-audit/SKILL.md",
+        "plugins/harness/skills/fold-in-review/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One new section or skill and two reference lines.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A short discipline section and two edits."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.8485,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.8485,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 lost discipline plus a dangling reference, docs_tooling impact, S size."
+    },
+    {
+      "id": "TODO-007",
+      "rank": 7,
+      "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#140",
+          "url": "https://github.com/t968rs/operator-straps/issues/140"
+        }
+      ],
+      "gh_issues": [
+        140
+      ],
+      "related_gh_issues": [
+        127,
+        137,
+        141
+      ],
+      "catalog_entry_ids": [],
+      "summary": "Checked: plugins/harness/skills/parallel2/SKILL.md:20-21 says a parallel-dispatch skill (`superpowers-lt:dispatching-parallel-agents`, when installed) decides whether work splits, and parallel2 runs after that, so the REQUIRED step points at a deleted skill. plugins/harness/skills/parallel2/README.md:81, :83, :84 and :87 name using-git-worktrees, dispatching-parallel-agents, test-driven-development and verification-before-completion in the per-wave table. plugins/harness/lib/harness_lib/parallel_lanes.py:416-426 render_brief has no context section and no return contract, so ad-hoc lanes get thin briefs. Not covered anywhere: investigate related failures together before splitting; nothing says what follows the last staged lane.",
+      "proposed_change": "Drop the REQUIRED line and fold a short independence check into \"When to keep work inline\" (related failures: investigate together; shared state or invariant: later wave); give ad-hoc lane briefs a context section and a return contract; add a step after the last lane is staged that tells the developer to run the suite; repoint the README per-wave table.",
+      "files": [
+        "plugins/harness/skills/parallel2/SKILL.md",
+        "plugins/harness/skills/parallel2/README.md",
+        "plugins/harness/lib/harness_lib/parallel_lanes.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "parallel2 text and its brief renderer.",
+        "consumers": [
+          "plugins/harness/skills/parallel2/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Skill and README edits plus a small render_brief change and its test."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.8485,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.8485,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 dangling REQUIRED step, docs_tooling impact, S size."
+    },
+    {
+      "id": "TODO-008",
+      "rank": 8,
+      "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Drop finishing-a-development-branch and add an end-of-branch checklist to HARNESS_RULES.md, or port a trimmed skill that never offers merge or push?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#130",
+          "url": "https://github.com/t968rs/operator-straps/issues/130"
+        }
+      ],
+      "gh_issues": [
+        130
+      ],
+      "related_gh_issues": [
+        141
+      ],
+      "catalog_entry_ids": [],
+      "summary": "finishing-a-development-branch offers local merge and push-and-PR, which contradict \"the developer commits and pushes\", runs a bare full suite, and treats a detached HEAD as externally managed, so it never offers harness:a-w or cleans a d-w worktree under worktree_root. Checked: plugins/harness/skills/pr-review/SKILL.md:1008 still names `superpowers-lt:finishing-a-development-branch` as a safety gate before merging (the issue cited :1003); plugins/harness/rules/HARNESS_RULES.md has a Branch and worktree flow section (:49) and a Pre-merge recommendation (:39) but no end-of-branch checklist. Lost on retirement: the full-suite gate, the typed `discard` confirmation and the refusal to force-remove a worktree with uncommitted files.",
+      "proposed_change": "After the decision, add the end-of-branch steps (developer-run suite, d-w worktree ends in harness:a-w, cleanup through a-w or `git worktree remove` without --force on a dirty tree, no merge or push offered) to HARNESS_RULES.md or a trimmed skill, and repoint or remove pr-review/SKILL.md:1008.",
+      "files": [
+        "plugins/harness/rules/HARNESS_RULES.md",
+        "plugins/harness/skills/pr-review/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "HARNESS_RULES.md is injected into every session of every consuming project.",
+        "consumers": [
+          "plugins/harness/hooks/session_rules.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A short rules section and one reference line, after the decision."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.7746,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 2,
+          "blast_factor": 1.2,
+          "cost": 2.4,
+          "base_score": 0.7746,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 interop conflict while both plugins are installed, docs_tooling impact, S size."
+    },
+    {
+      "id": "TODO-009",
+      "rank": 9,
+      "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#132",
+          "url": "https://github.com/t968rs/operator-straps/issues/132"
+        }
+      ],
+      "gh_issues": [
+        132
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "superpowers-lt injects using-superpowers each session as a forcing function (invoke a skill before any response, process before implementation skills, user instructions win, SUBAGENT-STOP, a skill-skipping red-flag table). harness replaces only the delivery. Checked: plugins/harness/hooks/hooks.json:4-7 registers session_rules.py on SessionStart with no matcher, so it fires on compact too; plugins/harness/rules/HARNESS_RULES.md:95-97 \"Skill invocation at development stages\" says \"Skills outside this plugin apply when installed\" and maps stages, and its Red flags section (:126) has no skill-skipping entry.",
+      "proposed_change": "Add a Skill check section to HARNESS_RULES.md with the forcing rule, process-before-implementation ordering, the precedence rule, the subagent exemption and a skill-skipping red-flag table, keep it inside the rules size budget, and add a test that asserts session_rules.py injects the new text.",
+      "files": [
+        "plugins/harness/rules/HARNESS_RULES.md",
+        "plugins/harness/hooks/session_rules.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "The rules text reaches every session in every consuming project.",
+        "consumers": [
+          "plugins/harness/hooks/session_rules.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One rules section and one test."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.7746,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 2,
+          "blast_factor": 1.2,
+          "cost": 2.4,
+          "base_score": 0.7746,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 lost guarantee once superpowers-lt retires, docs_tooling impact, S size."
+    },
+    {
+      "id": "TODO-010",
+      "rank": 10,
+      "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "When a lane hits the fix-loop cap, should the controller park it with a ruling and keep a rulings ledger (the old G9/G10 autonomous mode), or bubble to the developer as pr-review does?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#137",
+          "url": "https://github.com/t968rs/operator-straps/issues/137"
+        }
+      ],
+      "gh_issues": [
+        137
+      ],
+      "related_gh_issues": [
+        127,
+        135,
+        138,
+        140
+      ],
+      "catalog_entry_ids": [],
+      "summary": "subagent-driven-development's per-task loop has no parallel2 counterpart: implementer status contract (G1, G2), a per-task reviewer template (G3-G5), a capped fix loop with model escalation and scoped re-review (G6-G8), cannot-verify handling (G12), a final review fed deferred findings (G13), and loop state that survives compaction (P1). Checked: plugins/harness/lib/harness_lib/parallel_lanes.py:416-426 render_brief writes tools, workdir, files, the commit rule and a one-line task, with no status or report contract; plugins/harness/skills/parallel2/SKILL.md:64-66 names a spec-compliance and a code-quality reviewer with no prompt, inputs or rubric, and sends findings back to the same lane with no cap. References: plugins/harness/skills/pr-review/SKILL.md:1007 (issue cited :1002) and plugins/harness/schemas/PLANS_PIP_Template.md:14; plugins/harness/schemas/README.md:180 no longer names the skill. P3 may overlap closed #112 (unverified).",
+      "proposed_change": "Add a status and report-file contract to render_brief, bundle a per-task reviewer template and a scoped re-review template in parallel2, give Step 5 a round cap, model escalation and a test-evidence check before re-review, keep per-lane loop state in parallel2 run state, and repoint pr-review/SKILL.md:1007 and PLANS_PIP_Template.md:14.",
+      "files": [
+        "plugins/harness/lib/harness_lib/parallel_lanes.py",
+        "plugins/harness/skills/parallel2/SKILL.md",
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/schemas/PLANS_PIP_Template.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Changes the parallel2 lane brief and run state that write-plan lanes also go through.",
+        "consumers": [
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "Two prompt templates, a brief contract, a fix-loop procedure, run-state fields and tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing review loop with a concrete cost, dev_velocity impact, L size."
+    },
+    {
+      "id": "TODO-011",
+      "rank": 11,
+      "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#138",
+          "url": "https://github.com/t968rs/operator-straps/issues/138"
+        }
+      ],
+      "gh_issues": [
+        138
+      ],
+      "related_gh_issues": [
+        135,
+        137
+      ],
+      "catalog_entry_ids": [],
+      "summary": "requesting-code-review dispatched a reviewer over a local BASE_SHA..HEAD_SHA range against a plan between tasks, with no PR. Checked: plugins/harness/skills/pr-review/SKILL.md:151 makes `state != \"OPEN\"` a problem (issue cited :147-152), and plugins/harness/agents/pr-team-orchestrator.md:122-128 stops when the PR is not OPEN (issue cited :115-129), so neither reviews a branch without an open PR. Unverified: roast-my-code accepting `<commit>..<commit>` without a plan input or verdict, and whether the pr-review brief carries the PR body.",
+      "proposed_change": "Add a harness reviewer path that takes BASE..HEAD plus a plan or requirements path, makes no gh call, runs read-only with no nested dispatch, and returns strengths, critical / important / minor findings with file:line, a declined-to-judge list and a ready / not-ready / with-fixes verdict; document it to run between plan tasks and as the final review for #135 and #137.",
+      "files": [
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/agents/pr-team-orchestrator.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "A new review entry point that the execution paths in #135 and #137 would call.",
+        "consumers": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/skills/parallel2/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "A new skill or agent with a reviewer prompt, output contract and docs, outside the PR-bound capture flow."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing review path with a concrete cost, dev_velocity impact, L size."
+    },
+    {
+      "id": "TODO-012",
+      "rank": 12,
+      "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#139",
+          "url": "https://github.com/t968rs/operator-straps/issues/139"
+        }
+      ],
+      "gh_issues": [
+        139
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Parts of writing-plans that write-plan dropped: spec coverage (a plan can freeze green with a requirement missing), cross-task interfaces and type consistency, a Review Focus, global constraints, scope and sizing guidance, a no-placeholder lint and an execution hand-off menu. Checked: plugins/harness/lib/harness_lib/plan_models.py has no covers, produces, consumes, review-focus or constraints field (Grep, case-insensitive); lanes receive only their own PIP section (plugins/harness/skills/write-plan/SKILL.md:90-91; the issue cited :63). References: plugins/harness/skills/consumer-contract-audit/SKILL.md:153 names `superpowers-lt:writing-plans`; plugins/harness/schemas/README.md:167 no longer does.",
+      "proposed_change": "Add `items[].covers` (or a check step listing spec requirements), a Produces / Consumes field with a check that each consumed name comes from a dependency and is rendered into each lane's PIP section, and Review Focus and global-constraints sections in the plan models and the PIP; regenerate ActionPlan.schema.json from the models; repoint consumer-contract-audit/SKILL.md:153.",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_models.py",
+        "plugins/harness/lib/harness_lib/plan_checks.py",
+        "plugins/harness/lib/harness_lib/plan_render.py",
+        "plugins/harness/schemas/ActionPlan.schema.json",
+        "plugins/harness/skills/write-plan/SKILL.md",
+        "plugins/harness/skills/consumer-contract-audit/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "New plan model fields change the generated schema, the checks and the PIP render that every plan goes through.",
+        "consumers": [
+          "plugins/harness/lib/harness_lib/plan_lanes.py",
+          "plugins/harness/hooks/validate_pr_json_schema.py"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "Model fields, two new checks, render changes, a regenerated schema and tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing guard on plan completeness, dev_velocity impact, L size."
+    },
+    {
+      "id": "TODO-013",
+      "rank": 13,
+      "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#131",
+          "url": "https://github.com/t968rs/operator-straps/issues/131"
+        }
+      ],
+      "gh_issues": [
+        131
+      ],
+      "related_gh_issues": [
+        142,
+        134
+      ],
+      "catalog_entry_ids": [],
+      "summary": "harness covers TDD with one line in HARNESS_RULES.md, write-plan's mechanical red/record and strap-debugging Phase 4 step 1; it loses the delete-code-before-test law, Verify RED / GREEN steps, the rationalization and red-flag tables, and all of writing-good-tests.md (name the break, no mirror assertions, mock discipline, mutation check). The old skill's bare full-suite run conflicts with the test-scoping rules. Checked soft references: plugins/harness/skills/strap-debugging/SKILL.md:177, plugins/harness/skills/consumer-contract-audit/SKILL.md:154, plugins/harness/skills/parallel2/README.md:84 all name `superpowers-lt:test-driven-development`.",
+      "proposed_change": "Port as harness:test-driven-development (or record a decision to rely on the rule plus write-plan), keep writing-good-tests.md as a reference, rewrite the full-suite paragraph to name test files or node ids and leave full runs to the developer, repoint the three references, and add LICENSE and a docs/PROVENANCE.md row.",
+      "files": [
+        "plugins/harness/skills/strap-debugging/SKILL.md",
+        "plugins/harness/skills/consumer-contract-audit/SKILL.md",
+        "plugins/harness/skills/parallel2/README.md",
+        "docs/PROVENANCE.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new skill plus three soft reference lines.",
+        "consumers": [
+          "plugins/harness/skills/strap-debugging/SKILL.md",
+          "plugins/harness/skills/parallel2/README.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A skill port with one long reference file and a rewritten section, plus provenance."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.6,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.6,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, M size."
+    },
+    {
+      "id": "TODO-014",
+      "rank": 14,
+      "title": "write-plan: ignore planned test files in consuming projects, not only here",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#121",
+          "url": "https://github.com/t968rs/operator-straps/issues/121"
+        }
+      ],
+      "gh_issues": [
+        121
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "write-plan writes planned tests as real files under `<plans dir>/<plan_id>/tests/<repo-relative path>` (plugins/harness/skills/write-plan/SKILL.md:68), which the issue calls temporary and wants ignored (pattern \"plans/*.py\"). Checked: this repository already ignores `docs/plans/**/*.py` (.gitignore:237, added in a5804c2, PR #122), its plans dir is `docs/plans` (.claude/harness.json:6), ruff runs only on plugins, tests and tools and pytest collects only `tests` (pyproject.toml:8), so the planned files are neither linted nor collected here. Not covered: write-plan says nothing about ignoring them (no gitignore or exclude text under plugins/harness/skills/write-plan), so a consuming project commits them unless it adds its own pattern, and the pattern here covers `.py` only. Unverified: which other \"Exclusions\" the issue means.",
+      "proposed_change": "Add a line to write-plan step 4 telling the project to ignore `<plans dir>/*/tests/` (or have `PLAN new` print the pattern when it is missing from .gitignore), widen this repository's pattern from `docs/plans/**/*.py` to the tests folder, and confirm with the developer which other exclusion lists the issue meant.",
+      "files": [
+        "plugins/harness/skills/write-plan/SKILL.md",
+        ".gitignore"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A skill sentence and an ignore pattern; no code path reads them.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "XS",
+        "reasoning": "One documentation line and one .gitignore pattern."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.6,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 1,
+          "blast_factor": 1.0,
+          "cost": 1.0,
+          "base_score": 0.6,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 hygiene, docs_tooling impact, XS size."
+    },
+    {
+      "id": "TODO-015",
+      "rank": 15,
+      "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#142",
+          "url": "https://github.com/t968rs/operator-straps/issues/142"
+        }
+      ],
+      "gh_issues": [
+        142
+      ],
+      "related_gh_issues": [
+        131,
+        133
+      ],
+      "catalog_entry_ids": [],
+      "summary": "strap-debugging carried systematic-debugging over; what remains assumes superpowers-lt is installed. Checked: plugins/harness/skills/strap-debugging/SKILL.md:3 triggers only when \"the superpowers-lt:systematic-debugging skill is not installed\"; :177 and :189 hand off to `superpowers-lt:test-driven-development` and `superpowers-lt:verification-before-completion`; plugins/harness/skills/check-runlogs/SKILL.md:44 loads `superpowers-lt:systematic-debugging` first and falls back to strap-debugging; plugins/harness/rules/HARNESS_RULES.md:100 names `superpowers-lt:systematic-debugging` before the bundled skill. Open: whether to keep pressure evals for strap-debugging.",
+      "proposed_change": "Give strap-debugging a standalone \"Use when\" trigger, point :177 and :189 at the replacements from #131 and #133, make strap-debugging primary in check-runlogs/SKILL.md:44 and HARNESS_RULES.md:100, and record the pressure-eval decision.",
+      "files": [
+        "plugins/harness/skills/strap-debugging/SKILL.md",
+        "plugins/harness/skills/check-runlogs/SKILL.md",
+        "plugins/harness/rules/HARNESS_RULES.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "HARNESS_RULES.md reaches every session; the other two are skill text.",
+        "consumers": [
+          "plugins/harness/hooks/session_rules.py"
+        ]
+      },
+      "loe": {
+        "size": "XS",
+        "reasoning": "Four reference lines and one description."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.5477,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 1,
+          "blast_factor": 1.2,
+          "cost": 1.2,
+          "base_score": 0.5477,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 stale references with a working fallback, docs_tooling impact, XS size."
+    },
+    {
+      "id": "TODO-016",
+      "rank": 16,
+      "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
+      "kind": "test",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Do harness skills need trigger tests, behavior evals (and where pressure scenarios live), or neither?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#144",
+          "url": "https://github.com/t968rs/operator-straps/issues/144"
+        }
+      ],
+      "gh_issues": [
+        144
+      ],
+      "related_gh_issues": [
+        143
+      ],
+      "catalog_entry_ids": [],
+      "summary": "superpowers-lt has explicit-skill-request trigger tests, out-of-repo behavior evals and structural checks (frontmatter, referenced files, word budget). Checked: tests/skills/ holds per-skill contract tests such as tests/skills/test_pr_review_skill_description.py (the \"Use when\" guard) but no test that enumerates every plugins/*/skills/*/SKILL.md for frontmatter and referenced files, and nothing checks that a skill triggers on its named request. Unverified: the evals repository's contents.",
+      "proposed_change": "Record the decision; add a structure contract test over all plugins/*/skills/*/SKILL.md (frontmatter keys, referenced files exist); if trigger tests are wanted, add a minimal one for the skills ported from superpowers-lt and a folder for pressure scenarios.",
+      "files": [
+        "tests/skills/test_pr_review_skill_description.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "New tests only.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A structure test is S; trigger tests against a real agent need harness plumbing."
+      },
+      "impact": "dev_velocity",
+      "severity": 1,
+      "priority": {
+        "score": 0.5,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 1.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.5,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 test gap for working behavior, dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-017",
+      "rank": 17,
+      "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Port brainstorming as harness:brainstorming, and if so does the Node visual companion (server.cjs and its tests) come with it or get dropped; and does the `docs/superpowers/` planning prefix stay, move, or get documented?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#128",
+          "url": "https://github.com/t968rs/operator-straps/issues/128"
+        }
+      ],
+      "gh_issues": [
+        128
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "superpowers-lt:brainstorming (one-at-a-time intent questions, approaches, a written design doc under docs/superpowers/specs/, a builder-check subagent, a hard gate before building, and a Node visual companion) has no harness replacement; harness:write-plan assumes a spec already exists. Checked: no plugin file names the skill; plugins/harness/config/defaults.json:18 and :43 list `docs/superpowers/` as a planning prefix, and plugins/harness/skills/branch-commit-msg/txt_format.md:59 documents it.",
+      "proposed_change": "After the decision, port the questions, approaches, design-doc and approval-gate steps as harness:brainstorming with an explicit hand-off to harness:write-plan, port or drop the visual companion with the choice recorded, settle the planning prefix default, and add LICENSE and a docs/PROVENANCE.md row if ported.",
+      "files": [
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/skills/branch-commit-msg/txt_format.md",
+        "docs/PROVENANCE.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new skill; the prefix default only matters if it moves.",
+        "consumers": [
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "A skill port with a subagent prompt; the visual companion alone is about 700 lines of Node plus a test suite."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.4243,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 8,
+          "blast_factor": 1.0,
+          "cost": 8.0,
+          "base_score": 0.4243,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, L size."
+    },
+    {
+      "id": "TODO-018",
+      "rank": 18,
+      "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Drop diagnosing-superpowers on purpose, or generalize its analyst prompts and context-safety rules into a harness:diagnose-session skill that files issues to this repository?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#129",
+          "url": "https://github.com/t968rs/operator-straps/issues/129"
+        }
+      ],
+      "gh_issues": [
+        129
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "superpowers-lt:diagnosing-superpowers reads a session transcript with seven parallel analyst prompts, cites path:line for every finding and scrubs before filing to obra/superpowers. No harness skill reads transcripts (check-runlogs reads test logs, subagent-reporting watches a live agent, doctor checks setup). Checked: no file in this repository names the skill (Grep for superpowers-lt outside docs).",
+      "proposed_change": "Record the decision. If ported: repoint the issue target to t968rs/operator-straps, keep the scrub rules and context-safety limits, and add LICENSE and a docs/PROVENANCE.md row.",
+      "files": [
+        "docs/PROVENANCE.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Nothing references the skill; a port is a new standalone skill.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Dropping is a recorded decision; a port would be L and is sized after the decision."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.4243,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.4243,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1, nothing depends on the skill, docs_tooling impact, S size."
+    },
+    {
+      "id": "TODO-019",
+      "rank": 19,
+      "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Port writing-skills as a project-local skill under .claude/skills/, rely on the built-in skill-creator, or drop it?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#134",
+          "url": "https://github.com/t968rs/operator-straps/issues/134"
+        }
+      ],
+      "gh_issues": [
+        134
+      ],
+      "related_gh_issues": [
+        131
+      ],
+      "catalog_entry_ids": [],
+      "summary": "superpowers-lt:writing-skills (baseline pressure runs before writing a skill, the form-to-failure table, micro-tests, references and render-graphs.js) has no replacement; house conventions exist in HARNESS_RULES.md, the project skills porting-into-straps and migrating-off-a-plugin. Checked: tests/skills/test_pr_review_skill_description.py:3 names `superpowers-lt:writing-skills` in its docstring and :70 cites \"writing-skills CSO doctrine\" in the assert message. docs/superpowers/specs/2026-10-29-strap-skills-design.md:10 also cites it (a spec, not edited here).",
+      "proposed_change": "Record the decision; if ported, add it under .claude/skills/writing-skills with LICENSE and a docs/PROVENANCE.md row. Reword the docstring and assert message at test_pr_review_skill_description.py:3 and :70 so they state the rule without naming the retired plugin.",
+      "files": [
+        "tests/skills/test_pr_review_skill_description.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Development-time tooling and one test's text.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A decision and two text edits; a port would be sized after the decision."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.4243,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.4243,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 stale reference and development tooling, docs_tooling impact, S size."
+    },
+    {
+      "id": "TODO-020",
+      "rank": 20,
+      "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#127",
+          "url": "https://github.com/t968rs/operator-straps/issues/127"
+        }
+      ],
+      "gh_issues": [
+        127
+      ],
+      "related_gh_issues": [
+        137,
+        140
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for an audit of the pr-review reviewer and fixer dispatch against parallel2 to find improvements for either and fixtures or resources they could share. Checked: parallel2 dispatches lanes from plugins/harness/lib/harness_lib/parallel_lanes.py (render_brief :416-426) and reviews returned lanes with an unspecified spec-compliance and code-quality reviewer (plugins/harness/skills/parallel2/SKILL.md:64-66), while pr-review has its own reviewer and fixer agents; #137 and #140 name the same parallel2 gaps from the retirement side. Unverified: which pr-review pieces are reusable; no audit has been done.",
+      "proposed_change": "Compare the two skills' dispatch, brief, model choice and review steps; write the findings as a short research note listing what parallel2 could reuse from pr-review (reviewer prompts, rubric, fix loop) and the reverse, then file or fold the concrete changes into #137 and #140.",
+      "files": [
+        "plugins/harness/skills/parallel2/SKILL.md",
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "plugins/harness/lib/harness_lib/parallel_lanes.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "An audit that produces a note; code changes are filed separately.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Reading two large skills (pr-review SKILL.md is 76,148 bytes) and their agents and drivers."
+      },
+      "impact": "maintainability",
+      "severity": 1,
+      "priority": {
+        "score": 0.4,
+        "components": {
+          "impact_weight": 0.8,
+          "value": 0.8,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.4,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 hygiene audit, maintainability impact, M size."
+    }
+  ],
   "trackers": [],
   "close_candidates": [
     {
@@ -174,6 +1334,15 @@
       "current_state": "LIKELY_RESOLVED",
       "evidence": "Merge 5ccdee9 (\"Merge pull request #95 from t968rs/1077-pr-local\") is on main (`git log --oneline main`). Its commit b2f8bc4 (\"Feature(pr-sum): add --local capture of the checked-out branch\") adds the opt-in flag the decision question asked about: plugins/harness/scripts/pr_sum.py:310 defines --local, which reads whatever HEAD is checked out from its merge base with the PR base to the working tree, exclusive with --remote-head; 6b563a8 labels --local checkouts by HEAD. The docs gap is closed too: plugins/harness/skills/pr-sum/SKILL.md:4 argument-hint now lists --local, --remote-head and --committed-only, and README.md:19 says the pr-sum row covers uncommitted changes and --local. tests/scripts/test_pr_sum.py covers forced local capture on another branch. The default working-tree capture on the PR branch predates the issue (18f883f, PR #34).",
       "recommended_action": "Close as completed by PR #95 (commits b2f8bc4, 6b563a8).",
+      "related_todo_ids": []
+    },
+    {
+      "number": 145,
+      "title": "write-plan: make plan.py model-first (pydantic + str Enum), generate ActionPlan.schema.json",
+      "url": "https://github.com/t968rs/operator-straps/issues/145",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "Merge 8b19c3e (\"Merge PR #148 - 1101 writing plans rewrite\") is on main and origin/main (`git branch -a --contains ca0ed01`). Its commits ca0ed01 (\"Feature(plan): define ActionPlan as pydantic models and move the plan modules onto them\"), 366f037, d5a36f5 (\"generate ActionPlan.schema.json from the models and validate every plan command\") and 465cb65 add plugins/harness/lib/harness_lib/plan_models.py (schema emitted from ActionPlan.model_json_schema() at :260, `Mutable` markers replacing the MUTABLE_TOP / MUTABLE_ITEM lists), plan_enums.py (str Enum ItemStatus, ModelName, red exceptions) and plan_api.py; plan_doc.py validates through the models and reports `schema:` lines. The drift guard tests/contract/test_plan_schema_generated.py passed in this run (13 passed). Departure from the issue's \"Done when\": plan tests were rewritten to build models and assert attributes rather than passing unchanged apart from imports. The pinned-copy question is not settled by these commits for the schema hook: plugins/harness/lib/harness_lib/validation/schema_registry.py:3 still prefers a project's pinned copy (tests/hooks/test_hook_unresolvable_ref.py covers a pinned ActionPlan schema).",
+      "recommended_action": "Close as completed by PR #148 (commits ca0ed01, d5a36f5, 465cb65); no closing keyword names #145 in the log. If the pinned-schema behavior for the hook still matters, file it separately.",
       "related_todo_ids": []
     }
   ]
