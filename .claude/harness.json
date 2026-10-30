@@ -2,6 +2,9 @@
   "$schema": "../plugins/harness/config/harness.schema.json",
   "harness_version": "0.1.0",
   "exclusions": ".claude/pr_review_exclusions.json",
+  "artifacts": {
+    "plans": "docs/plans"
+  },
   "tests": {
     "roots": ["tests/"]
   },

@@ -6,7 +6,7 @@
 **Spec:** `docs/superpowers/specs/2026-10-29-strap-skills-design.md`
 **Branch:** none -> main
 **Base commit:** `697dce2`
-**Frozen:** 2026-10-30 at `4f0d079`
+**Frozen:** 2026-10-30 at `bc23bb3`
 **Execution model:** serial
 
 ## Decisions
@@ -51,7 +51,7 @@
 
 ## Sweeps
 
-- **S1** `_skill_parts`: `docs/PR_REVIEWS/0094_Fixcommit-msg_pass_the_developers_--base_to_the_fork_and_keep_sav.json` (keep), `docs/plans/0002/CONTRACT.md` (keep), `docs/plans/0002_strap_skills_ActionPlan.json` (keep), `docs/plans/0002_strap_skills_PIP.md` (keep), `docs/superpowers/specs/2026-10-29-strap-skills-design.md` (keep), `tests/skills/test_branch_commit_msg_skill_contract.py` (keep), `tests/skills/test_bubble_memo_skill_contract.py` (keep), `tests/skills/test_c_msg_skill_contract.py` (keep), `tests/skills/test_skill_guidance_tail_contract.py` (keep)
+- **S1** `_skill_parts`: `docs/PR_REVIEWS/0094_Fixcommit-msg_pass_the_developers_--base_to_the_fork_and_keep_sav.json` (keep), `docs/superpowers/specs/2026-10-29-strap-skills-design.md` (keep), `tests/skills/test_branch_commit_msg_skill_contract.py` (keep), `tests/skills/test_bubble_memo_skill_contract.py` (keep), `tests/skills/test_c_msg_skill_contract.py` (keep), `tests/skills/test_skill_guidance_tail_contract.py` (keep)
 
 ## Tasks
 

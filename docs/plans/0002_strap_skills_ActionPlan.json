@@ -8,10 +8,10 @@
   "base_branch": "main",
   "base_commit": "697dce28554978c9d1fa2cf45036cf662350fbef",
   "frozen": {
-    "commit": "4f0d079373957c1019cb0d10d627c8f55dcf357b",
-    "tree": "de2eea13605c14c7a93ce57b4232495dab92a9fe",
+    "commit": "bc23bb3f4f23b0d9f3f0c94bccd3d380023c0b94",
+    "tree": "7afb6e0c4ac9417f3ee102cab6520b774af4be96",
     "date": "2026-10-30",
-    "digest": "b362b384c74e6d72ecc8cc4a451d0b486d6a3db04b08f1f5a4de96b6983c327c"
+    "digest": "3d8c1f1bba80b5dd3ee5c59ecb0d4cce003be75e40df46b26ae3d6c9ddfabebf"
   },
   "decisions": [
     {
@@ -419,9 +419,6 @@
       "pattern": "_skill_parts",
       "hits": {
         "docs/PR_REVIEWS/0094_Fixcommit-msg_pass_the_developers_--base_to_the_fork_and_keep_sav.json": "keep",
-        "docs/plans/0002/CONTRACT.md": "keep",
-        "docs/plans/0002_strap_skills_ActionPlan.json": "keep",
-        "docs/plans/0002_strap_skills_PIP.md": "keep",
         "docs/superpowers/specs/2026-10-29-strap-skills-design.md": "keep",
         "tests/skills/test_branch_commit_msg_skill_contract.py": "keep",
         "tests/skills/test_bubble_memo_skill_contract.py": "keep",
