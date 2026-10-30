@@ -1,6 +1,6 @@
 """Guard test pinning the pr-review SKILL.md YAML `description` to CSO doctrine.
 
-Per superpowers:writing-skills, a skill description must specify ONLY the
+Per superpowers-lt:writing-skills, a skill description must specify ONLY the
 triggering condition ("Use when ..."), never a workflow summary of what the
 skill does. This test pins compression 1 from the 1096-SKILL-pr_review_05
 SKILL.md compression sweep: the description starts with "Use when", omits

@@ -11,7 +11,7 @@
 ```markdown
 # Plan {PLAN_ID}: {Title}
 
-> **For agentic workers:** Use [superpowers:subagent-driven-development](link) to execute task-by-task with two-stage review (spec compliance, then code quality).
+> **For agentic workers:** Use [superpowers-lt:subagent-driven-development](link) to execute task-by-task with two-stage review (spec compliance, then code quality).
 
 **Plan ID:** {PLAN_ID}
 **Plan created:** YYYY-MM-DD

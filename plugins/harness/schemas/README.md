@@ -164,7 +164,7 @@ The Phase 3 JSON must validate against `PR_REVIEW.schema.json`. Verdict re-evalu
 
 ### Step 2 — Plan → ActionPlan + PIP (paired)
 
-Agent invokes `superpowers:writing-plans`:
+Agent invokes `superpowers-lt:writing-plans`:
 
 ```
 Read docs/PR_REVIEWS/{NNNN}_*.json
@@ -177,7 +177,7 @@ Both files must be written before any task executes.
 
 ### Step 3 — Execute → Status + Evidence (atomic)
 
-Agent invokes `superpowers:subagent-driven-development` (or executes inline):
+Agent invokes `superpowers-lt:subagent-driven-development` (or executes inline):
 
 ```
 For each PIP task:

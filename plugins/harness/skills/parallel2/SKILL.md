@@ -17,7 +17,7 @@ Two prongs before any parallel dispatch: **lanes that cannot collide** (one work
 sets disjoint within a wave) and **tools that will not prompt** (one probe agent per tool profile). The driver
 owns every mechanical step; the session writes the plan, dispatches, and judges. `README.md` explains why.
 
-**REQUIRED:** a parallel-dispatch skill (`superpowers:dispatching-parallel-agents`, when installed) decides
+**REQUIRED:** a parallel-dispatch skill (`superpowers-lt:dispatching-parallel-agents`, when installed) decides
 whether the work splits into independent domains. This skill runs after that decision and before the dispatch.
 
 Below, `P2` stands for `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/parallel2.py"

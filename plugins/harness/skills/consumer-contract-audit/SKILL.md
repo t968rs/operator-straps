@@ -150,10 +150,10 @@ with the prior that this fixture has bitten before.
 
 Skills outside this plugin apply when installed.
 
-- **Plan writing** (e.g. `superpowers:writing-plans`) — when a spec touches a shared mutable fixture, the spec is incomplete without a `Consumers` section enumerating each consumer's contract. This skill is the audit; the spec section is the deliverable.
-- **Test-driven development** (e.g. `superpowers:test-driven-development`) — pair unit tests (invariant pinning) with caller-perspective contract tests (e.g., "register → fail-at-launch → summary sees it"). Two test surfaces, both required for shared state.
+- **Plan writing** (e.g. `superpowers-lt:writing-plans`) — when a spec touches a shared mutable fixture, the spec is incomplete without a `Consumers` section enumerating each consumer's contract. This skill is the audit; the spec section is the deliverable.
+- **Test-driven development** (e.g. `superpowers-lt:test-driven-development`) — pair unit tests (invariant pinning) with caller-perspective contract tests (e.g., "register → fail-at-launch → summary sees it"). Two test surfaces, both required for shared state.
 - **`harness:pr-review` / `harness:pr-team`** — when a PR touches a fixture in the project catalog, scope at least one reviewer by **caller perspective** (trace from public API entry points to observable side effects), not by file or domain.
-- **Receiving code review** (e.g. `superpowers:receiving-code-review`) — when a reviewer comment phrases the issue at the API boundary (*"the caller no longer sees X"*), the underlying problem is a consumer-contract break. Run this audit before fixing — the surface fix will likely break a third consumer.
+- **Receiving code review** (e.g. `superpowers-lt:receiving-code-review`) — when a reviewer comment phrases the issue at the API boundary (*"the caller no longer sees X"*), the underlying problem is a consumer-contract break. Run this audit before fixing — the surface fix will likely break a third consumer.
 
 ## The Bottom Line
 
