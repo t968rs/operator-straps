@@ -54,6 +54,9 @@ from harness_lib import strap_models as sm
 from harness_lib import strap_runs as sr
 from harness_lib.branch_capture import CaptureError, git, git_out
 from harness_lib.config import active, activate, load_config
+from harness_lib.plan_enums import ItemStatus
+from harness_lib.plan_enums import RedException as PlanRed
+from harness_lib.plan_models import ActionItem, ActionPlan, PlannedTest
 from harness_lib.project import project_root
 from harness_lib.strap_lint import lint_python, lint_skill
 from harness_lib.strap_models import (
@@ -342,19 +345,28 @@ def _start_commit(spec: SkillSpec) -> str:
     return spec.base or git_out(_root(), "rev-parse", "HEAD").strip()
 
 
-def _red_plan(spec: SkillSpec) -> Dict[str, Any]:
-    """The mechanical behaviors in the item shape ``plan_red`` reads; ``plan_id`` is the skill name."""
-    items = [{"id": b.id, "status": "PENDING",
-              "tests": [{"node": t.node, "red": sm.RedException(t.red).value} for t in b.tests]}
-             for b in spec.behaviors
+def _red_item(behavior: Behavior) -> ActionItem:
+    """One mechanical behavior as a PENDING plan item holding its planned tests."""
+    tests = [PlannedTest.model_construct(node=t.node, red=PlanRed(sm.RedException(t.red).value))
+             for t in behavior.tests]
+    return ActionItem.model_construct(id=behavior.id, status=ItemStatus.PENDING, tests=tests)
+
+
+def _red_plan(spec: SkillSpec) -> ActionPlan:
+    """The mechanical behaviors as the ``ActionPlan`` ``plan_red`` reads; ``plan_id`` is the skill name.
+
+    Built with ``model_construct``: a skill name fails the plan id pattern and a behavior id the item id
+    pattern, and ``plan_red`` reads only ``plan_id`` and each item's id, status and tests.
+    """
+    items = [_red_item(b) for b in spec.behaviors
              if b.kind == BehaviorKind.MECHANICAL and b.state != BehaviorState.DROPPED and b.tests]
-    return {"plan_id": spec.name, "items": items}
+    return ActionPlan.model_construct(plan_id=spec.name, items=items)
 
 
 def red_results(spec: SkillSpec) -> List[pr.RedResult]:
     """Planned nodes run on a throwaway tree at the start commit, planned test files laid over it."""
     plan = _red_plan(spec)
-    if not plan["items"]:
+    if not plan.items:
         return []
     root = _root()
     tree = pr.make_tree(root, _start_commit(spec), active().resolve_worktree_root())

@@ -1,9 +1,11 @@
-"""Plan documents owned by the ``plan.py`` driver: file names, plan ids, schema validation, freeze digest.
+"""Plan documents owned by the ``plan.py`` driver: file names, plan ids, loading, dumping, freeze digest.
 
-A plan is ``<artifacts.plans>/<plan_id>_<Title>_ActionPlan.json`` validated by ``ActionPlan.schema.json``; its
-PIP (``<plan_id>_<Title>_PIP.md``) is rendered from it, and the test files it plans live under
-``<artifacts.plans>/<plan_id>/tests/<repo-relative path>``. The plan is handled as parsed JSON (plain dicts),
-so the schema is the one definition of its shape.
+A plan is ``<artifacts.plans>/<plan_id>_<Title>_ActionPlan.json`` holding an ``ActionPlan``
+(``harness_lib.plan_models``, the one definition of its shape); its PIP (``<plan_id>_<Title>_PIP.md``) is
+rendered from it, and the test files it plans live under ``<artifacts.plans>/<plan_id>/tests/<repo-relative
+path>``. Loading validates through the models and reports defects as ``schema: <json path>: <message>`` lines.
+Dumping writes a field when it was set or differs from its default, so a plan file keeps its keys and the
+freeze digest of a plan on disk survives a load and a dump.
 """
 from __future__ import annotations
 
@@ -11,26 +13,26 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping
 
-if TYPE_CHECKING:
-    from harness_lib.config import HarnessConfig
+from pydantic import BaseModel, ValidationError
+
+from harness_lib import plan_models as pm
 
 PLAN_SUFFIX = "_ActionPlan.json"
 PIP_SUFFIX = "_PIP.md"
-SCHEMA = "ActionPlan.schema.json"
-DONE = frozenset({"COMPLETE", "CLOSED_NO_ACTION"})
 # Fields that change while the plan executes; everything else is fixed once the plan is frozen.
-MUTABLE_TOP = ("completed", "frozen", "markdown_sync_status", "markdown_last_updated")
-MUTABLE_ITEM = ("status", "evidence", "verification_references")
+MUTABLE_TOP = pm.mutable_top()
+MUTABLE_ITEM = pm.mutable_item()
 _ID_PREFIX = re.compile(r"^(\d{4})_")
+_MESSAGE_LIMIT = 200
 
 
 class PlanError(Exception):
     """A defect in a plan or a request about one; ``problems`` holds one line per defect."""
 
     def __init__(self, problems: List[str]) -> None:
-        super().__init__("; ".join(problems))
+        super().__init__("\n".join(problems))
         self.problems = problems
 
 
@@ -73,62 +75,99 @@ def find_plan(plans_dir: Path, plan_id: str) -> Path:
     return hits[0]
 
 
-def parse_plan(text: str, name: str) -> Dict[str, Any]:
+# --- validation -------------------------------------------------------------------------------------------
+
+def schema_lines(exc: ValidationError) -> List[str]:
+    """One ``schema: <json path>: <message>`` line per failing path; messages of one path are joined."""
+    by_path: Dict[str, List[str]] = {}
+    for error in sorted(exc.errors(), key=lambda e: [str(p) for p in e["loc"]]):
+        path = "/".join(str(part) for part in error["loc"]) or "<root>"
+        messages = by_path.setdefault(path, [])
+        if error["msg"] not in messages:
+            messages.append(error["msg"])
+    return [f"schema: {path}: {'; '.join(messages)[:_MESSAGE_LIMIT]}" for path, messages in by_path.items()]
+
+
+def validate_plan(raw: Mapping[str, Any]) -> pm.ActionPlan:
+    """The plan a raw dict holds; a ``PlanError`` of ``schema:`` lines when it is not a valid plan."""
+    try:
+        return pm.ActionPlan.model_validate(dict(raw))
+    except ValidationError as exc:
+        raise PlanError(schema_lines(exc)) from exc
+
+
+def schema_problems(raw: Mapping[str, Any]) -> List[str]:
+    """The ``schema:`` lines of a raw plan dict; empty when it is a valid plan."""
+    try:
+        validate_plan(raw)
+    except PlanError as exc:
+        return exc.problems
+    return []
+
+
+def parse_plan(text: str, name: str) -> pm.ActionPlan:
     try:
         data = json.loads(text)
     except ValueError as exc:
         raise PlanError([f"{name} is not JSON: {exc}"]) from exc
     if not isinstance(data, dict):
         raise PlanError([f"{name} does not hold a JSON object"])
-    return data
+    return validate_plan(data)
 
 
-def load_plan(path: Path) -> Dict[str, Any]:
+def load_plan(path: Path) -> pm.ActionPlan:
     try:
         return parse_plan(path.read_text(encoding="utf-8"), path.name)
     except OSError as exc:
         raise PlanError([f"cannot read {path.as_posix()}: {exc}"]) from exc
 
 
-def dump_plan(plan: Mapping[str, Any]) -> str:
-    return json.dumps(plan, indent=2, ensure_ascii=False) + "\n"
+# --- dumping ----------------------------------------------------------------------------------------------
+
+def _mark_changed(node: Any) -> None:
+    """Mark every field that holds a value other than its default as set, in the whole tree."""
+    if isinstance(node, BaseModel):
+        for name, field in type(node).model_fields.items():
+            value = getattr(node, name)
+            if name not in node.model_fields_set and value != field.get_default(call_default_factory=True):
+                node.model_fields_set.add(name)
+            _mark_changed(value)
+    elif isinstance(node, list):
+        for member in node:
+            _mark_changed(member)
+    elif isinstance(node, dict):
+        for member in node.values():
+            _mark_changed(member)
 
 
-def save_plan(path: Path, plan: Mapping[str, Any]) -> None:
+def plan_dict(plan: pm.ActionPlan) -> Dict[str, Any]:
+    """The JSON form of a plan: a field is written when it was set or differs from its default."""
+    copy = plan.model_copy(deep=True)
+    _mark_changed(copy)
+    return copy.model_dump(mode="json", exclude_unset=True, warnings=False)
+
+
+def dump_plan(plan: pm.ActionPlan) -> str:
+    return json.dumps(plan_dict(plan), indent=2, ensure_ascii=False) + "\n"
+
+
+def save_plan(path: Path, plan: pm.ActionPlan) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(dump_plan(plan), encoding="utf-8")
 
 
-def schema_problems(plan: Mapping[str, Any], cfg: HarnessConfig) -> List[str]:
-    """One ``schema: <json path>: <message>`` line per violation of the ActionPlan schema."""
-    import jsonschema
-
-    from harness_lib.validation.schema_registry import load_schema, schema_registry
-
-    schema = load_schema(SCHEMA, cfg)
-    validator = jsonschema.validators.validator_for(schema)(schema, registry=schema_registry(cfg))
-    errors = sorted(validator.iter_errors(plan), key=lambda e: [str(p) for p in e.absolute_path])
-    return [f"schema: {'/'.join(str(p) for p in e.absolute_path) or '<root>'}: {e.message[:200]}"
-            for e in errors]
-
-
-def frozen_digest(plan: Mapping[str, Any]) -> str:
+def frozen_digest(plan: pm.ActionPlan) -> str:
     """SHA-256 of the plan without MUTABLE_TOP at the top level and MUTABLE_ITEM in each item."""
-    fixed = {k: v for k, v in plan.items() if k not in MUTABLE_TOP}
-    items = fixed.get("items")
-    if isinstance(items, list):
-        fixed["items"] = [{k: v for k, v in i.items() if k not in MUTABLE_ITEM} if isinstance(i, dict) else i
-                          for i in items]
+    fixed = {k: v for k, v in plan_dict(plan).items() if k not in MUTABLE_TOP}
+    fixed["items"] = [{k: v for k, v in item.items() if k not in MUTABLE_ITEM} for item in fixed["items"]]
     canonical = json.dumps(fixed, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def items_of(plan: Mapping[str, Any]) -> List[Dict[str, Any]]:
-    return [i for i in plan.get("items") or [] if isinstance(i, dict)]
+# --- items ------------------------------------------------------------------------------------------------
 
-
-def item_by_id(plan: Mapping[str, Any], item_id: str) -> Dict[str, Any]:
-    for item in items_of(plan):
-        if item.get("id") == item_id:
+def item_by_id(plan: pm.ActionPlan, item_id: str) -> pm.ActionItem:
+    for item in plan.items:
+        if item.id == item_id:
             return item
-    raise PlanError([f"no item {item_id} in plan {plan.get('plan_id')}"])
+    raise PlanError([f"no item {item_id} in plan {plan.plan_id}"])

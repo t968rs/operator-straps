@@ -2,7 +2,8 @@
 
 Every schema resolves through ``schema_path``: a copy pinned under the project's ``schemas_dir`` wins,
 else the plugin's canonical copy. Sibling schemas register under their bare filename, matching the
-relative ``$ref`` form (``"$ref": "prAttributes.schema.json"``) used inside the plan and review schemas.
+relative ``$ref`` form (``"$ref": "Child.schema.json"``) a schema uses to point at a sibling. The plan schema
+is generated from the plan models and refers to no sibling.
 ``referencing`` is imported lazily so this module loads without it installed.
 """
 from __future__ import annotations

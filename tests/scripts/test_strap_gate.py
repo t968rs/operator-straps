@@ -6,7 +6,9 @@ recorded on mechanical behaviors and their planned tests re-run on the working t
 its parts; ``judge-row``; and ``retest`` drawing a fresh scenario while ``run`` targets the failed one first.
 
 The driver runs in-process through ``main`` with ``--repo``; specs are built through ``strap.py api`` and read
-back from ``<artifacts.plans>/strap/<name>/SkillSpec.json``.
+back from ``<artifacts.plans>/strap/<name>/SkillSpec.json``. ``strap.py red`` and ``freeze`` hand the
+mechanical behaviors to ``plan_red`` as an ``ActionPlan`` of ``plan_models``, so the red and freeze tests
+here also cover that caller.
 """
 from __future__ import annotations
 

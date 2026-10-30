@@ -18,7 +18,9 @@ Review targets get three further layers after the schema check:
 A stdlib-only pre-check (``_cannot_target``) runs first and exits 0 for an event that cannot name a target,
 so ``harness_lib`` and the validators are imported only when one might.
 
-Exit 1 with a stderr report on a violation; exit 0 otherwise. Failure modes that are not a violation
+Exit 1 with a stderr report on a violation; exit 0 otherwise. A schema (typically a stale pinned copy) whose
+``$ref`` no longer resolves also exits 1, with a report naming the ref and telling the project to fix or drop
+the pinned copy. Failure modes that are not a violation
 (no target, missing schema, malformed stdin, unusable harness config or git missing from PATH, a payload
 without ``tool_input`` such as a Stop event) exit 0. A missing ``jsonschema`` or ``referencing`` exits 0
 with a one-line stderr warning naming the missing module.
@@ -136,6 +138,7 @@ def _schema_check(file_path: str, schema_file: Path, cfg: HarnessConfig,
                   label: str) -> Union[int, Tuple[Dict[str, Any], Dict[str, Any]]]:
     """Validate against the schema: ``(data, schema)`` when valid, else the exit code to return."""
     import jsonschema
+    from referencing.exceptions import Unresolvable
 
     from harness_lib.validation.schema_registry import schema_registry
 
@@ -149,6 +152,12 @@ def _schema_check(file_path: str, schema_file: Path, cfg: HarnessConfig,
         sys.stderr.write(f"{label} SCHEMA VIOLATION in {file_path}\n")
         sys.stderr.write(f"  at path: {where}\n")
         sys.stderr.write(f"  problem: {exc.message}\n")
+        return 1
+    except Unresolvable as exc:
+        ref = getattr(exc, "ref", None) or str(exc)
+        sys.stderr.write(f"{label} SCHEMA UNRESOLVABLE REF in {file_path}\n")
+        sys.stderr.write(f"  {schema_file.name} refers to {ref}, which no schema in the plugin or the "
+                         "project's pinned directory provides; fix or remove the pinned copy\n")
         return 1
     except Exception as exc:  # noqa: BLE001 - a setup failure is never a violation
         sys.stderr.write(f"Schema validation setup error for {file_path}: {exc}\n")

@@ -1,15 +1,18 @@
 """Checks of ``plan_checks.dependency_problems``: a cycle names its members, not the items behind it."""
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Dict, List
 
 from harness_lib import plan_checks as pc
+from harness_lib.plan_enums import ItemStatus
+from harness_lib.plan_models import ActionItem, ActionPlan
 
 
-def plan(deps: Dict[str, List[str]]) -> Dict[str, Any]:
-    items = [{"id": key, "title": key, "status": "PENDING", "dependencies": value}
+def plan(deps: Dict[str, List[str]]) -> ActionPlan:
+    """A plan built without validation: the graph tests use single-letter ids the models would reject."""
+    items = [ActionItem.model_construct(id=key, title=key, status=ItemStatus.PENDING, dependencies=value)
              for key, value in deps.items()]
-    return {"plan_id": "0001", "items": items}
+    return ActionPlan.model_construct(plan_id="0001", items=items)
 
 
 def test_an_item_behind_a_cycle_is_not_named_a_member() -> None:

@@ -10,9 +10,10 @@ import re
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Mapping, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterator, List, Optional, Sequence, Set, Tuple
 
-from harness_lib.plan_doc import items_of, planned_tests_dir
+from harness_lib.plan_doc import planned_tests_dir
+from harness_lib.plan_models import ActionPlan, Anchor, Decision
 
 _AT = re.compile(r"^(?P<path>[^:]+):(?P<start>\d+)(?:-(?P<end>\d+))?$")
 # 7-40 hex characters with at least one letter: all-digit tokens (counts, run ids, dates) are not SHAs.
@@ -30,14 +31,13 @@ def _squash(text: str) -> str:
 
 # --- anchors ----------------------------------------------------------------------------------------------
 
-def anchors_of(plan: Mapping[str, Any]) -> Iterator[Tuple[str, Mapping[str, Any]]]:
+def anchors_of(plan: ActionPlan) -> Iterator[Tuple[str, Anchor]]:
     """``(owner, anchor)`` for every item anchor and every format source."""
-    for item in items_of(plan):
-        for anchor in item.get("anchors") or []:
-            yield str(item.get("id")), anchor
-    for fmt in plan.get("formats") or []:
-        if isinstance(fmt, dict) and isinstance(fmt.get("source"), dict):
-            yield f"format {fmt.get('name')}", fmt["source"]
+    for item in plan.items:
+        for anchor in item.anchors:
+            yield item.id, anchor
+    for fmt in plan.formats:
+        yield f"format {fmt.name}", fmt.source
 
 
 def _lines(root: Path, rel: str) -> Optional[List[str]]:
@@ -45,9 +45,9 @@ def _lines(root: Path, rel: str) -> Optional[List[str]]:
     return path.read_text(encoding="utf-8", errors="replace").splitlines() if path.is_file() else None
 
 
-def anchor_problem(root: Path, owner: str, anchor: Mapping[str, Any]) -> Optional[str]:
+def anchor_problem(root: Path, owner: str, anchor: Anchor) -> Optional[str]:
     """None when the anchor's text sits in its line range, else the problem."""
-    at, expect = str(anchor.get("at")), str(anchor.get("expect"))
+    at, expect = anchor.at, anchor.expect
     match = _AT.match(at)
     if not match:
         return f"anchor {owner} {at}: not a path:line or path:start-end"
@@ -64,7 +64,7 @@ def anchor_problem(root: Path, owner: str, anchor: Mapping[str, Any]) -> Optiona
     return f"anchor {owner} {at}: {expect!r} not found; {where} {found[:120]!r}"
 
 
-def anchor_problems(plan: Mapping[str, Any], root: Path) -> List[str]:
+def anchor_problems(plan: ActionPlan, root: Path) -> List[str]:
     return [p for owner, a in anchors_of(plan) if (p := anchor_problem(root, owner, a))]
 
 
@@ -114,39 +114,39 @@ def sha_problem(owner: str, command: str) -> Optional[str]:
     return f"{owner} command names commit {', '.join(hits)}; use {{base}} or git merge-base"
 
 
-def command_problems(plan: Mapping[str, Any], root: Path) -> List[str]:
+def command_problems(plan: ActionPlan, root: Path) -> List[str]:
     out: List[str] = []
-    for item in items_of(plan):
-        for cmd in item.get("commands") or []:
-            run, owner = str(cmd.get("run", "")), str(item.get("id"))
-            out.extend(p for p in (sha_problem(owner, run), pytest_problem(owner, run, root)) if p)
+    for item in plan.items:
+        for cmd in item.commands:
+            found = (sha_problem(item.id, cmd.run), pytest_problem(item.id, cmd.run, root))
+            out.extend(p for p in found if p)
     return out
 
 
 # --- items and tests --------------------------------------------------------------------------------------
 
-def duplicate_problems(plan: Mapping[str, Any]) -> List[str]:
-    ids = [str(i.get("id")) for i in items_of(plan)]
+def duplicate_problems(plan: ActionPlan) -> List[str]:
+    ids = [i.id for i in plan.items]
     return [f"item id {i} is used {ids.count(i)} times" for i in dict.fromkeys(ids) if ids.count(i) > 1]
 
 
-def dependency_problems(plan: Mapping[str, Any]) -> List[str]:
-    known = {str(i.get("id")) for i in items_of(plan)}
-    out = [f"{i.get('id')} depends on unknown item {dep}"
-           for i in items_of(plan) for dep in i.get("dependencies") or [] if dep not in known]
+def dependency_problems(plan: ActionPlan) -> List[str]:
+    known = {i.id for i in plan.items}
+    out = [f"{i.id} depends on unknown item {dep}"
+           for i in plan.items for dep in i.dependencies or [] if dep not in known]
     cycle = _cycle_members(plan, known)
     return out + ([f"dependency cycle among {', '.join(cycle)}"] if cycle else [])
 
 
-def _cycle_members(plan: Mapping[str, Any], known: Set[str]) -> List[str]:
+def _cycle_members(plan: ActionPlan, known: Set[str]) -> List[str]:
     """Items on a dependency cycle: the Kahn leftovers that reach themselves, not those merely behind one."""
     left = _kahn_leftovers(plan, known)
     return [key for key in sorted(left) if key in _reachable(left, key)]
 
 
-def _kahn_leftovers(plan: Mapping[str, Any], known: Set[str]) -> Dict[str, Set[str]]:
+def _kahn_leftovers(plan: ActionPlan, known: Set[str]) -> Dict[str, Set[str]]:
     """Items left after repeatedly removing items whose known dependencies are all removed (Kahn)."""
-    deps = {str(i.get("id")): {d for d in i.get("dependencies") or [] if d in known} for i in items_of(plan)}
+    deps = {i.id: {d for d in i.dependencies or [] if d in known} for i in plan.items}
     while True:
         free = [k for k, v in deps.items() if not v]
         if not free:
@@ -157,7 +157,7 @@ def _kahn_leftovers(plan: Mapping[str, Any], known: Set[str]) -> Dict[str, Set[s
             pending.difference_update(free)
 
 
-def _reachable(deps: Mapping[str, Set[str]], start: str) -> Set[str]:
+def _reachable(deps: Dict[str, Set[str]], start: str) -> Set[str]:
     """Every item reachable from ``start`` by following dependencies, one step or more."""
     seen: Set[str] = set()
     stack = list(deps.get(start, ()))
@@ -169,68 +169,61 @@ def _reachable(deps: Mapping[str, Set[str]], start: str) -> Set[str]:
     return seen
 
 
-def planned_test_problems(plan: Mapping[str, Any], root: Path, plans_dir: Path) -> List[str]:
+def planned_test_problems(plan: ActionPlan, root: Path, plans_dir: Path) -> List[str]:
     """A test node's file exists in the tree or is planned under ``<plans_dir>/<plan_id>/tests/``."""
-    planned = planned_tests_dir(plans_dir, str(plan.get("plan_id")))
+    planned = planned_tests_dir(plans_dir, plan.plan_id)
     out: List[str] = []
-    for item in items_of(plan):
-        for test in item.get("tests") or []:
-            node = str(test.get("node"))
-            rel = node.split("::")[0]
+    for item in plan.items:
+        for test in item.tests:
+            rel = test.node.split("::")[0]
             if not (root / rel).is_file() and not (planned / rel).is_file():
                 where = (planned / rel).relative_to(root).as_posix() if planned.is_relative_to(root) else rel
-                out.append(f"{item.get('id')} test {node}: {rel} is neither in the tree "
+                out.append(f"{item.id} test {test.node}: {rel} is neither in the tree "
                            f"nor planned at {where}")
     return out
 
 
 # --- decisions and values ---------------------------------------------------------------------------------
 
-def _decisions(plan: Mapping[str, Any]) -> List[Dict[str, Any]]:
-    return [d for d in plan.get("decisions") or [] if isinstance(d, dict)]
+def _option_owner(plan: ActionPlan) -> Dict[str, Decision]:
+    return {o.id: d for d in plan.decisions for o in d.options}
 
 
-def _option_owner(plan: Mapping[str, Any]) -> Dict[str, Dict[str, Any]]:
-    return {str(o.get("id")): d for d in _decisions(plan) for o in d.get("options") or []}
-
-
-def decision_problems(plan: Mapping[str, Any]) -> List[str]:
+def decision_problems(plan: ActionPlan) -> List[str]:
     out: List[str] = []
-    seen: List[str] = [str(o.get("id")) for d in _decisions(plan) for o in d.get("options") or []]
+    seen: List[str] = [o.id for d in plan.decisions for o in d.options]
     out.extend(f"option id {o} is used {seen.count(o)} times"
                for o in dict.fromkeys(seen) if seen.count(o) > 1)
-    for d in _decisions(plan):
-        own = {str(o.get("id")) for o in d.get("options") or []}
-        if d.get("chosen") is not None and d.get("chosen") not in own:
-            out.append(f"{d.get('id')} chose {d.get('chosen')}, which is not one of its options")
+    for d in plan.decisions:
+        if d.chosen is not None and d.chosen not in {o.id for o in d.options}:
+            out.append(f"{d.id} chose {d.chosen}, which is not one of its options")
     return out
 
 
-def value_problems(plan: Mapping[str, Any]) -> List[str]:
+def value_problems(plan: ActionPlan) -> List[str]:
     owners = _option_owner(plan)
     out: List[str] = []
-    for value in plan.get("values") or []:
-        for option in value.get("assumes") or []:
-            out.extend(_assumption_problem(str(value.get("name")), option, owners))
+    for value in plan.values:
+        for option in value.assumes:
+            out.extend(_assumption_problem(value.name, option, owners))
     return out
 
 
-def _assumption_problem(name: str, option: str, owners: Mapping[str, Mapping[str, Any]]) -> List[str]:
+def _assumption_problem(name: str, option: str, owners: Dict[str, Decision]) -> List[str]:
     decision = owners.get(option)
     if decision is None:
         return [f"value {name} assumes unknown option {option}"]
-    chosen = decision.get("chosen")
-    if chosen is None or chosen == option:
+    if decision.chosen is None or decision.chosen == option:
         return []
-    return [f"value {name} assumes {option}, which {decision.get('id')} rejected (chose {chosen}); "
+    return [f"value {name} assumes {option}, which {decision.id} rejected (chose {decision.chosen}); "
             "recompute it or drop the assumption"]
 
 
-def open_decisions(plan: Mapping[str, Any]) -> List[str]:
-    return [f"{d.get('id')}: {d.get('question')}" for d in _decisions(plan) if d.get("chosen") is None]
+def open_decisions(plan: ActionPlan) -> List[str]:
+    return [f"{d.id}: {d.question}" for d in plan.decisions if d.chosen is None]
 
 
-def lint_problems(plan: Mapping[str, Any], root: Path, plans_dir: Path) -> List[str]:
+def lint_problems(plan: ActionPlan, root: Path, plans_dir: Path) -> List[str]:
     """Every plan-internal defect, plus commands and test files checked against the tree."""
     return (duplicate_problems(plan) + dependency_problems(plan) + decision_problems(plan)
             + value_problems(plan) + command_problems(plan, root)
@@ -249,12 +242,12 @@ def sweep_hits(root: Path, pattern: str, skip_prefix: str) -> Tuple[Set[str], Op
     return {p for p in done.stdout.split("\0") if p and not p.startswith(prefix)}, None
 
 
-def sweep_problems(plan: Mapping[str, Any], root: Path, plans_prefix: str) -> List[str]:
+def sweep_problems(plan: ActionPlan, root: Path, plans_prefix: str) -> List[str]:
     """Hits the sweep does not classify, and classified files without a hit."""
     out: List[str] = []
-    for sweep in plan.get("sweeps") or []:
-        sid, classified = sweep.get("id"), set(sweep.get("hits") or {})
-        hits, error = sweep_hits(root, str(sweep.get("pattern")), plans_prefix)
+    for sweep in plan.sweeps:
+        sid, classified = sweep.id, set(sweep.hits)
+        hits, error = sweep_hits(root, sweep.pattern, plans_prefix)
         if error:
             out.append(f"sweep {sid}: git grep failed: {error}")
             continue

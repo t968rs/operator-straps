@@ -125,6 +125,23 @@ def test_new_writes_the_plan_and_its_pip_with_the_merge_base(run: Run, project: 
     assert out.startswith(f"new [done] | plan 0001 | base main @ {main_sha[:7]}")
 
 
+def test_new_prints_the_authoring_command_line(run: Run, plugin_root: Path) -> None:
+    code, out, err = run("new", "Add subtraction", "--spec", "docs/spec.md")
+    assert code == 0, err
+    author = next(line for line in out.splitlines() if line.startswith("author: "))
+    assert f'PYTHONPATH="{plugin_root.as_posix()}/lib"' in author and "- <<'EOF'" in author
+    assert 'plan_api.load("0001")' in author
+
+
+@pytest.mark.parametrize("command", [("render", "1"), ("red", "1"), ("lanes", "1"),
+                                     ("record", "1", "TASK-1", "--start"), ("freeze", "1")])
+def test_every_command_refuses_a_plan_that_does_not_validate(run: Run, filled: Fill,
+                                                             command: Tuple[str, ...]) -> None:
+    filled(sub_item(tests=[{"node": "tests/test_calc_sub.py::test_sub", "red": "Oops"}]))
+    code, _, err = run(*command)
+    assert code == 1 and "problem: schema: items/0/tests/0/red:" in err
+
+
 def test_new_refuses_a_missing_spec(run: Run) -> None:
     code, _, err = run("new", "Add subtraction", "--spec", "docs/nope.md")
     assert code == 1 and "problem: spec docs/nope.md does not exist" in err
@@ -387,6 +404,17 @@ def test_record_closed_needs_no_commit(run: Run, filled: Fill,
     assert code == 0, err
     item = read_plan(project)["items"][0]
     assert item["status"] == "CLOSED_NO_ACTION" and item["evidence"] == reason
+
+
+def test_record_start_after_completion_drops_completed_from_the_file(run: Run, filled: Fill,
+                                                                    project: Path) -> None:
+    filled()
+    run("freeze", "1")
+    run("record", "1", "TASK-1", "--closed", "superseded by the stdlib operator module")
+    assert read_plan(project)["completed"] is not None
+    code, _, err = run("record", "1", "TASK-1", "--start")
+    assert code == 0, err
+    assert "completed" not in read_plan(project)
 
 
 # --- red --------------------------------------------------------------------------------------------------

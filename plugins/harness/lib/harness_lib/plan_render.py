@@ -10,9 +10,11 @@ plan's full ``base_commit``, so a copied command runs as written.
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Iterable, List, Mapping
+from typing import Iterable, List
 
-from harness_lib.plan_doc import DONE, PLAN_SUFFIX, items_of
+from harness_lib.plan_doc import PLAN_SUFFIX
+from harness_lib.plan_enums import DONE
+from harness_lib.plan_models import ActionItem, ActionPlan, Decision, DecisionOption
 
 _NAME = re.compile(r"^\d{4}_(?P<title>.+)" + re.escape(PLAN_SUFFIX) + "$")
 
@@ -26,116 +28,108 @@ def code(text: str) -> str:
     return f"{fence} {text} {fence}"
 
 
-def _cell(text: Any) -> str:
+def _cell(text: object) -> str:
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
-def _title(plan: Mapping[str, Any], plan_name: str) -> str:
+def _title(plan: ActionPlan, plan_name: str) -> str:
     match = _NAME.match(plan_name)
-    head = f"# Plan {plan.get('plan_id')}"
+    head = f"# Plan {plan.plan_id}"
     return f"{head}: {match['title'].replace('_', ' ')}" if match else head
 
 
-def _header(plan: Mapping[str, Any], plan_name: str) -> List[str]:
-    frozen = plan.get("frozen")
-    frozen_text = f"{frozen['date']} at {code(frozen['commit'][:7])}" if isinstance(frozen, dict) else "no"
-    base = plan.get("base_commit")
+def _header(plan: ActionPlan, plan_name: str) -> List[str]:
+    frozen = plan.frozen
+    frozen_text = f"{frozen.date} at {code(frozen.commit[:7])}" if frozen else "no"
+    base = plan.base_commit
     return [
         _title(plan, plan_name), "",
         f"> Rendered by `plan.py render` from {code(plan_name)}. Change the JSON through the driver, "
         "then render again; edits to this file are overwritten.", "",
-        f"**Plan created:** {plan.get('plan_created')}",
-        f"**Spec:** {code(plan['source_document']) if plan.get('source_document') else 'none'}",
-        f"**Branch:** {plan.get('branch') or 'none'} -> {plan.get('base_branch') or 'none'}",
+        f"**Plan created:** {plan.plan_created}",
+        f"**Spec:** {code(plan.source_document) if plan.source_document else 'none'}",
+        f"**Branch:** {plan.branch or 'none'} -> {plan.base_branch or 'none'}",
         f"**Base commit:** {code(base[:7]) if base else 'none'}",
         f"**Frozen:** {frozen_text}",
-        f"**Execution model:** {plan.get('execution_model')}", "",
+        f"**Execution model:** {plan.execution_model}", "",
     ]
 
 
-def _options(options: Iterable[Mapping[str, Any]]) -> str:
-    return ", ".join(f"{code(str(o.get('id')))} ({o.get('summary')})" for o in options)
+def _options(options: Iterable[DecisionOption]) -> str:
+    return ", ".join(f"{code(o.id)} ({o.summary})" for o in options)
 
 
-def _decision_line(d: Mapping[str, Any]) -> str:
-    options = [o for o in d.get("options") or [] if isinstance(o, dict)]
-    head = f"- **{d.get('id')}** {d.get('question')}"
-    if d.get("chosen") is None:
-        return f"{head} **Open.** Options: {_options(options)}."
-    chosen = [o for o in options if o.get("id") == d.get("chosen")]
-    rejected = [o for o in options if o.get("id") != d.get("chosen")]
-    why = f" {d['rationale']}" if d.get("rationale") else ""
+def _decision_line(d: Decision) -> str:
+    head = f"- **{d.id}** {d.question}"
+    if d.chosen is None:
+        return f"{head} **Open.** Options: {_options(d.options)}."
+    chosen = [o for o in d.options if o.id == d.chosen]
+    rejected = [o for o in d.options if o.id != d.chosen]
+    why = f" {d.rationale}" if d.rationale else ""
     return f"{head} Chosen: {_options(chosen)}. Rejected: {_options(rejected)}.{why}"
 
 
-def _decisions(plan: Mapping[str, Any]) -> List[str]:
-    rows = [_decision_line(d) for d in plan.get("decisions") or [] if isinstance(d, dict)]
+def _decisions(plan: ActionPlan) -> List[str]:
+    rows = [_decision_line(d) for d in plan.decisions]
     return ["## Decisions", "", *rows, ""] if rows else []
 
 
-def _values(plan: Mapping[str, Any]) -> List[str]:
-    values = [v for v in plan.get("values") or [] if isinstance(v, dict)]
-    if not values:
+def _values(plan: ActionPlan) -> List[str]:
+    if not plan.values:
         return []
-    rows = [f"| {_cell(v.get('name'))} | {_cell(v.get('value'))} | {_cell(v.get('source'))} | "
-            f"{_cell(', '.join(v.get('assumes') or []) or '-')} |" for v in values]
+    rows = [f"| {_cell(v.name)} | {_cell(v.value)} | {_cell(v.source)} | "
+            f"{_cell(', '.join(v.assumes) or '-')} |" for v in plan.values]
     return ["## Values", "", "| Name | Value | Source | Assumes |", "|---|---|---|---|", *rows, ""]
 
 
-def _formats(plan: Mapping[str, Any]) -> List[str]:
-    rows = [f"- **{f.get('name')}**: {code(str(f.get('example')))}, copied from {code(f['source']['at'])}"
-            for f in plan.get("formats") or [] if isinstance(f, dict) and isinstance(f.get("source"), dict)]
+def _formats(plan: ActionPlan) -> List[str]:
+    rows = [f"- **{f.name}**: {code(f.example)}, copied from {code(f.source.at)}" for f in plan.formats]
     return ["## Formats", "", *rows, ""] if rows else []
 
 
-def _sweeps(plan: Mapping[str, Any]) -> List[str]:
+def _sweeps(plan: ActionPlan) -> List[str]:
     rows = []
-    for s in plan.get("sweeps") or []:
-        hits = ", ".join(f"{code(p)} ({c})" for p, c in sorted((s.get("hits") or {}).items())) or "no hits"
-        rows.append(f"- **{s.get('id')}** {code(str(s.get('pattern')))}: {hits}")
+    for s in plan.sweeps:
+        hits = ", ".join(f"{code(p)} ({c})" for p, c in sorted(s.hits.items())) or "no hits"
+        rows.append(f"- **{s.id}** {code(s.pattern)}: {hits}")
     return ["## Sweeps", "", *rows, ""] if rows else []
 
 
-def _expand_base(plan: Mapping[str, Any], run: Any) -> str:
+def _expand_base(plan: ActionPlan, run: str) -> str:
     """``run`` with each ``{base}`` replaced by the plan's ``base_commit``, when one is recorded."""
-    base = plan.get("base_commit")
-    return str(run).replace("{base}", base) if isinstance(base, str) and base else str(run)
+    return run.replace("{base}", plan.base_commit) if plan.base_commit else run
 
 
-def _boxes(plan: Mapping[str, Any], item: Mapping[str, Any]) -> List[str]:
-    mark = "x" if item.get("status") in DONE else " "
-    steps = [f"Test {code(str(t.get('node')))} fails with {t.get('red')}, then passes"
-             for t in item.get("tests") or []]
-    steps += [f"Run {code(_expand_base(plan, c.get('run')))}: {c.get('expect')}"
-              for c in item.get("commands") or []]
-    record = f"plan.py record {plan.get('plan_id')} {item.get('id')} --sha <sha>"
+def _boxes(plan: ActionPlan, item: ActionItem) -> List[str]:
+    mark = "x" if item.status in DONE else " "
+    steps = [f"Test {code(t.node)} fails with {t.red}, then passes" for t in item.tests]
+    steps += [f"Run {code(_expand_base(plan, c.run))}: {c.expect}" for c in item.commands]
+    record = f"plan.py record {plan.plan_id} {item.id} --sha <sha>"
     steps.append(f"Record the commit: {code(record)}")
     return [f"- [{mark}] {step}" for step in steps]
 
 
-def _item_meta(item: Mapping[str, Any]) -> List[str]:
-    deps = ", ".join(item.get("dependencies") or []) or "none"
-    lines = [f"**Status:** {item.get('status')} | **Model:** {item.get('model') or 'sonnet'} | "
-             f"**Depends on:** {deps}"]
-    files = ", ".join(code(f) for f in item.get("files") or [])
+def _item_meta(item: ActionItem) -> List[str]:
+    deps = ", ".join(item.dependencies or []) or "none"
+    lines = [f"**Status:** {item.status} | **Model:** {item.model} | **Depends on:** {deps}"]
+    files = ", ".join(code(f) for f in item.files)
     lines.append(f"**Files:** {files or 'none'}")
-    anchors = [f"- {code(str(a.get('at')))} holds {code(str(a.get('expect')))}"
-               for a in item.get("anchors") or []]
+    anchors = [f"- {code(a.at)} holds {code(a.expect)}" for a in item.anchors]
     return lines + (["", "**Anchors:**", *anchors] if anchors else [])
 
 
-def _item(plan: Mapping[str, Any], item: Mapping[str, Any]) -> List[str]:
-    out = [f"### {item.get('id')}: {item.get('title')}", "", *_item_meta(item), ""]
-    out += [str(item.get("action")), ""]
-    out += [*_boxes(plan, item), "", f"**Evidence:** {item.get('evidence')}", ""]
-    refs = item.get("verification_references") or []
-    return out + ([*(f"- {code(str(r))}" for r in refs), ""] if refs else [])
+def _item(plan: ActionPlan, item: ActionItem) -> List[str]:
+    out = [f"### {item.id}: {item.title}", "", *_item_meta(item), ""]
+    out += [item.action, ""]
+    out += [*_boxes(plan, item), "", f"**Evidence:** {item.evidence}", ""]
+    refs = item.verification_references
+    return out + ([*(f"- {code(r)}" for r in refs), ""] if refs else [])
 
 
-def render_pip(plan: Dict[str, Any], plan_name: str) -> str:
+def render_pip(plan: ActionPlan, plan_name: str) -> str:
     """The PIP text of ``plan``; ``plan_name`` is the plan file's name, shown in the header."""
     body = _header(plan, plan_name) + _decisions(plan) + _values(plan) + _formats(plan) + _sweeps(plan)
     body += ["## Tasks", ""]
-    for item in items_of(plan):
+    for item in plan.items:
         body += _item(plan, item)
     return "\n".join(body).rstrip("\n") + "\n"

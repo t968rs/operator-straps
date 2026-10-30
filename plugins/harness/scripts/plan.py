@@ -3,17 +3,18 @@
 The mechanical half of the ``write-plan`` skill. A plan is an ActionPlan JSON under the project's
 ``artifacts.plans`` (``<plan_id>_<Title>_ActionPlan.json``) with its PIP rendered beside it and the test files
 it plans under ``<plan_id>/tests/<repo-relative path>``. Every defect is one ``problem: ...`` line on stderr
-with exit 1; success exits 0 and writes nothing on a refusal.
+with exit 1; success exits 0 and writes nothing on a refusal. Every command validates the plan on load and
+refuses an invalid one with ``schema:`` lines.
 
 ``new TITLE [--spec PATH] [--base BRANCH] [--no-fetch]``
     Write an empty plan with the next plan id, the spec path and the base commit (the merge base of the base
     branch and HEAD, fetched from ``origin`` when the remote exists), then render its PIP.
 
 ``check PLAN``
-    Validate the schema; then lint (item ids, dependencies, decisions, values, commands, planned test files),
-    open every anchor, run every sweep, require each COMPLETE item to carry the commit (reachable from HEAD)
-    and tree ``record --sha`` writes and, on a frozen plan, compare the freeze digest. Open decisions are
-    listed as ``open:`` lines, not problems. Read-only.
+    Lint (item ids, dependencies, decisions, values, commands, planned test files), open every anchor, run
+    every sweep, require each COMPLETE item to carry the commit (reachable from HEAD) and tree
+    ``record --sha`` writes and, on a frozen plan, compare the freeze digest. Open decisions are listed as
+    ``open:`` lines, not problems. Read-only.
 
 ``render PLAN``
     Write the PIP from the plan JSON.
@@ -28,9 +29,9 @@ with exit 1; success exits 0 and writes nothing on a refusal.
 ``freeze PLAN [--refreeze]``
     Refuse while ``check`` has a problem, a decision is open, an open item has neither a test nor a command,
     an item is not PENDING on a first freeze, or ``red`` has a problem; otherwise record HEAD, its tree, the
-    date and the digest of every field but the execution fields (``plan_doc.MUTABLE_TOP`` and
-    ``MUTABLE_ITEM``): the item status, evidence and verification references and the plan's completed,
-    frozen and markdown sync fields.
+    date and the digest of every field but the execution fields (the ``Mutable`` fields of
+    ``harness_lib.plan_models``): the item status, evidence and verification references and the plan's
+    completed, frozen and markdown sync fields.
 
 ``lanes PLAN [--target BRANCH]``
     Print the ``parallel2`` plan JSON of a frozen plan's open items (waves from dependencies and file
@@ -68,15 +69,31 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from harness_lib import parallel_lanes as pl
-from harness_lib import plan_checks as pc
-from harness_lib import plan_doc as pd
-from harness_lib import plan_lanes as plx
-from harness_lib import plan_red as pr
-from harness_lib.branch_capture import CaptureError, current_branch, git, git_out, resolve_merge_base
-from harness_lib.config import ConfigError, active, activate, load_config
-from harness_lib.plan_render import render_pip
-from harness_lib.project import project_root
+
+def _pydantic_missing() -> bool:
+    """True when pydantic 2 does not import: the plan models need it."""
+    try:
+        import pydantic
+    except ImportError:
+        return True
+    return not hasattr(pydantic, "model_validator")
+
+
+if _pydantic_missing():
+    print("problem: pydantic>=2 is not installed; plan needs it (pip install 'pydantic>=2')", file=sys.stderr)
+    sys.exit(1)
+
+from harness_lib import parallel_lanes as pl  # noqa: E402
+from harness_lib import plan_checks as pc  # noqa: E402
+from harness_lib import plan_doc as pd  # noqa: E402
+from harness_lib import plan_lanes as plx  # noqa: E402
+from harness_lib import plan_models as pm  # noqa: E402
+from harness_lib import plan_red as pr  # noqa: E402
+from harness_lib.branch_capture import CaptureError, current_branch, git, git_out, resolve_merge_base  # noqa: E402
+from harness_lib.config import ConfigError, active, activate, load_config  # noqa: E402
+from harness_lib.plan_enums import DONE, ItemStatus  # noqa: E402
+from harness_lib.plan_render import render_pip  # noqa: E402
+from harness_lib.project import plugin_root, project_root  # noqa: E402
 
 PROBLEMS = (pd.PlanError, pl.PlanError, CaptureError, ConfigError)
 SHA40 = re.compile(r"[0-9a-f]{40}")
@@ -109,13 +126,13 @@ def rel(repo: Path, path: Path) -> str:
         return path.as_posix()
 
 
-def write_pip(plan_file: Path, plan: Dict[str, Any]) -> Path:
+def write_pip(plan_file: Path, plan: pm.ActionPlan) -> Path:
     target = pd.pip_path(plan_file)
     target.write_text(render_pip(plan, plan_file.name), encoding="utf-8")
     return target
 
 
-def save(plan_file: Path, plan: Dict[str, Any]) -> Path:
+def save(plan_file: Path, plan: pm.ActionPlan) -> Path:
     pd.save_plan(plan_file, plan)
     return write_pip(plan_file, plan)
 
@@ -145,30 +162,34 @@ def cmd_new(repo: Path, args: argparse.Namespace) -> int:
     folder = plans_dir()
     plan_id = pd.next_plan_id(folder)
     plan_file = pd.plan_path(folder, plan_id, pd.title_slug(args.title))
-    plan = skeleton(plan_id, spec, base, base_commit, current_branch(repo), rel(repo, pd.pip_path(plan_file)))
-    pip = save(plan_file, plan)
+    raw = skeleton(plan_id, spec, base, base_commit, current_branch(repo), rel(repo, pd.pip_path(plan_file)))
+    pip = save(plan_file, pd.validate_plan(raw))
     tests = rel(repo, pd.planned_tests_dir(folder, plan_id))
+    lib = plugin_root().as_posix() + "/lib"
+    hpy = plugin_root().as_posix() + "/scripts/hpy"
     print("\n".join([f"new [done] | plan {plan_id} | base {base} @ {base_commit[:7]}",
                      f"plan:  {rel(repo, plan_file)}", f"pip:   {rel(repo, pip)}",
                      f"tests: {tests}/<repo-relative path>",
+                     f"author: PYTHONPATH=\"{lib}\" sh \"{hpy}\" - <<'EOF'  "
+                     f"(from harness_lib import plan_api; plan = plan_api.load(\"{plan_id}\"))",
                      f"next: fill decisions, items, anchors and sweeps; then plan.py check {plan_id}"]))
     return 0
 
 
 # --- check ------------------------------------------------------------------------------------------------
 
-def digest_problems(plan: Dict[str, Any]) -> List[str]:
-    frozen = plan.get("frozen")
-    if not isinstance(frozen, dict) or frozen.get("digest") == pd.frozen_digest(plan):
+def digest_problems(plan: pm.ActionPlan) -> List[str]:
+    frozen = plan.frozen
+    if frozen is None or frozen.digest == pd.frozen_digest(plan):
         return []
     return ["plan changed after freeze (a field outside the item status, evidence and verification "
             "references and the completed, frozen and markdown sync fields); "
             "restore it, or rerun freeze --refreeze"]
 
 
-def record_shape_problem(repo: Path, item: Dict[str, Any]) -> Optional[str]:
+def record_shape_problem(repo: Path, item: pm.ActionItem) -> Optional[str]:
     """Why a COMPLETE item lacks what ``record --sha`` writes: a commit reachable from HEAD, then its tree."""
-    refs = [str(ref) for ref in item.get("verification_references") or []]
+    refs = list(item.verification_references)
     sha = refs[0] if refs else ""
     if not SHA40.fullmatch(sha) or git(repo, "merge-base", "--is-ancestor", sha, "HEAD").returncode != 0:
         return "no commit reachable from HEAD"
@@ -176,34 +197,29 @@ def record_shape_problem(repo: Path, item: Dict[str, Any]) -> Optional[str]:
     return None if refs[1:2] == [f"tree {tree}"] else f"no tree entry of {sha[:7]}"
 
 
-def completion_problems(repo: Path, plan: Dict[str, Any]) -> List[str]:
+def completion_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     """One line per COMPLETE item that ``record --sha`` did not mark (a hand-set status)."""
     out = []
-    for item in pd.items_of(plan):
-        why = record_shape_problem(repo, item) if item.get("status") == "COMPLETE" else None
+    for item in plan.items:
+        why = record_shape_problem(repo, item) if item.status == ItemStatus.COMPLETE else None
         if why:
-            out.append(f"{item.get('id')} is COMPLETE without the record of record --sha ({why}); "
+            out.append(f"{item.id} is COMPLETE without the record of record --sha ({why}); "
                        "set it back and run record")
     return out
 
 
-def all_problems(repo: Path, plan: Dict[str, Any]) -> List[str]:
-    """Schema problems alone when there are any (later checks assume the shape), else every check."""
-    schema = pd.schema_problems(plan, active())
-    if schema:
-        return schema
+def all_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
+    """Every check of a plan that loaded: loading already validated its shape."""
     return (pc.lint_problems(plan, repo, plans_dir()) + pc.anchor_problems(plan, repo)
             + pc.sweep_problems(plan, repo, active().artifacts.plans) + digest_problems(plan)
             + completion_problems(repo, plan))
 
 
-def check_summary(plan: Dict[str, Any]) -> str:
-    items = pd.items_of(plan)
+def check_summary(plan: pm.ActionPlan) -> str:
     anchors = sum(1 for _ in pc.anchors_of(plan))
-    sweeps = len(plan.get("sweeps") or [])
     opened = pc.open_decisions(plan)
-    return (f"check [ok] | plan {plan.get('plan_id')} | {len(items)} items, {anchors} anchors, "
-            f"{sweeps} sweeps | open decisions: {len(opened)}")
+    return (f"check [ok] | plan {plan.plan_id} | {len(plan.items)} items, {anchors} anchors, "
+            f"{len(plan.sweeps)} sweeps | open decisions: {len(opened)}")
 
 
 def cmd_check(repo: Path, args: argparse.Namespace) -> int:
@@ -224,11 +240,11 @@ def cmd_render(repo: Path, args: argparse.Namespace) -> int:
 
 # --- red --------------------------------------------------------------------------------------------------
 
-def planned_nodes(plan: Dict[str, Any]) -> int:
-    return sum(len(item.get("tests") or []) for item in plx.open_items(plan))
+def planned_nodes(plan: pm.ActionPlan) -> int:
+    return sum(len(item.tests) for item in plx.open_items(plan))
 
 
-def red_results(repo: Path, plan: Dict[str, Any]) -> List[pr.RedResult]:
+def red_results(repo: Path, plan: pm.ActionPlan) -> List[pr.RedResult]:
     """Run the open items' test nodes on a throwaway worktree at HEAD with the planned files laid over it."""
     if not planned_nodes(plan):
         return []
@@ -241,7 +257,7 @@ def red_results(repo: Path, plan: Dict[str, Any]) -> List[pr.RedResult]:
         pr.drop_tree(repo, tree)
 
 
-def red_problems(repo: Path, plan: Dict[str, Any]) -> Tuple[List[pr.RedResult], List[str]]:
+def red_problems(repo: Path, plan: pm.ActionPlan) -> Tuple[List[pr.RedResult], List[str]]:
     results = red_results(repo, plan)
     return results, [f"red: {p}" for p in pr.red_problems(results)]
 
@@ -251,7 +267,7 @@ def cmd_red(repo: Path, args: argparse.Namespace) -> int:
     results, problems = red_problems(repo, plan)
     if problems:
         raise pd.PlanError(problems)
-    head = f"red [ok] | plan {plan.get('plan_id')}"
+    head = f"red [ok] | plan {plan.plan_id}"
     if not results:
         print(f"{head} | no planned test nodes in open items")
         return 0
@@ -262,27 +278,27 @@ def cmd_red(repo: Path, args: argparse.Namespace) -> int:
 
 # --- freeze -----------------------------------------------------------------------------------------------
 
-def unproven_items(plan: Dict[str, Any]) -> List[str]:
-    return [f"{i.get('id')} has no test and no command: nothing proves it" for i in pd.items_of(plan)
-            if i.get("status") not in pd.DONE and not i.get("tests") and not i.get("commands")]
+def unproven_items(plan: pm.ActionPlan) -> List[str]:
+    return [f"{i.id} has no test and no command: nothing proves it" for i in plan.items
+            if i.status not in DONE and not i.tests and not i.commands]
 
 
-def started_items(plan: Dict[str, Any]) -> List[str]:
+def started_items(plan: pm.ActionPlan) -> List[str]:
     """On a plan never frozen, one line per item not PENDING: only ``record`` sets the other states."""
-    if isinstance(plan.get("frozen"), dict):
+    if plan.frozen is not None:
         return []
-    return [f"{i.get('id')} is {i.get('status')}: a first freeze needs every item PENDING; "
-            "record sets the rest" for i in pd.items_of(plan) if i.get("status") != "PENDING"]
+    return [f"{i.id} is {i.status}: a first freeze needs every item PENDING; "
+            "record sets the rest" for i in plan.items if i.status != ItemStatus.PENDING]
 
 
-def freeze_problems(repo: Path, plan: Dict[str, Any], refreeze: bool) -> List[str]:
-    frozen = plan.get("frozen")
-    if isinstance(frozen, dict) and not refreeze:
-        return [f"plan {plan.get('plan_id')} is already frozen ({frozen.get('date')}); pass --refreeze"]
+def freeze_problems(repo: Path, plan: pm.ActionPlan, refreeze: bool) -> List[str]:
+    frozen = plan.frozen
+    if frozen is not None and not refreeze:
+        return [f"plan {plan.plan_id} is already frozen ({frozen.date}); pass --refreeze"]
     problems = [p for p in all_problems(repo, plan) if not (refreeze and p.startswith("plan changed after"))]
     problems += [f"decision {d} is open: {q}" for d, q in (o.split(": ", 1) for o in pc.open_decisions(plan))]
     problems += started_items(plan) + unproven_items(plan)
-    return problems + ([] if pd.items_of(plan) else ["the plan has no items"])
+    return problems + ([] if plan.items else ["the plan has no items"])
 
 
 def cmd_freeze(repo: Path, args: argparse.Namespace) -> int:
@@ -296,34 +312,34 @@ def cmd_freeze(repo: Path, args: argparse.Namespace) -> int:
         raise pd.PlanError(problems)
     head = git_out(repo, "rev-parse", "HEAD").strip()
     tree = git_out(repo, "rev-parse", "HEAD^{tree}").strip()
-    plan["frozen"] = {"commit": head, "tree": tree, "date": today(), "digest": pd.frozen_digest(plan)}
+    plan.frozen = pm.Frozen(commit=head, tree=tree, date=today(), digest=pd.frozen_digest(plan))
     save(plan_file, plan)
-    print(f"freeze [done] | plan {plan.get('plan_id')} | at {head[:7]} | {len(pd.items_of(plan))} items")
+    print(f"freeze [done] | plan {plan.plan_id} | at {head[:7]} | {len(plan.items)} items")
     return 0
 
 
 # --- record -----------------------------------------------------------------------------------------------
 
-def require_frozen(repo: Path, plan: Dict[str, Any]) -> None:
-    if not isinstance(plan.get("frozen"), dict):
-        raise pd.PlanError([f"plan {plan.get('plan_id')} is not frozen; run freeze first"])
+def require_frozen(repo: Path, plan: pm.ActionPlan) -> None:
+    if plan.frozen is None:
+        raise pd.PlanError([f"plan {plan.plan_id} is not frozen; run freeze first"])
     problems = digest_problems(plan) + completion_problems(repo, plan)
     if problems:
         raise pd.PlanError(problems)
 
 
-def dependency_problems(plan: Dict[str, Any], item: Dict[str, Any]) -> List[str]:
+def dependency_problems(plan: pm.ActionPlan, item: pm.ActionItem) -> List[str]:
     out = []
-    for dep in item.get("dependencies") or []:
-        status = pd.item_by_id(plan, dep).get("status")
-        if status not in pd.DONE:
-            out.append(f"{item.get('id')} depends on {dep}, which is {status}")
+    for dep in item.dependencies or []:
+        status = pd.item_by_id(plan, dep).status
+        if status not in DONE:
+            out.append(f"{item.id} depends on {dep}, which is {status}")
     return out
 
 
-def item_paths(item: Dict[str, Any]) -> List[str]:
-    nodes = [str(t.get("node")).split("::")[0] for t in item.get("tests") or []]
-    return list(dict.fromkeys([*(item.get("files") or []), *nodes]))
+def item_paths(item: pm.ActionItem) -> List[str]:
+    nodes = [t.node.split("::")[0] for t in item.tests]
+    return list(dict.fromkeys([*item.files, *nodes]))
 
 
 def resolve_commit(repo: Path, sha: str) -> str:
@@ -336,12 +352,12 @@ def resolve_commit(repo: Path, sha: str) -> str:
     return full
 
 
-def commit_problems(repo: Path, plan: Dict[str, Any], item: Dict[str, Any], sha: str) -> List[str]:
+def commit_problems(repo: Path, plan: pm.ActionPlan, item: pm.ActionItem, sha: str) -> List[str]:
     """The commit changes one of the item's files since the base; the tree still matches it there."""
-    paths, item_id = item_paths(item), item.get("id")
+    paths, item_id = item_paths(item), item.id
     if not paths:
         return []
-    changed = git_out(repo, "diff", "--name-only", str(plan.get("base_commit")), sha, "--", *paths).split()
+    changed = git_out(repo, "diff", "--name-only", plan.base_commit, sha, "--", *paths).split()
     out = [] if changed else [f"{item_id}: no file of the item changed between the base and {sha[:7]}"]
     differ = git_out(repo, "diff", "--name-only", sha, "--", *paths).split()
     differ += git_out(repo, "ls-files", "--others", "--exclude-standard", "--", *paths).split()
@@ -361,19 +377,19 @@ def tests_at(repo: Path, sha: str, cmd: List[str]) -> "subprocess.CompletedProce
         pr.drop_tree(repo, tree)
 
 
-def run_tests(repo: Path, item: Dict[str, Any], sha: str) -> List[str]:
+def run_tests(repo: Path, item: pm.ActionItem, sha: str) -> List[str]:
     """The pytest command of the item's nodes after they passed at ``sha``; a problem when they fail."""
-    nodes = [str(t.get("node")) for t in item.get("tests") or []]
+    nodes = [t.node for t in item.tests]
     if not nodes:
         return []
     done = tests_at(repo, sha, [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *nodes])
     if done.returncode != 0:
         tail = " | ".join(done.stdout.strip().splitlines()[-3:])
-        raise pd.PlanError([f"{item.get('id')} tests failed at {sha[:7]}: {tail}"])
+        raise pd.PlanError([f"{item.id} tests failed at {sha[:7]}: {tail}"])
     return ["python -m pytest -q " + " ".join(nodes)]
 
 
-def complete(repo: Path, plan: Dict[str, Any], item: Dict[str, Any], sha_ref: str) -> str:
+def complete(repo: Path, plan: pm.ActionPlan, item: pm.ActionItem, sha_ref: str) -> ItemStatus:
     problems = dependency_problems(plan, item)
     if problems:
         raise pd.PlanError(problems)
@@ -383,10 +399,10 @@ def complete(repo: Path, plan: Dict[str, Any], item: Dict[str, Any], sha_ref: st
         raise pd.PlanError(problems)
     command = run_tests(repo, item, sha)
     tree = git_out(repo, "rev-parse", f"{sha}^{{tree}}").strip()
-    nodes = len(item.get("tests") or [])
-    item["evidence"] = f"commit {sha[:7]}: {nodes} test node(s) passed" if nodes else f"commit {sha[:7]}"
-    item["verification_references"] = [sha, f"tree {tree}", *command]
-    return "COMPLETE"
+    nodes = len(item.tests)
+    item.evidence = f"commit {sha[:7]}: {nodes} test node(s) passed" if nodes else f"commit {sha[:7]}"
+    item.verification_references = [sha, f"tree {tree}", *command]
+    return ItemStatus.COMPLETE
 
 
 def reject_empty(flag: str, value: Optional[str]) -> None:
@@ -394,15 +410,16 @@ def reject_empty(flag: str, value: Optional[str]) -> None:
         raise pd.PlanError([f"--{flag} needs a non-empty value (an unset shell variable?)"])
 
 
-def apply_record(repo: Path, plan: Dict[str, Any], item: Dict[str, Any], args: argparse.Namespace) -> str:
+def apply_record(repo: Path, plan: pm.ActionPlan, item: pm.ActionItem,
+                 args: argparse.Namespace) -> ItemStatus:
     for flag, value in (("sha", args.sha), ("blocked", args.blocked), ("closed", args.closed)):
         reject_empty(flag, value)
     if args.sha is not None:
         return complete(repo, plan, item, args.sha)
-    status, evidence = (("IN_PROGRESS", f"started {today()}") if args.start
-                        else ("BLOCKED", args.blocked) if args.blocked is not None
-                        else ("CLOSED_NO_ACTION", args.closed))
-    item["evidence"] = evidence
+    status, evidence = ((ItemStatus.IN_PROGRESS, f"started {today()}") if args.start
+                        else (ItemStatus.BLOCKED, args.blocked) if args.blocked is not None
+                        else (ItemStatus.CLOSED_NO_ACTION, args.closed))
+    item.evidence = evidence
     return status
 
 
@@ -411,14 +428,15 @@ def cmd_record(repo: Path, args: argparse.Namespace) -> int:
     plan = pd.load_plan(plan_file)
     require_frozen(repo, plan)
     item = pd.item_by_id(plan, args.item)
-    item["status"] = apply_record(repo, plan, item, args)
-    if all(i.get("status") in pd.DONE for i in pd.items_of(plan)):
-        plan["completed"] = today()
+    item.status = apply_record(repo, plan, item, args)
+    if all(i.status in DONE for i in plan.items):
+        plan.completed = today()
     else:
-        plan.pop("completed", None)
+        plan.completed = None
+        plan.model_fields_set.discard("completed")
     save(plan_file, plan)
-    left = [str(i.get("id")) for i in pd.items_of(plan) if i.get("status") not in pd.DONE]
-    print(f"record [done] | {item['id']} {item['status']} | open: {', '.join(left) or 'none'}")
+    left = [i.id for i in plan.items if i.status not in DONE]
+    print(f"record [done] | {item.id} {item.status} | open: {', '.join(left) or 'none'}")
     return 0
 
 

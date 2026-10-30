@@ -9,6 +9,8 @@ import pytest
 from conftest import git
 
 from harness_lib import plan_red as pr
+from harness_lib.plan_doc import validate_plan
+from harness_lib.plan_models import ActionPlan
 
 MIX = """\
 FFFF.F                                                                   [100%]
@@ -218,13 +220,15 @@ def test_red_problems_never_accept_a_non_exception(got: str) -> None:
 
 # --- sources and overlay ----------------------------------------------------------------------------------
 
-def plan(*items: Dict[str, Any]) -> Dict[str, Any]:
-    return {"plan_id": "0007", "base_commit": "", "items": list(items)}
+def plan(*items: Dict[str, Any]) -> ActionPlan:
+    return validate_plan({"plan_id": "0007", "plan_created": "2026-10-29", "execution_model": "serial",
+                          "items": list(items)})
 
 
 def item(ident: str, nodes: Dict[str, str], status: str = "PENDING") -> Dict[str, Any]:
     tests = [{"node": node, "red": red} for node, red in nodes.items()]
-    return {"id": ident, "title": ident, "status": status, "files": ["src/calc.py"], "tests": tests}
+    return {"id": ident, "title": ident, "action": ident, "status": status, "evidence": "e",
+            "files": ["src/calc.py"], "tests": tests}
 
 
 def write(root: Path, rel: str, text: str) -> Path:

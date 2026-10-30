@@ -1,0 +1,14 @@
+{
+  "0001_Minimal_ActionPlan.json": {
+    "digest": "abe31c660dc2fdbc9d3fdc41f088f25a8f33bd45cd8d68b1f65ff966222e5690",
+    "pip": "0001_Minimal_PIP.md"
+  },
+  "0002_Full_ActionPlan.json": {
+    "digest": "2003270135ad10b6d11763672ffe1bc60d9b11896d697a1bde38e01f42700273",
+    "pip": "0002_Full_PIP.md"
+  },
+  "0003_Inflight_ActionPlan.json": {
+    "digest": "e9a92f60f8973f075302a1fb81a5c3553fa2232981021bf5460ea0ea27e5214e",
+    "pip": "0003_Inflight_PIP.md"
+  }
+}

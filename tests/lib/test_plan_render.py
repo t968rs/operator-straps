@@ -4,10 +4,16 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from harness_lib import plan_render as pr
+from harness_lib.plan_doc import validate_plan
+from harness_lib.plan_models import ActionPlan
 from harness_lib.todo_sync.pip_sections import find_section, parse_pip
 
 
-def sample_plan(status: str = "PENDING") -> Dict[str, Any]:
+def sample_plan(status: str = "PENDING") -> ActionPlan:
+    return validate_plan(raw_plan(status))
+
+
+def raw_plan(status: str = "PENDING") -> Dict[str, Any]:
     return {
         "plan_id": "0003", "plan_created": "2026-10-28", "execution_model": "serial",
         "source_document": "docs/specs/split.md", "branch": "feat-x", "base_branch": "main",

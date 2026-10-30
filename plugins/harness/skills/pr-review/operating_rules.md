@@ -89,6 +89,12 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   finding directly: docstrings, dead branches, renames, unused vars, registry `added_in_pr`.
 - **Repo-answerable questions are not bubbles.** If a reason reads "depends on whether X", investigate X (or dispatch
   a subagent to), then resolve.
+- **A finding that needs a refreeze is routine, not a bubble.** Editing a frozen plan (an id collision, stale
+  anchors, evidence or sweeps) is standard procedure: the plan that collides or went stale is the one that changes,
+  never a plan already on the base branch, and nothing is renamed or kept only to preserve the original. Ask the
+  developer once for the OK to `freeze --refreeze`, then fix it as a tracking-path edit and close the id with
+  `closeout --resolved`. When the developer says the branch is rewritten next, the confirmed answer is
+  `closeout --deferred ID="refreeze at the branch rewrite; tracker"`, not a bubble.
 - **Dispatch first, ask second.** After the Phase 4 second run and the bubble audit, dispatch the planned waves for
   every non-bubbled issue with no confirmation pause, then surface bubbles. `waves` holds every id in `bubbles`; fold
   bubble answers into a follow-up wave with `waves --ids <ids>`.
