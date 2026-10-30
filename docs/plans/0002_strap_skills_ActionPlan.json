@@ -1,0 +1,2190 @@
+{
+  "plan_id": "0002",
+  "plan_created": "2026-10-30",
+  "execution_model": "serial",
+  "source_document": "docs/superpowers/specs/2026-10-29-strap-skills-design.md",
+  "documentation": "docs/plans/0002_strap_skills_PIP.md",
+  "branch": null,
+  "base_branch": "main",
+  "base_commit": "697dce28554978c9d1fa2cf45036cf662350fbef",
+  "frozen": {
+    "commit": "4f0d079373957c1019cb0d10d627c8f55dcf357b",
+    "tree": "de2eea13605c14c7a93ce57b4232495dab92a9fe",
+    "date": "2026-10-30",
+    "digest": "b362b384c74e6d72ecc8cc4a451d0b486d6a3db04b08f1f5a4de96b6983c327c"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "How is strap-skills built?",
+      "options": [
+        {
+          "id": "A-standalone",
+          "summary": "strap.py plus harness_lib/strap_* modules"
+        },
+        {
+          "id": "B-plan-kind",
+          "summary": "A SkillSpec as a kind of ActionPlan"
+        },
+        {
+          "id": "C-two-drivers",
+          "summary": "Generic scenario.py plus a thin strap.py"
+        }
+      ],
+      "chosen": "A-standalone",
+      "rationale": "Developer 2026-10-29."
+    },
+    {
+      "id": "D2",
+      "question": "How do agents author the spec?",
+      "options": [
+        {
+          "id": "piecewise",
+          "summary": "Named operations (add_*, update_*, record_run, grade)"
+        },
+        {
+          "id": "whole-write",
+          "summary": "load + model_copy + write of the whole spec"
+        }
+      ],
+      "chosen": "piecewise",
+      "rationale": "Author's call in the approved design: no API path can rewrite driver-owned fields."
+    },
+    {
+      "id": "D3",
+      "question": "How does scaffold find the target plugin source tree?",
+      "options": [
+        {
+          "id": "plugin-json-name",
+          "summary": "The project dir whose .claude-plugin/plugin.json name matches plugin_root()'s"
+        },
+        {
+          "id": "config-key",
+          "summary": "A new harness.json key"
+        },
+        {
+          "id": "literal",
+          "summary": "Hard-coded plugins/harness"
+        }
+      ],
+      "chosen": "plugin-json-name",
+      "rationale": "No config key (design constraint) and no project path in plugin code."
+    },
+    {
+      "id": "D4",
+      "question": "How does an agent run the api heredoc?",
+      "options": [
+        {
+          "id": "driver-api",
+          "summary": "strap.py api <name> reads Python on stdin with the api bound, config activated"
+        },
+        {
+          "id": "pythonpath",
+          "summary": "PYTHONPATH=<lib> hpy - with manual activation"
+        }
+      ],
+      "chosen": "driver-api",
+      "rationale": "Drivers activate, library code reads active(); no PYTHONPATH in skill text."
+    },
+    {
+      "id": "D5",
+      "question": "Where do repo-literal bans run for scaffolded skills?",
+      "options": [
+        {
+          "id": "repo-contract-test",
+          "summary": "Stay in tests/contract/test_no_repo_literals.py, which walks every plugin file"
+        },
+        {
+          "id": "lint",
+          "summary": "Copy the ban list into strap_lint"
+        }
+      ],
+      "chosen": "repo-contract-test",
+      "rationale": "The ban list holds consumer literals; a plugin copy would itself trip the guard. Amends the design's lint list."
+    },
+    {
+      "id": "D6",
+      "question": "Where does the no-first/second-person rule apply in lint?",
+      "options": [
+        {
+          "id": "description-and-python",
+          "summary": "Skill description plus Python comments and docstrings"
+        },
+        {
+          "id": "whole-skill",
+          "summary": "The whole SKILL.md body"
+        }
+      ],
+      "chosen": "description-and-python",
+      "rationale": "Harness rule scopes it to comments and docstrings; 12 existing SKILL.md bodies use you/your."
+    },
+    {
+      "id": "D7",
+      "question": "Where does the red-exception enum live?",
+      "options": [
+        {
+          "id": "own-enum",
+          "summary": "strap_models.RedException until #145 lands"
+        },
+        {
+          "id": "plan-models",
+          "summary": "Import plan_models' enum"
+        }
+      ],
+      "chosen": "own-enum",
+      "rationale": "#145 is not implemented; spec leaves it to the builder."
+    },
+    {
+      "id": "D8",
+      "question": "Can the session record a run through api?",
+      "options": [
+        {
+          "id": "d8-adopted",
+          "summary": "No: api binds strap_api.__all__ without record_run; green needs a result for every scenario check"
+        },
+        {
+          "id": "d8-as-drafted",
+          "summary": "record_run bound; green over present results"
+        }
+      ],
+      "chosen": "d8-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D9",
+      "question": "How many runs per (behavior, scenario, arm, hash)?",
+      "options": [
+        {
+          "id": "d9-adopted",
+          "summary": "One: run reprints an unrecorded run"
+        },
+        {
+          "id": "d9-as-drafted",
+          "summary": "run mints a new run each call"
+        }
+      ],
+      "chosen": "d9-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D10",
+      "question": "Can a drawn behavior's scenarios change?",
+      "options": [
+        {
+          "id": "d10-adopted",
+          "summary": "No: scenarios/kind/type locked after a draw"
+        },
+        {
+          "id": "d10-as-drafted",
+          "summary": "editable until freeze"
+        }
+      ],
+      "chosen": "d10-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D11",
+      "question": "What baseline does an edit run, and what does new refuse?",
+      "options": [
+        {
+          "id": "d11-adopted",
+          "summary": "new refuses an existing skill; --edit refuses a missing one; --edit --base REF; skill absent at base means baseline without skill"
+        },
+        {
+          "id": "d11-as-drafted",
+          "summary": "base = HEAD only, no refusals"
+        }
+      ],
+      "chosen": "d11-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments. Needed by the STR-11 self-gate."
+    },
+    {
+      "id": "D12",
+      "question": "What does freeze refuse?",
+      "options": [
+        {
+          "id": "d12-adopted",
+          "summary": "Each condition listed with its problem text; all-dropped may freeze; grader from spec.judge"
+        },
+        {
+          "id": "d12-as-drafted",
+          "summary": "unspecified conditions"
+        }
+      ],
+      "chosen": "d12-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D13",
+      "question": "Is mechanical red recorded?",
+      "options": [
+        {
+          "id": "d13-adopted",
+          "summary": "red sets state RED; freeze reruns the nodes expecting a pass"
+        },
+        {
+          "id": "d13-as-drafted",
+          "summary": "red writes nothing"
+        }
+      ],
+      "chosen": "d13-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D14",
+      "question": "What does the content hash cover for a new skill?",
+      "options": [
+        {
+          "id": "d14-adopted",
+          "summary": "scaffold persists parts; add_part in api; run/freeze need a skill_md part"
+        },
+        {
+          "id": "d14-as-drafted",
+          "summary": "parts never written"
+        }
+      ],
+      "chosen": "d14-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D15",
+      "question": "Which scenario does run target after a retest?",
+      "options": [
+        {
+          "id": "d15-adopted",
+          "summary": "--scenario or first must_pass/latest draw lacking the arm on the current hash; void draws leave must_pass"
+        },
+        {
+          "id": "d15-as-drafted",
+          "summary": "unspecified"
+        }
+      ],
+      "chosen": "d15-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D16",
+      "question": "Who grades a --judge spec?",
+      "options": [
+        {
+          "id": "d16-adopted",
+          "summary": "judge only; session grade refused"
+        },
+        {
+          "id": "d16-as-drafted",
+          "summary": "either"
+        }
+      ],
+      "chosen": "d16-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D17",
+      "question": "How are agent-role scenarios checked?",
+      "options": [
+        {
+          "id": "d17-adopted",
+          "summary": "check requires agents/<role>.md; init injects it"
+        },
+        {
+          "id": "d17-as-drafted",
+          "summary": "unchecked"
+        }
+      ],
+      "chosen": "d17-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D18",
+      "question": "When is a skill invocable for lint?",
+      "options": [
+        {
+          "id": "d18-adopted",
+          "summary": "$ARGUMENTS in body or argument-hint present; quotes stripped; fixed prefix message"
+        },
+        {
+          "id": "d18-as-drafted",
+          "summary": "$ARGUMENTS only"
+        }
+      ],
+      "chosen": "d18-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments. pr-sum has a hint and no $ARGUMENTS."
+    },
+    {
+      "id": "D19",
+      "question": "How do scaffolded skills run their api heredoc?",
+      "options": [
+        {
+          "id": "d19-adopted",
+          "summary": "Generic scripts/skill_api.py binding a module's __all__; strap.py api delegates to it"
+        },
+        {
+          "id": "d19-as-drafted",
+          "summary": "per-skill drivers"
+        }
+      ],
+      "chosen": "d19-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D20",
+      "question": "Where does a run keep its tree?",
+      "options": [
+        {
+          "id": "d20-adopted",
+          "summary": "Run.tree and Run.start; init prints record-run with --repo"
+        },
+        {
+          "id": "d20-as-drafted",
+          "summary": "unspecified"
+        }
+      ],
+      "chosen": "d20-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments."
+    },
+    {
+      "id": "D21",
+      "question": "Scope calls recorded",
+      "options": [
+        {
+          "id": "d21-adopted",
+          "summary": "Normalized quotes in grade; digest detects hand edits only; scaffold emits 4 parts, EDIT writes missing parts only; all-or-nothing render; find_plugin_dir skips worktrees"
+        },
+        {
+          "id": "d21-as-drafted",
+          "summary": "design wording"
+        }
+      ],
+      "chosen": "d21-adopted",
+      "rationale": "Plan review 2026-10-30 (workflow review-plan-0002); see docs/plans/0002/CONTRACT.md amendments. Amends the design's verbatim-quote validator and scaffold list."
+    }
+  ],
+  "values": [
+    {
+      "name": "MIN_SCENARIOS",
+      "value": "2",
+      "source": "spec decision 4",
+      "assumes": []
+    },
+    {
+      "name": "MIN_DISCIPLINE_PRESSURES",
+      "value": "3",
+      "source": "spec Models (Scenario validators)",
+      "assumes": []
+    },
+    {
+      "name": "reps per arm per draw",
+      "value": "1",
+      "source": "spec decision 4",
+      "assumes": []
+    },
+    {
+      "name": "runner and judge model",
+      "value": "sonnet",
+      "source": "spec Agents",
+      "assumes": []
+    },
+    {
+      "name": "DESCRIPTION_MAX",
+      "value": "1024",
+      "source": "spec Lint",
+      "assumes": []
+    },
+    {
+      "name": "harness version after release",
+      "value": "0.42.0",
+      "source": "plugin.json 0.41.1 + minor",
+      "assumes": []
+    },
+    {
+      "name": "pydantic pin",
+      "value": "2.14.1",
+      "source": "o-s env; drift test is byte-exact",
+      "assumes": []
+    }
+  ],
+  "formats": [
+    {
+      "name": "dispatch row",
+      "example": "agent=harness:strap-scenario-runner model=sonnet",
+      "source": {
+        "at": "plugins/harness/scripts/bubble_memo.py:197",
+        "expect": "return \"\\n\".join([f\"agent={INVESTIGATOR_AGENT} model={INVESTIGATOR_MODEL}\", f\"PR: {review.pr}\","
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "_skill_parts",
+      "hits": {
+        "docs/PR_REVIEWS/0094_Fixcommit-msg_pass_the_developers_--base_to_the_fork_and_keep_sav.json": "keep",
+        "docs/plans/0002/CONTRACT.md": "keep",
+        "docs/plans/0002_strap_skills_ActionPlan.json": "keep",
+        "docs/plans/0002_strap_skills_PIP.md": "keep",
+        "docs/superpowers/specs/2026-10-29-strap-skills-design.md": "keep",
+        "tests/skills/test_branch_commit_msg_skill_contract.py": "keep",
+        "tests/skills/test_bubble_memo_skill_contract.py": "keep",
+        "tests/skills/test_c_msg_skill_contract.py": "keep",
+        "tests/skills/test_skill_guidance_tail_contract.py": "keep"
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "STR-0",
+      "title": "Point artifacts.plans at docs/plans",
+      "category": "config",
+      "priority": "critical",
+      "action": "Add \"artifacts\": {\"plans\": \"docs/plans\"} to .claude/harness.json (an existing key; deep-merged over the defaults). The tracked plans live in docs/plans/, and the default docs/PLANS only resolves there on a case-insensitive filesystem.",
+      "files": [
+        ".claude/harness.json"
+      ],
+      "dependencies": null,
+      "status": "PENDING",
+      "evidence": "",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": ".claude/harness.json:4",
+          "expect": "\"exclusions\": \".claude/pr_review_exclusions.json\","
+        }
+      ],
+      "tests": [],
+      "commands": [
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/plan.py check 0002",
+          "expect": "check [ok] | plan 0002"
+        }
+      ]
+    },
+    {
+      "id": "STR-1",
+      "title": "strap_models: enums, models, driver-owned metadata, digest, load/dump, schema_text",
+      "category": "code",
+      "priority": "important",
+      "action": "Create plugins/harness/lib/harness_lib/strap_models.py exactly per docs/plans/0002/CONTRACT.md section strap_models: str Enums, constants, extra=forbid models with the listed validators, driver-owned fields marked with Field(json_schema_extra={'driver_owned': True}), DRIVER_OWNED_TOP/DRIVER_OWNED_BEHAVIOR derived from that metadata, driver_digest over the driver-owned fields (behavior states keyed by id, excluding driver_digest), load_spec, dump_spec, schema_text with $schema then $id first. No import of other harness_lib modules.",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_models.py"
+      ],
+      "dependencies": [
+        "STR-0"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "sonnet",
+      "anchors": [],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[SpecMode-members0]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[BehaviorKind-members1]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[JudgmentType-members2]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[Pressure-members3]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[PartKind-members4]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[CheckKind-members5]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[ReplyAct-members6]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[GradeValue-members7]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[Grader-members8]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[Arm-members9]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[BehaviorState-members10]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[DrawReason-members11]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_enum_members_and_values[RedException-members12]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_constants",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_scenario_rejects[over0]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_scenario_rejects[over1]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_scenario_rejects[over2]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_scenario_rejects[over3]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_scenario_accepts_checks_only",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_judged_item_rejects_unclear[expect_baseline]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_judged_item_rejects_unclear[expect_green]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_rejects[doc0]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_rejects[doc1]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_rejects[doc2]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_rejects[doc3]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_rejects[doc4]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_rejects[doc5]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_rejects[doc6]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_accepts_two_pressures_outside_discipline",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_dropped_iff_reason[over0-True]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_dropped_iff_reason[over1-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_dropped_iff_reason[over2-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_behavior_dropped_iff_reason[over3-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_run_recorded_sha_validator",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_run_tree_and_start_default_empty",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_run_accepts_tree_and_start",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_grade_rejects_blank_quote",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_rejects_bad_name[Demo]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_rejects_bad_name[demo_skill]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_rejects_bad_name[-demo]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_rejects_bad_name[demo-]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_rejects_bad_name[demo--x]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_rejects_bad_name[]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_base_iff_edit",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_referential_checks[over0]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_referential_checks[over1]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_referential_checks[over2]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_referential_checks[over3]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_referential_checks[over4]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_referential_checks[over5]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_spec_accepts_known_references",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_driver_owned_tuples_derive_from_metadata",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_driver_digest_stable_and_self_excluding",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_driver_digest_sensitivity",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_dump_and_load_round_trip",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_load_spec_errors",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_models.py::test_schema_text_header",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/strap_models.py",
+          "expect": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "id": "STR-2",
+      "title": "strap_runs: content hash, seeded draws, check evaluation, quotes, pass rule, retest pool",
+      "category": "code",
+      "priority": "important",
+      "action": "Create plugins/harness/lib/harness_lib/strap_runs.py per docs/plans/0002/CONTRACT.md section strap_runs. Imports: stdlib and strap_models only (the module stays skill-agnostic so it can be lifted into a generic A/B tester later). baseline_failed is 'any item matches its baseline expectation'; green_passed is 'every check held and every judged item graded equal to expect_green'; grades are filtered by run id and item index.",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_runs.py"
+      ],
+      "dependencies": [
+        "STR-1"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "sonnet",
+      "anchors": [],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_runs.py::test_content_hash_matches_formula",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_content_hash_ignores_input_order",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_content_hash_changes_with_one_byte",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_content_hash_missing_file_uses_marker",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_draw_scenario_is_seeded_choice_in_declared_order",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_draw_scenario_never_returns_excluded",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_draw_scenario_exhausted_pool_raises",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_new_seed_is_32_bit_int",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[changed-hit]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[changed-miss]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[unchanged-hit]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[unchanged-miss]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[present-hit]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[present-miss]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[absent-hit]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[absent-miss]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[head]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[matches-hit]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[matches-miss]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[lacks-hit]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[lacks-miss]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_head_moved_breaks_head_unchanged",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_evaluate_checks_indexes_follow_input_order",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_quote_found_normalizes_whitespace[redirecting   there-True]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_quote_found_normalizes_whitespace[Decision belongs\\nto bubble-stamp-True]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_quote_found_normalizes_whitespace[  memo.\\n\\tDecision  -True]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_quote_found_normalizes_whitespace[redirecting elsewhere-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_item_matches_bool_and_grade",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_baseline_failed_when_any_item_matches_baseline[False-present-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_baseline_failed_when_any_item_matches_baseline[True-present-True]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_baseline_failed_when_any_item_matches_baseline[False-absent-True]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_baseline_failed_ignores_other_runs_grades",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_requires_every_item[True-present-True]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_requires_every_item[False-present-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_requires_every_item[True-absent-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_requires_every_item[True-unclear-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_missing_grade_fails",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_needs_complete_check_results[none]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_needs_complete_check_results[wrong_index]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_needs_complete_check_results[extra_index]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_green_passed_judged_only_scenario",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_baseline_failed_ignores_missing_results[present-False]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_baseline_failed_ignores_missing_results[absent-True]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_must_pass_failed_greens_without_retest",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_must_pass_adds_latest_retest_draw",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_must_pass_skips_void_retest_draw[void]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_must_pass_skips_void_retest_draw[failed]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_must_pass_skips_void_retest_draw[unrecorded]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_runs.py::test_strap_runs_imports_only_strap_models_and_stdlib",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/strap_runs.py",
+          "expect": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "id": "STR-3",
+      "title": "skill_parts moves into harness_lib; strap_lint for skills and Python parts",
+      "category": "code",
+      "priority": "important",
+      "action": "Move the parser of tests/lib/_skill_parts.py to plugins/harness/lib/harness_lib/skill_parts.py unchanged (same AssertionError on a file without frontmatter) and reduce tests/lib/_skill_parts.py to a re-export (sweep S1: the four test files importing it keep working unchanged). Create plugins/harness/lib/harness_lib/strap_lint.py per docs/plans/0002/CONTRACT.md section strap_lint: lint_skill mirrors the rules of tests/skills/test_skill_guidance_tail_contract.py for invocable skills; lint_python scans comments and docstrings only (tokenize/ast, not line regexes). No repo-literal ban list in the plugin (D5).",
+      "files": [
+        "plugins/harness/lib/harness_lib/skill_parts.py",
+        "tests/lib/_skill_parts.py",
+        "plugins/harness/lib/harness_lib/strap_lint.py"
+      ],
+      "dependencies": [
+        "STR-1"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "tests/lib/_skill_parts.py:12",
+          "expect": "def skill_parts(path: Path) -> Tuple[Dict[str, str], str]:"
+        },
+        {
+          "at": "tests/skills/test_skill_guidance_tail_contract.py:21",
+          "expect": "_POINTER = \"${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md\""
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_lint.py::test_skill_parts_parses_keys_and_body",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_skill_parts_rejects_missing_frontmatter",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_clean_invocable_skill_has_no_problems",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_missing_skill_md_is_the_only_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_frontmatter_name_must_match_folder",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_description_prefix_message_is_fixed",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_description_rules[too-long]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_description_rules[you]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_description_rules[your]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_description_rules[we]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_description_rules[I]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_quoted_frontmatter_values_pass[single-quoted-description]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_quoted_frontmatter_values_pass[double-quoted-description]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_quoted_frontmatter_values_pass[double-quoted-name]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_mismatched_quotes_are_not_stripped",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_missing_description_is_flagged",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_is_invocable_classification[arguments-in-body]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_is_invocable_classification[hint-only]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_is_invocable_classification[neither]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_is_invocable_on_shipped_skill[pr-sum]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_is_invocable_on_shipped_skill[spatialist]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_invocable_argument_rules[hint-missing]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_invocable_argument_rules[hint-lacks-guidance]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_invocable_argument_rules[reference-missing]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_hint_only_skill_with_reference_is_clean",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_hint_only_skill_lacking_reference_flagged",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_fenced_arguments_line_is_flagged",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_knowledge_skill_without_hint_is_clean",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_unresolved_reference_is_flagged[script]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_unresolved_reference_is_flagged[skill]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_unresolved_reference_is_flagged[agent]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_unresolved_reference_is_flagged[harness-lib]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_named_harness_lib_module_resolves",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_bare_interpreter_in_fence_is_flagged[python -m demo]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_bare_interpreter_in_fence_is_flagged[python3 -m demo]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[Anthropic]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[OpenAI]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[ChatGPT]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[Gemini]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[Claude]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_product_and_variable_spellings_pass",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[module-docstring]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[inline-comment]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[function-docstring]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[line-comment]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[class-docstring]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_lint_python_ignores_code_and_string_literals",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint.py::test_shipped_write_plan_skill_is_clean",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/skill_parts.py plugins/harness/lib/harness_lib/strap_lint.py tests/lib/_skill_parts.py",
+          "expect": "All checks passed!"
+        },
+        {
+          "run": "python -m pytest tests/skills/test_c_msg_skill_contract.py tests/skills/test_bubble_memo_skill_contract.py tests/skills/test_branch_commit_msg_skill_contract.py tests/skills/test_skill_guidance_tail_contract.py -q",
+          "expect": "passed, no failures"
+        }
+      ]
+    },
+    {
+      "id": "STR-4",
+      "title": "strap_api: factories and piecewise operations with driver-owned guard",
+      "category": "code",
+      "priority": "important",
+      "action": "Create plugins/harness/lib/harness_lib/strap_api.py per docs/plans/0002/CONTRACT.md section strap_api: StrapError(ValueError), spec_path from active().artifacts.plans, new_* factories accepting enum members or string values, add_behavior / update_behavior / drop_behavior / add_scenario / record_run / grade. Each op: load, compare stored driver_digest with driver_digest(loaded) before changing, apply, re-validate through model_dump + model_validate, recompute driver_digest, write dump_spec only after validation. grade uses strap_runs.quote_found. __all__ per D8 (record_run excluded); D10 lock; D14 add_part; D16 judge grades.",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_api.py"
+      ],
+      "dependencies": [
+        "STR-1",
+        "STR-2"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:177",
+          "expect": "def path(self, rel: str) -> Path:"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_api.py::test_spec_path_under_configured_plans",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_strap_error_is_value_error",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_factories_build_validated_models",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_factories_reject_invalid[judgment-no-type]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_factories_reject_invalid[mechanical-with-type]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_factories_reject_invalid[scenario-empty]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_factories_reject_invalid[judged-unclear]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_factories_reject_invalid[test-no-node]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_add_behavior_assigns_b1_b2_and_writes",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_add_scenario_ids_unique_across_spec",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_update_behavior_changes_authored_field",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_update_behavior_refuses_driver_owned_field",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_update_behavior_refuses_frozen_spec",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_drop_behavior_sets_state_and_redigests",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_record_run_sets_reply_sha_and_redigests",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_record_run_refuses_recorded_run",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_grade_appends_with_normalized_quote",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_grade_refusals[unrecorded-run]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_grade_refusals[item-past-end]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_grade_refusals[item-negative]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_grade_refusals[quote-missing]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_grade_refusals[judge-on-session-spec]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_grade_refuses_second_grade_of_item",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_judge_grade_accepted_on_judge_spec",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_hand_edited_draws_refused[add_behavior]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_hand_edited_draws_refused[update_behavior]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_hand_edited_draws_refused[record_run]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_failed_operation_writes_nothing[update-breaks-behavior]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_failed_operation_writes_nothing[add-unvalidated-behavior]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_failed_operation_writes_nothing[scenario-unknown-behavior]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_all_lists_exactly_the_api_names",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_all_omits_driver_names[record_run]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_all_omits_driver_names[driver_digest]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_all_omits_driver_names[dump_spec]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_update_drawn_behavior_locked[scenarios]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_update_drawn_behavior_locked[kind]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_update_drawn_behavior_locked[type]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_add_scenario_on_drawn_behavior",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_add_part_appends_and_writes",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_add_part_refuses_duplicate_path",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_api.py::test_session_grade_refused_on_judge_spec",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/strap_api.py",
+          "expect": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "id": "STR-4.1",
+      "title": "Generic skills_api launcher (scripts/skill_api.py)",
+      "category": "code",
+      "priority": "important",
+      "action": "Create plugins/harness/scripts/skill_api.py per docs/plans/0002/CONTRACT.md D19: --repo, module, optional name; activate the config once, import harness_lib.<module>, bind its __all__ (refuse a module without one), bind name, exec stdin; any exception becomes problem: <Name>: <message>, exit 1. strap_api defines __all__ per D8.",
+      "files": [
+        "plugins/harness/scripts/skill_api.py"
+      ],
+      "dependencies": [
+        "STR-4"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "sonnet",
+      "anchors": [],
+      "tests": [
+        {
+          "node": "tests/scripts/test_skill_api.py::test_binds_every_all_name",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api.py::test_binds_name_and_execs_stdin",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api.py::test_record_run_unbound_is_name_error",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api.py::test_exception_becomes_problem_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api.py::test_refuses_module_without_all",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api.py::test_refusal_does_not_exec_stdin",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api.py::test_activates_project_config",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/scripts/skill_api.py",
+          "expect": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "id": "STR-5",
+      "title": "Generated SkillSpec.schema.json and its repo-only generator",
+      "category": "code",
+      "priority": "important",
+      "action": "Create tools/gen_skillspec_schema.py per docs/plans/0002/CONTRACT.md section gen_skillspec_schema (--path, --check, CRLF folding, puts plugins/harness/lib on sys.path). Run it to write plugins/harness/schemas/SkillSpec.schema.json; never hand-edit that file. The schema must pass tests/schemas/test_schema_meta_valid.py ($id convention). Pin pydantic==2.14.1 in requirements-dev.txt (the drift test is byte-exact). Add a SkillSpec.schema.json entry under Files in plugins/harness/schemas/README.md (generated, never hand-edited, driver_owned markers), per its update protocol.",
+      "files": [
+        "tools/gen_skillspec_schema.py",
+        "plugins/harness/schemas/SkillSpec.schema.json",
+        "requirements-dev.txt",
+        "plugins/harness/schemas/README.md"
+      ],
+      "dependencies": [
+        "STR-1"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "requirements-dev.txt:4",
+          "expect": "pydantic>=2.5"
+        },
+        {
+          "at": "plugins/harness/schemas/README.md:22",
+          "expect": "## Files"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_committed_schema_equals_schema_text",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_schema_text_leads_with_draft_and_id",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_committed_schema_id_names_its_location",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_schema_text_is_indented_json_with_trailing_newline",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_schema_text_is_meta_valid_draft_2020_12",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_schema_marks_driver_owned_top_fields",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_dump_spec_validates_against_committed_schema",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_committed_schema_rejects_invalid_document",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_tool_check_exits_zero_for_in_sync_copy",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_tool_check_accepts_crlf_checkout",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_tool_check_exits_one_on_drift_and_leaves_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_tool_check_exits_one_on_missing_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_tool_writes_schema_text",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/schemas/test_skillspec_schema_drift.py::test_tool_check_defaults_to_committed_schema",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python tools/gen_skillspec_schema.py",
+          "expect": "exit 0",
+          "writes": [
+            "plugins/harness/schemas/SkillSpec.schema.json"
+          ]
+        },
+        {
+          "run": "python tools/gen_skillspec_schema.py --check",
+          "expect": "exit 0, no output"
+        },
+        {
+          "run": "python -m pytest tests/schemas/test_schema_meta_valid.py -q",
+          "expect": "passed, no failures"
+        },
+        {
+          "run": "python -m ruff check --no-cache tools/gen_skillspec_schema.py",
+          "expect": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "id": "STR-6",
+      "title": "Templates and strap_scaffold",
+      "category": "code",
+      "priority": "important",
+      "action": "Create plugins/harness/skills/strap-skills/templates/skill_md.tmpl, models.tmpl, api.tmpl, contract_test.tmpl and plugins/harness/lib/harness_lib/strap_scaffold.py per docs/plans/0002/CONTRACT.md section strap_scaffold. find_plugin_dir matches the plugin.json name (D3), so no plugin path is hard-coded. Templates are string.Template texts that render to the intended harness structure: models (str Enum + BaseModel, extra=forbid), api (new_* factories plus load/validate/save ops raising a ValueError subclass), a contract test that imports the models, and a SKILL.md with the arguments paragraph, Rules, Steps, an api heredoc, a judgment table. Rendered Python passes lint_python and compiles; rendered SKILL.md passes lint_skill except the description stub. StrapError comes from strap_api. skill_md.tmpl's heredoc launches scripts/skill_api.py (D19); api.tmpl defines __all__.",
+      "files": [
+        "plugins/harness/skills/strap-skills/templates/skill_md.tmpl",
+        "plugins/harness/skills/strap-skills/templates/models.tmpl",
+        "plugins/harness/skills/strap-skills/templates/api.tmpl",
+        "plugins/harness/skills/strap-skills/templates/contract_test.tmpl",
+        "plugins/harness/lib/harness_lib/strap_scaffold.py"
+      ],
+      "dependencies": [
+        "STR-3",
+        "STR-4",
+        "STR-4.1"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/project.py:50",
+          "expect": "def plugin_root() -> Path:"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_find_plugin_dir_returns_the_matching_manifest",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_find_plugin_dir_skips_node_modules",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_find_plugin_dir_skips_hidden_dirs[claude]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_find_plugin_dir_skips_hidden_dirs[dot]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_find_plugin_dir_skips_linked_worktrees",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_find_plugin_dir_refuses_no_match",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_find_plugin_dir_refuses_two_matches",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_planned_parts_judgment_only_minimal",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_planned_parts_mechanical_adds_models_and_api",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_planned_parts_keeps_author_parts",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_planned_parts_lists_a_present_part_once",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_planned_parts_contract_under_first_root",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_templates_ship_with_the_plugin",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_render_parts_new_writes_every_planned_part",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_render_parts_new_refusal_writes_nothing[skill_md]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_render_parts_new_refusal_writes_nothing[api]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_render_parts_new_refusal_writes_nothing[contract]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_render_parts_edit_writes_only_missing_parts",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_rendered_skill_md_description_stub",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_rendered_files_carry_the_title",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_rendered_skill_md_lints_to_prefix_only",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_rendered_skill_md_launches_skill_api",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_rendered_api_module_defines_all",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_rendered_python_passes_lint_python",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_rendered_python_compiles",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold.py::test_rendered_files_carry_no_template_placeholder",
+          "red": "ImportError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/strap_scaffold.py",
+          "expect": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "id": "STR-7",
+      "title": "scripts/strap.py driver",
+      "category": "code",
+      "priority": "important",
+      "action": "Create plugins/harness/scripts/strap.py per docs/plans/0002/CONTRACT.md section strap.py: argparse with --repo, activate(load_config(project_root(repo))) once in main, one problem: line per defect and exit 1 (an exception raised by code run through `api` becomes problem: lines too). Reuse plan_red make_tree, overlay, run_red, red_problems, drop_tree for `red` and for scenario trees; worktrees under cfg.resolve_worktree_root(). Dispatch rows follow the bubble_memo row format (F1). Every write of a driver-owned field recomputes driver_digest. Functions under 50 lines. Amendments D8-D20 apply (api via skill_api, run reuse, new refusals and --edit --base, freeze conditions, red state, scaffold persists parts, run targeting and retest, agent roles, Run.tree/start, --repo in init). Add the 'strap new' case to tests/contract/test_root_separation.py.",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "tests/contract/test_root_separation.py"
+      ],
+      "dependencies": [
+        "STR-2",
+        "STR-4",
+        "STR-4.1",
+        "STR-6"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_red.py:213",
+          "expect": "def make_tree(repo: Path, base: str, root: Path) -> Path:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_red.py:223",
+          "expect": "def drop_tree(repo: Path, tree: Path) -> None:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_red.py:185",
+          "expect": "def run_red(plan: Mapping[str, Any], tree: Path, python: str) -> List[RedResult]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_red.py:75",
+          "expect": "def overlay(sources: Mapping[str, Path], tree: Path) -> List[str]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_red.py:196",
+          "expect": "def red_problems(results: Sequence[RedResult]) -> List[str]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:191",
+          "expect": "def resolve_worktree_root(self) -> Path:"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_new_writes_the_spec_and_prints_the_done_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_new_on_an_existing_spec_resumes",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_new_edit_records_base_and_parts",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_new_refuses_an_existing_skill",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_new_edit_refuses_a_missing_skill",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_new_edit_records_the_given_base",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_new_edit_refuses_a_non_ancestor_base",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_new_refuses_a_judge_change_once_grades_exist",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_check_passes_a_sound_spec",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_check_lists_open_behavior_short_of_scenarios",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_check_refuses_hand_edited_driver_owned_field",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_check_refuses_a_non_canonical_file",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_check_refuses_a_role_without_an_agent_file",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_draw_refuses_a_behavior_with_one_scenario",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_draw_appends_one_initial_draw_never_redraws",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_run_refuses_no_draw_and_early_green",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_run_prints_the_runner_row_and_builds_the_tree",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_run_twice_before_record_reuses_the_run",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_run_refuses_second_recorded_run_same_arm",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_init_brief_ends_with_record_run",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_init_baseline_of_new_skill_omits_the_skill",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_init_green_carries_skill_with_abs_paths",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_init_includes_the_role_agent_body",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_record_run_stores_reply_and_drops_tree",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_retest_refuses_without_failed_green",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_freeze_refuses_a_behavior_that_never_ran",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_freeze_stamps_hash_and_grader",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_api_runs_stdin_code_with_name_bound",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_api_reports_refused_operation_as_problem",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_driver.py::test_api_cannot_call_record_run",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_passes_on_failing_baseline_and_green",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_judge_spec_stamps_grader_judge",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_an_already_frozen_spec",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_a_part_change_after_green",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_an_unclear_grade",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_an_ungraded_judged_item",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_a_baseline_that_did_not_fail",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_short_or_undrawn[1]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_short_or_undrawn[2]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_run_and_freeze_refuse_no_skill_md_part",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_an_unrepassed_must_pass",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_red_records_state_red_on_mechanical",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_mechanical_red_not_recorded",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_refuses_failing_planned_tests",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_freeze_passes_a_mechanical_behavior",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_scaffold_prints_paths_bump_and_parts",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_judge_row_refused_on_a_non_judge_spec",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_judge_row_lists_ungraded_recorded_runs",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_retest_draws_anew_and_run_targets_failed",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_gate.py::test_retest_refuses_an_exhausted_pool",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[strap new]",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/scripts/strap.py",
+          "expect": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "id": "STR-8",
+      "title": "Agents strap-scenario-runner and strap-judge",
+      "category": "code",
+      "priority": "important",
+      "action": "Create plugins/harness/agents/strap-scenario-runner.md and strap-judge.md per CONTRACT section Agents, modeled on plugins/harness/agents/bubble-memo-investigator.md: description with examples, model sonnet, fixed tools; runner: first action init through hpy, work only inside TREE, exactly one record-run heredoc, a session-role scenario ends by stating the Agent(...) call it would make (spec decision 12), stop conditions, reply = printed block verbatim. Judge: grade through `strap.py api` with grade(..., grader=\"judge\") and a verbatim quote per item; never edits files. init and record-run lines carry --repo (D20). Add 'harness:strap-judge' and 'harness:strap-scenario-runner' in sorted order to DEFINED_AGENTS in plugins/pr-review-watch/hooks/contract.ts and bump pr-review-watch 0.4.2 -> 0.4.3. In tests/contract/test_no_repo_literals.py add .tmpl to TEXT_SUFFIXES and the two ids to BARE_AGENT.",
+      "files": [
+        "plugins/harness/agents/strap-scenario-runner.md",
+        "plugins/harness/agents/strap-judge.md",
+        "tests/contract/test_no_repo_literals.py",
+        "plugins/pr-review-watch/hooks/contract.ts",
+        "plugins/pr-review-watch/.claude-plugin/plugin.json"
+      ],
+      "dependencies": [
+        "STR-7"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/pr-review-watch/hooks/contract.ts:124",
+          "expect": "'harness:todo-editor',"
+        },
+        {
+          "at": "plugins/pr-review-watch/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.4.2\","
+        },
+        {
+          "at": "tests/contract/test_no_repo_literals.py:17",
+          "expect": "TEXT_SUFFIXES = {\".py\", \".md\", \".json\", \".jsonl\", \".ts\", \".tsx\", \".sh\", \".txt\", \".yaml\", \".yml\"}"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_frontmatter_matches_the_contract[strap-scenario-runner]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_frontmatter_matches_the_contract[strap-judge]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_body_launches_the_driver_through_hpy[strap-scenario-runner]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_body_launches_the_driver_through_hpy[strap-judge]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_body_names_no_bare_agent_id[strap-scenario-runner]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_body_names_no_bare_agent_id[strap-judge]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_runner_inits_first_and_records_last",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_runner_command_carries_repo[init]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_runner_command_carries_repo[record-run]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_runner_records_exactly_one_run_by_heredoc",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_runner_works_only_inside_the_tree",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_runner_reply_is_the_printed_block_verbatim",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_runner_session_role_ends_at_agent_call",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_runner_states_stop_conditions",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_judge_grades_through_the_api_as_judge",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_judge_quotes_each_item_verbatim",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_agents_contract.py::test_judge_never_edits_files",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_no_repo_literals.py::test_templates_are_scanned",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/contract/test_no_repo_literals.py tests/mods/test_pr_review_watch_usage_contract.py -q",
+          "expect": "passed, no failures"
+        },
+        {
+          "run": "claude plugin test plugins/pr-review-watch",
+          "expect": "tests pass"
+        }
+      ]
+    },
+    {
+      "id": "STR-9",
+      "title": "strap-skills SKILL.md and its classification in the guidance-tail guard",
+      "category": "code",
+      "priority": "important",
+      "action": "Create plugins/harness/skills/strap-skills/SKILL.md per CONTRACT section Skill and the design: arguments paragraph citing ${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md, Rules (Iron Law, draws final, recorded runs final, content hash, quotes verified, mechanical vs judgment split), numbered Steps (new -> classify behaviors via the api heredoc -> check -> red -> scaffold -> fill parts -> draw -> run/record-run per arm with runner dispatch -> grade (session) or judge-row -> retest loop -> freeze), the one api heredoc, a judgment table (classification, scenario pressures, tempts, checks vs judged). Add strap-skills to _INVOCABLE in tests/skills/test_skill_guidance_tail_contract.py.",
+      "files": [
+        "plugins/harness/skills/strap-skills/SKILL.md",
+        "tests/skills/test_skill_guidance_tail_contract.py"
+      ],
+      "dependencies": [
+        "STR-6",
+        "STR-7",
+        "STR-8"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "tests/skills/test_skill_guidance_tail_contract.py:26",
+          "expect": "\"pr-team\", \"roast-my-code\", \"sync-gh-todo\", \"todo-edit\", \"write-plan\","
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_frontmatter_name_and_description",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_argument_hint_is_the_contract_hint",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_split_rule_cited_and_no_fenced_raw_arguments",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_every_strap_command_goes_through_the_launcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_every_driver_subcommand_is_named",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_both_agents_dispatched_with_an_explicit_model",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_exactly_one_api_heredoc",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_a_judgment_table",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_lint_skill_finds_no_problem",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_scaffold_template_ships[skill_md.tmpl]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_scaffold_template_ships[models.tmpl]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_scaffold_template_ships[api.tmpl]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_skill_contract.py::test_scaffold_template_ships[contract_test.tmpl]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified",
+          "red": "AssertionError"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check --no-cache tests/lib/test_strap_models.py tests/lib/test_strap_runs.py tests/lib/test_strap_api.py tests/lib/test_strap_lint.py tests/lib/test_strap_scaffold.py tests/scripts/test_strap_driver.py tests/scripts/test_strap_gate.py tests/scripts/test_skill_api.py tests/schemas/test_skillspec_schema_drift.py tests/skills/test_strap_agents_contract.py tests/skills/test_strap_skills_skill_contract.py",
+          "expect": "All checks passed!"
+        }
+      ]
+    },
+    {
+      "id": "STR-10",
+      "title": "Release: README row and plugin version",
+      "category": "docs",
+      "priority": "minor",
+      "action": "Add a README.md table row for `harness`: `strap-skills` after the write-plan row (what it makes: a harness-shaped skill with models, api, driver where earned, agents, contract test; checks: draw final, Iron Law at freeze, quotes verified, content-hash retest). Bump plugins/harness/.claude-plugin/plugin.json version 0.41.1 -> 0.42.0.",
+      "files": [
+        "README.md",
+        "plugins/harness/.claude-plugin/plugin.json"
+      ],
+      "dependencies": [
+        "STR-9"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.41.1\","
+        }
+      ],
+      "tests": [],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "validation passes"
+        },
+        {
+          "run": "python -m pytest tests/skills/test_strap_skills_skill_contract.py -q",
+          "expect": "passed, no failures (run by hand; STR-10 has no test nodes)"
+        }
+      ]
+    },
+    {
+      "id": "STR-11",
+      "title": "Self-gate: strap-skills through its own gate",
+      "category": "verification",
+      "priority": "important",
+      "action": "From a session started with `claude --plugin-dir <worktree>/plugins/harness` (spec decision 13), run /harness:strap-skills strap-skills --edit --base 697dce285549 (D11: SKILL.md is absent at the plan base, so every baseline runs without the skill). Classify its judgment behaviors (at least: the session never reruns a recorded arm; it grades only with a quote; it uses a dispatch row verbatim with its model), two scenarios each, draw, baseline and green through harness:strap-scenario-runner, grade, retest each failed green after a SKILL.md fix, freeze. Acceptance: the frozen spec holds at least one non-dropped judgment behavior with a failing baseline and a passing green.",
+      "files": [
+        "docs/plans/strap/strap-skills/SkillSpec.json",
+        "plugins/harness/skills/strap-skills/SKILL.md",
+        "plugins/harness/agents/strap-scenario-runner.md",
+        "plugins/harness/agents/strap-judge.md"
+      ],
+      "dependencies": [
+        "STR-10"
+      ],
+      "status": "PENDING",
+      "evidence": "",
+      "model": "opus",
+      "anchors": [],
+      "tests": [],
+      "commands": [
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check strap-skills",
+          "expect": "check [ok] (spec frozen: frozen is set)"
+        }
+      ]
+    }
+  ]
+}
