@@ -1,0 +1,434 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 150,
+  "pr_title": "1103 d w guidance",
+  "branch": "1103-d-w-guidance",
+  "base_branch": "main",
+  "base_sha": "3205cf3d9487efee0bfd961ef91e6bccabed666f",
+  "head_sha": "862451cecd8f055c582a6de664246de52b283a5f",
+  "review_date": "2026-10-30",
+  "verdict": "READY TO MERGE - 14 of 14 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 245,
+    "deletions": 8,
+    "files_changed": 11
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0150/pr150_20261030T175716Z/findings/config.json",
+    "docs/_scratch/pr_review/0150/pr150_20261030T175716Z/findings/tests.json",
+    "docs/_scratch/pr_review/0150/pr150_20261030T175716Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0150/pr150_20261030T175716Z/findings/docs.json",
+    "docs/_scratch/pr_review/0150/pr150_20261030T175716Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "argvList $def enforces minItems 1 and non-empty strings per argv, matching the ConfigError cases in tests/lib/test_config.py.",
+    "Key touch list is complete: schema, defaults.json ([]), config.py dataclass and builder, README table; no mod reads the keys, so no mirror is needed.",
+    "Setup/baseline descriptions otherwise agree with prepare() and run_step (no shell, failure reported not fatal, baseline skipped when setup fails).",
+    "All new d-w tests are behavioral end-to-end subprocess runs against real git repos; no mock-chain wiring tests.",
+    "The submodule test guards the git-dir vs common-dir rule against a naive '.git is a file' check, which would misfire on submodules.",
+    "Setup tests prove cwd placement both ways: marker present in the new worktree and absent from the source checkout.",
+    "The baseline test proves ordering and shared cwd by having the baseline read the file setup wrote.",
+    "Failing-baseline test pins that child stdout is diverted to stderr ('boom detail') while stdout stays the single worktree path.",
+    "Config tests cover default, argv-tuple shape and five distinct invalid shapes (string entry, empty argv, empty arg, scalar, non-string arg).",
+    "Captured step output keeps the 'stdout carries only the path' contract intact; failures surface a bounded 15-line tail on stderr.",
+    "linked_worktree_top compares --git-dir with --git-common-dir, so submodules are not mistaken for linked worktrees, and the docstring says why.",
+    "The new config keys follow the four-place rule: defaults, schema argvList with minItems/minLength, frozen-tuple dataclass fields, and README rows, plus tests for the default and invalid cases.",
+    "run_steps short-circuits through all(generator), which matches its 'stop at the first failure' contract with no extra state.",
+    "The new keys touch all four required places (defaults.json, schema, config.py dataclass/builder, README key table) and the plugin version is bumped, matching the CLAUDE.md checklist the same PR reinforces.",
+    "SKILL.md's linked-worktree warning text, the setup/baseline stderr labels, the 'failed setup skips baseline' rule and the exit-0-after-cut contract all match new_worktree.py exactly.",
+    "SKILL.md's Afterward step tells the agent to treat baseline failures as pre-existing and not fix them, which keeps task scope honest.",
+    "The CLAUDE.md addition turns an implicit preference (config key over skill prose) into a stated rule with the reason attached.",
+    "New keys follow the four-place checklist exactly: defaults.json, schema (argvList def), HarnessConfig field plus builder, and README key table rows, with config tests for defaults, shape and invalid inputs.",
+    "Behavioral tests run the real script against real git repos, including a submodule negative case that would catch a naive .git-is-a-file linked-worktree check.",
+    "The stdout-is-only-the-path contract is preserved and asserted with noisy setup output, and the never-fatal step semantics are stated consistently in the docstring, SKILL.md, README and schema.",
+    "Steps run as argv without a shell, with a bounded output tail on failure, keeping quoting and injection out of the config surface."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "README example worktree_setup repoints the shared editable install at the throwaway worktree",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/d-w/SKILL.md"
+        ],
+        "lines": "25,363-364",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "README.md:363 offers [[\"python\", \"-m\", \"pip\", \"install\", \"-e\", \".\"]] as the example setup. The argv runs without a shell, so 'python' is whatever interpreter is first on PATH, typically the project's shared environment. An editable install from the worktree re-registers the package source at the worktree path, so the main checkout's imports silently resolve to the detached worktree and break once a-w or 'git worktree remove' deletes it. The example invites exactly the cross-checkout coupling the worktree is meant to avoid.\n\nAlso (docs): README.md:363 says --no-setup skips worktree_setup, but README.md:364 does not say it also skips worktree_baseline (it does: new_worktree.py:173-174). README.md:25, the d-w feature row, still describes only ref resolution and collisions, with no mention of the configured setup and baseline steps.",
+        "fix": [
+          "Replace the example with a command that creates or uses a per-worktree environment (for example creating a venv inside the worktree), and add a one-line warning that an editable install into a shared interpreter repoints that interpreter's package at the worktree.",
+          "Or pick a non-mutating example (a dependency sync into a worktree-local folder) and leave the editable-install caveat in the key description.",
+          "Append '; --no-setup skips them' to the worktree_baseline row and add a bullet to the README.md:25 row: 'Optionally runs the project's worktree_setup and worktree_baseline commands in the new worktree.'"
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "d-w gives no Bash timeout for a command that now runs installs and tests",
+        "file": "plugins/harness/skills/d-w/SKILL.md",
+        "files": [
+          "plugins/harness/skills/d-w/SKILL.md",
+          "plugins/harness/skills/d-w/commands/new_worktree.py",
+          "README.md",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "17-21,35-44,48-49",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md tells the agent to run new_worktree.py through the Bash tool with no timeout. With worktree_setup/worktree_baseline configured the command now runs a dependency install plus test files, each step allowed up to STEP_TIMEOUT_SECONDS=600 (new_worktree.py:33), so one call can run far past the Bash tool's 2-minute default and even its 10-minute cap. When the tool kills the call, stdout (the worktree path, the only contract the skill relies on) and the setup/baseline lines are lost while the worktree is left on disk. The per-step 600 s limit is not documented anywhere either.\n\nAlso (docs): prepare() runs worktree_baseline through run_steps(), which is all() over the commands (new_worktree.py:126-128,137), so the first failing baseline command stops the list and later baseline commands never run and print no line. README.md:363 says 'the first failure stops the list' only for worktree_setup; README.md:364, the schema description and SKILL.md:35-40 say nothing of it for the baseline. SKILL.md:48-49 then tells the agent to report 'each setup and baseline line' and record the failures as pre-existing, so the unrun baseline commands silently drop out of the recorded test state, which defeats the purpose the key is documented for.\n\nAlso (docs): SKILL.md:42 says EnterWorktree places its worktree where 'the project-directory rule forbids'. No such rule exists in the plugin, its reference docs or the README; it lives in one developer's private instructions. A consuming project reading the generic plugin has nothing to resolve the reference against.",
+        "fix": [
+          "Add to the command bullet: when worktree_setup or worktree_baseline is set, pass a Bash timeout of 600000 ms (or run it in the background and wait), and state the 600 s per-step limit.",
+          "Alternatively cap the total setup+baseline wall time in new_worktree.py below the tool's limit and document that cap in SKILL.md.",
+          "Run every baseline command regardless of earlier failures (keep short-circuit only for setup), so the recorded state is complete.",
+          "Or document the stop in README.md:364, the schema description and SKILL.md, and have prepare() print 'baseline [skipped] <cmd>' for each command not run.",
+          "State the rule inline: 'which puts it inside the project directory; worktrees stay outside it because an IDE indexing the workspace holds file locks on Windows'."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Step timeout cannot fire on Windows when the command spawns a child",
+        "file": "plugins/harness/skills/d-w/commands/new_worktree.py",
+        "files": [
+          "plugins/harness/skills/d-w/commands/new_worktree.py",
+          "README.md",
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/lib/harness_lib/config.py"
+        ],
+        "lines": "15-16,33,108-116",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "run_step relies on subprocess.run(..., capture_output=True, timeout=600). On timeout CPython kills only the direct child and then, on Windows, calls process.communicate() again with no timeout to drain the pipes. A baseline such as ['sh', '<plugin>/scripts/hpy', '-m', 'pytest', ...] or ['uv', 'run', 'pytest', ...] leaves a grandchild that still holds the pipe write ends, so that second communicate() blocks forever. d-w then hangs instead of printing 'baseline [fail] ... timed out'. stdin is also inherited, so a step that prompts (pip confirm, a credential helper) sits until the timeout. Windows is the primary platform here and launcher-wrapped commands are the expected shape, so STEP_TIMEOUT_SECONDS promises a bound the code does not deliver.\n\nAlso (runtime): run_step passes the argv straight to CreateProcess with no shell. On Windows that finds only '.exe' programs on PATH, so common setup commands like ['npm', 'ci'], ['pnpm', 'install'] or ['yarn'] (which are .cmd shims) fail with FileNotFoundError and are reported as 'setup [fail]'. A relative program such as ['scripts/setup.cmd'] is resolved against the parent's cwd, not cwd=<new worktree>, so it runs the wrong copy or nothing. The README and schema show only a python example and describe 'without a shell' as if it were portable.\n\nAlso (overall): run_step passes cwd=<new worktree> to subprocess.run, but on Windows CreateProcess resolves a relative argv[0] (for example `.venv/Scripts/python`, created by a setup step) against the parent process directory, i.e. the checkout the command was launched from, not the new worktree (POSIX resolves it against cwd). A baseline configured with a worktree-local interpreter would silently run the main checkout environment on Windows, recording a baseline against the wrong installed package; nothing in the docs warns about it.\n\nAlso (runtime): The module docstring (lines 15-16) and SKILL.md promise that a failed step never fails the command and the exit code stays 0. run_step catches only OSError and TimeoutExpired. subprocess.run raises ValueError for an argv string with an embedded NUL (the schema allows it), and IndexError/ValueError for an empty argv, which reaches it whenever jsonschema is missing and _validate_minimal runs, because that fallback does not check argvList. Without jsonschema, _argv_list also turns a string entry such as 'pip install -e .' into a tuple of single characters. Any of these makes main() exit with a traceback after the worktree already exists, and its path is never printed on stdout.\n\nAlso (overall): subprocess.run in run_step does not set stdin, so a setup command that prompts (a package manager confirmation, a credential helper) waits on the inherited stdin until the 600 s timeout instead of failing fast; output is captured, so the prompt is invisible too.",
+        "fix": [
+          "Send step output to a temporary file (stdout=tmp, stderr=subprocess.STDOUT) instead of pipes, pass stdin=subprocess.DEVNULL, and on TimeoutExpired kill the whole process tree (Windows: CREATE_NEW_PROCESS_GROUP plus 'taskkill /T /F /PID'; POSIX: start_new_session=True plus os.killpg), then read the tail from the file.",
+          "Use Popen with stdin=subprocess.DEVNULL and a tree kill on timeout, and never call communicate() without a timeout after the kill.",
+          "Before subprocess.run, resolve argv[0]: when it contains a path separator, join it to cwd; otherwise use shutil.which(argv[0]), which honors PATHEXT on Windows. Run the resolved path and keep the reported 'shown' text unchanged.",
+          "Document in the README worktree_setup row and the schema description that Windows needs the full shim name (for example 'npm.cmd') and absolute or interpreter-prefixed script paths.",
+          "In run_step, when argv[0] contains a path separator and is not absolute, rewrite it to str(cwd / argv[0]) before running; add a cross_os test with a relative script path.",
+          "Document in the schema description, README row and SKILL.md that an executable must be absolute or bare (PATH-resolved).",
+          "In run_step, catch (OSError, ValueError, IndexError, subprocess.SubprocessError) and report them as '[fail]'.",
+          "Also make _argv_list raise ConfigError unless each command is a non-empty list of non-empty strings, so the minimal validation path matches the schema.",
+          "Pass stdin=subprocess.DEVNULL to subprocess.run in run_step."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Setup and baseline can outlive the Bash tool timeout, losing the worktree path",
+        "file": "plugins/harness/skills/d-w/commands/new_worktree.py",
+        "files": [
+          "plugins/harness/skills/d-w/commands/new_worktree.py",
+          "plugins/harness/skills/d-w/SKILL.md",
+          "README.md"
+        ],
+        "lines": "33,173-174,178-186",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "The skill runs new_worktree.py through the Bash tool with no timeout guidance (default 120 s, max 600 s), yet each configured step may run up to STEP_TIMEOUT_SECONDS=600 and several steps run back to back (dependency install plus test files). The path is printed only after prepare() returns (main prints it last), so when the tool kills the command the worktree exists on disk but the agent never receives its path or any setup/baseline line. The 600 s per-step limit is also undocumented in SKILL.md, README and the schema description.",
+        "fix": [
+          "Print the path to stdout and flush it before calling prepare(), keeping stdout to that single line, so a killed run still yields the path.",
+          "Tell SKILL.md to invoke the command with the Bash tool `timeout: 600000` and document the per-step limit; or make the step timeout a config key (defaults, schema, dataclass, README) and cap the whole run under the tool maximum."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Invalid-step tests cover only the jsonschema path; fallback explodes strings into per-character argv",
+        "file": "tests/lib/test_config.py",
+        "files": [
+          "tests/lib/test_config.py",
+          "plugins/harness/lib/harness_lib/config.py"
+        ],
+        "lines": "347-352",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_invalid_worktree_steps_raise relies on jsonschema rejecting the bad shapes. config.py documents a fallback when jsonschema does not import (top-level key check only), and _argv_list (config.py:312-314) does `tuple(tuple(argv) for argv in commands)` with no type check. Under the fallback, `{\"worktree_setup\": [\"pip install -e .\"]}` loads as (('p','i','p',' ',...),) and `{\"worktree_baseline\": \"pytest\"}` as (('p',),('y',),...), so the d-w script runs single-character programs instead of raising ConfigError. The existing test_minimal_validation_without_jsonschema pattern was not extended to the new keys, so this gap is invisible.",
+        "fix": [
+          "Make _argv_list validate each entry is a non-empty list of non-empty str and raise ConfigError otherwise; add a parametrized test that sets sys.modules['jsonschema'] = None (as test_minimal_validation_without_jsonschema does) and asserts ConfigError for the same bad shapes.",
+          "If the fallback is intentionally lax, at minimum add a test pinning the fallback behavior so the per-character expansion is a documented decision rather than an accident."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "Step-stop test passes vacuously when the script crashes",
+        "file": "tests/skills/test_detached_worktree_script.py",
+        "files": [
+          "tests/skills/test_detached_worktree_script.py",
+          "plugins/harness/skills/d-w/commands/new_worktree.py"
+        ],
+        "lines": "346-349,352-356,371-374",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_a_failing_setup_command_stops_the_later_ones asserts nothing but the absence of second.txt under Path(done.stdout.strip()). It never checks returncode, never checks that the first command reported 'setup [fail]', and never checks that stdout is a worktree path. If new_worktree.py exits 1 (config error, git failure, import error), stdout is empty, Path('') / 'second.txt' resolves against the pytest cwd, the file is absent, and the test passes without exercising run_steps at all.\n\nAlso (overall): test_a_failing_setup_command_stops_the_later_ones never checks the exit code or that the first setup step ran: on a crash stdout is empty, Path of the empty string joined with second.txt resolves against the test process cwd, and the assertion passes. test_no_configured_steps_prints_no_step_lines likewise asserts only absences in stderr with no returncode check, so a traceback without the words setup or baseline passes.\n\nAlso (tests): run_step (new_worktree.py:111-116) catches subprocess.TimeoutExpired and reports '[fail]', but no test covers it; only the OSError branch is reached (test_missing_executable_is_a_reported_failure).",
+        "fix": [
+          "Add `assert done.returncode == 0, done.stderr`, `assert Path(done.stdout.strip()).is_dir()` and `assert done.stderr.count('setup [fail]') == 1` and `'setup [ok]' not in done.stderr` before the existing second.txt assertion.",
+          "Add `assert done.returncode == 0, done.stderr` to both tests; in the stop test also assert that stderr holds exactly one `setup [` line and that it is `setup [fail]`, and that the worktree path is a directory before checking second.txt.",
+          "Add a test using the existing `module` fixture: monkeypatch module.STEP_TIMEOUT_SECONDS to a small value and call module.run_step with a sleeping _py command, asserting False and a '[fail]' line in capsys stderr."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "No-steps test passes on any crash",
+        "file": "tests/skills/test_detached_worktree_script.py",
+        "lines": "367-368,371-374",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_no_configured_steps_prints_no_step_lines only asserts that 'setup' and 'baseline' are absent from stderr. A crash whose error message names neither word (e.g. 'new_worktree: <git error>') satisfies both assertions, so the test cannot distinguish 'no steps configured, ran cleanly' from 'script failed before reaching the step code'.\n\nAlso (tests): test_no_setup_flag_skips_setup_and_baseline asserts 'setup' not in stderr, but its pytest tmp_path is named after the test (test_no_setup_flag_skips_setup0), so any future stderr line naming the worktree path or root (e.g. a widened 'detached worktree at <path>' message) fails the test for reasons unrelated to --no-setup. The same bare-word pattern appears in test_no_configured_steps_prints_no_step_lines.",
+        "fix": [
+          "Add `assert done.returncode == 0, done.stderr` and `assert Path(done.stdout.strip()).is_dir()` before the negative assertions.",
+          "Match the report format instead: assert 'setup [' not in done.stderr and 'baseline [' not in done.stderr in both tests."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README capability row for d-w omits the new behavior",
+        "file": "README.md",
+        "lines": "25",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "README.md line 25 still describes d-w as base resolution plus collision handling; the setup/baseline steps, --no-setup and the linked-worktree warning appear only in the key table rows, so the feature overview drifts from SKILL.md.",
+        "fix": [
+          "Add a bullet to the line 25 row: runs configured worktree_setup then worktree_baseline (failures reported, never fatal; --no-setup skips) and warns when run from a linked worktree."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "worktree_baseline description omits stop-at-first-failure",
+        "file": "plugins/harness/config/harness.schema.json",
+        "files": [
+          "plugins/harness/config/harness.schema.json",
+          "README.md"
+        ],
+        "lines": "97",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The worktree_setup description says the first failure stops the list, but the worktree_baseline description does not. run_steps in new_worktree.py (126-128) applies the same all() short-circuit to both lists, so a failing first baseline command silently skips the rest. A reader of the schema or README would expect every baseline command to run.",
+        "fix": [
+          "Append 'the first failure stops the list' to the worktree_baseline description in harness.schema.json and to the worktree_baseline row in README.md:364."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Without jsonschema a string-valued step list is split into one-character commands",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/config.py",
+          "tests/lib/test_config.py"
+        ],
+        "lines": "275-284,312-314",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "When jsonschema is missing, _validate_minimal checks only unknown keys, and _argv_list does tuple(tuple(argv) for argv in commands): a string value or a list of command strings becomes one-character argv tuples, which then fail with a confusing OSError instead of a ConfigError. test_invalid_worktree_steps_raise only covers the jsonschema path.",
+        "fix": [
+          "Have _argv_list verify that commands is a list of non-empty lists of non-empty strings and raise ConfigError naming the key otherwise (pass the key name in)."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Docstring promises 'setup [skipped]', which is never printed",
+        "file": "plugins/harness/skills/d-w/commands/new_worktree.py",
+        "lines": "14-15",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says each step is reported as 'setup|baseline [ok|fail|skipped]'. The code prints '[skipped]' only for the baseline after a setup failure, and prints nothing when --no-setup is given. SKILL.md lines 37-38 state the real contract ('setup [ok|fail]', 'baseline [ok|fail|skipped]'), so the docstring disagrees with both the code and the skill.\n\nAlso (overall): The docstring says each step is reported as `setup|baseline [ok|fail|skipped]`, but only baseline ever prints [skipped] (prepare, line 135); SKILL.md line 38 states it correctly as `setup [ok|fail]` or `baseline [ok|fail|skipped]`.",
+        "fix": [
+          "Change the docstring line to: Each step is reported on stderr as ``setup [ok|fail]`` or ``baseline [ok|fail|skipped]``.",
+          "Reword to: reported on stderr as `setup [ok|fail]` or `baseline [ok|fail|skipped]`."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "parallel2 W0 row now points at a skill that cuts an extra worktree",
+        "file": "plugins/harness/skills/parallel2/README.md",
+        "files": [
+          "plugins/harness/skills/parallel2/README.md",
+          "README.md"
+        ],
+        "lines": "81,106",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "README.md:81 lists harness:d-w as the W0 skill for 'Worktree conventions, IDE file locks'. Invoking d-w runs new_worktree.py, which cuts a detached worktree (and now runs setup and baseline), while W0 worktrees come from 'parallel2.py setup' as p2/<lane> branches. The same README calls d-w 'a single detached worktree for one-off isolated work' (line 106), so a reader following the table at W0 creates a stray worktree outside the run.\n\nAlso (overall): parallel2.py setup cuts its own lane worktrees and never runs worktree_setup or worktree_baseline, yet parallel2/README.md line 81 now names harness:d-w as the W0 worktree skill. A project that configures a dependency install gets it in d-w worktrees but not in parallel2 lanes, and the W0 pointer can read as if d-w governs lane worktrees. Under the new CLAUDE.md rule in this PR (a setting a driver can act on belongs in the driver), the gap is either a driver change or an explicit note.",
+        "fix": [
+          "Reword the row so d-w is cited for its conventions only, e.g. concern 'Worktree placement outside the project, IDE file locks' with skill 'harness:d-w (conventions; parallel2 setup cuts the lanes)'.",
+          "Or drop the W0 row and point W0 at 'harness:parallel2' setup.",
+          "State in parallel2/README.md and the README worktree_setup row that parallel2 lanes do not run the steps.",
+          "Or have the parallel2 setup driver call the same setup/baseline runner for each implement lane (move run_steps/prepare into harness_lib)."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Test name says 'none' but asserts empty tuples",
+        "file": "tests/lib/test_config.py",
+        "lines": "332-335",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_worktree_steps_default_to_none asserts `cfg.worktree_setup == ()` and `cfg.worktree_baseline == ()`; the defaults are empty tuples, not None, so the name contradicts the contract it pins.",
+        "fix": [
+          "Rename to test_worktree_steps_default_to_empty."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "'warns_before_creating_another' never checks the ordering its name claims",
+        "file": "tests/skills/test_detached_worktree_script.py",
+        "lines": "280-290",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_run_from_a_linked_worktree_warns_before_creating_another asserts the warning is present and a worktree exists, but not that the warning precedes the cut. new_worktree.py:167-172 prints the warning before `git worktree add` and the 'detached worktree at' line; a regression moving the warning after the cut (or after setup output) would pass.",
+        "fix": [
+          "Assert `done.stderr.index('linked worktree') < done.stderr.index('detached worktree at')`, or rename the test to drop 'before'."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 150 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"b93d90656c0358365cdb35c7d78f40b12c64e6ad\",\"headRefName\":\"1103-d-w-guidance\",\"headRefOid\":\"862451cecd8f055c582a6de664246de52b283a5f\",\"last_sha\":\"862451cecd8f055c582a6de664246de52b283a5f\",\"mergeCommit\":null,\"number\":150,\"state\":\"OPEN\",\"title\":\"1103 d w guidance\",\"url\":\"https://github.com/t968rs/operator-straps/pull/150\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1103-d-w-guidance",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1103-d-w-guidance",
+        "head_ref_name": "1103-d-w-guidance",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b93d90656c0358365cdb35c7d78f40b12c64e6ad",
+        "head_sha": "862451cecd8f055c582a6de664246de52b283a5f",
+        "base_ancestor_command": "git merge-base --is-ancestor b93d90656c0358365cdb35c7d78f40b12c64e6ad HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 862451cecd8f055c582a6de664246de52b283a5f HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - README d-w capability row gains bullets for worktree_setup/worktree_baseline (reported, never fatal, --no-setup skips) and the linked-worktree warning"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - README worktree_baseline row now states the first failure stops the list; worktree_baseline description in harness.schema.json now states the first failure stops the list"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - parallel2 W0 row cites d-w for placement conventions only and states parallel2 setup cuts lanes without worktree_setup/worktree_baseline; README worktree_setup row notes parallel2 lanes skip the steps"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - README worktree_setup example replaced with uv sync (worktree-local .venv) plus shared-interpreter editable-install caveat; baseline row notes --no-setup skips it; d-w SKILL.md setup bullet carries the same caveat"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - _argv_list takes the key name and raises ConfigError unless the value is a list of non-empty lists of non-empty strings (new _is_argv helper); _build passes worktree_setup/worktree_baseline"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - renamed test_worktree_steps_default_to_none to test_worktree_steps_default_to_empty"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - bad step shapes moved to BAD_WORKTREE_STEPS; new test_invalid_worktree_steps_raise_without_jsonschema sets sys.modules['jsonschema'] = None and asserts ConfigError naming the key; _argv_list shape check makes it pass"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - module docstring now states 'setup [ok|fail]' or 'baseline [ok|fail|skipped]', matching the code and SKILL.md"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - linked-worktree test asserts the warning precedes the 'detached worktree at' line in stderr"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - stop test asserts exit 0, worktree dir exists, exactly one 'setup [' line which is '[fail]'; new test covers the TimeoutExpired branch of run_step via monkeypatched STEP_TIMEOUT_SECONDS; new_worktree.py cited only, its timeout branch already reports '[fail]'"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - no-steps test asserts exit 0 and worktree dir; both no-steps and --no-setup tests match 'setup [' / 'baseline [' instead of bare words"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - SKILL.md: run in background or with Bash timeout 600000 when steps are set, 600 s per-step limit, baseline stop plus [skipped] lines, EnterWorktree rule stated inline; new_worktree.py prints 'baseline [skipped] <cmd>' for each unrun baseline command; README and schema document the per-step kill and skipped lines"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - run_step uses Popen with output to a temp file, stdin=DEVNULL, a process-tree kill on timeout (taskkill /T /F on Windows, start_new_session plus killpg on POSIX), argv[0] resolved via shutil.which or joined to the worktree, and catches OSError/ValueError/IndexError/SubprocessError as [fail]; README and schema document lookup, closed stdin and the kill; config.py unchanged: _argv_list (config.py:313-326) already rejects anything but non-empty lists of non-empty strings"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - main prints and flushes the worktree path before prepare() runs, so a killed run still yields it; SKILL.md gives the background/600000 ms guidance and the 600 s per-step limit; README states the per-step kill"
+    }
+  ]
+}
