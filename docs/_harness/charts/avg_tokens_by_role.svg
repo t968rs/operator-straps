@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="380" viewBox="0 0 640 380" role="img" aria-labelledby="t d">
+<title id="t">Mean tokens per subagent dispatch, by role</title><desc id="d">n = 239 dispatches (1 ledger row = 1 dispatch) · pr_review_agent_usage.jsonl</desc>
+<style>text{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}.num{font-variant-numeric:tabular-nums}.bg{fill:#fcfcfb;stroke:#e1e0d9}.gap{stroke:#fcfcfb}.t1{fill:#0b0b0b}.t2{fill:#52514e}.mu{fill:#6f6d68}.grid{stroke:#e1e0d9}.axis{stroke:#c3c2b7}.f-opus{fill:#2a78d6}.f-sonnet{fill:#eb6834}.f-haiku{fill:#1baf7a}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19;stroke:#383835}.gap{stroke:#1a1a19}.t1{fill:#f0efec}.t2{fill:#c3c2b7}.mu{fill:#a3a29b}.grid{stroke:#2c2c2a}.axis{stroke:#383835}.f-opus{fill:#3987e5}.f-sonnet{fill:#d95926}.f-haiku{fill:#199e70}}</style>
+<rect class="bg" x="0.5" y="0.5" width="639" height="379" rx="12" fill="#fcfcfb" stroke="#e1e0d9"/>
+<text class="t1" x="24" y="36" font-size="17" font-weight="600" fill="#0b0b0b">Mean tokens per subagent dispatch, by role</text>
+<text class="t2" x="24" y="58" font-size="12.5" fill="#52514e">n = 239 dispatches (1 ledger row = 1 dispatch) · pr_review_agent_usage.jsonl</text>
+<line class="grid" x1="140.00" y1="76.0" x2="140.00" y2="330.0" stroke="#e1e0d9" stroke-width="1"/>
+<text class="mu num" x="140.00" y="348.0" font-size="11.5" text-anchor="middle" fill="#6f6d68">0</text>
+<line class="grid" x1="273.33" y1="76.0" x2="273.33" y2="330.0" stroke="#e1e0d9" stroke-width="1"/>
+<text class="mu num" x="273.33" y="348.0" font-size="11.5" text-anchor="middle" fill="#6f6d68">500k</text>
+<line class="grid" x1="406.67" y1="76.0" x2="406.67" y2="330.0" stroke="#e1e0d9" stroke-width="1"/>
+<text class="mu num" x="406.67" y="348.0" font-size="11.5" text-anchor="middle" fill="#6f6d68">1M</text>
+<line class="grid" x1="540.00" y1="76.0" x2="540.00" y2="330.0" stroke="#e1e0d9" stroke-width="1"/>
+<text class="mu num" x="540.00" y="348.0" font-size="11.5" text-anchor="middle" fill="#6f6d68">1.5M</text>
+<line class="axis" x1="140.0" y1="76.0" x2="140.0" y2="330.0" stroke="#c3c2b7" stroke-width="1"/>
+<text class="t1" x="128.0" y="93.0" font-size="13.5" text-anchor="end" fill="#0b0b0b">reviewer</text>
+<text class="mu num" x="128.0" y="108.0" font-size="11" text-anchor="end" fill="#6f6d68">n = 110</text>
+<path class="f-opus" d="M140.0,84.0 H444.24 Q448.24,84.0 448.24,88.0 V98.0 Q448.24,102.0 444.24,102.0 H140.0 Z" fill="#2a78d6"><title>reviewer: mean 1,155,885 tokens over 110 dispatches</title></path>
+<text class="t1 num" x="456.24" y="97.5" font-size="12.5" fill="#0b0b0b">1,155,885</text>
+<text class="t1" x="128.0" y="135.0" font-size="13.5" text-anchor="end" fill="#0b0b0b">other</text>
+<text class="mu num" x="128.0" y="150.0" font-size="11" text-anchor="end" fill="#6f6d68">n = 10</text>
+<path class="f-opus" d="M140.0,126.0 H390.53 Q394.53,126.0 394.53,130.0 V140.0 Q394.53,144.0 390.53,144.0 H140.0 Z" fill="#2a78d6"><title>other: mean 954,474 tokens over 10 dispatches</title></path>
+<text class="t1 num" x="402.53" y="139.5" font-size="12.5" fill="#0b0b0b">954,474</text>
+<text class="t1" x="128.0" y="177.0" font-size="13.5" text-anchor="end" fill="#0b0b0b">orchestrator</text>
+<text class="mu num" x="128.0" y="192.0" font-size="11" text-anchor="end" fill="#6f6d68">n = 2</text>
+<path class="f-opus" d="M140.0,168.0 H340.11 Q344.11,168.0 344.11,172.0 V182.0 Q344.11,186.0 340.11,186.0 H140.0 Z" fill="#2a78d6"><title>orchestrator: mean 765,402 tokens over 2 dispatches</title></path>
+<text class="t1 num" x="352.11" y="181.5" font-size="12.5" fill="#0b0b0b">765,402</text>
+<text class="t1" x="128.0" y="219.0" font-size="13.5" text-anchor="end" fill="#0b0b0b">planner</text>
+<text class="mu num" x="128.0" y="234.0" font-size="11" text-anchor="end" fill="#6f6d68">n = 1</text>
+<path class="f-opus" d="M140.0,210.0 H287.32 Q291.32,210.0 291.32,214.0 V224.0 Q291.32,228.0 287.32,228.0 H140.0 Z" fill="#2a78d6"><title>planner: mean 567,449 tokens over 1 dispatches</title></path>
+<text class="t1 num" x="299.32" y="223.5" font-size="12.5" fill="#0b0b0b">567,449</text>
+<text class="t1" x="128.0" y="261.0" font-size="13.5" text-anchor="end" fill="#0b0b0b">fixer</text>
+<text class="mu num" x="128.0" y="276.0" font-size="11" text-anchor="end" fill="#6f6d68">n = 115</text>
+<path class="f-opus" d="M140.0,252.0 H260.27 Q264.27,252.0 264.27,256.0 V266.0 Q264.27,270.0 260.27,270.0 H140.0 Z" fill="#2a78d6"><title>fixer: mean 466,002 tokens over 115 dispatches</title></path>
+<text class="t1 num" x="272.27" y="265.5" font-size="12.5" fill="#0b0b0b">466,002</text>
+<text class="t1" x="128.0" y="303.0" font-size="13.5" text-anchor="end" fill="#0b0b0b">closer</text>
+<text class="mu num" x="128.0" y="318.0" font-size="11" text-anchor="end" fill="#6f6d68">n = 1</text>
+<path class="f-opus" d="M140.0,294.0 H233.44 Q237.44,294.0 237.44,298.0 V308.0 Q237.44,312.0 233.44,312.0 H140.0 Z" fill="#2a78d6"><title>closer: mean 365,408 tokens over 1 dispatches</title></path>
+<text class="t1 num" x="245.44" y="307.5" font-size="12.5" fill="#0b0b0b">365,408</text>
+</svg>

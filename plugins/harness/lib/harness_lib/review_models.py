@@ -1,7 +1,9 @@
-"""pr-review findings and fix reports: pydantic models, the run directory and the one-call recording API.
+"""pr-review findings and fix reports: pydantic models, the run directory and the recording API.
 
-Reviewers call ``record`` and fixers call ``record_fixes`` exactly once, from the heredoc their brief carries.
-Each call validates every item before writing anything, replaces the agent's report under the run directory
+Reviewers record through ``record_draft`` (or ``record``) and fixers through ``record_fixes_draft`` (or
+``record_fixes``), normally once, from the heredoc their brief carries. ``record_add`` is the exception: it
+appends to a reviewer's report across several calls. Each replacing call validates every item before writing
+anything, replaces the agent's report under the run directory
 (``<project>/<artifacts.scratch>/<NNNN>/<RUN_ID>/``, named by the ``run_id`` argument, else by ``current``),
 and prints the agent's return-contract block (the pr-team skill's ``return_contract.md``), UTF-8 safe on any
 console encoding. Agents never choose issue ids; ids are assigned when ``harness_lib.review_merge`` merges
@@ -11,6 +13,7 @@ path); without one, the project is ``harness_lib.config.active()``'s root.
 from __future__ import annotations
 
 import functools
+import json
 import os
 import re
 import sys
@@ -503,6 +506,59 @@ def record_fixes(pr: int, fixer: str, fixed: Sequence[Mapping[str, object]] = ()
     block = fixer_block(_load(FixReport, path), output)
     _emit(block)
     return block
+
+
+def draft_path(pr: int, agent: str, repo: Optional[Path] = None, run_id: Optional[str] = None) -> Path:
+    """``drafts/<agent>.json`` in the run directory: the file an agent writes before ``record_draft``."""
+    return run_dir(pr, repo, run_id) / "drafts" / f"{agent}.json"
+
+
+def _read_draft(path: Path, keys: Tuple[str, str]) -> Dict[str, list]:
+    """The draft at ``path`` as ``{key: list}`` for each of ``keys`` (missing keys read as empty lists)."""
+    try:
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
+    except FileNotFoundError as exc:
+        raise ValueError(f"no draft at {path}: write it first") from exc
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"draft {path} is not valid JSON: {exc}") from exc
+    if not isinstance(data, dict) or set(data) - set(keys):
+        raise ValueError(f"draft {path} must be one JSON object with only the keys {', '.join(keys)}")
+    if any(not isinstance(data.get(k, []), list) for k in keys):
+        raise ValueError(f"draft {path}: {' and '.join(keys)} must be lists")
+    return {k: list(data.get(k, [])) for k in keys}
+
+
+def record_draft(pr: int, reviewer: str, *, repo: Optional[Path] = None, run_id: Optional[str] = None) -> str:
+    """``record`` with the findings and strengths read from ``draft_path`` (``{findings, strengths}``).
+
+    The payload travels through a file instead of the command line, so its size never reaches the shell.
+    """
+    draft = _read_draft(draft_path(pr, reviewer, repo, run_id), ("findings", "strengths"))
+    return record(pr, reviewer, draft["findings"], draft["strengths"], repo=repo, run_id=run_id)
+
+
+def record_fixes_draft(pr: int, fixer: str, *, repo: Optional[Path] = None,
+                       run_id: Optional[str] = None) -> str:
+    """``record_fixes`` with the entries read from ``draft_path`` (a ``{fixed, bubbled}`` object)."""
+    draft = _read_draft(draft_path(pr, fixer, repo, run_id), ("fixed", "bubbled"))
+    return record_fixes(pr, fixer, draft["fixed"], draft["bubbled"], repo=repo, run_id=run_id)
+
+
+def record_add(pr: int, reviewer: str, findings: Sequence[Mapping[str, object]] = (),
+               strengths: Sequence[str] = (), *, repo: Optional[Path] = None,
+               run_id: Optional[str] = None) -> str:
+    """Append to ``findings/<reviewer>.json`` (created when absent), print and return the block.
+
+    Builds a report in several small calls; an item identical to one already recorded is skipped, so a
+    retried call adds nothing twice. ``record`` and ``record_draft`` still replace the whole report.
+    """
+    root = _repo(repo)
+    added = _validate_items(Finding, findings, "finding", root)
+    path, _ = _report_path(pr, "findings", reviewer, root, run_id)
+    old = load_report(path) if path.is_file() else ReviewerReport(reviewer=reviewer)
+    merged = list(dict.fromkeys([*old.findings, *added]))
+    kept = list(dict.fromkeys([*old.strengths, *(s.strip() if isinstance(s, str) else s for s in strengths)]))
+    return record(pr, reviewer, [f.model_dump(mode="json") for f in merged], kept, repo=repo, run_id=run_id)
 
 
 def load_report(path: Path) -> ReviewerReport:

@@ -191,9 +191,13 @@ Only runs if `capture` exited 0. If it exited 1, STOP and report — do not proc
 Agent(subagent_type="harness:pr-reviewer", model=<model from the row>, prompt=<the row's prompt, verbatim>)
 ```
 
-No sub-skill loads: the rows already satisfy `parallel2` (read-only reviewers, fixed tool set) and the scoping that
-`dispatching-parallel-agents` would do is the slot plan below. Do not add, drop, merge or re-scope slots by hand, and
-do not edit a brief; a slot plan that looks wrong is a problem to report, not to patch.
+No sub-skill loads: the rows already satisfy `parallel2` (reviewers read-only on the repository that write only their
+draft file, fixed tool set) and the scoping that `dispatching-parallel-agents` would do is the slot plan below. Do not
+add, drop, merge or re-scope slots by hand, and do not edit a brief; a slot plan that looks wrong is a problem to
+report, not to patch.
+
+The draft Write needs permission: without an allow rule for Write under the scratch run directory, a default-mode
+session stops each parallel slot on a Write prompt. When Write is denied, the reviewer records through `record_add`.
 
 ### Model floor (reviewer dispatch)
 
@@ -279,18 +283,26 @@ The brief (written by `capture`) carries: role and lens; scope paths; how to rea
 HEAD is the PR head and the paths are clean, else `git -C <repo> show <head_sha>:<path>`); the budgeted diff file; new
 files listed as `new file, N lines - read it` and left out of the diff; every summarized or omitted path with its exact
 `git diff` command; the catalog scope templates; the default sub-lens; the clauses below; each
-`review.domain_pointers` text whose prefix starts an in-scope path; the roast voice for the roast slot; and the exact
-`record` heredoc (run through the plugin's `hpy` launcher).
+`review.domain_pointers` text whose prefix starts an in-scope path; the roast voice for the roast slot; the draft file
+(`<run>/drafts/<slot>.json`) the reviewer writes its findings to; the exact `record_draft` heredoc that reads it (run
+through the plugin's `hpy` launcher); a complete `record_add` heredoc (its own import and `FINDINGS` / `STRENGTHS`
+lists) for recording in pieces; and the too-long-command rule. The
+payload travels in the draft, or in small `record_add` calls, never in one long command line: the Bash tool fails a
+command past a session-dependent size (as low as ~4.4K characters) with a misleading `unexpected EOF while looking for
+matching` error.
 
 **Artifact ownership clause** (every brief, verbatim):
 
-> Record findings only through `record`; never write under `<reviews>/`; reply with the printed block only.
+> Record findings only through the draft file and `record_draft` (or `record_add`); never write under
+> `<reviews>/`; reply with the printed block only.
 
 (`<reviews>` is spelled out as the project's configured directory in the brief.)
 
 `record` validates every finding (severity, name, summary, one or more `fix` options, repo-relative `file`, optional
 `lines` and `also`, `fix_kind` mechanical or judgment) before writing, replaces the reviewer's report on a retry, and
-prints the return block. Reviewers never choose issue ids; ids are assigned at merge.
+prints the return block; `record_draft` does the same from the draft file. `record_add` instead appends to the report
+and skips an item identical to one already recorded, so a retried call adds nothing twice. Reviewers never choose
+issue ids; ids are assigned at merge.
 
 **Test-design clause** (every brief whose scope includes test files, verbatim):
 
@@ -818,7 +830,8 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
 - **Model per fixer:** `haiku` when every issue is `fix_kind: mechanical`, else `opus`.
 - Dispatch each row as `Agent(subagent_type="harness:pr-fixer", model=<row model>, prompt=<row prompt>)`. The fixer reads
   before it edits, stays inside its brief's file set (new files allowed), runs the brief's test commands for each
-  edited file (never a deferred test), and records once with `record_fixes`.
+  edited file (never a deferred test), writes its entries to its draft file and records once with
+  `record_fixes_draft`.
 
 **Rule 3 — Work up the severity chain inside each fixer.** A fixer brief orders its issues **M → I → C**, so I/C work
 lands on a quality-checked surface. Waves are sized by unit count, file overlap and the estimated cost severity

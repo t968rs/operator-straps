@@ -1,0 +1,550 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 158,
+  "pr_title": "1105 bug pr review",
+  "branch": "1105-BUG-pr-review",
+  "base_branch": "main",
+  "base_sha": "edabf58da368c2edc0d3f240f1360b8f95ca72b4",
+  "head_sha": "8973926769e2eef197e27ce04678638ef13a6b06",
+  "review_date": "2026-10-30",
+  "verdict": "READY TO MERGE - 19 of 20 findings resolved, 1 bubbled",
+  "stats": {
+    "additions": 892,
+    "deletions": 236,
+    "files_changed": 18
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0158/pr158_20261030T221239Z/findings/tests.json",
+    "docs/_scratch/pr_review/0158/pr158_20261030T221239Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0158/pr158_20261030T221239Z/findings/docs.json",
+    "docs/_scratch/pr_review/0158/pr158_20261030T221239Z/findings/overall.json"
+  ],
+  "bubbles": [
+    "M8"
+  ],
+  "strengths": [
+    "test_record_heredoc_runs_verbatim writes the draft at the path the brief prints, starts a newer run, then executes the brief heredoc in a subprocess: record_draft honoring run_id is proven end to end.",
+    "Draft error paths are each falsifiable: missing file (path named), invalid JSON, three parametrized bad shapes (each would pass or raise a non-ValueError without the shape check) and the failing finding index.",
+    "TestRecordAdd covers creation, append, append after a replacing record, cross-call dedupe, a named run, and unchanged report bytes on a bad finding.",
+    "All new tests are behavioral against real files in a make_project scratch tree; no mocked collaborators or mock-chain wiring.",
+    "record_draft / record_fixes_draft route through the existing record / record_fixes, so validation, atomic write and the return block stay on one path.",
+    "_read_draft rejects unknown keys and non-list values with a message naming the draft path, so a typoed key cannot silently record an empty report.",
+    "TOO_LONG_RULE is one constant shared by reviewer and fixer briefs, and test_record_heredoc_runs_verbatim executes the generated record_draft heredoc from a foreign cwd against a newer current run.",
+    "harness_usage_charts.py stays stdlib-only, keeps every function short, and counts every dropped row under a named skip reason instead of failing silently.",
+    "pr-reviewer.md and pr-fixer.md add the too-long-command rule with the exact Bash error text, matching TOO_LONG_RULE in pr_review.py, so agents stop bisecting quoting on a size failure.",
+    "SKILL.md documents the draft location as <run>/drafts/<slot>.json, matching draft_path in review_models.py, and records the size-limit symptom that motivated it.",
+    "harness plugin.json version bumped 0.44.0 to 0.45.0 alongside the agent and skill changes, per the release rule.",
+    "README keeps the pinned ccstatusline install command (line 86) and the bubble-stamp table cell, so test_setup_statusline_contract and test_bubble_stamp_registration still hold after the table rewrite.",
+    "record_draft moves the payload into a file and reuses record unchanged, so validation, the atomic write and the return block stay single-sourced",
+    "_read_draft reports missing, non-JSON, wrong-shape and non-list drafts as precise ValueErrors that name the path, each covered by a test",
+    "record_add validates before touching the report, and a test pins that a bad finding leaves the file byte-identical",
+    "The driver test runs the generated record_draft heredoc in a subprocess from an unrelated cwd against a real draft, so the brief-to-recorder contract is exercised end to end",
+    "SKILL.md, both agent files and the brief all carry the same too-long-command rule, naming the misleading unexpected EOF symptom"
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "record_add fallback in the brief cannot run as instructed",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "tests/scripts/test_pr_review_driver.py",
+          "plugins/harness/agents/pr-reviewer.md",
+          "plugins/harness/lib/harness_lib/review_models.py",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "717-724,727-728,737-751,1773-1776",
+        "reviewer": "runtime, overall, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "record_section tells the agent to 'run the same heredoc with the lists filled inline and this call' (record_add). The heredoc record_heredoc builds for record_draft has no FINDINGS/STRENGTHS lists (lists defaults to ()) and its import line is derived from the call name, so it reads 'from harness_lib.review_models import record_draft'. Swapping only the call, as the brief says, raises NameError: record_add. The documented fallback for the too-long-command failure is therefore broken exactly when it is needed; test_record_section_offers_add_and_names_the_too_long_error only asserts the text is present, never runs it.\n\nAlso (overall): record_section tells the reviewer to run 'the same heredoc with the lists filled inline and this call' for record_add, but that heredoc comes from record_heredoc(ctx, record_draft call) with no lists, so its only import is 'from harness_lib.review_models import record_draft' and it defines no FINDINGS or STRENGTHS. Swapping the call yields NameError: record_add is not defined. pr-reviewer.md also says the heredoc runs as written with the path setup unchanged, so a compliant agent cannot fix the import. This is the exact path an agent takes when Write is unavailable or the draft fails. test_record_section_offers_add_and_names_the_too_long_error only asserts the call string is present, so it cannot catch this.\n\nAlso (runtime): fixer_brief renders the 'fixed' and 'cited' examples both with id M2 into one JSON skeleton under \"fixed\". FixReport._unique_ids raises 'issue ids recorded more than once' for that shape, so a fixer that mirrors the skeleton fails validation. The example predates this PR but now ships as a literal JSON document to copy; _draft_json's docstring also says 'one example per list' while FIXED carries two.\n\nAlso (docs): pr-reviewer.md:47-54 names record_add as the fallback when a draft is not an option, and the brief record_section emits (pr_review.py:748) 'run the same heredoc with the lists filled inline and this call'. The same heredoc is built by record_heredoc(ctx, record_draft call) with no lists, so it imports only record_draft and declares no FINDINGS/STRENGTHS: swapping in the record_add call raises NameError on record_add, and there are no lists to fill. A reviewer without Write (or past the size limit) follows the documented path into an error.",
+        "fix": [
+          "Import both names in the reviewer heredoc (e.g. 'from harness_lib.review_models import record_add, record_draft') and say the record_add variant defines FINDINGS = [...] and STRENGTHS = [...] above the call.",
+          "Emit a second, complete record_add heredoc (record_heredoc(ctx, add, lists)) in the brief instead of describing an edit of the first, and add a test that runs it verbatim like test_record_heredoc_runs_verbatim.",
+          "Render a second complete fenced heredoc for the pieces path: record_heredoc(ctx, add, lists), which imports record_add and carries the FINDINGS/STRENGTHS list skeleton",
+          "Make record_heredoc import both record_draft and record_add, and spell out the FINDINGS = [...] / STRENGTHS = [...] lines the inline path needs",
+          "Extend the driver test to run the record_add heredoc in a subprocess, as the record_draft test already does",
+          "Give the cited example a different id (e.g. M5), or merge them into one entry carrying both files and no_change, and change the _draft_json docstring to 'the examples per list'.",
+          "Have record_section print a second complete heredoc for record_add (import record_add, FINDINGS = [ ... ], STRENGTHS = [ ... ] with the commented examples, then the record_add call) instead of pointing at the record_draft heredoc.",
+          "Reword the brief and pr-reviewer.md:49-50 to say: change the import to record_add and define FINDINGS and STRENGTHS lists above the call."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "record_fixes_draft and draft_path run_id routing cannot fail in the unit tests",
+        "file": "tests/lib/test_review_models.py",
+        "files": [
+          "tests/lib/test_review_models.py",
+          "tests/scripts/test_pr_review_driver.py"
+        ],
+        "lines": "323-325,359-364",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_draft_path_sits_in_the_run and test_record_fixes_draft pass run_id=_RUN_ID while _RUN_ID is also the run `current` names (run_repo starts it), so both pass unchanged if draft_path or record_fixes_draft drops run_id and falls back to the current run. The fixer brief heredoc (record_fixes_draft with run_id) is only substring-checked (test_pr_review_driver.py 842-845, 1302) and never executed, unlike the reviewer heredoc in test_record_heredoc_runs_verbatim. A regression would make a fixer read its draft from, and write its report to, whatever run `current` names after a newer capture.",
+        "fix": [
+          "In test_record_fixes_draft, write the draft under _RUN_ID, then rm.start_run(_PR, _OTHER_RUN, repo=run_repo) before record_fixes_draft(..., run_id=_RUN_ID); assert fixes/w1_fix_1.json exists under run_dir(_PR, run_repo, _RUN_ID) and run_dir(_PR, run_repo) / 'fixes' does not exist (mirroring TestRecordRunId). Do the same in test_draft_path_sits_in_the_run so the expected path differs from the current run's drafts directory.",
+          "Alternatively add a driver test that writes a {fixed, bubbled} draft at the path the fix brief names, starts a newer run, and runs _heredoc(fix brief) in a subprocess, asserting SIGNAL: DONE and the fixes file under the brief's run."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Typo and inconsistent row text in the workflow table",
+        "file": "README.md",
+        "lines": "19-24",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "README.md:24 'validation anchores' (anchors). Lines 20-22 mix styles: line 20 has no closing period, line 21 starts lowercase ('a proposed breakdown into commits.'), and the commit rows lost 'saved in your project artifact folders'.\n\nAlso (docs): The old pr-sum row documented --min-viz, --local, --committed-only and --remote-head; the old pr-review row said pr-team keeps finding details out of the main session; the old write-plan row stated when an item is marked COMPLETE. README.md:19-24 drop all of these and no other README section carries them (only the skills SKILL.md files do), so the README no longer tells a user why to pick pr-team over pr-review or that pr-sum has scope flags.",
+        "fix": [
+          "Fix 'anchores' to 'anchors'; capitalize line 21 ('A proposed breakdown into commits.'), end line 20 with a period, and append 'saved in your project artifact folders' to one of the three commit rows.",
+          "Add one line per dropped fact back to the rows (e.g. pr-sum: 'Scope flags: --local, --committed-only, --remote-head, --min-viz; see the skill'), or link each row to its SKILL.md."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Banner Config row lists band-line twice as different options",
+        "file": "README.md",
+        "lines": "20-21,24,28,30-31",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:31 offers '(2) oStraps: band above the prompt with the model and context window' and '(3) band-line needs no install' as separate options, but the oStraps band is what band-line draws (plugins/band-line/hooks/band.tsx). The Use column also dropped band-line (only banner-status: setup-statusline), and the row no longer says ccstatusline needs Node.js and npm (still in prose at lines 84-87).\n\nAlso (docs): README.md:30 says 'Add a TODO Catalog entry for each GH Issue.' The skill drafts items only for open issues no record mentions (todo_sync.py untracked, README lines 325-333), and the same row Notes column says the script refuses an issue the catalog already records.\n\nAlso (docs): README.md:28 reads 'A read-only report: each marked ok, warn or fail'; the list 'each' referred to (interpreter hpy picked, the three Python modules, git and gh, .claude/harness.json) was removed, so the sentence has no antecedent.\n\nAlso (overall): The row says 'Add a TODO Catalog entry for each GH Issue.' The skill drafts one item per open issue that no catalog record mentions, then renumbers, and its own Ensurance cell says the script refuses an issue the catalog already records. Closed and already-tracked issues are never added.\n\nAlso (overall): The rewrite introduced a typo ('anchores', line 24), a lowercase sentence fragment ('a proposed breakdown into commits.', line 21), a missing period (line 20), and a doctor cell ('each marked ok, warn or fail', line 28) that no longer says what 'each' is, because the list of checks was dropped. The Use column also lost the harness: prefix, so the harness rows read the same as the banner-status row (line 31), which belongs to a different plugin.",
+        "fix": [
+          "Use column: 'banner-status: setup-statusline, or band-line'. What you get: '(1) ccstatusline as the project status line (needs Node.js and npm; setup-statusline offers the install), or (2) band-line: an oStraps: band above the prompt with the model and context window, no npm install.'",
+          "Replace with 'One drafted, ranked catalog item per open GitHub issue no record mentions, then the catalog renumbered.'",
+          "Restore a short list: 'A read-only report on the interpreter, Python modules, git, gh and .claude/harness.json, each marked ok, warn or fail, with the fix beside every failure.'",
+          "Reword to: one drafted, ranked catalog item per open GitHub issue the catalog does not record",
+          "Fix the typo, capitalisation and period",
+          "Restore a short list of the doctor checks (interpreter, three modules, git, gh, harness.json)",
+          "Restore the harness: / banner-status: plugin prefix in the Use column, or move Banner Config to the mods table"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "pr-fixer prompt still names record_fixes as the only exit",
+        "file": "plugins/harness/agents/pr-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-fixer.md",
+          "plugins/harness/lib/harness_lib/review_models.py"
+        ],
+        "lines": "5-7,29,91,95",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "pr-fixer.md:36-37 now says entries go in the draft file and the brief runs record_fixes_draft, but the description (lines 5, 7: 'a single record_fixes call', 'the exact record_fixes command'), the intro (line 29: 'Results leave this agent only through that one record_fixes call'), the stop condition (line 91) and the reply rule (line 95) still name record_fixes. The fixer brief heredoc imports only record_fixes_draft (pr_review.py:1772), so a literal record_fixes call from it fails. The review_models.py module docstring (line 3) carries the same stale claim.\n\nAlso (overall): The fixer brief now emits only record_fixes_draft, and line 37 says so, but the description (lines 5, 7), the intro (line 29: results leave only through that one record_fixes call), the stop condition (91) and the reply rule (95) still name record_fixes. The agent prompt contradicts itself about which call exists.",
+        "fix": [
+          "Replace record_fixes with record_fixes_draft at pr-fixer.md lines 5, 7, 91 and 95, and reword line 29 to 'Results leave this agent only through the draft file and the record_fixes_draft call that reads it'; update review_models.py line 3 to name record_draft / record_fixes_draft.",
+          "Replace record_fixes with record_fixes_draft at lines 5, 7, 29, 91 and 95, and say results leave through the draft file plus that call"
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "pr-reviewer intro says record_add reads the draft",
+        "file": "plugins/harness/agents/pr-reviewer.md",
+        "lines": "4-8,31-32,39,87,91",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "pr-reviewer.md:31-32: 'Findings leave this agent only through that draft and the record call (or record_add calls) that reads it.' record_add (review_models.py record_add) takes inline findings and strengths and never reads drafts/<agent>.json; only record_draft does. The record_add path bypasses the draft entirely.\n\nAlso (overall): Line 4 still calls the agent read-only although it now carries Write. Lines 31-32 say the record_add calls read the draft, but record_add takes inline lists and never reads it. Line 39 says 'its record heredoc' while the brief emits record_draft, and line 87 keys the stop condition to record alone. Line 7 and line 91 are also left unreflowed (a short line and a line over 110 characters).",
+        "fix": [
+          "Reword to: 'Findings leave this agent only through the draft and the record_draft call that reads it, or through record_add calls carrying them inline.'",
+          "Drop 'read-only' or qualify it (read-only except the draft file)",
+          "Reword 31-32 as: through the draft and the record_draft call that reads it, or through record_add calls",
+          "Name record_draft at 39 and 'the record call (record_draft or record_add)' at 87, and reflow 5-8 and 91-92"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "review_models module docstring still describes one record call per agent",
+        "file": "plugins/harness/lib/harness_lib/review_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_models.py",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "3-6",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says reviewers call record and fixers call record_fixes exactly once from the heredoc, and that each call replaces the agent's report. Briefs now carry record_draft / record_fixes_draft, and record_add is built to be called several times and appends.\n\nAlso (overall): The module docstring says reviewers call record and fixers call record_fixes exactly once from the heredoc, and that each call replaces the agent report. The module now has record_draft, record_fixes_draft and record_add, and record_add appends. SKILL.md 294-296 likewise says record replaces the report on a retry, with no mention of the append path.",
+        "fix": [
+          "Reword lines 3-5: reviewers record through record_draft (a draft file) or record, fixers through record_fixes_draft or record_fixes; record_add appends to the report in several calls while the others replace it.",
+          "Rewrite lines 3-6 to name record_draft / record_fixes_draft as the brief entry points and record_add as the appending exception",
+          "Add one sentence at SKILL.md 294-296 that record_add appends and skips identical items"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Draft reader rejects a UTF-8 BOM that the driver's own JSON reader accepts",
+        "file": "plugins/harness/lib/harness_lib/review_models.py",
+        "lines": "517",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_read_draft decodes with encoding='utf-8', so a draft saved with a BOM (a common Windows editor or PowerShell default) fails as 'not valid JSON: Unexpected UTF-8 BOM'. pr_review._read_json reads the run's JSON with 'utf-8-sig'.",
+        "fix": [
+          "Use path.read_text(encoding='utf-8-sig') in _read_draft."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "record_add dedup misses in-call duplicates and whitespace-variant strengths",
+        "file": "plugins/harness/lib/harness_lib/review_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_models.py",
+          "tests/lib/test_review_models.py"
+        ],
+        "lines": "557-558",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The docstring and brief promise an identical item is skipped. Findings are only checked against old.findings, so two identical findings in one call are both kept. Strengths are compared raw against stored, already-stripped strengths, so 's1 ' is not matched to 's1' and becomes a duplicate after ReviewerReport strips it.\n\nAlso (overall): Strengths are compared before normalization: an old stored 's1' and a new 's1 ' differ, so the new one is kept, then the ReviewerReport validator strips it and the report holds 's1' twice. Findings are de-duplicated only against the old report, so a finding repeated within one call is stored twice, while strengths in the same call are collapsed by dict.fromkeys. Both contradict the docstring promise that an identical item is skipped.",
+        "fix": [
+          "merged = list(dict.fromkeys([*old.findings, *added])) (frozen Finding models hash) and kept = list(dict.fromkeys([*old.strengths, *(s.strip() for s in strengths)])).",
+          "Strip strengths before comparing, e.g. dict.fromkeys(s.strip() for s in strengths)",
+          "De-duplicate added findings in order (dict.fromkeys(added)) before appending them"
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "bubble-memo agents keep the payload-on-the-command-line pattern this PR fixes",
+        "file": "plugins/harness/scripts/bubble_memo.py",
+        "files": [
+          "plugins/harness/scripts/bubble_memo.py",
+          "plugins/harness/agents/bubble-memo-reviewer.md",
+          "plugins/harness/agents/bubble-memo-investigator.md"
+        ],
+        "lines": "323-324",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "bubble_memo.py _heredoc pipes the whole facts or findings JSON through a shell heredoc, which is the same size-limited path that produced the misleading unexpected EOF error for pr-review. The bubble-memo-reviewer and investigator agents carry no draft file and no too-long-command rule.",
+        "fix": [
+          "Give bubble_memo record a --from FILE draft input and route the two agents through it",
+          "At minimum add the too-long-command rule to both agent files"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Fixer draft skeleton shows two fixed entries with the same id",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "1773-1776",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The fixer brief now renders the examples as a JSON object to Write, and both 'fixed' examples use id M2. FixReport._unique_ids rejects a repeated id, so a fixer that follows the skeleton shape literally writes a draft that record_fixes_draft refuses.",
+        "fix": [
+          "Give the cited-only example its own id (for example M3), or show one M2 entry carrying both files and no_change"
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Reviewers still described as read-only though they now carry Write",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/agents/pr-reviewer.md"
+        ],
+        "lines": "194",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "pr-reviewer.md:4 says 'one lens over one scope of a PR, read-only' and SKILL.md:194 says the rows satisfy parallel2 as 'read-only reviewers, fixed tool set', yet tools now include Write and each slot writes <run>/drafts/<slot>.json. The project settings carry no allow rule for Write, so in default permission mode every parallel reviewer slot can stop on a Write permission prompt, which SKILL.md never mentions.",
+        "fix": [
+          "Reword both to 'read-only on the repository; writes only its draft file', and add one SKILL.md line on the draft Write needing permission (an allow rule for Write under the scratch run dir, or the record_add path when Write is denied)."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "SKILL.md says the payload never travels on the command line, then documents record_add",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "284-286",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:284-286 lists 'the record_add call for recording in pieces' and in the next sentence states 'The payload travels in the draft, never on the command line'. record_add carries findings inline in the heredoc, i.e. on the command line.",
+        "fix": [
+          "Change to 'The payload travels in the draft, or in small record_add calls, never in one long command line'."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Module docstring omits the new draft and append recorders",
+        "file": "tests/lib/test_review_models.py",
+        "lines": "1-6",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says the file covers the `record` / `record_fixes` writers; the PR adds TestRecordDraft and TestRecordAdd covering draft_path, record_draft, record_fixes_draft and record_add, which it does not mention.",
+        "fix": [
+          "Extend the sentence to: the ``record`` / ``record_fixes`` writers with their printed return blocks, the draft-file recorders (``draft_path``, ``record_draft``, ``record_fixes_draft``) and the appending ``record_add``."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "record_add in-call duplicate findings unpinned; strengths and findings dedupe differently",
+        "file": "tests/lib/test_review_models.py",
+        "files": [
+          "tests/lib/test_review_models.py",
+          "plugins/harness/lib/harness_lib/review_models.py"
+        ],
+        "lines": "386-390",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "record_add dedupes strengths within one call (dict.fromkeys) but keeps duplicate findings passed in the same call (only old.findings is checked, review_models.py 557-558). test_identical_items_skipped covers only cross-call repeats, so the asymmetry is neither pinned nor caught, while the brief tells agents 'an identical item is skipped'.",
+        "fix": [
+          "Add a test calling record_add with [_finding(), _finding()] and ['s', 's'] in one call and assert the intended result; if one finding is intended, dedupe `added` in review_models.record_add before merging.",
+          "If in-call duplicates are meant to survive, say so in record_add's docstring and assert two findings in the new test."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Ownership-clause test pins wording that no longer matches the record flow",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "files": [
+          "tests/scripts/test_pr_review_driver.py",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "506-509",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_ownership_and_test_design_clauses asserts every brief carries 'Record findings only through `record`', but the same briefs now tell the reviewer to Write drafts/<slot>.json and call record_draft (or record_add), neither of which is `record`. The test locks in a Rules line that contradicts the Record section below it.",
+        "fix": [
+          "Reword the clause in pr_review.py (line 688) and SKILL.md (line 290) to name the draft file and record_draft/record_add, e.g. 'Record findings only through the draft file and `record_draft` (or `record_add`)', and update the expected string in this test."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "record_add brief instruction only substring-checked, never run",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "572-579",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_record_section_offers_add_and_names_the_too_long_error asserts the prefix 'record_add(1234, \"runtime\", FINDINGS, STRENGTHS' and two prose fragments. The rest of the printed call (repo=Path(r\"...\"), run_id=\"...\") and the claim that it works in 'the same heredoc with the lists filled inline' are never exercised, so a malformed tail or a record_add signature drift ships with green tests.",
+        "fix": [
+          "Extract the backticked record_add call from the brief, build a body from _heredoc(brief) with the record_draft line replaced by FINDINGS = [...] / STRENGTHS = [...] assignments plus that call, run it via subprocess as test_record_heredoc_runs_verbatim does, and assert COUNTS and the findings file under the brief's run."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Usage chart tool crashes on an empty or all-zero usage ledger and on a missing matrix file",
+        "file": "tools/harness_usage_charts.py",
+        "lines": "1,42-44,190-195,242-248,288-299",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "bar_svg calls max() over stats.values(), which raises ValueError when no usage row has a role and valid tokens; when every mean is 0, nice_axis returns axis_max 0 and bar_axis / bar_svg divide by it (ZeroDivisionError). read_jsonl calls read_text unguarded, so a data dir without pr_review_invocation_test_matrix.jsonl aborts with a traceback before any chart is written.\n\nAlso (overall): read_jsonl calls path.read_text with no existence check, so a project or data dir without pr_review_invocation_test_matrix.jsonl ends in a FileNotFoundError traceback. bar_svg calls max() over stats, which raises ValueError when no usage row has a role and int tokens. The module docstring also says it draws 'the README usage charts', but README.md embeds none of the SVGs under docs/_harness/charts.",
+        "fix": [
+          "In main, skip the bar chart (with a printed note) when stats is empty or the peak mean is 0, and treat a missing ledger file as zero rows counted under skipped.",
+          "Skip a missing ledger with a counted 'skipped' entry, and skip the bar chart with a printed note when stats is empty",
+          "Reword the docstring first line, or embed the charts in README.md"
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "write and main lack docstrings; role_of is untyped",
+        "file": "tools/harness_usage_charts.py",
+        "lines": "73,261,281",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "Every other function in the module carries a docstring; write() and main() do not, and tally_families leaves role_of unannotated where Callable[[dict], Optional[str]] applies.",
+        "fix": [
+          "Add one-line docstrings to write and main and annotate role_of: Callable[[dict], Optional[str]]."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Bar tooltip writes the role unescaped into SVG markup",
+        "file": "tools/harness_usage_charts.py",
+        "lines": "230",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "bar_row escapes the role in the visible label but interpolates it raw into the <title> tooltip; a role holding '&' or '<' yields malformed SVG. pie_svg escapes its label through svg_open/heading.",
+        "fix": [
+          "Use escape(role) in the tip string at line 230."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M8",
+      "classification": "out_of_scope",
+      "reason": "bubble-memo's record payload is a different skill and driver from the pr-review fix in this PR; issue #155 tracks moving bubble-memo (memo_record) and the other exposed agents off the command line"
+    },
+    {
+      "id": "M15",
+      "classification": "fixer_failed",
+      "reason": "New test_record_add_call_runs_in_the_heredoc (test_pr_review_driver.py) hit NameError: record_add; heredoc imports only record_draft (I1, pr_review.py). Undone; redo after I1"
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 158 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":3,\"first_sha\":\"d8973ac899d3819de03c1a3ddec4d17672853ee8\",\"headRefName\":\"1105-BUG-pr-review\",\"headRefOid\":\"8973926769e2eef197e27ce04678638ef13a6b06\",\"last_sha\":\"8973926769e2eef197e27ce04678638ef13a6b06\",\"mergeCommit\":null,\"number\":158,\"state\":\"OPEN\",\"title\":\"1105 bug pr review\",\"url\":\"https://github.com/t968rs/operator-straps/pull/158\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1105-BUG-pr-review",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1105-BUG-pr-review",
+        "head_ref_name": "1105-BUG-pr-review",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "d8973ac899d3819de03c1a3ddec4d17672853ee8",
+        "head_sha": "8973926769e2eef197e27ce04678638ef13a6b06",
+        "base_ancestor_command": "git merge-base --is-ancestor d8973ac899d3819de03c1a3ddec4d17672853ee8 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 8973926769e2eef197e27ce04678638ef13a6b06 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - pr-fixer prompt names record_fixes_draft and the draft file in the description, intro, stop condition and reply rule; review_models docstring matches"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - review_models module docstring names record_draft/record_fixes_draft as the entry points and record_add as the appending exception; SKILL.md record paragraph: record_draft replaces like record, record_add appends and skips identical items"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - _read_draft reads the draft with utf-8-sig so a BOM-prefixed draft parses"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - record_add de-duplicates merged findings with dict.fromkeys and compares strengths after stripping; Added TestRecordAdd tests pinning in-call duplicate findings/strengths and whitespace-variant strengths as skipped (green against the other part's dict.fromkeys + strip fix)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - fixer draft skeleton shows one M2 fixed entry carrying files and no_change, so no id repeats"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - pr-reviewer intro: findings leave via the draft and record_draft, or record_add calls carrying them inline; 'read-only' qualified; record_draft named at the operating rule and stop condition; description and Reply lines reflowed"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - Reviewers described as read-only on the repository, writing only their draft file; SKILL.md adds the Write permission note (allow rule under the scratch run dir, record_add when Write is denied)"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - SKILL.md: payload travels in the draft, or in small record_add calls, never in one long command line"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - Module docstring now names the draft-file recorders (draft_path, record_draft, record_fixes_draft) and the appending record_add"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - test_draft_path_sits_in_the_run and test_record_fixes_draft start _OTHER_RUN before the run_id call and assert the path/fixes file sit under _RUN_ID, not the current run; driver test cited only (unit-test option chosen)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - Workflow table: 'anchores' -> 'anchors', commit rows capitalized and ended with periods, c-msg row says the message is saved in the project artifact folders; table columns re-padded"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - Banner Config row lists band-line once as option (2) in Use and What columns with ccstatusline's Node.js/npm need; sync-gh-todo row reworded to one ranked item per untracked open issue; doctor row names its checks"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - read_jsonl counts a missing ledger under skipped instead of raising; main skips the bar chart with a printed note when stats is empty or the peak mean is 0; docstring first line no longer claims README charts"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - One-line docstrings on write and main; tally_families role_of annotated Callable[[dict], Optional[str]]"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - bar_row tooltip escapes the role via escape(role)"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - ownership clause now names the draft file and record_draft (or record_add) in pr_review.py, SKILL.md and the test's expected string"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "06b18f2 (working-tree snapshot; developer commits) - record_section emits a second complete record_add heredoc (own import, FINDINGS/STRENGTHS lists) with a test running it filled; reviewer agent and skill reworded; fixer skeleton already one M2 entry (pr_review.py:1774); review_models.py cited only, no edit"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "8973926 (working-tree snapshot; developer commits) - record_add dedupes merged findings and stripped strengths with dict.fromkeys (review_models.py:559-560); test_in_call_duplicates_skipped pins one finding and one strength (outside fixer waves)"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "8973926 (working-tree snapshot; developer commits) - test_record_add_heredoc_runs_with_lists_filled extracts the brief's record_add heredoc, fills the lists, runs it and asserts COUNTS and the findings file (outside fixer waves)"
+    }
+  ]
+}
