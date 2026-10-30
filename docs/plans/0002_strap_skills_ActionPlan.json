@@ -438,8 +438,8 @@
         ".claude/harness.json"
       ],
       "dependencies": null,
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit ca918b7",
       "model": "haiku",
       "anchors": [
         {
@@ -453,6 +453,10 @@
           "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/plan.py check 0002",
           "expect": "check [ok] | plan 0002"
         }
+      ],
+      "verification_references": [
+        "ca918b74eab5597f53b497c68a74bbe9de30c9d0",
+        "tree e3db5a78301281e7396cc185b10eb1fcc031dbf3"
       ]
     },
     {
@@ -467,8 +471,8 @@
       "dependencies": [
         "STR-0"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit a676163: 57 test node(s) passed",
       "model": "sonnet",
       "anchors": [],
       "tests": [
@@ -706,6 +710,11 @@
           "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/strap_models.py",
           "expect": "All checks passed!"
         }
+      ],
+      "verification_references": [
+        "a676163a4f2f910d280e06b352d55eb96280a2b6",
+        "tree 181cf2c65478adbaf24be997f9dbd9c5d3a44c50",
+        "python -m pytest -q tests/lib/test_strap_models.py::test_enum_members_and_values[SpecMode-members0] tests/lib/test_strap_models.py::test_enum_members_and_values[BehaviorKind-members1] tests/lib/test_strap_models.py::test_enum_members_and_values[JudgmentType-members2] tests/lib/test_strap_models.py::test_enum_members_and_values[Pressure-members3] tests/lib/test_strap_models.py::test_enum_members_and_values[PartKind-members4] tests/lib/test_strap_models.py::test_enum_members_and_values[CheckKind-members5] tests/lib/test_strap_models.py::test_enum_members_and_values[ReplyAct-members6] tests/lib/test_strap_models.py::test_enum_members_and_values[GradeValue-members7] tests/lib/test_strap_models.py::test_enum_members_and_values[Grader-members8] tests/lib/test_strap_models.py::test_enum_members_and_values[Arm-members9] tests/lib/test_strap_models.py::test_enum_members_and_values[BehaviorState-members10] tests/lib/test_strap_models.py::test_enum_members_and_values[DrawReason-members11] tests/lib/test_strap_models.py::test_enum_members_and_values[RedException-members12] tests/lib/test_strap_models.py::test_constants tests/lib/test_strap_models.py::test_scenario_rejects[over0] tests/lib/test_strap_models.py::test_scenario_rejects[over1] tests/lib/test_strap_models.py::test_scenario_rejects[over2] tests/lib/test_strap_models.py::test_scenario_rejects[over3] tests/lib/test_strap_models.py::test_scenario_accepts_checks_only tests/lib/test_strap_models.py::test_judged_item_rejects_unclear[expect_baseline] tests/lib/test_strap_models.py::test_judged_item_rejects_unclear[expect_green] tests/lib/test_strap_models.py::test_behavior_rejects[doc0] tests/lib/test_strap_models.py::test_behavior_rejects[doc1] tests/lib/test_strap_models.py::test_behavior_rejects[doc2] tests/lib/test_strap_models.py::test_behavior_rejects[doc3] tests/lib/test_strap_models.py::test_behavior_rejects[doc4] tests/lib/test_strap_models.py::test_behavior_rejects[doc5] tests/lib/test_strap_models.py::test_behavior_rejects[doc6] tests/lib/test_strap_models.py::test_behavior_accepts_two_pressures_outside_discipline tests/lib/test_strap_models.py::test_behavior_dropped_iff_reason[over0-True] tests/lib/test_strap_models.py::test_behavior_dropped_iff_reason[over1-False] tests/lib/test_strap_models.py::test_behavior_dropped_iff_reason[over2-False] tests/lib/test_strap_models.py::test_behavior_dropped_iff_reason[over3-False] tests/lib/test_strap_models.py::test_run_recorded_sha_validator tests/lib/test_strap_models.py::test_run_tree_and_start_default_empty tests/lib/test_strap_models.py::test_run_accepts_tree_and_start tests/lib/test_strap_models.py::test_grade_rejects_blank_quote tests/lib/test_strap_models.py::test_spec_rejects_bad_name[Demo] tests/lib/test_strap_models.py::test_spec_rejects_bad_name[demo_skill] tests/lib/test_strap_models.py::test_spec_rejects_bad_name[-demo] tests/lib/test_strap_models.py::test_spec_rejects_bad_name[demo-] tests/lib/test_strap_models.py::test_spec_rejects_bad_name[demo--x] tests/lib/test_strap_models.py::test_spec_rejects_bad_name[] tests/lib/test_strap_models.py::test_spec_base_iff_edit tests/lib/test_strap_models.py::test_spec_referential_checks[over0] tests/lib/test_strap_models.py::test_spec_referential_checks[over1] tests/lib/test_strap_models.py::test_spec_referential_checks[over2] tests/lib/test_strap_models.py::test_spec_referential_checks[over3] tests/lib/test_strap_models.py::test_spec_referential_checks[over4] tests/lib/test_strap_models.py::test_spec_referential_checks[over5] tests/lib/test_strap_models.py::test_spec_accepts_known_references tests/lib/test_strap_models.py::test_driver_owned_tuples_derive_from_metadata tests/lib/test_strap_models.py::test_driver_digest_stable_and_self_excluding tests/lib/test_strap_models.py::test_driver_digest_sensitivity tests/lib/test_strap_models.py::test_dump_and_load_round_trip tests/lib/test_strap_models.py::test_load_spec_errors tests/lib/test_strap_models.py::test_schema_text_header"
       ]
     },
     {
@@ -720,8 +729,8 @@
       "dependencies": [
         "STR-1"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit 236e62c: 49 test node(s) passed",
       "model": "sonnet",
       "anchors": [],
       "tests": [
@@ -927,6 +936,11 @@
           "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/strap_runs.py",
           "expect": "All checks passed!"
         }
+      ],
+      "verification_references": [
+        "236e62c82928203a8bbf8535caae79da898706b4",
+        "tree 3d3454d00d2d9ce2175edc562d618587de2f32e1",
+        "python -m pytest -q tests/lib/test_strap_runs.py::test_content_hash_matches_formula tests/lib/test_strap_runs.py::test_content_hash_ignores_input_order tests/lib/test_strap_runs.py::test_content_hash_changes_with_one_byte tests/lib/test_strap_runs.py::test_content_hash_missing_file_uses_marker tests/lib/test_strap_runs.py::test_draw_scenario_is_seeded_choice_in_declared_order tests/lib/test_strap_runs.py::test_draw_scenario_never_returns_excluded tests/lib/test_strap_runs.py::test_draw_scenario_exhausted_pool_raises tests/lib/test_strap_runs.py::test_new_seed_is_32_bit_int tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[changed-hit] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[changed-miss] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[unchanged-hit] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[unchanged-miss] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[present-hit] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[present-miss] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[absent-hit] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[absent-miss] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[head] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[matches-hit] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[matches-miss] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[lacks-hit] tests/lib/test_strap_runs.py::test_evaluate_checks_holds_when_fact_equals_arm_expectation[lacks-miss] tests/lib/test_strap_runs.py::test_evaluate_checks_head_moved_breaks_head_unchanged tests/lib/test_strap_runs.py::test_evaluate_checks_indexes_follow_input_order tests/lib/test_strap_runs.py::test_quote_found_normalizes_whitespace[redirecting   there-True] tests/lib/test_strap_runs.py::test_quote_found_normalizes_whitespace[Decision belongs\\nto bubble-stamp-True] tests/lib/test_strap_runs.py::test_quote_found_normalizes_whitespace[  memo.\\n\\tDecision  -True] tests/lib/test_strap_runs.py::test_quote_found_normalizes_whitespace[redirecting elsewhere-False] tests/lib/test_strap_runs.py::test_item_matches_bool_and_grade tests/lib/test_strap_runs.py::test_baseline_failed_when_any_item_matches_baseline[False-present-False] tests/lib/test_strap_runs.py::test_baseline_failed_when_any_item_matches_baseline[True-present-True] tests/lib/test_strap_runs.py::test_baseline_failed_when_any_item_matches_baseline[False-absent-True] tests/lib/test_strap_runs.py::test_baseline_failed_ignores_other_runs_grades tests/lib/test_strap_runs.py::test_green_passed_requires_every_item[True-present-True] tests/lib/test_strap_runs.py::test_green_passed_requires_every_item[False-present-False] tests/lib/test_strap_runs.py::test_green_passed_requires_every_item[True-absent-False] tests/lib/test_strap_runs.py::test_green_passed_requires_every_item[True-unclear-False] tests/lib/test_strap_runs.py::test_green_passed_missing_grade_fails tests/lib/test_strap_runs.py::test_green_passed_needs_complete_check_results[none] tests/lib/test_strap_runs.py::test_green_passed_needs_complete_check_results[wrong_index] tests/lib/test_strap_runs.py::test_green_passed_needs_complete_check_results[extra_index] tests/lib/test_strap_runs.py::test_green_passed_judged_only_scenario tests/lib/test_strap_runs.py::test_baseline_failed_ignores_missing_results[present-False] tests/lib/test_strap_runs.py::test_baseline_failed_ignores_missing_results[absent-True] tests/lib/test_strap_runs.py::test_must_pass_failed_greens_without_retest tests/lib/test_strap_runs.py::test_must_pass_adds_latest_retest_draw tests/lib/test_strap_runs.py::test_must_pass_skips_void_retest_draw[void] tests/lib/test_strap_runs.py::test_must_pass_skips_void_retest_draw[failed] tests/lib/test_strap_runs.py::test_must_pass_skips_void_retest_draw[unrecorded] tests/lib/test_strap_runs.py::test_strap_runs_imports_only_strap_models_and_stdlib"
       ]
     },
     {
@@ -943,8 +957,8 @@
       "dependencies": [
         "STR-1"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit f3e5501: 48 test node(s) passed",
       "model": "sonnet",
       "anchors": [
         {
@@ -1159,6 +1173,11 @@
           "run": "python -m pytest tests/skills/test_c_msg_skill_contract.py tests/skills/test_bubble_memo_skill_contract.py tests/skills/test_branch_commit_msg_skill_contract.py tests/skills/test_skill_guidance_tail_contract.py -q",
           "expect": "passed, no failures"
         }
+      ],
+      "verification_references": [
+        "f3e5501c653200a5b23791e8a13e550c6fc6dcf2",
+        "tree 2637b2bc961e9ecbca7197ce896e8d7f2b02c881",
+        "python -m pytest -q tests/lib/test_strap_lint.py::test_skill_parts_parses_keys_and_body tests/lib/test_strap_lint.py::test_skill_parts_rejects_missing_frontmatter tests/lib/test_strap_lint.py::test_clean_invocable_skill_has_no_problems tests/lib/test_strap_lint.py::test_missing_skill_md_is_the_only_problem tests/lib/test_strap_lint.py::test_frontmatter_name_must_match_folder tests/lib/test_strap_lint.py::test_description_prefix_message_is_fixed tests/lib/test_strap_lint.py::test_description_rules[too-long] tests/lib/test_strap_lint.py::test_description_rules[you] tests/lib/test_strap_lint.py::test_description_rules[your] tests/lib/test_strap_lint.py::test_description_rules[we] tests/lib/test_strap_lint.py::test_description_rules[I] tests/lib/test_strap_lint.py::test_quoted_frontmatter_values_pass[single-quoted-description] tests/lib/test_strap_lint.py::test_quoted_frontmatter_values_pass[double-quoted-description] tests/lib/test_strap_lint.py::test_quoted_frontmatter_values_pass[double-quoted-name] tests/lib/test_strap_lint.py::test_mismatched_quotes_are_not_stripped tests/lib/test_strap_lint.py::test_missing_description_is_flagged tests/lib/test_strap_lint.py::test_is_invocable_classification[arguments-in-body] tests/lib/test_strap_lint.py::test_is_invocable_classification[hint-only] tests/lib/test_strap_lint.py::test_is_invocable_classification[neither] tests/lib/test_strap_lint.py::test_is_invocable_on_shipped_skill[pr-sum] tests/lib/test_strap_lint.py::test_is_invocable_on_shipped_skill[spatialist] tests/lib/test_strap_lint.py::test_invocable_argument_rules[hint-missing] tests/lib/test_strap_lint.py::test_invocable_argument_rules[hint-lacks-guidance] tests/lib/test_strap_lint.py::test_invocable_argument_rules[reference-missing] tests/lib/test_strap_lint.py::test_hint_only_skill_with_reference_is_clean tests/lib/test_strap_lint.py::test_hint_only_skill_lacking_reference_flagged tests/lib/test_strap_lint.py::test_fenced_arguments_line_is_flagged tests/lib/test_strap_lint.py::test_knowledge_skill_without_hint_is_clean tests/lib/test_strap_lint.py::test_unresolved_reference_is_flagged[script] tests/lib/test_strap_lint.py::test_unresolved_reference_is_flagged[skill] tests/lib/test_strap_lint.py::test_unresolved_reference_is_flagged[agent] tests/lib/test_strap_lint.py::test_unresolved_reference_is_flagged[harness-lib] tests/lib/test_strap_lint.py::test_named_harness_lib_module_resolves tests/lib/test_strap_lint.py::test_bare_interpreter_in_fence_is_flagged[python -m demo] tests/lib/test_strap_lint.py::test_bare_interpreter_in_fence_is_flagged[python3 -m demo] tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[Anthropic] tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[OpenAI] tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[ChatGPT] tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[Gemini] tests/lib/test_strap_lint.py::test_vendor_name_is_flagged[Claude] tests/lib/test_strap_lint.py::test_product_and_variable_spellings_pass tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[module-docstring] tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[inline-comment] tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[function-docstring] tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[line-comment] tests/lib/test_strap_lint.py::test_lint_python_flags_person_in_comments[class-docstring] tests/lib/test_strap_lint.py::test_lint_python_ignores_code_and_string_literals tests/lib/test_strap_lint.py::test_shipped_write_plan_skill_is_clean"
       ]
     },
     {
@@ -1174,8 +1193,8 @@
         "STR-1",
         "STR-2"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit b4db0ed: 41 test node(s) passed",
       "model": "opus",
       "anchors": [
         {
@@ -1354,6 +1373,11 @@
           "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/strap_api.py",
           "expect": "All checks passed!"
         }
+      ],
+      "verification_references": [
+        "b4db0ed75d464fd6f0e9c3d24727522f6cd514c7",
+        "tree 70db9aea43c6361e5d28b7fdbf864ad951bc94df",
+        "python -m pytest -q tests/lib/test_strap_api.py::test_spec_path_under_configured_plans tests/lib/test_strap_api.py::test_strap_error_is_value_error tests/lib/test_strap_api.py::test_factories_build_validated_models tests/lib/test_strap_api.py::test_factories_reject_invalid[judgment-no-type] tests/lib/test_strap_api.py::test_factories_reject_invalid[mechanical-with-type] tests/lib/test_strap_api.py::test_factories_reject_invalid[scenario-empty] tests/lib/test_strap_api.py::test_factories_reject_invalid[judged-unclear] tests/lib/test_strap_api.py::test_factories_reject_invalid[test-no-node] tests/lib/test_strap_api.py::test_add_behavior_assigns_b1_b2_and_writes tests/lib/test_strap_api.py::test_add_scenario_ids_unique_across_spec tests/lib/test_strap_api.py::test_update_behavior_changes_authored_field tests/lib/test_strap_api.py::test_update_behavior_refuses_driver_owned_field tests/lib/test_strap_api.py::test_update_behavior_refuses_frozen_spec tests/lib/test_strap_api.py::test_drop_behavior_sets_state_and_redigests tests/lib/test_strap_api.py::test_record_run_sets_reply_sha_and_redigests tests/lib/test_strap_api.py::test_record_run_refuses_recorded_run tests/lib/test_strap_api.py::test_grade_appends_with_normalized_quote tests/lib/test_strap_api.py::test_grade_refusals[unrecorded-run] tests/lib/test_strap_api.py::test_grade_refusals[item-past-end] tests/lib/test_strap_api.py::test_grade_refusals[item-negative] tests/lib/test_strap_api.py::test_grade_refusals[quote-missing] tests/lib/test_strap_api.py::test_grade_refusals[judge-on-session-spec] tests/lib/test_strap_api.py::test_grade_refuses_second_grade_of_item tests/lib/test_strap_api.py::test_judge_grade_accepted_on_judge_spec tests/lib/test_strap_api.py::test_hand_edited_draws_refused[add_behavior] tests/lib/test_strap_api.py::test_hand_edited_draws_refused[update_behavior] tests/lib/test_strap_api.py::test_hand_edited_draws_refused[record_run] tests/lib/test_strap_api.py::test_failed_operation_writes_nothing[update-breaks-behavior] tests/lib/test_strap_api.py::test_failed_operation_writes_nothing[add-unvalidated-behavior] tests/lib/test_strap_api.py::test_failed_operation_writes_nothing[scenario-unknown-behavior] tests/lib/test_strap_api.py::test_all_lists_exactly_the_api_names tests/lib/test_strap_api.py::test_all_omits_driver_names[record_run] tests/lib/test_strap_api.py::test_all_omits_driver_names[driver_digest] tests/lib/test_strap_api.py::test_all_omits_driver_names[dump_spec] tests/lib/test_strap_api.py::test_update_drawn_behavior_locked[scenarios] tests/lib/test_strap_api.py::test_update_drawn_behavior_locked[kind] tests/lib/test_strap_api.py::test_update_drawn_behavior_locked[type] tests/lib/test_strap_api.py::test_add_scenario_on_drawn_behavior tests/lib/test_strap_api.py::test_add_part_appends_and_writes tests/lib/test_strap_api.py::test_add_part_refuses_duplicate_path tests/lib/test_strap_api.py::test_session_grade_refused_on_judge_spec"
       ]
     },
     {
@@ -1368,8 +1392,8 @@
       "dependencies": [
         "STR-4"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit ed3093b: 7 test node(s) passed",
       "model": "sonnet",
       "anchors": [],
       "tests": [
@@ -1407,6 +1431,11 @@
           "run": "python -m ruff check --no-cache plugins/harness/scripts/skill_api.py",
           "expect": "All checks passed!"
         }
+      ],
+      "verification_references": [
+        "ed3093bce50bd0bb4c08b9cbc3571e900b8bbdf0",
+        "tree 2b9014140777c3136eed23cd7836f8aa26248de4",
+        "python -m pytest -q tests/scripts/test_skill_api.py::test_binds_every_all_name tests/scripts/test_skill_api.py::test_binds_name_and_execs_stdin tests/scripts/test_skill_api.py::test_record_run_unbound_is_name_error tests/scripts/test_skill_api.py::test_exception_becomes_problem_line tests/scripts/test_skill_api.py::test_refuses_module_without_all tests/scripts/test_skill_api.py::test_refusal_does_not_exec_stdin tests/scripts/test_skill_api.py::test_activates_project_config"
       ]
     },
     {
@@ -1424,8 +1453,8 @@
       "dependencies": [
         "STR-1"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit 8556677: 14 test node(s) passed",
       "model": "sonnet",
       "anchors": [
         {
@@ -1515,6 +1544,11 @@
           "run": "python -m ruff check --no-cache tools/gen_skillspec_schema.py",
           "expect": "All checks passed!"
         }
+      ],
+      "verification_references": [
+        "85566773b667dced890f4b220bb0ab8db814d41b",
+        "tree c66754600e9913883dbb5b35d9eb3d06d6ffe0e4",
+        "python -m pytest -q tests/schemas/test_skillspec_schema_drift.py::test_committed_schema_equals_schema_text tests/schemas/test_skillspec_schema_drift.py::test_schema_text_leads_with_draft_and_id tests/schemas/test_skillspec_schema_drift.py::test_committed_schema_id_names_its_location tests/schemas/test_skillspec_schema_drift.py::test_schema_text_is_indented_json_with_trailing_newline tests/schemas/test_skillspec_schema_drift.py::test_schema_text_is_meta_valid_draft_2020_12 tests/schemas/test_skillspec_schema_drift.py::test_schema_marks_driver_owned_top_fields tests/schemas/test_skillspec_schema_drift.py::test_dump_spec_validates_against_committed_schema tests/schemas/test_skillspec_schema_drift.py::test_committed_schema_rejects_invalid_document tests/schemas/test_skillspec_schema_drift.py::test_tool_check_exits_zero_for_in_sync_copy tests/schemas/test_skillspec_schema_drift.py::test_tool_check_accepts_crlf_checkout tests/schemas/test_skillspec_schema_drift.py::test_tool_check_exits_one_on_drift_and_leaves_file tests/schemas/test_skillspec_schema_drift.py::test_tool_check_exits_one_on_missing_file tests/schemas/test_skillspec_schema_drift.py::test_tool_writes_schema_text tests/schemas/test_skillspec_schema_drift.py::test_tool_check_defaults_to_committed_schema"
       ]
     },
     {
@@ -1535,8 +1569,8 @@
         "STR-4",
         "STR-4.1"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit de5df51: 26 test node(s) passed",
       "model": "opus",
       "anchors": [
         {
@@ -1655,6 +1689,11 @@
           "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/strap_scaffold.py",
           "expect": "All checks passed!"
         }
+      ],
+      "verification_references": [
+        "de5df51fa988583eb6b3d1c991834de0c352dc9e",
+        "tree 3f9720ea46f5e09cebdbeee111c6704d1f28e112",
+        "python -m pytest -q tests/lib/test_strap_scaffold.py::test_find_plugin_dir_returns_the_matching_manifest tests/lib/test_strap_scaffold.py::test_find_plugin_dir_skips_node_modules tests/lib/test_strap_scaffold.py::test_find_plugin_dir_skips_hidden_dirs[claude] tests/lib/test_strap_scaffold.py::test_find_plugin_dir_skips_hidden_dirs[dot] tests/lib/test_strap_scaffold.py::test_find_plugin_dir_skips_linked_worktrees tests/lib/test_strap_scaffold.py::test_find_plugin_dir_refuses_no_match tests/lib/test_strap_scaffold.py::test_find_plugin_dir_refuses_two_matches tests/lib/test_strap_scaffold.py::test_planned_parts_judgment_only_minimal tests/lib/test_strap_scaffold.py::test_planned_parts_mechanical_adds_models_and_api tests/lib/test_strap_scaffold.py::test_planned_parts_keeps_author_parts tests/lib/test_strap_scaffold.py::test_planned_parts_lists_a_present_part_once tests/lib/test_strap_scaffold.py::test_planned_parts_contract_under_first_root tests/lib/test_strap_scaffold.py::test_templates_ship_with_the_plugin tests/lib/test_strap_scaffold.py::test_render_parts_new_writes_every_planned_part tests/lib/test_strap_scaffold.py::test_render_parts_new_refusal_writes_nothing[skill_md] tests/lib/test_strap_scaffold.py::test_render_parts_new_refusal_writes_nothing[api] tests/lib/test_strap_scaffold.py::test_render_parts_new_refusal_writes_nothing[contract] tests/lib/test_strap_scaffold.py::test_render_parts_edit_writes_only_missing_parts tests/lib/test_strap_scaffold.py::test_rendered_skill_md_description_stub tests/lib/test_strap_scaffold.py::test_rendered_files_carry_the_title tests/lib/test_strap_scaffold.py::test_rendered_skill_md_lints_to_prefix_only tests/lib/test_strap_scaffold.py::test_rendered_skill_md_launches_skill_api tests/lib/test_strap_scaffold.py::test_rendered_api_module_defines_all tests/lib/test_strap_scaffold.py::test_rendered_python_passes_lint_python tests/lib/test_strap_scaffold.py::test_rendered_python_compiles tests/lib/test_strap_scaffold.py::test_rendered_files_carry_no_template_placeholder"
       ]
     },
     {
@@ -1673,8 +1712,8 @@
         "STR-4.1",
         "STR-6"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit b12c88f: 51 test node(s) passed",
       "model": "opus",
       "anchors": [
         {
@@ -1913,6 +1952,11 @@
           "run": "python -m ruff check --no-cache plugins/harness/scripts/strap.py",
           "expect": "All checks passed!"
         }
+      ],
+      "verification_references": [
+        "b12c88f41a7c4f521ef87d8bc36d10da34d8312c",
+        "tree 321d5bc9c4f89e7fba26cab9d963f86c5a30941b",
+        "python -m pytest -q tests/scripts/test_strap_driver.py::test_new_writes_the_spec_and_prints_the_done_line tests/scripts/test_strap_driver.py::test_new_on_an_existing_spec_resumes tests/scripts/test_strap_driver.py::test_new_edit_records_base_and_parts tests/scripts/test_strap_driver.py::test_new_refuses_an_existing_skill tests/scripts/test_strap_driver.py::test_new_edit_refuses_a_missing_skill tests/scripts/test_strap_driver.py::test_new_edit_records_the_given_base tests/scripts/test_strap_driver.py::test_new_edit_refuses_a_non_ancestor_base tests/scripts/test_strap_driver.py::test_new_refuses_a_judge_change_once_grades_exist tests/scripts/test_strap_driver.py::test_check_passes_a_sound_spec tests/scripts/test_strap_driver.py::test_check_lists_open_behavior_short_of_scenarios tests/scripts/test_strap_driver.py::test_check_refuses_hand_edited_driver_owned_field tests/scripts/test_strap_driver.py::test_check_refuses_a_non_canonical_file tests/scripts/test_strap_driver.py::test_check_refuses_a_role_without_an_agent_file tests/scripts/test_strap_driver.py::test_draw_refuses_a_behavior_with_one_scenario tests/scripts/test_strap_driver.py::test_draw_appends_one_initial_draw_never_redraws tests/scripts/test_strap_driver.py::test_run_refuses_no_draw_and_early_green tests/scripts/test_strap_driver.py::test_run_prints_the_runner_row_and_builds_the_tree tests/scripts/test_strap_driver.py::test_run_twice_before_record_reuses_the_run tests/scripts/test_strap_driver.py::test_run_refuses_second_recorded_run_same_arm tests/scripts/test_strap_driver.py::test_init_brief_ends_with_record_run tests/scripts/test_strap_driver.py::test_init_baseline_of_new_skill_omits_the_skill tests/scripts/test_strap_driver.py::test_init_green_carries_skill_with_abs_paths tests/scripts/test_strap_driver.py::test_init_includes_the_role_agent_body tests/scripts/test_strap_driver.py::test_record_run_stores_reply_and_drops_tree tests/scripts/test_strap_driver.py::test_retest_refuses_without_failed_green tests/scripts/test_strap_driver.py::test_freeze_refuses_a_behavior_that_never_ran tests/scripts/test_strap_driver.py::test_freeze_stamps_hash_and_grader tests/scripts/test_strap_driver.py::test_api_runs_stdin_code_with_name_bound tests/scripts/test_strap_driver.py::test_api_reports_refused_operation_as_problem tests/scripts/test_strap_driver.py::test_api_cannot_call_record_run tests/scripts/test_strap_gate.py::test_freeze_passes_on_failing_baseline_and_green tests/scripts/test_strap_gate.py::test_freeze_judge_spec_stamps_grader_judge tests/scripts/test_strap_gate.py::test_freeze_refuses_an_already_frozen_spec tests/scripts/test_strap_gate.py::test_freeze_refuses_a_part_change_after_green tests/scripts/test_strap_gate.py::test_freeze_refuses_an_unclear_grade tests/scripts/test_strap_gate.py::test_freeze_refuses_an_ungraded_judged_item tests/scripts/test_strap_gate.py::test_freeze_refuses_a_baseline_that_did_not_fail tests/scripts/test_strap_gate.py::test_freeze_refuses_short_or_undrawn[1] tests/scripts/test_strap_gate.py::test_freeze_refuses_short_or_undrawn[2] tests/scripts/test_strap_gate.py::test_run_and_freeze_refuse_no_skill_md_part tests/scripts/test_strap_gate.py::test_freeze_refuses_an_unrepassed_must_pass tests/scripts/test_strap_gate.py::test_red_records_state_red_on_mechanical tests/scripts/test_strap_gate.py::test_freeze_refuses_mechanical_red_not_recorded tests/scripts/test_strap_gate.py::test_freeze_refuses_failing_planned_tests tests/scripts/test_strap_gate.py::test_freeze_passes_a_mechanical_behavior tests/scripts/test_strap_gate.py::test_scaffold_prints_paths_bump_and_parts tests/scripts/test_strap_gate.py::test_judge_row_refused_on_a_non_judge_spec tests/scripts/test_strap_gate.py::test_judge_row_lists_ungraded_recorded_runs tests/scripts/test_strap_gate.py::test_retest_draws_anew_and_run_targets_failed tests/scripts/test_strap_gate.py::test_retest_refuses_an_exhausted_pool tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[strap new]"
       ]
     },
     {
@@ -1931,8 +1975,8 @@
       "dependencies": [
         "STR-7"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit 25d26a0: 18 test node(s) passed",
       "model": "sonnet",
       "anchors": [
         {
@@ -2031,6 +2075,11 @@
           "run": "claude plugin test plugins/pr-review-watch",
           "expect": "tests pass"
         }
+      ],
+      "verification_references": [
+        "25d26a02f6fdfa3c33552d3a36c2e1cee59ca3d6",
+        "tree 34bc6336f950668ce72870661c071816ac5e5392",
+        "python -m pytest -q tests/skills/test_strap_agents_contract.py::test_frontmatter_matches_the_contract[strap-scenario-runner] tests/skills/test_strap_agents_contract.py::test_frontmatter_matches_the_contract[strap-judge] tests/skills/test_strap_agents_contract.py::test_body_launches_the_driver_through_hpy[strap-scenario-runner] tests/skills/test_strap_agents_contract.py::test_body_launches_the_driver_through_hpy[strap-judge] tests/skills/test_strap_agents_contract.py::test_body_names_no_bare_agent_id[strap-scenario-runner] tests/skills/test_strap_agents_contract.py::test_body_names_no_bare_agent_id[strap-judge] tests/skills/test_strap_agents_contract.py::test_runner_inits_first_and_records_last tests/skills/test_strap_agents_contract.py::test_runner_command_carries_repo[init] tests/skills/test_strap_agents_contract.py::test_runner_command_carries_repo[record-run] tests/skills/test_strap_agents_contract.py::test_runner_records_exactly_one_run_by_heredoc tests/skills/test_strap_agents_contract.py::test_runner_works_only_inside_the_tree tests/skills/test_strap_agents_contract.py::test_runner_reply_is_the_printed_block_verbatim tests/skills/test_strap_agents_contract.py::test_runner_session_role_ends_at_agent_call tests/skills/test_strap_agents_contract.py::test_runner_states_stop_conditions tests/skills/test_strap_agents_contract.py::test_judge_grades_through_the_api_as_judge tests/skills/test_strap_agents_contract.py::test_judge_quotes_each_item_verbatim tests/skills/test_strap_agents_contract.py::test_judge_never_edits_files tests/contract/test_no_repo_literals.py::test_templates_are_scanned"
       ]
     },
     {
@@ -2048,8 +2097,8 @@
         "STR-7",
         "STR-8"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit c185829: 14 test node(s) passed",
       "model": "opus",
       "anchors": [
         {
@@ -2120,6 +2169,11 @@
           "run": "python -m ruff check --no-cache tests/lib/test_strap_models.py tests/lib/test_strap_runs.py tests/lib/test_strap_api.py tests/lib/test_strap_lint.py tests/lib/test_strap_scaffold.py tests/scripts/test_strap_driver.py tests/scripts/test_strap_gate.py tests/scripts/test_skill_api.py tests/schemas/test_skillspec_schema_drift.py tests/skills/test_strap_agents_contract.py tests/skills/test_strap_skills_skill_contract.py",
           "expect": "All checks passed!"
         }
+      ],
+      "verification_references": [
+        "c185829de330951b3858a7e30540523b52084efb",
+        "tree 38a5663373d5066a5c67d3de594cfe92fdfaef51",
+        "python -m pytest -q tests/skills/test_strap_skills_skill_contract.py::test_frontmatter_name_and_description tests/skills/test_strap_skills_skill_contract.py::test_argument_hint_is_the_contract_hint tests/skills/test_strap_skills_skill_contract.py::test_split_rule_cited_and_no_fenced_raw_arguments tests/skills/test_strap_skills_skill_contract.py::test_every_strap_command_goes_through_the_launcher tests/skills/test_strap_skills_skill_contract.py::test_every_driver_subcommand_is_named tests/skills/test_strap_skills_skill_contract.py::test_both_agents_dispatched_with_an_explicit_model tests/skills/test_strap_skills_skill_contract.py::test_exactly_one_api_heredoc tests/skills/test_strap_skills_skill_contract.py::test_a_judgment_table tests/skills/test_strap_skills_skill_contract.py::test_lint_skill_finds_no_problem tests/skills/test_strap_skills_skill_contract.py::test_scaffold_template_ships[skill_md.tmpl] tests/skills/test_strap_skills_skill_contract.py::test_scaffold_template_ships[models.tmpl] tests/skills/test_strap_skills_skill_contract.py::test_scaffold_template_ships[api.tmpl] tests/skills/test_strap_skills_skill_contract.py::test_scaffold_template_ships[contract_test.tmpl] tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified"
       ]
     },
     {
@@ -2135,8 +2189,8 @@
       "dependencies": [
         "STR-9"
       ],
-      "status": "PENDING",
-      "evidence": "",
+      "status": "COMPLETE",
+      "evidence": "commit c121a4d",
       "model": "haiku",
       "anchors": [
         {
@@ -2154,6 +2208,10 @@
           "run": "python -m pytest tests/skills/test_strap_skills_skill_contract.py -q",
           "expect": "passed, no failures (run by hand; STR-10 has no test nodes)"
         }
+      ],
+      "verification_references": [
+        "c121a4d4864159486aeff2aa45741bab2fa65c4c",
+        "tree 0b04e10625c9b0c7d2416351ba14fcb16e59c078"
       ]
     },
     {
