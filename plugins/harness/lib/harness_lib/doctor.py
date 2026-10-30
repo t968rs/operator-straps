@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
+import json
 import os
 import shutil
 import sys
@@ -57,8 +58,37 @@ def _same_interpreter(configured: str) -> bool:
     return os.path.normcase(os.path.realpath(resolved)) == os.path.normcase(os.path.realpath(sys.executable))
 
 
-def check_interpreter(environ: Mapping[str, str]) -> Check:
-    """Which override, if any, picked the running interpreter; a set override ``hpy`` skipped is a warning."""
+def configured_python(settings: Path) -> Optional[str]:
+    """The harness plugin's ``python`` option as recorded in the user settings file, if any."""
+    try:
+        data = json.loads(settings.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    configs = data.get("pluginConfigs") if isinstance(data, dict) else None
+    for key, entry in (configs.items() if isinstance(configs, dict) else ()):
+        options = entry.get("options") if key.startswith("harness@") and isinstance(entry, dict) else None
+        value = options.get("python") if isinstance(options, dict) else None
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _unexported_option(configured: str) -> Check:
+    """The ``python`` option is set in user settings, yet the shell ``hpy`` ran in does not carry it."""
+    return Check(WARN, "interpreter",
+                 f"the harness python option is {configured} in user settings, but this shell does not "
+                 f"export it; hpy fell back to {sys.executable}",
+                 'set HARNESS_PY to that interpreter under "env" in the project\'s '
+                 ".claude/settings.local.json (one project, kept out of git) or in ~/.claude/settings.json "
+                 "(every project); the python option is not exported to the shell skill commands run in")
+
+
+def check_interpreter(environ: Mapping[str, str], configured: Optional[str] = None) -> Check:
+    """Which override, if any, picked the running interpreter; a set override ``hpy`` skipped is a warning.
+
+    ``configured`` is the ``python`` option from the user settings: when it names another interpreter and no
+    override variable reached the shell, ``hpy`` ignored it, which is a warning too.
+    """
     skipped: List[str] = []
     for var in INTERPRETER_VARS:
         value = environ.get(var)
@@ -77,6 +107,8 @@ def check_interpreter(environ: Mapping[str, str]) -> Check:
                      f"{', '.join(skipped)} did not start; hpy fell through to {sys.executable}",
                      "point HARNESS_PY (project settings env) or the harness python option at a working "
                      "interpreter")
+    if configured and not _same_interpreter(configured):
+        return _unexported_option(configured)
     return Check(OK, "interpreter", f"{sys.executable} (PATH fallback; set HARNESS_PY to pin one)")
 
 
@@ -162,9 +194,10 @@ def check_project(start: Path) -> List[Check]:
 
 def run_checks(start: Path, environ: Mapping[str, str]) -> List[Check]:
     """Every check, in the order the report lists them."""
+    settings = Path(environ.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "settings.json"
     return [
         check_python(),
-        check_interpreter(environ),
+        check_interpreter(environ, configured_python(settings)),
         check_modules(),
         check_tool("git", FAIL, "every harness skill needs it"),
         check_tool("gh", WARN, "pr-review, pr-team and pr-sum need it"),
