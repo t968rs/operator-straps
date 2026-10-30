@@ -18,6 +18,10 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `pr-review-watch`, `todo-watch` and `bubble-stamp` have one).
   `session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead, checked by
   `tests/mods/test_session_bookmark_notes_contract.py`.
+  The four places are not a cost to weigh against the key. A setting a driver can read and act on belongs in a
+  config key and the driver, never in skill prose the agent must remember to follow; the key is the cheaper
+  path, and the touch list above is its checklist. Do not trim a feature to a "document only" version to
+  avoid it.
 - **Drivers activate, library code reads.** Scripts, hooks and skill commands call
   `activate(load_config(project_root(...)))` once; library modules read `active()` inside functions, never at
   import time. Hooks resolve the project from the payload `cwd`.
