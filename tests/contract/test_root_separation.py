@@ -152,6 +152,7 @@ CASES = {
     "d-w": lambda r, t: (["skills/d-w/commands/new_worktree.py", "--repo", str(r), "--root",
                           str(t / "trees")], None),
     "a-w": lambda r, t: (_attach_args(r, t), None),
+    "doctor": lambda r, t: (["skills/doctor/commands/doctor.py", "--repo", str(r)], None),
     "session rules hook": lambda r, t: (["hooks/session_rules.py"], {"cwd": str(r), "source": "startup"}),
     "schema hook": lambda r, t: (["hooks/validate_pr_json_schema.py"], _review_payload(r)),
     "stop hook": lambda r, t: (["hooks/check_phase5_sentinel.py"], {"cwd": str(r), "session_id": "s"}),
