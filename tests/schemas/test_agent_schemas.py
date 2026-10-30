@@ -13,9 +13,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 import jsonschema
-import pytest
 import referencing
-import referencing.exceptions
 
 from conftest import FIXTURES
 from harness_lib.config import HarnessConfig, activate, load_config
@@ -77,6 +75,11 @@ def validate_issue_location(entry: dict) -> Tuple[Optional[str], bool]:
     return (None, True)
 
 
+def _nullable(prop: Dict[str, Any]) -> bool:
+    """True when a generated property admits ``null`` (an ``anyOf`` with a null branch)."""
+    return any(branch.get("type") == "null" for branch in prop.get("anyOf", []))
+
+
 def _issue_entries(report: Dict[str, Any]) -> Iterator[dict]:
     issues = report.get("issues", {})
     buckets = issues.values() if isinstance(issues, dict) else [issues]
@@ -90,26 +93,27 @@ def _issue_entries(report: Dict[str, Any]) -> Iterator[dict]:
 # ---------------------------------------------------------------------------
 
 def test_schema_files_exist(plugin_root: Path) -> None:
-    """The canonical review, plan and PR-attribute schemas ship with the plugin."""
-    for name in ("PR_REVIEW.schema.json", "ActionPlan.schema.json", "prAttributes.schema.json"):
+    """The canonical review and plan schemas ship with the plugin."""
+    for name in ("PR_REVIEW.schema.json", "ActionPlan.schema.json"):
         assert (plugin_root / "schemas" / name).is_file(), f"{name} missing from the plugin schemas"
 
 
 def test_action_plan_schema_documents_json_markdown_split(make_project) -> None:
-    """ActionPlan schema includes fields for verification references + markdown linkage."""
+    """The generated ActionPlan schema has fields for verification references + markdown linkage."""
     schema = load_schema("ActionPlan.schema.json", activate(load_config(make_project())))
     top_props = schema.get("properties", {})
-    item_props = schema.get("definitions", {}).get("action_item", {}).get("properties", {})
+    item_props = schema.get("$defs", {}).get("ActionItem", {}).get("properties", {})
     assert "markdown_sync_status" in top_props
     assert "markdown_last_updated" in top_props
     assert "verification_references" in item_props
     assert "markdown_section" in item_props
-    assert set(top_props["markdown_sync_status"]["enum"]) == {"pending_markdown_sync", "in_sync", None}
+    assert schema["$defs"]["MarkdownSync"]["enum"] == ["pending_markdown_sync", "in_sync"]
+    assert _nullable(top_props["markdown_sync_status"])
     assert top_props["markdown_last_updated"]["format"] == "date"
-    assert set(top_props["markdown_last_updated"]["type"]) == {"string", "null"}
+    assert _nullable(top_props["markdown_last_updated"])
     assert item_props["verification_references"]["type"] == "array"
     assert item_props["verification_references"]["items"]["type"] == "string"
-    assert set(item_props["markdown_section"]["type"]) == {"string", "null"}
+    assert _nullable(item_props["markdown_section"])
 
 
 def test_pip_template_documents_json_markdown_contract(plugin_root: Path) -> None:
@@ -142,24 +146,23 @@ def test_sample_review_validates(make_project) -> None:
 
 
 def test_sample_action_plan_validates(make_project) -> None:
-    """The sample plan validates against ActionPlan.schema.json, prAttributes ref included."""
+    """The sample plan validates against ActionPlan.schema.json."""
     cfg = _project_cfg(make_project)
     files = _plan_files(cfg)
     assert [p.name for p in files] == [_PLAN_SAMPLE]
     assert [v for v in (_violation(p, "ActionPlan.schema.json", cfg) for p in files) if v] == []
 
 
-def test_sample_action_plan_exercises_the_sibling_ref(make_project) -> None:
-    """Non-vacuity guard: the sample's ``pr_attributes`` cannot validate without the sibling registry."""
+def test_action_plan_schema_is_self_contained(make_project) -> None:
+    """The generated schema refers to no sibling file: an empty registry validates the sample."""
     cfg = activate(load_config(make_project()))
     schema = load_schema("ActionPlan.schema.json", cfg)
     validator = jsonschema.validators.validator_for(schema)(schema, registry=referencing.Registry())
-    with pytest.raises(referencing.exceptions.Unresolvable, match="prAttributes.schema.json"):
-        validator.validate(_sample(_PLAN_SAMPLE))
+    validator.validate(_sample(_PLAN_SAMPLE))
 
 
-def test_plan_sibling_ref_violation_is_reported(make_project) -> None:
-    """A ``pr_attributes`` entry missing ``pr`` is caught through the resolved prAttributes schema."""
+def test_pr_attributes_violation_is_reported(make_project) -> None:
+    """A ``pr_attributes`` entry missing ``pr`` is caught through the generated PrAttributes definition."""
     broken = dict(_sample(_PLAN_SAMPLE), plan_id="0002", pr_attributes=[{"bogus": 1}])
     cfg = _project_cfg(make_project, {"docs/PLANS/0002_broken_ActionPlan.json": broken})
     violations = [v for v in (_violation(p, "ActionPlan.schema.json", cfg) for p in _plan_files(cfg)) if v]

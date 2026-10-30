@@ -23,17 +23,18 @@ from harness_lib.validation.artifact_names import (
 )
 from harness_lib.validation.schema_registry import load_schema, schema_names, schema_registry
 
-_VALID_PLAN = {
-    "plan_id": "0001",
-    "plan_created": "2026-04-15",
-    "execution_model": "serial",
-    "pr_attributes": [{"pr": 1, "branch": "feature/x", "base_branch": "main"}],
-    "items": [{"id": "TST-1", "title": "t", "action": "noop", "status": "PENDING", "evidence": ""}],
-}
+# A pinned pair with a bare-filename sibling ref: the plugin ships none any more, so the registry is
+# exercised with schemas a project pins.
+_PARENT = {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object",
+           "properties": {"entries": {"type": "array", "items": {"$ref": "Child.schema.json"}}}}
+_CHILD = {"$schema": "https://json-schema.org/draft/2020-12/schema", "type": "object", "required": ["pr"]}
+_PINNED = {".claude/agent-schemas/Parent.schema.json": _PARENT,
+           ".claude/agent-schemas/Child.schema.json": _CHILD}
+_GOOD, _BAD = {"entries": [{"pr": 1}]}, {"entries": [{"bogus": 1}]}
 
 
-def _plan_validator(cfg, registry: referencing.Registry):
-    schema = load_schema("ActionPlan.schema.json", cfg)
+def _parent_validator(cfg, registry: referencing.Registry):
+    schema = load_schema("Parent.schema.json", cfg)
     return jsonschema.validators.validator_for(schema)(schema, registry=registry)
 
 
@@ -88,35 +89,33 @@ def test_schema_names_cover_plugin_and_pinned(make_project) -> None:
     root = make_project(files={".claude/agent-schemas/Extra.schema.json": {"type": "object"}})
     cfg = activate(load_config(root))
     names = schema_names(cfg)
-    assert {"ActionPlan.schema.json", "prAttributes.schema.json", "PR_REVIEW.schema.json"} <= set(names)
+    assert {"ActionPlan.schema.json", "PR_REVIEW.schema.json"} <= set(names)
+    assert "prAttributes.schema.json" not in names
     assert "Extra.schema.json" in names
 
 
-def test_registry_resolves_action_plan_sibling_ref(make_project) -> None:
-    """ActionPlan's bare-filename ``$ref`` to prAttributes resolves through the registry."""
-    cfg = activate(load_config(make_project()))
-    _plan_validator(cfg, schema_registry(cfg)).validate(_VALID_PLAN)
+def test_registry_resolves_a_bare_filename_sibling_ref(make_project) -> None:
+    """A schema's bare-filename ``$ref`` to a sibling resolves through the registry."""
+    cfg = activate(load_config(make_project(files=_PINNED)))
+    _parent_validator(cfg, schema_registry(cfg)).validate(_GOOD)
 
 
-def test_valid_plan_reaches_the_sibling_ref(make_project) -> None:
-    """Non-vacuity guard: without the registry the plan's ``pr_attributes`` ref is unresolvable."""
-    cfg = activate(load_config(make_project()))
-    with pytest.raises(referencing.exceptions.Unresolvable, match="prAttributes.schema.json"):
-        _plan_validator(cfg, referencing.Registry()).validate(_VALID_PLAN)
+def test_a_sibling_ref_is_unresolvable_without_the_registry(make_project) -> None:
+    """Non-vacuity guard: without the registry the parent's ref cannot be resolved."""
+    cfg = activate(load_config(make_project(files=_PINNED)))
+    with pytest.raises(referencing.exceptions.Unresolvable, match="Child.schema.json"):
+        _parent_validator(cfg, referencing.Registry()).validate(_GOOD)
 
 
 def test_registry_enforces_sibling_schema_rules(make_project) -> None:
-    """A ``pr_attributes`` entry missing its required keys fails through the resolved sibling schema."""
-    cfg = activate(load_config(make_project()))
-    bad = dict(_VALID_PLAN, pr_attributes=[{"bogus": 1}])
+    """An entry missing its required keys fails through the resolved sibling schema."""
+    cfg = activate(load_config(make_project(files=_PINNED)))
     with pytest.raises(jsonschema.ValidationError, match="'pr' is a required property"):
-        _plan_validator(cfg, schema_registry(cfg)).validate(bad)
+        _parent_validator(cfg, schema_registry(cfg)).validate(_BAD)
 
 
 def test_registry_serves_pinned_sibling(make_project) -> None:
-    """A pinned sibling replaces the plugin copy inside the registry."""
-    pinned = {"type": "object", "title": "pinned prAttributes"}
-    root = make_project(files={".claude/agent-schemas/prAttributes.schema.json": pinned})
+    """A pinned sibling is what the registry resolves for its bare filename."""
+    root = make_project(files=_PINNED)
     cfg = activate(load_config(root))
-    resolved = schema_registry(cfg).contents("prAttributes.schema.json")
-    assert resolved == pinned
+    assert schema_registry(cfg).contents("Child.schema.json") == _CHILD

@@ -143,7 +143,25 @@ def _strap_new_args(root: Path) -> List[str]:
     return ["scripts/strap.py", "--repo", str(root), "new", "demo-skill"]
 
 
+def _plan_api_args(root: Path, tmp: Path) -> List[str]:
+    """A script that loads and writes a plan through ``plan_api``, as a heredoc would."""
+    fixture = REPO_ROOT / "tests" / "fixtures" / "plan_models" / "0001_Minimal_ActionPlan.json"
+    target = root / "docs" / "PLANS" / fixture.name
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(fixture.read_text(encoding="utf-8"), encoding="utf-8")
+    script = tmp / "plan_api_write.py"
+    script.write_text("\n".join([
+        "import sys", f"sys.path.insert(0, {str(PLUGIN_ROOT / 'lib')!r})", "from harness_lib import plan_api",
+        f"plan = plan_api.load('0001', repo={str(root)!r})",
+        f"plan_api.write(plan.model_copy(update={{'execution_model': 'parallel'}}, deep=True), "
+        f"repo={str(root)!r})", ""]), encoding="utf-8")
+    return [str(script)]
+
+
 CASES = {
+    "plan new": lambda r, t: (["scripts/plan.py", "--repo", str(r), "new", "Root separation", "--no-fetch"],
+                              None),
+    "plan_api write": lambda r, t: (_plan_api_args(r, t), None),
     "parallel2 plan": lambda r, t: (_parallel2_plan_args(r, t), None),
     "todo_sync check": lambda r, t: (_todo_args(r, "check"), None),
     "todo_sync render": lambda r, t: (_todo_args(r, "render", "--date", "2026-10-21"), None),
@@ -174,7 +192,7 @@ CASES = {
 }
 
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
-MUST_EXIT_ZERO = frozenset({"strap new"})
+MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))

@@ -96,8 +96,8 @@ def test_hook_fires_on_invalid_plan(make_project) -> None:
     assert "plan_id" in result.stderr
 
 
-def test_hook_enforces_sibling_pr_attributes_schema(make_project) -> None:
-    """A bad ``pr_attributes`` entry fails through the resolved prAttributes ref, never as a setup error."""
+def test_hook_enforces_the_pr_attributes_definition(make_project) -> None:
+    """A bad ``pr_attributes`` entry fails through the schema's own PrAttributes definition."""
     project = make_project()
     bad = _write(project / "docs" / "PLANS" / "0001_ActionPlan.json",
                  dict(_VALID_PLAN, pr_attributes=[{"bogus": 1}]))
