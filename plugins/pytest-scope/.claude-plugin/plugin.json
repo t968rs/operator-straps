@@ -1,6 +1,6 @@
 {
   "name": "pytest-scope",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Routes bare pytest through the project interpreter and requires a test file or node-id per pytest run",
   "author": {
     "name": "Kevin Gabelman"

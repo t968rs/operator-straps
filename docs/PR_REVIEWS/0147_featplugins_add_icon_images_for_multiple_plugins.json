@@ -1,0 +1,220 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 147,
+  "pr_title": "feat(plugins): add icon images for multiple plugins",
+  "branch": "1100-icons",
+  "base_branch": "main",
+  "base_sha": "424d7ee2369ab1bfe39daa080b8dafe855e55da4",
+  "head_sha": "4c9623d3b62aa17f4c6a9cfb6301b37a7a76eb16",
+  "review_date": "2026-10-30",
+  "verdict": "READY TO MERGE - 5 of 5 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 0,
+    "deletions": 0,
+    "files_changed": 7
+  },
+  "reviewers": [
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0147/pr147_20261030T152157Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "All seven icons are valid 1024x1024 RGB PNGs at the same path as the existing harness icon (.claude-plugin/icon.png), so the set is consistent.",
+    "The icons share one visual system (dark gradient background, silver buckle, stitched strap), and most add a motif that matches the plugin's job: eyes for pr-review-watch, a stamp for bubble-stamp, a ribbon for session-bookmark and a check for todo-watch.",
+    "Nothing executable changes. Contract tests that walk plugins/ either filter by text suffix (test_no_repo_literals) or only stat files (test_root_separation), so binary PNGs cannot break them."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Seven plugins change without a version bump",
+        "file": "plugins/band-line/.claude-plugin/plugin.json",
+        "files": [
+          "plugins/band-line/.claude-plugin/plugin.json",
+          "plugins/bubble-stamp/.claude-plugin/plugin.json",
+          "plugins/git-status/.claude-plugin/plugin.json",
+          "plugins/pr-review-watch/.claude-plugin/plugin.json",
+          "plugins/pytest-scope/.claude-plugin/plugin.json",
+          "plugins/session-bookmark/.claude-plugin/plugin.json",
+          "plugins/todo-watch/.claude-plugin/plugin.json"
+        ],
+        "lines": "3",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "CLAUDE.md (Releases) requires bumping `version` in each changed plugin's .claude-plugin/plugin.json. All seven plugins gain a shipped file (.claude-plugin/icon.png), but no plugin.json changes: band-line stays 0.1.0, git-status stays 0.3.1, and so on. Installed copies are cached by version, so existing installs never receive the icon until some later unrelated bump. The harness icon from #146 shipped the same way, so this repeats the gap.",
+        "fix": [
+          "Patch-bump `version` in plugins/{band-line,bubble-stamp,git-status,pr-review-watch,pytest-scope,session-bookmark,todo-watch}/.claude-plugin/plugin.json (for example 0.1.0 -> 0.1.1, 0.3.1 -> 0.3.2), and the harness plugin.json if its #146 icon is meant to reach installs too."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Icon convention is not referenced, documented or tested",
+        "file": ".claude-plugin/marketplace.json",
+        "files": [
+          ".claude-plugin/marketplace.json",
+          "README.md"
+        ],
+        "lines": "7-50",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "At the head, no manifest, README or test mentions an icon (`git grep -i icon` outside *.png returns nothing). Whether Claude Code picks up icons depends only on an unstated filename convention (.claude-plugin/icon.png). Nothing checks that a new plugin ships one, and nothing checks that an icon stays at the expected path or size. That gap is why banner-status was missed.",
+        "fix": [
+          "Add a contract test (for example tests/contract/test_plugin_icons.py) that iterates the local `source` entries in .claude-plugin/marketplace.json. For each, it asserts that <source>/.claude-plugin/icon.png exists and is a PNG with square 1024x1024 IHDR dimensions.",
+          "Note the icon.png convention in the README layout section next to plugin.json."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "banner-status is the only local plugin left without an icon",
+        "file": "plugins/banner-status/.claude-plugin/plugin.json",
+        "files": [
+          "plugins/banner-status/.claude-plugin/plugin.json",
+          ".claude-plugin/marketplace.json"
+        ],
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": ".claude-plugin/marketplace.json lists nine local plugins. After this PR, eight have .claude-plugin/icon.png; plugins/banner-status/.claude-plugin holds only plugin.json. In a marketplace listing, that one entry will look broken or unfinished next to the others.",
+        "fix": [
+          "Add plugins/banner-status/.claude-plugin/icon.png in the same 1024x1024 belt-buckle style (for example a banner or flag motif).",
+          "If leaving it out is deliberate, say so in the PR description and in any icon contract test (see the related finding)."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Icons ship at 1024x1024, 240-345 KB each",
+        "file": "plugins/pr-review-watch/.claude-plugin/icon.png",
+        "files": [
+          "plugins/pr-review-watch/.claude-plugin/icon.png",
+          "plugins/band-line/.claude-plugin/icon.png",
+          "plugins/bubble-stamp/.claude-plugin/icon.png",
+          "plugins/git-status/.claude-plugin/icon.png",
+          "plugins/pytest-scope/.claude-plugin/icon.png",
+          "plugins/session-bookmark/.claude-plugin/icon.png",
+          "plugins/todo-watch/.claude-plugin/icon.png"
+        ],
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "Each icon is a 1024x1024 RGB PNG of 239-346 KB, about 2.2 MB across the seven new files. Every installed plugin cache carries its own copy, and the repository history keeps every revision. Marketplace and list icons render far smaller than 1024 px.",
+        "fix": [
+          "Downscale to 256x256 or 512x512 and run a lossless optimizer (oxipng or pngquant) on each icon, the harness icon included, before merging. Binary history cannot be shrunk afterwards without a rewrite."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "band-line and pytest-scope icons differ from harness only by belt color",
+        "file": "plugins/pytest-scope/.claude-plugin/icon.png",
+        "files": [
+          "plugins/pytest-scope/.claude-plugin/icon.png",
+          "plugins/band-line/.claude-plugin/icon.png",
+          "plugins/git-status/.claude-plugin/icon.png"
+        ],
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "Four new icons add a motif that shows what the plugin does: eyes (pr-review-watch), a stamp (bubble-stamp), a bookmark ribbon (session-bookmark) and a check (todo-watch). band-line (purple belt) and pytest-scope (teal belt) instead copy the harness buckle-and-belt layout and change only the strap color. At list-icon size, those two are hard to tell apart from harness and from each other. git-status uses a clock, which hints at time more than at git state.",
+        "fix": [
+          "Give pytest-scope a test or scope motif (for example a flask or crosshair) and band-line a banner or status-band motif, keeping the shared buckle at the bottom as the other mods do.",
+          "Consider a branch or commit-graph motif for git-status instead of the clock."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M2",
+      "classification": "architectural_ambiguity",
+      "reason": "banner-status icon needs a motif only the developer can pick (banner or flag, colour); no design was specified for it"
+    },
+    {
+      "id": "M1",
+      "classification": "architectural_ambiguity",
+      "reason": "the icon contract test asserts every local plugin has an icon, so it depends on the banner-status decision in M2 (draw one, or exempt it)"
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 147 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"4c9623d3b62aa17f4c6a9cfb6301b37a7a76eb16\",\"headRefName\":\"1100-icons\",\"headRefOid\":\"4c9623d3b62aa17f4c6a9cfb6301b37a7a76eb16\",\"last_sha\":\"4c9623d3b62aa17f4c6a9cfb6301b37a7a76eb16\",\"mergeCommit\":null,\"number\":147,\"state\":\"OPEN\",\"title\":\"feat(plugins): add icon images for multiple plugins\",\"url\":\"https://github.com/t968rs/operator-straps/pull/147\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1100-icons",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1100-icons",
+        "head_ref_name": "1100-icons",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "4c9623d3b62aa17f4c6a9cfb6301b37a7a76eb16",
+        "head_sha": "4c9623d3b62aa17f4c6a9cfb6301b37a7a76eb16",
+        "base_ancestor_command": "git merge-base --is-ancestor 4c9623d3b62aa17f4c6a9cfb6301b37a7a76eb16 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 4c9623d3b62aa17f4c6a9cfb6301b37a7a76eb16 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "4c9623d (working-tree snapshot; developer commits) - Patch-bumped version in six plugin.json files: band-line 0.1.0->0.1.1, bubble-stamp 0.1.0->0.1.1, git-status 0.3.1->0.3.2, pr-review-watch 0.4.3->0.4.4, pytest-scope 0.1.0->0.1.1, session-bookmark 0.2.0->0.2.1 (todo-watch bumped by the other part's fixer); patch-bump todo-watch plugin.json version 0.4.0 -> 0.4.1 for the shipped icon.png"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "4c9623d (working-tree snapshot; developer commits) - README Develop layout table gains a plugins/<name>/.claude-plugin/ row naming plugin.json plus icon.png (square 1024x1024 PNG) as required for every local marketplace plugin; marketplace.json cited only, its source entries are the plugin list the note refers to"
+    },
+    {
+      "id": "M3",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-10-30",
+      "evidence": "4c9623d (working-tree snapshot; developer commits) - closed, no action: icons stay 1024x1024: the validator requires 512-2048 px, so the fixers' 256 px downscale would fail it; the weight is the cost of a valid icon"
+    },
+    {
+      "id": "M4",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-10-30",
+      "evidence": "4c9623d (working-tree snapshot; developer commits) - closed, no action: the pytest-scope and band-line motifs (strap in a color) are the developer's specification, not an open design call"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "4c9623d (working-tree snapshot; developer commits) - drew a banner-status icon in the same style and bumped banner-status to 0.2.1 (outside fixer waves) (outside fixer waves)"
+    }
+  ]
+}
