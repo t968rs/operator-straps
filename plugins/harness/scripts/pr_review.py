@@ -685,7 +685,8 @@ def lens_section(ctx: BriefContext, slot: rp.Slot) -> str:
 def ownership_clause() -> str:
     """The reviewer ownership rule naming the project's review directory."""
     reviews = active().artifacts.reviews.rstrip("/")
-    return (f"Record findings only through `record`; never write under `{reviews}/`; "
+    return (f"Record findings only through the draft file and `record_draft` (or `record_add`); "
+            f"never write under `{reviews}/`; "
             f"reply with the printed block only.")
 
 
@@ -735,7 +736,7 @@ def _draft_json(ctx: BriefContext, agent: str, lists: Sequence[Tuple[str, Sequen
 
 
 def record_section(ctx: BriefContext, slot: rp.Slot) -> str:
-    """The draft file, the exact ``record_draft`` heredoc, the ``record_add`` option and the reply rule."""
+    """The draft file, the ``record_draft`` and ``record_add`` heredocs and the reply rule."""
     tail = f'repo=Path(r"{ctx.repo}"), run_id="{ctx.run_id}")'
     example = ('{"severity": "important", "name": "...", "summary": "...", "fix": ["..."],'
                ' "file": "src/pkg/x.py", "lines": "12-18", "also": [], "fix_kind": "mechanical"},',)
@@ -745,9 +746,11 @@ def record_section(ctx: BriefContext, slot: rp.Slot) -> str:
                       "Then run this once from any directory; a rerun replaces the report. An error names "
                       "the failing finding index.", "", "```bash",
                       record_heredoc(ctx, f'record_draft({ctx.pr}, "{slot.id}", {tail}'), "```", "",
-                      "To record in pieces instead, run the same heredoc with the lists filled inline and "
-                      f"this call, a few findings per call: `{add}`. Each call appends (an identical item is "
-                      "skipped); `record_draft` replaces everything.", "", TOO_LONG_RULE, "",
+                      "To record in pieces instead (no Write, or no draft), run this heredoc with a few "
+                      "findings filled into `FINDINGS` and `STRENGTHS` per call (the commented lines show "
+                      "each item's shape). Each call appends (an identical item is skipped); `record_draft` "
+                      "replaces everything.", "", "```bash", record_heredoc(ctx, add, lists), "```", "",
+                      TOO_LONG_RULE, "",
                       "Reply with the block the last record call prints, verbatim, and nothing else."])
 
 
@@ -1770,10 +1773,10 @@ def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[
         issue = issues[str(issue_id)]
         lines += _issue_block(issue, fixer_part(fixer, issue))
     call = f'record_fixes_draft({ctx.pr}, "{agent}", repo=Path(r"{ctx.repo}"), run_id="{ctx.run_id}")'
-    fixed = '{"id": "M2", "what": "one line: what changed", "files": ["src/pkg/x.py"]},'
-    cited = '{"id": "M2", "what": "cited only: why no edit", "no_change": ["src/pkg/y.py"]},'
+    fixed = ('{"id": "M2", "what": "one line: what changed; cited files: why no edit", '
+             '"files": ["src/pkg/x.py"], "no_change": ["src/pkg/y.py"]},')
     bubbled = '{"id": "I3", "classification": "architectural_ambiguity", "reason": "one line"},'
-    lists = (("FIXED", (fixed, cited)), ("BUBBLED", (bubbled,)))
+    lists = (("FIXED", (fixed,)), ("BUBBLED", (bubbled,)))
     lines += _tests_block(ctx, files, entries, deferred) + [""] + _fixer_rules()
     lines += ["", "## Record (once)", "", *_draft_json(ctx, agent, lists), "", "Then run this once:", "",
               "```bash", record_heredoc(ctx, call), "```", "", TOO_LONG_RULE]

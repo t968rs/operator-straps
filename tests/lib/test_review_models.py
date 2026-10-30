@@ -1,7 +1,8 @@
 """Behavioral tests for harness_lib.review_models (pr-review findings, fix reports and the recording API).
 
 Covers each model validator (pass and fail), severity coercion, repo path normalization, the run directory
-helpers, the ``record`` / ``record_fixes`` writers with their printed return blocks, and the optional
+helpers, the ``record`` / ``record_fixes`` writers with their printed return blocks, the draft-file recorders
+(``draft_path``, ``record_draft``, ``record_fixes_draft``) and the appending ``record_add``, and the optional
 ``fix_kind`` enum on ``PR_REVIEW.schema.json``'s issue definition.
 """
 from __future__ import annotations
@@ -321,8 +322,10 @@ def _write_draft(path: Path, data: object) -> None:
 
 class TestRecordDraft:
     def test_draft_path_sits_in_the_run(self, run_repo: Path) -> None:
+        rm.start_run(_PR, _OTHER_RUN, repo=run_repo)
         path = rm.draft_path(_PR, "runtime", repo=run_repo, run_id=_RUN_ID)
         assert path == rm.run_dir(_PR, run_repo, _RUN_ID) / "drafts" / "runtime.json"
+        assert path != rm.run_dir(_PR, run_repo) / "drafts" / "runtime.json"
 
     def test_record_draft_round_trips(self, run_repo: Path, capsys: pytest.CaptureFixture) -> None:
         draft = rm.draft_path(_PR, "docs", repo=run_repo)
@@ -360,8 +363,11 @@ class TestRecordDraft:
         data = {"fixed": [{"id": "M2", "what": "w", "files": ["a.py"]}],
                 "bubbled": [{"id": "C1", "classification": "architectural_ambiguity", "reason": "r"}]}
         _write_draft(rm.draft_path(_PR, "w1_fix_1", repo=run_repo, run_id=_RUN_ID), data)
+        rm.start_run(_PR, _OTHER_RUN, repo=run_repo)
         block = rm.record_fixes_draft(_PR, "w1_fix_1", repo=run_repo, run_id=_RUN_ID)
         assert "FIXED: M2" in block.splitlines() and "BUBBLED: C1" in block.splitlines()
+        assert (rm.run_dir(_PR, run_repo, _RUN_ID) / "fixes" / "w1_fix_1.json").is_file()
+        assert not (rm.run_dir(_PR, run_repo) / "fixes").exists()
 
 
 class TestRecordAdd:
@@ -388,6 +394,16 @@ class TestRecordAdd:
         rm.record_add(_PR, "runtime", [_finding()], ["s1"], repo=run_repo)
         report = self._report(run_repo)
         assert len(report.findings) == 1 and report.strengths == ("s1",)
+
+    def test_in_call_duplicates_skipped(self, run_repo: Path) -> None:
+        rm.record_add(_PR, "runtime", [_finding(), _finding()], ["s1", "s1"], repo=run_repo)
+        report = self._report(run_repo)
+        assert len(report.findings) == 1 and report.strengths == ("s1",)
+
+    def test_whitespace_variant_strength_skipped(self, run_repo: Path) -> None:
+        rm.record_add(_PR, "runtime", [], ["s1"], repo=run_repo)
+        rm.record_add(_PR, "runtime", [], ["s1 ", " s1"], repo=run_repo)
+        assert self._report(run_repo).strengths == ("s1",)
 
     def test_bad_finding_leaves_file_unchanged(self, run_repo: Path) -> None:
         rm.record_add(_PR, "runtime", [_finding()], repo=run_repo)

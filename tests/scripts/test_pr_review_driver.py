@@ -503,8 +503,8 @@ class TestBriefs:
                                                pr_repo: Tuple[Path, str]) -> None:
         clone, head = pr_repo
         _capture(script, monkeypatch, clone, head)
-        ownership = ("Record findings only through `record`; never write under `docs/PR_REVIEWS/`; "
-                     "reply with the printed block only")
+        ownership = ("Record findings only through the draft file and `record_draft` (or `record_add`); "
+                     "never write under `docs/PR_REVIEWS/`; reply with the printed block only")
         for slot in ("runtime", "tests", "docs", "overall"):
             assert ownership in _brief(clone, slot)
         clause = _normalized(script.TEST_DESIGN_CLAUSE)
@@ -577,6 +577,23 @@ class TestBriefs:
         assert 'record_add(1234, "runtime", FINDINGS, STRENGTHS' in brief
         assert "unexpected EOF while looking for matching" in brief
         assert "too long for the shell tool" in brief
+
+    def test_record_add_heredoc_runs_with_lists_filled(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, pr_repo: Tuple[Path, str],
+            tmp_path: Path) -> None:
+        clone, head = pr_repo
+        _capture(script, monkeypatch, clone, head)
+        run = rm.run_dir(_PR, clone)
+        pattern = r"sh \"[^\"\n]*/scripts/hpy\" - <<'EOF'\n(.*?)\nEOF\n"
+        body = next(b for b in re.findall(pattern, _brief(clone, "runtime"), re.S) if "record_add(" in b)
+        body = body.replace("FINDINGS = [\n", f"FINDINGS = [\n    {_finding('src/pkg/a.py')!r},\n", 1)
+        body = body.replace("STRENGTHS = [\n", "STRENGTHS = [\n    's',\n", 1)
+        rm.start_run(_PR, "pr1234_20990101T000000Z", clone)
+        result = subprocess.run([sys.executable, "-"], input=body, cwd=tmp_path, capture_output=True,
+                                text=True, check=False)
+        assert result.returncode == 0, result.stderr
+        assert "COUNTS: findings=1 critical=0 important=0 minor=1" in result.stdout
+        assert rm.load_report(run / "findings" / "runtime.json").strengths == ("s",)
 
 
 class TestMergeAndAmend:

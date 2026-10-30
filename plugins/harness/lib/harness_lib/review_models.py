@@ -1,7 +1,9 @@
-"""pr-review findings and fix reports: pydantic models, the run directory and the one-call recording API.
+"""pr-review findings and fix reports: pydantic models, the run directory and the recording API.
 
-Reviewers call ``record`` and fixers call ``record_fixes`` exactly once, from the heredoc their brief carries.
-Each call validates every item before writing anything, replaces the agent's report under the run directory
+Reviewers record through ``record_draft`` (or ``record``) and fixers through ``record_fixes_draft`` (or
+``record_fixes``), normally once, from the heredoc their brief carries. ``record_add`` is the exception: it
+appends to a reviewer's report across several calls. Each replacing call validates every item before writing
+anything, replaces the agent's report under the run directory
 (``<project>/<artifacts.scratch>/<NNNN>/<RUN_ID>/``, named by the ``run_id`` argument, else by ``current``),
 and prints the agent's return-contract block (the pr-team skill's ``return_contract.md``), UTF-8 safe on any
 console encoding. Agents never choose issue ids; ids are assigned when ``harness_lib.review_merge`` merges
@@ -514,7 +516,7 @@ def draft_path(pr: int, agent: str, repo: Optional[Path] = None, run_id: Optiona
 def _read_draft(path: Path, keys: Tuple[str, str]) -> Dict[str, list]:
     """The draft at ``path`` as ``{key: list}`` for each of ``keys`` (missing keys read as empty lists)."""
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except FileNotFoundError as exc:
         raise ValueError(f"no draft at {path}: write it first") from exc
     except json.JSONDecodeError as exc:
@@ -554,8 +556,8 @@ def record_add(pr: int, reviewer: str, findings: Sequence[Mapping[str, object]] 
     added = _validate_items(Finding, findings, "finding", root)
     path, _ = _report_path(pr, "findings", reviewer, root, run_id)
     old = load_report(path) if path.is_file() else ReviewerReport(reviewer=reviewer)
-    merged = list(old.findings) + [f for f in added if f not in old.findings]
-    kept = list(old.strengths) + [s for s in dict.fromkeys(strengths) if s not in old.strengths]
+    merged = list(dict.fromkeys([*old.findings, *added]))
+    kept = list(dict.fromkeys([*old.strengths, *(s.strip() if isinstance(s, str) else s for s in strengths)]))
     return record(pr, reviewer, [f.model_dump(mode="json") for f in merged], kept, repo=repo, run_id=run_id)
 
 

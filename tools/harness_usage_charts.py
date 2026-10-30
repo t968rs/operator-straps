@@ -1,4 +1,4 @@
-"""Draw the README usage charts from the pr-review JSONL ledgers under ``docs/_harness/``.
+"""Draw the harness usage charts from the pr-review JSONL ledgers under ``docs/_harness/``.
 
 Usage: harness_usage_charts.py [--data-dir DIR] [--out-dir DIR]
 
@@ -22,7 +22,7 @@ import math
 import re
 from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Sequence, Tuple
+from typing import Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,7 +40,10 @@ DARK = {"bg": "#1a1a19", "border": "#383835", "t1": "#f0efec", "t2": "#c3c2b7", 
 
 
 def read_jsonl(path: Path, skipped: Counter) -> Iterator[dict]:
-    """Yield each parsable object row; count non-blank unparsable lines under ``skipped``."""
+    """Yield each parsable object row; count unparsable lines and a missing file under ``skipped``."""
+    if not path.is_file():
+        skipped[f"{path.name}: file missing"] += 1
+        return
     for line in path.read_text(encoding="utf-8").splitlines():
         if not line.strip():
             continue
@@ -70,7 +73,8 @@ def matrix_role(row: dict) -> Optional[str]:
     return match.group(1) if match else None
 
 
-def tally_families(rows: List[dict], role_of, label: str, skipped: Counter) -> Dict[str, Counter]:
+def tally_families(rows: List[dict], role_of: Callable[[dict], Optional[str]], label: str,
+                   skipped: Counter) -> Dict[str, Counter]:
     """Count model families per role; rows lacking a role or a family are counted as skipped."""
     out: Dict[str, Counter] = defaultdict(Counter)
     for row in rows:
@@ -227,7 +231,7 @@ def bar_axis(x0: float, x1: float, top: float, bottom: float, axis_max: float, s
 def bar_row(role: str, n: int, avg: float, y: float, x0: float, scale: float) -> List[str]:
     """Category label with its dispatch count, the bar, and the value at the bar end."""
     w = max(avg * scale, 1.0)
-    tip = f"<title>{role}: mean {avg:,.0f} tokens over {n} dispatches</title>"
+    tip = f"<title>{escape(role)}: mean {avg:,.0f} tokens over {n} dispatches</title>"
     return [
         f'<text class="t1" x="{x0 - 12}" y="{y + 9}" font-size="13.5" text-anchor="end" '
         f'fill="{LIGHT["t1"]}">{escape(role)}</text>',
@@ -259,6 +263,7 @@ def bar_svg(stats: Dict[str, Tuple[int, float]], source: str) -> str:
 
 
 def write(path: Path, text: str) -> None:
+    """Write one SVG with LF endings, creating its folder, and print its size."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(text, encoding="utf-8", newline="\n")
     print(f"wrote {path} ({path.stat().st_size} bytes)")
@@ -279,6 +284,7 @@ def print_summary(usage: Dict[str, Counter], matrix: Dict[str, Counter],
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
+    """Read both ledgers, write every chart and print the per-role summary."""
     parser = argparse.ArgumentParser(prog="harness_usage_charts.py", description=__doc__.splitlines()[0])
     parser.add_argument("--data-dir", type=Path, default=ROOT / "docs" / "_harness")
     parser.add_argument("--out-dir", type=Path, default=None, help="Default: <data-dir>/charts")
@@ -296,7 +302,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     for role, counts in matrix.items():
         label = f"{role} (test matrix)"
         write(out_dir / f"model_share_matrix_{role}.svg", pie_svg(label, counts, MATRIX_FILE, "rows"))
-    write(out_dir / "avg_tokens_by_role.svg", bar_svg(stats, USAGE_FILE))
+    if stats and max(avg for _, avg in stats.values()) > 0:
+        write(out_dir / "avg_tokens_by_role.svg", bar_svg(stats, USAGE_FILE))
+    else:
+        print("skipped avg_tokens_by_role.svg: no role with a positive mean token count")
     print_summary(usage, matrix, stats, skipped)
     return 0
 
