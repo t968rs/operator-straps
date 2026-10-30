@@ -37,7 +37,7 @@ An interim bridge is allowed: a renamed fork in the marketplace lets references 
 
 ## 3. Land the change
 
-- **Cut the worktree from the branch that receives it.** Before the attach, `git log --oneline <target>..<worktree base sha>` must print nothing. When the base branch was squash-merged since the cut, `harness:a-w` re-applies the old commits and conflicts on them. Recovery: `git -C <main> reset --hard` (only when the main checkout was clean before the attach), cut a new worktree from the current `HEAD`, `git apply --3way` the saved diff, resolve, `git add`, attach again.
+- **Cut the worktree from the branch that receives it** when possible. `harness:a-w` measures only the worktree's own changes from its cut commit, so a cut from another branch, or from a base since squash-merged, still attaches; conflicts arise only on paths the worktree and the target both changed. Expect those when the cut base differs, and resolve them in the target.
 - **Version** is the target branch's current plugin version plus a patch, never the worktree's. A `marketplace.json` conflict keeps both sides.
 - Run the contract tests by file, every test that enumerates skills, and `claude plugin validate --strict` on the root and the changed plugin.
 
@@ -57,6 +57,5 @@ This edits live configuration for every project, so it waits for the merged chan
 |---|---|
 | "Rename everything that matches" | History and fixtures are not live; the path convention is a data move. |
 | "Uninstall first, then fix references" | References then name skills that do not exist. |
-| "The worktree is fresh enough" | Check `<target>..<base>`; a squash merge in between turns the attach into conflicts. |
 | "A project-scope uninstall from here will do" | It targets the current directory's project only. |
 | "Nothing in code uses it" | Hard prose references are gates; deleting the plugin breaks them. |

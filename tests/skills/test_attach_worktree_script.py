@@ -180,6 +180,55 @@ def test_staged_moves_a_rename(script_path: Path, repos: dict) -> None:
     assert (main / "renamed.txt").read_text(encoding="utf-8") == "one\ntwo\nthree\n"
 
 
+def _cut_from_foreign_commit(repos: dict, squashed: bool) -> None:
+    """Recut ``wt`` from a commit on branch ``other`` that ``feature`` never held.
+
+    ``other`` adds ``foreign.txt``. With ``squashed`` the target gains its own commit with the same file, the
+    way a squash merge leaves a branch's content under a new sha.
+    """
+    main, wt = repos["main"], repos["wt"]
+    _git(main, "worktree", "remove", "--force", str(wt))
+    _git(main, "switch", "-q", "-c", "other")
+    foreign = _commit(main, "foreign.txt", "foreign\n", "foreign work")
+    _git(main, "switch", "-q", "feature")
+    if squashed:
+        _commit(main, "foreign.txt", "foreign\n", "squashed foreign work")
+    _git(main, "worktree", "add", "--quiet", "--detach", str(wt), foreign)
+
+
+@pytest.mark.parametrize("squashed", [False, True])
+def test_staged_carries_only_the_worktrees_own_changes_from_a_foreign_cut(script_path: Path, repos: dict,
+                                                                         squashed: bool) -> None:
+    _cut_from_foreign_commit(repos, squashed)
+    wt, main = repos["wt"], repos["main"]
+    (wt / "mine.txt").write_text("mine\n", encoding="utf-8")
+    moved = _git(main, "rev-parse", "HEAD")
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    assert _git(main, "rev-parse", "HEAD") == moved
+    assert _staged(main) == ["mine.txt"]
+    assert (main / "foreign.txt").exists() is squashed
+    assert not wt.exists()
+
+
+def test_staged_from_a_foreign_cut_with_no_edits_has_nothing_to_move(script_path: Path,
+                                                                    repos: dict) -> None:
+    _cut_from_foreign_commit(repos, squashed=False)
+    done = _attach(script_path, repos)
+    assert done.returncode == 1
+    assert "nothing to move" in done.stderr
+    assert repos["wt"].exists()
+
+
+def test_staged_without_a_reflog_falls_back_to_the_merge_base(script_path: Path, repos: dict) -> None:
+    wt, main = repos["wt"], repos["main"]
+    _commit(wt, "a.txt", "a")
+    (Path(_git(wt, "rev-parse", "--absolute-git-dir")) / "logs" / "HEAD").unlink()
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    assert _staged(main) == ["a.txt"]
+
+
 def test_a_target_branch_checked_out_in_the_worktree_itself_is_refused(script_path: Path,
                                                                        repos: dict) -> None:
     _git(repos["wt"], "switch", "-q", "-c", "side")

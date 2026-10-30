@@ -28,7 +28,7 @@ branch then.
 
 | Mode | What lands on the target |
 |---|---|
-| default | The worktree's commits, edits and new files, **staged and uncommitted**. The combined diff from the merge base is applied three-way, so commits the target gained since the cut are merged, never reverted. |
+| default | The worktree's commits, edits and new files, **staged and uncommitted**. Only what the worktree changed since it was cut is measured (from its cut commit, not from the merge base with the target) and applied three-way, so commits the target gained since the cut are merged, never reverted, and history the cut commit carried that the target lacks stays behind. Conflicts arise only on paths both sides changed. |
 | `--committed` | The worktree's own commits, fast-forwarded onto the target with their messages and grouping kept. Refuses uncommitted worktree changes (untracked files included), a worktree with no commits beyond the target, and a target that moved since the cut; none of these changes anything. |
 
 - Default to staged mode. `--committed` puts agent-made commits on the target branch, so it runs only when the

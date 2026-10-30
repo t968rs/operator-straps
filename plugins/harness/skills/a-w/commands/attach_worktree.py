@@ -8,8 +8,10 @@ both are given. The literal ``HEAD`` stands for the branch checked out in the ma
 defaults to the current directory, which must be a linked worktree.
 
 Default mode stages the worktree's committed, edited and new files on the target as an uncommitted change: the
-combined diff from the merge base is applied three-way, so commits the target gained since the worktree was
-cut are merged and never reverted. ``--committed`` instead fast-forwards the target to the worktree's commits
+combined diff from the commit the worktree was cut from (the oldest entry of its HEAD reflog, else the merge
+base with the target) is applied three-way. Only paths the worktree changed are touched, so commits the target
+gained since the cut are merged and never reverted, and history the cut commit carried that the target lacks
+stays behind. ``--committed`` instead fast-forwards the target to the worktree's commits
 and keeps their structure; it refuses uncommitted worktree changes and a target that moved since the cut.
 
 The worktree is removed once the move succeeds. Files its ignore rules match never move and are discarded with
@@ -156,12 +158,31 @@ def conflict_message(conflicts: List[str], worktree: Path, target: Path) -> str:
             "before the move)")
 
 
+def cut_point(worktree: Path, head: str) -> Optional[str]:
+    """The commit the worktree was cut from: the oldest entry of its HEAD reflog, while still behind HEAD."""
+    done = run_git(worktree, "reflog", "show", "--format=%H", "HEAD")
+    shas = done.stdout.decode("utf-8", errors="replace").split() if done.returncode == 0 else []
+    if not shas:
+        return None
+    ancestor = run_git(worktree, "merge-base", "--is-ancestor", shas[-1], head)
+    return shas[-1] if ancestor.returncode == 0 else None
+
+
+def patch_base(worktree: Path, target: Path) -> str:
+    """The commit the worktree's own changes are measured from.
+
+    The cut point, so the patch holds only what the worktree changed even when the target never held the
+    commit the worktree was cut from. Without a usable reflog, the merge base with the target.
+    """
+    head = git(worktree, "rev-parse", "HEAD")
+    return cut_point(worktree, head) or git(worktree, "merge-base", head, git(target, "rev-parse", "HEAD"))
+
+
 def move_staged(worktree: Path, target: Path, branch: str) -> List[str]:
     """Apply the worktree's changes three-way onto ``target``'s index; return the report lines."""
-    base = git(worktree, "merge-base", git(worktree, "rev-parse", "HEAD"), git(target, "rev-parse", "HEAD"))
-    patch, count = worktree_patch(worktree, base)
+    patch, count = worktree_patch(worktree, patch_base(worktree, target))
     if not patch.strip():
-        raise AttachError("nothing to move: the worktree matches the target branch")
+        raise AttachError("nothing to move: the worktree has no changes since it was cut")
     done = run_git(target, "apply", "--3way", "--whitespace=nowarn", stdin=patch)
     conflicts = unmerged(target)
     if conflicts:
