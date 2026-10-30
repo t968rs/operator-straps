@@ -5,7 +5,9 @@
     "session-bookmark@operator-straps": true,
     "git-status@operator-straps": true,
     "pytest-scope@operator-straps": true,
-    "todo-watch@operator-straps": true
+    "todo-watch@operator-straps": true,
+    "bubble-stamp@operator-straps": true,
+    "superpowers-lt@operator-straps": true
   },
   "extraKnownMarketplaces": {
     "operator-straps": {
