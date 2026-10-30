@@ -1,0 +1,14 @@
+{
+  "plan_id": "0001",
+  "plan_created": "2026-10-29",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "MN-1",
+      "title": "t",
+      "action": "a",
+      "status": "PENDING",
+      "evidence": "e"
+    }
+  ]
+}

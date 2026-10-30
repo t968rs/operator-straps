@@ -7,26 +7,34 @@ import pytest
 
 from harness_lib import parallel_lanes as pl
 from harness_lib import plan_lanes as pln
+from harness_lib.plan_enums import ItemStatus, ModelName
+from harness_lib.plan_models import ActionItem, ActionPlan, PlannedTest
 
 
 def item(ident: str, files: List[str], deps: Optional[List[str]] = None, status: str = "PENDING",
-         **extra: Any) -> Dict[str, Any]:
-    raw: Dict[str, Any] = {
-        "id": ident, "title": f"do {ident}", "status": status, "files": files, "dependencies": deps,
+         **extra: Any) -> ActionItem:
+    """An item built without validation: the lane tests use ids ('A', 'TASK_1') the models would reject."""
+    fields: Dict[str, Any] = {
+        "id": ident, "title": f"do {ident}", "status": ItemStatus(status), "files": files,
+        "dependencies": deps,
     }
-    raw.update(extra)
-    return raw
+    fields.update(extra)
+    if "tests" in fields:
+        fields["tests"] = [PlannedTest.model_construct(**test) for test in fields["tests"]]
+    if "model" in fields:
+        fields["model"] = ModelName(fields["model"])
+    return ActionItem.model_construct(**fields)
 
 
-def plan(*items: Dict[str, Any]) -> Dict[str, Any]:
-    return {"plan_id": "0007", "base_commit": "0" * 40, "items": list(items)}
+def plan(*items: ActionItem) -> ActionPlan:
+    return ActionPlan.model_construct(plan_id="0007", base_commit="0" * 40, items=list(items))
 
 
 def waves(result: Dict[str, Any]) -> Dict[str, int]:
     return {lane["id"]: lane["wave"] for lane in result["lanes"]}
 
 
-def problems_of(data: Dict[str, Any]) -> List[str]:
+def problems_of(data: ActionPlan) -> List[str]:
     with pytest.raises(pln.LanesError) as caught:
         pln.lanes_plan(data, "feat-x")
     return caught.value.problems
@@ -49,7 +57,7 @@ def test_lane_fields_come_from_the_item() -> None:
 
 
 def test_model_defaults_to_sonnet() -> None:
-    result = pln.lanes_plan(plan(item("A", ["a.py"]), item("B", ["b.py"], model=None)), "t")
+    result = pln.lanes_plan(plan(item("A", ["a.py"]), item("B", ["b.py"])), "t")
     assert [lane["model"] for lane in result["lanes"]] == ["sonnet", "sonnet"]
 
 

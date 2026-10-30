@@ -2,12 +2,13 @@
 from __future__ import annotations
 
 import copy
+import json
 from pathlib import Path
 from typing import Any, Dict
 
 import pytest
 from harness_lib import plan_doc as pd
-from harness_lib.config import activate, load_config
+from harness_lib.plan_models import ActionPlan
 
 
 def sample_plan() -> Dict[str, Any]:
@@ -65,16 +66,15 @@ def test_planned_tests_live_under_the_plan_id(tmp_path: Path) -> None:
     assert pd.planned_tests_dir(tmp_path, "0003") == tmp_path / "0003" / "tests"
 
 
-def test_a_v2_plan_validates(make_project) -> None:
-    cfg = activate(load_config(make_project({})))
-    assert pd.schema_problems(sample_plan(), cfg) == []
+def test_a_v2_plan_validates() -> None:
+    assert pd.schema_problems(sample_plan()) == []
+    assert isinstance(pd.validate_plan(sample_plan()), ActionPlan)
 
 
-def test_a_malformed_anchor_is_a_schema_problem(make_project) -> None:
-    cfg = activate(load_config(make_project({})))
+def test_a_malformed_anchor_is_a_schema_problem() -> None:
     plan = sample_plan()
     plan["items"][0]["anchors"][0]["at"] = "src/a.py"
-    problems = pd.schema_problems(plan, cfg)
+    problems = pd.schema_problems(plan)
     assert len(problems) == 1 and problems[0].startswith("schema: items/0/anchors/0/at:")
 
 
@@ -83,22 +83,23 @@ def test_digest_ignores_status_and_evidence() -> None:
     moved = copy.deepcopy(plan)
     moved["items"][0].update(status="COMPLETE", evidence="done", verification_references=["b" * 40])
     moved["completed"] = "2026-10-29"
-    assert pd.frozen_digest(plan) == pd.frozen_digest(moved)
+    assert pd.frozen_digest(pd.validate_plan(plan)) == pd.frozen_digest(pd.validate_plan(moved))
 
 
 def test_digest_changes_when_a_fixed_field_changes() -> None:
     plan = sample_plan()
     edited = copy.deepcopy(plan)
     edited["items"][0]["anchors"][0]["expect"] = "def write"
-    assert pd.frozen_digest(plan) != pd.frozen_digest(edited)
+    assert pd.frozen_digest(pd.validate_plan(plan)) != pd.frozen_digest(pd.validate_plan(edited))
 
 
 def test_dump_round_trips_and_ends_with_a_newline() -> None:
-    text = pd.dump_plan(sample_plan())
+    text = pd.dump_plan(pd.validate_plan(sample_plan()))
     assert text.endswith("}\n")
-    assert pd.parse_plan(text, "x.json") == sample_plan()
+    assert json.loads(text) == sample_plan()
+    assert pd.parse_plan(text, "x.json") == pd.validate_plan(sample_plan())
 
 
 def test_item_lookup_names_an_unknown_item() -> None:
     with pytest.raises(pd.PlanError, match="no item TASK-9"):
-        pd.item_by_id(sample_plan(), "TASK-9")
+        pd.item_by_id(pd.validate_plan(sample_plan()), "TASK-9")

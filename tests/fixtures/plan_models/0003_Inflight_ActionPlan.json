@@ -1,0 +1,90 @@
+{
+  "plan_id": "0003",
+  "plan_created": "2026-10-29",
+  "execution_model": "serial",
+  "source_document": "docs/specs/inflight.md",
+  "documentation": "docs/plans/0003_Inflight_PIP.md",
+  "branch": "work",
+  "base_branch": "main",
+  "base_commit": "0123456789abcdef0123456789abcdef01234567",
+  "frozen": {
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "tree": "fedcba9876543210fedcba9876543210fedcba98",
+    "date": "2026-10-29",
+    "digest": "abababababababababababababababababababababababababababababababab"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Keep it?",
+      "chosen": "keep",
+      "rationale": null,
+      "options": [
+        {
+          "id": "keep",
+          "summary": "keep"
+        },
+        {
+          "id": "drop",
+          "summary": "drop"
+        }
+      ]
+    }
+  ],
+  "values": [],
+  "formats": [],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "OLD",
+      "hits": {
+        "src/old.py": "frozen"
+      }
+    }
+  ],
+  "items": [
+    {
+      "id": "IN-1",
+      "title": "Done",
+      "action": "Finished work.",
+      "files": [
+        "src/old.py"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 0123456",
+      "verification_references": [
+        "0123456789abcdef0123456789abcdef01234567",
+        "tree fedcba9876543210fedcba9876543210fedcba98"
+      ],
+      "commands": [
+        {
+          "run": "git diff {base} --stat",
+          "expect": "one file"
+        }
+      ]
+    },
+    {
+      "id": "IN-2",
+      "title": "Waiting",
+      "action": "Blocked work.",
+      "dependencies": [
+        "IN-1"
+      ],
+      "status": "BLOCKED",
+      "evidence": "needs the developer",
+      "tests": [
+        {
+          "node": "tests/test_b.py::test_b",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "IN-3",
+      "title": "Closed",
+      "action": "Dropped work.",
+      "status": "CLOSED_NO_ACTION",
+      "evidence": "superseded"
+    }
+  ]
+}

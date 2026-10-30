@@ -5,6 +5,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from harness_lib import plan_checks as pc
+from harness_lib.plan_doc import validate_plan
+from harness_lib.plan_models import ActionPlan
 
 FILES = {
     "src/a.py": "def read(path):\n    return open(path).read()\n\n\ndef write(path, text):\n    pass\n",
@@ -20,8 +22,10 @@ def item(**extra: Any) -> Dict[str, Any]:
     return raw
 
 
-def plan(*items: Dict[str, Any], **top: Any) -> Dict[str, Any]:
-    return {"plan_id": "0001", "items": list(items) or [item()], **top}
+def plan(*items: Dict[str, Any], **top: Any) -> ActionPlan:
+    raw = {"plan_id": "0001", "plan_created": "2026-10-29", "execution_model": "serial",
+           "items": list(items) or [item()], **top}
+    return validate_plan(raw)
 
 
 def decision(chosen: Any = "split") -> Dict[str, Any]:
@@ -31,7 +35,7 @@ def decision(chosen: Any = "split") -> Dict[str, Any]:
 
 # --- anchors ----------------------------------------------------------------------------------------------
 
-def anchor_plan(at: str, expect: str) -> Dict[str, Any]:
+def anchor_plan(at: str, expect: str) -> ActionPlan:
     return plan(item(anchors=[{"at": at, "expect": expect}]))
 
 
@@ -73,7 +77,7 @@ def test_a_format_source_is_checked_as_an_anchor(make_project) -> None:
 
 # --- lint -------------------------------------------------------------------------------------------------
 
-def lint(p: Dict[str, Any], root: Path) -> List[str]:
+def lint(p: ActionPlan, root: Path) -> List[str]:
     return pc.lint_problems(p, root, root / "docs" / "PLANS")
 
 
@@ -167,7 +171,7 @@ def test_open_decisions_are_listed_with_their_question() -> None:
 
 # --- sweeps -----------------------------------------------------------------------------------------------
 
-def sweep_plan(hits: Dict[str, str]) -> Dict[str, Any]:
+def sweep_plan(hits: Dict[str, str]) -> ActionPlan:
     return plan(sweeps=[{"id": "S1", "pattern": "OLD_NAME|old_name", "hits": hits}])
 
 

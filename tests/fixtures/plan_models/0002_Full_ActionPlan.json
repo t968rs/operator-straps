@@ -1,0 +1,183 @@
+{
+  "plan_id": "0002",
+  "plan_created": "2026-10-29T08:30:00",
+  "completed": null,
+  "source_document": "docs/specs/full.md",
+  "documentation": null,
+  "branch": "feature-x",
+  "base_branch": "main",
+  "execution_model": "parallel (2 worktrees)",
+  "markdown_sync_status": "in_sync",
+  "markdown_last_updated": "2026-10-30",
+  "context": {
+    "project": "fixture",
+    "owner": "nobody",
+    "deadline": null,
+    "tags": [
+      "a",
+      "b"
+    ],
+    "team": "extra in context"
+  },
+  "pr_attributes": [
+    {
+      "pr": 12,
+      "review_doc": "docs/PR_REVIEWS/0012_x.json",
+      "branch": "feature-x",
+      "base_branch": "main",
+      "pip_document": "docs/PLANS/0002_Full_PIP.md",
+      "merged_at": null,
+      "label": "extra in pr"
+    },
+    {
+      "pr": "draft-1",
+      "branch": "feature-y",
+      "base_branch": "main"
+    }
+  ],
+  "items": [
+    {
+      "id": "FX-1",
+      "priority": "important",
+      "category": "code",
+      "worktree": "A",
+      "title": "First | piped",
+      "action": "Do the first thing.",
+      "files": [
+        "src/a.py"
+      ],
+      "dependencies": null,
+      "status": "COMPLETE",
+      "evidence": "commit 0123456: 1 test node(s) passed",
+      "verification_references": [
+        "0123456789abcdef0123456789abcdef01234567",
+        "tree fedcba9876543210fedcba9876543210fedcba98",
+        "python -m pytest -q tests/test_a.py::test_a"
+      ],
+      "markdown_section": "FX-1",
+      "notes": null,
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "src/a.py:1-2",
+          "expect": "def read"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python gen.py --base {base}",
+          "expect": "wrote",
+          "writes": [
+            "out/a.json"
+          ]
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/test_a.py::test_a",
+          "red": "ImportError"
+        }
+      ],
+      "x_item_extra": 3
+    },
+    {
+      "id": "FX-2.1",
+      "priority": null,
+      "title": "Second",
+      "action": "Do the second thing.",
+      "dependencies": [
+        "FX-1"
+      ],
+      "status": "IN_PROGRESS",
+      "evidence": "started 2026-10-30"
+    }
+  ],
+  "base_commit": "0123456789abcdef0123456789abcdef01234567",
+  "frozen": {
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "tree": "fedcba9876543210fedcba9876543210fedcba98",
+    "date": "2026-10-29",
+    "digest": "abababababababababababababababababababababababababababababababab",
+    "by": "extra in frozen"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Split?",
+      "chosen": "split",
+      "rationale": "smaller diffs",
+      "options": [
+        {
+          "id": "split",
+          "summary": "two"
+        },
+        {
+          "id": "keep",
+          "summary": "one"
+        }
+      ]
+    },
+    {
+      "id": "D2",
+      "question": "Rename?",
+      "chosen": null,
+      "options": [
+        {
+          "id": "yes",
+          "summary": "rename"
+        },
+        {
+          "id": "no",
+          "summary": "keep"
+        }
+      ]
+    }
+  ],
+  "values": [
+    {
+      "name": "limit",
+      "value": "50",
+      "source": "spec Section 2",
+      "assumes": [
+        "split"
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "name": "row",
+      "example": "a|b",
+      "source": {
+        "at": "src/a.py:3",
+        "expect": "split"
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "old_name",
+      "hits": {
+        "src/a.py": "rewrite",
+        "docs/x.md": "keep"
+      }
+    }
+  ],
+  "deferred_to_future_plans": [
+    {
+      "topic": "later",
+      "rationale": "out of scope",
+      "affected_sites": [
+        "src/b.py"
+      ],
+      "owner": "extra in deferred"
+    }
+  ],
+  "x_top_extra": {
+    "k": [
+      1,
+      2,
+      null
+    ]
+  }
+}

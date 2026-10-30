@@ -26,10 +26,11 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional, Sequence
+from typing import Dict, List, Mapping, Optional, Sequence
 
 from harness_lib.branch_capture import CaptureError, git
 from harness_lib.plan_lanes import node_file, open_items
+from harness_lib.plan_models import ActionPlan
 
 PASSED, COLLECTION, MISSING, FAILED = "PASSED", "COLLECTION", "MISSING", "FAILED"
 NOT_RED = (PASSED, COLLECTION, MISSING)
@@ -60,13 +61,13 @@ class RedResult:
 
 # --- planned sources --------------------------------------------------------------------------------------
 
-def test_sources(plan: Mapping[str, Any], plans_dir: Path) -> Dict[str, Path]:
+def test_sources(plan: ActionPlan, plans_dir: Path) -> Dict[str, Path]:
     """Repo-relative test file -> planned source, for each open item's node that has a planned source."""
-    folder = plans_dir / str(plan["plan_id"]) / "tests"
+    folder = plans_dir / plan.plan_id / "tests"
     found: Dict[str, Path] = {}
     for item in open_items(plan):
-        for test in item.get("tests") or []:
-            rel = node_file(test["node"])
+        for test in item.tests:
+            rel = node_file(test.node)
             if rel not in found and (folder / rel).is_file():
                 found[rel] = folder / rel
     return found
@@ -182,14 +183,13 @@ def pytest_output(args: Sequence[str], cwd: Path) -> str:
     return run_pytest(args, cwd).stdout
 
 
-def run_red(plan: Mapping[str, Any], tree: Path, python: str) -> List[RedResult]:
+def run_red(plan: ActionPlan, tree: Path, python: str) -> List[RedResult]:
     """Run each open item's test nodes in ``tree``, one pytest process per node, and classify each."""
     results: List[RedResult] = []
     for item in open_items(plan):
-        for test in item.get("tests") or []:
-            node = test["node"]
-            output = pytest_output([python, *PYTEST_ARGS, node], tree)
-            results.append(RedResult(str(item["id"]), node, str(test["red"]), classify(output, node)))
+        for test in item.tests:
+            output = pytest_output([python, *PYTEST_ARGS, test.node], tree)
+            results.append(RedResult(item.id, test.node, test.red.value, classify(output, test.node)))
     return results
 
 
