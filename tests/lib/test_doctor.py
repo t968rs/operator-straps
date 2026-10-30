@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import ast
+import json
 import os
 import sys
 from pathlib import Path
@@ -74,6 +75,87 @@ def test_second_candidate_in_use_still_warns_about_the_skipped_first(tmp_path: P
     check = doctor.check_interpreter(env)
     assert check.status == doctor.WARN
     assert "HARNESS_PY" in check.detail
+
+
+def _user_settings(tmp_path: Path, options: dict, key: str = "harness@some-marketplace") -> Path:
+    path = tmp_path / "settings.json"
+    path.write_text(json.dumps({"pluginConfigs": {key: {"options": options}}}), encoding="utf-8")
+    return path
+
+
+def test_configured_python_is_read_from_the_harness_plugin_entry(tmp_path: Path) -> None:
+    settings = _user_settings(tmp_path, {"python": "C:/envs/x/python.exe"})
+    assert doctor.configured_python(settings) == "C:/envs/x/python.exe"
+
+
+def test_configured_python_ignores_other_plugins_and_bad_files(tmp_path: Path) -> None:
+    other = _user_settings(tmp_path, {"python": "C:/envs/x/python.exe"}, key="pytest-scope@some-marketplace")
+    assert doctor.configured_python(other) is None
+    assert doctor.configured_python(tmp_path / "absent.json") is None
+    other.write_text("{not json", encoding="utf-8")
+    assert doctor.configured_python(other) is None
+
+
+def test_option_set_in_settings_but_not_exported_warns_with_the_env_fix(tmp_path: Path) -> None:
+    elsewhere = str(tmp_path / "envs" / "other" / "python.exe")
+    check = doctor.check_interpreter({}, elsewhere)
+    assert check.status == doctor.WARN
+    assert elsewhere in check.detail
+    assert "settings.local.json" in (check.fix or "")
+    assert "HARNESS_PY" in (check.fix or "")
+
+
+def test_option_naming_the_running_interpreter_is_not_a_problem() -> None:
+    assert doctor.check_interpreter({}, sys.executable).status == doctor.OK
+
+
+def test_exported_override_wins_over_an_unexported_option(tmp_path: Path) -> None:
+    check = doctor.check_interpreter({"HARNESS_PY": sys.executable}, str(tmp_path / "other.exe"))
+    assert check.status == doctor.OK
+
+
+def test_unexported_option_fix_names_the_settings_file_it_was_read_from(tmp_path: Path) -> None:
+    settings = tmp_path / "cfg" / "settings.json"
+    elsewhere = str(tmp_path / "envs" / "other" / "python.exe")
+    check = doctor.check_interpreter({}, elsewhere, settings)
+    assert settings.as_posix() in (check.fix or "")
+    assert "~/.claude/settings.json" not in (check.fix or "")
+
+
+def test_run_checks_reads_the_option_from_claude_config_dir(make_project, tmp_path: Path) -> None:
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    elsewhere = str(tmp_path / "envs" / "other" / "python.exe")
+    _user_settings(cfg, {"python": elsewhere})
+    check = _by_name(doctor.run_checks(make_project(None), {"CLAUDE_CONFIG_DIR": str(cfg)}), "interpreter")
+    assert check.status == doctor.WARN
+    assert elsewhere in check.detail
+    assert (cfg / "settings.json").as_posix() in (check.fix or "")
+
+
+def test_run_checks_falls_back_to_the_home_settings_file(make_project, tmp_path: Path,
+                                                         monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    elsewhere = str(tmp_path / "envs" / "other" / "python.exe")
+    _user_settings(home / ".claude", {"python": elsewhere})
+    monkeypatch.setattr(doctor.Path, "home", staticmethod(lambda: home))
+    check = _by_name(doctor.run_checks(make_project(None), {}), "interpreter")
+    assert check.status == doctor.WARN
+    assert elsewhere in check.detail
+    assert (home / ".claude" / "settings.json").as_posix() in (check.fix or "")
+
+
+def test_run_checks_ignores_home_settings_when_claude_config_dir_is_set(
+        make_project, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    _user_settings(home / ".claude", {"python": str(tmp_path / "envs" / "other" / "python.exe")})
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    monkeypatch.setattr(doctor.Path, "home", staticmethod(lambda: home))
+    check = _by_name(doctor.run_checks(make_project(None), {"CLAUDE_CONFIG_DIR": str(cfg)}), "interpreter")
+    assert check.status == doctor.OK
 
 
 def test_missing_gh_warns_and_missing_git_fails(monkeypatch: pytest.MonkeyPatch) -> None:

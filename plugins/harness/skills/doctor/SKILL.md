@@ -23,7 +23,7 @@ least one check failed; warnings exit 0.
 | Check | Fails or warns when |
 |---|---|
 | `python` | The interpreter `hpy` picked is older than 3.11 (fail). |
-| `interpreter` | `HARNESS_PY` or the plugin's `python` option is set but did not start, so `hpy` fell through (warn). |
+| `interpreter` | `HARNESS_PY` or the plugin's `python` option is set but did not start, so `hpy` fell through (warn). Also warns when the `python` option is set in `~/.claude/settings.json` but the shell never received it, so `hpy` ran the PATH `python` instead. |
 | `modules` | `pydantic>=2`, `referencing` or `jsonschema` is missing from that interpreter (fail). |
 | `git` / `gh` | Not on PATH: `git` fails, `gh` warns (review and summary skills need it). |
 | `repository` | The directory is not a git checkout (warn). |
@@ -39,3 +39,7 @@ least one check failed; warnings exit 0.
   from the `pip` first on PATH.
 - To pin an interpreter for one project, the developer sets `HARNESS_PY` under `env` in the project's
   `.claude/settings.local.json`. A machine path does not belong in the committed `.claude/settings.json`.
+- To pin one for every project, `HARNESS_PY` goes under `env` in `~/.claude/settings.json`. Prefer `HARNESS_PY`
+  to the plugin's `python` option for skill commands: `settings.json` `env` reaches every shell command, while
+  the option (`pluginConfigs` > `harness@<marketplace>` > `options` > `python`, set with
+  `claude plugin configure harness`) is not exported to the shell skill commands run in, so `hpy` does not see it.
