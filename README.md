@@ -12,6 +12,8 @@ to track review progress, keep Git state visible, preserve context through compa
 
 ## What you can do
 
+![pr-review-banner.png](img/pr-review-banner.png)
+
 | Your goal | Use | What you get | Agent 'Ensurance' |
 |---|---|---|---|
 | Review a PR and work through its findings | `harness`: `pr-review` or `pr-team` | Multiple reviewers, a consolidated review, branch checks before fixes, and fix waves with recorded resolutions. `pr-team` keeps finding details out of the main session's context. | • Configured agent-use Python runtime via `hpy`.<br>• Branch checks before fixes; schema validation on review writes.<br>• `Stop` hook blocks a stop attempt while the review session has an active Phase 5 sentinel. |

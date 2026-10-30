@@ -1,0 +1,715 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 148,
+  "pr_title": "1101 writing plans rewrite",
+  "branch": "1101-writing-plans-rewrite",
+  "base_branch": "main",
+  "base_sha": "545a0ca6bbf4d157f72e3cea7ead728b2a46f51f",
+  "head_sha": "db861214bdee4eadb6f134130e85407a19c1f9a4",
+  "review_date": "2026-10-30",
+  "verdict": "READY TO MERGE - 25 of 25 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 5214,
+    "deletions": 722,
+    "files_changed": 56
+  },
+  "reviewers": [
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "failing_tests_1 (tests)",
+    "developer_notes_1 (developer)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0148/pr148_20261030T161651Z/findings/config.json",
+    "docs/_scratch/pr_review/0148/pr148_20261030T161651Z/findings/tests.json",
+    "docs/_scratch/pr_review/0148/pr148_20261030T161651Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0148/pr148_20261030T161651Z/findings/docs.json",
+    "docs/_scratch/pr_review/0148/pr148_20261030T161651Z/findings/overall.json",
+    "docs/_scratch/pr_review/0148/pr148_20261030T161651Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0148/pr148_20261030T161651Z/findings/failing_tests_1.json",
+    "docs/_scratch/pr_review/0148/pr148_20261030T161651Z/findings/developer_notes_1.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "ActionPlan.schema.json is generated from one model definition, and `tools/gen_plan_schema.py --check` compares the parsed JSON, so drift is caught without line-ending noise.",
+    "The old draft-07 schemas are kept as test fixtures (the rename keeps the content byte for byte, similarity 100%) and drive a three-way differential test that checks old schema, generated schema and models give the same verdicts.",
+    "Open and closed objects carry over exactly (additionalProperties true or false per definition), and the `$id` follows the convention of the sibling schemas.",
+    "The cross-file `$ref` to prAttributes.schema.json becomes an internal `#/$defs/PrAttributes`, which removes the unresolvable-ref failure mode for the shipped schema.",
+    "The differential corpus checks that the old draft-07 schema, the generated 2020-12 schema and the models agree on fixtures plus about 70 single-edit mutations, and a guard proves the corpus holds both verdicts.",
+    "The plan_api refusal tests compare directory bytes before and after, so 'writes nothing' is proven, not assumed.",
+    "Golden PIP files and recorded freeze digests pin rendering and digest stability across the dict-to-model move.",
+    "The schema-registry tests were rebuilt on a pinned Parent/Child pair, so sibling-ref resolution keeps a non-vacuous guard after prAttributes.schema.json was removed.",
+    "plan_dict marks non-default values as set before an exclude_unset dump, so a load/dump round trip keeps the file's keys and extras and old freeze digests stay valid (MUTABLE_TOP/MUTABLE_ITEM derived from Mutable metadata match the previous tuples).",
+    "Every model picks extra='allow' or 'forbid' explicitly, avoiding pydantic's key-dropping default that would silently move the digest.",
+    "plan_api.write re-validates the full dump and collects stale-file, owned-field, frozen-execution-field, misspelled-key and duplicate-id problems before touching disk.",
+    "plan.py fails fast with a one-line problem when pydantic 2 is missing instead of an import traceback, and the hook turns a stale pinned $ref into an actionable message.",
+    "Status vocabularies moved to stdlib-only plan_enums, so todo_sync shares DONE/RULES_OPEN without importing pydantic.",
+    "SKILL.md step 3's list of what `write` refuses matches the refusals and the module docstring in plan_api.py:8-11,58-94, including that execution fields are guarded only on a frozen plan.",
+    "SKILL.md step 8 names the `Mutable` fields (item status, evidence, verification_references; plan completed, frozen, markdown sync), which is exactly the set marked in plan_models.py:166-196.",
+    "The heredoc command line in SKILL.md:37 matches what `plan.py new` prints (plan.py:173-174), so the skill text and the driver output can't drift apart silently.",
+    "The schemas README states the generator, the drift test and the hook-versus-models split explicitly, and its Migration section records the behavior change that every command now validates.",
+    "Plan 0002 and its rendered PIP agree item for item, and every claimed test node maps to a planned test file under docs/plans/0002/tests/.",
+    "The differential test runs one corpus through the old draft-07 schema, the generated schema and the models, so any verdict gap fails.",
+    "Fixture digests and golden PIPs produced by the old code pin load-then-dump stability of frozen plans.",
+    "plan_dict keeps file keys, saves in-place appends and leaves the caller model unmarked, each with a test.",
+    "plan_api.write collects every refusal before writing, and the tests assert unchanged bytes.",
+    "The hook now reports an unresolvable pinned ref and exits 1 instead of a silent setup error.",
+    "plan_enums is stdlib-only and shared with todo_sync; a contract test bans status and model literals in the plan modules.",
+    "A differential corpus against the frozen draft-07 schema, plus pre-migration digests and golden PIPs, guards on-disk plans.",
+    "The hook now exits 1 on an unresolvable pinned ref instead of hiding it as a setup error, with a test.",
+    "SKILL.md, the schema README and the PIP template move together, and the README gains a Migration section.",
+    "gen_plan_schema --check compares parsed JSON, so CRLF never fakes drift."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "Plan id 0002 collides with the frozen strap_skills plan on main",
+        "file": "docs/plans/0002_plan_models_model_first_ActionPlan.json",
+        "files": [
+          "docs/plans/0002_plan_models_model_first_ActionPlan.json",
+          "docs/plans/0002_plan_models_model_first_PIP.md",
+          "docs/plans/0002/tests/tests/contract/test_plan_schema_generated.py",
+          "plugins/harness/lib/harness_lib/plan_doc.py"
+        ],
+        "lines": "2,6",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "main already holds docs/plans/0002_strap_skills_ActionPlan.json (plan_id 0002, frozen) and docs/plans/0002/CONTRACT.md. plan_doc.find_plan raises 2 plans 0002 when two files match, so after merge every plan.py command and plan_api.load of 0002 refuses both plans, the in-flight strap_skills plan included. Both also share docs/plans/0002/tests/, where the stale copy of test_plan_schema_generated.py (old pydantic range regex, fails against pydantic==2.14.1) would be overlaid by plan.py red 0002.\n\nAlso (system_shape): docs/plans/0002_strap_skills_ActionPlan.json already holds id 0002 at the merge base, so plan_doc.find_plan (plan_doc.py:68-75) refuses both plans with \"2 plans 0002\". Every plan.py command and plan_api.load on 0002 fails after the merge. docs/plans/0002/ also mixes this plan's tests with the strap-skills CONTRACT.md.",
+        "fix": [
+          "Renumber this plan to 0003: rename JSON, PIP and the docs/plans/0002/tests/ subtree, set plan_id and documentation, update sweep S1/S2 hit keys.",
+          "Also drop the completed planned-test copies under docs/plans/0002/tests/tests/; the real tests live under tests/.",
+          "Renumber this plan to 0003: rename the JSON and the PIP, set plan_id, move docs/plans/0002/tests, re-render, refreeze.",
+          "Or move this historical plan out of artifacts.plans."
+        ]
+      },
+      {
+        "id": "C2",
+        "name": "strap red still hands plan_red a dict",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "plugins/harness/lib/harness_lib/plan_red.py",
+          "tests/scripts/test_strap_gate.py",
+          "tests/lib/test_plan_red.py"
+        ],
+        "lines": "345-365",
+        "reviewer": "tests, failing_tests_1",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plan_red.test_sources and run_red now read attributes (plan.plan_id, item.tests, test.red.value) and type the plan as ActionPlan, but strap.py _red_plan (345-351) was not migrated and still builds a plain dict. red_results (354-365) passes that dict to pr.test_sources, so `strap.py red` raises AttributeError: 'dict' object has no attribute 'plan_id' whenever a mechanical behavior has tests. tests/scripts/test_strap_gate.py (356-386: red, freeze-after-red) covers this path but loads strap.py by file path and never names plan_red, so tools/select_tests.py skips it on this PR; the break only surfaces in the full run on main. The updated test_plan_red helper builds validated models, so nothing in the selected suite catches the stale caller.\n\nAlso (failing_tests_1): CI on both ubuntu (3 failed, 2728 passed) and windows (3 failed, 135 passed, 2597 deselected) fails tests/scripts/test_strap_gate.py::test_red_records_state_red_on_mechanical, ::test_freeze_refuses_failing_planned_tests and ::test_freeze_passes_a_mechanical_behavior with AttributeError: 'dict' object has no attribute 'plan_id' at plan_red.py:66. Confirmed in the tree: strap.py _red_plan (345-351) returns a plain dict and red_results (354-365) hands it to pr.test_sources and pr.run_red, which now read plan.plan_id and item.tests as model attributes. Every strap.py red and freeze call with mechanical behaviors crashes, not only the tests. The failures reproduce from the log text and the code path; the strap tests were not rerun locally.",
+        "fix": [
+          "Rebuild _red_plan in strap.py as ActionPlan.model_construct(plan_id=spec.name, items=[ActionItem.model_construct(id=b.id, status=ItemStatus.PENDING, tests=[PlannedTest.model_construct(node=t.node, red=RedException(t.red))])]). Use model_construct because spec.name fails the plan_id pattern. Then name plan_red in tests/scripts/test_strap_gate.py, for example in its module docstring or a constant, so select_tests runs it whenever plan_red.py changes.",
+          "Alternatively, give plan_red a narrow protocol-typed entry point that strap can feed without an ActionPlan, and add a plan_red unit test that drives it the way strap does.",
+          "build the red plan in strap.py _red_plan as an ActionPlan with ActionItem objects (model_construct, as the lane tests do) instead of a dict",
+          "give plan_red.test_sources and run_red a small read-only interface (plan_id, items with id, status, tests) that both an ActionPlan and the strap red plan satisfy"
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Recorded plan evidence and values do not match this branch",
+        "file": "docs/plans/0002_plan_models_model_first_ActionPlan.json",
+        "files": [
+          "docs/plans/0002_plan_models_model_first_ActionPlan.json",
+          "docs/plans/0002/tests/tests/contract/test_plan_schema_generated.py"
+        ],
+        "lines": "83,188,659,699",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "No verification_references SHA is reachable from the head (cecb005 at line 188 through 0550c05 at line 699; the branch was rewritten), so plan.py check flags all 7 COMPLETE items. The PM-7 anchor (line 659) expects plugin.json 0.41.1, but the base is 0.42.0. The value at line 83 says pydantic>=2.14,<2.15, but requirements-dev.txt pins pydantic==2.14.1. The planned copy docs/plans/0002/tests/tests/contract/test_plan_schema_generated.py:57 asserts a different pattern from the shipped test.",
+        "fix": [
+          "Re-record or refreeze against the branch commits with corrected anchor and values, and sync the planned test copy.",
+          "Or mark the plan as executed on a rewritten branch and drop the dead SHAs."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Plan 0002 evidence names commits outside the PR history",
+        "file": "docs/plans/0002_plan_models_model_first_ActionPlan.json",
+        "files": [
+          "docs/plans/0002_plan_models_model_first_ActionPlan.json",
+          "docs/plans/0002_plan_models_model_first_PIP.md"
+        ],
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "Each COMPLETE item cites a SHA (cecb005, 2f8eb34, 211dec6, f2674a2, 017696f, 15b79b9, 0550c05) that is not an ancestor of head db86121 and that no branch contains. The branch was re-committed as 366f037..db86121. plan.py check (completion_problems) needs each SHA reachable from HEAD, so it flags all seven items, and the SHAs will be garbage-collected.",
+        "fix": [
+          "Re-record the items against the commits on this branch (366f037, d5a36f5, ad17bbe, db86121) and render the PIP again.",
+          "Or rewrite the evidence to name the squashed commits and note the fold in the PIP."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Harness version not bumped; migration note names a released version",
+        "file": "plugins/harness/.claude-plugin/plugin.json",
+        "files": [
+          "plugins/harness/.claude-plugin/plugin.json",
+          "plugins/harness/schemas/README.md",
+          "docs/superpowers/specs/2026-10-29-plan-models-design.md",
+          "plugins/harness/lib/harness_lib/validation/schema_registry.py",
+          "tools/gen_plan_schema.py"
+        ],
+        "lines": "3",
+        "reviewer": "system_shape, overall, docs",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plugin.json:3 is 0.42.0 at the base and on main, and the PR leaves it alone (CLAUDE.md Releases). The spec (line 158) and PM-7 assume a 0.41.1 to 0.42.0 bump, but 0.42.0 already shipped. README.md:286 credits this breaking change (prAttributes retired, hook exits 1) to 0.42.0.\n\nAlso (overall, docs, system_shape): plugin.json was already 0.42.0 at the merge base (e34891c), and this PR leaves it unchanged. That breaks the project release rule and the spec Release call. Consumers on 0.42.0 get a breaking change (retired prAttributes schema, hook exit 1 on old pins, every plan.py command validating) with no version change. README.md:286 says harness 0.42.0.\n\nAlso (docs): README:286 says a project that pinned the old draft-07 ActionPlan.schema.json 'must drop or regenerate its pin: the schema hook now reports an unresolvable `$ref` and exits 1'. schema_registry.schema_names (schema_registry.py:28-32) also registers every `*.schema.json` in the pinned schemas directory. So a project that pinned both the old ActionPlan and the old prAttributes still resolves the `$ref` and gets no error. Its hook keeps validating plan writes against the old draft-07 shape while plan.py validates through the models, which is the hook-vs-models disagreement the spec lists as an anti-goal. The advice (drop or regenerate the pin) is right, but the stated reason covers only an ActionPlan-only pin.\n\nAlso (system_shape): README.md:286 says \"drop or regenerate its pin\", but gen_plan_schema.py:9-10 says a consuming project never regenerates the schema. The exit-1 claim only holds when prAttributes.schema.json was not pinned too.",
+        "fix": [
+          "Bump to 0.43.0 and change README.md:286 to match; correct the spec Release line.",
+          "Bump plugins/harness/.claude-plugin/plugin.json to 0.43.0 and change the README Migration entry to 0.43.0.",
+          "Reword: 'A project that pinned the old draft-07 ActionPlan.schema.json must drop or regenerate its pin. With the old prAttributes.schema.json not pinned too, the hook reports an unresolvable `$ref` and exits 1 (it used to exit 0 as a setup error). With both pinned, the hook keeps validating against the old shape while plan.py uses the models.'",
+          "Say: drop the pin or copy the generated plugin schema; a pin that still refers to an unpinned prAttributes.schema.json makes the hook exit 1."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "plan_api.write ignores the file load() read and resolves the target by plan_id",
+        "file": "plugins/harness/lib/harness_lib/plan_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_api.py",
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "35-53,106-111",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "load() accepts a plan file path (_plan_file, lines 35-40) and stores only _loaded_hash, but write() (line 109) always writes pd.find_plan(<active project plans dir>, plan.plan_id). A plan loaded from a path outside the active project's plans dir (a linked worktree, a --repo-less heredoc run from another checkout) is either refused with a misleading 'changed on disk since it was loaded' (hash of a different file) or, when the two files hold identical bytes, silently written into the wrong checkout. The module docstring promises write refuses 'a plan that was not loaded or whose file changed since', which assumes the same file.\n\nAlso (runtime): _plan_file tries only Path(str(ref)); plan.py locate (scripts/plan.py:112-119) also tries repo / ref. With repo= given and a repo-relative path, load falls through to find_plan with a non-digit id and reports 'no plan docs/PLANS/..._ActionPlan.json in ...'.",
+        "fix": [
+          "Record the resolved path in a PrivateAttr (_loaded_path) in load() and have write() target that path, refusing when plan.plan_id no longer matches its file name.",
+          "Or restrict load() to plan files inside the active project's artifacts.plans and refuse any other path.",
+          "Mirror plan.py locate: try Path(ref) and active().project_root / ref before falling back to find_plan, and reject a non-digit id with the same message locate uses."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Models, generated schema and draft-07 schema disagree on two inputs",
+        "file": "plugins/harness/lib/harness_lib/plan_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "tests/lib/test_plan_models_differential.py",
+          "plugins/harness/schemas/ActionPlan.schema.json"
+        ],
+        "lines": "3-8,146,192",
+        "reviewer": "system_shape, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "I checked these two cases against the full fixture. context=null: draft-07 rejects it, but the models and the generated schema accept it (Optional at line 192). pr=1.0: both schemas accept it, but StrictInt in the models rejects it, so the hook passes a file plan.py refuses. That contradicts the docstring at lines 4-8 and the spec anti-goal at lines 72-73. The corpus (test_plan_models_differential.py:55-57) covers neither case.\n\nAlso (runtime): The module docstring (lines 3-8) says the models accept and reject the same documents as the draft-07 schema and that a field allowed to be absent but not null gets a non-None default. The old schema typed context as object only; ActionPlan.context is Optional[Context] = None (line 192), so \"context\": null now validates in plan.py and in the generated schema the hook uses.",
+        "fix": [
+          "context: Context = Field(default_factory=Context) (an absent context still dumps as absent), plus a context=None mutation.",
+          "For pr, accept an integral float unchanged, or document the divergence and add a pr=1.0 mutation.",
+          "Declare context: Context = Field(default_factory=Context) and regenerate the schema (tools/gen_plan_schema.py), or keep it Optional and amend the docstring to name the deliberate widening."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "Models reject pr 1.0, which the old and generated schemas accept",
+        "file": "plugins/harness/lib/harness_lib/plan_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "tests/lib/test_plan_models_differential.py",
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_enums.py"
+        ],
+        "lines": "38-46",
+        "reviewer": "overall, config",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "jsonschema draft-6+ integer accepts integral floats. Verified: the generated 2020-12 schema accepts the full fixture with pr_attributes[0].pr = 1.0, Draft7 accepts it, but _int_or_str raises must be an integer or a string. That contradicts the module docstring (same accept/reject as the draft-07 schema) and the spec anti-goal: the hook accepts what plan.py rejects. The differential corpus covers 1.5 but not 1.0.\n\nAlso (config): `pr` is generated as anyOf integer | string. Under draft 6 and later, the `integer` type in jsonschema accepts a float with no fractional part, so both the draft-07 fixture and the generated 2020-12 schema accept `\"pr\": 1.0`. The model's `_int_or_str` (plan_models.py:38-42) rejects any float. A plan with `pr: 1.0` therefore passes the schema hook and then fails in plan.py and plan_api. The differential corpus tests 1.5, where all three reject, but not 1.0.\n\nAlso (config): Python docstrings flow into the schema verbatim: ItemStatus reads 'only ``plan.py record`` moves an item' (line 382) and PrAttributes reads '``pr`` is an int' (line 459). Every other description in the file uses single Markdown backticks, so these two show doubled backticks in IDE hovers and in hook error text.",
+        "fix": [
+          "Add pr_attributes/0/pr = 1.0 to MUTATIONS, then make the verdicts agree: accept an integral float in _int_or_str (value kept unchanged for the digest), or document the divergence in the README migration note.",
+          "In `_int_or_str`, accept a float where `value.is_integer()` and return `int(value)`, then add `((\"pr_attributes\", 0, \"pr\"), 1.0)` to MUTATIONS.",
+          "Or add the 1.0 mutation and document the stricter model as a deliberate exception to the 'judge alike' contract.",
+          "Switch the ItemStatus docstring in plan_enums.py and the PrAttributes docstring in plan_models.py to single backticks (or set an explicit `json_schema_extra` description), then run `python tools/gen_plan_schema.py`."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "Generated schema and models now accept \"context\": null, which the draft-07 schema rejected",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "tests/lib/test_plan_models_differential.py",
+          "tests/fixtures/plan_models/ActionPlan.draft07.schema.json"
+        ],
+        "lines": "722-732",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "The old schema typed `context` as plain `{\"type\": \"object\"}` (tests/fixtures/plan_models/ActionPlan.draft07.schema.json:83-84), so an explicit null was rejected. The generated schema (anyOf Context | null, default null) and the model `context: Optional[Context] = None` (plan_models.py:192) both accept it. That breaks the module docstring's contract at plan_models.py:3-8: the models 'accept and reject the same plan documents' as the draft-07 schema, and a field the old schema 'allowed to be absent but not null is a plain typed field with a default that is not None'. The differential guard misses it because MUTATIONS (test_plan_models_differential.py:48-78) tries `context: \"x\"` but never `context: None`.",
+        "fix": [
+          "Declare `context: Context = Field(default_factory=Context)` in plan_models.py (no consumer reads `.context`, and exclude_unset in plan_doc.py:147 keeps an unset default out of written plans), regenerate with `python tools/gen_plan_schema.py`, and add `((\"context\",), None)` to MUTATIONS.",
+          "If null is now meant to be valid, say so: list it as a deliberate loosening in the plan_models.py docstring and the README migration note, and add the mutation with the new expected verdict."
+        ]
+      },
+      {
+        "id": "I8",
+        "name": "Schema README workflow and PIP template still tell agents to hand-edit the ActionPlan JSON",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/schemas/PLANS_PIP_Template.md"
+        ],
+        "lines": "175-198",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "This PR adds a rule that plan JSON is never edited by hand and that only `record` changes status (schemas/README.md:61, SKILL.md:31-32,115-117). Older text in the same files still says the opposite. README Workflow Step 2 (lines 175-186) says to 'Write docs/PLANS/{NNNN}_ActionPlan.json (status=PENDING)'. Step 3 (lines 188-198) says to 'Update ActionPlan: status=COMPLETE, evidence=[<commit SHAs>]', to check off the PIP step, and to update both files 'in the SAME edit'. The PIP is rendered and overwritten, so that edit is lost. PLANS_PIP_Template.md:58 ('update JSON first, then sync Markdown') and :197-199 ('Update ...ActionPlan.json: Mark items COMPLETE with evidence') say the same. The plan's PM-7 action and the spec ('schemas/README.md steps 2-3 ... are updated') both ask for this section to be rewritten, and PM-7 is recorded COMPLETE without it.",
+        "fix": [
+          "Rewrite README Workflow Steps 2-3 for the write-plan flow: `plan.py new`, authoring through `plan_api.load` / `model_copy(update=..., deep=True)` / `plan_api.write`, then `plan.py record <id> <ITEM> --sha <commit>` for status and evidence. The PIP comes from `plan.py render` and is never checked off by hand. In PLANS_PIP_Template.md:58 and :197-199, replace the hand-update steps with `plan.py record` (and `plan_api.write` for `pr_attributes[]`)."
+        ]
+      },
+      {
+        "id": "I9",
+        "name": "Schema README change steps still say edit the schema file",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "docs/superpowers/specs/2026-10-29-plan-models-design.md"
+        ],
+        "lines": "272-278",
+        "reviewer": "system_shape, docs",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:46 says ActionPlan.schema.json is \"Generated, never edited\", but the steps at 272-278 still start with \"1. Edit the .schema.json file\" and never mention plan_models.py or gen_plan_schema.py. The spec (line 151) and PM-7 both say steps 2-3 were updated.\n\nAlso (docs): README line 46 says ActionPlan.schema.json is generated from plan_models.py and never edited, and that tests/contract/test_plan_schema_generated.py fails on drift. The generic procedure at lines 272-278 still begins with '1. Edit the `.schema.json` file'. Anyone who follows it for a plan field edits the generated file, and the drift test fails.",
+        "fix": [
+          "Add a step: for ActionPlan, change plan_models.py and plan_enums.py, then run python tools/gen_plan_schema.py; never edit the JSON.",
+          "Add an exception to step 1: 'Edit the `.schema.json` file (for ActionPlan.schema.json: change `harness_lib/plan_models.py` and run `python tools/gen_plan_schema.py`; never edit the generated file)'."
+        ]
+      },
+      {
+        "id": "I11",
+        "name": "pydantic bound test accepts any pin and diverged from the planned test",
+        "file": "tests/contract/test_plan_schema_generated.py",
+        "files": [
+          "tests/contract/test_plan_schema_generated.py",
+          "docs/plans/0002/tests/tests/contract/test_plan_schema_generated.py",
+          "requirements-dev.txt"
+        ],
+        "lines": "54-57",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The test name promises that requirements-dev.txt bounds pydantic to the series the schema was generated with. The regex ^pydantic(==[\\d.]+|>=[\\d.]+,<[\\d.]+)$ accepts any version, for example pydantic==1.0 or >=3,<4, and nothing compares it with the generating version. The planned copy docs/plans/0002/tests/tests/contract/test_plan_schema_generated.py:57 still requires the >=X,<Y form that plan value 'pydantic>=2.14,<2.15' records. The live test was loosened to fit requirements-dev.txt:4 (pydantic==2.14.1), so plan and test now disagree.",
+        "fix": [
+          "Assert the pinned or bounded version against the running pydantic.VERSION major.minor (the version that produced the committed schema, which the equality test already checks), and keep the planned copy in sync, or record the deviation in the plan.",
+          "Restore the >=2.14,<2.15 form in requirements-dev.txt that plan 0002 decided on, and revert the regex to the planned one."
+        ]
+      },
+      {
+        "id": "I12",
+        "name": "new root-separation cases can pass vacuously",
+        "file": "tests/contract/test_root_separation.py",
+        "lines": "161-164,195",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The comment at line 194 says a refusal would pass the snapshot check vacuously, which is why MUST_EXIT_ZERO exists. The new 'plan new' case (162) is not in it: a refusal from plan.py exits 1 with a problem line and no traceback, so the case passes without reaching any write. 'plan_api write' (164) is protected only by the Traceback assertion.",
+        "fix": [
+          "Add 'plan new' and 'plan_api write' to MUST_EXIT_ZERO at line 195."
+        ]
+      },
+      {
+        "id": "I13",
+        "name": "reopen test re-implements plan.py instead of exercising it",
+        "file": "tests/lib/test_plan_models.py",
+        "files": [
+          "tests/lib/test_plan_models.py",
+          "plugins/harness/scripts/plan.py",
+          "tests/scripts/test_plan_driver.py"
+        ],
+        "lines": "145-151",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_reopening_removes_completed_from_the_file does its own plan.model_fields_set.discard('completed') and then asserts the key is gone. That only tests pydantic. The production reopen in plan.py:433-436 has no test: delete the discard at plan.py:436 and every test still passes while the file gains \"completed\": null. test_plan_driver.py only asserts completed is set (line 292).",
+        "fix": [
+          "Add a driver test in tests/scripts/test_plan_driver.py: complete an item, reopen it with record --start, and assert 'completed' not in read_plan(project).",
+          "Or drop the manual discard from the model test and assert the dump policy as it actually is: None that was explicitly set is still written."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Schema hook docstring omits the new exit 1 on an unresolvable $ref",
+        "file": "plugins/harness/hooks/validate_pr_json_schema.py",
+        "lines": "21-24,154-159",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (lines 21-24) lists exit 1 only for a violation and says setup failures such as a missing schema exit 0. The new except Unresolvable branch (lines 154-159) exits 1 for a stale pinned schema whose $ref no longer resolves, which is a setup condition rather than a plan violation; the README documents it but the hook's own contract does not.",
+        "fix": [
+          "Add a sentence to the docstring: an unresolvable $ref in the (pinned) schema exits 1 with a report naming the ref and telling the project to fix or drop the pin."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "plan_api lacks the missing-pydantic report the spec requires",
+        "file": "plugins/harness/lib/harness_lib/plan_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_api.py",
+          "docs/superpowers/specs/2026-10-29-plan-models-design.md"
+        ],
+        "lines": "13-24",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The spec Constraints require both plan.py and plan_api to report a missing pydantic the pr_review.py way. Only plan.py has _pydantic_missing. plan_api imports plan_doc and plan_models unguarded, so a heredoc without pydantic 2 ends in a traceback.\n\nAlso (system_shape): Spec line 80 requires plan.py and plan_api to report a missing pydantic. plan_api.py imports pydantic modules at the top (lines 19-24), so a heredoc without pydantic gets a traceback.",
+        "fix": [
+          "Guard the plan_api imports and exit with the same one-line problem plan.py prints, and add a test like tests/scripts/test_plan_missing_pydantic.py.",
+          "Or amend the spec to say only plan.py reports it.",
+          "Guard the imports with the plan.py check and emit one problem line.",
+          "Or drop the constraint from the spec and note the need in SKILL.md step 3."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Changed plan_id is refused with a misleading message",
+        "file": "plugins/harness/lib/harness_lib/plan_api.py",
+        "lines": "28,58-68,106-111",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "Spec write-contract item 3 names plan_id as owned. write resolves the file by the new plan_id (plan_api.py:109), and _OWNERS omits plan_id. Retargeting to another existing plan is refused only because the hash differs, and the message says changed on disk since it was loaded.",
+        "fix": [
+          "Keep the loaded path or plan_id in a private attribute and report a plan_id change explicitly."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "plan_doc.items_of is dead after the move to models",
+        "file": "plugins/harness/lib/harness_lib/plan_doc.py",
+        "lines": "169-170",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Every former caller (plan_checks, plan_render, plan.py) now iterates plan.items; items_of (lines 169-170) has no caller left in plugins or tests and only copies the list.\n\nAlso (overall): No plugin module calls plan_doc.items_of after the migration. Every consumer reads plan.items.",
+        "fix": [
+          "Delete items_of and its '# --- items' header line, or keep it only if a consumer outside the repo is documented.",
+          "Delete items_of from plan_doc.py."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "base_commit advertises a default that fails its own pattern",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "plugins/harness/schemas/README.md"
+        ],
+        "lines": "622-627,747-799",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "`base_commit` is generated with `\"default\": \"\"` next to `\"pattern\": \"^[0-9a-f]{40}$\"`. An editor or tool that fills in schema defaults writes a value the same schema rejects, and the model rejects an explicit \"\" on reload. plan_doc.py dumps with exclude_unset, so plan_api never writes it, but the published schema contradicts itself.\n\nAlso (config): The draft-07 schema stated rules a plan author needs, and none of them appear in the generated schema: `frozen` listed the fields left out of the digest (fixture line 133); `decisions` said a null `chosen` blocks `plan.py freeze` (144); `values` said an assumed rejected option fails check (149); `tests` gave the planned-test path `<plans dir>/<plan_id>/tests/<path>` (309); `plan_id` was tied to the filename prefix (16); `sweeps` named the untracked-file scope (159, 409). README Section 2 restates only some of these. The schema is still what the hook reports against and what an editor shows.",
+        "fix": [
+          "Remove `default` from the generated property, e.g. with `json_schema_extra` on the field in plan_models.py that pops `default`, then regenerate.",
+          "Or keep the field but describe the default in the field description ('empty until plan.py new records it') and accept the empty string in the pattern (`^([0-9a-f]{40})?$`) in both the model and the schema, if an unset base is legitimate.",
+          "Add `description=` to the matching Field declarations in plan_models.py (frozen, decisions, values, tests, plan_id, sweeps.pattern) carrying the old contract text, then regenerate the schema.",
+          "Or decide the README is the one home for these rules and add the missing ones there (planned-test path, frozen digest exemptions, plan_id filename prefix)."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "plan.py docstring puts every-command validation under check",
+        "file": "plugins/harness/scripts/plan.py",
+        "lines": "13-17",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plan.py:13-14 puts \"Every command validates the plan on load\" inside the check PLAN entry, but render, red, lanes, record and freeze validate too.",
+        "fix": [
+          "Move the sentence into the intro paragraph of the module docstring."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Common mistakes forbids setting status through `write`, but the step 3 example does it",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_api.py"
+        ],
+        "lines": "117",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:117 lists 'Setting an item's status by hand or through `write`' as a mistake because `record` owns the execution fields. The step 3 example (SKILL.md:43) builds the item with `status=ItemStatus.PENDING` and saves it through `write`; status is a required field (plan_models.py:166). `write` also refuses execution-field changes only on a frozen plan (plan_api.py:71-74), so before the freeze it accepts any status, and the first freeze catches it only because it requires PENDING. An agent can't tell whether the PENDING it has to supply is allowed.",
+        "fix": [
+          "Reword SKILL.md:117: 'Changing an existing item's status by hand or through `write` (a new item is built PENDING): `record` owns the execution fields, and `write` refuses the change once the plan is frozen.'"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "literal ban skips plan_api.py",
+        "file": "tests/contract/test_plan_schema_generated.py",
+        "lines": "15-23",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "PLAN_MODULES lists every plan module that reads statuses and model names except the new plan_api.py, which compares execution fields. A future literal there would go unflagged.",
+        "fix": [
+          "Add 'plugins/harness/lib/harness_lib/plan_api.py' to PLAN_MODULES."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "'every command' parametrize omits freeze",
+        "file": "tests/scripts/test_plan_driver.py",
+        "lines": "136-142",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_every_command_refuses_a_plan_that_does_not_validate covers render, red, lanes and record. freeze also loads the plan and is missing, and check is covered elsewhere (line 171). The name claims more than the parameters cover.",
+        "fix": [
+          "Add (\"freeze\", \"1\") to the parametrize list.",
+          "Or rename the test to list the commands it covers."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "common-mistakes fragments are too generic to fail",
+        "file": "tests/skills/test_write_plan_skill_models.py",
+        "lines": "30-34",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The fragments 'status' and 'red' match almost any prose. 'red' is a substring of 'required', 'covered' and 'ordered'. Those two checks cannot detect a missing mistake entry.",
+        "fix": [
+          "Assert distinctive phrases from each mistake entry, for example the exact status-field warning and the 'red' exception-name rule, or match on word boundaries."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Rule 4.5 bubble audit does not name a refreeze as routine, not a bubble",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/skills/pr-review/operating_rules.md"
+        ],
+        "lines": "853-860",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "mechanical",
+        "summary": "Developer note: add the refreeze SOP. Confirmed: plugins/harness/skills/pr-review/operating_rules.md:92 now states that a finding needing a refreeze is routine, but SKILL.md Rule 4.5 (the audit where bubbles are decided, with its list of misclassification patterns at line 853) never mentions it, so the audit alone still allows bubbling a refreeze as architectural_ambiguity as happened for C1 of this review.",
+        "fix": [
+          "add a third misclassification bullet to SKILL.md Rule 4.5: a finding that needs a refreeze is routine; ask the developer for the OK, fix it as a tracking-path edit, or defer it when the branch is rewritten; see operating_rules.md"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I2",
+      "classification": "architectural_ambiguity",
+      "reason": "Recorded commit SHAs name worktree commits that are not in the PR history because the work landed staged; fixing them means re-recording items or refreezing plan 0002, tied to C1. Developer decides."
+    },
+    {
+      "id": "C1",
+      "classification": "architectural_ambiguity",
+      "reason": "Renaming frozen plan 0002 needs a refreeze and moves the shared docs/plans/0002/tests folder; the alternative renumbers the strap_skills plan on main. Developer owns plan numbering."
+    },
+    {
+      "id": "I1",
+      "classification": "architectural_ambiguity",
+      "reason": "Stale evidence sits in frozen plan 0002; correcting it means a refreeze or re-record and depends on how C1 is settled. Developer decides."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 148 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"366f037aaf5f1570de9cc5b471c4f453ee80442a\",\"headRefName\":\"1101-writing-plans-rewrite\",\"headRefOid\":\"db861214bdee4eadb6f134130e85407a19c1f9a4\",\"last_sha\":\"db861214bdee4eadb6f134130e85407a19c1f9a4\",\"mergeCommit\":null,\"number\":148,\"state\":\"OPEN\",\"title\":\"1101 writing plans rewrite\",\"url\":\"https://github.com/t968rs/operator-straps/pull/148\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1101-writing-plans-rewrite",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1101-writing-plans-rewrite",
+        "head_ref_name": "1101-writing-plans-rewrite",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "366f037aaf5f1570de9cc5b471c4f453ee80442a",
+        "head_sha": "db861214bdee4eadb6f134130e85407a19c1f9a4",
+        "base_ancestor_command": "git merge-base --is-ancestor 366f037aaf5f1570de9cc5b471c4f453ee80442a HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor db861214bdee4eadb6f134130e85407a19c1f9a4 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - plan_api guards its pydantic imports with plan.py's _pydantic_missing check and exits 1 with one problem: line; test added beside the plan.py one"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - write finds the file that still has the loaded hash and reports 'plan_id differs from the loaded plan <id>; plan.py new owns it' instead of 'changed on disk'; docstring lists plan_id as owned; new test"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - cited only: plan_api.write already refuses execution-field changes only on a frozen plan (_execution_problems, module docstring says so), which the SKILL.md rewording describes; the SKILL.md part is the other fixer's; Common mistakes now forbids changing an existing item's status by hand or through write, notes a new item is built PENDING and that write refuses the change once frozen"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - added plugins/harness/lib/harness_lib/plan_api.py to PLAN_MODULES in the live test and its planned copy"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - cited only: the design spec is a frozen post-review snapshot (developer rule: later changes go to the plan, never the spec); the version bump and README Migration entry are the other fixer's part; gen_plan_schema.py docstring: a consuming project never runs the tool; a project pinning the schema drops the pin or copies the plugin's generated file (README/version owned by the other part); Bumped harness plugin version 0.42.0 -> 0.43.0 (0.42.0 already on main); README Migration entry and spec Release line belong to the other part's fixer.; README Migration entry now credits harness 0.43.0 and says drop the pin or copy the plugin's generated schema; exit 1 only with ActionPlan pinned alone, and with prAttributes pinned too the hook keeps validating the old shape; schema_registry.py cited only: schema_names registering pinned *.schema.json is the behavior the README now describes, no code change"
+    },
+    {
+      "id": "I11",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - pydantic bound test now parses the ==X.Y.Z pin or >=X.Y,<X.Y+1 bound and asserts its major.minor equals the running pydantic.VERSION (the one the equality test ties to the committed schema); planned copy synced to the live test"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - context is now Context = Field(default_factory=Context) so null is rejected and an unset context still dumps absent; _int_or_str is a WrapValidator passing an integral float such as 1.0 unchanged; schema regenerated; context=None, context deleted, pr=1.0 and pr=True mutations added; module docstring updated"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - pr accepts an integral float unchanged (WrapValidator keeps the freeze digest), pr=1.0 mutation added; ItemStatus and PrAttributes docstrings switched to single backticks; schema regenerated"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - context declared Context = Field(default_factory=Context), schema regenerated without the null branch, (context,)=None mutation added; draft-07 fixture cited only, it already rejects null"
+    },
+    {
+      "id": "I12",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - Added 'plan new' and 'plan_api write' to MUST_EXIT_ZERO so a refusal no longer passes vacuously"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - Module docstring now states that a schema (typically a stale pinned copy) whose $ref no longer resolves exits 1 with a report naming the ref and telling the project to fix or drop the pin."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - Moved 'Every command validates the plan on load ... schema: lines' from the check PLAN entry into the intro paragraph of the module docstring; check entry rewrapped."
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - Added ('freeze', '1') to the parametrize list of test_every_command_refuses_a_plan_that_does_not_validate."
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - Common-mistakes test now bounds the section at the next heading and asserts distinctive phrases per entry: 'hand-edit exception', \"existing item's status\", 'Guessing a `red` exception', 'use `{base}`', 'without `deep=True`'."
+    },
+    {
+      "id": "I13",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - Added driver test test_record_start_after_completion_drops_completed_from_the_file: close the only item (completed set), reopen with record --start, assert 'completed' not in the plan file, exercising the discard in plan.py cmd_record. plan.py and the model test are cited only: no edit needed, coverage now comes from the driver test."
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - deleted the dead items_of helper from plan_doc.py (the '# --- items' header stays over item_by_id)"
+    },
+    {
+      "id": "I8",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - README Workflow Steps 2-3 rewritten for write-plan (plan.py new, plan_api.load/model_copy(deep=True)/write, plan.py record --sha/--closed, plan.py render); PIP template contract line and Merge/Integration step 4 now use plan.py record, plan_api.write for pr_attributes[] and plan.py render instead of hand edits"
+    },
+    {
+      "id": "C2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - strap.py _red_plan now builds an ActionPlan of ActionItem/PlannedTest via model_construct (skill name fails the plan_id pattern) and red_results reads plan.items; test_strap_gate.py docstring names plan_red and plan_models so select_tests runs it; plan_red.py and test_plan_red.py cited only: plan_red already reads model attributes and its tests already build models"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - base_commit keeps its model default but the schema drops it (json_schema_extra pops default); plan_id, base_commit, frozen, decisions, values, sweeps, item tests and sweep pattern carry the draft-07 contract text as descriptions; schema regenerated. README cited only: the rules now live in the schema descriptions"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - load records the resolved file in _loaded_path; write resolves the plan id next to that file and refuses a plan_id that maps to another file; _plan_file mirrors plan.py locate (path, project_root/path, non-digit id refused). plan.py cited only: locate needs no change"
+    },
+    {
+      "id": "I9",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - README update step 1 names the ActionPlan exception: change plan_models.py/plan_enums.py and run tools/gen_plan_schema.py, never edit the generated file. Spec cited only: frozen, already describes this README update"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (developer-confirmed defer) - plan 0002 is refrozen under a new id when the branch is rewritten; strap_skills keeps 0002; tracker: branch rewrite after PR 148"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (developer-confirmed defer) - stale plan evidence is re-recorded at the refreeze in the branch rewrite; tracker: branch rewrite after PR 148"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (developer-confirmed defer) - commit SHAs outside the PR history are re-recorded at the refreeze in the branch rewrite; tracker: branch rewrite after PR 148"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "c2c2462 (working-tree snapshot; developer commits) - added the refreeze-is-routine pattern to SKILL.md Rule 4.5 (three misclassification patterns), pointing to operating_rules.md Phase 5 flow (outside fixer waves)"
+    }
+  ]
+}
