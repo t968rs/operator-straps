@@ -1,6 +1,6 @@
 {
   "name": "harness",
-  "version": "0.41.0",
+  "version": "0.41.1",
   "description": "Skills, agents, hooks and scripts for PR review, commit breakdowns, PR summaries and worktree flow",
   "author": {
     "name": "Kevin Gabelman"
@@ -9,7 +9,7 @@
     "python": {
       "type": "file",
       "title": "Python interpreter",
-      "description": "Interpreter for harness scripts and hooks. Needs jsonschema, referencing and pydantic>=2. HARNESS_PY in project settings env wins over this.",
+      "description": "Interpreter for harness hooks only; skill commands do not receive it, so pin those with HARNESS_PY. Needs jsonschema, referencing and pydantic>=2.",
       "required": false
     },
     "bash_discipline": {

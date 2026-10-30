@@ -242,23 +242,29 @@ Installing from `/plugin` inside a session opens a dialog for each unset option 
 
 | Option | Default | Meaning |
 |---|---|---|
-| `python` | unset | Interpreter for harness scripts and hooks. Needs `jsonschema`, `referencing`, `pydantic>=2` |
+| `python` | unset | Interpreter for harness hooks only; skill commands do not receive it, so pin those with `HARNESS_PY`. Needs `jsonschema`, `referencing`, `pydantic>=2` |
 | `bash_discipline` | `true` | Deny Bash commands chained with `&&` or `;` |
 | `inject_rules` | `true` | Add `rules/HARNESS_RULES.md` to the session context at start |
 
 ### Python
 
 Every hook and script runs through `plugins/harness/scripts/hpy`, which picks the first interpreter that starts:
-`HARNESS_PY` (project settings `env`), then the `python` option, then `python`, then `py -3`. It skips the Windows
+`HARNESS_PY` (project settings `env`), then the `python` option (hooks only), then `python`, then `py -3`. It skips the Windows
 Store `python3` stub. It does not probe for `jsonschema` / `referencing` / `pydantic`; the code that needs them
 reports a missing module itself: the schema hook stands down with a one-line warning, and `pr-review` /
 `pr-team` (whose driver models reviews in pydantic and validates them with jsonschema / referencing) check all
 three before any subcommand runs and exit 1 with one `problem:` line naming the first one missing. Commit, summary and
 worktree tooling need only the standard library.
 
-`/harness:doctor` checks all of this in one read-only pass: which interpreter `hpy` picked and whether an override
-was skipped, the three modules (with a `pip install` line for that interpreter), `git` and `gh`, and the project's
-`.claude/harness.json`. Run it first in a repository new to the harness.
+Pin an interpreter with `HARNESS_PY` under `env` in `.claude/settings.local.json` (one project, kept out of git) or
+`~/.claude/settings.json` (every project). The `python` option lives in `~/.claude/settings.json` under
+`pluginConfigs` > `harness@<marketplace>` > `options`; the shell that skill commands run in does not receive it, so
+`hpy` falls through to `python` on PATH. Prefer `HARNESS_PY` when a skill fails on a missing module.
+
+`/harness:doctor` checks all of this in one read-only pass: which interpreter `hpy` picked, whether an override
+was skipped or the `python` option never reached the shell, the three modules (with a `pip install` line for
+that interpreter), `git` and `gh`, and the project's `.claude/harness.json`. Run it first in a repository new to
+the harness.
 
 ## Configure a project
 
