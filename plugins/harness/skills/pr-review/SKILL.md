@@ -848,7 +848,7 @@ If all three answers are NO, bubble only if the work is genuinely net-new and ex
 
 Survivors are recorded with `bubble <ID> --classification <C> --reason "<R>"` (an unknown id is a problem and leaves
 the file unchanged). Items that are NOT bubbled join the waves — through a `waves --ids` follow-up wave when a
-late-discovered candidate fails the audit after the plan was made. Two misclassification patterns this audit blocks:
+late-discovered candidate fails the audit after the plan was made. Three misclassification patterns this audit blocks:
 
 - **Multiple `fix` options ≠ "developer must choose."** A reviewer's `fix` array with > 1 option means "any of
   these would resolve," not "the user must pick." The default is: the agent picks the safest, most mechanical
@@ -856,6 +856,11 @@ late-discovered candidate fails the audit after the plan was made. Two misclassi
 - **`needs_follow_up` is not a synonym for "bubble."** It is a load-bearing classification reserved for net-new
   work that genuinely exceeds in-session scope. Small docstring fixes, one-line generator changes, and similar
   shippable edits run through the fix dispatch, not the bubble list.
+- **A refreeze is routine, not a bubble.** A finding whose only blocker is an edit of a frozen plan (an id collision,
+  stale anchors, evidence or sweeps) is standard procedure. The plan that collides or went stale changes, never a
+  plan already on the base branch. Ask the developer once for the OK to `freeze --refreeze`, then fix it as a
+  tracking-path edit, or close it with `closeout --deferred` when the developer says the branch is rewritten next
+  (operating rules, "Phase 5 flow").
 
 **Rule 5 — Atomic JSON closeout through `closeout`.** After the last wave, run
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" closeout --pr <N> [--closed M17="rationale" ...]
