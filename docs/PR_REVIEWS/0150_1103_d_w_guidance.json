@@ -8,7 +8,7 @@
   "base_sha": "3205cf3d9487efee0bfd961ef91e6bccabed666f",
   "head_sha": "862451cecd8f055c582a6de664246de52b283a5f",
   "review_date": "2026-10-30",
-  "verdict": "NOT READY TO MERGE - important: I1, I2, I3, I4, I5, I6, I7",
+  "verdict": "READY TO MERGE - 14 of 14 findings resolved, 0 bubbled",
   "stats": {
     "additions": 245,
     "deletions": 8,
@@ -344,5 +344,91 @@
         "result": "OK (recorded; configured base)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - README d-w capability row gains bullets for worktree_setup/worktree_baseline (reported, never fatal, --no-setup skips) and the linked-worktree warning"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - README worktree_baseline row now states the first failure stops the list; worktree_baseline description in harness.schema.json now states the first failure stops the list"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - parallel2 W0 row cites d-w for placement conventions only and states parallel2 setup cuts lanes without worktree_setup/worktree_baseline; README worktree_setup row notes parallel2 lanes skip the steps"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - README worktree_setup example replaced with uv sync (worktree-local .venv) plus shared-interpreter editable-install caveat; baseline row notes --no-setup skips it; d-w SKILL.md setup bullet carries the same caveat"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - _argv_list takes the key name and raises ConfigError unless the value is a list of non-empty lists of non-empty strings (new _is_argv helper); _build passes worktree_setup/worktree_baseline"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - renamed test_worktree_steps_default_to_none to test_worktree_steps_default_to_empty"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - bad step shapes moved to BAD_WORKTREE_STEPS; new test_invalid_worktree_steps_raise_without_jsonschema sets sys.modules['jsonschema'] = None and asserts ConfigError naming the key; _argv_list shape check makes it pass"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - module docstring now states 'setup [ok|fail]' or 'baseline [ok|fail|skipped]', matching the code and SKILL.md"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - linked-worktree test asserts the warning precedes the 'detached worktree at' line in stderr"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - stop test asserts exit 0, worktree dir exists, exactly one 'setup [' line which is '[fail]'; new test covers the TimeoutExpired branch of run_step via monkeypatched STEP_TIMEOUT_SECONDS; new_worktree.py cited only, its timeout branch already reports '[fail]'"
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - no-steps test asserts exit 0 and worktree dir; both no-steps and --no-setup tests match 'setup [' / 'baseline [' instead of bare words"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - SKILL.md: run in background or with Bash timeout 600000 when steps are set, 600 s per-step limit, baseline stop plus [skipped] lines, EnterWorktree rule stated inline; new_worktree.py prints 'baseline [skipped] <cmd>' for each unrun baseline command; README and schema document the per-step kill and skipped lines"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - run_step uses Popen with output to a temp file, stdin=DEVNULL, a process-tree kill on timeout (taskkill /T /F on Windows, start_new_session plus killpg on POSIX), argv[0] resolved via shutil.which or joined to the worktree, and catches OSError/ValueError/IndexError/SubprocessError as [fail]; README and schema document lookup, closed stdin and the kill; config.py unchanged: _argv_list (config.py:313-326) already rejects anything but non-empty lists of non-empty strings"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b39af88 (working-tree snapshot; developer commits) - main prints and flushes the worktree path before prepare() runs, so a killed run still yields it; SKILL.md gives the background/600000 ms guidance and the 600 s per-step limit; README states the per-step kill"
+    }
+  ]
 }
