@@ -1713,13 +1713,20 @@ def pytest_command(repo: str, tests: Sequence[str]) -> str:
 
 def _tests_block(ctx: BriefContext, files: Sequence[str], entries: Sequence[Tuple[str, Tuple[str, ...]]],
                  deferred: Mapping[str, str]) -> List[str]:
-    """Per-file registry tests: run commands, except deferred tests, named with their reason."""
+    """Registry tests of the file set: one pytest command over every non-deferred test (each once, first-seen
+    order), then a per-file mapping; deferred tests stay listed per file with their reason."""
+    per_file = [(path, tests_for(path, entries)) for path in files]
+    runnable = list(dict.fromkeys(t for _, tests in per_file for t in tests if t not in deferred))
     lines = ["## Files and tests", ""]
-    for path in files:
-        tests = tests_for(path, entries)
-        lines.append(f"- {path}" + ("" if tests else ": no registered test"))
-        lines += [f"  - deferred, do not run: `{t}` ({deferred[t]})" if t in deferred
-                  else f"  - `{pytest_command(ctx.repo, [t])}`" for t in tests]
+    if runnable:
+        lines += ["Run once after the last edit (every non-deferred test of the file set, each once):", "",
+                  f"- `{pytest_command(ctx.repo, runnable)}`", ""]
+    lines += ["Per file (after a red, rerun only the tests of the files it names):", ""]
+    for path, tests in per_file:
+        mine = [t for t in tests if t not in deferred]
+        lines.append(f"- {path}: " + (", ".join(mine) if mine else
+                                      "no runnable test" if tests else "no registered test"))
+        lines += [f"  - deferred, do not run: `{t}` ({deferred[t]})" for t in tests if t in deferred]
     return lines
 
 
@@ -1731,9 +1738,11 @@ def _fixer_rules() -> List[str]:
              "edit only the files of your part plus the set's tests and named paths; another fixer owns the "
              "rest. When a fix needs an edit outside the file set, leave it and bubble the id "
              "`out_of_scope`.",
-             "Run the listed test commands for every edited file before recording. When a test goes red "
-             "because of an edit and cannot be fixed inside the file set, undo that edit and bubble the id "
-             "`fixer_failed`, naming the test in the reason. Never run a test marked deferred: it is too "
+             "Run the batched test command once after the last edit, before recording. On a red, rerun only "
+             "the tests of the files it names while fixing, then the batched command once more. When a test "
+             "goes red because of an edit and cannot be fixed inside the file set, undo that edit and "
+             "bubble the id `fixer_failed`, naming the test in the reason. Never run a test marked "
+             "deferred: it is too "
              "slow for a fix wave, and closeout lists it for one run after the waves.",
              "Bubble an issue only when one of these answers yes; otherwise pick the safest option and "
              "fix it:",

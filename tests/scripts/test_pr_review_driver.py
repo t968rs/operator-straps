@@ -862,7 +862,7 @@ class TestWavesAndCloseout:
         assert "too long for the shell tool" in _normalized(brief)
         assert '"no_change": ["src/pkg/y.py"]' in brief and "`no_change` list" in brief
         assert "Your part: src/pkg/a.py" in brief and "Other parts:" not in brief
-        assert "- tests/test_a.py\n" in brief.split("## Files and tests", 1)[1]
+        assert "- tests/test_a.py: tests/test_a.py\n" in brief.split("## Files and tests", 1)[1]
         waves = json.loads((rm.run_dir(_PR, clone) / "waves.json").read_text(encoding="utf-8"))
         assert waves["waves"][0][0]["files"] == ["src/pkg/a.py", "tests/test_a.py"]
         assert waves["waves"][0][0]["parts"] == {"M1": ["src/pkg/a.py"]}
@@ -1073,6 +1073,52 @@ def _defer_pr(make_project, timings: bool = True) -> Tuple[Path, str]:
 def _run_lines(text: str) -> List[str]:
     """Lines of ``text`` that carry a pytest run command."""
     return [line for line in text.splitlines() if " -m pytest " in line]
+
+
+_BATCH_REGISTRY = {"tests": [
+    {"file": "tests/test_a.py", "properties": {"test_target_paths": ["src/pkg/a.py"]}},
+    {"file": "tests/test_shared.py", "properties": {"test_target_paths": ["src/pkg/"]}},
+    {"file": "tests/test_slow.py", "properties": {"test_target_paths": ["src/pkg/"]}},
+]}
+_BATCH_TIMINGS = {"tests": [{"file": "tests/test_slow.py", "duration": 90.0}]}
+
+
+class TestBatchedFixerTests:
+    def _brief_tests(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project) -> str:
+        """The ``Files and tests`` section of the brief for one fixer owning a.py and b.py."""
+        extra = {"tests/test_shared.py": "def test_shared():\n    assert True\n",
+                 "tests/test_slow.py": "def test_slow():\n    assert True\n"}
+        base: Dict[str, object] = {"tests/registry.json": _BATCH_REGISTRY,
+                                   "reports/timings.json": _BATCH_TIMINGS}
+        clone, head = _make_pr(make_project, extra, _DEFER_CONFIG, base)
+        runtime = [_finding("src/pkg/a.py", None, also=["src/pkg/b.py"])]
+        _built(script, monkeypatch, clone, head, runtime)
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        brief = _brief(clone, "w1_fix_1", "fix_briefs")
+        return brief.split("## Files and tests", 1)[1].split("## Rules", 1)[0]
+
+    def test_files_sharing_tests_get_one_pytest_command(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+    ) -> None:
+        tests = self._brief_tests(script, monkeypatch, make_project)
+        [run] = _run_lines(tests)
+        assert run.count("tests/test_a.py") == 1 and run.count("tests/test_shared.py") == 1
+        assert "tests/test_slow.py" not in run
+
+    def test_per_file_mapping_names_each_files_tests_in_plain_text(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+    ) -> None:
+        tests = self._brief_tests(script, monkeypatch, make_project)
+        assert "- src/pkg/a.py: tests/test_a.py, tests/test_shared.py" in tests
+        assert "- src/pkg/b.py: tests/test_shared.py" in tests
+
+    def test_deferred_tests_stay_listed_per_file(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, make_project,
+    ) -> None:
+        tests = self._brief_tests(script, monkeypatch, make_project)
+        note = "- deferred, do not run: `tests/test_slow.py` (measured 90 s > 60 s)"
+        # a.py and b.py reach it through src/pkg/; the widened file set also holds the test itself
+        assert tests.count(note) == 3
 
 
 class TestDeferredTests:

@@ -46,9 +46,10 @@ assigned fix is made and never widens the file set, the issue list or the record
 - **Pick, do not defer.** Several fix options mean any of them resolves the issue: apply the safest, most
   mechanical one. Bubble only when the brief's three questions say so, with the classification they name,
   or when the fix is outside the file set (`out_of_scope`) or a test stays red (`fixer_failed`, see below).
-- **Test before recording.** After the last edit, run every test command the brief lists for each edited
-  file. A red test caused by an edit gets fixed inside the file set or the edit is undone and the issue
-  bubbled as `fixer_failed`, naming the test.
+- **Test before recording.** After the last edit, run the brief's batched test command once (one pytest
+  process over every non-deferred test of the file set). On a red, rerun only the tests of the files the
+  failure names while fixing, then the batched command once more. A red test caused by an edit gets fixed
+  inside the file set or the edit is undone and the issue bubbled as `fixer_failed`, naming the test.
 - **Never run a slow test marked deferred.** A test the brief marks `deferred, do not run` is too slow for
   a fix wave (measured over the project's ceiling, or flagged in its registry); closeout lists it for one
   run after the waves. Editing it is allowed when the brief's file set lists it. This test deferral is

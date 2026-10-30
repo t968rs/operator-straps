@@ -829,8 +829,8 @@ are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fix
   one slow suite would otherwise gate the whole wave and every later one.
 - **Model per fixer:** `haiku` when every issue is `fix_kind: mechanical`, else `opus`.
 - Dispatch each row as `Agent(subagent_type="harness:pr-fixer", model=<row model>, prompt=<row prompt>)`. The fixer reads
-  before it edits, stays inside its brief's file set (new files allowed), runs the brief's test commands for each
-  edited file (never a deferred test), writes its entries to its draft file and records once with
+  before it edits, stays inside its brief's file set (new files allowed), runs the brief's one batched test command
+  after its last edit (never a deferred test), writes its entries to its draft file and records once with
   `record_fixes_draft`.
 
 **Rule 3 — Work up the severity chain inside each fixer.** A fixer brief orders its issues **M → I → C**, so I/C work
