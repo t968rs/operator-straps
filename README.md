@@ -410,6 +410,7 @@ at the plugin folders of a checkout.
 | `plugins/harness/skills/`, `agents/` | skill and agent markdown; agents dispatch as `harness:<name>` |
 | `plugins/harness/{config,schemas,rules,reference}/` | defaults + config schema, review schemas, session rules, commit format |
 | `plugins/<mod>/hooks/` | TypeScript mods, each with its own `*.test.ts` |
+| `plugins/<name>/.claude-plugin/` | `plugin.json` manifest and `icon.png` (square 1024x1024 PNG); every local plugin in `.claude-plugin/marketplace.json` ships both |
 | `tests/` | pytest suite; `make_project` builds throwaway consuming projects |
 | `docs/PROVENANCE.md` | where every file came from |
 

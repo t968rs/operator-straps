@@ -1,6 +1,6 @@
 {
   "name": "band-line",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "oStraps banner in a band above the prompt (git-status's git state, model, context window); clears git-status's own status line",
   "author": {
     "name": "Kevin Gabelman"

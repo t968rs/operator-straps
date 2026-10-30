@@ -1,6 +1,6 @@
 {
   "name": "git-status",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Git snapshot, per-prompt GIT_STATE context and a fallback git status line that gives way to ccstatusline or band-line",
   "author": {
     "name": "Kevin Gabelman"
