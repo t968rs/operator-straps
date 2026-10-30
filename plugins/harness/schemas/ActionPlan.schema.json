@@ -1,193 +1,150 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Action Plan",
-  "description": "Unified execution plan schema. JSON is the source of truth for TODO state, implementation progress, and verification references per action item. A plan may reference zero or more PRs via pr_attributes[]; project-scoped plans (research, refactor, incident) may omit pr_attributes entirely.",
-  "type": "object",
-  "required": [
-    "plan_id",
-    "plan_created",
-    "execution_model",
-    "items"
-  ],
-  "properties": {
-    "plan_id": {
-      "type": "string",
-      "pattern": "^[0-9]{4}$",
-      "description": "Zero-padded 4-digit sequential plan number. Counts up within docs/PLANS/. Also enforced as the filename prefix: docs/PLANS/{plan_id}_{Title}_ActionPlan.json and docs/PLANS/{plan_id}_{Title}_PIP.md."
-    },
-    "plan_created": {
-      "type": "string",
-      "format": "date",
-      "description": "Date plan was created (YYYY-MM-DD)"
-    },
-    "completed": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "date",
-      "description": "Date all items reached a terminal status (COMPLETE or CLOSED_NO_ACTION). Null while the plan is in progress."
-    },
-    "source_document": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Path or reference to the source document (issue, spec, ticket, research note). Per-PR review documents live in pr_attributes[].review_doc instead."
-    },
-    "documentation": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Optional path to a detailed implementation plan or design document (e.g., docs/PLANS/{plan_id}_{Title}_PIP.md)"
-    },
-    "branch": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Primary working branch if the plan has a single-branch shape. Per-PR branches go in pr_attributes[].branch."
-    },
-    "base_branch": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "description": "Primary target branch if the plan has a single-branch shape. Per-PR base branches go in pr_attributes[].base_branch."
-    },
-    "execution_model": {
-      "type": "string",
-      "description": "How work is organized (e.g., 'serial', 'parallel (3 worktrees: A=CI, B=workflow, C=tests)', 'staged (phase 1, 2, 3)')"
-    },
-    "markdown_sync_status": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "enum": [
-        "pending_markdown_sync",
-        "in_sync",
-        null
-      ],
-      "description": "Optional JSON->Markdown sync marker. Use pending_markdown_sync when JSON moved ahead; Markdown must be brought in sync before branch close."
-    },
-    "markdown_last_updated": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "format": "date",
-      "description": "Date when companion Markdown sections were last synchronized with this JSON plan."
-    },
-    "context": {
-      "type": "object",
-      "description": "Optional metadata about the plan context",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/ActionPlan.schema.json",
+  "$defs": {
+    "ActionItem": {
+      "additionalProperties": true,
       "properties": {
-        "project": {
-          "type": "string",
-          "description": "Project or system name"
+        "id": {
+          "description": "Item id: 2-4 uppercase letters, a dash, digits and periods (`TASK-3.2`).",
+          "pattern": "^[A-Z]{2,4}-[0-9.]+$",
+          "title": "Id",
+          "type": "string"
         },
-        "owner": {
-          "type": "string",
-          "description": "Owner or assignee"
-        },
-        "deadline": {
-          "type": [
-            "string",
-            "null"
+        "priority": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Priority"
+            },
+            {
+              "type": "null"
+            }
           ],
-          "format": "date",
-          "description": "Target completion date if applicable"
+          "default": null
         },
-        "tags": {
-          "type": "array",
+        "category": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Category"
+        },
+        "worktree": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Worktree"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "action": {
+          "description": "Execution-ready implementation steps; the checklist source of truth.",
+          "title": "Action",
+          "type": "string"
+        },
+        "files": {
+          "description": "Paths of the files the item changes.",
           "items": {
             "type": "string"
           },
-          "description": "Arbitrary tags for filtering/categorization"
-        }
-      }
-    },
-    "pr_attributes": {
-      "type": "array",
-      "items": {
-        "$ref": "prAttributes.schema.json"
-      },
-      "description": "Zero or more PR associations for this plan. Empty/omit for project-scoped plans."
-    },
-    "items": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/action_item"
-      },
-      "description": "Array of action items, one per issue/task"
-    },
-    "base_commit": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{40}$",
-      "description": "Commit the plan was written against: the merge base of the base branch and HEAD, recorded by `plan.py new`. Commands name `{base}` instead of a SHA."
-    },
-    "frozen": {
-      "type": ["object", "null"],
-      "description": "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field except item status, evidence and verification_references, and the top-level completed, frozen, markdown_sync_status and markdown_last_updated. `plan.py check` reports any later edit outside those fields.",
-      "required": ["commit", "tree", "date", "digest"],
-      "properties": {
-        "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-        "tree": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-        "date": {"type": "string", "format": "date"},
-        "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
-      }
-    },
-    "decisions": {
-      "type": "array",
-      "description": "Design questions the plan settles. `chosen` null means open, which blocks `plan.py freeze`. Every option not chosen counts as rejected.",
-      "items": {"$ref": "#/definitions/decision"}
-    },
-    "values": {
-      "type": "array",
-      "description": "Thresholds, counts and bands the plan copies from the spec or the code, with the options each assumes. A value assuming a rejected option fails `plan.py check`.",
-      "items": {"$ref": "#/definitions/value"}
-    },
-    "formats": {
-      "type": "array",
-      "description": "Literal formats another component parses (delimited strings, file layouts, CLI arguments). Each cites the existing producer or parser it is copied from.",
-      "items": {"$ref": "#/definitions/format"}
-    },
-    "sweeps": {
-      "type": "array",
-      "description": "Searches the plan relies on (old names, moved paths). `plan.py check` runs each pattern and fails on a file with hits that `hits` does not classify, or a classified file with none.",
-      "items": {"$ref": "#/definitions/sweep"}
-    },
-    "deferred_to_future_plans": {
-      "type": "array",
-      "description": "Optional log of scope deferrals - what was considered and explicitly pushed out of this plan.",
-      "items": {
-        "type": "object",
-        "required": [
-          "topic",
-          "rationale"
-        ],
-        "properties": {
-          "topic": {
-            "type": "string"
-          },
-          "rationale": {
-            "type": "string"
-          },
-          "affected_sites": {
-            "type": "array",
-            "items": {
-              "type": "string"
+          "title": "Files",
+          "type": "array"
+        },
+        "dependencies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
             }
-          }
+          ],
+          "default": null,
+          "description": "Item ids that finish first.",
+          "title": "Dependencies"
+        },
+        "status": {
+          "$ref": "#/$defs/ItemStatus"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "string"
+        },
+        "verification_references": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Verification References",
+          "type": "array"
+        },
+        "markdown_section": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Markdown Section"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "model": {
+          "$ref": "#/$defs/ModelName",
+          "default": "sonnet",
+          "description": "Model that implements the item."
+        },
+        "anchors": {
+          "items": {
+            "$ref": "#/$defs/Anchor"
+          },
+          "title": "Anchors",
+          "type": "array"
+        },
+        "commands": {
+          "items": {
+            "$ref": "#/$defs/Command"
+          },
+          "title": "Commands",
+          "type": "array"
+        },
+        "tests": {
+          "description": "Pytest node ids that prove the item, each with the exception that fails it before the item is implemented. A planned test file lives at `<plans dir>/<plan_id>/tests/<repo-relative path>`.",
+          "items": {
+            "$ref": "#/$defs/PlannedTest"
+          },
+          "title": "Tests",
+          "type": "array"
         }
-      }
-    }
-  },
-  "definitions": {
-    "action_item": {
-      "type": "object",
+      },
       "required": [
         "id",
         "title",
@@ -195,224 +152,654 @@
         "status",
         "evidence"
       ],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^[A-Z]{2,4}-[0-9.]+$",
-          "description": "Item identifier: 2-4 uppercase letters + '-' + digits/periods (e.g., 'CRS-1', 'TASK-3.2', 'BUG-789'). Priority/severity is carried in the separate priority field, not encoded in the ID."
-        },
-        "priority": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "critical",
-            "important",
-            "minor",
-            null
-          ],
-          "description": "Issue severity or priority (optional)"
-        },
-        "category": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Category or type (e.g., 'code', 'test', 'docs', 'config')"
-        },
-        "worktree": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Parallel work unit if applicable. Free string - the schema doesn't enforce a specific vocabulary (e.g., 'A', 'B', 'phase-1', 'service-x', null)."
-        },
-        "title": {
-          "type": "string",
-          "description": "Action item title or summary"
-        },
-        "action": {
-          "type": "string",
-          "description": "TODO implementation steps in concise, execution-ready form. Keep this as source-of-truth checklist content."
-        },
-        "files": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Paths to files modified to resolve this item (empty array if no changes). Entries should be pure paths - put clarifying notes in the notes field, not embedded in path strings."
-        },
-        "dependencies": {
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "string"
-          },
-          "description": "Item IDs that must be completed before this one (null if none)"
-        },
-        "status": {
-          "type": "string",
-          "enum": [
-            "PENDING",
-            "IN_PROGRESS",
-            "COMPLETE",
-            "CLOSED_NO_ACTION",
-            "BLOCKED"
-          ],
-          "description": "Current status. Never set without corresponding evidence. BLOCKED captures 'cannot proceed until X' with rationale in evidence."
-        },
-        "evidence": {
-          "type": "string",
-          "description": "Current reality claim (what is COMPLETE, IN_PROGRESS, BLOCKED, or CLOSED_NO_ACTION). Keep concise; put durable proof pointers in verification_references."
-        },
-        "verification_references": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Durable references that verify the current status (git tree SHAs, test commands, CI run links, artifact paths, or doc anchors)."
-        },
-        "markdown_section": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Companion Markdown section key/anchor that expands this item (e.g., 'FCC-1', '#task-fcc-1', or docs/PLANS/...#fcc-1)."
-        },
-        "notes": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "description": "Optional additional context, decision rationale, or legacy ID mapping (e.g., 'Was C1 in pre-unification schema')"
-        },
-        "model": {
-          "type": "string",
-          "enum": ["haiku", "sonnet", "opus"],
-          "description": "Model of the agent that implements the item when it is dispatched (default sonnet)."
-        },
-        "anchors": {
-          "type": "array",
-          "description": "Claims about existing code the item relies on: each names a line range and the text expected there. `plan.py check` opens every one.",
-          "items": {"$ref": "#/definitions/anchor"}
-        },
-        "commands": {
-          "type": "array",
-          "description": "Commands the item runs (generation, verification), each with the output that means it passed. Lint rejects a hard-coded commit SHA and a pytest run of a directory.",
-          "items": {"$ref": "#/definitions/command"}
-        },
-        "tests": {
-          "type": "array",
-          "description": "Pytest node ids that prove the item, each with the exception that fails it before the item is implemented. A planned test file lives at `<plans dir>/<plan_id>/tests/<repo-relative path>`.",
-          "items": {"$ref": "#/definitions/test"}
-        }
-      }
+      "title": "ActionItem",
+      "type": "object"
     },
-    "anchor": {
-      "type": "object",
-      "required": ["at", "expect"],
+    "Anchor": {
       "additionalProperties": false,
       "properties": {
         "at": {
-          "type": "string",
+          "description": "Repo-relative path and 1-based line or range: `src/x.py:12-18`.",
           "pattern": "^[^:]+:[0-9]+(-[0-9]+)?$",
-          "description": "Repo-relative path and 1-based line or line range: `src/x.py:12` or `src/x.py:12-18`."
+          "title": "At",
+          "type": "string"
         },
         "expect": {
-          "type": "string",
+          "description": "Text the range must contain; whitespace runs compare as one space.",
           "minLength": 1,
-          "description": "Text the range must contain; runs of whitespace compare as one space."
+          "title": "Expect",
+          "type": "string"
         }
-      }
+      },
+      "required": [
+        "at",
+        "expect"
+      ],
+      "title": "Anchor",
+      "type": "object"
     },
-    "command": {
-      "type": "object",
-      "required": ["run", "expect"],
+    "Command": {
       "additionalProperties": false,
       "properties": {
-        "run": {"type": "string", "minLength": 1},
-        "expect": {"type": "string", "minLength": 1, "description": "The output that means the command passed."},
+        "run": {
+          "minLength": 1,
+          "title": "Run",
+          "type": "string"
+        },
+        "expect": {
+          "description": "The output that means the command passed.",
+          "minLength": 1,
+          "title": "Expect",
+          "type": "string"
+        },
         "writes": {
-          "type": "array",
-          "items": {"type": "string"},
-          "description": "Files a generation command writes, default output paths and working-directory side effects included."
+          "description": "Files a generation command writes, default outputs and working-directory side effects included.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Writes",
+          "type": "array"
         }
-      }
+      },
+      "required": [
+        "run",
+        "expect"
+      ],
+      "title": "Command",
+      "type": "object"
     },
-    "test": {
-      "type": "object",
-      "required": ["node", "red"],
+    "Context": {
+      "additionalProperties": true,
+      "properties": {
+        "project": {
+          "default": "",
+          "title": "Project",
+          "type": "string"
+        },
+        "owner": {
+          "default": "",
+          "title": "Owner",
+          "type": "string"
+        },
+        "deadline": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "format": "date",
+          "title": "Deadline"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Tags",
+          "type": "array"
+        }
+      },
+      "title": "Context",
+      "type": "object"
+    },
+    "Decision": {
       "additionalProperties": false,
       "properties": {
-        "node": {"type": "string", "pattern": "^[^:]+\\.py(::[^:]+)+$"},
+        "id": {
+          "pattern": "^D[0-9]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/DecisionOption"
+          },
+          "minItems": 2,
+          "title": "Options",
+          "type": "array"
+        },
+        "chosen": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Chosen"
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rationale"
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "options",
+        "chosen"
+      ],
+      "title": "Decision",
+      "type": "object"
+    },
+    "DecisionOption": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[A-Za-z0-9_.-]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "summary": {
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "summary"
+      ],
+      "title": "DecisionOption",
+      "type": "object"
+    },
+    "DeferredTopic": {
+      "additionalProperties": true,
+      "properties": {
+        "topic": {
+          "title": "Topic",
+          "type": "string"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "affected_sites": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Affected Sites",
+          "type": "array"
+        }
+      },
+      "required": [
+        "topic",
+        "rationale"
+      ],
+      "title": "DeferredTopic",
+      "type": "object"
+    },
+    "Frozen": {
+      "additionalProperties": true,
+      "properties": {
+        "commit": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Commit",
+          "type": "string"
+        },
+        "tree": {
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Tree",
+          "type": "string"
+        },
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "commit",
+        "tree",
+        "date",
+        "digest"
+      ],
+      "title": "Frozen",
+      "type": "object"
+    },
+    "ItemStatus": {
+      "description": "Status of an action item; only `plan.py record` moves an item once its plan is frozen.",
+      "enum": [
+        "PENDING",
+        "IN_PROGRESS",
+        "COMPLETE",
+        "CLOSED_NO_ACTION",
+        "BLOCKED"
+      ],
+      "title": "ItemStatus",
+      "type": "string"
+    },
+    "MarkdownSync": {
+      "description": "Marker that the companion markdown trails the JSON.",
+      "enum": [
+        "pending_markdown_sync",
+        "in_sync"
+      ],
+      "title": "MarkdownSync",
+      "type": "string"
+    },
+    "ModelName": {
+      "description": "The model tier that implements an item when it is dispatched.",
+      "enum": [
+        "haiku",
+        "sonnet",
+        "opus"
+      ],
+      "title": "ModelName",
+      "type": "string"
+    },
+    "PlanFormat": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "example": {
+          "minLength": 1,
+          "title": "Example",
+          "type": "string"
+        },
+        "source": {
+          "$ref": "#/$defs/Anchor"
+        }
+      },
+      "required": [
+        "name",
+        "example",
+        "source"
+      ],
+      "title": "PlanFormat",
+      "type": "object"
+    },
+    "PlannedTest": {
+      "additionalProperties": false,
+      "properties": {
+        "node": {
+          "pattern": "^[^:]+\\.py(::[^:]+)+$",
+          "title": "Node",
+          "type": "string"
+        },
         "red": {
-          "type": "string",
-          "enum": ["ImportError", "AttributeError", "AssertionError", "NotImplementedError", "TypeError"],
+          "$ref": "#/$defs/RedException",
           "description": "The exception that fails the test before the item is implemented."
         }
-      }
+      },
+      "required": [
+        "node",
+        "red"
+      ],
+      "title": "PlannedTest",
+      "type": "object"
     },
-    "decision": {
-      "type": "object",
-      "required": ["id", "question", "options", "chosen"],
-      "additionalProperties": false,
+    "PrAttributes": {
+      "additionalProperties": true,
+      "description": "One PR associated with a plan; `pr` is an int, or a string for drafts without a number yet.",
       "properties": {
-        "id": {"type": "string", "pattern": "^D[0-9]+$"},
-        "question": {"type": "string", "minLength": 1},
-        "options": {
-          "type": "array",
-          "minItems": 2,
-          "items": {
-            "type": "object",
-            "required": ["id", "summary"],
-            "additionalProperties": false,
-            "properties": {
-              "id": {"type": "string", "pattern": "^[A-Za-z0-9_.-]+$"},
-              "summary": {"type": "string", "minLength": 1}
+        "pr": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
             }
-          }
+          ],
+          "title": "Pr"
         },
-        "chosen": {"type": ["string", "null"]},
-        "rationale": {"type": ["string", "null"]}
-      }
-    },
-    "value": {
-      "type": "object",
-      "required": ["name", "value", "source"],
-      "additionalProperties": false,
-      "properties": {
-        "name": {"type": "string", "minLength": 1},
-        "value": {"type": "string", "minLength": 1},
-        "source": {"type": "string", "minLength": 1, "description": "Where the value comes from: a spec section or a `path:line`."},
-        "assumes": {"type": "array", "items": {"type": "string"}, "description": "Option ids the value depends on."}
-      }
-    },
-    "format": {
-      "type": "object",
-      "required": ["name", "example", "source"],
-      "additionalProperties": false,
-      "properties": {
-        "name": {"type": "string", "minLength": 1},
-        "example": {"type": "string", "minLength": 1},
-        "source": {"$ref": "#/definitions/anchor"}
-      }
-    },
-    "sweep": {
-      "type": "object",
-      "required": ["id", "pattern", "hits"],
-      "additionalProperties": false,
-      "properties": {
-        "id": {"type": "string", "pattern": "^S[0-9]+$"},
-        "pattern": {"type": "string", "minLength": 1, "description": "Extended regular expression run with `git grep -E` over tracked and untracked files."},
-        "hits": {
-          "type": "object",
-          "additionalProperties": {"type": "string", "minLength": 1},
-          "description": "Repo-relative file -> classification (`rewrite`, `keep`, `frozen` or any word the plan defines)."
+        "review_doc": {
+          "anyOf": [
+            {
+              "pattern": "^docs/PR_REVIEWS/.+\\.json$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Review Doc"
+        },
+        "branch": {
+          "title": "Branch",
+          "type": "string"
+        },
+        "base_branch": {
+          "title": "Base Branch",
+          "type": "string"
+        },
+        "pip_document": {
+          "anyOf": [
+            {
+              "pattern": "^docs/PLANS/.+_PIP\\.md$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pip Document"
+        },
+        "merged_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "format": "date",
+          "title": "Merged At"
         }
-      }
+      },
+      "required": [
+        "pr",
+        "branch",
+        "base_branch"
+      ],
+      "title": "PrAttributes",
+      "type": "object"
+    },
+    "Priority": {
+      "description": "Optional severity or priority of an item.",
+      "enum": [
+        "critical",
+        "important",
+        "minor"
+      ],
+      "title": "Priority",
+      "type": "string"
+    },
+    "RedException": {
+      "description": "The exception that fails a planned test before its item is implemented.",
+      "enum": [
+        "ImportError",
+        "AttributeError",
+        "AssertionError",
+        "NotImplementedError",
+        "TypeError"
+      ],
+      "title": "RedException",
+      "type": "string"
+    },
+    "Sweep": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^S[0-9]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "pattern": {
+          "description": "Extended regular expression run with `git grep -E` over tracked and untracked files.",
+          "minLength": 1,
+          "title": "Pattern",
+          "type": "string"
+        },
+        "hits": {
+          "additionalProperties": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "description": "Repo-relative file -> classification.",
+          "title": "Hits",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "pattern",
+        "hits"
+      ],
+      "title": "Sweep",
+      "type": "object"
+    },
+    "Value": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        },
+        "source": {
+          "description": "Where the value comes from: a spec section or a `path:line`.",
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        },
+        "assumes": {
+          "description": "Option ids the value depends on.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Assumes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "value",
+        "source"
+      ],
+      "title": "Value",
+      "type": "object"
     }
-  }
+  },
+  "additionalProperties": true,
+  "description": "A unified execution plan: JSON is the source of truth for items, evidence and verification.",
+  "properties": {
+    "plan_id": {
+      "description": "Zero-padded 4-digit sequential plan number, also the filename prefix: `{plan_id}_{Title}_ActionPlan.json` and `{plan_id}_{Title}_PIP.md`.",
+      "pattern": "^[0-9]{4}$",
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "plan_created": {
+      "format": "date",
+      "title": "Plan Created",
+      "type": "string"
+    },
+    "completed": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "format": "date",
+      "title": "Completed"
+    },
+    "source_document": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Document"
+    },
+    "documentation": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Documentation"
+    },
+    "branch": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Branch"
+    },
+    "base_branch": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Base Branch"
+    },
+    "execution_model": {
+      "title": "Execution Model",
+      "type": "string"
+    },
+    "markdown_sync_status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MarkdownSync"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "markdown_last_updated": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "format": "date",
+      "title": "Markdown Last Updated"
+    },
+    "context": {
+      "$ref": "#/$defs/Context"
+    },
+    "pr_attributes": {
+      "items": {
+        "$ref": "#/$defs/PrAttributes"
+      },
+      "title": "Pr Attributes",
+      "type": "array"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/ActionItem"
+      },
+      "title": "Items",
+      "type": "array"
+    },
+    "base_commit": {
+      "description": "Commit the plan was written against: the merge base of the base branch and HEAD, recorded by `plan.py new`. Commands name `{base}` instead of a SHA.",
+      "pattern": "^[0-9a-f]{40}$",
+      "title": "Base Commit",
+      "type": "string"
+    },
+    "frozen": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Frozen"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field except item status, evidence and verification_references, and the top-level completed, frozen, markdown_sync_status and markdown_last_updated. `plan.py check` reports any later edit outside those fields."
+    },
+    "decisions": {
+      "description": "Design questions the plan settles. `chosen` null means open, which blocks `plan.py freeze`. Every option not chosen counts as rejected.",
+      "items": {
+        "$ref": "#/$defs/Decision"
+      },
+      "title": "Decisions",
+      "type": "array"
+    },
+    "values": {
+      "description": "Thresholds, counts and bands the plan copies from the spec or the code, with the options each assumes. A value assuming a rejected option fails `plan.py check`.",
+      "items": {
+        "$ref": "#/$defs/Value"
+      },
+      "title": "Values",
+      "type": "array"
+    },
+    "formats": {
+      "items": {
+        "$ref": "#/$defs/PlanFormat"
+      },
+      "title": "Formats",
+      "type": "array"
+    },
+    "sweeps": {
+      "description": "Searches the plan relies on (old names, moved paths). `plan.py check` runs each pattern over tracked and untracked files and fails on a file with hits that `hits` does not classify, or a classified file with none.",
+      "items": {
+        "$ref": "#/$defs/Sweep"
+      },
+      "title": "Sweeps",
+      "type": "array"
+    },
+    "deferred_to_future_plans": {
+      "items": {
+        "$ref": "#/$defs/DeferredTopic"
+      },
+      "title": "Deferred To Future Plans",
+      "type": "array"
+    }
+  },
+  "required": [
+    "plan_id",
+    "plan_created",
+    "execution_model",
+    "items"
+  ],
+  "title": "ActionPlan",
+  "type": "object"
 }

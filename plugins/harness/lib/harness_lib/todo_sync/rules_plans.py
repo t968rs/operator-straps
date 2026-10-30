@@ -8,12 +8,11 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional
 
+from harness_lib.plan_enums import DONE, RULES_OPEN, ItemStatus
 from harness_lib.todo_sync.pip_sections import find_section, section_key
 from harness_lib.todo_sync.report import Finding
 from harness_lib.todo_sync.sources import PlanPair, Sources, posix
 
-DONE = frozenset({"COMPLETE", "CLOSED_NO_ACTION"})
-OPEN = frozenset({"PENDING", "IN_PROGRESS"})
 # A run of 7-40 hex characters with at least one letter: all-digit tokens (CI run ids, dates, ticket
 # numbers) are not commit SHAs.
 SHA = re.compile(r"\b(?=[0-9]*[a-f])[0-9a-f]{7,40}\b", re.IGNORECASE)
@@ -49,7 +48,7 @@ def _p1_item(pair: PlanPair, item: Dict[str, Any]) -> List[Finding]:
         return [Finding("P1", "error", pair.pip_rel, f"{status} item has {n} unchecked box(es)",
                         line=section.unchecked[0].line, subject=item_id,
                         fix="Check the boxes, or reopen the item.")]
-    if status in OPEN and not section.unchecked:
+    if status in RULES_OPEN and not section.unchecked:
         return [Finding("P1", "error", pair.pip_rel, f"{status} item has every box checked",
                         line=section.heading.line, subject=item_id,
                         fix="Mark the item COMPLETE with evidence, or reopen a box.")]
@@ -85,7 +84,7 @@ def p2_evidence_sha(src: Sources) -> List[Finding]:
     out: List[Finding] = []
     for pair in src.plan_pairs():
         for item in _plan_items(src, "P2", pair, out) or []:
-            if item.get("status") == "COMPLETE" and not _names_sha(item):
+            if item.get("status") == ItemStatus.COMPLETE and not _names_sha(item):
                 out.append(Finding("P2", "error", pair.plan.rel, "COMPLETE item names no commit SHA",
                                    subject=str(item.get("id")),
                                    fix="Add the commit SHA to evidence or verification_references."))

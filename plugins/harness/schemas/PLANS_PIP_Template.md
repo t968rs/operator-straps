@@ -2,7 +2,7 @@
 
 **File location:** `<plans dir>/{PLAN_ID}_{Title}_PIP.md` (`<plans dir>` is the project's `artifacts.plans`, default `docs/PLANS`)
 **Companion ActionPlan:** `<plans dir>/{PLAN_ID}_{Title}_ActionPlan.json`
-**Schemas:** `ActionPlan.schema.json` (unified) and `prAttributes.schema.json` (PR-association fragment), read from the project's pinned schemas directory when present, else the harness plugin's `schemas/`
+**Schema:** `ActionPlan.schema.json`, generated from the plan models (`harness_lib/plan_models.py`; its `PrAttributes` model describes each `pr_attributes[]` entry), read by the schema hook from the project's pinned schemas directory when present, else the harness plugin's `schemas/`
 
 > **PLAN_ID** is a zero-padded 4-digit sequence number (e.g., `0001`, `0023`) that counts up within `<plans dir>`. The same number prefixes both the PIP markdown and the ActionPlan JSON for a plan.
 
@@ -55,8 +55,9 @@ Example: "Resolve 10 code review findings (2 critical, 5 important, 3 minor) fro
   - implementation-progress state (`items[].status`, `items[].evidence`)
   - verification references (`items[].verification_references`)
 - PIP Markdown expands those JSON keys with visual flow, rationale, and evidence detail.
-- If implementation deviates from JSON, update JSON first, then sync Markdown in the same task cycle.
-- Markdown may lag briefly during execution, but it must be synchronized before branch close.
+- If implementation deviates from JSON, change the plan through `plan_api.write` (status and evidence only
+  through `plan.py record`), then run `plan.py render` to regenerate this Markdown; neither file is edited by hand.
+- Markdown may lag briefly during execution, but it must be re-rendered before branch close.
 ```
 
 ## Executive Summary (Optional)
@@ -194,9 +195,10 @@ After all tasks complete and tests pass:
 1. Merge worktrees back to feature branch (or all serial changes committed)
 2. Push feature branch: `git push origin feature_branch`
 3. Open/update PR in GitHub
-4. Update `<plans dir>/{PLAN_ID}_{Title}_ActionPlan.json`:
-   - Mark items COMPLETE with evidence (commit SHA + test output or rationale)
-   - Add/update the relevant entry in `pr_attributes[]`
+4. Record each item in `<plans dir>/{PLAN_ID}_{Title}_ActionPlan.json` through `plan.py`, never by hand:
+   - `plan.py record {PLAN_ID} <ITEM> --sha <commit>` (COMPLETE) or `--closed "<rationale>"` (CLOSED_NO_ACTION)
+   - Add/update the relevant entry in `pr_attributes[]` through `plan_api.write`
+   - `plan.py render {PLAN_ID}` to regenerate this PIP
 ```
 
 ---

@@ -43,28 +43,30 @@ Structure of an agent code-review verdict:
 
 **Applies to:** `docs/PLANS/{NNNN}_ActionPlan.json` and `docs/PLANS/{NNNN}_*_ActionPlan.json`.
 
+**Generated, never edited.** The pydantic models in `plugins/harness/lib/harness_lib/plan_models.py` are the one definition of a plan; `tools/gen_plan_schema.py` writes this file from them (draft 2020-12) and `tests/contract/test_plan_schema_generated.py` fails when the committed file drifts. `plan.py` validates through the models; the `validate_pr_json_schema.py` hook validates plan writes against this file, or a project's pinned copy.
+
 Execution tracking:
 
 - `plan_id` (4-digit zero-padded), `plan_created`, `execution_model` (`sequential` / `parallel_worktrees`)
-- `pr_attributes[]` — zero or more PR references (uses `prAttributes.schema.json` per element). Project-scoped plans (research, refactor, incident) may omit this entirely.
+- `pr_attributes[]` — zero or more PR references (the `PrAttributes` model per element). Project-scoped plans (research, refactor, incident) may omit this entirely.
 - `items[]` — one entry per action item, with `id`, `priority`, `title`, `action` (exact remediation steps), `files[]`, `status`, `evidence`; optional add-ons are `verification_references[]` + `markdown_section`
 - Optional markdown sync metadata: `markdown_sync_status` + `markdown_last_updated`
 - Plan-level fields written by `plan.py`: `base_commit` (merge base, `{base}` stands in for it in commands), `frozen` (commit, tree, date and digest set by `plan.py freeze`), `completed`
 - Design fields: `decisions[]` (open until `chosen` is set, which blocks freeze), `values[]` (thresholds with the options they assume), `formats[]` (literal layouts copied from a producer or parser), `sweeps[]` (searches `plan.py check` runs)
 - Per-item fields: `model` (agent model for dispatch), `anchors[]` (line ranges checked against code), `commands[]` (commands with the output that means pass), `tests[]` (pytest node ids with the failure that precedes the fix)
 
-The write-plan skill (`plugins/harness/skills/write-plan/SKILL.md`) and `plugins/harness/scripts/plan.py` own the authoring and checks for these fields.
+The write-plan skill (`plugins/harness/skills/write-plan/SKILL.md`) and `plugins/harness/scripts/plan.py` own the authoring and checks for these fields. Agents author a plan through `harness_lib.plan_api` (`load`, change a copy with `model_copy(update=..., deep=True)`, `write`), which validates before it writes; plan JSON is not edited by hand.
 
 **Status rules:**
 - `COMPLETE` requires commit SHA(s) in evidence — never a claim
 - `CLOSED_NO_ACTION` requires written rationale
 - `IN_PROGRESS` / `PENDING` are transient; every item must terminate in COMPLETE or CLOSED_NO_ACTION
 
-### 3. `prAttributes.schema.json`
+### 3. PR attributes (a model, no schema file)
 
 **Applies to:** Each element of `ActionPlan.pr_attributes[]`.
 
-Per-PR metadata: `pr` (number or string), `branch`, `base_branch`. Required when an ActionPlan is tied to one or more PRs.
+Per-PR metadata: `pr` (number or string), `branch`, `base_branch`. Required when an ActionPlan is tied to one or more PRs. The `PrAttributes` model in `plan_models.py` defines it, and the generated plan schema carries it as a definition; there is no standalone schema file.
 
 ### 4. `PLANS_PIP_Template.md`
 
@@ -172,30 +174,32 @@ The Phase 3 JSON must validate against `PR_REVIEW.schema.json`. Verdict re-evalu
 
 ### Step 2 — Plan → ActionPlan + PIP (paired)
 
-Agent invokes `superpowers-lt:writing-plans`:
+Agent invokes the `write-plan` skill (`plugins/harness/skills/write-plan/SKILL.md`):
 
 ```
 Read docs/PR_REVIEWS/{NNNN}_*.json
-  → Write docs/PLANS/{NNNN}_ActionPlan.json (status=PENDING)
-  → Write docs/PLANS/{NNNN}_PIP_{Title}.md (matching PIP template)
-  → Choose execution_model (sequential vs parallel_worktrees)
+  → plan.py new "<title>" --spec <path>       (creates the ActionPlan JSON and records the base commit)
+  → plan_api.load("<id>")                     (author items, execution_model, pr_attributes[] as models)
+  → plan_api.write(plan.model_copy(update=..., deep=True))   (validates, then writes)
+  → plan.py check / red / freeze <id>
+  → plan.py render <id>                       (writes the PIP markdown from the JSON)
 ```
 
-Both files must be written before any task executes.
+The ActionPlan JSON is never edited by hand: every change goes through `plan_api.write`, which validates the whole plan before it touches the file. The PIP markdown is rendered from the JSON and never edited by hand.
 
-### Step 3 — Execute → Status + Evidence (atomic)
+### Step 3 — Execute → Status + Evidence (through `record`)
 
-Agent invokes `superpowers-lt:subagent-driven-development` (or executes inline):
+Agent executes the items (inline, or as `harness:parallel2` lanes from `plan.py lanes <id>`):
 
 ```
-For each PIP task:
-  Execute steps → run tests → commit
-  Update ActionPlan: status=COMPLETE, evidence=[<commit SHAs>]
-  Check off matching PIP.md step
-  (Both files updated in the SAME edit — atomic per-task)
+For each item:
+  Execute steps → run tests → developer commits
+  plan.py record <id> <ITEM> --sha <commit>   (sets COMPLETE with the commit as evidence)
+  plan.py record <id> <ITEM> --closed "<rationale>"   (CLOSED_NO_ACTION)
+  plan.py render <id>                          (the PIP reflects the new status; no checkbox is ticked by hand)
 ```
 
-`COMPLETE` ← commit SHA(s). `CLOSED_NO_ACTION` ← rationale. Status is never a claim.
+`record` is the only way an item's status or evidence changes; it refuses a COMPLETE whose commit did not change the item's files or whose test nodes fail at that commit. `COMPLETE` ← commit SHA(s). `CLOSED_NO_ACTION` ← rationale. Status is never a claim.
 
 ### Step 4 — Catalog (when applicable)
 
@@ -262,17 +266,24 @@ Applies to the symbol-flavored variants only. Standalone catalogs (`CICDActionAu
 - **Naming:** `PascalCase.schema.json` for new schemas. Variant catalogs use a sub-namespace (`<Purpose>.catalog.schema.json`). Naming exception: `TodoCatalog.schema.json` is standalone and has no `.catalog.` sub-namespace, named for the artifact it describes.
 - **`$ref` form:** Bare relative paths between sibling schemas (e.g., `"$ref": "SymbolCatalog.base.schema.json"`). No leading `./`. No `$id`-by-bare-token.
 - **`$id` form:** when declared, `https://github.com/t968rs/operator-straps/plugins/harness/schemas/<path relative to this directory>`. Never a `file:///` path or a consuming project's URL.
-- **Schema dialect:** `https://json-schema.org/draft/2020-12/schema` for new schemas. PR_REVIEW.schema.json is on draft-2020-12 as of PR #1216. ActionPlan.schema.json and prAttributes.schema.json remain on draft-07 pending separate migrations.
+- **Schema dialect:** `https://json-schema.org/draft/2020-12/schema` for new schemas. PR_REVIEW.schema.json is on draft-2020-12 as of PR #1216. ActionPlan.schema.json is generated on draft-2020-12 from the plan models.
 - **Update protocol:** When changing any schema file under this directory, update this README in the SAME PR. Mismatched README + schema is a discipline failure.
 
 ## Updates & Extensibility
 
 To change a schema (new field, enum value, required-set change):
 
-1. Edit the `.schema.json` file
+1. Edit the `.schema.json` file. Exception: `ActionPlan.schema.json` is generated, never edited. Change `harness_lib/plan_models.py` (and `plan_enums.py` for an enum), then run `python tools/gen_plan_schema.py`; `tests/contract/test_plan_schema_generated.py` fails on drift.
 2. Update this README's relevant section
 3. Update the harness rules if the change affects an agent-facing rule
 4. Update the relevant skill's SKILL.md if it pins the schema
 5. Run validation against existing artifacts in the project's review and plan directories to catch breakage
 
 Existing artifacts validate as-is unless their schema's required-set is widened. Backwards-incompatible changes require a coordinated sweep of historical artifacts or a schema-version bump.
+
+---
+
+## Migration
+
+- **ActionPlan, model first (harness 0.43.0).** `prAttributes.schema.json` is retired and `ActionPlan.schema.json` is generated from the plan models. A project that pinned the old draft-07 `ActionPlan.schema.json` must drop the pin or replace it with a copy of the plugin's generated `ActionPlan.schema.json` (a consuming project never runs the generator). With only the old `ActionPlan.schema.json` pinned, the schema hook reports an unresolvable `$ref` and exits 1 (it used to exit 0 as a setup error). With the old `prAttributes.schema.json` pinned too, the pinned directory still registers it, so the `$ref` resolves and the hook keeps validating plan writes against the old draft-07 shape while `plan.py` validates through the models; drop both pins. `plan.py` ignores a pinned plan schema and validates through the models, so a project that pinned a looser `prAttributes` loses that override.
+- **Every `plan.py` command validates.** `render`, `red`, `lanes` and `record` refuse a plan that does not validate, with the same `schema:` lines `check` prints; only `check` and `freeze` did before. A plan that fails to load is the one case for a hand edit: repair the JSON, then run `plan.py check`.
