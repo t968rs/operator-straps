@@ -28,8 +28,31 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
    planned test files, and records the base commit (merge base of the base branch and HEAD).
 2. **Read before writing.** Open the spec, then every file the work touches and every consumer of a symbol
    the work changes (callers, registries, `setattr` or monkeypatch sites, strategy tables, `partial`s).
-3. **Write the plan JSON** (Edit or Write on the plan file; before `freeze` this is the authoring path). The
-   fields, all in `ActionPlan.schema.json`:
+3. **Write the plan through the models.** Plan JSON is never edited by hand, not even one status or one flag
+   (status changes only through `record`): the agent builds model objects, so a bad field fails when it is
+   built, and `write` validates the whole plan again before it touches a file. Run one heredoc per revision
+   (`new` prints the command line with the plugin path filled in):
+
+   ```bash
+   PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/lib" sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" - <<'EOF'
+   from harness_lib import plan_api
+   from harness_lib.plan_enums import ItemStatus
+   from harness_lib.plan_models import ActionItem, Anchor, PlannedTest
+
+   plan = plan_api.load("<id>")
+   item = ActionItem(id="TASK-1", title="...", action="...", status=ItemStatus.PENDING,
+                     evidence="not started", files=["src/x.py"],
+                     anchors=[Anchor(at="src/x.py:12-18", expect="def f")],
+                     tests=[PlannedTest(node="tests/test_x.py::test_f", red="ImportError")])
+   plan_api.write(plan.model_copy(update={"items": [*plan.items, item]}, deep=True))
+   EOF
+   ```
+
+   `write` refuses, listing every problem and writing nothing: an unknown plan id, a copy loaded before the file
+   changed, a changed `base_commit` or `frozen`, a misspelled field, a duplicate item id and, on a frozen plan,
+   any change to an execution field. The one case for a hand edit is a plan that fails to load (a
+   `schema:` problem from every command); repair the JSON, then run `PLAN check`. The fields are the models of
+   `harness_lib/plan_models.py`:
 
    | Field | Carries | Checked by `check` |
    |---|---|---|
@@ -53,10 +76,14 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
 7. **Settle open decisions with the developer.** No decision defaults to an answer; an open one blocks freeze.
 8. **`PLAN freeze <id>`**. It refuses any check problem, any open decision, any open item with neither a test
    nor a command, any red problem, and, on a first freeze, any item not `PENDING`. After the freeze only
-   `record` changes the plan; `check` reports any edit outside the execution fields (`plan_doc.MUTABLE_TOP`
-   and `MUTABLE_ITEM`: item status, evidence and verification references; the plan's completed, frozen and
+   `record` changes the plan; `check` reports any edit outside the execution fields (the `Mutable` fields of
+   `plan_models`: item status, evidence and verification references; the plan's completed, frozen and
    markdown sync fields), and any COMPLETE item without the commit and tree `record` writes. A change of
-   design after the freeze is an edit plus `freeze --refreeze`, stated to the developer.
+   design after the freeze is a `write` of the changed plan plus `freeze --refreeze`, stated to the developer.
+   A refreeze is standard procedure, not a design ambiguity: ask the developer for the OK, then do it. A plan id
+   that collides with one on the base branch moves the newer plan to the next free id; a plan already on the base
+   branch is never renumbered to spare the newer one. Each plan id is unique in the plans folder, because `PLAN`
+   resolves a plan by id and refuses a folder with two plans of one id.
 9. **Hand off** the PIP path for review and an execution method. For parallel execution,
    `PLAN lanes <id> | P2 plan -` (with `P2` as in `harness:parallel2`) turns the open items into lanes, waved
    by dependency and file overlap. A lane id is the item id in lower case with dots as hyphens (`TASK-3.2`
@@ -87,8 +114,20 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
   effects included, after reading the generator's entry point.
 - **A command:** it obeys the project's instruction files (test scoping, runs reserved for the developer).
 
+## Common mistakes
+
+- Editing the plan JSON by hand, "because it is one line": `write` validates and guards, a hand edit does not
+  (the hand-edit exception is only a plan that fails to load).
+- Changing an existing item's status by hand or through `write` (a new item is built PENDING): `record` owns the
+  execution fields, and `write` refuses the change once the plan is frozen.
+- Guessing a `red` exception instead of running `PLAN red`; the planned exception is what the run must show.
+- Copying a commit SHA into a command: use `{base}`.
+- `model_copy(update=...)` without `deep=True`: the copy shares its nested items with the loaded plan, and a
+  later change to one changes the other.
+
 ## Related
 
 - `${CLAUDE_PLUGIN_ROOT}/scripts/plan.py`: the driver; `--help` on each subcommand lists its options.
-- `${CLAUDE_PLUGIN_ROOT}/schemas/ActionPlan.schema.json`: the plan's fields.
+- `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/plan_models.py`: the models, the one definition of a plan.
+- `${CLAUDE_PLUGIN_ROOT}/schemas/ActionPlan.schema.json`: generated from the models.
 - `harness:parallel2`: dispatches independent items in waves.
