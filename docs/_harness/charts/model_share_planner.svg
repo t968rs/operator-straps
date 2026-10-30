@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="250" viewBox="0 0 560 250" role="img" aria-labelledby="t d">
+<title id="t">Planner: model family share</title><desc id="d">n = 1 dispatch · pr_review_agent_usage.jsonl. sonnet 1.</desc>
+<style>text{font-family:system-ui,-apple-system,'Segoe UI',sans-serif}.num{font-variant-numeric:tabular-nums}.bg{fill:#fcfcfb;stroke:#e1e0d9}.gap{stroke:#fcfcfb}.t1{fill:#0b0b0b}.t2{fill:#52514e}.mu{fill:#6f6d68}.grid{stroke:#e1e0d9}.axis{stroke:#c3c2b7}.f-opus{fill:#2a78d6}.f-sonnet{fill:#eb6834}.f-haiku{fill:#1baf7a}@media (prefers-color-scheme: dark){.bg{fill:#1a1a19;stroke:#383835}.gap{stroke:#1a1a19}.t1{fill:#f0efec}.t2{fill:#c3c2b7}.mu{fill:#a3a29b}.grid{stroke:#2c2c2a}.axis{stroke:#383835}.f-opus{fill:#3987e5}.f-sonnet{fill:#d95926}.f-haiku{fill:#199e70}}</style>
+<rect class="bg" x="0.5" y="0.5" width="559" height="249" rx="12" fill="#fcfcfb" stroke="#e1e0d9"/>
+<text class="t1" x="24" y="36" font-size="17" font-weight="600" fill="#0b0b0b">Planner: model family share</text>
+<text class="t2" x="24" y="58" font-size="12.5" fill="#52514e">n = 1 dispatch · pr_review_agent_usage.jsonl</text>
+<circle cx="140" cy="152" r="72" class="f-sonnet gap" fill="#eb6834" stroke="#fcfcfb" stroke-width="2"><title>sonnet: 1 of 1 (100.0%)</title></circle>
+<rect class="f-sonnet" x="280" y="142" width="12" height="12" rx="3" fill="#eb6834"/>
+<text class="t1" x="300" y="152" font-size="14" fill="#0b0b0b">sonnet</text>
+<text class="t1 num" x="480" y="152" font-size="14" text-anchor="end" fill="#0b0b0b">1  (100.0%)</text>
+</svg>
