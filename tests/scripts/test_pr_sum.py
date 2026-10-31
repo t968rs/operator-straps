@@ -5,7 +5,7 @@ The script is loaded by absolute path from the plugin. Git-backed tests get a th
 whose branch carries the PR's commits, both copied from a module template built once; the clone's
 configuration is activated before each test. ``gh`` is bypassed by constructing ``PrMeta`` directly. The
 script is the only end-to-end caller of harness_lib.pr_summary (``render_summary`` through ``build``) and
-of the head-mode capture in harness_lib.branch_capture (``capture_paths`` and ``diff_section`` against a
+of the head-mode capture in harness_lib.branch_capture (``capture_paths`` and ``path_diff`` against a
 commit), so both modules are exercised here as well.
 """
 from __future__ import annotations
@@ -743,18 +743,20 @@ class TestDiff:
         expected = {f.path: branch_capture.path_diff(clone, facts.merge_base, f.path, f.old_path, False, head)
                     for f in facts.files}
         diffs = []
-        real = pr_capture.git_out
+        real = branch_capture.git_out
 
         def spy(repo: Path, *args: str) -> str:
-            diffs.append(args) if args[0] == "diff" else None
+            diffs.append(args) if "diff" in args else None
             return real(repo, *args)
 
         monkeypatch.setattr(pr_capture, "git_out", spy)
+        monkeypatch.setattr(branch_capture, "git_out", spy)
         patches = pr_capture.file_patches(clone, facts, facts.files)
         assert patches == expected
         assert {"D", "R", "M", "A"} <= {f.status for f in facts.files}
-        # One batch read; a header git quotes (non-ASCII under core.quotePath) adds one per-path read.
-        assert len(diffs) in (1, 2)
+        # One batch read: the pinned display leaves the spaced and the non-ASCII header unquoted, so no
+        # path falls back to its own read.
+        assert len(diffs) == 1, diffs
 
     def test_budgeted_diff_reads_given_patches(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
