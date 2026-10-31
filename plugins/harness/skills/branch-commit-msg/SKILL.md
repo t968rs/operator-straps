@@ -111,12 +111,15 @@ Run it once, not once per block: each call costs a round trip. When every block 
 capture with no canned block), `--all` in place of the `--block` list names them all.
 
 The script applies line budgets: a path within budget prints in full, a larger one prints as a `summary`
-section (key tallies for JSON, the head of the diff otherwise), and untracked files print as additions. Added
-files need only their docstring and public names; a `summary` section is enough for a JSON file or a
-generated report. Run `git diff <merge_base> -- <path>` for one path only when a message cannot be written from
-its summary. `captured` entries carry `added` / `deleted` counts for judging size up front. BLOCK_BUDGET (300
-lines) applies per block: once earlier paths use it, later paths print as summaries. Untracked files print as
-additions through diff; the git diff fallback prints nothing for them, so do not use it for untracked paths.
+section (key tallies for JSON, a hunk outline for a diff of several hunks, a head plus the definitions past it
+otherwise), and untracked files print as additions. Added files need only their docstring and public names; a
+`summary` section is enough for a JSON file or a generated report. Run `git diff <merge_base> -- <path>` for one
+path only when a message cannot be written from its summary. `captured` entries carry `added` / `deleted` counts
+for judging size up front. BLOCK_BUDGET (300 lines) applies per block: once earlier paths use it, later paths
+print as summaries. A block over its character budget (BLOCK_CHAR_BUDGET, 24,000) turns full diffs into
+summaries, docs and artifacts first and source last, before any path prints its header only. Untracked files
+print as additions through diff; the git diff fallback prints nothing for them, so do not use it for untracked
+paths.
 
 Format: `${CLAUDE_PLUGIN_ROOT}/reference/commit_format.md` (REQUIRED — read it). Content, per file:
 

@@ -3,7 +3,9 @@
 Canonical anatomy of ONE Conventional Commit message as the harness commit skills write it. Shared source of
 truth for the `harness:c-msg` (single commit) and `harness:branch-commit-msg` (whole-branch breakdown) skills.
 When either skill drafts a commit message it conforms to this file — do not re-inline or fork these rules in a
-skill body.
+skill body. One exception: `c-msg` carries a short format card so a single-commit run needs no read of this
+file; `tests/skills/test_c_msg_skill_contract.py` pins the card to the commit types and status letters here, so
+a change to either table must reach the card too.
 
 ## Template
 

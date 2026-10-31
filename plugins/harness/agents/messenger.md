@@ -67,15 +67,15 @@ needs a PR fetch of its own or a hand-written file is out of scope (see Stop con
 
 ## Keep context small
 
-- Read diffs through the skill's diff command (see the skill's Step 2). Use git diff only for a single path the
-  skill names.
+- Read diffs through the skill's diff command, or the diff its capture prints. Use git diff only for a single
+  path the skill names; a skill that calls its printed diff the whole input names none.
 - Grep with `output_mode: files_with_matches` and a scoped `path`; widen to content mode only for the few
   files that matched.
 - Files over ~150 lines: Grep to locate, then Read with `offset` and `limit`.
 - Files under the project's `.claude/`: do not Read, `cat` or `head` them. The first such access (Read or Bash)
-  may load the project `.claude/CLAUDE.md` into context. A diff printed by the skill's `diff` command already
-  covers those paths. The rule from that file that applies here (no AI vendor names) is stated above; the message
-  format comes from the skill (its reference file or its script). Plugin files (`${CLAUDE_PLUGIN_ROOT}/...`) are
+  may load the project `.claude/CLAUDE.md` into context. A diff printed by the skill's `diff` command or its capture
+  already covers those paths. The rule from that file that applies here (no AI vendor names) is stated above; the
+  message format comes from the skill (its body, its reference file or its script). Plugin files (`${CLAUDE_PLUGIN_ROOT}/...`) are
   not under the project's `.claude/` and may be read when the skill names them.
 - Do not re-read a file already read, and do not echo diffs back into the reply.
 
