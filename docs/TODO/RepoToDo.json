@@ -56,29 +56,29 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 20,
-    "needs_decision": 9,
+    "items": 27,
+    "needs_decision": 14,
     "trackers": 0,
     "close_candidates": 11,
     "by_status": {
-      "NEEDS_DECISION": 9,
-      "OPEN": 11
+      "NEEDS_DECISION": 14,
+      "OPEN": 13
     },
     "by_impact": {
-      "dev_velocity": 8,
-      "docs_tooling": 10,
-      "maintainability": 1,
-      "runtime_failure": 1
+      "dev_velocity": 12,
+      "docs_tooling": 11,
+      "maintainability": 2,
+      "runtime_failure": 2
     },
     "by_loe": {
       "XS": 2,
-      "S": 8,
-      "M": 6,
+      "S": 9,
+      "M": 11,
       "L": 4,
-      "XL": 0
+      "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 20,
+      "gh_issue": 27,
       "impl_stub": 0,
       "research_folder": 0
     },
@@ -148,6 +148,62 @@
     {
       "id": "TODO-002",
       "rank": 2,
+      "title": "a-w: attach refuses whenever the target checkout has any tracked change",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Should a-w stage onto a target with tracked changes when the paths do not overlap (with a path-scoped undo), or keep the clean-target refusal and only improve its message?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#161",
+          "url": "https://github.com/t968rs/operator-straps/issues/161"
+        }
+      ],
+      "gh_issues": [
+        161
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The transcript shows harness:a-w refusing to stage a worktree onto a branch whose main checkout had uncommitted tracked changes: `attach_worktree: target checkout ... is not clean: commit or stash its tracked changes first`. Checked: plugins/harness/skills/a-w/commands/attach_worktree.py:254-256 refuses on any tracked change (tracked_changes, :104-105, `status --porcelain --untracked-files=no`), in both modes, before the worktree patch is built. The refusal backs the undo advice in conflict_message (:160-166: `reset --hard`, \"the target had no tracked changes before the move\"), so relaxing it changes the undo path. Whether the dirty paths in the transcript overlapped the worktree's paths is unverified.",
+      "proposed_change": "Allow the default (staged) mode onto a target whose tracked changes do not touch any path the worktree patch changes, and change the conflict and undo text to a path-scoped restore; keep the refusal for overlapping paths and for --committed, naming the overlapping paths. Add tests in tests/skills/ for disjoint and overlapping dirty targets.",
+      "files": [
+        "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "plugins/harness/skills/a-w/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "The a-w driver and its skill text only.",
+        "consumers": [
+          "plugins/harness/skills/a-w/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A path-overlap check, a scoped undo message and tests for both cases."
+      },
+      "impact": "dev_velocity",
+      "severity": 3,
+      "priority": {
+        "score": 1.5,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 3.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 1.5,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 refusal that blocks attaching onto a busy checkout, dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-003",
+      "rank": 3,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -200,8 +256,65 @@
       "why_ranked": "Severity 2 missing guard, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-003",
-      "rank": 3,
+      "id": "TODO-004",
+      "rank": 4,
+      "title": "pr-review: let a trivial judgment fix run cheaper (amend regrades fix_kind, or lower fixer effort)",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "The batching in #153 landed at 23d5f6c: close the issue and drop the optional point, or keep it for an `amend` fix_kind regrade (or a lower fixer effort)?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#153",
+          "url": "https://github.com/t968rs/operator-straps/issues/153"
+        }
+      ],
+      "gh_issues": [
+        153
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue's main change (dedupe and batch fixer test commands into one pytest run) landed in 23d5f6c (\"Refs #153\", on main): plugins/harness/scripts/pr_review.py:1717-1736 now emits one pytest_command over the deduped non-deferred tests plus a per-file mapping, the fixer rule at plugins/harness/scripts/pr_review.py:1747-1755 runs it once after the last edit, and tests/scripts/test_pr_review_driver.py:1110 covers it. Left is the issue's optional, separate point: a judgment issue whose fix is a one-line edit still gets opus at the session effort. Checked: `amend` only regrades severity and merges ids (plugins/harness/scripts/pr_review.py:913-924, usage at :105), so fix_kind (set per finding, plugins/harness/scripts/pr_review.py:215) cannot be changed after capture.",
+      "proposed_change": "Either extend `amend --regrade` to accept a fix_kind (for example `I3=mechanical`) so a trivial judgment fix routes to the small-model fixer, or pass a lower effort to fixer rows; add a driver test for the chosen route. Otherwise close #153 on 23d5f6c and drop the optional point.",
+      "files": [
+        "plugins/harness/scripts/pr_review.py",
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "tests/scripts/test_pr_review_driver.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "pr-review amend and fixer routing only.",
+        "consumers": [
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One more regrade form in _amend_one plus a test, or one effort field on fixer rows."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 fixer cost on small judgment fixes, dev_velocity impact, S size."
+    },
+    {
+      "id": "TODO-005",
+      "rank": 5,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -259,8 +372,66 @@
       "why_ranked": "Severity 2 latent nested-worktree defect, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-004",
-      "rank": 4,
+      "id": "TODO-006",
+      "rank": 6,
+      "title": "CI: update the change-based test selection so PR runs stop growing",
+      "kind": "cicd",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#151",
+          "url": "https://github.com/t968rs/operator-straps/issues/151"
+        }
+      ],
+      "gh_issues": [
+        151
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue reports CI test runtime back at about 6 minutes despite change-based selection and asks to update the lookup (unverified: the cited run digest is an artifact sha256, not a commit, and no run timing was read). The lookup is tools/select_tests.py (.github/workflows/ci.yml:44, :108). Checked: tools/select_tests.py:259 selects every test whose source matches TREE_WALK (tools/select_tests.py:57: rglob, .glob, iterdir, os.walk) on any non-docs change; 22 test files under tests/ match it today, so they run on nearly every PR. tools/select_tests.py:258 puts tests/conftest.py in every test's import closure, and tests/conftest.py is a FULL_TRIGGERS entry (tools/select_tests.py:47-53). The per-test runtime catalog is already produced (.github/workflows/ci.yml:79, tools/ci_test_runtime_catalog.py), but nothing feeds it back into selection.",
+      "proposed_change": "Pull test-runtime-catalog.json from a recent PR run and rank the selected files by seconds and by selection reason; narrow the `walks the tree` rule in tools/select_tests.py (for example, match a walking test only when a changed path sits under the root it walks, or mark walking tests explicitly), and fix any other rule the catalog shows pulling slow files into unrelated PRs. Cover each changed rule in tests/scripts/test_select_tests.py.",
+      "files": [
+        "tools/select_tests.py",
+        "tools/ci_test_runtime_catalog.py",
+        ".github/workflows/ci.yml",
+        "tests/scripts/test_select_tests.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "CI test selection only; no shipped plugin path changes, but a too-narrow rule lets a break reach main.",
+        "consumers": [
+          ".github/workflows/ci.yml"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Read one runtime catalog, rework the tree-walk rule and test the selection change."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.0,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 1.0,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 CI slowdown with no output change, dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-007",
+      "rank": 7,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -316,8 +487,8 @@
       "why_ranked": "Severity 2 missing capability with a concrete cost, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-005",
-      "rank": 5,
+      "id": "TODO-008",
+      "rank": 8,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -376,8 +547,67 @@
       "why_ranked": "Severity 2 missing workflow with a concrete cost, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-006",
-      "rank": 6,
+      "id": "TODO-009",
+      "rank": 9,
+      "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Which of the report's suggestions should the harness act on (model pins for general-purpose and inherit agents, a pr-review context audit, or neither), and what result closes the issue?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#157",
+          "url": "https://github.com/t968rs/operator-straps/issues/157"
+        }
+      ],
+      "gh_issues": [
+        157
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue pastes a local usage report: 96% \"Give general-purpose subagents a cheaper model\", 37% \"Review the harness plugin\", and subagent shares workflow-subagent 21%, general-purpose 18%, harness:pr-review 13%, harness:pr-fixer 3%, harness:d-w 2%, harness:write-plan 2% (all figures unverified). Checked: the harness dispatches general-purpose from plugins/harness/skills/post-forcepush/SKILL.md:31 (with model haiku at :32) and lets pr-team name it (plugins/harness/skills/pr-team/SKILL.md:237); plugins/harness/agents/roast-my-code.md:22 is `model: inherit`. pr-review, d-w and write-plan are skills with no `context: fork`, so what the report counts as their subagent share is unverified. The issue states no target or action.",
+      "proposed_change": "Decide the scope, then: pin a model on every harness general-purpose dispatch and on roast-my-code, and trace the pr-review share (orchestration in the main session versus its fixer and reviewer agents) to find the largest avoidable context cost; record what was changed and close the issue.",
+      "files": [
+        "plugins/harness/skills/post-forcepush/SKILL.md",
+        "plugins/harness/skills/pr-team/SKILL.md",
+        "plugins/harness/agents/roast-my-code.md",
+        "plugins/harness/skills/pr-review/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Model and dispatch settings across several skills and agents.",
+        "consumers": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/skills/pr-team/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "An audit of dispatch sites plus a few frontmatter and prose edits."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 usage cost with no output change, dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-010",
+      "rank": 10,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -431,8 +661,8 @@
       "why_ranked": "Severity 2 lost discipline plus a dangling reference, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-007",
-      "rank": 7,
+      "id": "TODO-011",
+      "rank": 11,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -492,8 +722,83 @@
       "why_ranked": "Severity 2 dangling REQUIRED step, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-008",
-      "rank": 8,
+      "id": "TODO-012",
+      "rank": 12,
+      "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Which plugin hosts the tools (the harness plugin, a separate mod reading a harness-written plugin root under state_dir, or a new config key), and may an agent's `tools:` name a mod tool that is not installed?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#155",
+          "url": "https://github.com/t968rs/operator-straps/issues/155"
+        }
+      ],
+      "gh_issues": [
+        155
+      ],
+      "related_gh_issues": [
+        152
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The Bash tool fails a single command past a session-dependent size with `unexpected EOF while looking for matching`, and agents read it as a quoting bug (sizes and token costs from #152, unverified). Checked mitigation, now committed in 8973926: plugins/harness/lib/harness_lib/review_models.py:511 (draft_path), :531 (record_draft), :540 (record_fixes_draft), :547 (record_add); TOO_LONG_RULE at plugins/harness/scripts/pr_review.py:713; plugins/harness/agents/pr-reviewer.md:52 and plugins/harness/agents/pr-fixer.md:39 carry the rule, and both list Write (pr-reviewer.md:25, pr-fixer.md:23). Still exposed, with no Write tool: plugins/harness/agents/messenger.md:28, plugins/harness/agents/strap-judge.md:23, plugins/harness/agents/bubble-memo-investigator.md:23 and plugins/harness/agents/bubble-memo-reviewer.md:24. The proposal is a TypeScript mod that registers typed tools at session.start, serves them in tool.call and runs one allowlisted driver subcommand through $.process.run with the payload on stdin; the engine typings line references are unverified. Open questions in the issue: an absent mod tool in an agent's `tools:`, which plugin hosts it (a mod's $.plugin.root cannot see harness scripts), the allowlist, whether the engine validates inputSchema, and `sh` under process.run on Windows.",
+      "proposed_change": "Settle the hosting and `tools:` questions first, then build the mod with one allowlist table {tool -> driver, subcommand, typed flags, timeout} and a shared runner; roll out commit_message (messenger), memo_record (bubble-memo agents) and review_record (pr-reviewer, pr-fixer) first, keeping the Write + draft or stdin heredoc route as the fallback in every brief; never expose a code-executing entry point (hpy -, strap.py api, skill_api.py). Separately move write-plan, strap-skills and skills/strap-skills/templates/skill_md.tmpl to a Write-a-scratch-file route.",
+      "files": [
+        "plugins/harness/lib/harness_lib/review_models.py",
+        "plugins/harness/scripts/pr_review.py",
+        "plugins/harness/agents/pr-reviewer.md",
+        "plugins/harness/agents/pr-fixer.md",
+        "plugins/harness/agents/messenger.md",
+        "plugins/harness/agents/bubble-memo-investigator.md",
+        "plugins/harness/agents/bubble-memo-reviewer.md",
+        "plugins/harness/agents/strap-judge.md",
+        "plugins/harness/scripts/bubble_memo.py",
+        "plugins/harness/scripts/branch_commit_msg.py",
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/skills/write-plan/SKILL.md",
+        "plugins/harness/skills/strap-skills/SKILL.md",
+        "plugins/harness/skills/strap-skills/templates/skill_md.tmpl"
+      ],
+      "blast_radius": {
+        "level": "L",
+        "reasoning": "A new mod plus brief and agent changes across pr-review, bubble-memo, the commit-message skills and strap.",
+        "consumers": [
+          "plugins/harness/agents/messenger.md",
+          "plugins/harness/agents/pr-reviewer.md",
+          "plugins/harness/agents/pr-fixer.md",
+          "plugins/harness/agents/bubble-memo-investigator.md",
+          "plugins/harness/agents/bubble-memo-reviewer.md",
+          "plugins/harness/agents/strap-judge.md"
+        ]
+      },
+      "loe": {
+        "size": "XL",
+        "reasoning": "A new TypeScript mod with tests, two engine behaviors to verify, new stdin subcommands and a staged rollout over six tools."
+      },
+      "impact": "runtime_failure",
+      "severity": 3,
+      "priority": {
+        "score": 0.7961,
+        "components": {
+          "impact_weight": 1.3,
+          "value": 3.9,
+          "loe_points": 16,
+          "blast_factor": 1.5,
+          "cost": 24.0,
+          "base_score": 0.7961,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 hang of agents without Write on large payloads, runtime_failure impact, XL size."
+    },
+    {
+      "id": "TODO-013",
+      "rank": 13,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -550,8 +855,8 @@
       "why_ranked": "Severity 2 interop conflict while both plugins are installed, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-009",
-      "rank": 9,
+      "id": "TODO-014",
+      "rank": 14,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -606,8 +911,70 @@
       "why_ranked": "Severity 2 lost guarantee once superpowers-lt retires, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-010",
-      "rank": 10,
+      "id": "TODO-015",
+      "rank": 15,
+      "title": "strap: add remove_part and a refreeze path; edit specs list absent models/api parts",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#162",
+          "url": "https://github.com/t968rs/operator-straps/issues/162"
+        }
+      ],
+      "gh_issues": [
+        162
+      ],
+      "related_gh_issues": [
+        160
+      ],
+      "catalog_entry_ids": [],
+      "summary": "Checked: plugins/harness/lib/harness_lib/strap_scaffold.py:97-99 (_scaffold_parts) adds `<skill>_models.py` and `<skill>_api.py` parts for any spec with a mechanical behavior, with no check of spec mode; plugins/harness/lib/harness_lib/strap_api.py:27-30 (__all__) has add_part (:226) and no remove_part; plugins/harness/scripts/strap.py:788-789 refuses freeze with \"already frozen\", and strap has no refreeze, unlike plan.py freeze --refreeze (plugins/harness/scripts/plan.py:294-298). Seen on PR #160 review finding M1 (docs/PR_REVIEWS/0160_c-msg_performance.json): docs/plans/strap/c-msg/SkillSpec.json:28-35 lists plugins/harness/lib/harness_lib/c_msg_models.py and c_msg_api.py, and neither file exists. The frozen skill_hash (docs/plans/strap/c-msg/SkillSpec.json:199, bf0acb83c76f...) covers them; that it is also stale after the review fixes is unverified. tests/lib/test_strap_scaffold.py:211-215 asserts an edit-mode render writes the models and api parts.",
+      "proposed_change": "Add remove_part(name, path) to strap_api and __all__, refusing an unlisted path and a part scaffold requires (SKILL.md, the contract test); make _scaffold_parts skip the models and api parts when spec.mode is edit and the files are absent, and update tests/lib/test_strap_scaffold.py:211-215; give freeze a --refreeze path (or a refreeze subcommand) that reruns every gate on current content and records a new hash; then remove the two c-msg parts and refreeze docs/plans/strap/c-msg/SkillSpec.json.",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_scaffold.py",
+        "plugins/harness/lib/harness_lib/strap_api.py",
+        "plugins/harness/scripts/strap.py",
+        "tests/lib/test_strap_scaffold.py",
+        "docs/plans/strap/c-msg/SkillSpec.json"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "The strap scaffold, api surface and freeze gate, plus one frozen spec.",
+        "consumers": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "docs/plans/strap/c-msg/SkillSpec.json"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Three small strap changes with tests, then one spec edit and refreeze."
+      },
+      "impact": "maintainability",
+      "severity": 2,
+      "priority": {
+        "score": 0.7303,
+        "components": {
+          "impact_weight": 0.8,
+          "value": 1.6,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.7303,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 spec drift with no output change, maintainability impact, M size."
+    },
+    {
+      "id": "TODO-016",
+      "rank": 16,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -669,8 +1036,8 @@
       "why_ranked": "Severity 2 missing review loop with a concrete cost, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-011",
-      "rank": 11,
+      "id": "TODO-017",
+      "rank": 17,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -729,8 +1096,8 @@
       "why_ranked": "Severity 2 missing review path with a concrete cost, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-012",
-      "rank": 12,
+      "id": "TODO-018",
+      "rank": 18,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -790,8 +1157,8 @@
       "why_ranked": "Severity 2 missing guard on plan completeness, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-013",
-      "rank": 13,
+      "id": "TODO-019",
+      "rank": 19,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -852,8 +1219,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, M size."
     },
     {
-      "id": "TODO-014",
-      "rank": 14,
+      "id": "TODO-020",
+      "rank": 20,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -906,8 +1273,8 @@
       "why_ranked": "Severity 1 hygiene, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-015",
-      "rank": 15,
+      "id": "TODO-021",
+      "rank": 21,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -966,8 +1333,8 @@
       "why_ranked": "Severity 1 stale references with a working fallback, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-016",
-      "rank": 16,
+      "id": "TODO-022",
+      "rank": 22,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -1021,8 +1388,8 @@
       "why_ranked": "Severity 1 test gap for working behavior, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-017",
-      "rank": 17,
+      "id": "TODO-023",
+      "rank": 23,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1078,8 +1445,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, L size."
     },
     {
-      "id": "TODO-018",
-      "rank": 18,
+      "id": "TODO-024",
+      "rank": 24,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1131,8 +1498,8 @@
       "why_ranked": "Severity 1, nothing depends on the skill, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-019",
-      "rank": 19,
+      "id": "TODO-025",
+      "rank": 25,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1186,8 +1553,8 @@
       "why_ranked": "Severity 1 stale reference and development tooling, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-020",
-      "rank": 20,
+      "id": "TODO-026",
+      "rank": 26,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -1242,6 +1609,70 @@
       "depends_on": [],
       "unblocks": [],
       "why_ranked": "Severity 1 hygiene audit, maintainability impact, M size."
+    },
+    {
+      "id": "TODO-027",
+      "rank": 27,
+      "title": "merge-commit-msg: drop the PR<N>_merge.md working document and its fixtures",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "What replaces PR<N>_merge.md: the message on stdin to a `message` subcommand that writes only the TXT (as branch-commit-msg does), a JSON skeleton saved like `--save`, or capture printing the facts with no file at all?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#154",
+          "url": "https://github.com/t968rs/operator-straps/issues/154"
+        }
+      ],
+      "gh_issues": [
+        154
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks to drop markdown output, and its supporting fixtures, from the `merge-msg` skill; the tree has no skill of that name, and the match is merge-commit-msg (plugins/harness/skills/merge-commit-msg/SKILL.md:22-27 writes PR<N>_merge.md as a working document beside PR<N>_merge.txt). Checked: capture writes the MD (plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:79, :201) and build reads its `text` fence (merge_commit_msg.py:14, :284); message_format.md:3 describes the fence. Consumers of the MD: plugins/harness/hooks/guard_commit_txt.py:10, :41 (deny reason points at the MD), README.md:222-226, tests/skills/test_merge_commit_msg.py:71, :194, :207, tests/hooks/test_guard_commit_txt.py:64, :69 and tests/contract/test_root_separation.py:78-79. The replacement route is not stated in the issue (unverified intent).",
+      "proposed_change": "Replace the MD round trip with the branch-commit-msg pattern (capture prints the facts, the agent passes the message on stdin, the driver writes only the TXT), then update the SKILL.md steps, message_format.md, the guard hook's deny reason, the README paragraph, and the tests and the root-separation case that build or assert PR<N>_merge.md.",
+      "files": [
+        "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "plugins/harness/skills/merge-commit-msg/message_format.md",
+        "plugins/harness/hooks/guard_commit_txt.py",
+        "README.md",
+        "tests/skills/test_merge_commit_msg.py",
+        "tests/hooks/test_guard_commit_txt.py",
+        "tests/contract/test_root_separation.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "One skill driver plus the guard hook, README and three test files that name the MD.",
+        "consumers": [
+          "plugins/harness/skills/merge-commit-msg/SKILL.md",
+          "plugins/harness/hooks/guard_commit_txt.py",
+          "plugins/harness/skills/branch-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Rework capture and build in one driver, then follow the MD through a hook, README and three tests."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.2739,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.2739,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 skill hygiene change, docs_tooling impact, M size."
     }
   ],
   "trackers": [],
