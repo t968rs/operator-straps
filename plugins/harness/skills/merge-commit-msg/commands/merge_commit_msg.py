@@ -1,25 +1,26 @@
-"""merge-commit-msg driver: capture a PR's facts into a merge-message MD, then build the TXT.
+"""merge-commit-msg driver: capture a PR's facts to stdout, then build the TXT from a message on stdin.
 
-Two subcommands bracket the one judgment step (the prose and the file bullets of the merge message):
+Two subcommands bracket the one judgment step (the prose and the file bullets of the merge message). No file
+stands between them: ``build`` asks ``gh`` for the title again.
 
 ``capture N``
     Read PR N through ``gh`` (shape, commit headlines, changed files), the branch's commit-message TXT when
     one exists, the PR's review JSON (``artifacts.reviews``) and the canned message for the changed files
-    (``harness_lib.canned_messages``). Write ``PR<N>_merge.md`` into the project's ``commit_messages``
-    directory (``artifacts.commit_messages``, default ``docs/_commit_messages``): the facts, then a
-    ``text`` fence holding the message with the subject, lineage and review lines already filled in. Prints
-    ``wrote <md>``. Exits 1 when the PR is not open.
+    (``harness_lib.canned_messages``). Print the facts, then a ``text`` fence holding the message skeleton
+    with the subject, lineage and review lines already filled in. Writes no file. Exits 1 when the PR is not
+    open.
 
 ``build N``
-    Take the first ``text`` fence under ``## Message`` of ``PR<N>_merge.md``, validate it (verbatim subject,
-    column-0 layout, bullets, no placeholder left, no vendor names, filler words, commit SHAs or sign-offs),
-    and write it to ``PR<N>_merge.txt`` beside the MD, keeping the replaced copy as ``.txt.bak``. Prints the
-    chat receipt. Exit 1 prints one ``problem:`` line per defect and leaves the TXT untouched.
+    Take the message from stdin, validate it (verbatim subject from ``gh``, column-0 layout, bullets, no
+    placeholder left, no vendor names, filler words, commit SHAs or sign-offs), and write it to
+    ``PR<N>_merge.txt`` in the project's ``commit_messages`` directory (``artifacts.commit_messages``, default
+    ``docs/_commit_messages``), keeping the replaced copy as ``.txt.bak``. Prints the chat receipt. Exit 1
+    prints one ``problem:`` line per defect and leaves the TXT untouched.
 
 Usage::
 
     merge_commit_msg.py [--repo DIR] capture N
-    merge_commit_msg.py [--repo DIR] build N
+    merge_commit_msg.py [--repo DIR] build N <<'MSG' ... MSG
 """
 from __future__ import annotations
 
@@ -30,7 +31,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, TextIO, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
@@ -46,8 +47,6 @@ _UNSAFE = re.compile(r'[\\/:*?"<>|]')
 _ARROWS = re.compile(r"\s*(?:-->|->)\s*")
 _SHA = re.compile(r"(?<![\w./-])(?=[0-9a-f]*\d)[0-9a-f]{7,40}(?![\w/-])")
 _SIGNOFF = re.compile(r"^\s*(co-authored-by|signed-off-by):", re.IGNORECASE)
-_OPEN_FENCE = re.compile(r"^(`{3,})text\s*$")
-_TITLE_FACT = re.compile(r"^- Title: (.+)$", re.MULTILINE)
 PROSE_HINT = "<Prose: what changed and why, 2-3 short paragraphs; lead with the action.>"
 BULLET_HINT = "  - <file>: <key change; 4-7 representative files>"
 TIERS = ("critical", "important", "minor")
@@ -73,10 +72,6 @@ def gh(repo: Path, *args: str) -> str:
 def output_dir() -> Path:
     """The configured commit_messages directory of the active project."""
     return active().path(active().artifacts.commit_messages.strip("/"))
-
-
-def md_path(pr: int) -> Path:
-    return output_dir() / f"PR{pr}_merge.md"
 
 
 def txt_path(pr: int) -> Path:
@@ -181,7 +176,7 @@ def _bullets(lines: Sequence[str]) -> List[str]:
 
 def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequence[str],
            subjects: Sequence[str]) -> str:
-    """The merge-message MD: script-owned facts, then the ``text`` fence the agent edits."""
+    """The capture output: script-owned facts, then the ``text`` fence holding the message skeleton."""
     title, base, head = str(view["title"]), str(view["baseRefName"]), str(view["headRefName"])
     names = lineage_names(str(view.get("body") or ""), base, head)
     canned = get_canned_message(files)
@@ -190,40 +185,29 @@ def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequ
     facts = [f"- Title: {title}", f"- Branch: `{head}` into `{base}`", f"- Size: {size}",
              f"- Canned message: {'yes, prefilled as the prose' if canned else 'none'}"]
     parts = [f"# PR #{pr} merge message", "",
-             "Facts are script-owned. Edit only the `text` fence under Message, then run `build`.", "",
+             "Facts are script-owned. Fill the placeholders of the skeleton under Message, keep its subject, "
+             "lineage and review lines, and pass the message to `build` on stdin.", "",
              "## Facts", "", *facts, "", "## Changed files", "", *_bullets(files), "", "## Commits", "",
              *_bullets(commits), "", "## Branch commit subjects", "", *_bullets(subjects), "",
              "## Message", "", "```text", *message, "```", ""]
     return "\n".join(parts)
 
 
-def run_capture(repo: Path, pr: int) -> Path:
-    """Write ``PR<pr>_merge.md`` for the open PR and return its path."""
+def run_capture(repo: Path, pr: int) -> str:
+    """The facts and the message skeleton of the open PR; nothing is written."""
     view = pr_view(repo, pr)
     subjects = branch_subjects(str(view["headRefName"]))
-    text = render(pr, view, pr_files(repo, pr), pr_commits(repo, pr), subjects)
-    target = md_path(pr)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(text, encoding="utf-8", newline="\n")
-    return target
+    return render(pr, view, pr_files(repo, pr), pr_commits(repo, pr), subjects)
 
 
-def extract_message(text: str) -> Tuple[List[str], str]:
-    """The lines of the first ``text`` fence under ``## Message`` and the ``- Title:`` fact."""
-    title = _TITLE_FACT.search(text)
-    head, sep, tail = text.partition("\n## Message\n")
-    if not title or not sep:
-        raise MergeMessageError("the MD has no '- Title:' fact or no '## Message' section; rerun capture")
-    lines = tail.splitlines()
-    for i, line in enumerate(lines):
-        match = _OPEN_FENCE.match(line)
-        if not match:
-            continue
-        for j in range(i + 1, len(lines)):
-            if lines[j].rstrip() == match.group(1):
-                return lines[i + 1:j], title.group(1)
-        raise MergeMessageError("the text fence under '## Message' is never closed")
-    raise MergeMessageError("no text fence under '## Message'")
+def read_message(stream: TextIO) -> List[str]:
+    """The message lines on ``stream`` without trailing blank lines; an empty message is refused."""
+    lines = stream.read().splitlines()
+    while lines and not lines[-1].strip():
+        lines.pop()
+    if not lines:
+        raise MergeMessageError("no message on stdin; pass the message to build as a heredoc")
+    return lines
 
 
 def layout_problems(lines: Sequence[str]) -> List[str]:
@@ -280,17 +264,16 @@ def back_up_replaced(target: Path, text: str) -> None:
         shutil.copyfile(target, target.with_name(target.name + ".bak"))
 
 
-def run_build(repo: Path, pr: int) -> Tuple[Path, str]:
-    """Validate the MD's message fence and write ``PR<pr>_merge.txt``; return its path and the subject."""
-    source = md_path(pr)
-    if not source.is_file():
-        raise MergeMessageError(f"{source.as_posix()} does not exist; run capture {pr} first")
-    lines, title = extract_message(source.read_text(encoding="utf-8"))
+def run_build(repo: Path, pr: int, stream: TextIO) -> Tuple[Path, str]:
+    """Validate the message on ``stream`` and write ``PR<pr>_merge.txt``; return its path and the subject."""
+    lines = read_message(stream)
+    title = str(pr_view(repo, pr)["title"])
     problems = message_problems(lines, pr, title)
     if problems:
         raise MergeMessageError("\n".join(f"problem: {p}" for p in problems))
     text = "\n".join(lines).rstrip() + "\n"
     target = txt_path(pr)
+    target.parent.mkdir(parents=True, exist_ok=True)
     back_up_replaced(target, text)
     target.write_text(text, encoding="utf-8", newline="\n")
     return target, lines[0]
@@ -303,7 +286,7 @@ def receipt(repo: Path, target: Path, pr: int, subject: str) -> str:
     except ValueError:
         shown = target.as_posix()
     final = ("Final as saved: relay this receipt unchanged. The message changes only on the developer's "
-             f"ask: edit the text fence of {md_path(pr).name}, then rerun build.")
+             "ask: rerun build with the changed message on stdin.")
     return "\n".join([f"Saved: {shown} - merge message for PR #{pr}", f"Subject: {subject}", final])
 
 
@@ -311,22 +294,23 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="merge_commit_msg.py", description=__doc__.splitlines()[0])
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="project checkout (default: cwd)")
     sub = parser.add_subparsers(dest="command", required=True)
-    for name, text in (("capture", "Write the merge-message MD for an open PR."),
-                       ("build", "Validate the MD's message fence and write the TXT.")):
+    for name, text in (("capture", "Print the facts and the message skeleton of an open PR."),
+                       ("build", "Validate the message on stdin and write the TXT.")):
         sub.add_parser(name, help=text).add_argument("pr", type=int, help="PR number")
     return parser
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    if hasattr(sys.stdout, "reconfigure"):
-        sys.stdout.reconfigure(encoding="utf-8")
+    for stream in (sys.stdin, sys.stdout):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     args = _parser().parse_args(argv)
     try:
         repo = activate(load_config(project_root(args.repo))).project_root
         if args.command == "capture":
-            print(f"wrote {run_capture(repo, args.pr).resolve().as_posix()}")
+            sys.stdout.write(run_capture(repo, args.pr))
         else:
-            target, subject = run_build(repo, args.pr)
+            target, subject = run_build(repo, args.pr, sys.stdin)
             print(receipt(repo, target, args.pr, subject))
     except (MergeMessageError, ConfigError) as exc:
         text = str(exc)

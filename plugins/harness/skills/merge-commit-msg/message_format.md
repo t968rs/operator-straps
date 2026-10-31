@@ -1,8 +1,9 @@
 # Merge Message Format
 
-Layout of the `text` fence in `PR<N>_merge.md`, which `merge_commit_msg.py build` copies to
-`PR<N>_merge.txt`. Every line sits at column 0 except the file bullets (two-space indent). No markdown fence, no
-backtick wrapper around the whole message: select-all in the TXT is the pasteable merge body.
+Layout of the message passed to `merge_commit_msg.py build` on stdin, which saves it as `PR<N>_merge.txt`. Every
+line sits at column 0 except the file bullets (two-space indent). No markdown fence, no backtick wrapper around
+the whole message: select-all in the TXT is the pasteable merge body. `capture` prints a skeleton of this
+layout with the script-filled lines in place.
 
 ## Layout
 
@@ -42,7 +43,8 @@ Includes N review fixes (Critical: N, Important: N, Minor: N).
 
 ## Rules
 
-- **Verbatim title.** The subject is exactly `Merge PR #NNN — <title>`; build compares it with the captured title.
+- **Verbatim title.** The subject is exactly `Merge PR #NNN — <title>`; build compares it with the title `gh`
+  returns for the PR.
 - **No commit SHAs.** The merge UI records them. Build rejects a hex run of 7-40 characters holding a digit.
 - **No placeholders left.** Build rejects any line that is a bare `<...>` or `  - <...>`.
 - **No vendor or tool names** in prose or bullets (verbatim paths and the verbatim title are exempt), and no

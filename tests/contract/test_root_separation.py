@@ -68,15 +68,28 @@ def _review_payload(root: Path) -> dict:
             "tool_input": {"file_path": str(target)}, "tool_response": {}}
 
 
-def _merge_build_args(root: Path) -> List[str]:
-    """Seed a filled merge-message MD so ``merge_commit_msg.py build`` reaches its write."""
-    folder = root / "docs" / "_commit_messages"
-    folder.mkdir(parents=True, exist_ok=True)
+def _merge_build_args(root: Path, tmp: Path) -> List[str]:
+    """A wrapper that runs ``merge_commit_msg.py build`` with ``gh`` faked and the message on stdin.
+
+    The stdin is a cp1252 text stream over UTF-8 bytes (the Windows console default), so the em dash of the
+    subject only survives when the driver switches stdin to UTF-8.
+    """
     message = ["Merge PR #7 — t", "", "Prose.", "", "  - a.py: change", "",
                "Branch lineage: `main` -> `feature`"]
-    md = ["- Title: t", "", "## Message", "", "```text", *message, "```", ""]
-    (folder / "PR7_merge.md").write_text("\n".join(md), encoding="utf-8")
-    return ["skills/merge-commit-msg/commands/merge_commit_msg.py", "--repo", str(root), "build", "7"]
+    view = {"number": 7, "title": "t", "headRefName": "feature", "baseRefName": "main", "additions": 1,
+            "deletions": 0, "changedFiles": 1, "body": "", "state": "OPEN"}
+    driver = PLUGIN_ROOT / "skills" / "merge-commit-msg" / "commands" / "merge_commit_msg.py"
+    script = tmp / "merge_build_wrapper.py"
+    script.write_text("\n".join([
+        "import importlib.util, io, json, sys",
+        f"spec = importlib.util.spec_from_file_location('merge_commit_msg', {str(driver)!r})",
+        "mod = importlib.util.module_from_spec(spec)",
+        "spec.loader.exec_module(mod)",
+        f"mod.gh = lambda repo, *args: {json.dumps(view)!r}",
+        f"raw = {json.dumps(chr(10).join(message) + chr(10))!r}",
+        "sys.stdin = io.TextIOWrapper(io.BytesIO(json.loads(raw).encode('utf-8')), encoding='cp1252')",
+        f"sys.exit(mod.main(['--repo', {str(root)!r}, 'build', '7']))", ""]), encoding="utf-8")
+    return [str(script)]
 
 
 def _runlog_args(root: Path) -> List[str]:
@@ -170,7 +183,7 @@ CASES = {
     "todo_sync refresh": lambda r, t: (_refresh_args(r), None),
     "todo_sync session hook": lambda r, t: (["hooks/todo_sync_session.py"],
                                             {"cwd": str(_todo_project(r)), "source": "startup"}),
-    "merge-commit-msg build": lambda r, t: (_merge_build_args(r), None),
+    "merge-commit-msg build": lambda r, t: (_merge_build_args(r, t), None),
     "commit capture --save": lambda r, t: (["scripts/branch_commit_msg.py", "--repo", str(r), "capture",
                                             "--save", "--no-fetch"], None),
     "pr_review config": lambda r, t: (["scripts/pr_review.py", "--repo", str(r), "config"], None),
@@ -216,13 +229,14 @@ def test_commit_capture_lands_in_the_project(project: Path) -> None:
     assert written.resolve().is_relative_to(project.resolve())
 
 
-def test_merge_build_lands_in_the_project(project: Path) -> None:
-    script, _ = CASES["merge-commit-msg build"](project, project)
+def test_merge_build_lands_in_the_project(project: Path, tmp_path: Path) -> None:
+    script, _ = CASES["merge-commit-msg build"](project, tmp_path)
     done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project)
     assert done.returncode == 0, done.stderr
     written = project / "docs" / "_commit_messages" / "PR7_merge.txt"
     assert written.is_file()
     assert written.resolve().is_relative_to(project.resolve())
+    assert written.read_text(encoding="utf-8").startswith("Merge PR #7 — t\n")
 
 
 def test_parallel2_plan_lands_in_the_project(project: Path, tmp_path: Path) -> None:

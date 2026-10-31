@@ -1,0 +1,220 @@
+{
+  "name": "merge-commit-msg",
+  "mode": "edit",
+  "base": "d27c4d396780e6e99328dd47b052141a7b60c78a",
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/merge-commit-msg/SKILL.md"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/merge-commit-msg/message_format.md"
+    },
+    {
+      "kind": "models",
+      "path": "plugins/harness/lib/harness_lib/merge_commit_msg_models.py"
+    },
+    {
+      "kind": "api",
+      "path": "plugins/harness/lib/harness_lib/merge_commit_msg_api.py"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_merge_commit_msg_skill_contract.py"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "capture N prints the PR facts, the changed files, the commits, the branch subjects and the message skeleton to stdout, and writes no file",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Stdout and the tree are file-state facts a pytest node decides; no working document is left behind",
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestCapture::test_prints_the_facts_and_writes_no_file",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestCapture::test_fence_holds_subject_placeholders_and_lineage",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestCapture::test_lineage_comes_from_the_pr_body",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestCapture::test_canned_set_prefills_the_prose",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestCapture::test_review_json_adds_the_trailer_with_fix_counts",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestCapture::test_long_review_path_moves_to_its_own_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestCapture::test_no_review_json_means_no_trailer",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "build N reads the message from stdin, takes the title from gh, and writes only PR<N>_merge.txt (the replaced copy kept as .bak) under the configured commit_messages directory",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The driver owns the write; the TXT, the .bak and the directory contents are file-state facts",
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_writes_the_stdin_message_as_the_txt_and_prints_the_receipt",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_writes_only_the_txt",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_capture_then_fill_then_build_round_trips",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_trailing_blank_lines_are_dropped",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_replaced_txt_is_backed_up",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_the_subject_is_checked_against_the_gh_title",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_a_vendor_name_in_the_title_is_not_flagged",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_configured_directory_is_used",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B3",
+      "statement": "build refuses an empty stdin, a defective message, a closed PR and a gh failure with problem lines, and leaves an existing TXT untouched",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Exit code, stderr and the TXT on disk decide each refusal",
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_empty_stdin_is_a_problem",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_defective_messages_are_refused_and_write_nothing",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_a_failed_build_leaves_the_existing_txt",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_a_closed_pr_is_a_problem",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg.py::TestBuild::test_gh_failure_is_a_problem",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B4",
+      "statement": "The guard hook denies a Write or Edit of PR<NNN>_merge.txt with a reason that routes a change to merge-commit-msg build with the message on stdin, and names no PR<NNN>_merge.md",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The hook's deny output is a string a pytest node compares",
+      "tests": [
+        {
+          "node": "tests/hooks/test_guard_commit_txt.py::test_merge_txt_write_is_denied_with_the_stdin_route",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B5",
+      "statement": "build run as a subprocess writes only under the consuming project and decodes a UTF-8 stdin message whatever the console codepage",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "A subprocess run with a cp1252 stdin and a snapshot of plugins/ decides both facts",
+      "tests": [
+        {
+          "node": "tests/contract/test_root_separation.py::test_merge_build_lands_in_the_project",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B6",
+      "statement": "SKILL.md, message_format.md, the guard hook docstring and the README describe the stdin route in two steps and name no PR<N>_merge.md",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Text of the shipped docs is a file-state fact a contract test greps",
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_and_format_card_name_no_working_md",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_readme_and_guard_hook_name_no_working_md",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_passes_the_message_to_build_on_stdin",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_has_two_steps_capture_then_build",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [],
+  "runs": [],
+  "grades": [],
+  "frozen": {
+    "skill_hash": "ef99f80a885ea44f9de08e519f8b62e97262085fdf8f46b8642729b8bc77198c",
+    "grader": "session",
+    "at": "2026-10-31T04:31:28+00:00"
+  },
+  "driver_digest": "cb600cb37ef63fe343800e541faf82ea1a1ae901c2fcec9b5711e9ed1deacef8"
+}
