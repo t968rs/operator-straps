@@ -33,7 +33,8 @@ wherever it is more specific.
   unchanged, is the proposed commit message wherever an instruction asks for one. A message changes only on the
   developer's ask: `harness:amend-commit-msg [--base <sha7>] -- <change>` for a branch TXT (the `--base` its
   draft used), `harness:c-msg <change>` for a pending TXT. `harness:c-msg` runs without arguments unless the
-  developer asked for a specific change.
+  developer asked for a specific change. A merge TXT follows the same rule: `harness:merge-commit-msg` `build`
+  with `PR<N>_merge.txt`, changed as asked, on stdin is its change route.
 - Multi-stage plans run continuously: no pause for commits between stages; save, record evidence, continue.
 
 ### Pre-merge recommendation

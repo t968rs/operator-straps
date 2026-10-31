@@ -62,6 +62,7 @@ def test_merge_txt_write_is_denied_with_the_stdin_route(make_project) -> None:
     assert _denied(done)
     reason = json.loads(done.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
     assert "merge-commit-msg build" in reason and "stdin" in reason
+    assert "_merge.txt" in reason
     assert "_merge.md" not in reason
     assert CHANGE_ROUTE not in reason
 

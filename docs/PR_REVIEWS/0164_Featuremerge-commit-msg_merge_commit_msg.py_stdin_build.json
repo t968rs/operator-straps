@@ -8,7 +8,7 @@
   "base_sha": "d27c4d396780e6e99328dd47b052141a7b60c78a",
   "head_sha": "136a97c78b37db2d0b757474d39016327815915e",
   "review_date": "2026-10-30",
-  "verdict": "NOT READY TO MERGE - 4 important and 12 minor findings unresolved",
+  "verdict": "NOT READY TO MERGE - important: I2",
   "stats": {
     "additions": 653,
     "deletions": 228,
@@ -274,7 +274,18 @@
       }
     ]
   },
-  "bubble_up": [],
+  "bubble_up": [
+    {
+      "id": "I2",
+      "classification": "needs_follow_up",
+      "reason": "New driver validation (recompute lineage/review lines, strictness of canned prose) plus tests; net-new logic, not an exact edit."
+    },
+    {
+      "id": "M7",
+      "classification": "fixer_failed",
+      "reason": "fixer f4: strap spec is frozen; no thaw/refreeze/remove-part route in strap.py or strap_api; developer must choose refreeze route"
+    }
+  ],
   "verification_log": {
     "dispatch_time": {
       "pr_metadata_check": {
@@ -323,5 +334,91 @@
         "result": "OK (recorded; configured base)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: merge_commit_msg.py read_message refuses an interactive tty stdin; test TestBuild::test_interactive_stdin_is_refused_without_reading (merge_commit_msg.py +11/-5 shared with M2, I1, I3)"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: merge_commit_msg.py main reconfigures stdin utf-8-sig and stdout utf-8, UnicodeDecodeError mapped to a problem line; tests for BOM and non-UTF-8 stdin in test_merge_commit_msg.py (+50/-4)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: README.md +4/-2, build bullet names the .txt.bak copy"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f2: plugins/harness/skills/branch-commit-msg/SKILL.md line 182, 1 line changed, CLAUDE_SKILL_DIR note added; contract test 6 passed"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: plugins/harness/rules/HARNESS_RULES.md +8/-7, final-as-saved rule lists harness:merge-commit-msg and its stdin build route"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: test_merge_commit_msg_skill_contract.py +12/-0 (now +19 with f3), test_format_card_and_readme_name_the_stdin_route added"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: test_merge_commit_msg.py test_stdin_is_read_as_utf8_whatever_its_locale_encoding pins stdin UTF-8; module docstring updated"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: test_merge_commit_msg.py defect table collects failures into one list asserted once, stderr drained per iteration"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: test_merge_commit_msg.py defect table gains the too-long case (34 lines, expects the budget is 30)"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: test_merge_commit_msg_skill_contract.py test_skill_passes_the_message_to_build_on_stdin also asserts the closing fence"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: merge-commit-msg/SKILL.md Step 2 splits exit 1 into PR-state/gh/config vs message defects; merge_commit_msg.py docstring adds gh re-read sentence"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f1: receipt final line and guard_commit_txt.py MERGE_REASON (+5/-3) route changes to build on stdin; SKILL.md Changing a saved message section, README.md, guard test and skill contract test updated"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - f3: merge_commit_msg.py capture prints ## Diff via gh pr diff with per-section and total caps (+~30 lines), SKILL.md Step 1/2 updated, 3 new tests; 30 and 9 passed"
+    },
+    {
+      "id": "M5",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-10-31",
+      "evidence": "ada7ff5 (working-tree snapshot; developer commits) - user decided to close without action on this cycle; Closes #154 belongs in the PR body or merge message, not a repo file"
+    }
+  ]
 }

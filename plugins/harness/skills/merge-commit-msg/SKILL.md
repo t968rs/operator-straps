@@ -33,9 +33,10 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commi
 ```
 
 Exit 1 prints a `problem:` line (PR not open, `gh` failure, invalid config): report it and stop. Exit 0 prints
-the PR's Facts, Changed files, Commits and Branch commit subjects, then the message skeleton in a `text` fence
-under `## Message`. Nothing is written to disk. The printed output is the whole input: no `git diff`, no Read of
-a changed file.
+the PR's Facts, Changed files, Diff, Commits and Branch commit subjects, then the message skeleton in a `text`
+fence under `## Message`. Nothing is written to disk. The printed output, diffs included, is the whole input:
+capture pulls the diffs itself (one section per file, size-capped, a file past the cap keeps its header), so the
+agent runs no `git diff` or `gh pr diff` and Reads no changed file.
 
 Capture fills what is mechanical in the skeleton: the subject (`Merge PR #N — <title>`, verbatim),
 `Branch lineage:`, the `Review artifacts:` and `Includes N review fixes (...)` lines when a review JSON exists,
@@ -49,7 +50,7 @@ Format: `${CLAUDE_SKILL_DIR}/message_format.md` (REQUIRED — read it). Start fr
 
 1. Replace the `<Prose: ...>` placeholder with the what-and-why prose. Skip this when a canned message is
    already there: keep it as it stands.
-2. Replace the `  - <file>: <key change>` placeholder with 4-7 bullets drawn from Changed files.
+2. Replace the `  - <file>: <key change>` placeholder with 4-7 bullets drawn from Changed files and the printed Diff.
 3. Add the optional `Also lands` paragraph and `Companion docs:` line only when the PR has that scope. Place
    them as `message_format.md` orders them.
 
@@ -62,16 +63,23 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commi
 MSG
 ```
 
-Exit 1: each `problem:` line names a defect in the message (placeholder left, indented line, filler word, commit
-SHA, vendor name, subject changed, empty stdin). Fix the text and run the same command again. Exit 0 writes
-`PR<N>_merge.txt`, keeps a replaced copy as `PR<N>_merge.txt.bak`, and prints the receipt. Output the receipt
-verbatim — nothing else.
+Exit 1 prints `problem:` lines. A line about the PR state, `gh` or the config (PR not open, `gh pr view failed`,
+invalid config): report it and stop; editing the text cannot fix it. Any other `problem:` line names a defect in
+the message (placeholder left, indented line, filler word, commit SHA, vendor name, subject changed, empty stdin):
+fix the text and run the same command again. Exit 0 writes `PR<N>_merge.txt`, keeps a replaced copy as
+`PR<N>_merge.txt.bak`, and prints the receipt. Output the receipt verbatim — nothing else.
+
+## Changing a saved message
+
+Only on the developer's ask. Read `PR<N>_merge.txt` in the commit_messages directory, then rerun `build` with that
+text changed as asked, on stdin: pass the whole text to the same heredoc as Step 2 (build keeps the replaced copy
+as `.txt.bak`). Do not rerun capture: it would rewrite the prose from the skeleton.
 
 ## Common Mistakes
 
 | Mistake                                          | Fix                                                              |
 |--------------------------------------------------|------------------------------------------------------------------|
-| Writing or patching the TXT by hand              | Rerun `build` with the changed message on stdin.                 |
+| Writing or patching the TXT by hand              | Rerun `build` with `PR<N>_merge.txt`, changed as asked, on stdin. |
 | Saving the draft to a file first                 | The heredoc to `build` is the only route; no file is needed.     |
 | Paraphrasing the title in the subject            | The subject is script-filled; build rejects any change.          |
 | Dropping or rewording lineage or review lines    | Keep the skeleton's script-filled lines as printed.              |

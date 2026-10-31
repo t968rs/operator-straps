@@ -7,7 +7,7 @@ changes only on the developer's ask, through the skills ``CHANGE_ROUTE`` names, 
 drifts from its skeleton or rewrites a message the developer never asked to change.
 
 A ``PR<NNN>_merge.txt`` is ``merge_commit_msg.py build`` output too; its reason routes a change to a rerun of
-``build`` with the changed message on stdin.
+``build`` with ``PR<N>_merge.txt``, changed as asked, on stdin.
 
 Allowed: the skeleton ``.json`` and the ``.txt.bak`` backup. The project follows
 ``project_root``'s order from the target file's nearest existing directory: its git top level, else
@@ -37,8 +37,10 @@ from harness_lib.project import project_root  # noqa: E402
 # would hand the session the same unasked rewrite one hop later, over a skeleton that may predate TXT edits.
 _FINAL = "Commit-message TXT files are build output and final as saved."
 REASON = f"{_FINAL} {CHANGE_ROUTE}"
-MERGE_REASON = (f"{_FINAL} A merge message changes only on the developer's ask: rerun "
-                "harness:merge-commit-msg build with the changed message on stdin.")
+MERGE_REASON = (f"{_FINAL} A merge message changes only on the developer's ask: read PR<N>_merge.txt for the "
+                "starting text, change only what was asked, and rerun harness:merge-commit-msg build with "
+                'the whole changed text on stdin (sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" '
+                '"${CLAUDE_PLUGIN_ROOT}/skills/merge-commit-msg/commands/merge_commit_msg.py" build <N>).')
 
 _MERGE_TXT = re.compile(r"^PR\d+_merge\.txt$", re.IGNORECASE)
 
