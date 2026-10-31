@@ -1,7 +1,7 @@
 """Behavioral tests for the merge-commit-msg skill command ``commands/merge_commit_msg.py``.
 
 ``gh`` is the one seam: each test swaps ``module.gh`` for a function answering from a canned PR. Everything
-else (config, review JSON, commit-message TXT, the message on stdin, the TXT on disk) is real.
+else (config, review JSON, commit-message TXT, the message on stdin (a text stream), the TXT on disk) is real.
 """
 from __future__ import annotations
 
@@ -40,17 +40,25 @@ def module(plugin_root: Path):
     return mod
 
 
-def _gh(view: Optional[dict] = None, files: Optional[List[str]] = None, commits: Optional[List[str]] = None):
+def _diff_for(names: List[str], body: str = "+guard = True") -> str:
+    """A small unified diff holding one hunk per name."""
+    head = "diff --git a/{n} b/{n}\n--- a/{n}\n+++ b/{n}\n@@ -1 +1 @@\n-old\n"
+    return "".join(head.format(n=n) + body + "\n" for n in names)
+
+
+def _gh(view: Optional[dict] = None, files: Optional[List[str]] = None, commits: Optional[List[str]] = None,
+        diff: Optional[str] = None):
     shape = {"number": 7, "title": TITLE, "headRefName": "7-bug-worker", "baseRefName": "main",
              "additions": 40, "deletions": 3, "changedFiles": 2, "body": "", "state": "OPEN", **(view or {})}
     names = files if files is not None else ["workers/export.py", "tests/test_export.py"]
     heads = commits if commits is not None else ["Fix(workers): guard stdio", "Test(workers): spawn path"]
+    patch = diff if diff is not None else _diff_for(names)
 
     def fake(repo: Path, *args: str) -> str:
         if args[:2] == ("pr", "view"):
             return json.dumps(shape)
         if args[:2] == ("pr", "diff"):
-            return "\n".join(names) + "\n"
+            return "\n".join(names) + "\n" if "--name-only" in args else patch
         if args[0] == "api":
             return "\n".join(heads) + "\n"
         raise AssertionError(f"unexpected gh call: {args}")
@@ -84,8 +92,9 @@ def _fence(text: str) -> List[str]:
 
 
 def _capture(module, root: Path, monkeypatch, capsys, view: Optional[dict] = None,
-             files: Optional[List[str]] = None, commits: Optional[List[str]] = None) -> str:
-    monkeypatch.setattr(module, "gh", _gh(view, files, commits))
+             files: Optional[List[str]] = None, commits: Optional[List[str]] = None,
+             diff: Optional[str] = None) -> str:
+    monkeypatch.setattr(module, "gh", _gh(view, files, commits, diff))
     assert _run(module, root, "capture", "7") == 0
     return capsys.readouterr().out
 
@@ -100,11 +109,34 @@ class TestCapture:
     def test_prints_the_facts_and_writes_no_file(self, module, make_project, monkeypatch, capsys) -> None:
         root = _project(make_project)
         out = _capture(module, root, monkeypatch, capsys)
-        headings = ("## Facts", "## Changed files", "## Commits", "## Branch commit subjects", "## Message")
+        headings = ("## Facts", "## Changed files", "## Diff", "## Commits", "## Branch commit subjects",
+                    "## Message")
         assert all(heading in out for heading in headings)
         assert f"- Title: {TITLE}" in out and "- `workers/export.py`" not in out
         assert "- workers/export.py" in out and "- Fix(workers): guard stdio" in out
         assert not (root / "docs").exists()
+
+    def test_capture_prints_the_diff(self, module, make_project, monkeypatch, capsys) -> None:
+        root = _project(make_project)
+        out = _capture(module, root, monkeypatch, capsys)
+        section = out.split("## Diff")[1].split("## Commits")[0]
+        assert "diff --git a/workers/export.py b/workers/export.py" in section
+        assert "+guard = True" in section
+        assert section.index("workers/export.py") < section.index("tests/test_export.py")
+        assert not (root / "docs").exists()
+
+    def test_an_oversized_diff_is_cut_with_each_header_kept(self, module, make_project, monkeypatch,
+                                                            capsys) -> None:
+        names = ["workers/a.py", "workers/b.py", "workers/c.py"]
+        monkeypatch.setattr(module, "DIFF_SECTION_CHARS", 300)
+        monkeypatch.setattr(module, "DIFF_CHAR_BUDGET", 400)
+        big = "\n".join(f"+line {n} " + "x" * 40 for n in range(200))
+        root = _project(make_project)
+        out = _capture(module, root, monkeypatch, capsys, files=names, diff=_diff_for(names, big))
+        section = out.split("## Diff")[1].split("## Commits")[0]
+        assert all(f"diff --git a/{n} b/{n}" in section for n in names)
+        assert "more diff lines omitted" in section and "block output budget spent" in section
+        assert "+line 199" not in section
 
     def test_fence_holds_subject_placeholders_and_lineage(self, module, make_project, monkeypatch,
                                                           capsys) -> None:
@@ -229,6 +261,49 @@ class TestBuild:
         assert "no message on stdin" in capsys.readouterr().err
         assert not _txt(root).exists()
 
+    def test_interactive_stdin_is_refused_without_reading(self, module, make_project, monkeypatch,
+                                                          capsys) -> None:
+        class Terminal(io.StringIO):
+            def isatty(self) -> bool:
+                return True
+
+            def read(self, size: int = -1) -> str:
+                raise AssertionError("build read an interactive stdin")
+
+        root = _project(make_project)
+        monkeypatch.setattr(module, "gh", _gh())
+        monkeypatch.setattr("sys.stdin", Terminal())
+        assert _run(module, root, "build", "7") == 1
+        assert "no message on stdin" in capsys.readouterr().err
+        assert not _txt(root).exists()
+
+    def test_utf8_bom_on_stdin_is_stripped(self, module, make_project, monkeypatch) -> None:
+        root = _project(make_project)
+        raw = b"\xef\xbb\xbf" + ("\n".join(MESSAGE) + "\n").encode("utf-8")
+        monkeypatch.setattr(module, "gh", _gh())
+        monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(raw), encoding="cp1252"))
+        assert _run(module, root, "build", "7") == 0
+        text = _txt(root).read_text(encoding="utf-8")
+        assert text == "\n".join(MESSAGE) + "\n" and "﻿" not in text
+
+    def test_non_utf8_stdin_is_a_problem(self, module, make_project, monkeypatch, capsys) -> None:
+        root = _project(make_project)
+        monkeypatch.setattr(module, "gh", _gh())
+        stdin = io.TextIOWrapper(io.BytesIO(b"Merge PR #7 \x97 x\n"), encoding="cp1252")
+        monkeypatch.setattr("sys.stdin", stdin)
+        assert _run(module, root, "build", "7") == 1
+        assert "stdin is not UTF-8" in capsys.readouterr().err
+        assert not _txt(root).exists()
+
+    def test_stdin_is_read_as_utf8_whatever_its_locale_encoding(self, module, make_project,
+                                                                monkeypatch) -> None:
+        root = _project(make_project)
+        raw = ("\n".join(MESSAGE) + "\n").encode("utf-8")
+        monkeypatch.setattr(module, "gh", _gh())
+        monkeypatch.setattr("sys.stdin", io.TextIOWrapper(io.BytesIO(raw), encoding="cp1252"))
+        assert _run(module, root, "build", "7") == 0
+        assert _txt(root).read_text(encoding="utf-8") == "\n".join(MESSAGE) + "\n"
+
     def test_defective_messages_are_refused_and_write_nothing(self, module, make_project, monkeypatch,
                                                               capsys) -> None:
         defects = {
@@ -247,13 +322,16 @@ class TestBuild:
             "no blank line 2": ([MESSAGE[0], *MESSAGE[2:]], "line 2 must be blank"),
             "lineage first": ([*MESSAGE[:2], MESSAGE[-1], *MESSAGE[2:-1]], "must come after the bullets"),
             "no lineage": (MESSAGE[:-1], "exactly one 'Branch lineage:'"),
+            "too long": ([*MESSAGE[:6], *["  - x.py: change"] * 25, *MESSAGE[6:]], "the budget is 30"),
         }
+        failed: List[str] = []
         root = _project(make_project)
         for name, (message, expected) in defects.items():
-            assert _build(module, root, monkeypatch, message) == 1, name
+            rc = _build(module, root, monkeypatch, message)
             err = capsys.readouterr().err
-            assert expected in err, name
-            assert not _txt(root).exists(), name
+            if rc != 1 or expected not in err or _txt(root).exists():
+                failed.append(name)
+        assert not failed, failed
 
     def test_the_subject_is_checked_against_the_gh_title(self, module, make_project, monkeypatch,
                                                          capsys) -> None:

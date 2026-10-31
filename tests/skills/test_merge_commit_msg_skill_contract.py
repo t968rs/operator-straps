@@ -42,8 +42,27 @@ def test_skill_passes_the_message_to_build_on_stdin() -> None:
     text = _text(SKILL_DIR / "SKILL.md")
     assert "<<'MSG'" in text
     assert 'merge_commit_msg.py" build <PR number> <<' in text
+    assert "\nMSG\n```" in text
 
 
 def test_skill_has_two_steps_capture_then_build() -> None:
     text = _text(SKILL_DIR / "SKILL.md")
     assert "## Step 1" in text and "## Step 2" in text and "## Step 3" not in text
+
+
+def test_skill_says_capture_pulls_the_diffs_and_bans_running_git_diff() -> None:
+    text = _text(SKILL_DIR / "SKILL.md")
+    assert "pulls the diffs" in text and "the printed Diff" in text
+    assert "runs no `git diff`" in text
+    assert "run `git diff`" not in text.lower()
+
+
+def test_skill_names_the_change_route() -> None:
+    text = _text(SKILL_DIR / "SKILL.md")
+    assert "Changing a saved message" in text
+    assert "changed as asked, on stdin" in text
+
+
+def test_format_card_and_readme_name_the_stdin_route() -> None:
+    for path in (SKILL_DIR / "message_format.md", REPO_ROOT / "README.md"):
+        assert "stdin" in _text(path), path.name

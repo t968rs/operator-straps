@@ -179,7 +179,7 @@ gh pr list --head "<branch>" --state open --json number --jq ".[0].number"
 No output means no open PR: say so in one line, keep the Step 4 receipt, and stop; the developer opens the PR
 and runs `harness:merge-commit-msg <PR number>` later. Otherwise read
 `${CLAUDE_PLUGIN_ROOT}/skills/merge-commit-msg/SKILL.md` and follow its Steps 1-2 with the PR number as the
-argument, in this same run. A `problem:` line from a merge step is reported with the Step 4 receipt kept.
+argument, in this same run. `${CLAUDE_SKILL_DIR}` in that file stands for `${CLAUDE_PLUGIN_ROOT}/skills/merge-commit-msg`. A `problem:` line from a merge step is reported with the Step 4 receipt kept.
 Output the Step 4 receipt, then the merge receipt, each verbatim — nothing else.
 
 ## Common Mistakes

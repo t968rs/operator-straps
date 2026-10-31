@@ -4,18 +4,20 @@ Two subcommands bracket the one judgment step (the prose and the file bullets of
 stands between them: ``build`` asks ``gh`` for the title again.
 
 ``capture N``
-    Read PR N through ``gh`` (shape, commit headlines, changed files), the branch's commit-message TXT when
-    one exists, the PR's review JSON (``artifacts.reviews``) and the canned message for the changed files
-    (``harness_lib.canned_messages``). Print the facts, then a ``text`` fence holding the message skeleton
-    with the subject, lineage and review lines already filled in. Writes no file. Exits 1 when the PR is not
-    open.
+    Read PR N through ``gh`` (shape, commit headlines, changed files, one ``gh pr diff``), the branch's
+    commit-message TXT when one exists, the PR's review JSON (``artifacts.reviews``) and the canned message
+    for the changed files (``harness_lib.canned_messages``). Print the facts and the PR's diff (one section
+    per file under ``DIFF_SECTION_CHARS`` characters, the whole under ``DIFF_CHAR_BUDGET``: a section past the
+    budget keeps its ``diff --git`` header), then a ``text`` fence holding the message skeleton with the
+    subject, lineage and review lines already filled in. Writes no file. Exits 1 when the PR is not open.
 
 ``build N``
     Take the message from stdin, validate it (verbatim subject from ``gh``, column-0 layout, bullets, no
     placeholder left, no vendor names, filler words, commit SHAs or sign-offs), and write it to
     ``PR<N>_merge.txt`` in the project's ``commit_messages`` directory (``artifacts.commit_messages``, default
     ``docs/_commit_messages``), keeping the replaced copy as ``.txt.bak``. Prints the chat receipt. Exit 1
-    prints one ``problem:`` line per defect and leaves the TXT untouched.
+    prints one ``problem:`` line per defect and leaves the TXT untouched. Reads the title from ``gh`` again,
+    so it exits 1 when the PR is not open or ``gh`` fails.
 
 Usage::
 
@@ -36,12 +38,18 @@ from typing import Dict, List, Optional, Sequence, TextIO, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
 from harness_lib.canned_messages import get_canned_message  # noqa: E402
+from harness_lib.commit_diff import cap_sections, clip_text  # noqa: E402
 from harness_lib.commit_txt import filler_words, read_commit_txt, vendor_names  # noqa: E402
 from harness_lib.config import ConfigError, active, activate, load_config  # noqa: E402
+from harness_lib.pr_capture import read_rank  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
 
 LINE_WIDTH = 110
 MAX_LINES = 30
+DIFF_SECTION_CHARS = 4_000
+DIFF_CHAR_BUDGET = 20_000
+_DIFF_START = re.compile(r"^(?=diff --git )", re.M)
+_DIFF_PATH = re.compile(r"^diff --git a/.* b/(.+)$")
 PLACEHOLDER = re.compile(r"^\s*(?:-\s+)?<.*>\s*$")
 _UNSAFE = re.compile(r'[\\/:*?"<>|]')
 _ARROWS = re.compile(r"\s*(?:-->|->)\s*")
@@ -102,6 +110,26 @@ def pr_commits(repo: Path, pr: int) -> List[str]:
 def pr_files(repo: Path, pr: int) -> List[str]:
     out = gh(repo, "pr", "diff", str(pr), "--name-only")
     return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def _section_path(section: str) -> str:
+    """The new-side path of a ``diff --git`` section (its whole header line when the path does not parse)."""
+    header = section.split("\n", 1)[0]
+    match = _DIFF_PATH.match(header)
+    return match.group(1) if match else header
+
+
+def pr_diff(repo: Path, pr: int) -> List[str]:
+    """The PR's diff as one section per file (source, tests, docs order), each clipped, the whole capped.
+
+    One ``gh pr diff`` call; sections split on ``diff --git`` headers. A section past ``DIFF_SECTION_CHARS``
+    ends in an omission line; once ``DIFF_CHAR_BUDGET`` characters are spent, later sections keep only
+    their header.
+    """
+    text = gh(repo, "pr", "diff", str(pr), "--color=never")
+    sections = [s for s in _DIFF_START.split(text) if s.startswith("diff --git ")]
+    ordered = sorted(sections, key=lambda s: read_rank(_section_path(s)))
+    return cap_sections([clip_text(s, DIFF_SECTION_CHARS) for s in ordered], DIFF_CHAR_BUDGET)
 
 
 def lineage_names(body: str, base: str, head: str) -> List[str]:
@@ -175,7 +203,7 @@ def _bullets(lines: Sequence[str]) -> List[str]:
 
 
 def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequence[str],
-           subjects: Sequence[str]) -> str:
+           subjects: Sequence[str], diff: Sequence[str] = ()) -> str:
     """The capture output: script-owned facts, then the ``text`` fence holding the message skeleton."""
     title, base, head = str(view["title"]), str(view["baseRefName"]), str(view["headRefName"])
     names = lineage_names(str(view.get("body") or ""), base, head)
@@ -185,9 +213,11 @@ def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequ
     facts = [f"- Title: {title}", f"- Branch: `{head}` into `{base}`", f"- Size: {size}",
              f"- Canned message: {'yes, prefilled as the prose' if canned else 'none'}"]
     parts = [f"# PR #{pr} merge message", "",
-             "Facts are script-owned. Fill the placeholders of the skeleton under Message, keep its subject, "
-             "lineage and review lines, and pass the message to `build` on stdin.", "",
-             "## Facts", "", *facts, "", "## Changed files", "", *_bullets(files), "", "## Commits", "",
+             "Facts and the diff are script-owned. Fill the placeholders of the skeleton under Message from "
+             "them, keep its subject, lineage and review lines, and pass the message to `build` on stdin.",
+             "",
+             "## Facts", "", *facts, "", "## Changed files", "", *_bullets(files), "", "## Diff", "",
+             *(diff or ["- none"]), "", "## Commits", "",
              *_bullets(commits), "", "## Branch commit subjects", "", *_bullets(subjects), "",
              "## Message", "", "```text", *message, "```", ""]
     return "\n".join(parts)
@@ -197,12 +227,17 @@ def run_capture(repo: Path, pr: int) -> str:
     """The facts and the message skeleton of the open PR; nothing is written."""
     view = pr_view(repo, pr)
     subjects = branch_subjects(str(view["headRefName"]))
-    return render(pr, view, pr_files(repo, pr), pr_commits(repo, pr), subjects)
+    return render(pr, view, pr_files(repo, pr), pr_commits(repo, pr), subjects, pr_diff(repo, pr))
 
 
 def read_message(stream: TextIO) -> List[str]:
     """The message lines on ``stream`` without trailing blank lines; an empty message is refused."""
-    lines = stream.read().splitlines()
+    if stream.isatty():
+        raise MergeMessageError("no message on stdin; pass the message to build as a heredoc or pipe")
+    try:
+        lines = stream.read().splitlines()
+    except UnicodeDecodeError as exc:
+        raise MergeMessageError("stdin is not UTF-8; pass the message as a heredoc from Git Bash") from exc
     while lines and not lines[-1].strip():
         lines.pop()
     if not lines:
@@ -286,7 +321,7 @@ def receipt(repo: Path, target: Path, pr: int, subject: str) -> str:
     except ValueError:
         shown = target.as_posix()
     final = ("Final as saved: relay this receipt unchanged. The message changes only on the developer's "
-             "ask: rerun build with the changed message on stdin.")
+             f"ask: rerun build with PR{pr}_merge.txt, changed as asked, on stdin.")
     return "\n".join([f"Saved: {shown} - merge message for PR #{pr}", f"Subject: {subject}", final])
 
 
@@ -301,9 +336,9 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
-    for stream in (sys.stdin, sys.stdout):
+    for stream, encoding in ((sys.stdin, "utf-8-sig"), (sys.stdout, "utf-8")):
         if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8")
+            stream.reconfigure(encoding=encoding)
     args = _parser().parse_args(argv)
     try:
         repo = activate(load_config(project_root(args.repo))).project_root
