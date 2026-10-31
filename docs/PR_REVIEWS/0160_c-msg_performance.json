@@ -1,0 +1,536 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 160,
+  "pr_title": "`c-msg` performance",
+  "branch": "1107-c-msg-rt",
+  "base_branch": "main",
+  "base_sha": "3ad9ab279dc4ea7256eb2f1ab441043910c8a509",
+  "head_sha": "b0ba193951e57dd0a1b6c1ec2e818d941c5285eb",
+  "review_date": "2026-10-30",
+  "verdict": "READY TO MERGE - 18 of 19 findings resolved, 1 bubbled",
+  "stats": {
+    "additions": 868,
+    "deletions": 90,
+    "files_changed": 13
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0160/pr160_20261030T231715Z/findings/tests.json",
+    "docs/_scratch/pr_review/0160/pr160_20261030T231715Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0160/pr160_20261030T231715Z/findings/docs.json",
+    "docs/_scratch/pr_review/0160/pr160_20261030T231715Z/findings/overall.json"
+  ],
+  "bubbles": [
+    "M1"
+  ],
+  "strengths": [
+    "test_a_higher_rank_is_summarized_before_a_larger_source_diff discriminates: without the rank argument the larger src.py would be demoted first and the assertion would fail.",
+    "The pending-flow tests drive main() end to end against a real git repo from make_project, with no stubbed collaborators.",
+    "test_message_build_keeps_the_message_when_build_refuses pins the failure contract: the skeleton keeps the rejected text and no TXT is written.",
+    "The commit-type card test derives the type list from the reference table instead of hard-coding it, so the card and the reference cannot drift apart silently.",
+    "test_the_outline_stays_within_the_line_budget pins that outline size does not depend on the changed-line count (20 hunks at 40 and at 400 lines give equal length).",
+    "path_diffs falls back to path_diff whenever the expected 'diff --git a/<old> b/<new>' header is missing, so a rename that pairs differently inside a pathspec chunk, a quoted path or an untracked file still gets exactly the per-path text.",
+    "The _outline arithmetic holds its 120-line ceiling: each hunk emits at most 2*per_side+2 <= (OUTLINE_LINES-1)//n lines, and the header-only mode lists 118 hunks plus the title and the omitted-count line.",
+    "_demote_largest takes a summary only when it is strictly shorter than the full section, so a small diff whose summary is the same text plus a longer '[summary]' tag is never swapped, and the loop always terminates.",
+    "capture --diff is rejected unless --pending and --save or --out are given, so the captures and stats the report reads are always bound and the skeleton is always on disk before the diff prints.",
+    "message --build writes the skeleton before building, so a refused build exits 1 with the drafted messages kept and no TXT written, as the help text says.",
+    "SKILL.md Step 1 and Step 2 match the driver: pending_report prints `message: empty|carried|canned`, the message when set, and no diff for a canned block; `message --build` writes the skeleton before building, so 'Exit 1 keeps the message' holds (branch_commit_msg.py:354-365, 920-939).",
+    "The format card lists all seven commit types and all four status letters, and the contract test checks the types against the reference table itself, so a new type cannot drift silently.",
+    "commit_format.md names the one allowed fork of its rules and the test that guards it, instead of quietly dropping the old 'do not re-inline' rule.",
+    "The card's list of rules that build enforces (double quotes, filler words, vendor names, subject shape) matches the checks of message_problems in commit_txt.py:264-280.",
+    "Every test node listed in SkillSpec.json B1-B5 exists at the head (test_branch_commit_msg_pending_flow.py, test_commit_diff_outline.py, test_block_fit.py, test_c_msg_skill_contract.py).",
+    "path_diffs falls back to a single path_diff whenever a batched header does not match (quoted path, different rename pairing). Batched output therefore equals the single read by construction, and test_batched_reads_equal_single_reads checks it on a rename plus an untracked file.",
+    "_outline bounds the summary by line count: per-side samples shrink with the hunk count, and the header-only mode caps at OUTLINE_LINES. test_the_outline_stays_within_the_line_budget shows the size does not depend on changed-line count.",
+    "message --build writes the skeleton before running build, so a refused build keeps the new message on disk, as the SKILL and the test both state.",
+    "The commit-types contract test reads the reference table itself rather than a copied list, so a new type in commit_format.md fails the card test.",
+    "capture --diff reuses the captures and stats the skeleton came from, so the printed diff and the saved skeleton describe the same working-tree state.",
+    "The pending-flow tests drive main() against real git repos from make_project, with no stubbed helpers, covering the canned, carried, empty and refused-build paths."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "branch-commit-msg docs still describe the old summary and budget behavior",
+        "file": "plugins/harness/skills/branch-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/lib/harness_lib/commit_diff.py"
+        ],
+        "lines": "113-118",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "_block_diff is shared by c-msg and by the branch-commit-msg/amend-commit-msg `diff` command, so this PR changes their output too. A multi-hunk text summary is now a hunk outline instead of a diff head. A block over BLOCK_CHAR_BUDGET (now 24,000, was 30,000) turns full diffs into summaries, docs/planning/artifacts first, then tests, before any path is cut to its header. The c-msg SKILL was updated (lines 43-47) but the sibling docs were not. branch-commit-msg/SKILL.md:113-118 still says a larger path prints 'the head of the diff otherwise' and that only BLOCK_BUDGET (300 lines) makes later paths summaries. branch_commit_msg.py:52-58 (`diff` docstring) still says 'a truncated head otherwise'. In commit_diff.py, the _summarize_json docstring (line 137) and its label 'diff head follows:' (line 143) still promise a head, though _summarize_text now returns an outline for several hunks.",
+        "fix": [
+          "branch-commit-msg/SKILL.md:113-118: describe the summary as 'key tallies for JSON, a hunk outline for a diff of several hunks, a head plus the definitions past it otherwise'. Add that a block over its character budget turns full diffs into summaries (docs and artifacts first, source last) before any path prints its header only.",
+          "branch_commit_msg.py:54: replace 'a truncated head otherwise' with 'a hunk outline or a head otherwise'. commit_diff.py:137,143: say 'plus the text summary (outline or head)' and change the label to 'text summary follows:'."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Header-only path bullet relies on a status the output never prints",
+        "file": "plugins/harness/skills/c-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/c-msg/SKILL.md",
+          "plugins/harness/lib/harness_lib/commit_diff.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "43-47,97-99",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:46-47 says a path past the block budget prints its header only and gets 'a bullet from its name, status and counts', and the card (SKILL.md:97-99) words every bullet by the status letter (A/M/D/R###, with R### written old -> new). The header that path actually gets is `=== <path> [<mode>, +A -D] ===` plus `[omitted: block output budget spent]` (commit_diff.py:235, 276): no status letter and, for a rename, only the new path (parse_numstat records a rename under its new path, commit_diff.py:59-68). pending_report (branch_commit_msg.py:354-365) prints no name-status list either. Line 43 now forbids any Read or git diff, which removes the fallback the old skill left open. So for a header-only path the drafter has to guess A vs M from the counts (`+N -0` fits both) and cannot write the old side of a relocate.\n\nAlso (docs): SKILL.md:44 says 'Paths within the read budget print in full'. That only holds when the whole block fits. plan_reads (commit_diff.py:88) also summarizes a path once the per-block line budget is spent, and fit_sections (commit_diff.py:262-270) turns full sections into summaries (docs first, then the largest) whenever the block is over its character budget. A full section can also be clipped by characters, with a `... N more diff lines omitted (character budget)` line (commit_diff.py:225). Line 47 also gives the header-only shape as `[+A -D]`, but the real header is `[full, +A -D]` or `[summary, +A -D]` followed by `[omitted: block output budget spent]`. A drafter who sees a small file summarized, or a clipped full diff, may decide the output is broken and break the no-read rule.",
+        "fix": [
+          "Put the status letter (and the old path for a rename) into the section header in render_section/_omitted, then update SKILL.md:47 to describe the real header, e.g. `=== path [omitted, R100 old -> new, +A -D] ===`.",
+          "Or print a `status path [old]` line per block path in pending_report before the diff, and have SKILL.md:47 point at that list for the status.",
+          "Or, keeping the code as it is, reword SKILL.md:47 to say the status comes from the skeleton's `captured` entry for that path, and allow that one read.",
+          "Reword SKILL.md:44-47 along these lines: 'Each path prints `full` (possibly clipped by characters) or `summary`; when the block runs over its budget, full paths turn into summaries, documentation first. A path that still does not fit prints its `=== path [mode, +A -D] ===` header and `[omitted: block output budget spent]`.'"
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Batched-read test passes when the batched branch never runs",
+        "file": "tests/lib/test_block_fit.py",
+        "files": [
+          "tests/lib/test_block_fit.py",
+          "plugins/harness/lib/harness_lib/branch_capture.py"
+        ],
+        "lines": "32-39",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_batched_reads_equal_single_reads only checks that path_diffs(...)[path] == path_diff(...) for each path. path_diffs falls back to path_diff for any path whose `diff --git a/<old or path> b/<path>` header is missing from the batched output (branch_capture.py:207-212), so a header mismatch (for example a user git config with diff.noprefix or diff.mnemonicPrefix, or a regression in _SECTION_START splitting) makes every path take the per-path fallback and the test still passes. The module docstring (lines 3-4) promises `one git diff per pathspec chunk`, which is the performance point of the PR, and nothing checks it.",
+        "fix": [
+          "Wrap (do not stub) branch_capture.git_out with a counting spy via monkeypatch, call path_diffs, and assert exactly one `diff` invocation for the tracked chunk (untracked new.txt reads no git diff), alongside the existing equality loop.",
+          "Alternatively assert directly that the batched sections dict holds the a.py, b.py and new.md headers by exposing the split as a small helper and testing it on the real git output."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Outline line-budget test never reaches the hunk cap",
+        "file": "tests/lib/test_commit_diff_outline.py",
+        "files": [
+          "tests/lib/test_commit_diff_outline.py",
+          "plugins/harness/lib/harness_lib/commit_diff.py"
+        ],
+        "lines": "1-5,48-52",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_the_outline_stays_within_the_line_budget uses 20 hunks (81 lines) and asserts `<= OUTLINE_LINES + 1`, far under the bound and with an unexplained +1 slack. The branch that actually enforces the budget, `listed = hunks[:OUTLINE_LINES - 2]` plus the `... N more hunks omitted` line (commit_diff.py:175-180), is exercised by no test in the repo (grep finds no `more hunks omitted` under tests/). An off-by-one there would push the outline past OUTLINE_LINES unnoticed. The module docstring (lines 4-5) also says the outline `names every hunk`, which is false past 118 hunks.",
+        "fix": [
+          "Add a case with more hunks than OUTLINE_LINES (for example 200): assert `len(lines) <= commit_diff.OUTLINE_LINES`, that `more hunks omitted` appears, and that the last listed header is hunk OUTLINE_LINES - 3; tighten the existing bound to `<= commit_diff.OUTLINE_LINES`.",
+          "Reword the module docstring to say every hunk is named up to the line budget, after which the rest are counted."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "SkillSpec lists two parts that do not exist",
+        "file": "docs/plans/strap/c-msg/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/c-msg/SkillSpec.json",
+          "plugins/harness/lib/harness_lib/strap_scaffold.py"
+        ],
+        "lines": "28-35",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "docs/plans/strap/c-msg/SkillSpec.json:28-35 lists plugins/harness/lib/harness_lib/c_msg_models.py (models) and c_msg_api.py (api) as deliverables. Neither file exists at the PR head, and the PR does not add them. The strap scaffold adds these parts for any spec with a mechanical behavior (strap_scaffold.py:97-99), even in 'edit' mode where nothing is scaffolded. The frozen skill_hash covers paths that are not real files, and a reader of the spec expects modules that are not there.",
+        "fix": [
+          "Remove the two parts through the strap API and refreeze, so the parts list names only the files the PR changed.",
+          "Or change _scaffold_parts to skip the models/api parts when spec.mode is 'edit', so edit specs list only real files."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Messenger .claude/ rule still names only the diff command and a reference file",
+        "file": "plugins/harness/agents/messenger.md",
+        "lines": "76-78",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "messenger.md:70-71 was updated to accept 'the diff its capture prints', but the same section at messenger.md:76-78 still says 'A diff printed by the skill's `diff` command already covers those paths' and 'the message format comes from the skill (its reference file or its script)'. c-msg now gets its diff from `capture --diff` and its format from the inline card in SKILL.md, so both sentences are out of date for the skill this PR changes.",
+        "fix": [
+          "messenger.md:76: 'A diff printed by the skill's `diff` command or its capture already covers those paths.' messenger.md:77-78: 'the message format comes from the skill (its body, its reference file or its script)'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Batched diff falls back to one call per path under common git display config",
+        "file": "plugins/harness/lib/harness_lib/branch_capture.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/branch_capture.py",
+          "plugins/harness/lib/harness_lib/pr_capture.py",
+          "tests/scripts/test_pr_sum.py",
+          "tests/lib/test_block_fit.py"
+        ],
+        "lines": "14,160-164,167-172,190-213",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "path_diffs matches each batch section by the literal header 'diff --git a/<old or path> b/<path>'. With diff.mnemonicPrefix or diff.noprefix set, the headers become 'c/... w/...' or bare paths. With core.quotePath (the default) a non-ASCII path is quoted. In those cases no header matches, so every path, or every non-ASCII path, is read twice: once in the batch and once by path_diff. The output stays correct, but this PR exists to save git calls, and under that config the batch costs more than the per-path loop it replaced. Nothing reports the fallback.\n\nAlso (runtime): The branch_commit_msg import of diff_section was its last caller; no module under plugins/ calls it any more (only a test_pr_sum docstring names it). render_section moved to commit_diff, but pr_capture.py still imports it from branch_capture (pr_capture.py:29). That import works only because branch_capture imports the name for the dead diff_section, so deleting diff_section later would also break pr_capture's import.\n\nAlso (overall): path_diffs (branch_capture.py:190-213) matches each batched section by the literal header 'diff --git a/<old or path> b/<path>'. With diff.mnemonicPrefix=true (working-tree diffs use c/ and w/) or diff.noprefix=true in the user or repo git config, no header matches. Every path then falls back to its own path_diff call. Output stays correct, but the one-call-per-chunk gain this PR is for disappears without any sign.",
+        "fix": [
+          "Pin the display options in both calls so the texts stay equal: pass '--src-prefix=a/', '--dst-prefix=b/' and '--no-color' to git diff in path_diff and in the path_diffs batch, and run the batch with '-c core.quotePath=false' (the same flags go in path_diff to keep the 'each value equals path_diff' contract).",
+          "Or count the fallbacks and skip the batch for the remaining chunks once no header in the first chunk matched.",
+          "Delete diff_section from branch_capture.py (and the render_section import there if nothing else uses it), import render_section from harness_lib.commit_diff in pr_capture.py, and update the test_pr_sum.py docstring line 8 that names diff_section.",
+          "Pass '--src-prefix=a/' and '--dst-prefix=b/' to the git diff in both path_diffs (line 203) and path_diff (line 164), so the headers are fixed and batched equals single. Extend test_batched_reads_equal_single_reads with a repo that sets diff.mnemonicPrefix=true, and assert both results still match."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "fit_sections promises 'under budget' but omitted headers are not bounded",
+        "file": "plugins/harness/lib/harness_lib/commit_diff.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/commit_diff.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "26-28,256-271,292-300",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The fit_sections docstring says the rendered sections stay 'under budget characters', and the BLOCK_CHAR_BUDGET comment says 24,000 keeps a block under the 30,000-character inline tool output. _fit_cut still appends a header plus '[omitted: block output budget spent]' for every path that does not fit, and adds those lengths to spent with no ceiling. A c-msg pending capture puts every pending path in its one block, so a few hundred untracked files (a vendored directory, say) add about 100 characters each past the budget. The output then goes past 30,000 and is saved to a file, the extra read-back calls this PR set out to remove.",
+        "fix": [
+          "In _fit_cut, once the budget is spent, list the remaining cut sections as one trailer line ('N more paths omitted: a, b, ...' clipped to a fixed width) rather than a header pair per path, so the block is bounded by budget plus a constant.",
+          "Or correct the docstring and the BLOCK_CHAR_BUDGET comment to say that omitted sections add a header line each beyond the budget."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Definition regex lists every added '#' comment as a heading",
+        "file": "plugins/harness/lib/harness_lib/commit_diff.py",
+        "lines": "34-36,183-196",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_DEFINITION's second branch '^\\+#{1,4}\\s+\\S' is meant for Markdown headings, but it also matches every added Python, shell, YAML or TOML comment ('+# Under the 30,000-character ...'). In a single-hunk or new source file, the 'definitions past the head' list fills with comments and can push real def and class lines past the OUTLINE_LINES - TEXT_HEAD_LINES - 2 cap. The _definitions docstring says the list holds definitions and headings.\n\nAlso (overall): _DEFINITION (commit_diff.py:34-36) includes `^\\+#{1,4}\\s+\\S` for Markdown headings, but _summarize_text does not know the path. In a new Python, shell, YAML or TOML file, every column-0 comment ('# --- helpers ---', '# Config') counts as a definition. _definitions caps the list at OUTLINE_LINES - TEXT_HEAD_LINES - 2 = 78 entries (lines 183-186), so comment lines can push out the real def/class lines the c-msg SKILL tells the drafter to write bullets from.",
+        "fix": [
+          "Pass the path into _summarize_text, _head and _definitions, and apply the '#' heading branch only to Markdown suffixes (.md, .markdown, .mdx).",
+          "Or require no indentation and a Markdown-only shape for the heading branch, and list the def/class/export matches before the headings so the cap cuts the headings first.",
+          "Pass the path from summarize_diff into _summarize_text/_head, and apply the heading branch only to Markdown suffixes (.md, .markdown). Add a test where a new .py file with '# section' comments still lists its 'def' lines past the head.",
+          "Or require a heading line to be followed by no code pattern, i.e. drop the '#' branch for non-Markdown paths only."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "JSON summary still calls the text fallback a 'diff head'",
+        "file": "plugins/harness/lib/harness_lib/commit_diff.py",
+        "lines": "137,143",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_summarize_json says it adds 'a truncated diff head' and prints 'most changed lines carry no key; diff head follows:' before calling _summarize_text. After this PR, _summarize_text returns a hunk outline for any diff of more than one hunk, so for a typical multi-hunk JSON array edit the label and the docstring describe output that is not printed.",
+        "fix": [
+          "Reword the docstring at line 137 to 'plus the text summary (hunk outline or head) when keyed lines miss most of the change', and the label at line 143 to 'most changed lines carry no key; text summary follows:'."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Driver and module docstrings still describe the old summary and line-only budget",
+        "file": "plugins/harness/scripts/branch_commit_msg.py",
+        "files": [
+          "plugins/harness/scripts/branch_commit_msg.py",
+          "plugins/harness/lib/harness_lib/commit_diff.py"
+        ],
+        "lines": "52-58,434",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The 'diff' section of the branch_commit_msg module docstring (lines 52-58) says larger paths print as 'key tallies for JSON, a truncated head otherwise' and that only a line budget applies per block. The run_diff_blocks docstring (line 434) repeats the line-budget claim. The commit_diff module docstring (lines 4-5) says per-path and per-block line budgets decide which paths are read in full. _block_diff now also applies a character budget: fit_sections demotes full sections to summaries (docs and artifacts first, then tests, source last), and text summaries are hunk outlines for multi-hunk diffs.",
+        "fix": [
+          "Update branch_commit_msg.py lines 53-55 to 'larger ones as a summary (key tallies for JSON, a hunk outline for a multi-hunk diff, else a head plus the definitions past it); over the block's character budget, full diffs become summaries, documentation and artifacts first and source last, before any path is cut to its header', and mention the character budget in run_diff_blocks (line 434) and in commit_diff.py lines 4-5."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Format card narrows the plan-document type rule",
+        "file": "plugins/harness/skills/c-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/c-msg/SKILL.md",
+          "plugins/harness/reference/commit_format.md"
+        ],
+        "lines": "57,87-100",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:90 says 'plan documents are `Docs(plans)`'. The reference (commit_format.md:40) allows `Docs(plans)` or `Chore(plans)`. The card is meant to be a faithful subset of the reference (commit_format.md:5-8 forbids forking the rules), but here it removes a valid option, and the contract test does not check this line.\n\nAlso (overall): The card replaces the required read of commit_format.md, but it states some rules more narrowly than the reference. SKILL.md:90 says plan documents are `Docs(plans)`; the reference (commit_format.md:40) allows `Docs(plans)` or `Chore(plans)`. SKILL.md:96 says a term takes backticks; the reference (line 79) allows backticks or single quotes. SKILL.md:57 dropped 'or single quotes' from the carried-quote repair. The card template also omits the em-dash secondary qualifier and the optional status/result line. build enforces none of these, so a c-msg run and a branch-commit-msg run now follow different rules, and the contract test cannot catch it.",
+        "fix": [
+          "Change SKILL.md:90 to '`Plan` is not a type: plan documents are `Docs(plans)` or `Chore(plans)`.'",
+          "Align the card with the reference: '`Docs(plans)` or `Chore(plans)`', 'backticks or single quotes', and one line naming the optional em-dash qualifier and the result line.",
+          "Or, if the narrowing is deliberate, say so in the commit_format.md:6-8 exception paragraph so the two documents agree."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Largest-first demotion is named but not exercised",
+        "file": "tests/lib/test_block_fit.py",
+        "files": [
+          "tests/lib/test_block_fit.py",
+          "plugins/harness/lib/harness_lib/commit_diff.py"
+        ],
+        "lines": "48-54",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (lines 4-6) and test_largest_full_diffs_become_summaries_before_any_path_is_cut claim the largest full diffs are summarized first, but all six inputs are identical in size, so the size ordering in _demote_largest (commit_diff.py:244) is never checked; reversing the size key would still pass. The rank test covers rank only.",
+        "fix": [
+          "Add a no-rank case with two unequal full diffs and a budget that needs one demotion; assert the larger becomes `[summary,` and the smaller stays `[full,`."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Canned capture test does not check the message is printed",
+        "file": "tests/scripts/test_branch_commit_msg_pending_flow.py",
+        "lines": "70-81",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (line 4) says `a canned block prints its message and no diff`; test_capture_diff_on_a_canned_block_prints_the_message_and_no_diff checks `message: canned` and the absence of `===` only, so dropping the message line from pending_report (branch_commit_msg.py:361) would pass.",
+        "fix": [
+          "Assert the canned text follows the state line, for example `assert out.splitlines()[2] == script.get_canned_message([\"docs/PR_REVIEWS/0001_demo.json\"]).splitlines()[0]`, or compare against the skeleton's block message."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "The --out alternative of --diff is untested",
+        "file": "tests/scripts/test_branch_commit_msg_pending_flow.py",
+        "files": [
+          "tests/scripts/test_branch_commit_msg_pending_flow.py",
+          "plugins/harness/scripts/branch_commit_msg.py"
+        ],
+        "lines": "98-104",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "_cmd_capture accepts `--diff` with `--pending` and either `--save` or `--out` (branch_commit_msg.py:778), and the usage line (86) documents `--out FILE`, but test_capture_diff_needs_pending_and_save covers only the rejections and every success case uses `--save`; the `--out` success path (prints `wrote <FILE>` then the report) has no test.",
+        "fix": [
+          "Add a case running `capture --pending --out <tmp>/s.json --diff` that asserts exit 0, `wrote` on line 0, `message: empty` on line 1 and the `=== src/a.py` section."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Contract docstring overstates no second diff and no outside read",
+        "file": "tests/skills/test_c_msg_skill_contract.py",
+        "files": [
+          "tests/skills/test_c_msg_skill_contract.py",
+          "plugins/harness/skills/c-msg/SKILL.md"
+        ],
+        "lines": "9-11",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (lines 9-11) says a run `reads no file outside the project and no second diff`. SKILL.md Step 2 (plugins/harness/skills/c-msg/SKILL.md:52-53) tells the agent to run `diff \"<skeleton>\" --block 1` once for a canned block with a requested change, and the Format card (line 77) says to open commit_format.md when build names an unstated rule. The tests themselves pin only the happy path, so the docstring claims more than the skill and the tests hold.",
+        "fix": [
+          "Qualify the docstring: on the happy path a run makes two script calls and reads no second diff; a canned block with a requested change may run one `diff`, and a build rule the card does not state may send the agent to the reference."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Card slice in the contract test runs to the end of the skill",
+        "file": "tests/skills/test_c_msg_skill_contract.py",
+        "lines": "39-42",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "_card() (test_c_msg_skill_contract.py:39-42) returns everything from '## Format' to the end of the body, Common Mistakes included. The commit-type and status-letter checks therefore pass on text outside the card, which weakens the pin the reference's exception paragraph relies on.",
+        "fix": [
+          "End the slice at the next heading: rest = body[body.index('## Format'):]; cut at rest.find('\\n## ', 1) when it is found."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Two-call test allows extra script calls",
+        "file": "tests/skills/test_c_msg_skill_contract.py",
+        "lines": "101-104",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_the_happy_path_is_two_script_calls asserts capture and message each appear once and `build` does not, but a third fenced `sh ... branch_commit_msg.py\" diff` (or `canned`, `move`) line would pass, so the docstring claim `runs in two script calls` (lines 9-10) is only partly pinned. A `sh ` line without the branch_commit_msg.py pattern also crashes with AttributeError on `.group(1)` instead of an assertion message.",
+        "fix": [
+          "Assert `subcommands == [\"capture\", \"message\"]`, and build the list with a match guard (`m = re.search(...)`; `assert m, c`) so a foreign `sh ` line fails with its text."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Status-letter pin claimed by commit_format.md is not enforced",
+        "file": "tests/skills/test_c_msg_skill_contract.py",
+        "files": [
+          "tests/skills/test_c_msg_skill_contract.py",
+          "plugins/harness/reference/commit_format.md",
+          "docs/plans/strap/c-msg/SkillSpec.json"
+        ],
+        "lines": "129-133",
+        "reviewer": "overall, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "commit_format.md:6-8 justifies the c-msg card fork by saying tests/skills/test_c_msg_skill_contract.py pins the card to the commit types AND the status letters of the reference, so a change to either table must reach the card. Only the types are read from the reference (test at lines 119-127). test_the_card_names_the_status_verbs (lines 129-133) hardcodes (`A`, `M`, `D`, `R###`) and never reads the Status-aware bullets table. Add a status letter to the reference (a `C###` copy row, say) and the test still passes, so the card drifts without anything failing.\n\nAlso (docs): commit_format.md:7-8 says the contract test 'pins the card to the commit types and status letters here, so a change to either table must reach the card too'. test_the_card_names_every_commit_type_of_the_format_reference does parse the Commit types table, but test_the_card_names_the_status_verbs (test_c_msg_skill_contract.py:129-132) checks a hardcoded tuple of the four letters and never reads the Status-aware bullets table. A new status row in the reference would leave the card stale and the test green. SkillSpec.json B4 (line 128) also says 'status verb', while the test checks letters.",
+        "fix": [
+          "In test_the_card_names_the_status_verbs, read _FORMAT, slice from '### Status-aware bullets' to '## Prohibitions', collect re.findall(r'^\\| `([^`]+)`', table, re.MULTILINE), assert the count is 4, and assert each letter appears backticked in _card(). That mirrors the commit-types test.",
+          "Or reword commit_format.md:7-8 to say only the commit types are pinned, and that a status-table change must be copied to the card by hand.",
+          "Make test_the_card_names_the_status_verbs read the letters from the `### Status-aware bullets` table of _FORMAT, as the type test does, so the reference's claim holds.",
+          "Or reword commit_format.md:7-8 to say only the commit types are read from this file, and that the four status letters are fixed in the test."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M1",
+      "classification": "out_of_scope",
+      "reason": "No strap API removes a part or reopens a frozen spec; option 2 breaks tests/lib/test_strap_scaffold.py:211-215 (outside set) and leaves the two parts in SkillSpec.json"
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 160 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"b0ba193951e57dd0a1b6c1ec2e818d941c5285eb\",\"headRefName\":\"1107-c-msg-rt\",\"headRefOid\":\"b0ba193951e57dd0a1b6c1ec2e818d941c5285eb\",\"last_sha\":\"b0ba193951e57dd0a1b6c1ec2e818d941c5285eb\",\"mergeCommit\":null,\"number\":160,\"state\":\"OPEN\",\"title\":\"`c-msg` performance\",\"url\":\"https://github.com/t968rs/operator-straps/pull/160\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1107-c-msg-rt",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1107-c-msg-rt",
+        "head_ref_name": "1107-c-msg-rt",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b0ba193951e57dd0a1b6c1ec2e818d941c5285eb",
+        "head_sha": "b0ba193951e57dd0a1b6c1ec2e818d941c5285eb",
+        "base_ancestor_command": "git merge-base --is-ancestor b0ba193951e57dd0a1b6c1ec2e818d941c5285eb HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor b0ba193951e57dd0a1b6c1ec2e818d941c5285eb HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - branch_commit_msg.py diff docstring now names line and character budgets, the hunk outline / head-plus-definitions summary and the docs-first demotion before header-only cuts; run_diff_blocks docstring says both budgets apply per block; commit_diff.py module docstring now names the per-block character budget and the summary-before-cut demotion order"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - c-msg card aligned with the reference: plan documents are Docs(plans) or Chore(plans), terms take backticks or single quotes (also in the carried-quote repair), the em-dash secondary qualifier and the optional status/result line are named; commit_format.md: the card now matches it, no edit needed"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - branch_commit_msg.py diff docstring replaces the truncated-head claim with outline or head plus definitions; commit_diff.py _summarize_json docstring says text summary (outline or head) and the label reads text summary follows:; branch-commit-msg SKILL.md budget paragraph now describes the summary as key tallies, a hunk outline for several hunks, or a head plus later definitions, and says an over-BLOCK_CHAR_BUDGET block demotes full diffs to summaries (docs and artifacts first, source last) before any path is cut to its header"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - c-msg SKILL Step 1 now describes the real section header [mode, +A -D], character clipping of full diffs, summaries from the per-block line and character budgets (docs first), the [omitted: block output budget spent] line, and allows reading status and old_path from the skeleton captured entry for a header-only path; commit_diff.py and branch_commit_msg.py: code left as is, the doc option was taken"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - commit_diff.py _outline docstring no longer claims every hunk is listed: past OUTLINE_LINES - 2 headers the remaining hunks are only counted; added a 200-hunk test pinning the header-only branch (120 lines, last listed fn117, 82 hunks omitted), tightened the existing bound to OUTLINE_LINES, and reworded the module docstring to say hunks past the budget are counted"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - branch_capture: new DIFF_DISPLAY (-c core.quotePath=false diff --no-color --src-prefix=a/ --dst-prefix=b/ -M) used by path_diff and the path_diffs batch via _tracked_diff, dead diff_section and its render_section import deleted; pr_capture imports render_section from commit_diff and pins its file_patches batch with DIFF_DISPLAY; test_pr_sum docstring names path_diff and its batch test spies both modules and asserts exactly one diff read; test_block_fit batched test parametrized over diff.mnemonicPrefix, diff.noprefix and color.diff=always"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - test_block_fit: new no-rank case with two unequal full diffs and a budget one over the full total; asserts big.py becomes summary and small.py stays full; commit_diff.py: _demote_largest sort key (-rank, -len) already orders largest first and the module docstring is accurate; the missing test is in the other part, no edit"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - test_batched_reads_equal_single_reads wraps branch_capture.git_out with a counting spy and asserts exactly one diff call for the tracked chunk (no fallback), plus the rename header, under default and display-altering git config; branch_capture pins the header display so the single read holds"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - messenger.md Keep-context rule now names the diff command or its capture, and the format source is the skill body, its reference or its script"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - contract module docstring qualifies the no second diff and no outside read claim: happy path only, with the canned-change diff and the reference read named as exceptions; SKILL.md Step 1 no-second-diff rule now names the one Step 2 exception (canned block with a requested change); the test docstring at tests/skills/test_c_msg_skill_contract.py:9-12 was already qualified by the other part, so no edit there"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - _card() ends the slice at the next level-2 heading, so Common Mistakes is outside the card"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - two-call test asserts the exact subcommand list [capture, message] and fails with the command text when a sh line lacks the branch_commit_msg.py pattern"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - canned-block test now reads the skeleton's block 1 message and asserts its first line is output line 2, after the state line"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - added test_capture_diff_with_out_prints_the_block_diff_after_the_written_path: capture --pending --out <tmp>/s.json --diff exits 0, prints wrote on line 0, message: empty on line 1 and the src/a.py full section; branch_commit_msg.py: _cmd_capture already accepts --out with --pending --diff as documented; the missing test is in the other part, no edit"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - BLOCK_CHAR_BUDGET comment, fit_sections and _fit_cut docstrings now say the budget bounds kept sections only and each cut path adds a header plus omission line beyond it, without a ceiling; branch_commit_msg.py: its docstrings make no under-budget promise, no edit"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - Split the '#' heading branch out of _DEFINITION into _HEADING; the path now flows summarize_diff/_summarize_json -> _summarize_text -> _head -> _definitions, and headings count only for .md/.markdown/.mdx paths"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - test_the_card_names_the_status_verbs now reads the status letters from the Status-aware bullets table of commit_format.md (count 4) and checks each backticked in the card, mirroring the commit-types test; module docstring updated. commit_format.md: its pin claim at lines 6-8 now holds, no edit; SkillSpec.json: B4 'status verb' describes the card rows keyed by those letters and the spec stays frozen, no edit"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-10-30",
+      "evidence": "b0ba193 (working-tree snapshot; developer commits) - _summarize_json docstring says 'the text summary (outline or head)' and the label reads 'text summary follows:' (edited by w1_fix_1 under I1) (outside fixer waves)"
+    }
+  ]
+}
