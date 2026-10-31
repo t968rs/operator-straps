@@ -20,16 +20,16 @@ from pathlib import Path, PurePosixPath
 from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
 from harness_lib.branch_capture import (
+    DIFF_DISPLAY,
     CaptureError,
     capture_paths,
     current_branch,
     git,
     git_out,
     path_diff,
-    render_section,
     untracked_facts,
 )
-from harness_lib.commit_diff import DiffStat, cap_sections, parse_numstat_z, plan_reads
+from harness_lib.commit_diff import DiffStat, cap_sections, parse_numstat_z, plan_reads, render_section
 from harness_lib.commit_grouping import CapturedPath
 from harness_lib.config import active
 from harness_lib.pr_summary import PrFacts, PrFile
@@ -292,16 +292,16 @@ def file_patches(repo: Path, facts: PrFacts, files: Sequence[PrFile]) -> Dict[st
 
     A working-tree capture diffs against the working tree as it stands now, and an untracked file reads as
     all additions; it raises ``CaptureError`` unless the captured branch and HEAD are still checked out.
-    A file whose section does not appear under ``_header`` (a quoted path, a non-default diff prefix, a
-    different rename pairing, an untracked file) is read on its own with ``path_diff``, so each value
-    equals that read.
+    The batch pins the header display with ``DIFF_DISPLAY``, as ``path_diff`` does. A file whose section
+    does not appear under ``_header`` (a path git still quotes, a different rename pairing, an untracked
+    file) is read on its own with ``path_diff``, so each value equals that read.
     """
     if facts.working_tree:
         _require_captured_checkout(repo, facts)
     head = None if facts.working_tree else facts.head_sha
     sections: Dict[str, str] = {}
     for chunk in _pathspec_chunks([f for f in files if not f.untracked]):
-        diff = git_out(repo, "diff", "-M", *_revs(facts.merge_base, head), "--", *chunk)
+        diff = git_out(repo, *DIFF_DISPLAY, *_revs(facts.merge_base, head), "--", *chunk)
         sections.update(_sections(diff))
     return {f.path: sections[_header(f)] if _header(f) in sections
             else path_diff(repo, facts.merge_base, f.path, f.old_path, f.untracked, head) for f in files}
