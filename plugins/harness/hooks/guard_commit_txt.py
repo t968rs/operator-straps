@@ -6,10 +6,10 @@ Denies, through the documented ``permissionDecision: deny`` hook output, an ``Ed
 changes only on the developer's ask, through the skills ``CHANGE_ROUTE`` names, so a hand edit of the TXT
 drifts from its skeleton or rewrites a message the developer never asked to change.
 
-A ``PR<NNN>_merge.txt`` is ``merge_commit_msg.py build`` output too; its reason routes a change to the text
-fence of ``PR<NNN>_merge.md`` (which the skill's agent edits freely) and a rerun of ``build``.
+A ``PR<NNN>_merge.txt`` is ``merge_commit_msg.py build`` output too; its reason routes a change to a rerun of
+``build`` with the changed message on stdin.
 
-Allowed: the skeleton ``.json``, the merge-message ``.md`` and the ``.txt.bak`` backup. The project follows
+Allowed: the skeleton ``.json`` and the ``.txt.bak`` backup. The project follows
 ``project_root``'s order from the target file's nearest existing directory: its git top level, else
 ``CLAUDE_PROJECT_DIR``, else that directory. The payload ``cwd`` is the start only when no ancestor of the
 target exists (a path on a missing drive).
@@ -37,8 +37,8 @@ from harness_lib.project import project_root  # noqa: E402
 # would hand the session the same unasked rewrite one hop later, over a skeleton that may predate TXT edits.
 _FINAL = "Commit-message TXT files are build output and final as saved."
 REASON = f"{_FINAL} {CHANGE_ROUTE}"
-MERGE_REASON = (f"{_FINAL} A merge message changes only on the developer's ask: edit the text fence of its "
-                "PR<NNN>_merge.md, then rerun harness:merge-commit-msg build.")
+MERGE_REASON = (f"{_FINAL} A merge message changes only on the developer's ask: rerun "
+                "harness:merge-commit-msg build with the changed message on stdin.")
 
 _MERGE_TXT = re.compile(r"^PR\d+_merge\.txt$", re.IGNORECASE)
 
