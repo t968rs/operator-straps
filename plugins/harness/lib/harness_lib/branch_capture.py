@@ -6,16 +6,26 @@ and untracked changes) or a commit (``head=<ref>``: committed changes only). Git
 """
 from __future__ import annotations
 
+import re
 import subprocess
 from pathlib import Path
 from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
 
-from harness_lib.commit_diff import DiffStat, clip_text, parse_numstat_z, summarize_diff
+from harness_lib.commit_diff import DiffStat, parse_numstat_z
 from harness_lib.commit_grouping import CapturedPath, merge_capture, parse_name_status_z
 
 BINARY_PROBE_BYTES = 8192
 BINARY_BODY = "Binary file (untracked)"
 UNREADABLE_BODY = "Not a readable file (untracked)"
+PATHSPEC_CHARS = 8000
+
+_SECTION_START = re.compile(r"^(?=diff --git )", re.M)
+# ``git diff -M`` with the header display pinned: ``a/`` and ``b/`` prefixes whatever ``diff.noprefix`` or
+# ``diff.mnemonicPrefix`` say, no color, and non-ASCII paths unquoted, so a batched read's section headers
+# are the ``diff --git a/<old or path> b/<path>`` lines its lookup expects.
+DIFF_DISPLAY = (
+    "-c", "core.quotePath=false", "diff", "--no-color", "--src-prefix=a/", "--dst-prefix=b/", "-M",
+)
 
 
 class CaptureError(RuntimeError):
@@ -149,6 +159,11 @@ def untracked_diff(repo: Path, path: str) -> str:
     return "\n".join(f"+{line}" for line in data.decode("utf-8", errors="replace").splitlines())
 
 
+def _tracked_diff(repo: Path, merge_base: str, head: Optional[str], paths: Sequence[str]) -> str:
+    """``git diff -M`` of ``paths`` with the display pinned by ``DIFF_DISPLAY``."""
+    return git_out(repo, *DIFF_DISPLAY, *_range(merge_base, head), "--", *paths)
+
+
 def path_diff(
         repo: Path, merge_base: str, path: str, old_path: Optional[str], untracked: bool,
         head: Optional[str] = None,
@@ -156,19 +171,46 @@ def path_diff(
     """Unified diff of one path against the merge base; an untracked file reads as all additions."""
     if untracked:
         return untracked_diff(repo, path)
-    paths = [path, old_path] if old_path else [path]
-    return git_out(repo, "diff", "-M", *_range(merge_base, head), "--", *paths)
+    return _tracked_diff(repo, merge_base, head, [path, old_path] if old_path else [path])
 
 
-def diff_section(
-        repo: Path, merge_base: str, stat: DiffStat, mode: str, old_path: Optional[str], untracked: bool,
+def _pathspec_chunks(pairs: Sequence[Tuple[str, Optional[str]]]) -> List[List[str]]:
+    """Pathspecs (a path and its rename's old path together) in chunks under ``PATHSPEC_CHARS`` characters."""
+    chunks: List[List[str]] = []
+    size = PATHSPEC_CHARS
+    for path, old_path in pairs:
+        paths = [path, old_path] if old_path else [path]
+        width = sum(len(p) + 1 for p in paths)
+        if size + width > PATHSPEC_CHARS:
+            chunks.append([])
+            size = 0
+        chunks[-1] += paths
+        size += width
+    return chunks
+
+
+def path_diffs(
+        repo: Path, merge_base: str, pairs: Sequence[Tuple[str, Optional[str]]], untracked: FrozenSet[str],
         head: Optional[str] = None,
-) -> str:
-    """One ``=== path [mode, +A -D] ===`` section: the full diff (character-clipped) or its summary."""
-    return render_section(stat, mode, path_diff(repo, merge_base, stat.path, old_path, untracked, head))
+) -> Dict[str, str]:
+    """Path -> its ``path_diff`` text, the tracked paths read with one ``git diff`` per pathspec chunk.
 
-
-def render_section(stat: DiffStat, mode: str, text: str) -> str:
-    """``diff_section`` over an already-read diff ``text``."""
-    body = clip_text(text) if mode == "full" else summarize_diff(stat.path, text)
-    return f"=== {stat.path} [{mode}, +{stat.added} -{stat.deleted}] ===\n{body}"
+    Both reads pin the header display (``_tracked_diff``), so user git config does not move the headers.
+    A path whose section is not under its ``diff --git a/<old or path> b/<path>`` header (a path git still
+    quotes, such as one holding a tab or a quote, or a different rename pairing) and an untracked path are
+    read on their own, so each value equals ``path_diff`` of that path.
+    """
+    tracked = [(path, old) for path, old in pairs if path not in untracked]
+    sections: Dict[str, str] = {}
+    for chunk in _pathspec_chunks(tracked):
+        diff = _tracked_diff(repo, merge_base, head, chunk)
+        parts = _SECTION_START.split(diff)
+        sections.update({part.split("\n", 1)[0]: part for part in parts if part.startswith("diff --git ")})
+    texts: Dict[str, str] = {}
+    for path, old in pairs:
+        header = f"diff --git a/{old or path} b/{path}"
+        if path not in untracked and header in sections:
+            texts[path] = sections[header]
+        else:
+            texts[path] = path_diff(repo, merge_base, path, old, path in untracked, head)
+    return texts

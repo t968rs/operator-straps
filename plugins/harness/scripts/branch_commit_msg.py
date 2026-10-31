@@ -33,7 +33,9 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     ``--pending`` (the ``c-msg`` skill) instead captures the change pending against HEAD (staged,
     unstaged, untracked) as one commit with ``merge_base`` set to HEAD and ``"pending": true``. The
     message carries forward from ``<branch>_pending.txt`` only while HEAD is unchanged; the branch
-    ledger is never read.
+    ledger is never read. ``--diff`` (with ``--pending`` and ``--save`` or ``--out``) prints, after the
+    saved path, ``message: empty|carried|canned``, the message when set, and the block's budgeted diff from
+    the same capture, so the drafter needs no ``diff`` call; a canned block prints no diff.
 
 ``build``
     Read a filled skeleton (same shape; commits renumbered in key order), construct a
@@ -48,12 +50,14 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     builds only while HEAD still equals its ``merge_base``.
 
 ``diff``
-    Print the diff of skeleton blocks under line budgets (``harness_lib.commit_diff``): paths within
-    budget in full, larger ones as a summary (key tallies for JSON, a truncated head otherwise). The
-    ``captured`` entries carry ``added``/``deleted`` counts so sizes are known before reading.
-    ``--block N`` names one block (repeatable); ``--all`` names every block. One block prints bare;
-    several print each under a ``##### block N #####`` line, with the line budget applied per block and
-    the branch captured once for the whole call.
+    Print the diff of skeleton blocks under line and character budgets (``harness_lib.commit_diff``):
+    paths within budget in full, larger ones as a summary (key tallies for JSON, a hunk outline for a
+    multi-hunk diff, else a head plus the definitions past it); over the block's character budget, full
+    diffs become summaries, documentation and artifacts first and source last, before any path is cut to
+    its header. The ``captured`` entries carry ``added``/``deleted`` counts so sizes are known before
+    reading. ``--block N`` names one block (repeatable); ``--all`` names every block. One block prints
+    bare; several print each under a ``##### block N #####`` line, with both budgets applied per block
+    and the branch captured once for the whole call.
 
 ``canned``
     Print the canned commit message (``harness_lib.canned_messages``) for the changed paths given as arguments
@@ -72,7 +76,8 @@ Two subcommands bracket the one judgment step (drafting commit messages):
     JSON by hand, so no flow prints an edit diff. ``--block N`` sets one block from the whole text.
     ``--all`` reads one text holding a ``##### block N #####`` line before each block's message and sets
     every block it names in one write (a block left out keeps its message); an unknown block, a block
-    named twice or a section with no text exits 1 and writes nothing.
+    named twice or a section with no text exits 1 and writes nothing. ``--build`` then runs ``build`` on the
+    rewritten skeleton and prints only its receipt; a refused build exits 1 with the messages kept.
 
 The project is the git top level of ``--repo`` (default: the working directory); its
 ``.claude/harness.json`` is activated once at startup, and an invalid one exits 1 with a ``problem:``
@@ -80,11 +85,11 @@ line. ``--repo`` goes before or after the subcommand. Usage::
 
     branch_commit_msg.py [--repo DIR] capture [REF | --base REF] [--no-fetch] [--fresh | --edit]
         [--merge-msg] [--out FILE | --save]
-    branch_commit_msg.py [--repo DIR] capture --pending [--out FILE | --save]
+    branch_commit_msg.py [--repo DIR] capture --pending [--out FILE | --save] [--diff]
     branch_commit_msg.py [--repo DIR] diff FILE (--block N [--block N ...] | --all)
     branch_commit_msg.py [--repo DIR] canned [PATH ...]
     branch_commit_msg.py [--repo DIR] move FILE --path PATH [--path PATH ...] --to N|new
-    branch_commit_msg.py [--repo DIR] message FILE (--block N | --all) < TEXT
+    branch_commit_msg.py [--repo DIR] message FILE (--block N | --all) [--build] < TEXT
     branch_commit_msg.py [--repo DIR] build FILE [--out TXT]
 """
 from __future__ import annotations
@@ -104,15 +109,15 @@ from harness_lib.branch_capture import (
     capture_paths,
     capture_stats,
     current_branch,
-    diff_section,
     git,
     git_out,
+    path_diffs,
     resolve_merge_base,
     untracked_paths,
 )
-from harness_lib.branch_commits import BranchCommitDocument, CommitEntry
+from harness_lib.branch_commits import BranchCommitDocument, Bucket, CommitEntry
 from harness_lib.canned_messages import get_canned_message
-from harness_lib.commit_diff import DiffStat, cap_sections, plan_reads
+from harness_lib.commit_diff import DiffStat, fit_sections, plan_reads
 from harness_lib.commit_regroup import bullet_problems, move_paths
 from harness_lib.commit_grouping import (
     CapturedPath,
@@ -137,6 +142,9 @@ CommitDict = Dict[int, Tuple[List[str], str]]
 
 _REF_PATTERN = re.compile(r"[A-Za-z0-9/._~^@{}-]+")
 _BLOCK_HEADER = re.compile(r"##### block (\d+) #####")
+
+# Order in which a block over its character budget turns full diffs into summaries: highest first.
+_DEMOTE_RANK = {Bucket.DOCS: 2, Bucket.PLANNING: 2, Bucket.ARTIFACT: 2, Bucket.TEST: 1}
 
 PENDING_SUFFIX = "_pending"
 PENDING_SPLIT = "single commit: pending change against HEAD"
@@ -322,14 +330,41 @@ def pending_document(repo: Path, captures: Sequence[CapturedPath], head: str) ->
     return document_from_commit_dict({1: (paths, message)}, branch, head, pending=True)
 
 
-def run_capture_pending(repo: Path) -> Dict[str, object]:
-    """Build the one-commit skeleton for the pending change (staged, unstaged, untracked) against HEAD."""
+def _pending_capture(repo: Path) -> Tuple[Dict[str, object], List[CapturedPath], Dict[str, DiffStat]]:
+    """The pending skeleton payload plus the capture and stats it came from, for a diff of the same state."""
     head = git_out(repo, "rev-parse", "HEAD").strip()
     captures = capture_branch(repo, head)
     if not captures:
         raise BuildError([f"no pending change against HEAD {head[:9]}"])
     document = pending_document(repo, captures, head)
-    return skeleton_payload(document, PENDING_SPLIT, captures, stats=capture_stats(repo, head, captures))
+    stats = capture_stats(repo, head, captures)
+    return skeleton_payload(document, PENDING_SPLIT, captures, stats=stats), captures, stats
+
+
+def run_capture_pending(repo: Path) -> Dict[str, object]:
+    """Build the one-commit skeleton for the pending change (staged, unstaged, untracked) against HEAD."""
+    return _pending_capture(repo)[0]
+
+
+def message_state(paths: Sequence[str], message: str) -> str:
+    """``empty``, ``canned`` (the canned message of ``paths``) or ``carried`` (a saved draft)."""
+    if not message:
+        return "empty"
+    return "canned" if message == get_canned_message(paths) else "carried"
+
+
+def pending_report(
+        repo: Path, payload: Mapping[str, object], captures: Sequence[CapturedPath],
+        stats: Mapping[str, DiffStat],
+) -> str:
+    """``message: <state>``, the message when set, then the budgeted diff of the block (none when canned)."""
+    paths, message = _commit_dict(payload)[1]
+    state = message_state(paths, message)
+    lines = [f"message: {state}", *([message] if message else [])]
+    if state != "canned":
+        untracked = set(untracked_paths(repo))
+        lines.append(_block_diff(repo, str(payload["merge_base"]), paths, captures, stats, untracked))
+    return "\n".join(lines)
 
 
 def _captured_entry(capture: CapturedPath, stat: DiffStat) -> Dict[str, object]:
@@ -379,14 +414,18 @@ def _block_diff(
         repo: Path, merge_base: str, entries: Sequence[str], captures: Sequence[CapturedPath],
         stats: Mapping[str, DiffStat], untracked: AbstractSet[str],
 ) -> str:
-    """Budgeted diff text of one block's ``entries`` against an already-taken capture."""
+    """Budgeted diff text of one block's ``entries`` against an already-taken capture.
+
+    The block's tracked paths are read in one ``git diff`` per pathspec chunk; over the character budget the
+    largest full diffs become summaries (documentation and artifacts first, then tests, source last) before
+    any path is cut to its header.
+    """
     ordered, unmatched = _block_stats(entries, captures, stats)
-    modes = plan_reads(ordered)
     olds = {c.path: c.old_path for c in captures if c.old_path}
-    sections = cap_sections([
-        diff_section(repo, merge_base, s, modes[s.path], olds.get(s.path), s.path in untracked)
-        for s in ordered
-    ])
+    pairs = [(s.path, olds.get(s.path)) for s in ordered]
+    texts = path_diffs(repo, merge_base, pairs, frozenset(untracked))
+    rank = {c.path: _DEMOTE_RANK.get(c.bucket, 0) for c in captures}
+    sections = fit_sections(ordered, plan_reads(ordered), texts, rank=rank)
     sections += [f"=== {entry} [no change captured] ===" for entry in unmatched]
     return "\n".join(sections)
 
@@ -394,8 +433,9 @@ def _block_diff(
 def run_diff_blocks(repo: Path, payload: Mapping[str, object], blocks: Sequence[int]) -> str:
     """Diff of each skeleton block in ``blocks`` under the ``commit_diff`` budgets, captured once.
 
-    Each path prints ``full`` or ``summary``; the line budget applies per block. Glob entries expand
-    against the capture; an entry matching no captured path prints ``=== <entry> [no change captured] ===``.
+    Each path prints ``full`` or ``summary``; the line and character budgets apply per block. Glob
+    entries expand against the capture; an entry matching no captured path prints
+    ``=== <entry> [no change captured] ===``.
     One block prints bare; several print each under a ``##### block N #####`` header line.
     """
     merge_base = _merge_base_of(payload)
@@ -636,6 +676,14 @@ def _parser() -> argparse.ArgumentParser:
         ),
     )
     cap.add_argument(
+        "--diff", action="store_true",
+        help=(
+            "With --pending and --save or --out: after the saved path, print "
+            "'message: empty|carried|canned', the message when set, and the block's budgeted diff from the "
+            "same capture (none when canned)."
+        ),
+    )
+    cap.add_argument(
         "--merge-msg", action="store_true",
         help=(
             "Marks the run for the branch-commit-msg skill to draft the PR merge message once build "
@@ -679,6 +727,11 @@ def _parser() -> argparse.ArgumentParser:
     scope.add_argument(
         "--all", action="store_true",
         help="Stdin holds a '##### block N #####' line before each message; every block named is set.",
+    )
+    message.add_argument(
+        "--build", action="store_true",
+        help="Build the TXT after setting the message(s) and print only the receipt; a refused build "
+             "keeps the message(s) set and writes no TXT.",
     )
     return parser
 
@@ -725,10 +778,20 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
         raise BuildError(["--edit cannot be combined with --fresh: an amendment keeps the existing messages"])
     if args.pending and args.merge_msg:
         raise BuildError(["--merge-msg cannot be combined with --pending: a pending change has no PR"])
+    if args.diff and not (args.pending and (args.save or args.out)):
+        raise BuildError(["--diff needs --pending and --save or --out: the diff prints after the saved path"])
     if args.pending:
-        payload = run_capture_pending(repo)
+        payload, captures, stats = _pending_capture(repo)
     else:
         payload = run_capture(repo, base, not args.no_fetch, fresh=args.fresh, edit=args.edit)
+    _emit_skeleton(repo, args, payload)
+    if args.diff:
+        print(pending_report(repo, payload, captures, stats))
+    return 0
+
+
+def _emit_skeleton(repo: Path, args: argparse.Namespace, payload: Mapping[str, object]) -> None:
+    """Write the skeleton where ``--save`` or ``--out`` names and print its path, else print the JSON."""
     if args.save:
         pending, suffix = bool(payload.get("pending")), str(payload.get("txt_suffix") or "")
         out = skeleton_path(repo, str(payload["branch"]), pending, suffix)
@@ -739,7 +802,6 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
         print(f"wrote {args.out}")
     else:
         print(json.dumps(payload, indent=2, ensure_ascii=False))
-    return 0
 
 
 def _cmd_build(repo: Path, args: argparse.Namespace) -> int:
@@ -866,11 +928,17 @@ def _cmd_message(repo: Path, args: argparse.Namespace) -> int:
     text = sys.stdin.read()
     if args.all:
         messages = parse_block_messages(text)
-        write_skeleton(args.skeleton, set_messages(payload, messages))
-        print(f"set message of blocks {', '.join(str(block) for block in messages)}")
+        updated = set_messages(payload, messages)
+        done = f"set message of blocks {', '.join(str(block) for block in messages)}"
     else:
-        write_skeleton(args.skeleton, set_message(payload, args.block, text))
-        print(f"set message of block {args.block}")
+        updated = set_message(payload, args.block, text)
+        done = f"set message of block {args.block}"
+    write_skeleton(args.skeleton, updated)
+    if not args.build:
+        print(done)
+        return 0
+    out, document = run_build(repo, updated)
+    print(receipt(repo, out, document, str(updated.get("split", ""))))
     return 0
 
 

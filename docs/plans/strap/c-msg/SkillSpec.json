@@ -1,0 +1,204 @@
+{
+  "name": "c-msg",
+  "mode": "edit",
+  "base": "d01c2a5f44bf31226591f06856fc990213920a6a",
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/c-msg/SKILL.md"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_c_msg_skill_contract.py"
+    },
+    {
+      "kind": "driver",
+      "path": "plugins/harness/scripts/branch_commit_msg.py"
+    },
+    {
+      "kind": "driver",
+      "path": "plugins/harness/lib/harness_lib/commit_diff.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/reference/commit_format.md"
+    },
+    {
+      "kind": "models",
+      "path": "plugins/harness/lib/harness_lib/c_msg_models.py"
+    },
+    {
+      "kind": "api",
+      "path": "plugins/harness/lib/harness_lib/c_msg_api.py"
+    },
+    {
+      "kind": "driver",
+      "path": "plugins/harness/lib/harness_lib/branch_capture.py"
+    },
+    {
+      "kind": "agent",
+      "path": "plugins/harness/agents/messenger.md"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "capture --pending --save --diff saves the skeleton and prints the block diff from the same capture; a canned block prints its message and no diff, a carried one prints its message before the diff",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Driver output on a fixed git state; pytest observes it",
+      "tests": [
+        {
+          "node": "tests/scripts/test_branch_commit_msg_pending_flow.py::test_capture_diff_prints_the_block_diff_after_the_saved_path",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_branch_commit_msg_pending_flow.py::test_capture_diff_on_a_canned_block_prints_the_message_and_no_diff",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_branch_commit_msg_pending_flow.py::test_capture_diff_on_a_carried_message_prints_it_before_the_diff",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_branch_commit_msg_pending_flow.py::test_capture_diff_needs_pending_and_save",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "message --block 1 --build sets the message and builds the TXT in one call, printing only the receipt; a refused build keeps the message and writes no TXT",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Driver output and file state; pytest observes both",
+      "tests": [
+        {
+          "node": "tests/scripts/test_branch_commit_msg_pending_flow.py::test_message_build_sets_the_message_and_prints_only_the_receipt",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_branch_commit_msg_pending_flow.py::test_message_build_keeps_the_message_when_build_refuses",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B3",
+      "statement": "An over-budget text diff summarizes under a fixed line budget: several hunks as an outline of every @@ header with its change counts and first changed lines, one hunk or a new file as its head plus the definitions past it",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "A pure function of the diff text; pytest pins the shape and the bound",
+      "tests": [
+        {
+          "node": "tests/lib/test_commit_diff_outline.py::test_every_hunk_header_survives_the_summary",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_commit_diff_outline.py::test_each_hunk_carries_its_change_counts",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_commit_diff_outline.py::test_each_hunk_shows_its_first_changed_lines",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_commit_diff_outline.py::test_the_outline_stays_within_the_line_budget",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_commit_diff_outline.py::test_a_new_file_lists_the_definitions_past_its_head",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B4",
+      "statement": "The c-msg SKILL.md runs two script calls, names the printed diff as the only read, and carries a format card holding every commit type and status verb instead of a required read of commit_format.md",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Text facts of the skill file a contract test can pin",
+      "tests": [
+        {
+          "node": "tests/skills/test_c_msg_skill_contract.py::test_the_message_is_set_through_the_script_never_edit",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_c_msg_skill_contract.py::test_capture_prints_the_diff_in_the_same_call",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_c_msg_skill_contract.py::test_the_happy_path_is_two_script_calls",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_c_msg_skill_contract.py::test_the_printed_diff_is_the_only_read",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_c_msg_skill_contract.py::test_the_format_reference_is_not_a_required_read",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_c_msg_skill_contract.py::test_the_card_names_every_commit_type_of_the_format_reference",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_c_msg_skill_contract.py::test_the_card_names_the_status_verbs",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B5",
+      "statement": "A block diff reads its tracked paths with one git diff per pathspec chunk, each path equal to its single read, and over the character budget turns full diffs into summaries (documentation first, source last, then the largest) before any path is cut to its header",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Driver library output on a fixed git state and fixed texts; pytest observes it",
+      "tests": [
+        {
+          "node": "tests/lib/test_block_fit.py::test_batched_reads_equal_single_reads",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_block_fit.py::test_largest_full_diffs_become_summaries_before_any_path_is_cut",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_block_fit.py::test_a_higher_rank_is_summarized_before_a_larger_source_diff",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_block_fit.py::test_a_block_within_budget_is_left_as_planned",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [],
+  "runs": [],
+  "grades": [],
+  "frozen": {
+    "skill_hash": "bf0acb83c76fffaeb57f8c21450146797f87c24a46b6a6c5f72587cdba5e4998",
+    "grader": "session",
+    "at": "2026-10-30T23:07:04+00:00"
+  },
+  "driver_digest": "e285d786df9df190fc00508a0139e9a72de717c917066859e7686cf40513aa5b"
+}
