@@ -1,0 +1,327 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 164,
+  "pr_title": "Feature(merge-commit-msg): `merge_commit_msg.py` stdin build",
+  "branch": "1107-merge-msg-drop-md",
+  "base_branch": "main",
+  "base_sha": "d27c4d396780e6e99328dd47b052141a7b60c78a",
+  "head_sha": "136a97c78b37db2d0b757474d39016327815915e",
+  "review_date": "2026-10-30",
+  "verdict": "NOT READY TO MERGE - 4 important and 12 minor findings unresolved",
+  "stats": {
+    "additions": 653,
+    "deletions": 228,
+    "files_changed": 13
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "overall-system-shape (opus)"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The removal of PR<N>_merge.md is complete: md_path, extract_message, _OPEN_FENCE and _TITLE_FACT are gone, no live consumer remains in plugins/, mods, README or skills, and the contract tests assert the absence in SKILL.md, message_format.md, the README and the guard hook.",
+    "No mock-chain wiring tests: test_merge_commit_msg.py fakes only the external gh seam; config, review JSON, ledger TXT and the output files are real on a make_project checkout, test_guard_commit_txt.py runs the hook as a subprocess, and test_root_separation.py runs the driver in a subprocess with a faked gh.",
+    "tests/contract/test_root_separation.py:71-92 feeds UTF-8 bytes through a cp1252 TextIOWrapper, a discriminating encoding test: without main's stdin reconfigure the em dash decodes to mojibake and build exits 1; line 239 also asserts the em-dash subject landed in the TXT.",
+    "Build checks the subject against the live gh title (test_the_subject_is_checked_against_the_gh_title pins a rename between capture and build) instead of a value captured in the MD; message_format.md states this and matches run_build.",
+    "run_build reads and validates stdin before calling gh, so an empty heredoc fails fast with no network call, and it now creates the commit_messages directory itself because capture no longer does.",
+    "capture is pinned to create no docs/ directory and build to leave only PR7_merge.txt in the folder; the round-trip test feeds the printed skeleton back through build, so capture/build drift on subject, lineage or review lines fails.",
+    "Build-side closed-PR and gh-failure tests cover the new gh call in run_build and assert the TXT is not written; the empty-stdin and trailing-blank-line tests exercise both read_message branches.",
+    "guard_commit_txt.py keeps the deny logic unchanged and its reason is checked for the stdin route, the absence of _merge.md and the absence of the generic CHANGE_ROUTE; the hook stays registered.",
+    "SkillSpec.json is internally consistent: every pytest node named in B1-B6 exists at head, the frozen skill_hash recomputes from the parts, and the base equals the merge base (d27c4d3).",
+    "Project rules hold: no project literals under plugins/, TXT written only under the project's commit_messages directory, Optional/Tuple/TextIO typing, functions under 50 lines, and plugin.json bumped 0.46.0 to 0.47.0 for the changed CLI contract."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "SKILL.md Step 2 treats every build exit 1 as a message defect, but build now needs gh",
+        "files": [
+          "plugins/harness/skills/merge-commit-msg/SKILL.md",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py"
+        ],
+        "lines": "SKILL.md:65-68; merge_commit_msg.py:13-18, 270",
+        "both_reviewers": true,
+        "summary": "run_build now calls pr_view, so build exits 1 for 'PR #N is MERGED/CLOSED', 'gh pr view failed: ...' and an invalid config. Tests cover this (test_a_closed_pr_is_a_problem, test_gh_failure_is_a_problem). SKILL.md Step 2 still says each exit-1 problem line names a defect in the message and tells the agent to 'Fix the text and run the same command again'; its list adds 'empty stdin' but omits the gh and PR-state failures. Step 1 routes the same failures to 'report it and stop'. Under messenger.md:87-88 the agent retries up to three times on a problem editing cannot fix, and each retry makes another gh call. The build docstring in merge_commit_msg.py likewise states the 'PR is not open' exit for capture only. Reported by runtime (M2), docs (M1), overall (I1), system-shape (M3).",
+        "fix": [
+          "In SKILL.md Step 2, split the exit-1 paragraph the way Step 1 does: a problem line about the PR state, gh or the config (PR not open, gh failure, invalid config): report it and stop; any other problem line names a defect in the message: fix the text and run the same command again.",
+          "Add to the build docstring in merge_commit_msg.py: 'Reads the title from gh again, so it exits 1 when the PR is not open or gh fails.'"
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "I2",
+        "name": "Build no longer guarantees the script-filled lineage and review lines",
+        "file": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "lines": "267-273, 226-244",
+        "reviewer": "runtime",
+        "summary": "Before this PR the lineage and review lines sat in PR<N>_merge.md and the agent edited only placeholders in place, so they survived. Now the agent retypes the whole message into a heredoc, and run_build checks only that the subject matches and that exactly one 'Branch lineage:' line follows the bullets (structure_problems). A reworded lineage (wrong branch names), a dropped or altered 'Review artifacts:' path, wrong 'Includes N review fixes (...)' counts or paraphrased canned prose all pass and land in PR<N>_merge.txt. SKILL.md only asks the agent to keep these lines. The project rule is that a check a driver can run belongs in the driver, not in prose. run_build already calls pr_view but keeps only the title and discards the body, base and head it needs to recompute the lines.",
+        "fix": [
+          "In run_build keep the full view (view = pr_view(repo, pr)). Compute the expected lineage line from lineage_names(str(view.get('body') or ''), base, head) and the expected review_lines(pr). Add a problem when the 'Branch lineage:' line differs from it or when any expected review line is missing or altered. Optionally, when get_canned_message(pr_files(...)) is set, also require the canned prose lines. Add tests that change the lineage and that drop the Review artifacts line, asserting build refuses both."
+        ],
+        "fix_kind": "judgment"
+      },
+      {
+        "id": "I3",
+        "name": "Change route for a saved merge message names no runnable invocation and no starting text",
+        "files": [
+          "plugins/harness/hooks/guard_commit_txt.py",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+          "plugins/harness/skills/merge-commit-msg/SKILL.md",
+          "README.md"
+        ],
+        "lines": "guard_commit_txt.py:40-41; merge_commit_msg.py:288-289; SKILL.md:4,12-16,74; README.md:220-222",
+        "both_reviewers": true,
+        "summary": "With PR<N>_merge.md gone, the only amend surface for a saved merge message is gone and the replacement route is not runnable or not actionable. MERGE_REASON ('rerun harness:merge-commit-msg build with the changed message on stdin'), the build receipt, and the SKILL.md Common Mistakes row all say to rerun build with the changed message on stdin, but nothing says where the changed message comes from. The skill's argument contract (SKILL.md:4, 12-16) is '<PR number> [-- <guidance>]' and stops on a non-numeric PR number, so '/harness:merge-commit-msg build' stops; rerunning the skill with the number restarts from capture and rewrites prose and bullets from the skeleton, throwing away text the developer already accepted, which is the 'unasked rewrite' guard_commit_txt.py:36-37 is meant to prevent. The driver invocation is named nowhere in the deny reason or the receipt, and the session holding the receipt is not the forked messenger that knew it. Reported by overall (I2) and system-shape (I1).",
+        "fix": [
+          "Add a 'Changing a saved message' paragraph to SKILL.md: Read PR<N>_merge.txt, change only what the developer asked, and pass the whole text to the same build heredoc (build keeps the .bak). Name the TXT as the starting text in the receipt's final line and in MERGE_REASON, e.g. 'rerun build with PR<N>_merge.txt, changed as asked, on stdin', and add a contract test that SKILL.md names this route.",
+          "Name the runnable driver route in MERGE_REASON and the receipt ('sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/skills/merge-commit-msg/commands/merge_commit_msg.py\" build <N>' with the TXT's text, changed, on stdin), keeping the 'merge-commit-msg build' substring that tests/hooks/test_guard_commit_txt.py:64 asserts; or add a '-- <change>' amend mode to the skill."
+        ],
+        "fix_kind": "judgment"
+      },
+      {
+        "id": "I4",
+        "name": "SKILL.md forbids reading the diff, but capture prints no diff and messenger.md requires one",
+        "files": [
+          "plugins/harness/skills/merge-commit-msg/SKILL.md",
+          "plugins/harness/agents/messenger.md",
+          "plugins/harness/skills/merge-commit-msg/message_format.md",
+          "docs/plans/strap/merge-commit-msg/SkillSpec.json"
+        ],
+        "lines": "SKILL.md:37-39; messenger.md:47-48,70-71; message_format.md:31-33; SkillSpec.json:33",
+        "both_reviewers": true,
+        "summary": "The PR adds 'The printed output is the whole input: no `git diff`, no Read of a changed file.' Capture prints file names, commit headlines and branch-ledger subjects but no diff. The skill forks into harness:messenger, whose rule (messenger.md:47-48) is 'Derive text from the diff, never from filenames', and whose 'whole input' carve-out (messenger.md:70-71) is meant for a skill whose capture prints a diff. message_format.md:31-32 asks for a 'key change' per bullet across 4-7 files and forbids invented content, so the agent must write bullets from file names and commit subjects. The sentence is also a new judgment behavior that none of SkillSpec B1-B6 records, so it has no scenario or test. The PR body and commit message give no reason for the restriction. Reported by overall (I3) and docs (M2).",
+        "fix": [
+          "Drop the sentence, or narrow it to 'no Read of unchanged files', and allow `gh pr diff <N> -- <path>` for the 4-7 bullet files.",
+          "Keep it, have capture print a per-file diffstat or the ledger bodies so bullets rest on content, add to messenger.md that a skill which names its capture as the whole input overrides the derive-from-diff rule, and record the behavior in the spec (strap add_behavior plus add_scenario)."
+        ],
+        "fix_kind": "judgment"
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "read_message blocks on an interactive stdin",
+        "file": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "lines": "203-205",
+        "both_reviewers": true,
+        "summary": "read_message calls stream.read() with no check for a terminal. When build runs without the heredoc (run by hand from PowerShell, or an agent drops the <<'MSG' part), the process waits for EOF with no prompt and looks hung instead of exiting with the 'no message on stdin' problem. Reported by runtime (M3) and overall (M1).",
+        "fix": [
+          "Before reading add: if stream.isatty(): raise MergeMessageError(\"no message on stdin; pass the message to build as a heredoc or pipe\"). Add a test with a stream whose isatty() returns True."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M2",
+        "name": "stdin decode is strict utf-8: BOM and non-UTF-8 bytes give a wrong subject mismatch or a traceback",
+        "file": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "lines": "304-306, 203-210, 315",
+        "both_reviewers": true,
+        "summary": "stdin is reconfigured to strict 'utf-8'. A pipe from Windows PowerShell 5.1 or another cp1252 source sends the subject's em dash as a lone 0x97, and read_message's stream.read() raises UnicodeDecodeError, which main does not catch (only MergeMessageError and ConfigError), so the run ends in a traceback instead of a 'problem:' line. A UTF-8 BOM (Set-Content/Out-File defaults) becomes U+FEFF on line 1, and build reports a subject mismatch for a subject that looks identical. The sibling stdin driver branch_commit_msg.py:957 uses 'utf-8-sig'. The tests patch sys.stdin with io.StringIO, so the decode path is never exercised. Reported by runtime (M1) and system-shape (M4).",
+        "fix": [
+          "Reconfigure stdin with encoding='utf-8-sig' (stdout stays 'utf-8'), matching branch_commit_msg.py. In read_message wrap stream.read() in try/except UnicodeDecodeError and raise MergeMessageError('stdin is not UTF-8; pass the message as a heredoc from Git Bash'). Add a test feeding a BOM-prefixed message through io.TextIOWrapper(io.BytesIO(...), encoding='utf-8-sig')."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M3",
+        "name": "README says build writes only PR<NNN>_merge.txt, omitting the .bak",
+        "file": "README.md",
+        "lines": "228",
+        "both_reviewers": true,
+        "summary": "back_up_replaced() in merge_commit_msg.py also writes PR<NNN>_merge.txt.bak when an existing TXT changes; SKILL.md:67 and SkillSpec B2 both say so, the README bullet does not. Reported by docs (M5) and system-shape (M2).",
+        "fix": [
+          "Reword to 'writes only PR<NNN>_merge.txt (a replaced copy kept as .txt.bak)'."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M4",
+        "name": "branch-commit-msg Step 5 runs merge-commit-msg commands that use an unresolvable ${CLAUDE_SKILL_DIR}",
+        "files": [
+          "plugins/harness/skills/branch-commit-msg/SKILL.md",
+          "plugins/harness/skills/merge-commit-msg/SKILL.md"
+        ],
+        "lines": "branch-commit-msg/SKILL.md:181; merge-commit-msg/SKILL.md:32,48,60",
+        "both_reviewers": true,
+        "summary": "Step 5 has branch-commit-msg read the raw merge-commit-msg SKILL.md and follow its Steps 1-2 in the same run. That file's capture command, message_format.md reference and the new build heredoc use a literal ${CLAUDE_SKILL_DIR}, which in a branch-commit-msg run is that skill's folder or unset, so the commands resolve to '/commands/merge_commit_msg.py'. The problem predates this PR, but the PR edits this line and adds one more command that depends on it. messenger.md:42 warns about the on-disk copy's bare $ARGUMENTS but not ${CLAUDE_SKILL_DIR}. Reported by overall (M3) and system-shape (M6).",
+        "fix": [
+          "In branch-commit-msg/SKILL.md:181 add: '${CLAUDE_SKILL_DIR} in that file stands for ${CLAUDE_PLUGIN_ROOT}/skills/merge-commit-msg.'",
+          "Or have merge-commit-msg's commands use ${CLAUDE_PLUGIN_ROOT}/skills/merge-commit-msg/..., valid in both contexts."
+        ],
+        "fix_kind": "judgment"
+      },
+      {
+        "id": "M5",
+        "name": "TODO-027 / issue #154 is implemented but nothing closes it",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "1616",
+        "reviewer": "overall",
+        "summary": "The PR does the work of issue #154 / TODO-027 ('drop the PR<N>_merge.md working document') and its design answers TODO-027's decision_question, still listed NEEDS_DECISION. Neither the PR body nor commit 8802b6c mentions #154 (gh reports it OPEN), so the merge will not close the issue and todo_sync will keep showing the item as an open decision.",
+        "fix": [
+          "Add 'Closes #154' to the PR body, or 'Refs #154' to the merge message, so the issue closes on merge and the next todo_sync refresh retires TODO-027."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M6",
+        "name": "HARNESS_RULES.md final-as-saved rule does not name merge-commit-msg",
+        "files": [
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/hooks/guard_commit_txt.py",
+          "README.md"
+        ],
+        "lines": "HARNESS_RULES.md:30-36; guard_commit_txt.py:18-19; README.md:224-226",
+        "reviewer": "system-shape",
+        "summary": "The guard hook docstring and README:224-226 say the standing rule covers shell writes of the saved TXT files, 'PR<NNN>_merge.txt included'. The rule they point to, 'A drafted commit message is final as saved', names only c-msg, branch-commit-msg and amend-commit-msg. The gap predates this PR, but the PR rewrote both claims and the merge change route without touching the rule. README:220-222 likewise lists change routes for the other three skills only.",
+        "fix": [
+          "Add harness:merge-commit-msg to the rule's skill list at HARNESS_RULES.md:30 plus its developer-ask route (the same text as the I3 fix), and add the merge route to README:220-222."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M7",
+        "name": "SkillSpec parts list names two files that do not exist and omits the files B4 and B6 constrain",
+        "files": [
+          "docs/plans/strap/merge-commit-msg/SkillSpec.json",
+          "plugins/harness/skills/strap-skills/SKILL.md"
+        ],
+        "lines": "SkillSpec.json:20-27,214; strap-skills/SKILL.md:106-110",
+        "both_reviewers": true,
+        "summary": "The parts list holds plugins/harness/lib/harness_lib/merge_commit_msg_models.py and merge_commit_msg_api.py; neither exists at head, so content_hash hashes them as the '<missing>' marker and the frozen skill_hash covers two phantom files. The guard hook and README, which B4 and B6 constrain, are not parts, so a later edit to either leaves the frozen hash valid (strap-skills step 5 says to add every other deliverable with add_part). The c-msg spec shows the same pattern, so the cause may be a scaffold default in the strap tooling. Reported by docs (M3) and system-shape (M5).",
+        "fix": [
+          "Drop the models and api parts (or write the modules), add_part plugins/harness/hooks/guard_commit_txt.py, README.md and branch-commit-msg/SKILL.md, then refreeze (a plan change needing refreeze is routine with developer OK).",
+          "Or have 'strap.py new --edit' skip models and api parts for a skill that keeps its code in a commands/ driver."
+        ],
+        "fix_kind": "judgment"
+      },
+      {
+        "id": "M8",
+        "name": "B6 claims four files describe the stdin route in two steps, but its nodes check SKILL.md only",
+        "files": [
+          "docs/plans/strap/merge-commit-msg/SkillSpec.json",
+          "tests/skills/test_merge_commit_msg_skill_contract.py"
+        ],
+        "lines": "SkillSpec.json:184; test_merge_commit_msg_skill_contract.py:31-49",
+        "reviewer": "docs",
+        "summary": "B6 says SKILL.md, message_format.md, the guard hook docstring and the README all 'describe the stdin route in two steps'. Its nodes check the stdin heredoc and the two-step layout in SKILL.md only; the other three files are checked only for the absence of '_merge.md', so message_format.md or the README could drop the stdin route and B6 would stay green. 'In two steps' does not apply to a hook docstring or README bullet.",
+        "fix": [
+          "Narrow B6 to 'SKILL.md describes the stdin route in two steps; none of the four names PR<N>_merge.md', or add assertions that message_format.md and README.md name 'stdin' next to build."
+        ],
+        "fix_kind": "judgment"
+      },
+      {
+        "id": "M9",
+        "name": "The stdin UTF-8 reconfigure is pinned only in the root-separation contract",
+        "files": [
+          "tests/skills/test_merge_commit_msg.py",
+          "tests/contract/test_root_separation.py",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py"
+        ],
+        "lines": "test_merge_commit_msg.py:3-4,93-96,227,289; test_root_separation.py:71-92; merge_commit_msg.py:304-306",
+        "reviewer": "tests",
+        "summary": "The module docstring says the message on stdin is real, but every build test swaps sys.stdin for io.StringIO, which has no reconfigure(), so main's stdin UTF-8 switch never runs in the driver's own behavioral suite. The only guard is the 'merge-commit-msg build' case of test_root_separation.py, a contract whose subject is where files land; reverting that case to a plain argv would silently drop the only encoding guard.",
+        "fix": [
+          "Add a behavioral test to TestBuild: monkeypatch sys.stdin with io.TextIOWrapper(io.BytesIO(('\\n'.join(MESSAGE) + '\\n').encode('utf-8')), encoding='cp1252'), assert _run(...) == 0 and that the TXT equals the UTF-8 MESSAGE. Reword the docstring to 'the message on stdin (a text stream)'."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M10",
+        "name": "Defect-table test collapsed from parametrize into a loop inside one test",
+        "file": "tests/skills/test_merge_commit_msg.py",
+        "lines": "232-256",
+        "reviewer": "tests",
+        "summary": "The 14 defect cases moved from pytest.mark.parametrize to a for-loop in one test. The first failing case aborts the loop, so a regression in one validator hides the status of every later case, and the pytest report no longer shows which defects pass.",
+        "fix": [
+          "Keep the shared project but collect failures: build a list of names whose rc/err/TXT checks fail and assert the list is empty at the end (assert not failed, failed). Alternatively restore parametrize over defects.items() with a module-scoped project."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M11",
+        "name": "The MAX_LINES budget check has no test",
+        "files": [
+          "tests/skills/test_merge_commit_msg.py",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py"
+        ],
+        "lines": "test_merge_commit_msg.py:234-250; merge_commit_msg.py:221-222",
+        "reviewer": "tests",
+        "summary": "The rewritten defects table covers every layout, structure and content check except MAX_LINES ('<n> lines; the budget is 30'); no test under tests/ exercises it (grep for MAX_LINES and 'budget is' finds none).",
+        "fix": [
+          "Add a case such as \"too long\": ([*MESSAGE[:6], *['  - x.py: change'] * 25, *MESSAGE[6:]], 'the budget is 30')."
+        ],
+        "fix_kind": "mechanical"
+      },
+      {
+        "id": "M12",
+        "name": "The skill contract test pins the heredoc opener but not its closing delimiter",
+        "files": [
+          "tests/skills/test_merge_commit_msg_skill_contract.py",
+          "plugins/harness/skills/merge-commit-msg/SKILL.md"
+        ],
+        "lines": "test_merge_commit_msg_skill_contract.py:41-44; SKILL.md:59-63",
+        "reviewer": "tests",
+        "summary": "test_skill_passes_the_message_to_build_on_stdin asserts the heredoc opener only. The closing delimiter (a column-0 'MSG' line) is what makes the copied command terminate; an indented or dropped closer in SKILL.md would leave the Bash call waiting on the heredoc and still pass.",
+        "fix": [
+          "Also assert the closer, e.g. assert '\\nMSG\\n```' in text, or locate the build line and assert a later line equals 'MSG' before the next fence."
+        ],
+        "fix_kind": "mechanical"
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 164 --json number,title,headRefName,baseRefName,state,url,commits --jq '{number, title, headRefName, baseRefName, state, url, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"8802b6cc4056db3470f89a493bdfb0406805ec63\",\"headRefName\":\"1107-merge-msg-drop-md\",\"last_sha\":\"136a97c78b37db2d0b757474d39016327815915e\",\"number\":164,\"state\":\"OPEN\",\"title\":\"Feature(merge-commit-msg): `merge_commit_msg.py` stdin build\",\"url\":\"https://github.com/t968rs/operator-straps/pull/164\"}",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (project configures no guard files: review.guard_suite, review.local_guards, review.registry_guards all empty)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1107-merge-msg-drop-md",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1107-merge-msg-drop-md",
+        "head_ref_name": "1107-merge-msg-drop-md",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "AM docs/PR_REVIEWS/0164_Featuremerge-commit-msg_merge_commit_msg.py_stdin_build.json\n M docs/_harness/pr_review_agent_usage.jsonl\n M docs/_harness/pr_review_invocation_test_matrix.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "8802b6cc4056db3470f89a493bdfb0406805ec63",
+        "head_sha": "136a97c78b37db2d0b757474d39016327815915e",
+        "base_ancestor_command": "git merge-base --is-ancestor 8802b6cc4056db3470f89a493bdfb0406805ec63 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 136a97c78b37db2d0b757474d39016327815915e HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  }
+}
