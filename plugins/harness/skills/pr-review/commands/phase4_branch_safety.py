@@ -8,7 +8,7 @@ capture stdout into the JSON's verification_log.pre_fix_time field.
 Usage (Bash tool, from the project checkout):
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" \
         "${CLAUDE_PLUGIN_ROOT}/skills/pr-review/commands/phase4_branch_safety.py" \
-        [--second-run] [--exclusions-fixture <path>] <PR_NUMBER>
+        [--second-run] [--exclusions-fixture <path>] <PR_NUMBER | local-<label>>
 
 The project is the git top level of the working directory (``harness_lib.project.project_root``, the same
 resolution the hooks apply to their payload ``cwd``); its ``.claude/harness.json`` is activated once.
@@ -16,7 +16,7 @@ resolution the hooks apply to their payload ``cwd``); its ``.claude/harness.json
 Flags:
     --second-run: declares this is the Phase 5 entry invocation (not the Phase 3
                   Step 7 first-run). On all-checks-pass, writes a Phase 5 sentinel
-                  file at <project>/<state_dir>/pr-review/.phase5_pending_<PR>. The
+                  file at <project>/<state_dir>/pr-review/.phase5_pending_<run key>. The
                   harness Stop hook (check_phase5_sentinel.py) blocks only the
                   arming session's end while the sentinel is hot (line 3 holds the
                   owner id; a sentinel without it blocks every session). The
@@ -29,7 +29,9 @@ Flags:
                   means every working-tree change counts).
 
 Argv contract (strict):
-    Exactly one positional argument (the PR number). Extra positionals or
+    Exactly one positional argument: the PR number, or a local review key
+    (local-<label>), whose branch, base and SHAs come from the run's plan.json
+    instead of gh. Extra positionals or
     unknown -- flags raise ValueError -> exit 2. Silent drops are unsafe in
     a gatekeeper.
 
@@ -69,6 +71,7 @@ if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
 
 _NO_EXCLUSIONS = "(none configured)"
+_GH_BASE_SOURCE = "gh pr view <PR> --json baseRefName --jq .baseRefName"
 
 
 def _run(cmd: list, cwd: Optional[str] = None) -> Tuple[int, str, str]:
@@ -104,6 +107,15 @@ def _gh_pr_metadata(pr_number: str) -> Dict[str, Any]:
         "first_sha": commits[0]["oid"] if commits else "",
         "last_sha": commits[-1]["oid"] if commits else "",
     }
+
+
+def _local_metadata(key: str, repo_root: Path) -> Dict[str, Any]:
+    """The fields the checks compare against for a local review key (``local-<label>``), from the run's
+    ``plan.json`` that ``pr_review.py capture --range`` wrote; no gh call. Needs the activated config."""
+    from harness_lib.review_local_api import phase4_meta
+    from harness_lib.review_local_models import parse_key
+    parse_key(key)
+    return dict(phase4_meta(key, repo_root))
 
 
 def _check_current_branch() -> Dict[str, Any]:
@@ -203,12 +215,13 @@ def _check_sha_ancestry(base_sha: str, head_sha: str) -> Dict[str, Any]:
     }
 
 
-def _check_base_branch_recorded(base_ref_name: str, configured_base: str) -> Dict[str, Any]:
+def _check_base_branch_recorded(base_ref_name: str, configured_base: str,
+                                source: str = _GH_BASE_SOURCE) -> Dict[str, Any]:
     """Phase 4 Check 5: record the PR's base branch, noting whether it is the configured base branch."""
     same = base_ref_name == configured_base
     note = "configured base" if same else f"not the configured base {configured_base}"
     return {
-        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "source": source,
         "value": base_ref_name,
         "result": f"OK (recorded; {note})",
     }
@@ -243,12 +256,13 @@ def _write_phase5_sentinel(pr_number: str, repo_root: Path) -> None:
     schema hook look whichever worktree their payload ``cwd`` names; ``state_dir`` comes from the active
     harness configuration.
 
-    Content: line 1 is the PR number (audit trail of which invocation armed it), line 2 is the unix
-    write-time. The hook reads line 2 to evaluate hot-vs-stale, immune to incidental mtime touches. Line 3
+    Content: line 1 is the run key (PR number or local-<label>; audit trail of which invocation armed
+    it), line 2 is the unix write-time. The hook reads line 2 to evaluate hot-vs-stale, immune to
+    incidental mtime touches. Line 3
     is the arming session's id from CLAUDE_CODE_SESSION_ID, which Claude Code exports to every Bash call
     (subagents included); the hook blocks only that session. Without the env var line 3 is omitted, and
     the hook treats the unowned sentinel as blocking every session. A session started by /clear, a forked
-    resume, or a new terminal is a different owner and is not blocked; re-running --second-run <PR> from
+    resume, or a new terminal is a different owner and is not blocked; re-running --second-run <run key> from
     the continuing session re-arms the sentinel under its id.
     """
     from harness_lib.config import active
@@ -263,7 +277,8 @@ def _write_phase5_sentinel(pr_number: str, repo_root: Path) -> None:
     sentinel.write_text("".join(f"{line}\n" for line in lines), encoding="utf-8")
 
 
-_USAGE = "usage: phase4_branch_safety.py [--second-run] [--exclusions-fixture <path>] <PR_NUMBER>\n"
+_USAGE = ("usage: phase4_branch_safety.py [--second-run] [--exclusions-fixture <path>] "
+          "<PR_NUMBER | local-<label>>\n")
 _KNOWN_FLAGS = frozenset({"--second-run", "--exclusions-fixture"})
 
 
@@ -300,7 +315,8 @@ def _parse_argv(argv: list) -> Tuple[bool, Optional[str], Optional[str]]:
         i += 1
     if len(positional) > 1:
         raise ValueError(
-            f"too many positional arguments: {positional!r}; expected exactly one PR number"
+            f"too many positional arguments: {positional!r}; expected exactly one run key "
+            "(PR number or local-<label>)"
         )
     pr_number = positional[0] if positional else None
     return second_run, pr_number, exclusions_fixture
@@ -321,7 +337,8 @@ def _pre_fix_checks(meta: Dict[str, Any], repo_root: Path, cfg: HarnessConfig,
         "branch_match_check": _check_branch_match(current_branch_check["stdout"], meta["headRefName"]),
         "clean_tree_check": _check_clean_tree(repo_root, _exclusions_for(exclusions_fixture, cfg), harness),
         "sha_ancestry_check": _check_sha_ancestry(meta["first_sha"], meta["last_sha"]),
-        "base_branch_recorded": _check_base_branch_recorded(meta["baseRefName"], cfg.resolve_base_branch()),
+        "base_branch_recorded": _check_base_branch_recorded(
+            meta["baseRefName"], cfg.resolve_base_branch(), meta.get("base_source", _GH_BASE_SOURCE)),
     }
 
 
@@ -336,8 +353,10 @@ def main(argv: list) -> int:
         sys.stderr.write(_USAGE)
         return 2
 
+    from harness_lib.review_local_models import LOCAL_PREFIX
+    local = pr_number.startswith(LOCAL_PREFIX)
     try:
-        meta = _gh_pr_metadata(pr_number)
+        meta = {} if local else _gh_pr_metadata(pr_number)
     except (RuntimeError, json.JSONDecodeError, KeyError, IndexError) as exc:
         sys.stderr.write(f"FAIL: cannot read PR metadata: {exc}\n")
         return 1
@@ -347,6 +366,11 @@ def main(argv: list) -> int:
         repo_root, cfg = _project(seed=exclusions_fixture is None)
     except (ConfigError, OSError) as exc:
         sys.stderr.write(f"FAIL: harness config: {exc}\n")
+        return 1
+    try:
+        meta = _local_metadata(pr_number, repo_root) if local else meta
+    except (RuntimeError, ValueError) as exc:
+        sys.stderr.write(f"FAIL: cannot read the local run: {exc}\n")
         return 1
 
     pre_fix_time = _pre_fix_checks(meta, repo_root, cfg, exclusions_fixture)
