@@ -29,7 +29,10 @@ It reads one key. An installed mod lives in its own plugin cache folder and cann
 ## Triggers
 
 An active memo is one in `<artifacts.reviews>` named `PR_<N>_Bubbles.md` whose index still holds an `Open` row.
-Each maps to its review JSON (the newest `<NNNN>_*.json` for N, zero-padded) and the mtime last seen. A memo
+Each maps to its review JSON (the newest `<NNNN>_*.json` for N, zero-padded) and the mtime last seen. Review
+file selection also takes a review-local key, `local-<label>` (newest `LOCAL_<label>_*.json`, the rule
+`tests/mods/test_local_run_key_mirror.py` pins), but `bubble_memo.py` writes memos for PR numbers only, so a
+local review has no memo to stamp. A memo
 with no `Open` row, or without the memo anchors, is not active.
 
 | Trigger | Does |

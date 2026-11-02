@@ -1,6 +1,7 @@
 import type { AgentRec, Counts, Phase, Run } from '../types'
 import { allDispositioned, type ReviewDoc } from './bubbles'
 import type { Dispatch, ReturnBlock } from './contract'
+import { runName } from './runKey'
 
 /** Pure state transitions over tracked runs, plus the band text. No `$`. */
 
@@ -213,8 +214,9 @@ const phaseLabel = (run: Run): string => {
 const phaseText = (run: Run, isPhase5: boolean): string =>
   isPhase5 ? `${phaseLabel(run)} · Phase 5 pending` : phaseLabel(run)
 
+/** The run named by its key: `PR #<N>`, `local review local-<label>`, or `PR #?` when it names none. */
 const runText = (run: Run, phase5: readonly string[], missing: readonly string[]): string => {
-  const parts = [`PR #${run.pr ?? '?'}`, phaseText(run, phase5.includes(String(run.pr)))]
+  const parts = [runName(run.pr), phaseText(run, phase5.includes(String(run.pr)))]
   if (run.bubbled.length > 0) parts.push(`${run.bubbled.length} bubbled`)
   if (missing.length > 0) parts.push(`bubbles[] missing ${missing.join(',')}`)
   return parts.join(' · ')
@@ -227,7 +229,7 @@ export const bandText = (b: BandInput): string | undefined => {
   const run = b.run !== null && b.run.phase !== 'done' ? b.run : null
   const others = b.phase5
     .filter(pr => run === null || pr !== String(run.pr))
-    .map(pr => `PR #${pr} · Phase 5 pending`)
+    .map(pr => `${runName(pr)} · Phase 5 pending`)
   const lines = run === null ? others : [runText(run, b.phase5, b.missing), ...others]
   return lines.length === 0 ? undefined : lines.join(' | ')
 }

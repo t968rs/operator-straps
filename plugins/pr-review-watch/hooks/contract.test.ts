@@ -2,10 +2,11 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import {
   DEFINED_AGENTS, identify, identifyStandalone, idList, isDefinedAgent, modelFamily, parseCounts, parseHeader,
-  parseReturnBlock, prOfRunId, standaloneRunId, startedAtOfRunId,
+  keyOfRunId, parseReturnBlock, standaloneRunId, startedAtOfRunId,
 } from './contract'
 
 const RUN = 'pr1526_20261009T120000Z'
+const LOCAL_RUN = 'local-fix-band_20261102T080910Z'
 const BASE = 'state/pr-team/_runtime'
 
 const reviewerPrompt = [
@@ -24,10 +25,18 @@ describe('parseHeader', () => {
   })
 })
 
-describe('prOfRunId', () => {
+describe('keyOfRunId', () => {
   test('pr number from a run id, null otherwise', async () => {
-    expect(prOfRunId(RUN)).toBe(1526)
-    expect(prOfRunId('run-1')).toBeNull()
+    expect(keyOfRunId(RUN)).toBe(1526)
+    expect(keyOfRunId('run-1')).toBeNull()
+  })
+
+  test('the local key from a review-local run id', async () => {
+    expect(keyOfRunId(LOCAL_RUN)).toBe('local-fix-band')
+    expect(keyOfRunId('local-x_20261102T080910Z')).toBe('local-x')
+    expect(keyOfRunId('local-Bad_20261102T080910Z')).toBeNull()
+    expect(keyOfRunId('local-a--b_20261102T080910Z')).toBeNull()
+    expect(keyOfRunId('local-_20261102T080910Z')).toBeNull()
   })
 })
 
@@ -36,6 +45,11 @@ describe('startedAtOfRunId', () => {
     expect(startedAtOfRunId(RUN)).toBe(Date.UTC(2026, 9, 9, 12, 0, 0))
     expect(startedAtOfRunId('run-1')).toBeNull()
     expect(startedAtOfRunId('pr1526_20261309T120000Z')).toBeNull()
+  })
+
+  test('a review-local run id carries the same stamp', async () => {
+    expect(startedAtOfRunId(LOCAL_RUN)).toBe(Date.UTC(2026, 10, 2, 8, 9, 10))
+    expect(startedAtOfRunId('local-x_20261302T080910Z')).toBeNull()
   })
 })
 
@@ -57,6 +71,18 @@ describe('identify', () => {
     expect(d?.skill).toBe('pr-review')
     expect(d?.runtimeDir).toBeNull()
     expect(d?.pr).toBe(1526)
+  })
+
+  test('pr-review slot with a local key on its PR line: the key is the run key', async () => {
+    const prompt = `AGENT_ID: overall\nAGENT_ROLE: reviewer\nRUN_ID: ${LOCAL_RUN}\nPR: local-fix-band`
+    expect(identify('harness:pr-reviewer', prompt, BASE)).toEqual({
+      runId: LOCAL_RUN, skill: 'pr-review', agentId: 'overall', role: 'reviewer', pr: 'local-fix-band',
+      runtimeDir: null, phase: 'review',
+    })
+    const fixer = identify('harness:pr-fixer', `AGENT_ID: f1\nAGENT_ROLE: fixer\nRUN_ID: ${LOCAL_RUN}\nPR: junk`, BASE)
+    expect(fixer?.pr).toBe('local-fix-band')
+    const bad = identify('harness:pr-fixer', 'AGENT_ID: f1\nAGENT_ROLE: fixer\nRUN_ID: r\nPR: local-Bad', BASE)
+    expect(bad?.pr).toBeNull()
   })
 
   test('orchestrator and fixer mode dispatches', async () => {

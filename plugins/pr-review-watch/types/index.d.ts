@@ -47,7 +47,11 @@ export type AgentRec = {
 export type Run = {
   runId: string
   skill: Skill
-  pr: number | null
+  /**
+   * The run key (`RunKey` in hooks/runKey.ts): a PR number, or a `local-<label>` key for a review-local run;
+   * null when the run names none. A local run logs no matrix rows and a null `pr` in its usage rows.
+   */
+  pr: number | string | null
   phase: Phase
   /** Repo-relative pr-team runtime dir; null for pr-review. */
   runtimeDir: string | null
@@ -78,7 +82,7 @@ declare module 'claude-code' {
       /** Engine loop id of a background subagent -> [runId, agentId]. */
       loops: Record<string, [string, string]>
       failures: LogFailure[]
-      /** PR ids of hot Phase 5 sentinels. */
+      /** Run keys (PR numbers or `local-<label>` keys) of hot Phase 5 sentinels. */
       phase5: string[]
       /** Tracked bubbled ids the active run's review JSON does not disposition. */
       missing: string[]

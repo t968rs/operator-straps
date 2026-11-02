@@ -9,7 +9,7 @@ export type SentinelText = { pr: string | null; writtenAt: number | null; sessio
 const orNull = (s: string): string | null => (s === '' ? null : s)
 
 /**
- * Line 1 the PR id, line 2 an optional unix-int write time, line 3 the optional id of the session
+ * Line 1 the run key (PR number or `local-<label>`), line 2 an optional unix-int write time, line 3 the optional id of the session
  * that armed it (CRLF tolerated).
  */
 export const parseSentinel = (text: string): SentinelText => {

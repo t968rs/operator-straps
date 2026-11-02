@@ -9,6 +9,33 @@ import type { Resolution } from './memo'
 /** A directory entry, as `$.fs.list` reports one. */
 export type Listed = { name: string; mtimeMs: number; kind: string }
 
+/**
+ * A review run key: a PR number, or a review-local key `local-<label>` (review file `LOCAL_<label>_<slug>.json`).
+ * The constants mirror `plugins/harness/lib/harness_lib/review_local_models.py`, pinned by
+ * `tests/mods/test_local_run_key_mirror.py`.
+ */
+export type RunKey = number | string
+
+export const LOCAL_PREFIX = 'local-'
+export const REVIEW_PREFIX = 'LOCAL_'
+export const LABEL_PATTERN = '^[a-z0-9]+(-[a-z0-9]+)*$'
+export const LABEL_MAX = 48
+
+const LABEL = new RegExp(LABEL_PATTERN)
+
+/** True for a valid `local-<label>` key. */
+export const isLocalKey = (value: unknown): value is string => {
+  if (typeof value !== 'string' || !value.startsWith(LOCAL_PREFIX)) return false
+  const label = value.slice(LOCAL_PREFIX.length)
+  return label.length <= LABEL_MAX && LABEL.test(label)
+}
+
+/** The review file name prefix: `<NNNN>_`, `LOCAL_<label>_` for a local key, undefined for any other string. */
+export const reviewPrefix = (key: RunKey): string | undefined => {
+  if (typeof key === 'number') return `${String(key).padStart(4, '0')}_`
+  return isLocalKey(key) ? `${REVIEW_PREFIX}${key.slice(LOCAL_PREFIX.length)}_` : undefined
+}
+
 const CLOSING_STATUSES: readonly string[] = ['RESOLVED', 'CLOSED_NO_ACTION']
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -48,11 +75,12 @@ export const closedResolutions = (text: string): Resolution[] | undefined =>
   latestResolutions(text)?.filter(r => CLOSING_STATUSES.includes(r.status))
 
 /**
- * The newest `<NNNN>_*.json` file entry for a PR, or undefined. An mtime tie goes to the larger name, the same
- * tie rule as `find_review` in `plugins/harness/scripts/bubble_memo.py`.
+ * The newest review file entry for a run key (`<NNNN>_*.json`, or `LOCAL_<label>_*.json`), or undefined. An
+ * mtime tie goes to the larger name, the same tie rule as `find_review` in `plugins/harness/scripts/bubble_memo.py`.
  */
-export const reviewFileFor = (pr: number, entries: readonly Listed[]): Listed | undefined => {
-  const prefix = `${String(pr).padStart(4, '0')}_`
+export const reviewFileFor = (key: RunKey, entries: readonly Listed[]): Listed | undefined => {
+  const prefix = reviewPrefix(key)
+  if (prefix === undefined) return undefined
   const hits = entries.filter(e => e.kind === 'file' && e.name.startsWith(prefix) && e.name.endsWith('.json'))
   return [...hits].sort(newestFirst)[0]
 }

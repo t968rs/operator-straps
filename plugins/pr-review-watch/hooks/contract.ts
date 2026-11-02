@@ -1,4 +1,5 @@
 import type { Counts, Phase, Skill } from '../types'
+import { keyOfRunId, RUN_ID, toRunKey, type RunKey } from './runKey'
 
 /**
  * Parsers for pr-team / pr-review `Agent` prompts and return-contract blocks (the harness pr-team skill's
@@ -14,7 +15,8 @@ export type Dispatch = {
   skill: Skill
   agentId: string
   role: string
-  pr: number | null
+  /** The run key: a PR number, or a `local-<label>` key for a review-local run; null when the run names none. */
+  pr: RunKey | null
   runtimeDir: string | null
   phase: Phase
 }
@@ -41,8 +43,6 @@ const HEADER_LINE = /^([A-Z][A-Z_]*)(?:=|: )(.*)$/
 const BLOCK_LINE = /^([A-Z][A-Z_]*):(?: (.*))?$/
 const COUNTS_VALUE = /^findings=(\d+) critical=(\d+) important=(\d+) minor=(\d+)$/
 const ISSUE_ID = /^[CIM]\d+$/
-const RUN_ID_PR = /^pr(\d{1,7})_\d{8}T\d{6}Z$/
-const RUN_ID_STAMP = /^pr\d{1,7}_(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/
 
 /** Phase, agent id and role per pr-team agent family and MODE. */
 const MODES: Readonly<Record<string, Readonly<Record<string, readonly [Phase, string, string]>>>> = {
@@ -66,18 +66,16 @@ const fieldsOf = (lines: readonly string[], pattern: RegExp): Record<string, str
 
 export const parseHeader = (prompt: string): Header => fieldsOf(prompt.split(/\r?\n/), HEADER_LINE)
 
-/** A positive integer PR number, or null. */
-export const toPr = (raw: string | undefined): number | null =>
-  raw !== undefined && /^\d+$/.test(raw) && Number(raw) >= 1 ? Number(raw) : null
+export { keyOfRunId }
 
-/** The PR a run id names (`pr1122_20260518T060416Z`), or null. */
-export const prOfRunId = (runId: string): number | null => toPr(runId.match(RUN_ID_PR)?.[1])
-
-/** Epoch ms of the UTC stamp a run id carries (`pr1122_20260518T060416Z`), or null when absent or invalid. */
+/**
+ * Epoch ms of the UTC stamp a run id carries (`pr1122_20260518T060416Z`, `local-x_20260518T060416Z`), or null
+ * when absent or invalid.
+ */
 export const startedAtOfRunId = (runId: string): number | null => {
-  const m = runId.match(RUN_ID_STAMP)
+  const m = runId.match(RUN_ID)
   if (m === null) return null
-  const [y, mo, d, h, mi, s] = m.slice(1).map(Number) as [number, number, number, number, number, number]
+  const [y, mo, d, h, mi, s] = m.slice(3).map(Number) as [number, number, number, number, number, number]
   const ms = Date.UTC(y, mo - 1, d, h, mi, s)
   const back = new Date(ms)
   return back.getUTCMonth() === mo - 1 && back.getUTCDate() === d && h < 24 && mi < 60 && s < 60 ? ms : null
@@ -93,7 +91,7 @@ const modeDispatch = (subagentType: string, h: Header, runId: string): Dispatch 
   const hit = family === undefined ? undefined : MODES[family]?.[h.MODE ?? '']
   if (hit === undefined) return undefined
   const [phase, agentId, role] = hit
-  const pr = toPr(h.PR_NUMBER) ?? prOfRunId(runId)
+  const pr = toRunKey(h.PR_NUMBER) ?? keyOfRunId(runId)
   return { runId, skill: 'pr-team', agentId, role, pr, runtimeDir: h.RUNTIME_DIR ?? null, phase }
 }
 
@@ -103,12 +101,15 @@ const runtimeDirOf = (h: Header, runId: string, runtimeBase: string): string => 
   return m?.[1] ?? `${runtimeBase}/${runId}`
 }
 
-/** A slot dispatch (`AGENT_ID:` / `AGENT_ROLE:`): pr-review when a `PR:` line is present. */
+/**
+ * A slot dispatch (`AGENT_ID:` / `AGENT_ROLE:`): pr-review when a `PR:` line is present. The `PR:` value is
+ * the run key, a PR number or a review-local `local-<label>` key.
+ */
 const slotDispatch = (h: Header, runId: string, runtimeBase: string): Dispatch | undefined => {
   const { AGENT_ID: agentId, AGENT_ROLE: role } = h
   if (!agentId || (role !== 'reviewer' && role !== 'fixer')) return undefined
   const isReview = h.PR !== undefined
-  const pr = (isReview ? toPr(h.PR) : null) ?? prOfRunId(runId)
+  const pr = (isReview ? toRunKey(h.PR) : null) ?? keyOfRunId(runId)
   const skill: Skill = isReview ? 'pr-review' : 'pr-team'
   const runtimeDir = isReview ? null : runtimeDirOf(h, runId, runtimeBase)
   return { runId, skill, agentId, role, pr, runtimeDir, phase: role === 'reviewer' ? 'review' : 'fix' }

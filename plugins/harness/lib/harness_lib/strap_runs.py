@@ -22,11 +22,14 @@ _SEED_BITS = 32
 
 
 def content_hash(root: Path, paths: Sequence[str]) -> str:
-    """Hash ``paths`` under ``root`` in sorted order; a missing file hashes as a marker."""
+    """Hash ``paths`` under ``root`` in sorted order; a missing file hashes as a marker.
+
+    CRLF line endings hash as LF, so a ``core.autocrlf`` checkout of unchanged parts keeps the frozen hash.
+    """
     digest = hashlib.sha256()
     for rel in sorted(paths):
         target = root / rel
-        body = target.read_bytes() if target.is_file() else _MISSING
+        body = target.read_bytes().replace(b"\r\n", b"\n") if target.is_file() else _MISSING
         digest.update(rel.encode("utf-8") + b"\0" + body + b"\0")
     return digest.hexdigest()
 

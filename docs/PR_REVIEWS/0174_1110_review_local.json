@@ -1,0 +1,594 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 174,
+  "pr_title": "1110 review local",
+  "branch": "1110-review-local",
+  "base_branch": "main",
+  "base_sha": "369c1d990e0801202ba0caefbc401b7647b8468b",
+  "head_sha": "c542e64fd4f0c4448b58af86e9717971aecd8da9",
+  "review_date": "2026-11-02",
+  "verdict": "READY TO MERGE - 21 of 21 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1742,
+    "deletions": 72,
+    "files_changed": 16
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0174/pr174_20261102T183602Z/findings/tests.json",
+    "docs/_scratch/pr_review/0174/pr174_20261102T183602Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0174/pr174_20261102T183602Z/findings/docs.json",
+    "docs/_scratch/pr_review/0174/pr174_20261102T183602Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_local_review_artifacts runs the real schema hook as a subprocess on a make_project repo. That proves `LOCAL_<label>_` names are recognized, schema-validated and that closeout clears the local-key sentinel. A setup error or an unrecognized name both fail the cleared-sentinel assertion.",
+    "The gh fakes (`gh_calls`, `_no_gh`) raise on any call, so a regression that reaches gh fails loudly instead of being swallowed by an assertion on a list.",
+    "test_capture_range_records_local_state_and_key pins the plan.json fields phase4_meta reads (meta.branch, meta.base_branch, state, first_sha, last_sha). That covers, from the capture side, the plan that test_phase4_local builds by hand.",
+    "The unsafe-key parametrization covers zero, negative, empty label, upper case, underscore, slash traversal, double and trailing hyphens and an over-length label. That matches the module's 'never parse' contract.",
+    "No mock-chain wiring: the only stub (`run_phase4`) replaces a subprocess collaborator, while build's own target naming and straggler logic run for real.",
+    "The skill contract test imports LOCAL_PREFIX and REVIEW_PREFIX from the models instead of copying the literals.",
+    "parse_key is the single gate for every run-state path, run id, review file name and sentinel name, and it accepts only filesystem-safe labels, so a key cannot traverse or collide across directories.",
+    "fold --from-gh-review is refused on a local run before anything is recorded, and capture refuses a local key without --range and a PR number with --range, with an actionable problem line in each case.",
+    "key_literal emits the run key with json.dumps, so the record heredocs stay valid Python for both int and local-key runs.",
+    "Phase 4 labels where the local base came from (base_source 'plan.json meta.base_branch') instead of claiming a gh read, and a missing or corrupt local plan.json exits 1 with a rerun hint.",
+    "LOCAL_<label>_ review globs cannot match another label's files, because labels contain no underscores, so straggler_check stays per-key.",
+    "SKILL.md's PR-vs-local comparison table states each divergence (target, run key, file name, Phase 4 source, fold sources, matrix rows) in one place, and each row matches the driver code.",
+    "Rules bullets name the exact shortcuts the build hint invites (widening the exclusions file, misusing the waiver) and close them, backed by red/green scenarios SC-3 and SC-4.",
+    "The zero-issue exit in Step 4 mirrors pr-review's 'No issues, no Phase 5' rule, so no orphan sentinel is armed.",
+    "SkillSpec frozen skill_hash matches the parts' blobs at the PR head (51c85bfd...), so the recorded green runs prove the shipped text.",
+    "README row is accurate and concise: git-only capture, plan.json-backed Phase 4, shared sentinel and Stop hook.",
+    "review_local_models imports no other harness_lib module and is the single gate for key safety: every run path, review file name and sentinel name derives from a parse_key-validated key.",
+    "Phase 4 keeps the PR block shape for local keys (only base_branch_recorded.source changes), so PR_REVIEW.schema.json and build need no new fields.",
+    "key_literal (json.dumps) makes the reviewer and fixer record heredocs valid Python for both int and string keys, and test_reviewer_record_accepts_a_local_key pins the quoted form.",
+    "The tests are behavioral against real git repos built with make_project; gh is stubbed to raise, so 'no gh call' is proven, not assumed. The schema-hook test runs the real hook subprocess and observes the sentinel being cleared.",
+    "LOCAL_<label>_ keeps the review folder's digit-prefix-means-PR convention intact, and the straggler check globs per key, so local and PR reviews cannot collide.",
+    "The plugin version bump (0.48.0 to 0.49.0) and the guidance-tail contract list entry track the new invocable skill."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Range ending off a local branch records headRefName HEAD, so Phase 4 STOPs with a no-op recovery",
+        "file": "plugins/harness/lib/harness_lib/review_local_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_local_api.py",
+          "plugins/harness/skills/pr-review/commands/phase4_branch_safety.py",
+          "plugins/harness/skills/review-local/SKILL.md"
+        ],
+        "lines": "51-59,77-85",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "head_branch returns DETACHED (\"HEAD\") whenever the range head is not the checked-out commit and does not name a local branch: a SHA, a tag, HEAD~1, or a remote-tracking ref such as origin/feature. local_metadata stores that as headRefName and plan.json meta.branch, and phase4_meta passes it to _check_branch_match. A developer still on their branch then gets 'STOP: branch mismatch -- on <branch>, PR head is HEAD. Recovery: git checkout HEAD', and the recovery does nothing. build leaves pre_fix_time pending with a NOT READY verdict, and --second-run can never arm. The reverse case is also wrong: any detached checkout passes the branch match, because `git rev-parse --abbrev-ref HEAD` prints HEAD. Only the SHA ancestry check is left to guard it.\n\nAlso (overall): head_branch (review_local_api.py:51-59) returns the literal `HEAD` when the range head is neither the checked-out commit nor a local branch name, and local_metadata stores it as headRefName (:83). Phase 4's branch_match_check compares `git rev-parse --abbrev-ref HEAD` with that value. (a) On a detached checkout it prints `HEAD`, so the check passes on any detached commit, and the fix waves then land on a detached HEAD where commits are easily lost. The SkillSpec runs R-6/R-7 captured exactly this, as key `local-head-e3bef1d`. (b) Run on a branch with a non-branch head (`main..HEAD~1`, or a tag or SHA), Phase 4 STOPs with a branch mismatch that no checkout can satisfy except detaching. The SKILL (:34) promises 'still on the captured branch'.",
+        "fix": [
+          "For a DETACHED head, have phase4_meta (or the local plan) mark the branch check as not applicable, and rely on sha_ancestry_check (head_sha an ancestor of HEAD) as the branch-safety evidence. Record the reason in the branch_match_check block.",
+          "Or refuse `capture --range` when the head resolves to DETACHED, with a problem line telling the developer to name a local branch (or check out the head commit), so the run never reaches a Phase 4 that cannot pass.",
+          "Refuse a --range whose head resolves to no branch: raise CaptureError in local_metadata when head_branch returns DETACHED, telling the developer to check out the branch (or pass a branch name as HEAD).",
+          "Or keep detached captures but record the head SHA and have phase4_meta/_check_branch_match require HEAD to be exactly that commit (and refuse fix waves) when headRefName is HEAD."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "fold-in-review cannot locate a local run, yet review-local routes developer notes through it",
+        "file": "plugins/harness/skills/fold-in-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/fold-in-review/SKILL.md",
+          "plugins/harness/skills/review-local/SKILL.md",
+          "plugins/harness/skills/fold-in-review/README.md"
+        ],
+        "lines": "29-35",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "review-local SKILL.md:136 names harness:fold-in-review as the route for developer notes and pasted output (and the Outside reviews row at :35 says `fold --findings` only). fold-in-review's 'Locate the run' step (SKILL.md:29-35) resolves only a PR number: the PR of a harness:pr-review run in the conversation, else `gh pr view --json number`, confirmed by `<scratch>/<NNNN>/current`, and it reads plan.json under `<scratch>/<NNNN>/`. A local run has no PR and lives under `<scratch>/local-<label>/`. So the skill either finds no run, or picks up an unrelated open PR for the branch and folds into the wrong review. Its README (:39-40) says the same.",
+        "fix": [
+          "Add a bullet to fold-in-review SKILL.md 'Locate the run': a harness:review-local run in this conversation supplies its `local-<label>` key (folder `<scratch>/local-<label>/`, no gh lookup), and every `fold --pr <N>` takes that key; note that `--from-gh-review` is refused there. Mirror the line in fold-in-review/README.md.",
+          "Or drop the fold-in-review pointer from review-local SKILL.md:136 and spell out the `fold --pr local-<label> --source <id> --kind developer --findings -` call inline."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Waiver rule contradicts Stop Recovery for a local head desync",
+        "file": "plugins/harness/skills/review-local/SKILL.md",
+        "files": [
+          "plugins/harness/skills/review-local/SKILL.md",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "60-61,126-127",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:60-61 presents `--waive-head-ancestry` as the legitimate remedy for 'a head-ancestry desync with the merge base intact', while Stop Recovery (SKILL.md:126-127) says the same condition on a local run means history was rewritten and needs a recapture. The waiver exists for a remote PR head that lags local HEAD (pr_review.py:1455-1456, 1471, 1541); a local run has no remote head, so a desync there always means the reviewed commit is gone. The driver still accepts the flag on a local key (pr_review.py:1487) and its STOP hint actively suggests it ('only the head ancestry failed: rerun build --replace --waive-head-ancestry', pr_review.py:1492), so a session following the Rules bullet plus the hint would run Phase 5 against rewritten history and print a 'remote PR head lags local HEAD' note that is false.",
+        "fix": [
+          "Reword SKILL.md:60-61 to say a local run never takes the waiver: a head-ancestry STOP on a local key means the captured head was rewritten, so recapture (matching Stop Recovery); keep the clean-tree/branch sentence.",
+          "Additionally make `build` refuse `--waive-head-ancestry` for a local key (is_local_key(args.pr)) and drop the waiver hint at pr_review.py:1492 for local runs, so the driver and the skill agree."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "B1 states a 48-char label limit; code enforces 41",
+        "file": "docs/plans/strap/review-local/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/review-local/SkillSpec.json",
+          "plugins/harness/lib/harness_lib/review_local_models.py"
+        ],
+        "lines": "44",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SkillSpec B1 says the local label is 'at most 48 chars'. review_local_models.py:19 sets LABEL_MAX = 41 (key total 47 with the `local-` prefix), and the B1 tests assert against LABEL_MAX, so the statement matches neither the label nor the full key. The spec is the recorded contract for the skill, so the number misleads anyone reading it to pick a label.\n\nAlso (overall): SkillSpec.json:44 says local-<label> is 'at most 48 chars'. review_local_models.py:19 sets LABEL_MAX = 41, so the longest key is `local-` + 41 = 47 characters, and the label alone is 41. Neither reading of the spec matches the code, and the B1 tests (test_review_local_models.py:30) pin LABEL_MAX, not 48.",
+        "fix": [
+          "Correct the B1 statement to 'at most 41 chars' through the strap tooling (the spec is frozen, so this goes with the next refreeze).",
+          "Or, if 48 was the intended bound, raise LABEL_MAX and keep the statement.",
+          "Reword B1 to 'label at most 41 chars (key at most 47)'.",
+          "Or set LABEL_MAX = 42 so the key tops out at 48, if 48 was the intended bound."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "local_check records commands that are not the ones local_metadata ran",
+        "file": "plugins/harness/lib/harness_lib/review_local_api.py",
+        "lines": "90-94",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The local_check docstring says the block holds 'the git commands, their raw output'. The command string names `git rev-parse <head>`, `git merge-base <base> <head>` and `git rev-parse --abbrev-ref HEAD`. local_metadata actually runs `rev-parse --verify --quiet <rev>^{commit}`, merge-base on the resolved SHAs, and head_branch's `branch --show-current` / `show-ref --verify refs/heads/<head>` chain. The third raw line is head_branch's answer (possibly the range head's name, or HEAD), not the output of `rev-parse --abbrev-ref HEAD`. The pr_metadata_check audit entry therefore misattributes its stdout.",
+        "fix": [
+          "Rewrite the command string to the commands that ran: `git rev-parse --verify <rev>^{commit}` (x2), `git merge-base <base_sha> <head_sha>`, `git branch --show-current / git show-ref --verify refs/heads/<head>` (head branch resolution), `git rev-list --count <merge base>..<head_sha>`."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Run-layout docstrings still describe only the numeric PR form",
+        "file": "plugins/harness/lib/harness_lib/review_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_models.py",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/skills/pr-review/commands/phase4_branch_safety.py"
+        ],
+        "lines": "7,365",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "review_models' module docstring (line 7) still gives the run directory as <artifacts.scratch>/<NNNN>/<RUN_ID>/, and run_dir's error (line 365) says 'for PR local-x'. pr_review.py line 3 says every subcommand works on <artifacts.scratch>/<NNNN>/current, and its Usage block (lines 108-118) lists neither `capture --range` nor --plan and writes every --pr as N. phase4_branch_safety's Usage (line 11) still reads <PR_NUMBER>, and its too-many-positionals error (line 318) says 'expected exactly one PR number'. The code now accepts local-<label> in all of these places.",
+        "fix": [
+          "Update the review_models docstring to '<NNNN> or <local key>'. Add `$PR_REVIEW capture --range BASE..HEAD [--pr local-<label>] [--title T] [--plan PATH]` to the Usage block, and say 'N or local-<label>' for --pr. Change phase4's Usage and error text to '<PR_NUMBER | local-<label>>'."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Widened run-id/key contract is not mirrored in the pr-review-watch and bubble-stamp mods",
+        "file": "plugins/harness/lib/harness_lib/review_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_models.py",
+          "plugins/pr-review-watch/hooks/contract.ts",
+          "plugins/pr-review-watch/hooks/tracker.ts",
+          "plugins/pr-review-watch/hooks/bubbles.ts",
+          "plugins/bubble-stamp/hooks/review.ts"
+        ],
+        "lines": "40",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "review_models.RUN_ID now accepts local-<label>_<stamp>, and run directories and review files are keyed local-<label> / LOCAL_<label>_. The TypeScript mirrors still accept only the numeric form: pr-review-watch contract.ts:44-45 (RUN_ID_PR / RUN_ID_STAMP accept only pr<N>), tracker.ts:148 (padStart(4) run directory) and bubbles.ts:100, and bubble-stamp review.ts:54-56 (numeric <NNNN>_ prefix). A review-local run is therefore invisible to the watch's phase tracking and bubble stamping. Nothing crashes, but nothing says so either.",
+        "fix": [
+          "Extend the mods' run-id regexes and run-dir/review-prefix builders to the local key, and add a mirror test like the existing config mirrors.",
+          "Or record the limitation in the review-local skill and the mods' READMEs, and open a follow-up issue."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Local-key shape is duplicated as literals in three modules",
+        "file": "plugins/harness/lib/harness_lib/validation/artifact_names.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/validation/artifact_names.py",
+          "plugins/harness/lib/harness_lib/review_models.py",
+          "plugins/harness/skills/pr-review/commands/phase4_branch_safety.py"
+        ],
+        "lines": "15",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "review_local_models owns LOCAL_PREFIX, REVIEW_PREFIX, LABEL_PATTERN and LABEL_MAX, and its docstring says it imports no other harness_lib module so that anyone can import it. Even so, review_models.RUN_ID re-spells the label regex (with no LABEL_MAX bound), artifact_names.REVIEW_ARTIFACT_PATTERN re-spells both 'LOCAL_' and the label regex, and phase4_branch_safety redefines _LOCAL_PREFIX. A later change to the label rule will update one copy and leave the others behind: the schema hook would skip validating a review file the driver wrote, or a run id would stop matching.",
+        "fix": [
+          "Build RUN_ID and REVIEW_ARTIFACT_PATTERN from review_local_models.LOCAL_PREFIX / REVIEW_PREFIX / LABEL_PATTERN (strip the anchors), and in phase4 main use `is_local_key`/`LOCAL_PREFIX` imported from review_local_models instead of _LOCAL_PREFIX."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "New capture_summary line exceeds the 110-character limit",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "814",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "pr_review.py:814 is 118 characters after the trailing `# type: ignore[arg-type]` was added. Local ruff (E501 on, per CLAUDE.md) flags it; CI ignores E501.",
+        "fix": [
+          "Bind `label = target_label(plan['pr'])  # type: ignore[arg-type]` on its own line and use `{label}` in the f-string."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "--pr argument type drops parse_key's explanation",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "2186-2188",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "run_key raises ValueError. argparse turns any ValueError from a type callable into the generic 'invalid run_key value: ...' and throws away the message, so `--pr local-Foo` never shows the label rule parse_key spells out (lower-case letters, digits, single hyphens, at most 41 characters). Only argparse.ArgumentTypeError keeps its text.\n\nAlso (overall): run_key (pr_review.py:2186-2188) returns parse_key(value), and parse_key raises ValueError with the label rules. argparse catches a ValueError from a type callable and prints only `invalid run_key value: 'local-Foo'` (exit 2). The message that explains the lower-case, single-hyphen, 41-character label rules is dropped. Every subcommand's --pr goes through this type.",
+        "fix": [
+          "In run_key: `try: return parse_key(value)` / `except ValueError as exc: raise argparse.ArgumentTypeError(str(exc)) from exc`.",
+          "Wrap it: `try: return parse_key(value)` / `except ValueError as exc: raise argparse.ArgumentTypeError(str(exc)) from exc`."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "phase4_branch_safety prose still says PR number where a local key now goes",
+        "file": "plugins/harness/skills/pr-review/commands/phase4_branch_safety.py",
+        "lines": "11,19,260,318",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "main() now accepts `local-<label>`, but several texts still say PR number. The usage block (:11) shows `<PR_NUMBER>`. The --second-run text (:19) names `.phase5_pending_<PR>`. _parse_argv's error (:318) says 'expected exactly one PR number'. The _write_phase5_sentinel docstring (:260) says 'line 1 is the PR number'. Only _USAGE (:280-281) and the argv-contract paragraph were updated.",
+        "fix": [
+          "Replace `<PR_NUMBER>` / `<PR>` / 'PR number' at :11, :19, :260 and :318 with `<PR_NUMBER | local-<label>>` / 'the run key (PR number or local-<label>)'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "review-local flag list omits --title; PR-only capture flags pass silently with --range",
+        "file": "plugins/harness/skills/review-local/SKILL.md",
+        "files": [
+          "plugins/harness/skills/review-local/SKILL.md",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "6,14-15",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The driver adds `capture --title` for a --range run (pr_review.py _add_capture_command; docstring :15). The review-local argument-hint (SKILL.md:6) and the list of flags passed to capture unchanged (:14-15) name only --pr, --plan and --roast, so a session never forwards a title. Separately, --allow-closed and --no-fetch are accepted with --range and have no effect (pr_metadata never reads allow_closed for a range).",
+        "fix": [
+          "Add `[--title <T>]` to SKILL.md:6 and to the capture flag list at :14-15.",
+          "Optionally raise CaptureError in pr_metadata when --allow-closed is combined with --range."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "'Same five checks' row lists only four",
+        "file": "plugins/harness/skills/review-local/SKILL.md",
+        "lines": "32,34",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The Phase 4 row of the comparison table says 'the same five checks against the captured plan.json' and then names four: captured branch, clean tree, merge-base ancestry, head ancestry. The script runs current_branch_check, branch_match_check, clean_tree_check, sha_ancestry_check and base_branch_recorded (phase4_branch_safety.py:334-341); the fifth, recording the base from plan.json meta.base_branch (review_local_api.py:109-111), is omitted.\n\nAlso (docs): SKILL.md:32 says the default key is 'the head branch's label'. local_key_for/branch_label (review_local_api.py:51-65, review_local_models.py:80-85) fall back to `local-head-<sha7>` when HEAD is detached or the range head names no local branch, which is the usual case in a harness worktree (the spec's own green runs R-4, R-6, R-7 all got `local-head-e3bef1d`). A reader expecting a branch label will not recognise the printed key.",
+        "fix": [
+          "Change SKILL.md:34 to: 'the same five checks against the captured `plan.json`: current branch, still on the captured branch, clean tree, merge base and head ancestors of HEAD, base recorded'.",
+          "Change the parenthetical at SKILL.md:32 to '(default: the head branch's label, or `head-<sha7>` for a detached head)'."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "SKILL says pr-review-watch does not attribute local runs; the mod tracks them as PR #?",
+        "file": "plugins/harness/skills/review-local/SKILL.md",
+        "files": [
+          "plugins/harness/skills/review-local/SKILL.md",
+          "plugins/pr-review-watch/hooks/contract.ts",
+          "plugins/pr-review-watch/hooks/runs.ts"
+        ],
+        "lines": "36",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "review-local SKILL.md:36 says the mod 'does not attribute local runs'. In fact contract.ts slotDispatch (:107-114) identifies every reviewer and fixer row whose prompt carries a `PR:` header, and a local key gives pr=null (toPr fails, and RUN_ID_PR at :44 does not match `local-...`). runs.ts:217 then shows the run as `PR #?` with no Phase 5 state. Only the matrix rows are skipped (tracker.ts:384). The doc claim and the mod's visible behavior differ.",
+        "fix": [
+          "Reword the SKILL row: 'none: the pr-review-watch mod shows the run as PR #? and records no matrix rows'.",
+          "Or teach contract.ts a local run key (RUN_ID_PR and toPr accepting `local-<label>`) so the band names the key and its Phase 5 sentinel."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Range refusal cases miss a leading-dash end, and the model accepts one",
+        "file": "tests/lib/test_review_local_models.py",
+        "files": [
+          "tests/lib/test_review_local_models.py",
+          "plugins/harness/lib/harness_lib/review_local_models.py"
+        ],
+        "lines": "39",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "`_REF` (`^[^\\s.][^\\s]*$`) refuses a leading dot and whitespace but allows a leading `-`. So `parse_range(\"--foo..HEAD\")` succeeds, and the base string goes on to `git rev-parse --verify --quiet --foo^{commit}` as an argument and into plan `meta.base_branch`. The refused list in the test does not include this case, so the test pins nothing about option-shaped ends.",
+        "fix": [
+          "Tighten `_REF` to `^[^\\s.\\-][^\\s]*$` in review_local_models.py and add `\"-x..HEAD\"` and `\"main..--y\"` to the refused list in `test_parse_range_needs_two_dots_and_both_ends`.",
+          "Or, if leading dashes stay legal, add a test showing a leading-dash end is refused at capture with rc 1, so the git argument path is pinned."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Phase 4 local failure path untested",
+        "file": "tests/scripts/test_phase4_local.py",
+        "files": [
+          "tests/scripts/test_phase4_local.py",
+          "plugins/harness/skills/pr-review/commands/phase4_branch_safety.py"
+        ],
+        "lines": "56-64",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module covers the happy path, a branch mismatch and the second run. It never covers the new `FAIL: cannot read the local run` exit (phase4_branch_safety.py:371), which fires for a local key with no captured run or no plan.json, or for an invalid key such as `local-Upper`. That exit is the gatekeeper's answer when the plan is missing, and nothing checks that it stays rc 1 without calling gh.",
+        "fix": [
+          "Add a test that builds the project with `make_project` but skips the run folder, calls `phase4.main([\"phase4_branch_safety.py\", _KEY])` and asserts rc == 1, `\"cannot read the local run\" in err` and `calls == []` from `_no_gh`. Optionally parametrize it with `local-Upper`."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "New capture refusal branches have no test",
+        "file": "tests/scripts/test_pr_review_local.py",
+        "files": [
+          "tests/scripts/test_pr_review_local.py",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "136-140",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`pr_metadata` refuses `capture --pr local-<label>` without `--range`, and refuses a capture with neither `--pr` nor `--range` (pr_review.py:839). `plan_pointer` refuses a `--plan` path that does not exist (pr_review.py:850). Only the numeric-key-with-range refusal is tested. The first guard is what stops a local key from reaching `gh pr view`.",
+        "fix": [
+          "Add a parametrized test over argv `[\"capture\", \"--pr\", \"local-x\", \"--no-fetch\", \"--roast\", \"no\"]`, `[\"capture\", \"--no-fetch\", \"--roast\", \"no\"]` and `_capture(..., \"--plan\", \"docs/missing.json\")`. Assert rc == 1, the matching stderr text and `gh_calls == []`."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "B3 'every subcommand accepts a local key' is proven only for capture, record, merge, build and fold",
+        "file": "tests/scripts/test_pr_review_local.py",
+        "files": [
+          "tests/scripts/test_pr_review_local.py",
+          "plugins/harness/scripts/pr_review.py",
+          "docs/plans/strap/review-local/SkillSpec.json"
+        ],
+        "lines": "161-169",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "The PR changed fixer_brief (pr_review.py, `record_fixes_draft({key_literal(ctx.pr)}, ...)`) and wave_context (parse_key(plan['pr'])). No test drives waves, bubble, bubbles, closeout or block with a local key. A regression in the fixer brief, such as emitting the key unquoted, would break Phase 5 for every local run with no failing test. SkillSpec B3 (:100) claims every subcommand.",
+        "fix": [
+          "Add a test to tests/scripts/test_pr_review_local.py that runs build with one minor finding, then `waves --pr local-...`, and asserts the fixer brief contains `record_fixes_draft(\"local-1110-bubbles\"`; optionally extend it through closeout."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Skill-contract round-trip refusal is decided by the prefix, not the label rule",
+        "file": "tests/skills/test_review_local_skill_contract.py",
+        "lines": "1-5,54-58",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`test_models_round_trip_a_local_key` expects `parse_key(key.upper())` to raise. Upper-casing turns `local-` into `LOCAL-`, so `is_local_key` fails on the `startswith` check and the label pattern is never consulted. The test passes even if the lower-case label rule is removed. The module docstring promises coverage of 'the key and range models', but no range model is exercised here, and the key cases repeat tests/lib/test_review_local_models.py.",
+        "fix": [
+          "Refuse `review_local_models.LOCAL_PREFIX + label.upper()` instead of `key.upper()`, so the label rule decides.",
+          "Or delete the test as a duplicate of `test_parse_key_refuses_an_unsafe_key` and drop 'and range' from the module docstring."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Review-folder naming docs still say digit prefixes only, after the predicate changed",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/skills/pr-review/operating_rules.md",
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/schemas/PR_REVIEW.schema.json",
+          "plugins/harness/lib/harness_lib/validation/artifact_names.py"
+        ],
+        "lines": "26,225",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "artifact_names.py:15 changed REVIEW_ARTIFACT_PATTERN to `^(\\d{4}|LOCAL_<label>)_`, and build now writes `LOCAL_<label>_<slug>.json` at the top of the reviews folder. Several docs were not updated to match. (1) schemas/README.md:225 still calls the canonical predicate 'regex `^\\d{4}_`' and asks for a predicate change to be documented there. (2) schemas/README.md:26 says PR_REVIEW.schema.json applies to `{NNNN}_{Title}.json` only. (3) pr-review/operating_rules.md:56-58 says only true PR reviews live at the top of the folder as `NNNN_*.json`, with non-digit prefixes reserved for audits and notes. review-local SKILL.md:39 makes that file REQUIRED reading. (4) HARNESS_RULES.md:72 says every review writes `{PR}_{Title}.json`. (5) PR_REVIEW.schema.json:39 describes `pr` as 'GitHub PR number', but a local review stores `local-<label>` there.",
+        "fix": [
+          "Update schemas/README.md:26 and :225 to name the new regex and the `LOCAL_<label>_<slug>.json` form; extend operating_rules.md:56-58 to say local reviews (`LOCAL_<label>_*.json`, review-local) also live at the top and are validated; amend HARNESS_RULES.md:72 likewise; change the schema `pr` description to 'GitHub PR number, or a local-<label> key for a review-local run'."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Every capture --range test passes --no-fetch; the production fetch skip for LOCAL is untested",
+        "file": "tests/scripts/test_pr_review_local.py",
+        "files": [
+          "tests/scripts/test_pr_review_local.py",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/skills/review-local/SKILL.md"
+        ],
+        "lines": "89-90",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The `_capture` helper always passes `--no-fetch`, so every test in the file sidesteps the fetch decision. The review-local SKILL.md runs `capture --range <BASE..HEAD> --roast roll` without `--no-fetch`, and in that case only the `data[\"state\"] != LOCAL_STATE` guard at pr_review.py:860 keeps `capture_pr` from running `git fetch origin <base> pull/local-<label>/head`, which fails in a local repo. If someone drops that guard, the shipped command breaks and every test here still passes.",
+        "fix": [
+          "Add a test that runs `capture --range main..HEAD --roast no` without `--no-fetch` in the `repo` fixture. `make_project` creates no `origin` remote, so any fetch attempt fails. Assert rc == 0 and `gh_calls == []`.",
+          "Or add a `fetch: bool = False` parameter to `_capture` and use `fetch=True` in at least one test, so the default command shape the skill uses is covered."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M1",
+      "classification": "architectural_ambiguity",
+      "reason": "Frozen spec blocks restating B1; either raise LABEL_MAX to 48 so code meets B1, or reopen the spec to say 41 (key 47). Developer picks the bound."
+    },
+    {
+      "id": "M4",
+      "classification": "out_of_scope",
+      "reason": "Developer chose a Python-only local key; mirroring it in the pr-review-watch and bubble-stamp TS mods is follow-up mod work. M11 fixes the SKILL wording here."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 174 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":7,\"first_sha\":\"e5522fcd8893f7693b2c4c007fcc6fcddc9019f6\",\"headRefName\":\"1110-review-local\",\"headRefOid\":\"c542e64fd4f0c4448b58af86e9717971aecd8da9\",\"last_sha\":\"c542e64fd4f0c4448b58af86e9717971aecd8da9\",\"mergeCommit\":null,\"number\":174,\"state\":\"OPEN\",\"title\":\"1110 review local\",\"url\":\"https://github.com/t968rs/operator-straps/pull/174\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1110-review-local",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1110-review-local",
+        "head_ref_name": "1110-review-local",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "e5522fcd8893f7693b2c4c007fcc6fcddc9019f6",
+        "head_sha": "c542e64fd4f0c4448b58af86e9717971aecd8da9",
+        "base_ancestor_command": "git merge-base --is-ancestor e5522fcd8893f7693b2c4c007fcc6fcddc9019f6 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor c542e64fd4f0c4448b58af86e9717971aecd8da9 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - pr_review.py module docstring line 3 names <KEY> (PR number or local-<label>); Usage block gains the capture --range line with --pr local-<label>, --title and --plan, adds --plan to the capture PR line, and states that --pr takes N or local-<label>. review_models and phase4 Usage/error text are in the other part.; review_models module docstring run-directory form now reads <NNNN or local-<label>>; run_dir error names 'local run <key>' for a local key and keeps 'PR <N>' for a number; phase4 Usage now shows <PR_NUMBER | local-<label>>, --second-run text names <run key>, the too-many-positionals error names the run key (PR number or local-<label>), and the sentinel docstring and re-run line say run key. The --range/--plan Usage in pr_review.py belongs to the other part."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - capture_summary binds label = target_label(plan['pr']) # type: ignore[arg-type] on its own line and uses {label} in the f-string; the status line is now under 110 characters."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - run_key catches ValueError from parse_key and raises argparse.ArgumentTypeError(str(exc)) from exc, so argparse prints the label rules instead of the generic invalid run_key message."
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - pr_metadata raises CaptureError when --allow-closed is combined with --range (pr_review.py:841). The review-local SKILL.md flag list (--title) is in the other part.; review-local SKILL.md: --title <T> added to the argument-hint, the capture flag list passed through unchanged, and the Step 1 capture command"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - already present: the refusals exist in plugins/harness/scripts/pr_review.py (pr_metadata capture without --range or with a local key at :847; plan_pointer missing --plan path at :858). The parametrized test is in the tests part.; added parametrized test over capture without --range (local key and no key) asserting rc 1, the --range BASE..HEAD message and no gh call; added test for a missing --plan path asserting rc 1, the no-such-file message and no gh call"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - already present: the LOCAL_STATE fetch guard is at plugins/harness/scripts/pr_review.py:868 (data[\"state\"] != LOCAL_STATE in the capture_pr call). The no-fetch --range test is in the tests part.; review-local SKILL.md: cited for its capture --range command without --no-fetch; the fix is the fetch-path test in tests/scripts/test_pr_review_local.py owned by the other part, no doc edit needed; added test running capture --range main..HEAD --roast no without --no-fetch in the repo fixture, asserting rc 0 and gh_calls == [], covering the local fetch skip"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - review-local SKILL.md Phase 4 row now names all five checks (current branch, captured branch, clean tree, merge base and head ancestry, base recorded); Run key row notes the head-<sha7> fallback for a detached head"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - review-local SKILL.md Matrix rows row reworded: the pr-review-watch mod shows the run as PR #? and records no matrix rows; contract.ts and runs.ts: doc now matches their behavior, no code change"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - fold-in-review SKILL.md Locate the run: new bullet for a harness:review-local run key (folder <scratch>/local-<label>/, no gh lookup, fold --pr local-<label>, --from-gh-review refused) and the Phase line names the local run directory; review-local SKILL.md Related line names the local-<label> key for fold; fold-in-review README 'Before you start' gains a bullet: a harness:review-local run in the conversation supplies its local-<label> key (folder <scratch>/local-<label>/, no gh lookup), every fold --pr takes that key, --from-gh-review is refused"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - review_models imports LABEL_MAX, LABEL_PATTERN and LOCAL_PREFIX from review_local_models; RUN_ID is built from LOCAL_PREFIX and LABEL_PATTERN (anchors stripped) with the LABEL_MAX bound as a lookahead. phase4 drops its _LOCAL_PREFIX literal and imports LOCAL_PREFIX from review_local_models in main (startswith kept, so an invalid key still reaches the local-run FAIL exit).; artifact_names.REVIEW_ARTIFACT_PATTERN now built from review_local_models LABEL_PATTERN (anchors stripped) and REVIEW_PREFIX instead of re-spelled literals; the review_models.RUN_ID and phase4_branch_safety copies are the other part"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - phase4_branch_safety.py: usage line shows <PR_NUMBER | local-<label>>; --second-run text names .phase5_pending_<run key>; _write_phase5_sentinel docstring says line 1 is the run key (PR number or local-<label>) and the re-run line says <run key>; _parse_argv error says expected exactly one run key (PR number or local-<label>)."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - No edit in this part. The FAIL 'cannot read the local run' exit at plugins/harness/skills/pr-review/commands/phase4_branch_safety.py:371 is unchanged; the missing test belongs to tests/scripts/test_phase4_local.py, owned by the other part's fixer.; added test_local_key_without_a_run_fails_without_gh, parametrized over the local key with no run folder and local-Upper: rc 1, 'cannot read the local run' in stderr, no gh call"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - local_check command string now names the commands local_metadata runs: rev-parse --verify --quiet for head and base ^{commit}, merge-base on the SHAs, git branch --show-current, git show-ref --verify refs/heads/<head>, rev-list --count"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - artifact_names.py part needs no edit: REVIEW_ARTIFACT_PATTERN at :15 is the changed predicate and the docstring at :21-25 already names LOCAL_<label>; the doc updates belong to the other part; schemas/README.md Applies-to and predicate line name ^(\\d{4}|LOCAL_<label>)_ and LOCAL_<label>_<slug>.json; operating_rules.md folder glob lists LOCAL_<label>_*.json as validated top-level reviews; HARNESS_RULES.md review line names the local file form; PR_REVIEW.schema.json properties.pr description now reads 'GitHub PR number, or a local-<label> key for a review-local run' (was 'GitHub PR number'); JSON parses. Other M17 files are owned by the other part's fixer."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - _REF tightened to ^[^\\s.\\-][^\\s]*$ so a leading-dash range end never parses (LocalRange docstring says why); test_parse_range_needs_two_dots_and_both_ends refuses -x..HEAD and main..--y"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - round-trip refusal now parses LOCAL_PREFIX + label.upper() so the label rule decides; module docstring drops 'and range'"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - test_pr_review_local.py: new test_waves_and_closeout_take_a_local_key builds with one minor finding, runs waves --pr local-1110-bubbles, asserts the fixer brief carries record_fixes_draft(\"local-1110-bubbles\", \"w1_fix_1\" and closes out M1 with no gh call (_merged now takes per-slot findings); pr_review.py: cited fixer_brief/wave_context, no edit needed for M15; SkillSpec.json: B3 claim now backed by the test, spec left frozen"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - review_local_api.py: local_metadata refuses a range whose head resolves to no local branch (new _require_branch raises CaptureError telling the developer to check out the branch and end the range at HEAD or the branch name), so Phase 4 never compares against headRefName HEAD; SKILL.md: run-key row drops the head-<sha7> detached default and Step 1 documents the refusal; tests cover a detached checkout and a HEAD~1 end on a branch; phase4_branch_safety.py: no edit, every local capture now records a real branch so _check_branch_match is sound"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - SKILL.md Rules: a local run never takes --waive-head-ancestry, a head-ancestry STOP means the captured head was rewritten, recapture (matches Stop Recovery); pr_review.py: build refuses --waive-head-ancestry on a local key and apply_phase4 drops the waiver hint (and waiver) for local keys; test covers the refusal"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "c542e64 (working-tree snapshot; developer commits) - LABEL_MAX raised 41 to 48 in review_local_models.py, matching the frozen B1 statement (developer chose one bound) (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "ae51a36 (working-tree snapshot; developer commits) - pr-review-watch and bubble-stamp read the local-<label> run id, run folder, LOCAL_ review file and sentinel; matrix rows stay PR-only; tests/mods/test_local_run_key_mirror.py pins the TS side to harness_lib (outside fixer waves)"
+    }
+  ]
+}

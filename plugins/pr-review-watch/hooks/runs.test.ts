@@ -161,6 +161,18 @@ describe('bandText', () => {
     expect(at('fix-plan')).toBe('PR #1526 · fix planning · Phase 5 pending')
     expect(at('done')).toBe('PR #1526 · Phase 5 pending')
   })
+
+  test('a review-local run is named by its key; its sentinel matches the key', async () => {
+    const LOCAL = 'local-fix-band_20261102T080910Z'
+    const d = identify('harness:pr-reviewer', `AGENT_ID: overall\nAGENT_ROLE: reviewer\nRUN_ID: ${LOCAL}\nPR: local-fix-band`, BASE)!
+    const run = applyDispatch({}, d, newAgent(d, {}), 100)[LOCAL]!
+    expect(run.pr).toBe('local-fix-band')
+    expect(bandText({ run, phase5: [], missing: [] })).toBe('local review local-fix-band · reviewers 0/1')
+    expect(bandText({ run: { ...run, phase: 'fix' }, phase5: ['local-fix-band', '1400'], missing: [] })).toBe(
+      'local review local-fix-band · fixers 0/0 · Phase 5 pending | PR #1400 · Phase 5 pending',
+    )
+    expect(bandText({ run: null, phase5: ['local-x'], missing: [] })).toBe('local review local-x · Phase 5 pending')
+  })
 })
 
 describe('pr-review run directory', () => {

@@ -59,7 +59,7 @@ keyword checks nothing. The band still lists every hot sentinel. The text comes 
 |----------|---------------|------------|
 | pr-team orchestrator / fixer modes | `MODE=PLAN\|CONSOLIDATE\|CLOSEOUT`, `PR_NUMBER=`, `RUN_ID=`, `RUNTIME_DIR=` | `orchestrator_plan`, `orchestrator_consolidate`, `fixer_plan`, `closer` |
 | pr-team reviewers and fixers | `AGENT_ID:`, `AGENT_ROLE:`, `RUN_ID:` (`canonical_prompt_template.md`) | the plan's agent id |
-| pr-review reviewers and fixers | the same three lines plus `PR:` (rows printed by `pr_review.py capture` / `waves`) | the `AGENT_ID` |
+| pr-review reviewers and fixers | the same three lines plus `PR:` (rows printed by `pr_review.py capture` / `waves`); `PR:` holds the run key, a PR number or `local-<label>` | the `AGENT_ID` |
 | any other defined agent | none | a run of its own, `standalone_<UTC stamp>_<seq>`, agent id the type's name without its plugin prefix (`harness:messenger` is `messenger`) |
 
 An `Agent` call without `RUN_ID` is ignored unless its `subagent_type` is a defined agent (`DEFINED_AGENTS` in
@@ -70,6 +70,18 @@ feeds only the usage log: it has no PR, no phase, no band entry, no matrix row a
 state entry is dropped as soon as its usage row is attempted. A pr-team slot without `OUTPUT_FILE` is placed in
 `<state_dir>/pr-team/_runtime/<RUN_ID>`. Return blocks are parsed per the pr-team skill's
 `return_contract.md`: the last column-1 `---` fenced block that has a `SIGNAL:` line.
+
+### Review-local runs
+
+A run of the harness `review-local` skill is keyed by `local-<label>` instead of a PR number (label:
+lower-case letters, digits and single hyphens, at most 48 characters; `hooks/runKey.ts` mirrors
+`harness_lib.review_local_models`, pinned by `tests/mods/test_local_run_key_mirror.py`). Its `RUN_ID` is
+`local-<label>_<UTC stamp>`, its run folder `<artifacts.scratch>/local-<label>/`, its review JSON
+`<artifacts.reviews>/LOCAL_<label>_*.json` and its sentinel `.phase5_pending_local-<label>`. The band and the
+Stop text name it `local review local-<label>` where a PR run reads `PR #N` (`local review local-x · reviewers
+1/3`, `local review local-x · Phase 5 pending`). Phase, bubbled set, Phase 5 state, usage rows and the Stop
+guard work as for a PR run; a usage row logs `pr: null` (its `run_id` carries the key). **No matrix rows** are
+written and reviewer results carry no ownership note: the matrix schema keys rows by PR number.
 
 Usage comes from the `Agent` result when it ran in the foreground (`totalTokens`, `totalToolUseCount`,
 `totalDurationMs`, `resolvedModel`). For a background launch, the mod counts the subagent loop's tool calls
@@ -91,8 +103,9 @@ and takes tokens (input + output + cache read + cache write), duration and the r
 | `ui.render` `AbovePrompt` | Draws the band above whatever the hooks beneath drew (band-line's banner stays on screen); yields to a survey and passes when there is nothing to show. |
 
 A refresh reads the hot sentinels, the active run's review JSON (the newest
-`<artifacts.reviews>/<NNNN>_*.json` for its PR, and no older than the run), and `bubble_ups.json` in the
-run's runtime dir. For a pr-review run it also reads `<artifacts.scratch>/<NNNN>/current`; only when that
+`<artifacts.reviews>/<NNNN>_*.json` for its PR, `LOCAL_<label>_*.json` for a local key, and no older than
+the run), and `bubble_ups.json` in the run's runtime dir. For a pr-review run it also reads
+`<artifacts.scratch>/<NNNN>/current` (`local-<label>/current` for a local key); only when that
 names the run's `RUN_ID` does it read `<RUN_ID>/plan.json` (`phase`: a missing or unknown value is ignored)
 and every `<RUN_ID>/fixes/*.json` (`bubbled[].id`). The latest `post_review_resolutions[]` status per id
 decides whether it is closed.
@@ -161,7 +174,7 @@ well before the matrix does; past it every row fails as unreadable. Move or arch
 | `active` | The pr-review or pr-team run dispatched most recently; a standalone dispatch never becomes active. |
 | `loops` | Background subagent loop id to `[runId, agentId]`. |
 | `failures` | The last 20 rows that failed validation or could not be written. |
-| `phase5` | PR ids of hot Phase 5 sentinels. |
+| `phase5` | Run keys (PR numbers or `local-<label>`) of hot Phase 5 sentinels. |
 | `missing` | Tracked bubbled ids the active run's review JSON does not disposition. |
 
 ## Known limitations

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { closedResolutions, latestResolutions, reviewFileFor } from './review'
+import { closedResolutions, isLocalKey, LABEL_MAX, latestResolutions, reviewFileFor, reviewPrefix } from './review'
 import type { Listed } from './review'
 
 const review = (resolutions: unknown): string => JSON.stringify({
@@ -98,5 +98,31 @@ describe('reviewFileFor (the pr-review-watch rule)', () => {
     ]
     expect(reviewFileFor(42, entries)).toBeUndefined()
     expect(reviewFileFor(42, [])).toBeUndefined()
+  })
+
+  test('a local key reads the newest LOCAL_<label>_*.json; labels never cross', async () => {
+    const entries = [
+      file('LOCAL_fix_Old.json', 1), file('LOCAL_fix_New.json', 9), file('LOCAL_fix-band_X.json', 20), file('0042_Y.json', 30),
+    ]
+    expect(reviewFileFor('local-fix', entries)?.name).toBe('LOCAL_fix_New.json')
+    expect(reviewFileFor('local-fix-band', entries)?.name).toBe('LOCAL_fix-band_X.json')
+    expect(reviewFileFor('local-other', entries)).toBeUndefined()
+  })
+
+  test('a string that is not a valid local key selects nothing', async () => {
+    const entries = [file('LOCAL_Fix_X.json', 1), file('0042_Y.json', 2)]
+    for (const bad of ['local-Fix', 'local-', 'fix', '42']) expect(reviewFileFor(bad, entries)).toBeUndefined()
+  })
+})
+
+describe('isLocalKey and reviewPrefix', () => {
+  test('the review-local key rule and the review file prefix it maps to', async () => {
+    expect(isLocalKey('local-a-1')).toBe(true)
+    expect(isLocalKey(`local-${'a'.repeat(LABEL_MAX)}`)).toBe(true)
+    expect(isLocalKey(`local-${'a'.repeat(LABEL_MAX + 1)}`)).toBe(false)
+    expect(isLocalKey('local-a--1')).toBe(false)
+    expect(reviewPrefix(7)).toBe('0007_')
+    expect(reviewPrefix('local-a-1')).toBe('LOCAL_a-1_')
+    expect(reviewPrefix('nope')).toBeUndefined()
   })
 })

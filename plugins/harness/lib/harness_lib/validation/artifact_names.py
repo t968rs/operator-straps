@@ -9,16 +9,20 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
+from harness_lib.review_local_models import LABEL_PATTERN, REVIEW_PREFIX
+
 if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
 
-REVIEW_ARTIFACT_PATTERN = re.compile(r"^\d{4}_")
+_LABEL_BODY = LABEL_PATTERN.strip("^$")
+REVIEW_ARTIFACT_PATTERN = re.compile(rf"^(\d{{4}}|{REVIEW_PREFIX}{_LABEL_BODY})_")
 SENTINEL_PREFIX = ".phase5_pending_"
 SENTINEL_GLOB = f"{SENTINEL_PREFIX}*"
 
 
 def is_review_artifact_name(name: str) -> bool:
-    """True iff ``name`` starts with a 4-digit zero-padded PR number and an underscore.
+    """True iff ``name`` starts with a 4-digit zero-padded PR number, or ``LOCAL_<label>`` (a local review
+    keyed ``local-<label>``), and an underscore.
 
     Example: ``0916_SKILL_pr-review_Phase_4_Mechanics.json``. Auxiliary files in the reviews
     directory (``Catalog.json``, ``BUG_*.json``) do not qualify and are never schema-validated.

@@ -36,7 +36,7 @@
         "integer",
         "string"
       ],
-      "description": "GitHub PR number"
+      "description": "GitHub PR number, or a local-<label> key for a review-local run"
     },
     "pr_title": {
       "type": "string",

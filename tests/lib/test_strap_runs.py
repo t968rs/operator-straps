@@ -29,11 +29,11 @@ _FACTS_REPLY = "intro line\nDecision: A\n"
 
 
 def _expected_hash(root: Path, paths: Sequence[str]) -> str:
-    """The contract's content hash, computed independently."""
+    """The contract's content hash, computed independently (CRLF hashes as LF)."""
     digest = hashlib.sha256()
     for rel in sorted(paths):
         target = root / rel
-        body = target.read_bytes() if target.is_file() else b"<missing>"
+        body = target.read_bytes().replace(b"\r\n", b"\n") if target.is_file() else b"<missing>"
         digest.update(rel.encode("utf-8") + b"\0" + body + b"\0")
     return digest.hexdigest()
 
@@ -95,6 +95,18 @@ def test_content_hash_changes_with_one_byte(make_project) -> None:
     before = strap_runs.content_hash(root, paths)
     (root / "lib" / "demo.py").write_bytes(b"X = 2\n")
     assert strap_runs.content_hash(root, paths) != before
+
+
+def test_content_hash_ignores_crlf_line_endings(make_project) -> None:
+    root = make_project(files=_FILES)
+    paths = ["skills/demo/SKILL.md", "lib/demo.py"]
+    bodies = {rel: (root / rel).read_bytes().replace(b"\r\n", b"\n") for rel in paths}
+    for rel, body in bodies.items():
+        (root / rel).write_bytes(body)
+    lf = strap_runs.content_hash(root, paths)
+    for rel, body in bodies.items():
+        (root / rel).write_bytes(body.replace(b"\n", b"\r\n"))
+    assert strap_runs.content_hash(root, paths) == lf
 
 
 def test_content_hash_missing_file_uses_marker(make_project) -> None:
