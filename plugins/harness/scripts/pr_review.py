@@ -1,6 +1,7 @@
 """pr-review driver: capture a PR into reviewer briefs, merge findings, build the review, plan fix waves.
 
-Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<NNNN>/current`` names.
+Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KEY>/current`` names, where
+``KEY`` is the PR number ``NNNN`` or the local key ``local-<label>`` that ``--pr`` takes.
 
 ``capture --pr N [--no-fetch] [--allow-closed] [--roast yes|no|roll]``
     Phase 1 and the Phase 2 dispatch plan. One ``gh pr view`` read (raw stdout kept as ``phase1_meta.txt``
@@ -10,7 +11,14 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<NN
     head, and the guard suite runs in the working tree when it applies (a red guard stops; an applicable
     guard run with the checkout off the PR head stops before running). Writes ``plan.json``, one brief and
     one budgeted diff per reviewer slot, and prints one dispatch row per slot: ``agent=harness:pr-reviewer
-    model=<m>`` then the prompt (four header lines and ``Brief: <abs path>``).
+    model=<m>`` then the prompt (four header lines and ``Brief: <abs path>``). ``--plan PATH`` adds one
+    ``Plan: <path>`` line to every brief.
+``capture --range BASE..HEAD [--pr local-<label>] [--title T] [--plan PATH] [--roast ...]``
+    The same for a local commit range with no PR (the review-local skill): git, not gh, supplies the
+    metadata (``review_local_api.local_metadata``), the state is ``LOCAL`` and the run key is
+    ``local-<label>`` (default: the head branch's label). Every later subcommand takes that key as
+    ``--pr``; runs live under ``<artifacts.scratch>/<key>/`` and the review file is
+    ``LOCAL_<label>_<slug>.json``. ``fold --from-gh-review`` is refused on a local run.
 ``block --pr N --agent ID``
     Reprint the return block of a recorded reviewer or fixer report.
 ``fold --pr N --source ID --kind external|tests|developer|adhoc (--from-gh-review URL | --findings FILE|-)
@@ -95,10 +103,14 @@ brief pointers from ``review.domain_pointers`` and the lens catalog is the plugi
 ``review.lenses``. Plugin assets (the Phase 4 script, the schema hook, the catalog, the library) resolve from
 the plugin root; nothing is written under it.
 
+``--pr`` takes a PR number ``N`` or a local key ``local-<label>`` (a ``capture --range`` run).
+
 Usage (Bash tool; ``$PR_REVIEW`` stands for
 ``sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py"``)::
 
-    $PR_REVIEW [--repo DIR] capture --pr N [--no-fetch] [--allow-closed] [--roast yes|no|roll]
+    $PR_REVIEW [--repo DIR] capture --pr N [--no-fetch] [--allow-closed] [--plan PATH] [--roast yes|no|roll]
+    $PR_REVIEW [--repo DIR] capture --range BASE..HEAD [--pr local-<label>] [--title T] [--plan PATH]
+        [--roast yes|no|roll]
     $PR_REVIEW block --pr N --agent ID
     $PR_REVIEW fold --pr N --source ID --kind K (--from-gh-review URL | --findings FILE|-) [--severity S]
     $PR_REVIEW merge --pr N [--force]
@@ -173,6 +185,16 @@ from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, file_patch
 from harness_lib.pr_summary import PrFacts, PrFile  # noqa: E402
 from harness_lib.project import plugin_root, project_root  # noqa: E402
 from harness_lib.review_bubbles import closed_ids, pending_bubbles  # noqa: E402
+from harness_lib import review_local_api as rla  # noqa: E402
+from harness_lib.review_local_models import (  # noqa: E402
+    LOCAL_STATE,
+    RunKey,
+    is_local_key,
+    parse_key,
+    parse_range,
+    review_file_glob,
+    review_file_name,
+)
 
 REVIEWER_AGENT = "harness:pr-reviewer"
 FIXER_AGENT = "harness:pr-fixer"
@@ -275,7 +297,7 @@ def run_guards(repo: Path, suite: Sequence[str]) -> Tuple[int, str]:
     return result.returncode, result.stdout + result.stderr
 
 
-def run_phase4(repo: Path, pr: int) -> Tuple[int, str, str]:
+def run_phase4(repo: Path, pr: RunKey) -> Tuple[int, str, str]:
     """Run the Phase 4 branch-safety script (first run) in ``repo``; return exit code, stdout and stderr."""
     result = _proc([sys.executable, str(phase4_script()), str(pr)], repo)
     return result.returncode, result.stdout, result.stderr
@@ -479,9 +501,19 @@ def status_paths(repo: Path) -> Set[str]:
     return paths
 
 
-def run_id_for(pr: int) -> str:
-    """``pr<N>_<UTC yyyymmddTHHMMSSZ>``."""
-    return f"pr{pr}_{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}"
+def run_id_for(pr: RunKey) -> str:
+    """``pr<N>_<UTC yyyymmddTHHMMSSZ>``, or ``<local key>_<UTC yyyymmddTHHMMSSZ>``."""
+    return rm.run_id_for(pr, f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}")
+
+
+def key_literal(pr: RunKey) -> str:
+    """The run key as a Python literal for a brief's record heredoc: ``1234`` or ``"local-x"``."""
+    return json.dumps(pr)
+
+
+def target_label(pr: RunKey) -> str:
+    """``PR #<N>``, or ``local review <key>``."""
+    return f"local review {pr}" if is_local_key(pr) else f"PR #{pr}"
 
 
 # --- capture: plan ------------------------------------------------------------------------------------------
@@ -549,12 +581,13 @@ class BriefContext:
 
     repo: str
     lib: str
-    pr: int
+    pr: RunKey
     run_id: str
     facts: PrFacts
     at_head: bool
     catalog: Mapping[str, object]
     skills: Tuple[str, ...]
+    plan: Optional[str] = None
 
     def file(self, path: str) -> Optional[PrFile]:
         """The PR file at ``path``, if any."""
@@ -569,12 +602,12 @@ def load_catalog() -> Dict[str, object]:
         raise CaptureError([f"lens catalog: {exc}"]) from exc
 
 
-def header_lines(agent: str, role: str, run_id: str, pr: int) -> List[str]:
+def header_lines(agent: str, role: str, run_id: str, pr: RunKey) -> List[str]:
     """The four column-1 run header lines."""
     return [f"AGENT_ID: {agent}", f"AGENT_ROLE: {role}", f"RUN_ID: {run_id}", f"PR: {pr}"]
 
 
-def dispatch_row(agent_type: str, model: str, agent: str, role: str, run_id: str, pr: int,
+def dispatch_row(agent_type: str, model: str, agent: str, role: str, run_id: str, pr: RunKey,
                  brief: Path) -> str:
     """``agent=<type> model=<m>`` then the prompt: four header lines and ``Brief: <abs path>``."""
     lines = [f"agent={agent_type} model={model}", *header_lines(agent, role, run_id, pr),
@@ -616,7 +649,7 @@ def _role(slot: rp.Slot) -> str:
 def brief_header(ctx: BriefContext, slot: rp.Slot) -> str:
     """Title, run header values, role and the PR refs."""
     f = ctx.facts
-    lines = [f"# Reviewer brief: {slot.id} - PR #{ctx.pr}", ""]
+    lines = [f"# Reviewer brief: {slot.id} - {target_label(ctx.pr)}", ""]
     lines += [f"- {line}" for line in header_lines(slot.id, "reviewer", ctx.run_id, ctx.pr)]
     lines += ["", f"Role: {_role(slot)}, model `{slot.model}`.",
               f"PR \"{f.pr_title}\" (`{f.head}` -> `{f.base}`); merge base `{f.merge_base}`, "
@@ -701,11 +734,13 @@ def domain_pointers(paths: Sequence[str]) -> List[str]:
     return [d.pointer for d in active().review.domain_pointers if any(p.startswith(d.prefix) for p in paths)]
 
 
-def rules_section(slot: rp.Slot) -> str:
-    """Ownership, severity and finding-shape rules, plus the conditional clauses."""
+def rules_section(slot: rp.Slot, plan: Optional[str] = None) -> str:
+    """Ownership, severity and finding-shape rules, plus the conditional clauses and the plan pointer."""
     rules = [ownership_clause(), *SEVERITY_RULES]
     rules += [TEST_DESIGN_CLAUSE] if _tests_in_scope(slot.paths) else []
     rules += domain_pointers(slot.paths)
+    rules += [f"Plan: {plan} (the plan or spec this change implements; check the change against it)"] \
+        if plan else []
     rules += [ROAST_VOICE] if slot.roast else []
     return "\n".join(["## Rules", ""] + [f"- {rule}" for rule in rules])
 
@@ -741,11 +776,12 @@ def record_section(ctx: BriefContext, slot: rp.Slot) -> str:
     example = ('{"severity": "important", "name": "...", "summary": "...", "fix": ["..."],'
                ' "file": "src/pkg/x.py", "lines": "12-18", "also": [], "fix_kind": "mechanical"},',)
     lists = (("FINDINGS", example), ("STRENGTHS", ('"one line per strength",',)))
-    add = f'record_add({ctx.pr}, "{slot.id}", FINDINGS, STRENGTHS, {tail}'
+    add = f'record_add({key_literal(ctx.pr)}, "{slot.id}", FINDINGS, STRENGTHS, {tail}'
     return "\n".join(["## Record (once, after the analysis)", "", *_draft_json(ctx, slot.id, lists), "",
                       "Then run this once from any directory; a rerun replaces the report. An error names "
                       "the failing finding index.", "", "```bash",
-                      record_heredoc(ctx, f'record_draft({ctx.pr}, "{slot.id}", {tail}'), "```", "",
+                      record_heredoc(ctx, f'record_draft({key_literal(ctx.pr)}, "{slot.id}", {tail}'),
+                      "```", "",
                       "To record in pieces instead (no Write, or no draft), run this heredoc with a few "
                       "findings filled into `FINDINGS` and `STRENGTHS` per call (the commented lines show "
                       "each item's shape). Each call appends (an identical item is skipped); `record_draft` "
@@ -757,7 +793,7 @@ def record_section(ctx: BriefContext, slot: rp.Slot) -> str:
 def reviewer_brief(ctx: BriefContext, slot: rp.Slot, diff_path: Path, partial: Sequence[str]) -> str:
     """The full reviewer brief for ``slot``."""
     parts = [brief_header(ctx, slot), scope_section(ctx, slot, diff_path, partial), lens_section(ctx, slot),
-             rules_section(slot), record_section(ctx, slot)]
+             rules_section(slot, ctx.plan), record_section(ctx, slot)]
     return "\n\n".join(parts) + "\n"
 
 
@@ -780,7 +816,8 @@ def write_briefs(repo: Path, run: Path, ctx: BriefContext, slots: Sequence[rp.Sl
 def capture_summary(plan: Mapping[str, object], scope: Scope) -> List[str]:
     """Status line and notes printed before the dispatch rows."""
     guards = plan["dispatch_time"]["structural_guards_check"]["result"]  # type: ignore[index]
-    lines = [f"capture [done] | PR #{plan['pr']} | run {plan['run_id']} | slots: "
+    label = target_label(plan['pr'])  # type: ignore[arg-type]
+    lines = [f"capture [done] | {label} | run {plan['run_id']} | slots: "
              f"{', '.join(s.id for s in scope.slots)} | roast: {'yes' if plan['roast'] else 'no'} | "
              f"guards: {guards}"]
     lines += [f"note: {n}" for n in scope.notes]
@@ -797,26 +834,54 @@ def base_note(base: str) -> List[str]:
     return [f"note: PR base {base} is not the configured base branch {configured}"]
 
 
+def pr_metadata(repo: Path, args: argparse.Namespace) -> Tuple[Dict[str, object], str, Dict[str, str]]:
+    """(metadata object, raw stdout, ``pr_metadata_check``) of the capture target: ``gh pr view`` for a
+    PR number, git for a ``--range`` local review (no gh call)."""
+    if args.range:
+        if args.allow_closed:
+            raise CaptureError(["--allow-closed applies to a PR number, not to a --range local review"])
+        rng = parse_range(args.range)
+        data, raw = rla.local_metadata(repo, args.pr, rng, args.title)
+        return data, raw, rla.local_check(rng, raw)
+    if args.pr is None or is_local_key(args.pr):
+        raise CaptureError(["capture takes --pr <PR number>, or --range BASE..HEAD for a local review "
+                            "(with an optional --pr local-<label>)"])
+    data, raw = read_metadata(repo, args.pr)
+    return data, raw, metadata_check(args.pr, data, raw, args.allow_closed)
+
+
+def plan_pointer(repo: Path, value: Optional[str]) -> Optional[str]:
+    """The ``--plan`` path as given, once it names an existing file (repo-relative or absolute)."""
+    if value is None:
+        return None
+    if not (repo / value).is_file():
+        raise CaptureError([f"--plan {value}: no such file under {repo.as_posix()}"])
+    return value
+
+
 def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
     """Run ``capture``: Phase 1 checks, the slot plan, briefs, diffs and the dispatch rows."""
-    data, raw = read_metadata(repo, args.pr)
-    check = metadata_check(args.pr, data, raw, args.allow_closed)
-    facts = capture_pr(repo, pr_meta(data), not args.no_fetch)
+    pointer = plan_pointer(repo, args.plan)
+    data, raw, check = pr_metadata(repo, args)
+    key = parse_key(data["number"])  # type: ignore[arg-type]
+    meta = rla.local_meta(data) if data["state"] == LOCAL_STATE else pr_meta(data)
+    facts = capture_pr(repo, meta, not args.no_fetch and data["state"] != LOCAL_STATE)
     roast = roast_choice(args.roast)
     catalog = load_catalog()
     scope = plan_scope(repo, facts, roast, catalog)
     at_head = tree_at_head(repo, facts.head_sha, scope.reviewable)
     guards = guards_check(repo, scope.guards, at_head)
     dispatch_time = {"pr_metadata_check": check, "structural_guards_check": guards}
-    run_id = run_id_for(args.pr)
-    run = rm.start_run(args.pr, run_id, repo)
+    run_id = run_id_for(key)
+    run = rm.start_run(key, run_id, repo)
     plan = plan_document(run_id, data, facts, scope, dispatch_time, at_head, roast)
+    plan["plan_pointer"] = pointer
     _write_text(run / "phase1_meta.txt", raw)
-    ctx = BriefContext(repo.as_posix(), _LIB.as_posix(), args.pr, run_id, facts, at_head, catalog,
-                       scope.skills)
+    ctx = BriefContext(repo.as_posix(), _LIB.as_posix(), key, run_id, facts, at_head, catalog,
+                       scope.skills, pointer)
     write_briefs(repo, run, ctx, scope.slots)
     _write_json(run / "plan.json", plan)
-    rows = [dispatch_row(REVIEWER_AGENT, s.model, s.id, "reviewer", run_id, args.pr,
+    rows = [dispatch_row(REVIEWER_AGENT, s.model, s.id, "reviewer", run_id, key,
                          run / "briefs" / f"{s.id}.md") for s in scope.slots]
     print("\n".join(capture_summary(plan, scope) + [row + "\n" for row in rows]))
     return 0
@@ -825,7 +890,7 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
 # --- run state: plan, reports, draft, review ----------------------------------------------------------------
 
 
-def load_plan(repo: Path, pr: int) -> Tuple[Path, Dict[str, object]]:
+def load_plan(repo: Path, pr: RunKey) -> Tuple[Path, Dict[str, object]]:
     """Current run directory and its ``plan.json``."""
     run = rm.run_dir(pr, repo)
     return run, _read_json(run / "plan.json", "rerun capture")
@@ -1190,6 +1255,9 @@ def _cmd_fold(repo: Path, args: argparse.Namespace) -> int:
     if built:
         require_phase4(built[1], "folding into the built review")
     fold_check(plan, args.source, built[1] if built else None)
+    if args.from_gh_review and is_local_key(args.pr):
+        raise CaptureError([f"{args.pr} is a local review with no PR: --from-gh-review needs one; convert "
+                            "the review to a --findings file"])
     source = fold_input(repo, args, plan_repo_slug(plan.get("url")))
     rm.record(args.pr, args.source, list(source.findings), list(source.strengths), repo=repo,
               run_id=str(plan["run_id"]))
@@ -1289,17 +1357,24 @@ def review_dir(repo: Path) -> Path:
 
 
 def review_target(repo: Path, plan: Mapping[str, object]) -> Path:
-    """``<artifacts.reviews>/<NNNN>_<slug>.json`` for the plan's PR."""
+    """``<artifacts.reviews>/<NNNN>_<slug>.json`` for the plan's PR, ``LOCAL_<label>_<slug>.json`` for a
+    local key."""
     meta = plan["meta"]
     slug = rmg.slugify_title(str(meta["pr_title"]))  # type: ignore[index]
-    return review_dir(repo) / f"{pr_number(plan['pr']):04d}_{slug}.json"
+    key = parse_key(plan["pr"])  # type: ignore[arg-type]
+    name = review_file_name(key, slug) if isinstance(key, str) else f"{key:04d}_{slug}.json"
+    return review_dir(repo) / name
 
 
-def straggler_check(repo: Path, pr: int, target: Path, replace: bool) -> None:
+def review_globs(pr: RunKey) -> Set[str]:
+    """The review file globs of one run key: padded and unpadded PR prefixes, or the local prefix."""
+    return {review_file_glob(pr)} if isinstance(pr, str) else {f"{pr:04d}_*.json", f"{pr}_*.json"}
+
+
+def straggler_check(repo: Path, pr: RunKey, target: Path, replace: bool) -> None:
     """Raise on other review files for ``pr`` (padded or unpadded prefix) or an unreplaced existing target."""
     folder = review_dir(repo)
-    found = sorted({p for n in {f"{pr:04d}_*.json", f"{pr}_*.json"} for p in folder.glob(n)}) \
-        if folder.is_dir() else []
+    found = sorted({p for n in review_globs(pr) for p in folder.glob(n)}) if folder.is_dir() else []
     problems = [f"straggler review file {_rel(repo, p)}: fold it in or remove it before build"
                 for p in found if p.resolve() != target.resolve()]
     if target.exists() and not replace:
@@ -1405,7 +1480,7 @@ def waiver_record(block: Mapping[str, object]) -> Dict[str, object]:
             "waived_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
 
 
-def apply_phase4(repo: Path, run: Path, pr: int, doc: Dict[str, object],
+def apply_phase4(repo: Path, run: Path, pr: RunKey, doc: Dict[str, object],
                  waive: bool = False) -> Tuple[Optional[str], Optional[Dict[str, object]]]:
     """Run Phase 4, keep its output, and insert ``pre_fix_time`` on success or a waived head desync.
 
@@ -1416,7 +1491,7 @@ def apply_phase4(repo: Path, run: Path, pr: int, doc: Dict[str, object],
     record = run / "phase4_first_run.json"
     _write_json(record, {"rc": rc, "stdout": out, "stderr": err})
     block = _json_object(out)
-    desync = head_desync_only(rc, block)
+    desync = head_desync_only(rc, block) and not is_local_key(pr)
     if block is not None and (rc == 0 or (desync and waive)):
         doc["verification_log"]["pre_fix_time"] = block  # type: ignore[index]
         return None, (waiver_record(block) if rc != 0 else None)
@@ -1439,14 +1514,18 @@ def hold_ready_verdict(doc: Dict[str, object], reason: str) -> None:
 
 
 def _counts(doc: Mapping[str, object]) -> str:
-    """``critical=C important=I minor=M``."""
+    """The tier counts, ``critical=<n> important=<n> minor=<n>``."""
     return " ".join(f"{t}={len(doc['issues'].get(t, []))}" for t in rmg.TIERS)  # type: ignore[union-attr]
 
 
 def _cmd_build(repo: Path, args: argparse.Namespace) -> int:
     """Run ``build``: review document, Phase 4 first run, validated write, hook."""
+    if args.waive_head_ancestry and is_local_key(args.pr):
+        raise CaptureError(["--waive-head-ancestry applies to a remote PR head; on a local run a "
+                            "head-ancestry STOP means the captured head was rewritten: "
+                            "rerun capture --range"])
     run, plan = load_plan(repo, args.pr)
-    if plan["state"] != "OPEN":
+    if plan["state"] not in ("OPEN", LOCAL_STATE):
         raise CaptureError([f"capture recorded state={plan['state']} (an --allow-closed replay); "
                             f"build refuses it"])
     target = review_target(repo, plan)
@@ -1679,9 +1758,9 @@ def issue_files(issue: Mapping[str, object]) -> List[str]:
 
 
 def part_lines(issue: Mapping[str, object], part: Sequence[str]) -> List[str]:
-    """``Your part`` and, when other fixers own the rest of the issue, ``Other parts``; tracking files
-    (``review.tracking_paths``) are named apart, since the main session edits them during or after the
-    waves."""
+    """The own-part line and, when other fixers own the rest of the issue, the other-parts line; tracking
+    files (``review.tracking_paths``) are named apart, since the main session edits them during or after
+    the waves."""
     patterns = active().review.tracking_paths
     rest = [f for f in issue_files(issue) if f not in part]
     tracked = [f for f in rest if rwv.is_tracking(f, patterns)]
@@ -1784,13 +1863,14 @@ def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[
                 entries: Sequence[Tuple[str, Tuple[str, ...]]], deferred: Mapping[str, str]) -> str:
     """The full fixer brief for one planned fixer; ``deferred`` maps the tests it must not run to reasons."""
     agent, files = str(fixer["id"]), list(fixer["files"])  # type: ignore[call-overload]
-    lines = [f"# Fixer brief: {agent} - PR #{ctx.pr}", ""]
+    lines = [f"# Fixer brief: {agent} - {target_label(ctx.pr)}", ""]
     lines += [f"- {line}" for line in header_lines(agent, "fixer", ctx.run_id, ctx.pr)]
     lines += ["", f"Repo `{ctx.repo}`, branch `{ctx.facts.head}`.", "", "## Issues (fix in this order)", ""]
     for issue_id in fixer["issue_ids"]:  # type: ignore[union-attr]
         issue = issues[str(issue_id)]
         lines += _issue_block(issue, fixer_part(fixer, issue))
-    call = f'record_fixes_draft({ctx.pr}, "{agent}", repo=Path(r"{ctx.repo}"), run_id="{ctx.run_id}")'
+    call = (f'record_fixes_draft({key_literal(ctx.pr)}, "{agent}", repo=Path(r"{ctx.repo}"), '
+            f'run_id="{ctx.run_id}")')
     fixed = ('{"id": "M2", "what": "one line: what changed; cited files: why no edit", '
              '"files": ["src/pkg/x.py"], "no_change": ["src/pkg/y.py"]},')
     bubbled = '{"id": "I3", "classification": "architectural_ambiguity", "reason": "one line"},'
@@ -1804,10 +1884,10 @@ def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[
 def wave_context(repo: Path, plan: Mapping[str, object]) -> BriefContext:
     """A brief context rebuilt from ``plan.json`` (facts carry only what fixer briefs read)."""
     meta = plan["meta"]
-    facts = PrFacts(pr_number(plan["pr"]), str(meta["pr_title"]), str(meta["branch"]),  # type: ignore[index]
+    facts = PrFacts(parse_key(plan["pr"]), str(meta["pr_title"]), str(meta["branch"]),  # type: ignore[index]
                     str(meta["base_branch"]), str(meta["head_sha"]), str(meta["base_sha"]),  # type: ignore[index]
                     "", (), ())
-    return BriefContext(repo.as_posix(), _LIB.as_posix(), pr_number(plan["pr"]),
+    return BriefContext(repo.as_posix(), _LIB.as_posix(), parse_key(plan["pr"]),
                         str(plan["run_id"]), facts, bool(plan["tree_at_head"]), {}, ())
 
 
@@ -2112,10 +2192,38 @@ def _cmd_config(repo: Path, args: argparse.Namespace) -> int:
 # --- cli ----------------------------------------------------------------------------------------------------
 
 
+_KEY_HELP = "PR number, or local-<label> for a local review."
+
+
+def run_key(value: str) -> RunKey:
+    """``--pr`` argument type: a PR number or a ``local-<label>`` key (``parse_key``).
+
+    A ``ValueError`` from ``parse_key`` becomes an ``ArgumentTypeError``, which argparse prints as is.
+    """
+    try:
+        return parse_key(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from exc
+
+
 def _pr(parser: argparse.ArgumentParser) -> argparse.ArgumentParser:
-    """Add the required ``--pr`` option."""
-    parser.add_argument("--pr", type=int, required=True, help="PR number.")
+    """Add the required ``--pr`` option (a PR number or a local key)."""
+    parser.add_argument("--pr", type=run_key, required=True, help=_KEY_HELP)
     return parser
+
+
+def _add_capture_command(sub: argparse._SubParsersAction) -> None:
+    """Add ``capture``: a PR by number, or a local commit range (``--range``) with no gh call."""
+    cap = sub.add_parser("capture", help="Phase 1 checks, slot plan, briefs and dispatch rows.")
+    cap.add_argument("--pr", type=run_key, default=None,
+                     help=f"{_KEY_HELP} Required without --range; with it, default local-<branch label>.")
+    cap.add_argument("--range", metavar="BASE..HEAD", help="Review a local commit range; no gh call.")
+    cap.add_argument("--title", help="Review title of a --range run (default: the head branch name).")
+    cap.add_argument("--plan", metavar="PATH",
+                     help="Plan or spec the change implements; named in every brief.")
+    cap.add_argument("--no-fetch", action="store_true", help="Skip fetching the base side and pull/N/head.")
+    cap.add_argument("--allow-closed", action="store_true", help="Replay a closed or merged PR.")
+    cap.add_argument("--roast", choices=("yes", "no", "roll"), default="roll", help="Roast slot (roll).")
 
 
 def _op(kind: str) -> Callable[[str], Tuple[str, str]]:
@@ -2125,10 +2233,7 @@ def _op(kind: str) -> Callable[[str], Tuple[str, str]]:
 
 def _add_review_commands(sub: argparse._SubParsersAction) -> None:
     """Add the Phase 1-3 subcommands: capture, block, merge, amend, build."""
-    cap = _pr(sub.add_parser("capture", help="Phase 1 checks, slot plan, briefs and dispatch rows."))
-    cap.add_argument("--no-fetch", action="store_true", help="Skip fetching the base side and pull/N/head.")
-    cap.add_argument("--allow-closed", action="store_true", help="Replay a closed or merged PR.")
-    cap.add_argument("--roast", choices=("yes", "no", "roll"), default="roll", help="Roast slot (roll).")
+    _add_capture_command(sub)
     _pr(sub.add_parser("block", help="Reprint an agent's block.")).add_argument("--agent", required=True)
     merge = _pr(sub.add_parser("merge", help="Merge reports into draft.json."))
     merge.add_argument("--force", action="store_true", help="Replace a draft that carries amend operations.")
