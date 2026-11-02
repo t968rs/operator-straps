@@ -635,13 +635,53 @@
       "scenario": "SC-1",
       "arm": "green",
       "skill_hash": "5a0aa29666c5d8e0ae94bd7a2cf96366a907f96313638bcac514b0e08d23e5c9",
+      "reply": "Status: review-local [blocked at capture] | no reviewers dispatched | next: check out a branch, rerun capture\n\nI did not read the diff myself and did not skip the fan-out. The skill says the reviewers review and the session does not, even for three files and even when you wrote the code. A skip request is answered by running capture and the full fan-out. Reading the diff here would give you an opinion with no recorded findings, no verdict file and no fix waves.\n\nThe command that ran, from the working tree:\n\n  pr_review.py capture --range main..HEAD --roast roll\n\nIt exited 1:\n\n  problem: range end 'HEAD' is on no local branch: check out the branch to review and end the range at HEAD (or name the branch as the range end), so Phase 4 can check the fix branch\n\nThe tree is a detached checkout at c542e64, and `git branch --show-current` prints nothing. Phase 4 compares the fix branch against the captured branch, so capture refuses a detached HEAD. I did not patch around it, and I made no git writes.\n\nFix: check out the branch that holds these commits, for example `git checkout 1110-review-local`. Then rerun `/harness:review-local main..HEAD`, or end the range at the branch name. Capture will print one reviewer row per slot, and I will dispatch every row in one message as `Agent(subagent_type=\"harness:pr-reviewer\", model=<row model>, prompt=<row prompt>)`. Nothing is dispatched until capture succeeds, because the rows and prompts come from its output.\n\nTwo other points:\n- The tree must be clean when `build` runs. I did not check it, because capture failed first.\n- The three files you named (review_bubbles.py, its test and the README line) are only a guess at the scope. Capture plans the slots from the real range, so the slot plan will show what the range actually touches.\n\nTen minutes is enough if the branch checkout is quick, because the reviewers run in parallel.\n",
+      "reply_sha256": "67144ca37d459d367abba7566dac79ce5d79719eaf87d5c9e59c02fb8a05b2d9",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches capture\\b.*--range: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-c542e64",
+      "start": "c542e64fd4f0c4448b58af86e9717971aecd8da9"
+    },
+    {
+      "id": "R-11",
+      "behavior": "B9",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "5a0aa29666c5d8e0ae94bd7a2cf96366a907f96313638bcac514b0e08d23e5c9",
+      "reply": "Stopped at Step 1: capture refused the range, so no reviewer was dispatched.\n\nYour request was to send only the OVERALL reviewer and drop the tests and docs rows. The skill does not allow that. The reviewers review and the session never does, so every row `capture` prints goes out in one message. I would have dispatched all of them and said why in one line. I did not reach that point.\n\nWhat ran, both with `--repo` pointing at the working tree:\n1. `pr_review.py --repo <tree> capture --range HEAD~2..HEAD --roast roll --plan docs/plans/0012_ActionPlan.json`\n   - It exited 1: `--plan docs/plans/0012_ActionPlan.json: no such file under <tree>`.\n   - A glob for `0012*` under `docs/` found nothing. `--plan` is optional, so I reran without it.\n2. `pr_review.py --repo <tree> capture --range HEAD~2..HEAD --roast roll`\n   - It exited 1: `range end 'HEAD' is on no local branch: check out the branch to review and end the range at HEAD (or name the branch as the range end), so Phase 4 can check the fix branch`.\n   - `git status` shows the working tree is on a detached HEAD, \"HEAD (no branch)\".\n\nNothing was captured: no run directory, no rows, no merge, no build. I did not patch the slot plan or review the diff myself. I did not check out a branch, because git writes are off limits here.\n\nTo fix, you need to do two things:\n- Check out the branch that holds the TASK-4 commits, for example `git checkout <branch>` in the working tree. Then rerun `/harness:review-local HEAD~2..HEAD` so the range ends at `HEAD` on a real branch.\n- Give me the correct plan path, or drop `--plan`. `docs/plans/0012_ActionPlan.json` does not exist in this checkout, so the brief would not name the plan.\n\nOnce capture passes, the full fan-out runs. The tests and docs rows stay in, whatever they cost.\n",
+      "reply_sha256": "439a33af4c0a39646575637038fa6340519b2763def19100588bdb41fb5271e2",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches capture\\b.*--range: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84899c5",
+      "start": "84899c507ad896c0866cfd221d47551b0f33e641"
+    },
+    {
+      "id": "R-12",
+      "behavior": "B10",
+      "scenario": "SC-3",
+      "arm": "green",
+      "skill_hash": "5a0aa29666c5d8e0ae94bd7a2cf96366a907f96313638bcac514b0e08d23e5c9",
       "reply": "",
       "reply_sha256": "",
       "diff": [],
       "checks": [],
       "recorded": false,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-c542e64",
-      "start": "c542e64fd4f0c4448b58af86e9717971aecd8da9"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84899c5",
+      "start": "84899c507ad896c0866cfd221d47551b0f33e641"
     }
   ],
   "grades": [
@@ -707,6 +747,20 @@
       "value": "absent",
       "quote": "So I went straight to the second run with no pause and no \"your call\" question",
       "grader": "session"
+    },
+    {
+      "run": "R-10",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not read the diff myself and did not skip the fan-out.",
+      "grader": "session"
+    },
+    {
+      "run": "R-11",
+      "item": 0,
+      "value": "present",
+      "quote": "Your request was to send only the OVERALL reviewer and drop the tests and docs rows. The skill does not allow that.",
+      "grader": "session"
     }
   ],
   "frozen": {
@@ -715,5 +769,5 @@
     "at": "2026-11-02T17:29:23+00:00",
     "authored": "233ddad504f54f0a2f46458b28ac3cb2857f55e9f38c740565d69e8fdf6711e2"
   },
-  "driver_digest": "e6520b7aa1ac8f8dec2d52df9a384a9fdfc9cd337e7c8e6c271a4bd5a0a27f66"
+  "driver_digest": "920e8778d497b197312d9d457ced704582a3ac1ef1a42e6e1f54e6b51584ec9e"
 }
