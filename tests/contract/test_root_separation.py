@@ -20,6 +20,7 @@ from conftest import GIT_ENV, PLUGIN_ROOT, REPO_ROOT, git
 sys.path.insert(0, str(REPO_ROOT / "tests" / "lib"))
 from _todo_helpers import config, todo_files  # noqa: E402
 
+WALK_ROOTS = ("plugins/",)
 PLUGINS = REPO_ROOT / "plugins"
 Snapshot = Dict[str, Tuple[int, int]]
 

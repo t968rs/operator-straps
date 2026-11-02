@@ -14,6 +14,7 @@ import pytest
 
 pytestmark = pytest.mark.cross_os
 
+WALK_ROOTS = ()  # walks only the run-log folder of a make_project repo
 LOGS = "logs/_RUN_TESTS"
 
 

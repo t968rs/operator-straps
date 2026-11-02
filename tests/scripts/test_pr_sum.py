@@ -822,6 +822,20 @@ class TestBuild:
         assert "draft title is empty" in excinfo.value.problems
         assert not (clone / _SUMMARIES).exists()
 
+    def test_control_bytes_block_the_save(self, script: ModuleType, pr_repo: Tuple[Path, str, str]) -> None:
+        clone, _, head = pr_repo
+        sections = [
+            {"heading": "New Behavior: run", "body": "```\nmissing? ──\x01──► error\n```"},
+            {"heading": "Changed Symbols", "body": _SYMBOLS_BODY},
+        ]
+        payload = _filled(script.capture_payload(clone, _meta(script, head), fetch=False), sections)
+        with pytest.raises(script.CaptureError) as excinfo:
+            script.run_build(clone, payload)
+        assert excinfo.value.problems == [
+            "draft section 'New Behavior: run' body holds control character U+0001; remove it",
+        ]
+        assert not (clone / _SUMMARIES).exists()
+
     def test_default_level_requires_sections(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str],
     ) -> None:

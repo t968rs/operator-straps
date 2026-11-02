@@ -15,6 +15,7 @@ import pytest
 
 from mods._mods_helpers import ts_string, ts_string_array
 
+WALK_ROOTS = ("plugins/",)
 _SCHEMA_REL = "plugins/harness/schemas/pr_review_agent_usage.schema.json"
 _USAGE_ROW_REL = "plugins/pr-review-watch/hooks/usageRow.ts"
 _CONTRACT_REL = "plugins/pr-review-watch/hooks/contract.ts"

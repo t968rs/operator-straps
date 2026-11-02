@@ -19,6 +19,7 @@ from referencing.jsonschema import DRAFT7
 
 from harness_lib import plan_models as pm
 
+WALK_ROOTS = ("tests/fixtures/plan_models/",)
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "plan_models"
 _DELETE = object()
 

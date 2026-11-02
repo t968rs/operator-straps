@@ -15,6 +15,7 @@ import pytest
 
 from conftest import git
 
+WALK_ROOTS = ()  # walks only the commit-message folder of a make_project repo
 TITLE = "[BUG] Worker pool crash on spawn"
 SUBJECT = f"Merge PR #7 — {TITLE}"
 MESSAGE = [

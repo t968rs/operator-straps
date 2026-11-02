@@ -50,8 +50,14 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 - CI (`.github/workflows/ci.yml`) runs pytest and ruff on Ubuntu, pytest on Windows limited to tests marked
   `cross_os` (shell launcher, git worktree paths, junctions; mark a new test that depends on the OS), plus strict
   validation and the mod tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
-  changed, when its import closure holds a changed file, when its source names a changed or deleted file (the
-  basename, or a `.py` file's bare module name), or when it walks the tree. A data file under `plugins/` or
+  changed, when its import closure holds a changed file (the closure follows the `pythonpath` entries and every
+  `tests/` folder holding a `_`-prefixed helper), when its source names a changed or deleted file (the
+  basename, or a `.py` file's bare module name), or when it walks a tree that holds a changed path. A test whose
+  code walks (`rglob`, `.glob`, `iglob`, `iterdir`, `.walk` other than `ast.walk`, `copytree`, `scandir`,
+  `listdir`) declares the repo folders it walks in a module-level literal
+  `WALK_ROOTS = ("plugins/harness/skills/",)` and runs only for changes under them; `WALK_ROOTS = ()` marks a
+  test that walks only temporary folders. A walking test without a valid marker runs on every change outside
+  `docs/`, and `tests/scripts/test_select_tests.py` fails until it gets one. A data file under `plugins/` or
   `tools/` counts as a change to each `.py` file there that names it in a code string literal (docstrings and
   comments do not count, so a module that reads a data file must spell its name in code). Ruff files and the plugin jobs are
   selected from the same diff. Shared files such as `tests/conftest.py` and deleted `.py` files force

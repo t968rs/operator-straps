@@ -14,6 +14,7 @@ from _todo_helpers import config, todo_files  # noqa: E402
 from conftest import GIT_ENV, PLUGIN_ROOT  # noqa: E402
 
 HOOK = PLUGIN_ROOT / "hooks" / "todo_sync_session.py"
+WALK_ROOTS = ()  # walks only the state folder of a make_project repo
 STATE = Path(".claude") / "state" / "harness" / "todo-sync"
 
 

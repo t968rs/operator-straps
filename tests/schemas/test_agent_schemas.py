@@ -20,6 +20,7 @@ from harness_lib.config import HarnessConfig, activate, load_config
 from harness_lib.validation.artifact_names import is_review_artifact_name
 from harness_lib.validation.schema_registry import load_schema, schema_registry
 
+WALK_ROOTS = ()  # walks only the artifact folders of a make_project repo
 _SAMPLES = FIXTURES / "agent_schemas"
 _REVIEW_SAMPLE = "0001_sample_review.json"
 _PLAN_SAMPLE = "0001_sample_ActionPlan.json"

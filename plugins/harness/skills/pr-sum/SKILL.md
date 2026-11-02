@@ -167,7 +167,14 @@ with `AFTER`, or one side-by-side fence with both labels on its first line. Both
 trigger and reuse the same wording for unchanged steps, so the difference stands out. Tags go in the AFTER flow
 only: `[changed]` on a step whose outcome differs from BEFORE, `[new]` on a step BEFORE lacks; a step worded the
 same in both is untagged. `build` checks those labels, and checks tags only in a stacked BEFORE fence (none
-allowed there). Keep a flow to about ten steps. Use this grammar and no other glyphs:
+allowed there). A `New Behavior:` section is exactly one fence holding at least one non-blank line, with no
+`BEFORE` or `AFTER` label on its first line; `build` checks both.
+
+A decision is drawn as a fork with labeled arms (`──no──►` across, `│yes` down), never as a chain of steps.
+Every `│` and `▼` sits under the step text or connector on the line above; the single blank between two words
+of a step counts as step text. `build` rejects a connector that hangs under a wider blank or under a `──no──►`
+arm (its label included), in both flow kinds. Keep a flow to about ten steps. Use this grammar and no other
+glyphs:
 
 ```
 BEFORE                                         AFTER
@@ -235,8 +242,10 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py"
 ```
 
 `build` checks: `title` and `summary` non-empty, `title` on one line, a description for every listed
-non-artifact path and none for paths outside the PR, no AI vendor names, the section rules of the skeleton's
-level, and with `--min-viz` the diagram-block count. A shortfall prints one `problem:` line with the count
+non-artifact path and none for paths outside the PR, no AI vendor names, no control characters (tab and line
+breaks excepted) in any drafted string, the section rules of the skeleton's level (including the
+`Behavior:` labels, the one unlabeled fence of a `New Behavior:` section, and connector alignment in every
+flow), and with `--min-viz` the diagram-block count. A shortfall prints one `problem:` line with the count
 found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated files.
 
 Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit 0 writes

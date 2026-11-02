@@ -14,6 +14,7 @@ import pytest
 from harness_lib import review_edit as red
 from harness_lib.config import activate, load_config
 
+WALK_ROOTS = ("tests/fixtures/review_edit/",)
 _FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "review_edit"
 _CORPUS = sorted(_FIXTURES.glob("*.json"))
 _SHA = "3333333ccccccc"

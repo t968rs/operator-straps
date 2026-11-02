@@ -24,9 +24,15 @@ CHANGE_CODES = "Change codes: A = added, M = modified, D = deleted, R = renamed"
 _FENCE = "```"
 _CELL_SPLIT = re.compile(r"(?<!\\)\|")
 _SEPARATOR_CELL = re.compile(r":?-+:?")
+_CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _FLOW_HEADING = "Behavior:"
 _NEW_FLOW_HEADING = "New Behavior:"
 _FLOW_TAGS = ("[changed]", "[new]")
+_BEFORE = re.compile(r"BEFORE\b")
+_AFTER = re.compile(r"\bAFTER\b")
+_UP_GLYPHS = "│▼├└"
+_DOWN_GLYPHS = "│▼├┤┬┼┌┐╭╮"
+_ARM_GLYPHS = "─━═►▶◄◀→←└┘┴╰╯"
 _SHAPE_HEADINGS = ("Module Relocations", "Symbol Relocations", "Call-Site Migration", "Rule Illustration")
 _LEVEL3_SHAPE_HEADINGS = (*_SHAPE_HEADINGS, "Sequence Diagram", "Data Flow")
 _SYMBOLS_HEADING = "Changed Symbols"
@@ -182,12 +188,25 @@ def _description_problems(facts: PrFacts, draft: PrDraft) -> List[str]:
     """Missing descriptions for described paths, and descriptions for paths not in the PR."""
     known = {f.path for f in facts.files}
     problems = [
-        f"no description for `{p}`" for p in facts.described if not draft.descriptions.get(p, "").strip()
+        f"no description for `{_visible(p)}`"
+        for p in facts.described if not draft.descriptions.get(p, "").strip()
     ]
     problems += [
-        f"description for `{p}`, which is not a changed path" for p in draft.descriptions if p not in known
+        f"description for `{_visible(p)}`, which is not a changed path"
+        for p in draft.descriptions if p not in known
     ]
     return problems
+
+
+def _visible(text: str) -> str:
+    """``text`` with each control character spelled ``<U+XXXX>``, safe to print in a problem line."""
+    return _CONTROL.sub(lambda match: f"<U+{ord(match.group()):04X}>", text)
+
+
+def _section_name(index: int, heading: str) -> str:
+    """``section '<heading>'`` for a problem line, or ``section <N>`` (1-based) when the heading holds a
+    control character."""
+    return f"section {index + 1}" if _CONTROL.search(heading) else f"section '{heading}'"
 
 
 def _split_fences(body: str) -> Tuple[List[str], List[str]]:
@@ -201,11 +220,6 @@ def _split_fences(body: str) -> Tuple[List[str], List[str]]:
         else:
             (fenced if inside else open_lines).append(line)
     return fenced, open_lines
-
-
-def _fenced_lines(body: str) -> List[str]:
-    """Lines inside fenced code blocks."""
-    return _split_fences(body)[0]
 
 
 def _fence_blocks(body: str) -> List[List[str]]:
@@ -224,25 +238,102 @@ def _fence_blocks(body: str) -> List[List[str]]:
     return blocks + ([current] if current is not None else [])
 
 
-def _flow_problems(section: PrSection) -> List[str]:
+def _column_kinds(line: str) -> List[str]:
+    """Per column of a flow line: ``vert`` (a connector that runs down), ``arm`` (a horizontal arm: any
+    whitespace-free run holding a stroke or an arrowhead, label letters included, or a corner closing
+    downward), ``node`` (other text) or ``space``."""
+    kinds = ["space"] * len(line)
+    for token in re.finditer(r"\S+", line):
+        arm = any(char in _ARM_GLYPHS for char in token.group())
+        for column in range(token.start(), token.end()):
+            char = line[column]
+            closed = arm or char in _ARM_GLYPHS
+            kinds[column] = "vert" if char in _DOWN_GLYPHS else "arm" if closed else "node"
+    return kinds
+
+
+def _feeds_down(kinds: List[str], column: int) -> bool:
+    """True when the line of ``kinds`` holds, at ``column``, node text, a downward connector, or the single
+    blank between two node characters (a word gap inside one step's text)."""
+    if column >= len(kinds) or kinds[column] == "arm":
+        return False
+    if kinds[column] != "space":
+        return True
+    return 0 < column < len(kinds) - 1 and kinds[column - 1] == kinds[column + 1] == "node"
+
+
+def _connector_problems(name: str, fence: int, block: List[str]) -> List[str]:
+    """Vertical connectors of one fence (1-based ``fence``) with no node text or vertical connector above.
+
+    Tabs expand to 8-column stops first. Columns are absolute within the fence, so side-by-side flows are
+    checked column for column. The first line has nothing above it and is not checked. Lines and columns
+    print 1-based.
+    """
+    lines = [line.expandtabs() for line in block]
+    kinds = [_column_kinds(line) for line in lines]
+    return [
+        f"{name}: fence {fence}, fence line {row + 1}: '{glyph}' at column {column + 1} has no node text "
+        "or vertical connector above it"
+        for row in range(1, len(lines))
+        for column, glyph in enumerate(lines[row])
+        if glyph in _UP_GLYPHS and not _feeds_down(kinds[row - 1], column)
+    ]
+
+
+def _first_lines(blocks: List[List[str]]) -> List[str]:
+    """Each fence's first line, stripped; an empty fence reads as an empty first line."""
+    return [block[0].strip() if block else "" for block in blocks]
+
+
+def _new_flow_problems(name: str, blocks: List[List[str]]) -> List[str]:
+    """A ``New Behavior:`` section: exactly one fence, holding a non-blank line and no BEFORE / AFTER
+    label on its first line."""
+    if not any(line.strip() for block in blocks for line in block):
+        return [f"{name}: needs one fenced flow holding at least one non-blank line"]
+    if len(blocks) > 1:
+        return [f"{name}: a new behavior is one flow in one fence (found {len(blocks)} fences)"]
+    if _BEFORE.match(blocks[0][0].strip()) or _AFTER.match(blocks[0][0].strip()):
+        return [
+            f"{name}: a new behavior is one flow with no BEFORE / AFTER label; "
+            f"a changed one uses '{_FLOW_HEADING} <trigger>'",
+        ]
+    return []
+
+
+def _flow_problems(name: str, section: PrSection, blocks: List[List[str]]) -> List[str]:
+    """Flow checks of a ``Behavior:`` or ``New Behavior:`` section, ``blocks`` being its fences.
+
+    A ``Behavior:`` section gets the label and tag checks, a ``New Behavior:`` section its one-fence and
+    no-label checks; both get the connector alignment check on every fence.
+    """
+    heading = section.heading.strip()
+    if heading.startswith(_FLOW_HEADING):
+        problems = _label_problems(name, blocks)
+    elif heading.startswith(_NEW_FLOW_HEADING):
+        problems = _new_flow_problems(name, blocks)
+    else:
+        return []
+    return problems + [
+        line for fence, block in enumerate(blocks, 1) for line in _connector_problems(name, fence, block)
+    ]
+
+
+def _label_problems(name: str, blocks: List[List[str]]) -> List[str]:
     """Flow labels and tag placement of a ``Behavior:`` section.
 
-    Two forms pass the label check: stacked fences, one whose first line starts with BEFORE and one whose
-    first line holds AFTER; or one side-by-side fence whose first line holds both. Change tags are checked
-    only in a stacked BEFORE fence; tags in a side-by-side fence are not checked.
+    Two forms pass the label check: stacked fences, one whose first line starts with the word BEFORE and
+    one whose first line holds the word AFTER; or one side-by-side fence whose first line holds both. Change
+    tags are checked only in a stacked BEFORE fence; tags in a side-by-side fence are not checked.
     """
-    if not section.heading.strip().startswith(_FLOW_HEADING):
-        return []
-    blocks = [(block[0].strip() if block else "", block) for block in _fence_blocks(section.body)]
-    before = any(first.startswith("BEFORE") for first, _ in blocks)
-    labelled = before and any("AFTER" in first for first, _ in blocks)
-    before_only = [block for first, block in blocks if first.startswith("BEFORE") and "AFTER" not in first]
+    firsts = _first_lines(blocks)
+    labelled = any(_BEFORE.match(f) for f in firsts) and any(_AFTER.search(f) for f in firsts)
+    before_only = [b for f, b in zip(firsts, blocks) if _BEFORE.match(f) and not _AFTER.search(f)]
     tagged = any(tag in line for block in before_only for line in block for tag in _FLOW_TAGS)
     problems = [] if labelled else [
-        f"section '{section.heading}': needs a fence whose first line is BEFORE and one whose first line is "
+        f"{name}: needs a fence whose first line is BEFORE and one whose first line is "
         "AFTER, or one side-by-side fence whose first line holds both",
     ]
-    misplaced = f"section '{section.heading}': [changed] / [new] tags belong in the AFTER flow only"
+    misplaced = f"{name}: [changed] / [new] tags belong in the AFTER flow only"
     return problems + ([misplaced] if tagged else [])
 
 
@@ -273,9 +364,9 @@ def _layout_problems(draft: PrDraft, level: int = 2) -> List[str]:
     """
     kinds = [_section_kind(s.heading, level) for s in draft.sections]
     problems = [
-        f"section '{s.heading}': unknown heading; use 'Behavior: <trigger>', 'New Behavior: <trigger>', "
-        f"a shape diagram name or '{_SYMBOLS_HEADING}'"
-        for s, kind in zip(draft.sections, kinds) if kind is None and s.heading.strip()
+        f"{_section_name(i, s.heading)}: unknown heading; use 'Behavior: <trigger>', 'New Behavior: "
+        f"<trigger>', a shape diagram name or '{_SYMBOLS_HEADING}'"
+        for i, (s, kind) in enumerate(zip(draft.sections, kinds)) if kind is None and s.heading.strip()
     ]
     flows, shapes, symbols = (kinds.count(kind) for kind in _KIND_ORDER)
     problems += [] if flows or shapes else ["a visual summary needs a behavior flow or a shape diagram"]
@@ -302,8 +393,8 @@ def _section_problems(draft: PrDraft, level: int) -> List[str]:
     """Section checks.
 
     Sections required (levels 2 and 3) or forbidden (level 1); the layout checks; every heading set; fenced
-    lines within ``MONOSPACE_WIDTH``; table cells outside fences within ``TABLE_CELL_WIDTH``; and the
-    ``Behavior:`` flow labels and tag placement.
+    lines within ``MONOSPACE_WIDTH``; table cells outside fences within ``TABLE_CELL_WIDTH``; and the flow
+    checks of ``Behavior:`` and ``New Behavior:`` sections.
     """
     if level == 1:
         misplaced = ["sections are for levels 2 and 3; remove them or build with --level 2"]
@@ -311,25 +402,57 @@ def _section_problems(draft: PrDraft, level: int) -> List[str]:
     if not draft.sections:
         return ["a visual summary needs its sections (behavior flows or a shape diagram, Changed Symbols)"]
     problems = _layout_problems(draft, level)
-    for section in draft.sections:
+    for index, section in enumerate(draft.sections):
         problems += [] if section.heading.strip() else ["a section has no heading"]
-        problems += [
-            f"section '{section.heading}': monospace line of {len(line)} chars (limit {MONOSPACE_WIDTH})"
-            for line in _fenced_lines(section.body) if len(line) > MONOSPACE_WIDTH
-        ]
-        problems += [
-            f"section '{section.heading}': table cell of {len(cell)} chars (limit {TABLE_CELL_WIDTH}); "
-            "move the text above or below the table"
-            for cell in _table_cells(section.body) if len(cell) > TABLE_CELL_WIDTH
-        ]
-        problems += _flow_problems(section)
+        problems += _body_problems(_section_name(index, section.heading), section)
     return problems
+
+
+def _body_problems(name: str, section: PrSection) -> List[str]:
+    """Width, table-cell and flow checks of one section body; its fences are parsed once."""
+    blocks = _fence_blocks(section.body)
+    problems = [
+        f"{name}: monospace line of {len(line)} chars (limit {MONOSPACE_WIDTH})"
+        for block in blocks for line in block if len(line) > MONOSPACE_WIDTH
+    ]
+    problems += [
+        f"{name}: table cell of {len(cell)} chars (limit {TABLE_CELL_WIDTH}); "
+        "move the text above or below the table"
+        for cell in _table_cells(section.body) if len(cell) > TABLE_CELL_WIDTH
+    ]
+    return problems + _flow_problems(name, section, blocks)
 
 
 def _prose(draft: PrDraft) -> str:
     """Every drafted string, for the vendor-name check."""
-    sections = [f"{s.heading}\n{s.body}" for s in draft.sections]
-    return "\n".join([draft.title, draft.summary, *draft.descriptions.values(), *sections])
+    return "\n".join(text for _, text in _draft_fields(draft))
+
+
+def _section_fields(index: int, section: PrSection) -> List[Tuple[str, str]]:
+    """``(label, text)`` of a section's heading and body; the body is named by ``_section_name``."""
+    named = _section_name(index, section.heading)
+    return [(f"section {index + 1} heading", section.heading), (f"{named} body", section.body)]
+
+
+def _draft_fields(draft: PrDraft) -> List[Tuple[str, str]]:
+    """``(label, text)`` of every drafted string, labelled for a problem line."""
+    fields = [("title", draft.title), ("summary", draft.summary)]
+    fields += [(f"description for `{_visible(path)}`", text) for path, text in draft.descriptions.items()]
+    for index, section in enumerate(draft.sections):
+        fields += _section_fields(index, section)
+    return fields
+
+
+def _control_problems(draft: PrDraft) -> List[str]:
+    """One line per drafted string that holds C0 control characters (tab, LF and CR excepted) or DEL."""
+    problems = []
+    for label, text in _draft_fields(draft):
+        found = sorted(set(_CONTROL.findall(text)))
+        if found:
+            codes = ", ".join(f"U+{ord(char):04X}" for char in found)
+            noun, pronoun = ("characters", "them") if len(found) > 1 else ("character", "it")
+            problems.append(f"draft {label} holds control {noun} {codes}; remove {pronoun}")
+    return problems
 
 
 def draft_problems(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -> List[str]:
@@ -343,7 +466,7 @@ def draft_problems(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -
     problems += _description_problems(facts, draft)
     problems += _section_problems(draft, level)
     problems += [f"vendor name {name!r} in the draft" for name in vendor_names(_prose(draft))]
-    return problems
+    return problems + _control_problems(draft)
 
 
 def artifact_note(facts: PrFacts) -> Optional[str]:

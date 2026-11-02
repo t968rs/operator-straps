@@ -13,6 +13,7 @@ import pytest
 
 from conftest import REPO_ROOT
 
+WALK_ROOTS = ("plugins/",)
 PLUGINS = REPO_ROOT / "plugins"
 TEXT_SUFFIXES = {".py", ".md", ".json", ".jsonl", ".ts", ".tsx", ".sh", ".txt", ".yaml", ".yml", ".tmpl"}
 SKIP_DIRS = {"node_modules", "__pycache__", ".claude-plugin-cache"}

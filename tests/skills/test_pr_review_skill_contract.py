@@ -48,6 +48,7 @@ from pathlib import Path
 
 import pytest
 
+WALK_ROOTS = ("plugins/harness/agents/", "plugins/harness/skills/")
 _PHASE_HEADER_RE = re.compile(r"^##\s+Phase\s+(\d+)\b", re.MULTILINE)
 
 

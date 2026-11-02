@@ -26,6 +26,7 @@ import pytest
 from conftest import git
 from harness_lib.config import activate, load_config
 
+WALK_ROOTS = ()  # walks only the sentinel folder of a make_project repo
 _STATE = "var/harness_state"
 _EXCLUSIONS = {"exclusions": [{"pattern": "build/*"}, {"pattern": "*.log"}]}
 
