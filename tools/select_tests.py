@@ -7,12 +7,17 @@ A test file is selected when any of these holds:
 - it changed;
 - its import closure holds a changed file. The closure starts at the test, ``tests/conftest.py`` and every
   ``.py`` file under ``plugins/`` or ``tools/`` whose basename the test spells out (a script loaded by
-  path), and follows imports resolved against the ``pythonpath`` entries of ``pyproject.toml`` plus the
+  path), and follows imports resolved against the ``pythonpath`` entries of ``pyproject.toml``, every
+  ``tests/`` directory holding a ``_``-prefixed helper (reached through ``sys.path.insert``) and the
   importing file's own directory;
 - its source names a changed or deleted file: the basename, or for a ``.py`` file the bare module name. This
   covers hooks and scripts that tests load by path instead of by import;
-- its source walks the tree (``rglob``, ``glob``, ``iterdir``, ``os.walk``) and any path outside ``docs/``
-  changed or was deleted.
+- its code walks a tree (calls matching ``rglob(``, ``.glob(``, ``iglob(``, ``iterdir(``, ``.walk(`` other
+  than ``ast.walk(``, ``copytree(``, ``scandir(`` or ``listdir(``; comments and docstrings do not count) and
+  a changed or deleted path sits under one of the directories its module-level literal ``WALK_ROOTS``
+  tuple lists (repo-relative; ``"."`` is the whole repo). ``WALK_ROOTS = ()`` marks a test that walks
+  only temporary directories, which this rule never selects. Without a valid marker (a tuple of relative
+  paths, no ``..``), any path outside ``docs/`` that changed or was deleted selects it.
 
 A changed or deleted non-``.py`` file under ``plugins/`` or ``tools/`` also counts as a change to every
 ``.py`` file there whose code names its basename in a string literal (a module that reads the data file by
@@ -42,7 +47,7 @@ import sys
 import tomllib
 from dataclasses import asdict, dataclass, field
 from pathlib import Path, PurePosixPath
-from typing import Dict, List, Optional, Sequence, Set, Tuple
+from typing import Callable, Dict, List, Optional, Sequence, Set, Tuple
 
 FULL_TRIGGERS = frozenset({
     "tests/conftest.py",
@@ -54,7 +59,9 @@ FULL_TRIGGERS = frozenset({
 SAFE_PATH = re.compile(r"^[A-Za-z0-9_./-]+$")
 LINT_ROOTS = ("plugins/", "tests/", "tools/")
 PLUGIN_PREFIXES = ("plugins/", ".claude-plugin/")
-TREE_WALK = re.compile(r"\brglob\(|\.glob\(|\biterdir\(|\bos\.walk\(")
+TREE_WALK = re.compile(r"\brglob\(|\.glob\(|\biglob\(|\biterdir\(|(?<!\bast)\.walk\(|\bcopytree\("
+                       r"|\bscandir\(|\blistdir\(")
+WALK_MARKER = "WALK_ROOTS"
 DEFAULT_PYTHONPATH = ("plugins/harness/lib", "tests")
 CONFTEST = "tests/conftest.py"
 SKIP_DIRS = frozenset({"node_modules", "__pycache__", ".git", ".venv"})
@@ -86,6 +93,15 @@ def pythonpath_roots(root: Path) -> List[str]:
         return list(data["tool"]["pytest"]["ini_options"]["pythonpath"])
     except (OSError, KeyError, tomllib.TOMLDecodeError):
         return list(DEFAULT_PYTHONPATH)
+
+
+def import_bases(root: Path) -> List[str]:
+    """Where absolute imports resolve: the ``pythonpath`` entries plus every ``tests/`` directory holding a
+    ``_``-prefixed helper, which tests reach through ``sys.path.insert`` (``tests/lib`` is not a pythonpath
+    entry)."""
+    bases = pythonpath_roots(root)
+    helper_dirs = sorted({PurePosixPath(h).parent.as_posix() for h in helper_files(root)})
+    return [*bases, *(d for d in helper_dirs if d not in bases)]
 
 
 def _raw_imports(path: Path) -> List[Tuple[str, Tuple[str, ...], int]]:
@@ -160,8 +176,9 @@ def mentions(text: str, path: str) -> bool:
     return False
 
 
-def _why(rel: str, text: str, deps: Set[str], changed: Sequence[str], walk_hit: bool) -> Optional[str]:
-    """The first rule that selects test ``rel``, else None."""
+def _why(rel: str, text: str, deps: Set[str], changed: Sequence[str],
+         walk: Callable[[], Optional[str]]) -> Optional[str]:
+    """The first rule that selects test ``rel``, else None; the walk rule runs last, only when needed."""
     if rel in changed:
         return "test changed"
     hit = next((c for c in changed if c in deps), None)
@@ -170,7 +187,70 @@ def _why(rel: str, text: str, deps: Set[str], changed: Sequence[str], walk_hit: 
     hit = next((c for c in changed if mentions(text, c)), None)
     if hit:
         return f"names {hit}"
-    return "walks the tree" if walk_hit else None
+    return walk()
+
+
+def walks(text: str) -> bool:
+    """Whether a module's code matches ``TREE_WALK``; comments and docstrings are prose, not walks.
+    A module that does not parse counts as walking."""
+    if not TREE_WALK.search(text):
+        return False
+    try:
+        tree = ast.parse(text)
+    except (SyntaxError, ValueError):
+        return True
+    prose = _docstrings(tree)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Expr) and id(node.value) in prose:
+            node.value = ast.Constant("")
+    return TREE_WALK.search(ast.unparse(tree)) is not None
+
+
+def _root_prefix(root: object) -> Optional[str]:
+    """A ``WALK_ROOTS`` entry as a ``dir/`` prefix (``""`` for ``.``); None when it is not a relative
+    POSIX path inside the repo."""
+    if not isinstance(root, str) or not root or "\\" in root or ":" in root or root.startswith("/"):
+        return None
+    parts = [p for p in root.split("/") if p not in ("", ".")]
+    if ".." in parts:
+        return None
+    return "".join(f"{p}/" for p in parts)
+
+
+def _marker_values(tree: ast.Module) -> List[ast.expr]:
+    """Values assigned to ``WALK_ROOTS`` at module level."""
+    found: List[ast.expr] = []
+    for node in tree.body:
+        targets = node.targets if isinstance(node, ast.Assign) else [getattr(node, "target", None)]
+        value = getattr(node, "value", None)
+        if value is not None and any(isinstance(t, ast.Name) and t.id == WALK_MARKER for t in targets):
+            found.append(value)
+    return found
+
+
+def walk_roots(text: str) -> Optional[Tuple[str, ...]]:
+    """The module's literal ``WALK_ROOTS`` tuple as directory prefixes; None when absent or invalid."""
+    try:
+        values = _marker_values(ast.parse(text))
+        roots = ast.literal_eval(values[0]) if len(values) == 1 else None
+    except (SyntaxError, ValueError):
+        return None
+    if not isinstance(roots, tuple):
+        return None
+    prefixes = [_root_prefix(r) for r in roots]
+    return None if any(p is None for p in prefixes) else tuple(str(p) for p in prefixes)
+
+
+def walk_reason(text: str, changed: Sequence[str], non_docs: bool) -> Optional[str]:
+    """Why a walking test runs: a change under one of its ``WALK_ROOTS``; without a valid marker, any
+    change outside ``docs/``. ``WALK_ROOTS = ()`` (temporary directories only) never selects."""
+    if not walks(text):
+        return None
+    roots = walk_roots(text)
+    if roots is None:
+        return "walks the tree" if non_docs else None
+    hit = next(((r, c) for r in roots for c in changed if c.startswith(r)), None)
+    return f"walks {hit[0] or './'}, holding {hit[1]}" if hit else None
 
 
 def path_loadable(root: Path) -> Dict[str, List[str]]:
@@ -248,7 +328,7 @@ def data_readers(root: Path, changed: Sequence[str], index: Dict[str, List[str]]
 
 def affected_tests(root: Path, changed: Sequence[str]) -> Tuple[List[str], List[str]]:
     """``(selected test files, one reason line each)``; raises Unresolvable when a file does not parse."""
-    roots, cache, index = pythonpath_roots(root), {}, path_loadable(root)
+    roots, cache, index = import_bases(root), {}, path_loadable(root)
     changed = [*changed, *data_readers(root, changed, index)]
     non_docs = any(not c.startswith("docs/") for c in changed)
     chosen: List[str] = []
@@ -256,7 +336,7 @@ def affected_tests(root: Path, changed: Sequence[str]) -> Tuple[List[str], List[
     for rel in list_tests(root):
         text = (root / rel).read_text(encoding="utf-8", errors="replace")
         deps = closure(root, [rel, CONFTEST, *named_scripts(text, index)], roots, cache)
-        why = _why(rel, text, deps, changed, bool(TREE_WALK.search(text)) and non_docs)
+        why = _why(rel, text, deps, changed, lambda: walk_reason(text, changed, non_docs))
         if why:
             chosen.append(rel)
             reasons.append(f"{rel}: {why}")

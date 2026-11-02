@@ -14,6 +14,7 @@ import pytest
 
 from conftest import REPO_ROOT, git
 
+WALK_ROOTS = ("tests/",)  # the contract tests read every test file; the fixture walks are in strings
 _SCRIPT = REPO_ROOT / "tools" / "select_tests.py"
 
 PYPROJECT = '[tool.pytest.ini_options]\npythonpath = ["plugins/harness/lib", "tests"]\n'
@@ -107,6 +108,93 @@ def test_imports_of_a_path_loaded_script_count(sel: ModuleType, tree: Path) -> N
 def test_tree_walking_test_runs_on_any_non_docs_change(sel: ModuleType, tree: Path) -> None:
     got = _tests(sel, tree, "plugins/harness/skills/demo/SKILL.md")
     assert got == ["tests/contract/test_walk.py"]
+
+
+WALKER = "tests/contract/test_case.py"
+WALK_BODY = "def test_w(root):\n    assert list(root.rglob('*'))\n"
+UNRELATED = "tools/other.py"
+UNDER_SKILLS = "plugins/harness/skills/demo/notes.txt"
+
+
+def _reason(sel: ModuleType, root: Path, rel: str, *changed: str) -> Optional[str]:
+    out = sel.plan(root, list(changed), [])
+    return next((r.split(": ", 1)[1] for r in out.reasons if r.startswith(f"{rel}: ")), None)
+
+
+@pytest.mark.parametrize("marker", ["('plugins/harness/skills/',)", "('plugins/harness/skills',)",
+                                    "('tools/nowhere/', 'plugins/harness/skills/')"])
+def test_walk_roots_select_only_for_changes_under_a_root(sel: ModuleType, tree: Path, marker: str) -> None:
+    _write(tree, {WALKER: f"WALK_ROOTS = {marker}\n{WALK_BODY}"})
+    want = f"walks plugins/harness/skills/, holding {UNDER_SKILLS}"
+    assert _reason(sel, tree, WALKER, UNDER_SKILLS) == want
+    assert _reason(sel, tree, WALKER, UNRELATED) is None
+    assert _reason(sel, tree, WALKER, "plugins/harness/skillset/x.md") is None
+
+
+def test_dot_root_stands_for_the_whole_repo(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {WALKER: f"WALK_ROOTS = ('.',)\n{WALK_BODY}"})
+    assert _reason(sel, tree, WALKER, UNRELATED) == f"walks ./, holding {UNRELATED}"
+
+
+def test_empty_walk_roots_never_select(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {WALKER: f"WALK_ROOTS = ()\n{WALK_BODY}"})
+    assert _reason(sel, tree, WALKER, UNRELATED) is None
+    assert _reason(sel, tree, WALKER, UNDER_SKILLS) is None
+
+
+@pytest.mark.parametrize("marker", ["['plugins/']", "('/plugins/',)", "('../plugins/',)",
+                                    "('plugins/../x/',)", "('plugins', 3)", "ROOTS", "('',)",
+                                    "('C:/x/',)", "('plugins\\\\x',)", "'plugins/'"])
+def test_invalid_walk_roots_keep_the_broad_rule(sel: ModuleType, tree: Path, marker: str) -> None:
+    _write(tree, {WALKER: f"ROOTS = ('plugins/',)\nWALK_ROOTS = {marker}\n{WALK_BODY}"})
+    assert sel.walk_roots(f"WALK_ROOTS = {marker}\n") is None
+    assert _reason(sel, tree, WALKER, UNRELATED) == "walks the tree"
+
+
+def test_unmarked_walker_runs_on_any_non_docs_change_only(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {WALKER: WALK_BODY})
+    assert _reason(sel, tree, WALKER, UNRELATED) == "walks the tree"
+    assert sel.plan(tree, ["docs/notes.md"], []).tests == []
+
+
+def test_marked_walker_ignores_a_docs_change_outside_its_roots(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {WALKER: f"WALK_ROOTS = ('plugins/',)\n{WALK_BODY}"})
+    assert sel.plan(tree, ["docs/notes.md"], []).tests == []
+
+
+@pytest.mark.parametrize("source", [
+    "import shutil\ndef test_c(a, b):\n    shutil.copytree(a, b)\n",
+    "import os\ndef test_s(p):\n    assert list(os.scandir(p))\n",
+    "import os\ndef test_l(p):\n    assert os.listdir(p)\n",
+    "import glob\ndef test_i():\n    assert list(glob.iglob('x/*'))\n",
+    "def test_p(p):\n    assert list(p.walk())\n",
+    "import os\ndef test_o(p):\n    assert list(os.walk(p))\n",
+])
+def test_gate_covers_every_listed_walk(sel: ModuleType, tree: Path, source: str) -> None:
+    _write(tree, {WALKER: source})
+    assert _reason(sel, tree, WALKER, UNRELATED) == "walks the tree"
+
+
+@pytest.mark.parametrize("source", [
+    "import ast\ndef test_a():\n    assert list(ast.walk(ast.parse('x')))\n",
+    "# root.rglob('*') is avoided here\ndef test_c():\n    assert True\n",
+    '"""Never calls root.iterdir() on the repo."""\ndef test_d():\n    assert True\n',
+    "def test_e():\n    '''No os.listdir(x) here either.'''\n",
+])
+def test_ast_walk_and_prose_are_not_walks(sel: ModuleType, tree: Path, source: str) -> None:
+    _write(tree, {WALKER: source})
+    assert _reason(sel, tree, WALKER, UNRELATED) is None
+
+
+def test_helper_on_an_inserted_sys_path_is_in_the_closure(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        "tests/lib/_parts.py": "from harness_lib.solo import Z\n",
+        "tests/skills/test_parts.py": "import sys\nfrom pathlib import Path\n"
+                                      "sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'lib'))\n"
+                                      "from _parts import Z\n",
+    })
+    got = _reason(sel, tree, "tests/skills/test_parts.py", "plugins/harness/lib/harness_lib/solo.py")
+    assert got == "imports plugins/harness/lib/harness_lib/solo.py"
 
 
 def test_docs_only_change_runs_no_pytest(sel: ModuleType, tree: Path) -> None:
@@ -297,6 +385,24 @@ def test_cli_without_base_or_full_is_a_usage_error(
     done = _cli(tree, "--out-dir", str(tmp_path_factory.mktemp("out")))
     assert done.returncode == 2
     assert "--base is required" in done.stderr
+
+
+def test_every_walking_test_declares_existing_walk_roots(sel: ModuleType) -> None:
+    """A walking test without a valid WALK_ROOTS runs on every pull request; a listed root that does not
+    exist is a typo that would skip the test when its real root changes."""
+    unmarked: List[str] = []
+    absent: List[str] = []
+    for rel in sel.list_tests(REPO_ROOT):
+        text = (REPO_ROOT / rel).read_text(encoding="utf-8")
+        if not sel.walks(text):
+            continue
+        roots = sel.walk_roots(text)
+        if roots is None:
+            unmarked.append(rel)
+            continue
+        absent.extend(f"{rel}: {r}" for r in roots if not (REPO_ROOT / r).is_dir())
+    assert unmarked == [], "walking tests need a literal WALK_ROOTS tuple"
+    assert absent == [], "WALK_ROOTS names a directory that does not exist"
 
 
 def test_real_repo_has_no_unparsable_test(sel: ModuleType) -> None:
