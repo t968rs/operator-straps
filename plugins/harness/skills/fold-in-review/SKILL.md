@@ -30,9 +30,13 @@ as the tree supports it.
   branch (`gh pr view --json number`), confirmed by a `<NNNN>/current` file under the scratch root
   (`pr_review.py config --get artifacts.scratch`). When both fail, ask which PR: scratch keeps the folders of
   every past PR, so the folder list alone never names it.
+- **Local run key `local-<label>`:** a `harness:review-local` run in this conversation supplies its key; no gh
+  lookup. Its folder is `<scratch>/local-<label>/` (confirmed by its `current` file), every `fold --pr <N>`
+  below takes `--pr local-<label>`, and `--from-gh-review` is refused for it (fold the review as `--findings`).
 - **No `current` file** (the driver prints `no current pr-review run for PR <N>`): there is nothing to fold into.
   Say so and point to `harness:pr-review`; do not capture from here.
-- **Phase:** read `plan.json` in the run directory (`<scratch>/<NNNN>/<run id in current>/`).
+- **Phase:** read `plan.json` in the run directory (`<scratch>/<NNNN>/<run id in current>/`, or
+  `<scratch>/local-<label>/<run id in current>/` for a local run).
 
 | `plan.json` | State | What a fold does |
 |---|---|---|

@@ -53,9 +53,10 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   <subcommand> ...` (`harness_lib.review_edit`: one editor per root field, validated byte-stable write), never
   `python -c`. The agent never runs its `verdict --text`, and runs `resolve-file` only as the `pr-team` shim's
   closeout step; any other field (PR title, issue text, verification log) is surfaced to the developer.
-- **Folder glob:** only true PR reviews live at the top of the project's review directory (`artifacts.reviews`
-  in `.claude/harness.json`) as `NNNN_*.json`. Audits and notes use a subfolder or a non-digit prefix
-  (`AUDIT_NNNN_*.json`).
+- **Folder glob:** only true reviews live at the top of the project's review directory (`artifacts.reviews`
+  in `.claude/harness.json`): PR reviews as `NNNN_*.json`, and local reviews (`review-local`, keyed
+  `local-<label>`) as `LOCAL_<label>_*.json`; both are schema-validated. Audits and notes use a subfolder or
+  another non-digit prefix (`AUDIT_NNNN_*.json`).
 - When unsure how to record a disposition, read the field descriptions in `PR_REVIEW.schema.json` (the project's
   pinned copy under its `schemas_dir`, else `${CLAUDE_PLUGIN_ROOT}/schemas/PR_REVIEW.schema.json`) before writing.
 

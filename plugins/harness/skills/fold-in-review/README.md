@@ -40,6 +40,10 @@ A review run must exist for the PR: `harness:pr-review` has run `capture` (the d
 confirmed by a `<NNNN>/current` file under the scratch root. It asks only when both fail: the scratch
 directory keeps the folders of every past PR, so the folder list alone never names the run.
 
+A `harness:review-local` run in the conversation takes precedence: its run is keyed `local-<label>` and lives
+under `<scratch>/local-<label>/`, found by that key with no `gh` lookup. Every `fold --pr <N>` then takes the
+`local-<label>` key, and `--from-gh-review` is refused for it.
+
 ## What the skill does
 
 1. **Locates the run and its phase.** Before `build` the findings become `merge` input. After `build` they are

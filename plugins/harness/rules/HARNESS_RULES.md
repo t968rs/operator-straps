@@ -69,7 +69,8 @@ branch's actual commit history, with a one-sentence rationale:
 Schemas, templates and worked examples ship with the plugin (`schemas/`); a project may pin its own copies under
 the configured `schemas_dir`. Work that is not tracked explicitly is work going rogue.
 
-- Every review writes `<artifacts.reviews>/{PR}_{Title}.json` with an explicit verdict.
+- Every review writes `<artifacts.reviews>/{PR}_{Title}.json` (a review-local run with no PR:
+  `<artifacts.reviews>/LOCAL_<label>_{Title}.json`) with an explicit verdict.
 - Every plan not produced by a plan-writing skill that owns its own plan/spec format writes
   `<artifacts.plans>/{PR}_ActionPlan.json` **and**
   `<artifacts.plans>/{PR}_PIP.md`, updated as a pair: both written before work begins; after each task the JSON
