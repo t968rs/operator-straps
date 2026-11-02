@@ -29,7 +29,8 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
     After a failed green and a skill change, draw one fresh scenario of the behavior.
 ``freeze <name> [--refreeze]``
     The final gate; stamps the skill hash and the grader. ``--refreeze`` runs every gate again on a frozen
-    spec whose parts changed and stamps the new hash. Every listed part file must exist. A frozen spec
+    spec and stamps the current hash, whether or not the parts changed; on a spec never frozen it is a plain
+    freeze. Every listed part file must exist. A frozen spec
     takes ``run --arm green``, ``record-run`` of a green run, and through ``api`` part edits and the grades
     of green runs, so the new hash can earn its greens.
 ``api <name>``
@@ -122,21 +123,24 @@ def _now() -> str:
 # --- spec load and save -----------------------------------------------------------------------------------
 
 def load(name: str, writable: bool = False) -> SkillSpec:
-    """The stored spec; refused when missing, hand-edited in driver-owned fields, or frozen (``writable``)."""
+    """The stored spec; refused when missing, hand-edited in driver-owned fields or, once frozen, in authored
+    fields, or frozen (``writable``)."""
     path = sa.spec_path(name)
     if not path.is_file():
         raise Refused([f"no spec for {name} at {_rel(path)}; run new first"])
     spec = sm.load_spec(path)
     if spec.driver_digest != sm.driver_digest(spec):
         raise Refused([TAMPERED])
+    if sm.seal_broken(spec):
+        raise Refused([sm.SEAL_BROKEN])
     if writable and spec.frozen is not None:
         raise Refused([f"{name} is frozen"])
     return spec
 
 
 def save(spec: SkillSpec) -> SkillSpec:
-    """Re-validate ``spec`` from its dump, stamp a fresh driver digest and write it."""
-    checked = SkillSpec.model_validate(spec.model_dump())
+    """Re-validate ``spec`` from its dump, seal a frozen spec, stamp a fresh driver digest and write it."""
+    checked = sm.sealed(SkillSpec.model_validate(spec.model_dump()))
     stamped = checked.model_copy(update={"driver_digest": sm.driver_digest(checked)})
     path = sa.spec_path(stamped.name)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -212,6 +216,17 @@ def skill_hash(spec: SkillSpec) -> str:
     return sr.content_hash(_root(), [part.path for part in spec.parts])
 
 
+def stale_line(spec: SkillSpec) -> Optional[str]:
+    """The ``stale:`` line of a frozen spec whose parts no longer hash to the stamp, else None."""
+    if spec.frozen is None:
+        return None
+    current = skill_hash(spec)
+    if current == spec.frozen.skill_hash:
+        return None
+    return (f"stale: frozen at {spec.frozen.skill_hash[:12]}, parts now hash {current[:12]}; "
+            "prove greens then freeze --refreeze")
+
+
 def _with_states(spec: SkillSpec, ids: Set[str], state: BehaviorState) -> List[Behavior]:
     return [b.model_copy(update={"state": state}) if b.id in ids else b for b in spec.behaviors]
 
@@ -234,6 +249,9 @@ def _resume(args: argparse.Namespace) -> int:
             raise Refused([f"{spec.name} already has grades; --judge is fixed once grading starts"])
         spec = save(spec.model_copy(update={"judge": True}))
     mode = SpecMode(spec.mode).value
+    stale = stale_line(spec)
+    if stale:
+        print(stale)
     print(f"resume | {spec.name} | {len(spec.behaviors)} behaviors | mode {mode} | judge {spec.judge} "
           f"| {_rel(sa.spec_path(spec.name))}")
     return 0
@@ -332,6 +350,8 @@ def spec_problems(name: str) -> Tuple[Optional[SkillSpec], List[str]]:
         problems.append(f"{_rel(path)} is not in the canonical form strap.py writes")
     if spec.driver_digest != sm.driver_digest(spec):
         problems.append(TAMPERED)
+    if sm.seal_broken(spec):
+        problems.append(sm.SEAL_BROKEN)
     return spec, problems + _lint_problems(spec) + _role_problems(spec)
 
 
@@ -343,6 +363,9 @@ def cmd_check(args: argparse.Namespace) -> int:
              and b.state != BehaviorState.DROPPED and len(b.scenarios) < sm.MIN_SCENARIOS]
     for behavior in short:
         print(f"open: {behavior.id} | {len(behavior.scenarios)} of {sm.MIN_SCENARIOS} scenarios")
+    stale = stale_line(spec)
+    if stale:
+        print(stale)
     print(f"check [ok] | {spec.name} | {len(spec.behaviors)} behaviors | {len(short)} open")
     return 0
 
@@ -639,10 +662,19 @@ def _refuse_twin(spec: SkillSpec, run: Run) -> None:
         raise Refused([f"{twins[0].id}: {run.scenario} {run.arm.value} already recorded on this hash"])
 
 
+def _refuse_frozen_open_run(spec: SkillSpec, run: Run) -> None:
+    """A non-green run left open at freeze: drop its tree, since nothing can record it, then refuse."""
+    if spec.frozen is None or run.arm == Arm.GREEN:
+        return
+    if not run.recorded and run.tree and Path(run.tree).is_dir():
+        pr.drop_tree(_root(), Path(run.tree))
+    _refuse_frozen_baseline(spec, run.arm)
+
+
 def cmd_record_run(args: argparse.Namespace) -> int:
     spec = load(args.name)
+    _refuse_frozen_open_run(spec, _run_of(spec, args.run))
     run = _live_run(spec, args.run)
-    _refuse_frozen_baseline(spec, run.arm)
     _refuse_twin(spec, run)
     tree = Path(run.tree)
     reply = sys.stdin.read()

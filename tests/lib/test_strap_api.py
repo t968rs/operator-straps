@@ -61,6 +61,7 @@ from harness_lib.strap_models import (
     Scenario,
     SkillSpec,
     SpecMode,
+    authored_digest,
     driver_digest,
     dump_spec,
     load_spec,
@@ -419,6 +420,19 @@ def test_remove_part_refusals_write_nothing(project: Path, target: str, match: s
     assert path.read_bytes() == before
 
 
+@pytest.mark.parametrize("spelling", ["./" + REFERENCE, REFERENCE.replace("/", "\\")],
+                         ids=["dot-slash", "backslash"])
+def test_part_paths_normalize_on_add_and_remove(project: Path, spelling: str) -> None:
+    """Another spelling of a listed path is the same part: add refuses it and remove takes it off."""
+    path = _with_parts(project)
+    before = path.read_bytes()
+    with pytest.raises(StrapError, match=f"{REFERENCE} is already a part"):
+        add_part(NAME, "reference", spelling)
+    assert path.read_bytes() == before
+    spec = remove_part(NAME, spelling)
+    assert REFERENCE not in [p.path for p in spec.parts]
+
+
 def test_remove_part_drops_a_second_skill_md_part(project: Path) -> None:
     """Only the path scaffold plans is required; another part of the same kind comes off."""
     path = _with_parts(project)
@@ -441,12 +455,32 @@ def test_remove_part_refuses_a_new_skills_planned_models(project: Path) -> None:
     assert path.read_bytes() == before
 
 
+@pytest.mark.parametrize("on_disk", [False, True], ids=["absent", "present"])
+def test_remove_part_edit_plans_models_only_when_on_disk(project: Path, on_disk: bool) -> None:
+    """An edit plans its models module only when the file exists under the project root."""
+    models = "plugins/demo/lib/harness_lib/demo_skill_models.py"
+    path = _with_parts(project)
+    _write(project, load_spec(path).model_copy(update={"mode": SpecMode.EDIT, "base": "0" * 40}))
+    add_behavior(NAME, _mechanical())
+    add_part(NAME, "models", models)
+    if on_disk:
+        (project / models).parent.mkdir(parents=True, exist_ok=True)
+        (project / models).write_text("", encoding="utf-8")
+    before = path.read_bytes()
+    if on_disk:
+        with pytest.raises(StrapError, match="scaffold requires"):
+            remove_part(NAME, models)
+        assert path.read_bytes() == before
+    else:
+        assert models not in [p.path for p in remove_part(NAME, models).parts]
+
+
 def test_part_edits_allowed_on_a_frozen_spec(project: Path) -> None:
     """Parts stay editable after a freeze; the stored hash stands until freeze --refreeze."""
     path = _with_parts(project, frozen=FROZEN)
     remove_part(NAME, REFERENCE)
     spec = add_part(NAME, "reference", "plugins/demo/skills/demo-skill/other.md")
-    assert spec.frozen == FROZEN
+    assert spec.frozen.model_copy(update={"authored": None}) == FROZEN
     assert [p.path for p in spec.parts][-1] == "plugins/demo/skills/demo-skill/other.md"
     assert load_spec(path) == spec
 
@@ -463,23 +497,71 @@ def test_frozen_spec_takes_a_green_reply_and_its_grade(project: Path) -> None:
     path = _green_open(project, FROZEN)
     record_run(NAME, "R-3", QUOTE)
     spec = grade(NAME, "R-3", 0, "present", QUOTE)
-    assert spec.frozen == FROZEN
+    assert spec.frozen.model_copy(update={"authored": None}) == FROZEN
     assert [(g.run, g.value) for g in spec.grades] == [("R-3", GradeValue.PRESENT)]
     assert load_spec(path) == spec
 
 
-@pytest.mark.parametrize("op", [
-    lambda: record_run(NAME, "R-1", "x"),
-    lambda: grade(NAME, "R-2", 0, "present", QUOTE),
-    lambda: add_scenario(NAME, "B1", _scenario("SC-0")),
-    lambda: drop_behavior(NAME, "B1", "late"),
+_BLANKET_FROZEN = re.escape(f"{NAME} is frozen") + "$"
+
+
+@pytest.mark.parametrize("op, match", [
+    (lambda: record_run(NAME, "R-1", "x"), "R-1 is a baseline run"),
+    (lambda: grade(NAME, "R-2", 0, "present", QUOTE), "R-2 is a baseline run"),
+    (lambda: add_scenario(NAME, "B1", _scenario("SC-0")), _BLANKET_FROZEN),
+    (lambda: drop_behavior(NAME, "B1", "late"), _BLANKET_FROZEN),
 ], ids=["baseline-reply", "baseline-grade", "add_scenario", "drop_behavior"])
-def test_frozen_spec_refuses_everything_else(project: Path, op: Callable[[], Any]) -> None:
+def test_frozen_spec_refuses_everything_else(project: Path, op: Callable[[], Any], match: str) -> None:
+    """A baseline reply or grade hits the baseline guard; every other operation hits the blanket refusal."""
     path = _green_open(project, FROZEN)
     before = path.read_bytes()
-    with pytest.raises(StrapError, match="is frozen"):
+    with pytest.raises(StrapError, match=match):
         op()
     assert path.read_bytes() == before
+
+
+def _hand_edit(path: Path, edit: Callable[[Dict[str, Any]], None]) -> None:
+    """Apply ``edit`` to the stored JSON and restamp the driver digest, as a careful hand edit would."""
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    edit(doc)
+    spec = SkillSpec.model_validate(doc)
+    path.write_text(dump_spec(spec.model_copy(update={"driver_digest": driver_digest(spec)})),
+                    encoding="utf-8", newline="\n")
+
+
+def test_frozen_save_seals_the_authored_fields(project: Path) -> None:
+    """Every save of a frozen spec stamps the authored digest; a legacy unsealed stamp seals on its first."""
+    _with_parts(project, frozen=FROZEN)
+    spec = remove_part(NAME, REFERENCE)
+    assert spec.frozen.authored == authored_digest(spec)
+    assert spec.frozen.model_copy(update={"authored": None}) == FROZEN
+
+
+@pytest.mark.parametrize("edit", [
+    lambda doc: doc["behaviors"][0]["scenarios"][0].update(task="an easier task"),
+    lambda doc: doc["behaviors"][0].update(statement="a weaker statement"),
+    lambda doc: doc["parts"].pop(),
+    lambda doc: doc.update(plugin_dir="plugins/other"),
+], ids=["scenario", "statement", "part", "plugin_dir"])
+def test_frozen_spec_refuses_a_hand_edit_of_authored_fields(project: Path,
+                                                            edit: Callable[[Dict[str, Any]], None]) -> None:
+    """A hand edit that restamps the driver digest still breaks the seal; every frozen-ok call refuses."""
+    path = _with_parts(project, frozen=FROZEN)
+    add_part(NAME, "reference", "plugins/demo/skills/demo-skill/other.md")
+    _hand_edit(path, edit)
+    before = path.read_bytes()
+    with pytest.raises(StrapError, match="changed by hand since the freeze"):
+        add_part(NAME, "reference", "plugins/demo/skills/demo-skill/third.md")
+    assert path.read_bytes() == before
+
+
+def test_unfrozen_spec_takes_hand_edits_of_authored_fields(project: Path) -> None:
+    """Before the freeze the authored fields are the author's; only driver-owned fields are guarded."""
+    path = _with_parts(project)
+    _hand_edit(path, lambda doc: doc["behaviors"][0].update(statement="reworded"))
+    spec = add_part(NAME, "reference", "plugins/demo/skills/demo-skill/other.md")
+    assert spec.behaviors[0].statement == "reworded"
+    assert spec.frozen is None
 
 
 def test_session_grade_refused_on_judge_spec(project: Path) -> None:

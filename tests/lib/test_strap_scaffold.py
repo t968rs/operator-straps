@@ -231,6 +231,17 @@ def test_planned_parts_edit_keeps_present_models(project: Path) -> None:
     assert ("models", _MODELS) in pairs and ("api", _API) not in pairs
 
 
+def test_planned_parts_edit_looks_under_the_given_project(project: Path, make_project) -> None:
+    """The project argument, not the active root, decides which edit mechanics exist."""
+    other = make_project(config={})
+    models = other / _MODELS
+    models.parent.mkdir(parents=True)
+    models.write_text('"""Models."""\n', encoding="utf-8", newline="\n")
+    spec = _spec([_mechanical()], mode=SpecMode.EDIT, base=git(project, "rev-parse", "HEAD"))
+    assert ("models", _MODELS) in _pairs(planned_parts(spec, other))
+    assert ("models", _MODELS) not in _pairs(planned_parts(spec))
+
+
 def test_planned_parts_edit_keeps_an_author_listed_api(project: Path) -> None:
     """An author who wants a new api module in an edit lists it with add_part; scaffold then renders it."""
     api = Part(kind=PartKind.API, path=_API)

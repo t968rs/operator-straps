@@ -38,7 +38,8 @@ NOT_RED = (PASSED, COLLECTION, MISSING)
 PYTEST_ARGS = ("-m", "pytest", "-q", "-p", "no:cacheprovider", "--tb=auto")
 ALIASES = {"ModuleNotFoundError": "ImportError"}
 
-_HEADER = re.compile(r"^_{2,} (.+?) _{2,}$")
+# One underscore fences a node id wider than the terminal; ``_ _ _`` is a frame separator, not a header.
+_HEADER = re.compile(r"^_+ (?!_ )(.+?) _+$")
 _LOCATION = re.compile(r"^\S.*:\d+: (\w+)$", re.MULTILINE)
 _E_LINE = re.compile(r"^E\s+(\w+):", re.MULTILINE)
 _E_ASSERT = re.compile(r"^E\s+assert\b", re.MULTILINE)

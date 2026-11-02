@@ -218,7 +218,7 @@
     },
     "Frozen": {
       "additionalProperties": false,
-      "description": "The seal: the skill hash and grader the spec was frozen with.",
+      "description": "The seal: the skill hash and grader the spec was frozen with, and ``authored``, the digest of the\nauthored fields that every save of the frozen spec restamps. None marks a stamp written before the field\nexisted; its first save seals it.",
       "properties": {
         "skill_hash": {
           "title": "Skill Hash",
@@ -230,6 +230,18 @@
         "at": {
           "title": "At",
           "type": "string"
+        },
+        "authored": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Authored"
         }
       },
       "required": [
@@ -332,7 +344,7 @@
     },
     "Part": {
       "additionalProperties": false,
-      "description": "One file of the deliverable set; ``path`` is repo-relative POSIX.",
+      "description": "One file of the deliverable set; ``path`` is stored repo-relative POSIX, whatever its spelling.",
       "properties": {
         "kind": {
           "$ref": "#/$defs/PartKind"

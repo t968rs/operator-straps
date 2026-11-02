@@ -1,9 +1,9 @@
 """strap-skills: the author's API over ``SkillSpec``, as validating factories and piecewise operations.
 
 Every operation takes the skill name first, loads ``<plans>/strap/<name>/SkillSpec.json``, refuses a spec
-whose driver-owned fields no longer match the stored ``driver_digest`` (or one already frozen), applies one
-change, re-validates the whole document from its dump, stamps a fresh digest and only then writes the file.
-A refusal or a failed validation writes nothing.
+whose driver-owned fields no longer match the stored ``driver_digest`` (or one already frozen, outside the
+part and green-run operations below), applies one change, re-validates the whole document from its dump,
+stamps a fresh digest and only then writes the file. A refusal or a failed validation writes nothing.
 
 A frozen spec still takes part edits (``add_part``, ``remove_part``) and the reply and grades of a green
 run, so a part change can be proven again on the new skill hash before ``strap.py freeze --refreeze``.
@@ -22,9 +22,10 @@ from typing import Any, Callable, Iterable, List, Optional, Sequence, Union
 
 from harness_lib.config import active
 from harness_lib.strap_models import (
-    DRIVER_OWNED_BEHAVIOR, NAME_PATTERN, SPEC_FILE, Arm, Behavior, BehaviorKind, BehaviorState, Check,
-    CheckKind, Grade, Grader, GradeValue, JudgedItem, JudgmentType, Part, PartKind, PlannedTest, Pressure,
-    RedException, ReplyAct, Run, Scenario, SkillSpec, driver_digest, dump_spec, load_spec,
+    DRIVER_OWNED_BEHAVIOR, NAME_PATTERN, SEAL_BROKEN, SPEC_FILE, Arm, Behavior, BehaviorKind, BehaviorState,
+    Check, CheckKind, Grade, Grader, GradeValue, JudgedItem, JudgmentType, Part, PartKind, PlannedTest,
+    Pressure, RedException, ReplyAct, Run, Scenario, SkillSpec, driver_digest, dump_spec, load_spec,
+    part_path, seal_broken, sealed,
 )
 from harness_lib.strap_runs import quote_found
 
@@ -89,21 +90,25 @@ def new_judged(act: Union[ReplyAct, str], of: str, baseline: Union[GradeValue, s
 # --- load, re-validate, write ---------------------------------------------------------------------------
 
 def _load(name: str, frozen_ok: bool = False) -> SkillSpec:
-    """The spec as stored, refused when missing, hand-edited in driver-owned fields, or frozen."""
+    """The spec as stored; refused when missing, hand-edited in driver-owned fields or, once frozen, in
+    authored fields, or frozen (unless ``frozen_ok``)."""
     path = spec_path(name)
     if not path.is_file():
         raise StrapError(f"no spec for {name} at {path.as_posix()}")
     spec = load_spec(path)
     if spec.driver_digest != driver_digest(spec):
         raise StrapError(_TAMPERED)
+    if seal_broken(spec):
+        raise StrapError(SEAL_BROKEN)
     if spec.frozen is not None and not frozen_ok:
         raise StrapError(f"{name} is frozen")
     return spec
 
 
 def _commit(name: str, changed: SkillSpec) -> SkillSpec:
-    """Re-validate ``changed`` from its dump, stamp the digest, then write; nothing is written on failure."""
-    checked = SkillSpec.model_validate(changed.model_dump())
+    """Re-validate ``changed`` from its dump, seal a frozen spec, stamp the digest, then write; nothing is
+    written on failure."""
+    checked = sealed(SkillSpec.model_validate(changed.model_dump()))
     stamped = checked.model_copy(update={"driver_digest": driver_digest(checked)})
     spec_path(name).write_text(dump_spec(stamped), encoding="utf-8", newline="\n")
     return stamped
@@ -249,10 +254,14 @@ def remove_part(name: str, path: str) -> SkillSpec:
     """Drop the part listed at ``path``; an unlisted path and a path ``scaffold`` plans are refused.
 
     ``scaffold`` plans the SKILL.md, the contract test and, for a mechanical behavior, the models and api
-    modules (in an edit, only those that exist); removing one would only see it planned again. Allowed on a
-    frozen spec.
+    modules (in an edit, only those that exist); removing one would only see it planned again. ``path``
+    matches in any spelling ``Part`` normalizes. Allowed on a frozen spec.
     """
     from harness_lib.strap_scaffold import scaffold_parts  # strap_scaffold imports this module
+    try:
+        path = part_path(path)
+    except ValueError as exc:
+        raise StrapError(str(exc)) from None
 
     def change(spec: SkillSpec) -> SkillSpec:
         if not any(part.path == path for part in spec.parts):

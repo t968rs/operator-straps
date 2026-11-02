@@ -288,6 +288,26 @@ def test_frozen_spec_refuses_a_baseline_run(gate: Callable[..., Dict[str, Any]],
 
 
 @pytest.mark.cross_os
+def test_frozen_spec_refuses_a_hand_edit_of_a_scenario(gate: Callable[..., Dict[str, Any]],
+                                                       play: Callable[..., str], strap: Strap,
+                                                       driver: ModuleType, project: Path) -> None:
+    """freeze seals the authored fields; a hand edit with a fresh driver digest still fails every command."""
+    frozen_judgment(gate, play, strap)
+    doc = read_spec(project)
+    assert doc["frozen"]["authored"] == driver.sm.authored_digest(driver.SkillSpec.model_validate(doc))
+    doc["behaviors"][0]["scenarios"][0]["task"] = "An easier task."
+    spec = driver.SkillSpec.model_validate(doc)
+    spec_path(project).write_text(driver.sm.dump_spec(
+        spec.model_copy(update={"driver_digest": driver.sm.driver_digest(spec)})), encoding="utf-8",
+        newline="\n")
+    before = read_spec(project)
+    for args in (("check", NAME), ("run", NAME, "B1", "--arm", "green"), ("freeze", NAME, "--refreeze")):
+        err = refused(strap(*args))
+        assert has_problem(err, driver.sm.SEAL_BROKEN), (args, err)
+    assert read_spec(project) == before
+
+
+@pytest.mark.cross_os
 def test_refreeze_after_remove_part_restamps_a_mechanical_spec(mechanical: Path, strap: Strap,
                                                               piped: Callable[..., Result]) -> None:
     """A part deleted after the freeze is refused until remove_part takes it off; then refreeze restamps."""
@@ -299,8 +319,10 @@ def test_refreeze_after_remove_part_restamps_a_mechanical_spec(mechanical: Path,
     ok(strap("freeze", NAME))
     old = read_spec(mechanical)["frozen"]["skill_hash"]
     (mechanical / rel).unlink()
+    before = read_spec(mechanical)
     err = refused(strap("freeze", NAME, "--refreeze"))
     assert has_problem(err, f"{rel}: part file missing"), err
+    assert read_spec(mechanical) == before
     ok(piped(f'remove_part(name, "{rel}")\n', "api", NAME))
     ok(strap("freeze", NAME, "--refreeze"))
     spec = read_spec(mechanical)
@@ -309,6 +331,26 @@ def test_refreeze_after_remove_part_restamps_a_mechanical_spec(mechanical: Path,
     assert spec["behaviors"][0]["state"] == "green"
 
 
+@pytest.mark.cross_os
+def test_check_and_resume_report_a_frozen_spec_whose_parts_changed(mechanical: Path, strap: Strap,
+                                                                   piped: Callable[..., Result]) -> None:
+    """A part changed after the freeze leaves check ok but prints a stale line naming both hashes."""
+    rel = f"plugins/harness/skills/{NAME}/notes.md"
+    (mechanical / rel).write_text("notes\n", encoding="utf-8", newline="\n")
+    ok(piped(f'add_part(name, "reference", "{rel}")\n', "api", NAME))
+    ok(strap("red", NAME))
+    implement(mechanical, widget=True)
+    ok(strap("freeze", NAME))
+    assert "stale:" not in ok(strap("check", NAME))
+    old = read_spec(mechanical)["frozen"]["skill_hash"][:12]
+    (mechanical / rel).write_text("notes, edited\n", encoding="utf-8", newline="\n")
+    pattern = (rf"^stale: frozen at {old}, parts now hash [0-9a-f]{{12}}; "
+               r"prove greens then freeze --refreeze\s*$")
+    for out in (ok(strap("check", NAME)), ok(strap("new", NAME))):
+        assert re.search(pattern, out, re.MULTILINE), out
+
+
+@pytest.mark.cross_os
 def test_freeze_refuses_a_listed_part_that_does_not_exist(mechanical: Path, strap: Strap,
                                                           piped: Callable[..., Result]) -> None:
     absent = f"plugins/harness/skills/{NAME}/absent.md"
@@ -320,6 +362,7 @@ def test_freeze_refuses_a_listed_part_that_does_not_exist(mechanical: Path, stra
     assert read_spec(mechanical)["frozen"] is None
 
 
+@pytest.mark.cross_os
 def test_refreeze_on_an_unfrozen_spec_is_a_freeze(mechanical: Path, strap: Strap) -> None:
     ok(strap("red", NAME))
     implement(mechanical, widget=True)
@@ -334,9 +377,11 @@ def test_frozen_spec_refuses_a_baseline_opened_before_the_freeze(gate: Callable[
                                                                  driver: ModuleType, strap: Strap,
                                                                  piped: Callable[..., Result],
                                                                  project: Path) -> None:
-    """A baseline run left open when the spec froze cannot be recorded afterwards; its tree stays."""
+    """A baseline run left open when the spec froze cannot be recorded afterwards; its tree is dropped."""
     gate()
-    opened = run_id_of(ok(strap("run", NAME, "B1", "--arm", "baseline")))
+    out = ok(strap("run", NAME, "B1", "--arm", "baseline"))
+    opened = run_id_of(out)
+    tree = Path(re.search(r"TREE: (.+?)\s*$", out, re.MULTILINE).group(1))
     spec = driver.load(NAME)
     frozen = driver.Frozen(skill_hash=driver.skill_hash(spec), grader=driver.Grader.SESSION, at=driver._now())
     driver.save(spec.model_copy(update={"frozen": frozen}))
@@ -344,6 +389,25 @@ def test_frozen_spec_refuses_a_baseline_opened_before_the_freeze(gate: Callable[
     err = refused(piped(BASELINE_REPLY, "record-run", NAME, "--run", opened))
     assert has_problem(err, f"{NAME} is frozen; it takes green runs only"), err
     assert read_spec(project) == before
+    assert not tree.exists()
+
+
+@pytest.mark.cross_os
+def test_frozen_spec_refuses_a_gone_baseline_before_naming_a_rebuild(gate: Callable[..., Dict[str, Any]],
+                                                                      driver: ModuleType, strap: Strap,
+                                                                      piped: Callable[..., Result]) -> None:
+    """With its tree already gone, the open baseline gets the frozen refusal, not a rebuild hint."""
+    gate()
+    out = ok(strap("run", NAME, "B1", "--arm", "baseline"))
+    opened = run_id_of(out)
+    tree = Path(re.search(r"TREE: (.+?)\s*$", out, re.MULTILINE).group(1))
+    driver.pr.drop_tree(driver._root(), tree)
+    spec = driver.load(NAME)
+    frozen = driver.Frozen(skill_hash=driver.skill_hash(spec), grader=driver.Grader.SESSION, at=driver._now())
+    driver.save(spec.model_copy(update={"frozen": frozen}))
+    err = refused(piped(BASELINE_REPLY, "record-run", NAME, "--run", opened))
+    assert has_problem(err, f"{NAME} is frozen; it takes green runs only"), err
+    assert "to rebuild it" not in err
 
 
 @pytest.mark.cross_os
