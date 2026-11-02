@@ -23,7 +23,7 @@ The `validate_pr_json_schema.py` hook validates review and plan writes against t
 
 ### 1. `PR_REVIEW.schema.json`
 
-**Applies to:** `<reviews dir>/{NNNN}_{Title}.json` (4-digit zero-padded PR number; `<reviews dir>` is the project's `artifacts.reviews`).
+**Applies to:** `<reviews dir>/{NNNN}_{Title}.json` (4-digit zero-padded PR number) and `<reviews dir>/LOCAL_<label>_<slug>.json` (a review-local run keyed `local-<label>`); `<reviews dir>` is the project's `artifacts.reviews`.
 
 Structure of an agent code-review verdict:
 
@@ -222,7 +222,7 @@ Catalogs are spec/plan-time artifacts — they inform the ActionPlan but don't r
 - `bubble_up` is a complete record of unresolved-after-Phase-5 issues (resolved issues live in `post_review_resolutions`; nothing else is dropped on the floor)
 - `verification_log` paste fields contain raw command stdout, not synthesized summaries
 - `verification_log` shape contract (canonical here; the skill cites this README, not the other way around): EITHER a `{"skipped": true, "reason": "..."}` advisory (for catalog-style review JSONs) OR the nested two-block structure with `dispatch_time` (Phase 1 / Phase 3) carrying `pr_metadata_check` + `structural_guards_check`, and `pre_fix_time` (Phase 4) which is the literal string `"pending - to be populated in Phase 4"` (ASCII hyphen; the schema `const` is authoritative) at Phase 3 write time and a sub-object (`current_branch_check`, `branch_match_check`, `clean_tree_check`, `sha_ancestry_check`, `base_branch_recorded`) after Phase 4 runs. The two shapes are mutually exclusive — `oneOf` in the JSON Schema. Drift between this README and SKILL.md is caught by the harness tests `tests/skills/test_pr_review_skill_contract.py` (phase-count, sibling-artifact references) and `tests/schemas/test_pr_review_schema_verification_log.py` (schema-vs-data shape).
-- Exactly one `docs/PR_REVIEWS/{NNNN}_*.json` file per PR (4-digit padded). **Known 5-digit-prefix exceptions:** `01039_*`, `01044_*`, `01047_*` are preserved as-is to keep historical cross-references (commits, issues, sibling docs) resolvable. The canonical predicate `is_review_artifact_name` (regex `^\d{4}_`) intentionally rejects 5-digit prefixes — these files are skipped by the validation hook by design. New review files MUST use 4-digit padding; if a future PR number exceeds 9999, update the predicate to `^\d{4,5}_` and document the migration here.
+- Exactly one `docs/PR_REVIEWS/{NNNN}_*.json` file per PR (4-digit padded). **Known 5-digit-prefix exceptions:** `01039_*`, `01044_*`, `01047_*` are preserved as-is to keep historical cross-references (commits, issues, sibling docs) resolvable. The canonical predicate `is_review_artifact_name` (regex `^(\d{4}|LOCAL_<label>)_`, `<label>` being lower-case letters, digits and single hyphens) intentionally rejects 5-digit prefixes — these files are skipped by the validation hook by design. A review-local run (no PR) writes `LOCAL_<label>_<slug>.json` at the top of the folder, keyed `local-<label>`, and is validated the same way. New PR review files MUST use 4-digit padding; if a future PR number exceeds 9999, widen the digit branch of the predicate to `\d{4,5}` and document the migration here.
 
 ### ActionPlan JSON
 
