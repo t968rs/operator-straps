@@ -4,9 +4,9 @@ Reviewers record through ``record_draft`` (or ``record``) and fixers through ``r
 ``record_fixes``), normally once, from the heredoc their brief carries. ``record_add`` is the exception: it
 appends to a reviewer's report across several calls. Each replacing call validates every item before writing
 anything, replaces the agent's report under the run directory
-(``<project>/<artifacts.scratch>/<NNNN>/<RUN_ID>/``, named by the ``run_id`` argument, else by ``current``),
-and prints the agent's return-contract block (the pr-team skill's ``return_contract.md``), UTF-8 safe on any
-console encoding. Agents never choose issue ids; ids are assigned when ``harness_lib.review_merge`` merges
+(``<project>/<artifacts.scratch>/<NNNN or local-<label>>/<RUN_ID>/``, named by the ``run_id`` argument,
+else by ``current``), and prints the agent's return-contract block (the pr-team skill's
+``return_contract.md``), UTF-8 safe on any console encoding. Agents never choose issue ids; ids are assigned when ``harness_lib.review_merge`` merges
 the reports. An explicit ``repo`` names the project (its own ``.claude/harness.json`` governs the scratch
 path); without one, the project is ``harness_lib.config.active()``'s root.
 """
@@ -31,11 +31,16 @@ from pydantic import (
     model_validator,
 )
 
+from harness_lib.review_local_models import LABEL_MAX, LABEL_PATTERN, LOCAL_PREFIX, RunKey, parse_key
+
 if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
 
 AGENT_ID = re.compile(r"^[a-z0-9]+(_[a-z0-9]+)*$")
-RUN_ID = re.compile(r"^pr\d{1,7}_\d{8}T\d{6}Z$")
+_LOCAL_RUN = (rf"{re.escape(LOCAL_PREFIX)}(?=[^_]{{1,{LABEL_MAX}}}_)"
+              rf"{LABEL_PATTERN.strip('^$')}")
+RUN_ID = re.compile(rf"^(pr\d{{1,7}}|{_LOCAL_RUN})_\d{{8}}T\d{{6}}Z$")
+_RUN_ID_SHAPE = "pr<N>_<yyyymmddTHHMMSSZ> or local-<label>_<yyyymmddTHHMMSSZ>"
 ISSUE_ID = r"^[CIM]\d+$"
 LINES = r"^\d+(-\d+)?(,\s*\d+(-\d+)?)*$"
 _DRIVE = re.compile(r"^[A-Za-z]:")
@@ -44,7 +49,7 @@ _M = TypeVar("_M", bound=BaseModel)
 
 
 class Severity(str, Enum):
-    """Issue severity tier; coerced from ``C`` / ``I`` / ``M`` or the full name, any case."""
+    """Issue severity tier; coerced from its one-letter tier code or the full name, any case."""
 
     critical = "critical"
     important = "important"
@@ -168,7 +173,7 @@ class Finding(BaseModel):
     @field_validator("severity", mode="before")
     @classmethod
     def _severity(cls, value: object) -> object:
-        """``C`` / ``I`` / ``M`` and any-case names coerced to ``Severity`` values."""
+        """One-letter tier codes and any-case names coerced to ``Severity`` values."""
         if not isinstance(value, str):
             return value
         text = value.strip().lower()
@@ -342,20 +347,28 @@ def _repo(repo: Optional[Path]) -> Path:
     return Path(repo or _project_root()).resolve()
 
 
-def _pr_dir(pr: int, repo: Optional[Path]) -> Path:
-    """``<repo>/<artifacts.scratch>/<NNNN>``."""
-    return _repo(repo) / run_root(repo) / f"{int(pr):04d}"
+def _pr_dir(pr: RunKey, repo: Optional[Path]) -> Path:
+    """``<repo>/<artifacts.scratch>/<NNNN>`` for a PR number, ``.../<key>`` for a local key."""
+    key = parse_key(pr)
+    return _repo(repo) / run_root(repo) / (key if isinstance(key, str) else f"{key:04d}")
 
 
-def run_dir(pr: int, repo: Optional[Path] = None, run_id: Optional[str] = None) -> Path:
+def run_id_for(pr: RunKey, stamp: str) -> str:
+    """``pr<N>_<stamp>`` for a PR number, ``<key>_<stamp>`` for a local key."""
+    key = parse_key(pr)
+    return f"{key}_{stamp}" if isinstance(key, str) else f"pr{key}_{stamp}"
+
+
+def run_dir(pr: RunKey, repo: Optional[Path] = None, run_id: Optional[str] = None) -> Path:
     """Run directory for ``run_id``, else the one ``current`` names; ``FileNotFoundError`` without one."""
     if run_id is None:
         current = _pr_dir(pr, repo) / "current"
         if not current.is_file():
-            raise FileNotFoundError(f"no current pr-review run for PR {pr} ({current}); run capture first")
+            who = f"PR {pr}" if isinstance(parse_key(pr), int) else f"local run {pr}"
+            raise FileNotFoundError(f"no current pr-review run for {who} ({current}); run capture first")
         run_id = current.read_text(encoding="utf-8").strip()
     if not RUN_ID.match(run_id):
-        raise ValueError(f"run id {run_id!r} must look like pr<N>_<yyyymmddTHHMMSSZ>")
+        raise ValueError(f"run id {run_id!r} must look like {_RUN_ID_SHAPE}")
     return _pr_dir(pr, repo) / run_id
 
 
@@ -367,7 +380,7 @@ def _atomic_write(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
-def start_run(pr: int, run_id: str, repo: Optional[Path] = None) -> Path:
+def start_run(pr: RunKey, run_id: str, repo: Optional[Path] = None) -> Path:
     """Create the run directory for ``run_id`` and point ``current`` at it; return the directory.
 
     An existing run directory raises ``ValueError`` (``current`` untouched): two captures within one second
@@ -375,7 +388,7 @@ def start_run(pr: int, run_id: str, repo: Optional[Path] = None) -> Path:
     one.
     """
     if not RUN_ID.match(run_id):
-        raise ValueError(f"run id {run_id!r} must look like pr<N>_<yyyymmddTHHMMSSZ>")
+        raise ValueError(f"run id {run_id!r} must look like {_RUN_ID_SHAPE}")
     path = run_dir(pr, repo, run_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -440,7 +453,7 @@ def _validate_items(
     return tuple(built)
 
 
-def _report_path(pr: int, folder: str, agent: str, repo: Optional[Path],
+def _report_path(pr: RunKey, folder: str, agent: str, repo: Optional[Path],
                  run_id: Optional[str] = None) -> Tuple[Path, str]:
     """Absolute report path under ``run_id`` (else the current run) and its repo-relative posix form."""
     path = run_dir(pr, repo, run_id) / folder / f"{agent}.json"
@@ -467,7 +480,7 @@ def _load(model: Type[_M], path: Path) -> _M:
     return model.model_validate_json(path.read_text(encoding="utf-8"))
 
 
-def record(pr: int, reviewer: str, findings: Sequence[Mapping[str, object]] = (),
+def record(pr: RunKey, reviewer: str, findings: Sequence[Mapping[str, object]] = (),
            strengths: Sequence[str] = (), *, repo: Optional[Path] = None,
            run_id: Optional[str] = None) -> str:
     """Validate, write ``findings/<reviewer>.json`` (replacing), re-read it, print and return the block.
@@ -487,7 +500,7 @@ def record(pr: int, reviewer: str, findings: Sequence[Mapping[str, object]] = ()
     return block
 
 
-def record_fixes(pr: int, fixer: str, fixed: Sequence[Mapping[str, object]] = (),
+def record_fixes(pr: RunKey, fixer: str, fixed: Sequence[Mapping[str, object]] = (),
                  bubbled: Sequence[Mapping[str, object]] = (), *, repo: Optional[Path] = None,
                  run_id: Optional[str] = None) -> str:
     """Validate, write ``fixes/<fixer>.json`` (replacing), re-read it, print and return the block.
@@ -508,7 +521,7 @@ def record_fixes(pr: int, fixer: str, fixed: Sequence[Mapping[str, object]] = ()
     return block
 
 
-def draft_path(pr: int, agent: str, repo: Optional[Path] = None, run_id: Optional[str] = None) -> Path:
+def draft_path(pr: RunKey, agent: str, repo: Optional[Path] = None, run_id: Optional[str] = None) -> Path:
     """``drafts/<agent>.json`` in the run directory: the file an agent writes before ``record_draft``."""
     return run_dir(pr, repo, run_id) / "drafts" / f"{agent}.json"
 
@@ -528,7 +541,8 @@ def _read_draft(path: Path, keys: Tuple[str, str]) -> Dict[str, list]:
     return {k: list(data.get(k, [])) for k in keys}
 
 
-def record_draft(pr: int, reviewer: str, *, repo: Optional[Path] = None, run_id: Optional[str] = None) -> str:
+def record_draft(pr: RunKey, reviewer: str, *, repo: Optional[Path] = None,
+                 run_id: Optional[str] = None) -> str:
     """``record`` with the findings and strengths read from ``draft_path`` (``{findings, strengths}``).
 
     The payload travels through a file instead of the command line, so its size never reaches the shell.
@@ -537,14 +551,14 @@ def record_draft(pr: int, reviewer: str, *, repo: Optional[Path] = None, run_id:
     return record(pr, reviewer, draft["findings"], draft["strengths"], repo=repo, run_id=run_id)
 
 
-def record_fixes_draft(pr: int, fixer: str, *, repo: Optional[Path] = None,
+def record_fixes_draft(pr: RunKey, fixer: str, *, repo: Optional[Path] = None,
                        run_id: Optional[str] = None) -> str:
     """``record_fixes`` with the entries read from ``draft_path`` (a ``{fixed, bubbled}`` object)."""
     draft = _read_draft(draft_path(pr, fixer, repo, run_id), ("fixed", "bubbled"))
     return record_fixes(pr, fixer, draft["fixed"], draft["bubbled"], repo=repo, run_id=run_id)
 
 
-def record_add(pr: int, reviewer: str, findings: Sequence[Mapping[str, object]] = (),
+def record_add(pr: RunKey, reviewer: str, findings: Sequence[Mapping[str, object]] = (),
                strengths: Sequence[str] = (), *, repo: Optional[Path] = None,
                run_id: Optional[str] = None) -> str:
     """Append to ``findings/<reviewer>.json`` (created when absent), print and return the block.
