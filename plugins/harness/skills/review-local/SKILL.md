@@ -33,7 +33,7 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.
 | Review file | `<reviews>/<NNNN>_<slug>.json` | `<reviews>/LOCAL_<label>_<slug>.json` |
 | Phase 4 | branch, base and SHAs from gh | the same five checks against the captured `plan.json`: current branch, still on the captured branch, clean tree, merge base and head ancestors of HEAD, base recorded |
 | Outside reviews | `fold --from-gh-review` or `--findings` | `fold --findings` only (`--from-gh-review` is refused) |
-| Matrix rows | recorded | none: the `pr-review-watch` mod shows the run as `PR #?` and records no matrix rows |
+| Matrix rows | recorded | none: the `pr-review-watch` mod shows the run as `local review local-<label>` and records no matrix rows |
 
 Every subcommand prints `problem:` lines and exits 1 on failure; an exit 1 is a STOP unless a step below names the
 recovery. **REQUIRED:** read `${CLAUDE_PLUGIN_ROOT}/skills/pr-review/operating_rules.md` before Step 3: it holds the

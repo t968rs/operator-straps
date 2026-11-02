@@ -8,7 +8,7 @@ import {
 } from './bubbles'
 import { runtimeBaseOf, sentinelDirOf, under } from './config'
 import {
-  identify, identifyStandalone, isDefinedAgent, parseReturnBlock, prOfRunId, standaloneRunId, startedAtOfRunId,
+  identify, identifyStandalone, isDefinedAgent, keyOfRunId, parseReturnBlock, standaloneRunId, startedAtOfRunId,
   type Dispatch,
 } from './contract'
 import { appendRows, buildRow, validateRow, type MatrixRow } from './matrixRow'
@@ -17,6 +17,7 @@ import {
   applyCompletion, applyDispatch, currentRunId, fixerBubbledIds, markLogged, markUsageLogged, newAgent, planPhase,
   recoverReviewers, reviewersSettled, reviewersToLog, settle, usageToLog, withDiskPhase, type Completion,
 } from './runs'
+import { runDirName, toRunKey, type RunKey } from './runKey'
 import { blocksSession } from './sentinels'
 import {
   blockCounts, buildUsageRow, NO_COUNTS, preferCounts, reportCounts, validateUsageRow, type FixerCounts,
@@ -116,16 +117,16 @@ const devCommitFor = async ($: Dollar, w: Watch): Promise<string> => {
 const scanSentinels = ($: Dollar, w: Watch): Promise<HotSentinel[]> =>
   scanPhase5($, under(w.sentinelRoot, sentinelDirOf(w.cfg)))
 
-/** The newest review JSON for a PR, unless it is older than `sinceMs`. */
-const loadReviewFor = async ($: Dollar, w: Watch, pr: number, sinceMs: number): Promise<ReviewDoc | undefined> => {
+/** The newest review JSON for a run key (PR number or local key), unless it is older than `sinceMs`. */
+const loadReviewFor = async ($: Dollar, w: Watch, key: RunKey, sinceMs: number): Promise<ReviewDoc | undefined> => {
   const dir = under(w.root, w.cfg.reviewsDir)
-  const hit = reviewFileFor(pr, await listDir($, dir))
+  const hit = reviewFileFor(key, await listDir($, dir))
   if (hit === undefined || hit.mtimeMs < sinceMs) return undefined
   const text = await readText($, `${dir}/${hit.name}`)
   return text === undefined ? undefined : readReview(text)
 }
 
-/** The run's review JSON: newest for its PR and not older than the run. */
+/** The run's review JSON: newest for its run key and not older than the run. */
 const loadReview = ($: Dollar, w: Watch, run: Run): Promise<ReviewDoc | undefined> =>
   run.pr === null ? Promise.resolve(undefined) : loadReviewFor($, w, run.pr, run.startedAt)
 
@@ -141,11 +142,12 @@ const NO_RUN_DISK: RunDisk = { phase: undefined, fixerBubbled: [] }
 
 /**
  * The pr-review run directory under `artifacts.scratch` (`<NNNN>/current` names the active run,
- * `<NNNN>/<RUN_ID>/` holds it), only while the PR folder's `current` names this run.
+ * `<NNNN>/<RUN_ID>/` holds it; a local run's folder is its key, `local-<label>/`), only while the key
+ * folder's `current` names this run.
  */
 const prReviewRunDir = async ($: Dollar, w: Watch, run: Run): Promise<string | undefined> => {
   if (run.skill !== 'pr-review' || run.pr === null) return undefined
-  const prDir = `${under(w.root, w.cfg.scratchDir)}/${String(run.pr).padStart(4, '0')}`
+  const prDir = `${under(w.root, w.cfg.scratchDir)}/${runDirName(run.pr)}`
   return currentRunId(await readText($, `${prDir}/current`)) === run.runId ? `${prDir}/${run.runId}` : undefined
 }
 
@@ -354,8 +356,10 @@ const logUsage = async ($: Dollar, key: Key, c: Completion): Promise<void> => {
   const counts = await countsFor($, w, run, claimed, c)
   // The engine's model: this completion's, else the background launch's, else the requested one.
   const agent = { ...claimed, model: c.model ?? claimed.launchModel ?? claimed.model }
+  // The usage schema's `pr` is a PR number or null: a local run logs null; its run_id carries the key.
+  const pr = typeof run.pr === 'number' ? run.pr : null
   const row = buildUsageRow({
-    runId: run.runId, skill: run.skill, pr: run.pr, agent, ending: c.ending, isMeasured: c.isMeasured,
+    runId: run.runId, skill: run.skill, pr, agent, ending: c.ending, isMeasured: c.isMeasured,
     loggedAt: now, counts,
   })
   const path = under(w.root, w.cfg.agentUsagePath)
@@ -378,10 +382,16 @@ const claimReviewers = async ($: Dollar, runId: string, now: number): Promise<Ag
   return claimed
 }
 
+/**
+ * Whether a run logs matrix rows: only a run keyed by a PR number. The matrix schema keys rows by PR number, so
+ * a review-local run (`local-<label>`) logs none.
+ */
+const logsMatrix = (run: Run | undefined): run is Run & { pr: number } => typeof run?.pr === 'number'
+
 const flushNow = async ($: Dollar, w: Watch, runId: string): Promise<void> => {
   const run = await runOf($, runId)
   const prefix = verdictPrefix(run?.verdict ?? null)
-  if (run === undefined || run.pr === null || prefix === undefined || !reviewersSettled(run)) return
+  if (!logsMatrix(run) || prefix === undefined || !reviewersSettled(run)) return
   const now = await $.clock.now()
   const agents = await claimReviewers($, runId, now)
   if (agents.length === 0) return
@@ -431,14 +441,15 @@ const refresh = async ($: Dollar): Promise<void> => {
 /**
  * A run rebuilt from its runtime dir: plan reviewers joined with terminals rows. Its start is the run id's
  * stamp, so an older review JSON for the same PR is never taken for its verdict; no stamp, no recovery.
+ * Recovery exists to log matrix rows, so a run id without a PR number (a local key) is not recovered.
  */
 const recoveredRun = async ($: Dollar, w: Watch, runId: string): Promise<Run | undefined> => {
   const runtimeDir = `${runtimeBaseOf(w.cfg)}/${runId}`
   const dir = under(w.root, runtimeDir)
   const plan = await readText($, `${dir}/dispatch_plan_review.json`)
-  const pr = prOfRunId(runId)
+  const pr = keyOfRunId(runId)
   const startedAt = startedAtOfRunId(runId)
-  if (plan === undefined || pr === null || startedAt === null) return undefined
+  if (plan === undefined || typeof pr !== 'number' || startedAt === null) return undefined
   const agents = recoverReviewers(plan, (await readText($, `${dir}/terminals.jsonl`)) ?? '')
   return {
     runId, skill: 'pr-team', pr, phase: 'consolidate', runtimeDir,
@@ -475,10 +486,10 @@ const activeRun = async ($: Dollar): Promise<Run | undefined> => {
   return id === null ? undefined : runOf($, id)
 }
 
-type PrReview = [number, ReviewDoc | undefined]
+type PrReview = [RunKey, ReviewDoc | undefined]
 
 /**
- * The active review for the keyword check: the tracked run's PR, else that of the first hot sentinel
+ * The active review for the keyword check: the tracked run's key, else that of the first hot sentinel
  * blocking the stopping session (`blocksSession`; another session's sentinel is not this one's review).
  */
 const keywordReview = async (
@@ -489,8 +500,8 @@ const keywordReview = async (
 ): Promise<PrReview | undefined> => {
   if (run !== undefined && run.pr !== null) return [run.pr, await loadReview($, w, run)]
   const hot = await scanSentinels($, w).catch(() => [] as HotSentinel[])
-  const pr = Number(hot.find(s => blocksSession(s.owner, sessionId))?.pr)
-  return Number.isInteger(pr) && pr >= 1 ? [pr, await loadReviewFor($, w, pr, 0)] : undefined
+  const key = toRunKey(hot.find(s => blocksSession(s.owner, sessionId))?.pr)
+  return key === null ? undefined : [key, await loadReviewFor($, w, key, 0)]
 }
 
 type StopInput = { stop_hook_active: boolean; last_assistant_message?: string; session_id?: string }
@@ -522,9 +533,9 @@ const afterShell = async ($: Dollar, command: string | undefined): Promise<void>
   if (PR_REVIEW_SCRIPT.test(command ?? '')) await refresh($).catch(noop)
 }
 
-/** Whether the mod holds a run it can log rows for: recorded in state, with a PR. */
+/** Whether the mod holds a run it can log matrix rows for: recorded in state, with a PR number (`logsMatrix`). */
 const ownsRows = async ($: Dollar, runId: string): Promise<boolean> =>
-  ((await runOf($, runId).catch(noop))?.pr ?? null) !== null
+  logsMatrix(await runOf($, runId).catch(noop))
 
 /** A defined agent that carries no run header gets a run of its own, under a fresh id. */
 const standaloneFor = async ($: Dollar, subagentType: string | undefined): Promise<Dispatch | undefined> =>

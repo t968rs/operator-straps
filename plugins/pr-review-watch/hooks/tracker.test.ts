@@ -617,6 +617,61 @@ describe('pr-review run directory', () => {
   })
 })
 
+describe('review-local runs (a local-<label> key)', () => {
+  const KEY = 'local-fix-band'
+  const LOCAL_RUN = `${KEY}_20261009T120000Z`
+  const KEY_DIR = `${ROOT}/docs/_scratch/pr_review/${KEY}`
+  const LOCAL_REVIEW = `${ROOT}/docs/PR_REVIEWS/LOCAL_fix-band_watch.json`
+  const localPrompt = (id: string, role = 'reviewer') => `AGENT_ID: ${id}\nAGENT_ROLE: ${role}\nRUN_ID: ${LOCAL_RUN}\nPR: ${KEY}`
+  const open = { verdict: 'NOT READY TO MERGE', issues: { important: [{ id: 'I1' }, { id: 'I2' }] } }
+  const launched = () => ({
+    result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
+  })
+  const bandLine = async ($: Engine): Promise<string | undefined> => {
+    const props = {
+      hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
+    }
+    const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface: 'terminal', component: 'AbovePrompt', props })
+    const text = (await ui.find({ type: 'Text', text: /^(local review|PR #)/ }))?.text
+    await ui.unmount()
+    return text
+  }
+
+  test('the band names the run by its key; the run directory is the key folder', async ($, on) => {
+    const seen = world(on, launched)
+    await dispatch($, localPrompt('overall'), 'harness:pr-reviewer')
+    expect(await bandLine($)).toBe(`local review ${KEY} · reviewers 0/1`)
+    seen.files.set(`${KEY_DIR}/current`, { text: `${LOCAL_RUN}\n`, mtimeMs: NOW })
+    seen.files.set(`${KEY_DIR}/${LOCAL_RUN}/plan.json`, { text: JSON.stringify({ phase: 'fix' }), mtimeMs: NOW })
+    const fix = { fixer: 'w1_fix_1', fixed: [], bubbled: [{ id: 'I9', classification: 'out_of_scope', reason: 'r' }] }
+    seen.files.set(`${KEY_DIR}/${LOCAL_RUN}/fixes/w1_fix_1.json`, { text: JSON.stringify(fix), mtimeMs: NOW })
+    await mainTurnEnd($, 't1')
+    expect(await bandLine($)).toBe(`local review ${KEY} · fixers 0/0 · 1 bubbled`)
+  })
+
+  test('the review is LOCAL_<label>_*.json; usage rows log a null pr; matrix rows are never written', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO)))
+    const r = await dispatch($, localPrompt('overall'), 'harness:pr-reviewer')
+    expect(r.context ?? []).not.toContain(OWNER_NOTE)
+    seen.files.set(LOCAL_REVIEW, { text: JSON.stringify({ ...open, bubbles: ['I2'] }), mtimeMs: NOW + 1 })
+    await mainTurnEnd($, 't1')
+    expect(await bandLine($)).toBe(`local review ${KEY} · reviewers 1/1 · 1 bubbled`)
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ run_id: LOCAL_RUN, pr: null, role: 'reviewer' })
+    expect(seen.files.has(MATRIX)).toBe(false)
+  })
+
+  test('a hot local sentinel names the local review for the Stop keyword check', async ($, on) => {
+    const seen = world(on, () => completed('x'))
+    on('classic.Stop', () => ({}))
+    seen.files.set(`${SENTINELS}/.phase5_pending_${KEY}`, { text: `${KEY}\n${NOW / 1000 - 60}\n`, mtimeMs: NOW })
+    seen.files.set(LOCAL_REVIEW, { text: JSON.stringify(open), mtimeMs: NOW })
+    const block = (await $.classic.Stop({ stop_hook_active: false, last_assistant_message: 'Bubbles: I1' })).block
+    expect(block?.startsWith(`local review ${KEY}: `)).toBe(true)
+    expect(await bandLine($)).toBe(`local review ${KEY} · Phase 5 pending`)
+  })
+})
+
 describe('Stop guard', () => {
   const closerBlock = '---\nSIGNAL: DONE\nAGENT_ROLE: fixer\nFIXED: C1\nBUBBLED: I2,M3\nEDITED: 1\nOUTPUT: o\n---'
   const closeout = ($: Engine) => dispatch($, `MODE=CLOSEOUT\nRUN_ID=${RUN}\nRUNTIME_DIR=${DIR}`, 'pr-team-fixer')

@@ -13,7 +13,10 @@ import { resolveWatch } from './watch'
 
 type Dollar = EngineInterface
 
-/** A hot sentinel's PR id and the session that armed it (null when unowned). */
+/**
+ * A hot sentinel's run key (a PR number, or `local-<label>` for a review-local run, as text) and the session
+ * that armed it (null when unowned).
+ */
 export type HotSentinel = { pr: string; owner: string | null }
 
 const phase5Atom = atom({ plugin: 'pr-review-watch', key: 'phase5' } as const, [])
@@ -58,7 +61,7 @@ export async function scanPhase5($: Dollar, dir: string): Promise<HotSentinel[]>
   return hot
 }
 
-/** The prompt context line for hot sentinel PR ids. */
+/** The prompt context line for hot sentinel run keys. */
 export const phase5Context = (ids: readonly string[]): string => `PHASE5_PENDING=${ids.join(',')}`
 
 // ---------------------------------------------------------------------------

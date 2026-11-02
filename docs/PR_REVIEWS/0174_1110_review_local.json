@@ -8,7 +8,7 @@
   "base_sha": "369c1d990e0801202ba0caefbc401b7647b8468b",
   "head_sha": "c542e64fd4f0c4448b58af86e9717971aecd8da9",
   "review_date": "2026-11-02",
-  "verdict": "READY TO MERGE - 20 of 21 findings resolved, 1 bubbled",
+  "verdict": "READY TO MERGE - 21 of 21 findings resolved, 0 bubbled",
   "stats": {
     "additions": 1742,
     "deletions": 72,
@@ -26,9 +26,7 @@
     "docs/_scratch/pr_review/0174/pr174_20261102T183602Z/findings/docs.json",
     "docs/_scratch/pr_review/0174/pr174_20261102T183602Z/findings/overall.json"
   ],
-  "bubbles": [
-    "M4"
-  ],
+  "bubbles": [],
   "strengths": [
     "test_local_review_artifacts runs the real schema hook as a subprocess on a make_project repo. That proves `LOCAL_<label>_` names are recognized, schema-validated and that closeout clears the local-key sentinel. A setup error or an unrecognized name both fail the cleared-sentinel assertion.",
     "The gh fakes (`gh_calls`, `_no_gh`) raise on any call, so a regression that reaches gh fails loudly instead of being swallowed by an assertion on a list.",
@@ -585,6 +583,12 @@
       "status": "RESOLVED",
       "date": "2026-11-02",
       "evidence": "c542e64 (working-tree snapshot; developer commits) - LABEL_MAX raised 41 to 48 in review_local_models.py, matching the frozen B1 statement (developer chose one bound) (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "ae51a36 (working-tree snapshot; developer commits) - pr-review-watch and bubble-stamp read the local-<label> run id, run folder, LOCAL_ review file and sentinel; matrix rows stay PR-only; tests/mods/test_local_run_key_mirror.py pins the TS side to harness_lib (outside fixer waves)"
     }
   ]
 }

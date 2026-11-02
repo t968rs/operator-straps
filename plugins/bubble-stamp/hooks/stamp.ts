@@ -42,7 +42,10 @@ const serial = <T>(work: () => Promise<T>): Promise<T> => {
   return run
 }
 
-/** The PR number a memo file name carries (`PR_<N>_Bubbles.md`); undefined for any other name. */
+/**
+ * The PR number a memo file name carries (`PR_<N>_Bubbles.md`); undefined for any other name. `bubble_memo.py`
+ * writes memos for PR numbers only, so a review-local run (`local-<label>`) has no memo to stamp.
+ */
 export const memoPrOf = (name: string): number | undefined => {
   const digits = MEMO_NAME.exec(name)?.[1]
   return digits === undefined ? undefined : Number(digits)

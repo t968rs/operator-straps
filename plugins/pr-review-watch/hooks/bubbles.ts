@@ -3,6 +3,8 @@
  * (`issue_ids`, `disposition_ids`, `all_issues_dispositioned`) plus file selection. Pure: no `$`.
  */
 
+import { reviewPrefix, runName, type RunKey } from './runKey'
+
 /**
  * The parts of a consolidated review JSON (`<artifacts.reviews>/*.json`) the watch reads. `closed`: ids
  * whose latest `post_review_resolutions[]` status is `RESOLVED` or `CLOSED_NO_ACTION`.
@@ -95,9 +97,9 @@ export const missingFromReview = (tracked: readonly string[], r: ReviewDoc | und
 
 export const verdictPrefix = (verdict: string | null): string | undefined => verdict?.match(VERDICT_PREFIX)?.[1]
 
-/** The newest `<NNNN>_*.json` file entry for a PR, or undefined. */
-export const reviewFileFor = (pr: number, entries: readonly Listed[]): Listed | undefined => {
-  const prefix = `${String(pr).padStart(4, '0')}_`
+/** The newest review file entry for a run key (`<NNNN>_*.json`, or `LOCAL_<label>_*.json`), or undefined. */
+export const reviewFileFor = (key: RunKey, entries: readonly Listed[]): Listed | undefined => {
+  const prefix = reviewPrefix(key)
   const hits = entries.filter(e => e.kind === 'file' && e.name.startsWith(prefix) && e.name.endsWith('.json'))
   return [...hits].sort((a, b) => b.mtimeMs - a.mtimeMs)[0]
 }
@@ -112,7 +114,7 @@ export const mentionsBubble = (text: string | undefined): boolean => BUBBLE_WORD
  * populated `bubbles[]`, unless every issue is already dispositioned. Undefined to let the stop through.
  */
 export const keywordBlock = (
-  pr: number,
+  key: RunKey,
   text: string | undefined,
   r: ReviewDoc | undefined,
   isLoopBreak: boolean,
@@ -121,7 +123,7 @@ export const keywordBlock = (
   const open = r.issueIds.filter(id => !r.dispositioned.includes(id)).sort(byId)
   if (open.length === 0) return undefined
   return (
-    `PR #${pr}: the last message discusses bubbles, but the review JSON's bubbles[] is empty while ` +
+    `${runName(key)}: the last message discusses bubbles, but the review JSON's bubbles[] is empty while ` +
     `${open.join(', ')} remain undispositioned. Populate bubbles[] before discussing bubbles, unless all ` +
     'issues are already resolved.'
   )
@@ -129,14 +131,14 @@ export const keywordBlock = (
 
 /** The state-triggered Stop block text, or undefined to let the stop through. */
 export const stopBlock = (
-  pr: number | null,
+  key: RunKey | null,
   missing: readonly string[],
   from: string,
   isLoopBreak: boolean,
 ): string | undefined => {
   if (isLoopBreak || missing.length === 0) return undefined
   return (
-    `PR #${pr ?? '?'}: the review JSON does not disposition bubbled ${missing.join(', ')} ` +
+    `${runName(key)}: the review JSON does not disposition bubbled ${missing.join(', ')} ` +
     `(tracked from ${from}). Add them to bubbles[] (or bubble_up[] / post_review_resolutions[]) before stopping.`
   )
 }

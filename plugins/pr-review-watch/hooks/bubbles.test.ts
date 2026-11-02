@@ -76,6 +76,16 @@ describe('files and verdicts', () => {
     expect(reviewFileFor(1537, [e('1537_0093_gdb.json', 2)])?.name).toBe('1537_0093_gdb.json')
     expect(reviewFileFor(1, entries)).toBeUndefined()
   })
+
+  test('reviewFileFor: a local key reads LOCAL_<label>_*.json; labels never cross', async () => {
+    const e = (name: string, mtimeMs: number) => ({ name, mtimeMs, kind: 'file' })
+    const entries = [
+      e('LOCAL_fix_Old.json', 1), e('LOCAL_fix_New.json', 5), e('LOCAL_fix-band_Other.json', 9), e('0001_x.json', 9),
+    ]
+    expect(reviewFileFor('local-fix', entries)?.name).toBe('LOCAL_fix_New.json')
+    expect(reviewFileFor('local-fix-band', entries)?.name).toBe('LOCAL_fix-band_Other.json')
+    expect(reviewFileFor('local-nope', entries)).toBeUndefined()
+  })
 })
 
 describe('keyword trigger (has_bubbles.py port)', () => {
@@ -106,6 +116,11 @@ describe('keyword trigger (has_bubbles.py port)', () => {
     expect(keywordBlock(1526, 'bubble', undefined, false)).toBeUndefined()
     expect(keywordBlock(1526, 'bubble', open, true)).toBeUndefined()
   })
+
+  test('a local run is named by its key', async () => {
+    const block = keywordBlock('local-x', 'bubble I2', doc({}), false)
+    expect(block?.startsWith('local review local-x: ')).toBe(true)
+  })
 })
 
 describe('stopBlock', () => {
@@ -114,5 +129,10 @@ describe('stopBlock', () => {
     expect(stopBlock(1526, ['I2', 'M3'], 'bubble_ups', false)).toContain('I2, M3')
     expect(stopBlock(1526, ['I2'], 'closer', true)).toBeUndefined()
     expect(stopBlock(1526, [], 'closer', false)).toBeUndefined()
+  })
+
+  test('names a local run by its key, and a run without one as PR #?', async () => {
+    expect(stopBlock('local-x', ['I2'], 'closer', false)?.startsWith('local review local-x: ')).toBe(true)
+    expect(stopBlock(null, ['I2'], 'closer', false)?.startsWith('PR #?: ')).toBe(true)
   })
 })
