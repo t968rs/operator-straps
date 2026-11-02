@@ -56,29 +56,30 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 27,
-    "needs_decision": 14,
+    "items": 37,
+    "needs_decision": 19,
     "trackers": 0,
     "close_candidates": 11,
     "by_status": {
-      "NEEDS_DECISION": 14,
-      "OPEN": 13
+      "NEEDS_DECISION": 19,
+      "OPEN": 18
     },
     "by_impact": {
-      "dev_velocity": 12,
-      "docs_tooling": 11,
+      "dev_velocity": 15,
+      "docs_tooling": 16,
       "maintainability": 2,
-      "runtime_failure": 2
+      "runtime_failure": 3,
+      "data_correctness": 1
     },
     "by_loe": {
       "XS": 2,
-      "S": 9,
-      "M": 11,
-      "L": 4,
+      "S": 12,
+      "M": 16,
+      "L": 6,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 27,
+      "gh_issue": 37,
       "impl_stub": 0,
       "research_folder": 0
     },
@@ -148,6 +149,63 @@
     {
       "id": "TODO-002",
       "rank": 2,
+      "title": "pr-sum: refuse control bytes in a summary and check flowchart connector alignment",
+      "kind": "bug",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#177",
+          "url": "https://github.com/t968rs/operator-straps/issues/177"
+        }
+      ],
+      "gh_issues": [
+        177
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "A pr-sum run saved a New Behavior flowchart holding 0x01/0x02 control bytes and misaligned connectors (from the issue: floodplain_development PR #1691, harness 0.48.0, unverified here). Checked: plugins/harness/scripts/pr_sum.py:277-282 writes the summary whenever build_problems is empty, and plugins/harness/lib/harness_lib/pr_summary.py:335-346 (draft_problems) has no control-character check; fenced lines are checked only for width (pr_summary.py:316-319), and _flow_problems (pr_summary.py:227-246) checks only `Behavior:` headings (:27), so a `New Behavior:` flow gets no flow checks at all. The skill's grammar example already draws a labeled fork (plugins/harness/skills/pr-sum/SKILL.md:172-184, `│ok`, `│yes`), but no prose rule says a decision is drawn as a fork rather than a chain. Root cause of the bytes is unconfirmed.",
+      "proposed_change": "Add a draft_problems check refusing `[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]` anywhere in the drafted strings; add a connector-alignment check that every `│ ▼ ├ └` in a flow fence sits under a node or connector column on the line above (accounting for side-by-side BEFORE/AFTER fences); say in pr-sum SKILL.md near :165-170 that decisions are drawn as forks with labeled arms; add tests for both checks.",
+      "files": [
+        "plugins/harness/lib/harness_lib/pr_summary.py",
+        "plugins/harness/scripts/pr_sum.py",
+        "plugins/harness/skills/pr-sum/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "The pr-sum build validator and its skill text; only pr-sum output is affected.",
+        "consumers": [
+          "plugins/harness/scripts/pr_sum.py"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "The control-byte guard is small; the column-alignment check must handle side-by-side fences without false refusals."
+      },
+      "impact": "data_correctness",
+      "severity": 3,
+      "priority": {
+        "score": 2.1,
+        "components": {
+          "impact_weight": 1.4,
+          "value": 4.2,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 2.1,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 wrong output on an uncommon input with a missing guard, data_correctness impact, M size."
+    },
+    {
+      "id": "TODO-003",
+      "rank": 3,
       "title": "a-w: attach refuses whenever the target checkout has any tracked change",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -202,8 +260,8 @@
       "why_ranked": "Severity 3 refusal that blocks attaching onto a busy checkout, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-003",
-      "rank": 3,
+      "id": "TODO-004",
+      "rank": 4,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -256,8 +314,8 @@
       "why_ranked": "Severity 2 missing guard, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-004",
-      "rank": 4,
+      "id": "TODO-005",
+      "rank": 5,
       "title": "pr-review: let a trivial judgment fix run cheaper (amend regrades fix_kind, or lower fixer effort)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -313,8 +371,129 @@
       "why_ranked": "Severity 2 fixer cost on small judgment fixes, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-005",
-      "rank": 5,
+      "id": "TODO-006",
+      "rank": 6,
+      "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Is the corrected Stop-recovery wording enough, or does a check (in qa_review_json.py or a new pr-team command) compare the plan's reviewed head with the PR head and the presence of each outputs/{id}.json, with a test pinning the Step 3 row; and does a retry that skips the fan-out need a developer prompt?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#165",
+          "url": "https://github.com/t968rs/operator-straps/issues/165"
+        }
+      ],
+      "gh_issues": [
+        165
+      ],
+      "related_gh_issues": [
+        166
+      ],
+      "catalog_entry_ids": [],
+      "summary": "A Step 3 STOP forces a second full reviewer fan-out even when every reviewer output exists. Checked: plugins/harness/skills/pr-team/SKILL.md:703 says `Step 3 STOP | Re-invoke from scratch (Phase 4 first-run failure means JSON may not exist)`; :701, :702, :282, :579 and :597 use the same from-scratch form; plugins/harness/agents/pr-team-orchestrator.md:422 prints `RECOVERY: resolve the branch-state issue (...), re-invoke /harness:pr-team <PR>` for the CONSOLIDATE clean-tree STOP; plugins/harness/skills/pr-team/commands/qa_review_json.py:514 prints a matching text-only RECOVERY line. No file under tests/ names `Re-invoke`, `re-invoke` or `Stop recovery`, so the rule is prose only. Trigger (from the issue, unverified here): PR #164 run pr0164_20261031T043414Z halted at phase4_first.clean_tree_check after five DONE reviewers and a written consolidated JSON; the rerun dispatched all five again and returned different findings.",
+      "proposed_change": "Reword the Step 3 row: re-dispatch CONSOLIDATE when the dispatch plan and every planned reviewer output exist in the runtime directory and the reviewed code is unchanged (one-sentence definition: the PR's files diffed against the plan's reviewed head, ignoring excluded or developer-named out-of-scope files); re-invoke from scratch only when an output is missing or malformed or reviewed files changed. Update SKILL.md :282, :579, :597, :701-703 and the orchestrator's :422 RECOVERY line to match, and, per the decision, add the recovery check and a test pinning the Step 3 row.",
+      "files": [
+        "plugins/harness/skills/pr-team/SKILL.md",
+        "plugins/harness/agents/pr-team-orchestrator.md",
+        "plugins/harness/skills/pr-team/commands/qa_review_json.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "The pr-team skill and its orchestrator agent; no other skill reads the recovery table.",
+        "consumers": [
+          "plugins/harness/skills/pr-team/SKILL.md",
+          "plugins/harness/agents/pr-team-orchestrator.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Six prose sites and one RECOVERY line; the optional check and pinning test add a small command and one test file."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt with a concrete cost (a repeated five-reviewer fan-out), dev_velocity impact, S size."
+    },
+    {
+      "id": "TODO-007",
+      "rank": 7,
+      "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#167",
+          "url": "https://github.com/t968rs/operator-straps/issues/167"
+        }
+      ],
+      "gh_issues": [
+        167
+      ],
+      "related_gh_issues": [
+        154
+      ],
+      "catalog_entry_ids": [],
+      "summary": "merge-commit-msg capture exits 1 on a PR diff over 300 files and truncates commits past 250. Checked: plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:110-111 (`pr_files`) runs `gh pr diff N --name-only`, :103-105 (`pr_commits`) runs `gh api --paginate .../pulls/N/commits`, and :129 runs a second `gh pr diff N --color=never` for the diff section added in 08684c7, which the issue does not list and which would hit the same HTTP 406 too_large. The base stdin-build rework the issue names (#164) is in the tree (8802b6c). The build validator already refuses indented non-bullet lines (merge_commit_msg.py:250), so T4's regression node pins existing behavior. Observed failures (from the issue, in floodplain_development, unverified here): PR #1654 (934 commits, 1492 files) and PR #1686 (116 commits, 333 files) both failed capture with HTTP 406.",
+      "proposed_change": "Per the issue's T1-T6 plan, built with `strap.py new merge-commit-msg --edit`: `route_for` choosing pr or big from `git rev-list --count origin/<base>..origin/<head>` (BIG_PR_COMMITS = 50) with a stale-ref refusal on headRefOid; frozen `merge_commit_msg_models.py` (MergeUnit, AreaCount, BigPrFacts.from_git over injectable log text); a big-route capture with Merged PRs, Direct commits by type and Areas sections and no file or commit lists or diff calls (including the :129 diff); a local `git diff --name-only` fallback on too_large for the PR route; a build regression node for indented continuation lines and SHAs; SKILL.md Step 1 and message_format.md describing both routes; behaviors B6-B12 with the SC-big-release fixture.",
+      "files": [
+        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg_models.py",
+        "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "plugins/harness/skills/merge-commit-msg/message_format.md",
+        "tests/skills/test_merge_commit_msg.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Confined to the merge-commit-msg skill; the PR route stays byte-identical apart from the too_large fallback.",
+        "consumers": [
+          "plugins/harness/skills/merge-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "A typed model module, a second capture route, a fallback, docs and a strap edit spec with six mechanical behaviors and one judged scenario."
+      },
+      "impact": "runtime_failure",
+      "severity": 3,
+      "priority": {
+        "score": 1.3789,
+        "components": {
+          "impact_weight": 1.3,
+          "value": 3.9,
+          "loe_points": 8,
+          "blast_factor": 1.0,
+          "cost": 8.0,
+          "base_score": 1.3789,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 failure on a supported but uncommon input (release-sized PRs), runtime_failure impact, L size."
+    },
+    {
+      "id": "TODO-008",
+      "rank": 8,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -372,8 +551,8 @@
       "why_ranked": "Severity 2 latent nested-worktree defect, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-006",
-      "rank": 6,
+      "id": "TODO-009",
+      "rank": 9,
       "title": "CI: update the change-based test selection so PR runs stop growing",
       "kind": "cicd",
       "status": "OPEN",
@@ -430,8 +609,8 @@
       "why_ranked": "Severity 2 CI slowdown with no output change, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-007",
-      "rank": 7,
+      "id": "TODO-010",
+      "rank": 10,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -487,8 +666,8 @@
       "why_ranked": "Severity 2 missing capability with a concrete cost, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-008",
-      "rank": 8,
+      "id": "TODO-011",
+      "rank": 11,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -547,8 +726,8 @@
       "why_ranked": "Severity 2 missing workflow with a concrete cost, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-009",
-      "rank": 9,
+      "id": "TODO-012",
+      "rank": 12,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -606,8 +785,67 @@
       "why_ranked": "Severity 2 usage cost with no output change, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-010",
-      "rank": 10,
+      "id": "TODO-013",
+      "rank": 13,
+      "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#178",
+          "url": "https://github.com/t968rs/operator-straps/issues/178"
+        }
+      ],
+      "gh_issues": [
+        178
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Every strap scenario plays on a detached HEAD, so a skill whose driver needs a checked-out branch cannot pass its first step. Checked: plugins/harness/lib/harness_lib/plan_red.py:214-218 (make_tree) runs `git worktree add --detach`; plugins/harness/lib/harness_lib/review_local_api.py:62-66 (_require_branch) raises `range end ... is on no local branch`; plugins/harness/lib/harness_lib/strap_models.py:224 (Scenario) and plugins/harness/lib/harness_lib/strap_api.py:71 (new_scenario) have no branch field. make_tree is also called by plugins/harness/scripts/plan.py:252, :373 and strap.py:404, :517. The review-local refreeze greens R-10 and R-11 stopping at capture are from the issue (unverified here). plugins/harness/lib/harness_lib/strap_runs.py:24 hashes file contents, so an optional model field alone does not alter frozen hashes unless a spec file is rewritten.",
+      "proposed_change": "Add an optional `branch` field to strap_models.Scenario and new_scenario; when set, make_tree runs `git worktree add -b <unique name, e.g. strap/<skill>/<R-n>> <path> <base>` and refuses a name that already exists, and drop_tree deletes the branch with the tree; keep the detached default. Add planned tests: the tree's `git branch --show-current` prints the branch and drop_tree removes both; a review-local scenario with branch set reaches merge; existing docs/plans/strap/*/SkillSpec.json still pass `strap.py check`.",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_red.py",
+        "plugins/harness/lib/harness_lib/strap_models.py",
+        "plugins/harness/lib/harness_lib/strap_api.py",
+        "plugins/harness/scripts/strap.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "make_tree is shared with plan.py's red runs; the default path must stay unchanged for both drivers.",
+        "consumers": [
+          "plugins/harness/scripts/strap.py",
+          "plugins/harness/scripts/plan.py"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A model field, branch create and delete in the tree helpers, a refusal, and three planned tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 gap with a concrete cost (judgment behaviors past capture cannot be tested), dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-014",
+      "rank": 14,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -661,8 +899,8 @@
       "why_ranked": "Severity 2 lost discipline plus a dangling reference, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-011",
-      "rank": 11,
+      "id": "TODO-015",
+      "rank": 15,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -722,8 +960,66 @@
       "why_ranked": "Severity 2 dangling REQUIRED step, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-012",
-      "rank": 12,
+      "id": "TODO-016",
+      "rank": 16,
+      "title": "writing-docstrings: interpret intent in session, then dispatch a defined subagent",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#175",
+          "url": "https://github.com/t968rs/operator-straps/issues/175"
+        }
+      ],
+      "gh_issues": [
+        175
+      ],
+      "related_gh_issues": [
+        176
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The issue lists three goals: writing-docstrings dispatches to a subagent; the session interprets the user's intent before passing the prompt; the skill uses a defined agent. Checked: no writing-docstrings skill exists under plugins/harness/skills/, and plugins/harness/agents/ holds no docstring agent, so this change follows the port in #176.",
+      "proposed_change": "After the #176 port, add plugins/harness/agents/docstring-writer.md (name unverified) and change the skill to resolve scope and intent in session, then dispatch `harness:<agent>` with an explicit model and the resolved prompt; bump the harness plugin version.",
+      "files": [
+        "plugins/harness/skills/writing-docstrings/SKILL.md",
+        "plugins/harness/.claude-plugin/plugin.json"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One ported skill and a new agent file.",
+        "consumers": [
+          "plugins/harness/skills/writing-docstrings/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A new agent prompt and a dispatch step in one skill."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.8485,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.8485,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt with a concrete cost (docstring work held in the main session), docs_tooling impact, S size."
+    },
+    {
+      "id": "TODO-017",
+      "rank": 17,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -797,8 +1093,8 @@
       "why_ranked": "Severity 3 hang of agents without Write on large payloads, runtime_failure impact, XL size."
     },
     {
-      "id": "TODO-013",
-      "rank": 13,
+      "id": "TODO-018",
+      "rank": 18,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -855,8 +1151,8 @@
       "why_ranked": "Severity 2 interop conflict while both plugins are installed, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-014",
-      "rank": 14,
+      "id": "TODO-019",
+      "rank": 19,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -911,8 +1207,8 @@
       "why_ranked": "Severity 2 lost guarantee once superpowers-lt retires, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-015",
-      "rank": 15,
+      "id": "TODO-020",
+      "rank": 20,
       "title": "strap: add remove_part and a refreeze path; edit specs list absent models/api parts",
       "kind": "feature",
       "status": "OPEN",
@@ -973,8 +1269,8 @@
       "why_ranked": "Severity 2 spec drift with no output change, maintainability impact, M size."
     },
     {
-      "id": "TODO-016",
-      "rank": 16,
+      "id": "TODO-021",
+      "rank": 21,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1036,8 +1332,8 @@
       "why_ranked": "Severity 2 missing review loop with a concrete cost, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-017",
-      "rank": 17,
+      "id": "TODO-022",
+      "rank": 22,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -1096,8 +1392,8 @@
       "why_ranked": "Severity 2 missing review path with a concrete cost, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-018",
-      "rank": 18,
+      "id": "TODO-023",
+      "rank": 23,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -1157,8 +1453,75 @@
       "why_ranked": "Severity 2 missing guard on plan completeness, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-019",
-      "rank": 19,
+      "id": "TODO-024",
+      "rank": 24,
+      "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Does folding a prior review JSON need the developer's confirmation, or does a rerun of the same PR import it by default; and where does the import hook in, given that how CONSOLIDATE treats an existing {NNNN}_*.json for the same PR is not documented?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#166",
+          "url": "https://github.com/t968rs/operator-straps/issues/166"
+        }
+      ],
+      "gh_issues": [
+        166
+      ],
+      "related_gh_issues": [
+        165
+      ],
+      "catalog_entry_ids": [],
+      "summary": "harness:fold-in-review only finds harness:pr-review runs, so findings of a halted pr-team run cannot be carried into the rerun. Checked: plugins/harness/skills/fold-in-review/SKILL.md:29-39 locates the run through `<scratch>/<NNNN>/current` and plan.json, and :36 stops with nothing to fold into when no current file exists; plugins/harness/skills/pr-team/SKILL.md:75 says rules naming `fold`, `waves`, `build`, `bubble`, `amend` or `closeout` do not apply to pr-team; plugins/harness/skills/pr-team/commands/qa_review_json.py:204-244 (B2, B3) require the JSON's issue count and per-severity counts to stay at or under the reviewers' summed counts, so a folded issue fails QA. Unverified: how CONSOLIDATE treats an existing consolidated JSON for the same PR (no overwrite or collision wording in plugins/harness/agents/pr-team-orchestrator.md). Trigger (from the issue): PR #164, two pr-team runs, a 17-finding JSON and five reviewer outputs left on disk with no route into the second run.",
+      "proposed_change": "Build with harness:strap-skills (edit spec): run discovery of either kind (pr-review current file, or the newest `<state_dir>/pr-team/_runtime/pr{NNNN}_*` without .complete; ask when both exist); fold target by pr-team phase (before CONSOLIDATE a reviewer-shaped output under outputs/ added to REVIEWER_OUTPUTS, after CONSOLIDATE an append through harness_lib.review_edit, after QA PASS a refusal); share the finding validator, source-id series and kind enum with `pr_review.py fold`; a prior-review-JSON input kind that re-verifies each issue against the tree, drops stale and duplicate issues and credits the origin run and SHA; a terminals.jsonl row or a B2/B3 exemption for folded sources with its check; update the skill description, its Sections 1 and 4, the README, and one line each in the pr-team SKILL.md and pr-review operating rules. Bump the harness plugin version.",
+      "files": [
+        "plugins/harness/skills/fold-in-review/SKILL.md",
+        "plugins/harness/scripts/pr_review.py",
+        "plugins/harness/lib/harness_lib/review_plan.py",
+        "plugins/harness/lib/harness_lib/review_edit.py",
+        "plugins/harness/skills/pr-team/commands/qa_review_json.py",
+        "plugins/harness/skills/pr-team/SKILL.md",
+        "plugins/harness/skills/pr-review/SKILL.md",
+        "README.md",
+        "plugins/harness/.claude-plugin/plugin.json"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Touches the shared fold validator used by pr-review and the pr-team QA gate, plus two skills' docs.",
+        "consumers": [
+          "plugins/harness/skills/fold-in-review/SKILL.md",
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/skills/pr-team/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "Six scoped deliverables across two review drivers and the QA script, built red-first through strap-skills with a judged verify-and-drop scenario."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing capability with a concrete cost (discarded findings and repeated reviews), dev_velocity impact, L size."
+    },
+    {
+      "id": "TODO-025",
+      "rank": 25,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -1219,8 +1582,186 @@
       "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, M size."
     },
     {
-      "id": "TODO-020",
-      "rank": 20,
+      "id": "TODO-026",
+      "rank": 26,
+      "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Is Spec-Sheet-Lite the output format of the new spec-me skill (#172) or a standalone template, does it settle the port-or-drop brainstorming decision of #128 as drop, and does 'write-skills fixtures' mean the harness:strap-skills fixtures?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#171",
+          "url": "https://github.com/t968rs/operator-straps/issues/171"
+        }
+      ],
+      "gh_issues": [
+        171
+      ],
+      "related_gh_issues": [
+        128,
+        172,
+        173
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for a light spec-clarification brief, filled from the developer's request, that harness:write-plan consumes directly, replacing brainstorming sessions and their extra document surfaces. Non-goals: no ids synced with the plan, no code snippets or structure except as goals. Goals: broad or specific goals the plan must achieve or avoid, coherent with `write-skills` fixtures, a 500-line hard cap with 250 or fewer targeted. Checked: plugins/harness/skills/write-plan/SKILL.md:4 and :27 take a `--spec PATH`, so the brief has an entry point; no plugin file names brainstorming, Spec-Sheet-Lite or spec-me; no skill named write-skills exists (plugins/harness/skills/strap-skills/ is the nearest match, unverified intent).",
+      "proposed_change": "After the decision, define the Spec-Sheet-Lite format (goals and avoid-goals sections, no plan ids, no code beyond requirements, 500-line cap with a 250-line target) as a template the spec-me skill fills, document write-plan's `--spec` hand-off from it, and add a check that refuses a brief over the cap or carrying plan ids.",
+      "files": [
+        "plugins/harness/skills/write-plan/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new template read by write-plan; no existing output changes.",
+        "consumers": [
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A format spec, a template and a size and content check, plus the write-plan hand-off wording."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.6,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.6,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt with a concrete cost (slow brainstorming sessions and extra truth sources), docs_tooling impact, M size."
+    },
+    {
+      "id": "TODO-027",
+      "rank": 27,
+      "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "What does spec-me do and hand off: a short clarification session that writes the Spec-Sheet-Lite brief of #171 and passes it to write-plan `--spec`, or something wider; and is it built through harness:strap-skills with #173 as its red/green?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#172",
+          "url": "https://github.com/t968rs/operator-straps/issues/172"
+        }
+      ],
+      "gh_issues": [
+        172
+      ],
+      "related_gh_issues": [
+        128,
+        171,
+        173
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The issue body is one line: replace the brainstorming session and its `_spec.md`. Checked: no plugin file names spec-me or brainstorming; harness:write-plan takes a spec path (plugins/harness/skills/write-plan/SKILL.md:4, :27); the catalog item for #128 holds the open port-or-drop decision on superpowers-lt:brainstorming. Scope beyond the title is unverified.",
+      "proposed_change": "After the decision, add plugins/harness/skills/spec-me/SKILL.md: a short clarification session that fills the Spec-Sheet-Lite brief (#171) from the developer's request and hands it to harness:write-plan, built red-first through harness:strap-skills (#173), with a README skills row and a harness plugin version bump.",
+      "files": [
+        "plugins/harness/skills/spec-me/SKILL.md",
+        "README.md",
+        "plugins/harness/.claude-plugin/plugin.json"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new skill; write-plan is its only consumer.",
+        "consumers": [
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A new skill with a strap spec; size guessed from the one-line issue."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.6,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.6,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 gap with a concrete cost (no light replacement for brainstorming), docs_tooling impact, M size."
+    },
+    {
+      "id": "TODO-028",
+      "rank": 28,
+      "title": "Red/green spec-me against no skill and against brainstorming",
+      "kind": "test",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "How is spec-me graded against brainstorming when strap.py offers only a baseline arm (no skill, or the base SKILL.md for an edit) and a green arm: a new comparison arm, a separate run with superpowers-lt installed, or judged parity scenarios?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#173",
+          "url": "https://github.com/t968rs/operator-straps/issues/173"
+        }
+      ],
+      "gh_issues": [
+        173
+      ],
+      "related_gh_issues": [
+        171,
+        172
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for red/green runs of spec-me against null (no skill) and against brainstorming: it should improve on null and hold its own against brainstorming. Checked: plugins/harness/scripts/strap.py:18 documents `run <name> <B> --arm baseline|green`, and :583 defines the baseline as no skill or the SKILL.md at the edit base, so a null comparison fits the existing baseline arm while a brainstorming comparison has no arm. spec-me itself does not exist yet (#172).",
+      "proposed_change": "Write the spec-me SkillSpec with scenarios whose baseline arm (no skill) fails and whose green arm passes; per the decision, add a comparison route for brainstorming and record parity grades; freeze when the gates hold.",
+      "files": [
+        "plugins/harness/scripts/strap.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A strap spec for one new skill; a comparison arm would touch only strap.py's arm handling.",
+        "consumers": [
+          "plugins/harness/scripts/strap.py"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Scenario design and baseline and green runs; a comparison arm would add strap driver work."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.6,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.6,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing guard on a new agent skill, docs_tooling impact, M size."
+    },
+    {
+      "id": "TODO-029",
+      "rank": 29,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -1273,8 +1814,8 @@
       "why_ranked": "Severity 1 hygiene, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-021",
-      "rank": 21,
+      "id": "TODO-030",
+      "rank": 30,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -1333,8 +1874,8 @@
       "why_ranked": "Severity 1 stale references with a working fallback, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-022",
-      "rank": 22,
+      "id": "TODO-031",
+      "rank": 31,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -1388,8 +1929,8 @@
       "why_ranked": "Severity 1 test gap for working behavior, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-023",
-      "rank": 23,
+      "id": "TODO-032",
+      "rank": 32,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1445,8 +1986,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, L size."
     },
     {
-      "id": "TODO-024",
-      "rank": 24,
+      "id": "TODO-033",
+      "rank": 33,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1498,8 +2039,8 @@
       "why_ranked": "Severity 1, nothing depends on the skill, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-025",
-      "rank": 25,
+      "id": "TODO-034",
+      "rank": 34,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1553,8 +2094,66 @@
       "why_ranked": "Severity 1 stale reference and development tooling, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-026",
-      "rank": 26,
+      "id": "TODO-035",
+      "rank": 35,
+      "title": "Port writing-docstrings from floodplain_development",
+      "kind": "skill",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#176",
+          "url": "https://github.com/t968rs/operator-straps/issues/176"
+        }
+      ],
+      "gh_issues": [
+        176
+      ],
+      "related_gh_issues": [
+        175
+      ],
+      "catalog_entry_ids": [],
+      "summary": "The issue has a title and no body. Checked: no plugin file names writing-docstrings, so the skill is not in the tree; the source in floodplain_development is unverified from here. Porting follows the project skill porting-into-straps (.claude/skills/porting-into-straps/), whose port_scan.py lists the decoupling work before the copy.",
+      "proposed_change": "Run port_scan.py on the floodplain_development skill, decouple project names and paths into harness.json keys where needed, copy it to plugins/harness/skills/writing-docstrings/, add a docs/PROVENANCE.md row and a README skills row, keep tests/contract/test_no_repo_literals.py passing, and bump the harness plugin version.",
+      "files": [
+        "plugins/harness/skills/writing-docstrings/SKILL.md",
+        "docs/PROVENANCE.md",
+        "README.md",
+        "plugins/harness/.claude-plugin/plugin.json"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new skill with no existing consumers.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A single-skill port through port_scan.py; source size unverified."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.4243,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.4243,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 hygiene port of an existing skill, docs_tooling impact, S size."
+    },
+    {
+      "id": "TODO-036",
+      "rank": 36,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -1611,8 +2210,8 @@
       "why_ranked": "Severity 1 hygiene audit, maintainability impact, M size."
     },
     {
-      "id": "TODO-027",
-      "rank": 27,
+      "id": "TODO-037",
+      "rank": 37,
       "title": "merge-commit-msg: drop the PR<N>_merge.md working document and its fixtures",
       "kind": "skill",
       "status": "NEEDS_DECISION",
