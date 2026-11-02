@@ -6,8 +6,9 @@ checkout the suite runs from.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
-from typing import Callable, Dict, Optional
+from typing import Callable, Dict, List, Optional
 
 import pytest
 
@@ -251,6 +252,282 @@ class TestDraftProblems:
         assert draft_problems(_facts(), _draft(summary="Written with Claude."), level=1) == [
             "vendor name 'Claude' in the draft",
         ]
+
+
+class TestControlCharacters:
+    @pytest.mark.parametrize("overrides, problem", [
+        ({"title": "Feature(a): \x01`a`"}, "draft title holds control character U+0001; remove it"),
+        ({"summary": "Adds\x02 `a`.\x7f"},
+         "draft summary holds control characters U+0002, U+007F; remove them"),
+        ({"descriptions": {"src/pkg/a.py": "adds\x1f `a`"}},
+         "draft description for `src/pkg/a.py` holds control character U+001F; remove it"),
+        ({"sections": (PrSection("New Behavior: append", "```\nrows \x00ready\n```"), _SYMBOLS)},
+         "draft section 'New Behavior: append' body holds control character U+0000; remove it"),
+        ({"sections": (_FLOW, PrSection("Changed\x0b Symbols", "x"))},
+         "draft section 2 heading holds control character U+000B; remove it"),
+    ])
+    def test_control_byte_refused_with_field_and_codepoint(
+            self, overrides: Dict[str, object], problem: str,
+    ) -> None:
+        draft = _draft(**{"sections": (_FLOW, _SYMBOLS), **overrides})
+        assert problem in draft_problems(_facts(), draft)
+
+    def test_body_named_by_index_when_heading_is_dirty(self) -> None:
+        draft = _draft(sections=(_FLOW, PrSection("Changed\x0c Symbols", "a\x01b")))
+        assert "draft section 2 body holds control character U+0001; remove it" in draft_problems(
+            _facts(), draft,
+        )
+
+    def test_tab_newline_and_carriage_return_pass(self) -> None:
+        draft = _draft(summary="Adds\t`a`.\r\n\r\nSecond.", sections=(_FLOW, _SYMBOLS))
+        assert draft_problems(_facts(), draft) == []
+
+    def test_issue_flow_bytes_refused(self) -> None:
+        body = "```\nmissing? ──\x01──► FileNotFoundError\n\x01│\x02\n```"
+        draft = _draft(sections=(PrSection("New Behavior: run", body), _SYMBOLS))
+        problem = (
+            "draft section 'New Behavior: run' body holds control characters U+0001, U+0002; remove them"
+        )
+        assert problem in draft_problems(_facts(), draft)
+
+
+def _skill_flow(plugin_root: Path) -> List[str]:
+    """Lines of the side-by-side flow example in the pr-sum SKILL.md grammar."""
+    text = (plugin_root / "skills" / "pr-sum" / "SKILL.md").read_text(encoding="utf-8")
+    blocks = re.findall(r"```\n(BEFORE .*?)\n```", text, re.S)
+    assert len(blocks) == 1
+    return blocks[0].splitlines()
+
+
+def _fenced(*lines: str) -> str:
+    """One fence around ``lines``."""
+    return "\n".join(["```", *lines, "```"])
+
+
+def _flow_problems_of(heading: str, body: str) -> List[str]:
+    """Problems of a draft holding one flow section and Changed Symbols."""
+    return draft_problems(_facts(), _draft(sections=(PrSection(heading, body), _SYMBOLS)))
+
+
+_ISSUE_FLOW = (
+    "run GetStreamCoverage (run_tool.main)", "     │", "     ▼", "read toolbox params 0-5", "     │",
+    "     ▼", "streams or polygons missing? ────► FileNotFoundError", "│", "     ▼",
+    "mode = Return Period? ────► return period parsed, covered field from it",
+    "│ (Zone Field)            missing or unparseable ──► error", "     ▼",
+    "zone field found on polygons (case-insensitive)? ────► error", "│", "     ▼",
+    "zone field also on streams? ────► clash error", "│", "     ▼",
+    "copy inputs, identify segments, write covered field, dissolve", "     │", "     ▼",
+    "write Covered_Notes and coverage summary; set output parameter in ArcGIS Pro",
+)
+
+
+def _hang(name: str, fence: int, line: int, glyph: str, column: int) -> str:
+    """The connector problem line for ``name`` (``section '<heading>'`` or ``section <N>``)."""
+    return (
+        f"{name}: fence {fence}, fence line {line}: '{glyph}' at column {column} has no node text or "
+        "vertical connector above it"
+    )
+
+
+_NEW_X = "section 'New Behavior: x'"
+
+
+# Flows copied from plugins/harness/skills/pr-review/README.md: connectors at column 6 under the blank
+# between two words of a step ("group of", "place a", "every file", "test is").
+_README_CUT = """\
+link units sharing a file, a widened file or a serial-test lock
+     │
+     ▼
+group of 6 or fewer? ──yes──► runs whole in one fixer of the wave
+     │no
+     ▼
+defer one unit:
+  most-connected cut   the most connected unit (ties: the least severe)
+  light-first cut      the most connected light unit; a heavy one only when no light one is left
+     │
+     ▼
+units that shared a key only through it fall apart; the rest stay linked
+     │
+     ▼
+every remaining group fits 6? ──no──► defer the next unit by the same rule
+     │yes
+     ▼
+remaining groups run in this wave, in parallel
+deferred units re-enter the pool and are planned the same way in the next wave"""
+
+_README_PLACE = """\
+place a group in a wave
+     │
+     ▼
+a fixer with room holds another part of one of its issues,
+and no heavy unit? ──yes──► joins that fixer
+     │no
+     ▼
+wave holds fewer than 4 fixers? ──yes──► new fixer
+     │no
+     ▼
+some fixer has room? ──yes──► smallest fixer: one holding no heavy unit first,
+     │no                       then one of the group's own fix kind
+     ▼
+new fixer"""
+
+_README_TRACKING = """\
+wave reads the findings
+     │
+     ▼
+every file of the issue is a tracking path? ──yes──► no fixer; `tracking:` row
+     │no                                                   │
+     ▼                                                     ▼
+tracking files dropped, other files planned       main session edits them, then
+     │                                            closeout --resolved <id>="what changed"
+     ▼
+fixer brief lists the tracking files as not its own
+     │
+     ▼
+`tracking (after its fixer):` row ──► main session edits after that fixer's wave returns;
+                                      the fixer's entry resolves the id at closeout"""
+
+_README_SERIAL = """\
+wave reads the registry
+     │
+     ▼
+test is true at a tests.serial_flags path and not deferred? ──no──► holds no lock
+     │yes
+     ▼
+units owning the test (file or widened file) hold the lock
+     │
+     ▼
+two groups hold the same lock? ──yes──► linked: one fixer takes both, or different waves
+     │no
+     ▼
+groups share a wave; the fixer record in waves.json lists its locks"""
+
+
+class TestFlowHeadings:
+    @pytest.mark.parametrize("body", ["rows ready", "```\n```", "```\n   \n\n```"])
+    def test_new_behavior_needs_a_non_blank_fence(self, body: str) -> None:
+        assert _flow_problems_of("New Behavior: append", body) == [
+            "section 'New Behavior: append': needs one fenced flow holding at least one non-blank line",
+        ]
+
+    def test_new_behavior_is_one_fence(self) -> None:
+        body = "\n".join([_fenced("rows ready"), _fenced("rows written")])
+        assert _flow_problems_of("New Behavior: append", body) == [
+            "section 'New Behavior: append': a new behavior is one flow in one fence (found 2 fences)",
+        ]
+
+    @pytest.mark.parametrize("label", ["BEFORE", "AFTER", "BEFORE          AFTER", "AFTER: rows ready"])
+    def test_new_behavior_carries_no_label(self, label: str) -> None:
+        assert _flow_problems_of("New Behavior: append", _fenced(label, "rows ready")) == [
+            "section 'New Behavior: append': a new behavior is one flow with no BEFORE / AFTER label; "
+            "a changed one uses 'Behavior: <trigger>'",
+        ]
+
+    @pytest.mark.parametrize("first", ["AFTER_SAVE hook fires", "BEFOREHAND rows ready"])
+    def test_new_behavior_label_needs_a_word_boundary(self, first: str) -> None:
+        assert _flow_problems_of("New Behavior: append", _fenced(first, "rows ready")) == []
+
+    def test_behavior_label_needs_a_word_boundary(self) -> None:
+        body = "\n".join([_fenced("BEFORE_HOOK runs", "x"), _fenced("AFTER_SAVE runs", "y")])
+        assert _flow_problems_of("Behavior: append", body) == [
+            "section 'Behavior: append': needs a fence whose first line is BEFORE and one whose first line "
+            "is AFTER, or one side-by-side fence whose first line holds both",
+        ]
+
+    def test_new_behavior_gets_connector_checks(self) -> None:
+        problems = _flow_problems_of("New Behavior: run", _fenced(*_ISSUE_FLOW))
+        assert problems == [_hang("section 'New Behavior: run'", 1, line, "▼", 6) for line in (9, 15, 18)]
+
+
+class TestHeadingEcho:
+    def test_control_byte_heading_is_named_by_position(self) -> None:
+        flow = PrSection("New Behavior: a\x01b", _fenced("check ──► a", "         │", "x" * 121))
+        legend = PrSection("Leg\x01end", "x")
+        draft = _draft(
+            descriptions={"src/pkg/a.py": "adds `a`", "n\x01pe.py": "x"}, sections=(flow, legend, _SYMBOLS),
+        )
+        problems = draft_problems(_facts(), draft)
+        assert not [line for line in problems if "\x01" in line]
+        assert (
+            "section 2: unknown heading; use 'Behavior: <trigger>', 'New Behavior: <trigger>', a shape "
+            "diagram name or 'Changed Symbols'"
+        ) in problems
+        assert "section 1: monospace line of 121 chars (limit 120)" in problems
+        assert _hang("section 1", 1, 2, "│", 10) in problems
+        assert "description for `n<U+0001>pe.py`, which is not a changed path" in problems
+
+
+class TestConnectorAlignment:
+    @pytest.mark.parametrize("flow", [_README_CUT, _README_PLACE, _README_TRACKING, _README_SERIAL])
+    def test_house_style_flows_pass(self, flow: str) -> None:
+        assert _flow_problems_of("New Behavior: x", _fenced(flow)) == []
+
+    def test_blank_between_words_feeds_down(self) -> None:
+        assert _flow_problems_of("New Behavior: x", _fenced("check files", "     │", "     ▼", "done")) == []
+
+    def test_wide_gap_does_not_feed_down(self) -> None:
+        body = _fenced("append rows     write file", "             │")
+        assert _flow_problems_of("New Behavior: x", body) == [_hang(_NEW_X,1, 2, "│", 14)]
+
+    def test_connector_under_an_arm_label_refused(self) -> None:
+        body = _fenced("matrix exists? ──no──► write a new file", " " * 18 + "│", " " * 18 + "▼", "x")
+        assert _flow_problems_of("New Behavior: x", body) == [_hang(_NEW_X,1, 2, "│", 19)]
+
+    def test_yes_arm_off_the_node_column_passes(self) -> None:
+        body = _fenced("matrix exists? ──no──► write a new file", "     │yes", "     ▼", "read matrix")
+        assert _flow_problems_of("New Behavior: x", body) == []
+
+    def test_tabs_expand_before_the_column_check(self) -> None:
+        body = _fenced("\tread", "         │", "         ▼", "\tdone")
+        assert _flow_problems_of("New Behavior: x", body) == []
+
+    def test_skill_side_by_side_example_passes(self, plugin_root: Path) -> None:
+        assert _flow_problems_of("Behavior: append", _fenced(*_skill_flow(plugin_root))) == []
+
+    def test_skill_example_stacked_passes(self, plugin_root: Path) -> None:
+        lines = _skill_flow(plugin_root)
+        split = lines[0].index("AFTER")
+        before = [line[:split].rstrip() for line in lines]
+        after = [line[split:] for line in lines]
+        body = "\n".join([_fenced(*before), _fenced(*after)])
+        assert _flow_problems_of("Behavior: append", body) == []
+
+    def test_skill_after_flow_as_new_behavior_passes(self, plugin_root: Path) -> None:
+        lines = _skill_flow(plugin_root)
+        split = lines[0].index("AFTER")
+        flow = [re.sub(r"\s*\[(new|changed)\]$", "", line[split:]) for line in lines[1:]]
+        assert _flow_problems_of("New Behavior: append", _fenced(*flow)) == []
+
+    def test_side_by_side_columns_are_absolute(self) -> None:
+        rows = [
+            ("BEFORE", "AFTER"), ("writes rows", "verify file"), ("     │", "     │"), ("     ▼", "      ▼"),
+            ("done", "done"),
+        ]
+        body = _fenced(*(left.ljust(16) + right for left, right in rows))
+        assert _flow_problems_of("Behavior: x", body) == [_hang("section 'Behavior: x'", 1, 4, "▼", 23)]
+
+    def test_stacked_fences_are_numbered(self) -> None:
+        body = "\n".join([
+            _fenced("BEFORE", "writes rows", "     │", "     ▼", "done"),
+            _fenced("AFTER", "check file", "      │", "     ▼", "done"),
+        ])
+        assert _flow_problems_of("Behavior: x", body) == [_hang("section 'Behavior: x'", 2, 4, "▼", 6)]
+
+    def test_connector_under_a_horizontal_stroke_refused(self) -> None:
+        body = _fenced("check ──────► a", "        │", "        ▼", "        b")
+        assert _flow_problems_of("New Behavior: x", body) == [_hang(_NEW_X,1, 2, "│", 9)]
+
+    def test_labelled_fork_passes(self) -> None:
+        body = _fenced("mode?", "  ├─yes──► parse", "  └─no───► read")
+        assert _flow_problems_of("New Behavior: x", body) == []
+
+    def test_shifted_fork_arm_refused(self) -> None:
+        body = _fenced("mode?", "  ├─yes──► parse", "   └─no──► read")
+        assert _flow_problems_of("New Behavior: x", body) == [_hang(_NEW_X,1, 3, "└", 4)]
+
+    def test_shape_sections_are_not_checked(self) -> None:
+        shape = PrSection("Data Flow", _fenced("source ──► stage", "   ▼"))
+        assert draft_problems(_facts(), _draft(sections=(_FLOW, shape, _SYMBOLS)), level=3) == []
 
 
 class TestDraftLevels:
