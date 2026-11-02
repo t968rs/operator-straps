@@ -13,6 +13,7 @@ from typing import Dict
 
 import pytest
 
+WALK_ROOTS = ("plugins/",)
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2] / "plugins" / "harness"
 _SKILL = _PLUGIN_ROOT / "skills" / "add-bookmark" / "SKILL.md"
 _AGENT = _PLUGIN_ROOT / "agents" / "bookmark-noter.md"

@@ -13,6 +13,7 @@ from harness_lib import plan_models as pm
 from harness_lib.plan_doc import PlanError
 from harness_lib.plan_enums import ItemStatus
 
+WALK_ROOTS = ()  # walks only the plans folder of a make_project repo
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "plan_models"
 PLANS = "docs/PLANS"
 MINIMAL, INFLIGHT = "0001_Minimal_ActionPlan.json", "0003_Inflight_ActionPlan.json"

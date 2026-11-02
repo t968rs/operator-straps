@@ -21,6 +21,7 @@ import pytest
 from conftest import copy_project
 
 pytestmark = pytest.mark.cross_os
+WALK_ROOTS = ()  # copies and walks only tmp_path_factory / tmp_path repos
 
 _GIT_ENV = {
     "GIT_AUTHOR_NAME": "t",

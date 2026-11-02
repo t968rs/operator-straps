@@ -13,6 +13,7 @@ from typing import Dict, List
 
 import pytest
 
+WALK_ROOTS = ()  # walks only the notes folder of a make_project repo
 _NOTES_REL = ".claude/state/harness/session-bookmark/notes.json"
 
 

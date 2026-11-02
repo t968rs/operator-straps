@@ -14,6 +14,7 @@ from typing import Any, Callable, Dict, Optional, Tuple
 import pytest
 from conftest import git
 
+WALK_ROOTS = ()  # walks only a make_project repo and tmp_path/trees
 Result = Tuple[int, str, str]
 Run = Callable[..., Result]
 Fill = Callable[..., Dict[str, Any]]

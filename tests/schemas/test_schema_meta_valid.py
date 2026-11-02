@@ -38,6 +38,7 @@ from jsonschema import validators
 # Discovery
 # ---------------------------------------------------------------------------
 
+WALK_ROOTS = ("plugins/",)
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _PLUGINS_ROOT = _REPO_ROOT / "plugins"
 _HARNESS_SCHEMAS = _PLUGINS_ROOT / "harness" / "schemas"

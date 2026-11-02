@@ -42,6 +42,8 @@ from harness_lib.strap_scaffold import find_plugin_dir, planned_parts, render_pa
 
 _NAME = "demo-skill"
 _TITLE = "Demo Skill"
+WALK_ROOTS = ("plugins/harness/agents/", "plugins/harness/scripts/", "plugins/harness/skills/",
+              "plugins/harness/reference/")
 _PLUGIN = "plugins/demo"
 _MANIFEST = {"name": "demo", "version": "0.1.0"}
 _SKILL_MD = f"{_PLUGIN}/skills/{_NAME}/SKILL.md"

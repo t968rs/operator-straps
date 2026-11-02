@@ -15,6 +15,7 @@ from conftest import PLUGIN_ROOT  # noqa: E402
 from harness_lib.todo_sync import RULE_IDS, TodoSyncError, check  # noqa: E402
 from harness_lib.todo_sync.report import format_markdown, format_summary, write_report  # noqa: E402
 
+WALK_ROOTS = ()  # walks only the tmp_path folder a report was written to
 REPORT_SCHEMA_PATH = PLUGIN_ROOT / "schemas" / "TodoSyncReport.schema.json"
 REPORT_SCHEMA = json.loads(REPORT_SCHEMA_PATH.read_text(encoding="utf-8"))
 

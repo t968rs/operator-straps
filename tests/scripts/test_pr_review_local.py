@@ -20,6 +20,7 @@ from conftest import git
 from harness_lib import review_merge as rmg
 from harness_lib import review_models as rm
 
+WALK_ROOTS = ()  # walks only the run folder inside a make_project repo
 _FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 _SCRATCH = "build/review_runs"
 _BRANCH = "1110-bubbles"

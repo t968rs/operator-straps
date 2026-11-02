@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 from _skill_parts import skill_parts  # noqa: E402
 
+WALK_ROOTS = ("plugins/harness/skills/",)
 _PLUGIN = Path(__file__).resolve().parents[2] / "plugins" / "harness"
 _SKILLS = _PLUGIN / "skills"
 _REFERENCE = _PLUGIN / "reference" / "skill_arguments.md"

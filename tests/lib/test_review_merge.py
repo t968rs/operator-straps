@@ -21,6 +21,7 @@ from harness_lib.config import activate, load_config
 from harness_lib.project import plugin_root, schema_path
 from harness_lib.review_models import FixReport, ReviewerReport
 
+WALK_ROOTS = ("plugins/harness/schemas/",)
 _SCHEMA = "PR_REVIEW.schema.json"
 _HEAD = "a9630b7"
 _TODAY = "2026-10-10"

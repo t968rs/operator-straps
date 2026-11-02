@@ -8,6 +8,7 @@ from typing import Dict, List, Tuple
 
 import pytest
 
+WALK_ROOTS = ("plugins/harness/hooks/",)
 HOOKS_DIR = Path(__file__).resolve().parents[2] / "plugins" / "harness" / "hooks"
 HOOKS_JSON = HOOKS_DIR / "hooks.json"
 SHELL_FORM = re.compile(
