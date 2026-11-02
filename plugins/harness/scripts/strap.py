@@ -27,8 +27,11 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
     Render the planned parts and record them in the spec.
 ``retest <name> <B>``
     After a failed green and a skill change, draw one fresh scenario of the behavior.
-``freeze <name>``
-    The final gate; stamps the skill hash and the grader.
+``freeze <name> [--refreeze]``
+    The final gate; stamps the skill hash and the grader. ``--refreeze`` runs every gate again on a frozen
+    spec whose parts changed and stamps the new hash. Every listed part file must exist. A frozen spec
+    takes ``run --arm green``, ``record-run`` of a green run, and through ``api`` part edits and the grades
+    of green runs, so the new hash can earn its greens.
 ``api <name>``
     Run stdin code with the public names of ``harness_lib.strap_api`` and ``name`` bound.
 
@@ -189,6 +192,12 @@ def _draws_of(spec: SkillSpec, behavior_id: str) -> List[Draw]:
 
 def _skill_md(spec: SkillSpec) -> Optional[Part]:
     return next((part for part in spec.parts if part.kind == PartKind.SKILL_MD), None)
+
+
+def _refuse_frozen_baseline(spec: SkillSpec, arm: Arm) -> None:
+    """A frozen spec takes green runs only, so a part change can be proven on the new hash."""
+    if spec.frozen is not None and arm != Arm.GREEN:
+        raise Refused([f"{spec.name} is frozen; it takes green runs only"])
 
 
 def _require_skill_md(spec: SkillSpec) -> Part:
@@ -518,12 +527,14 @@ def _next_run_id(spec: SkillSpec) -> str:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    spec = load(args.name, writable=True)
+    spec = load(args.name)
+    arm = Arm(args.arm)
+    _refuse_frozen_baseline(spec, arm)
     _require_skill_md(spec)
     behavior = _judgment(spec, args.behavior)
     if not _draws_of(spec, behavior.id):
         raise Refused([f"{behavior.id}: never drawn; run draw first"])
-    arm, current = Arm(args.arm), skill_hash(spec)
+    current = skill_hash(spec)
     target = _target(spec, behavior, arm, current, args.scenario)
     open_runs = _runs(spec, behavior=behavior.id, scenario=target, arm=arm, skill_hash=current,
                       recorded=False)
@@ -629,15 +640,16 @@ def _refuse_twin(spec: SkillSpec, run: Run) -> None:
 
 
 def cmd_record_run(args: argparse.Namespace) -> int:
-    spec = load(args.name, writable=True)
+    spec = load(args.name)
     run = _live_run(spec, args.run)
+    _refuse_frozen_baseline(spec, run.arm)
     _refuse_twin(spec, run)
     tree = Path(run.tree)
     reply = sys.stdin.read()
     changed = changed_paths(tree)
     head_moved = git_out(tree, "rev-parse", "HEAD").strip() != run.start
     sa.record_run(spec.name, run.id, reply)
-    spec = load(args.name, writable=True)
+    spec = load(args.name)
     recorded = _run_of(spec, run.id)
     checks = sr.evaluate_checks(_scenario_of_run(spec, recorded).checks, recorded.arm, changed,
                                 lambda target: (tree / target).exists(), head_moved, recorded.reply)
@@ -771,6 +783,8 @@ def _mechanical_gate(behavior: Behavior) -> List[str]:
 
 def freeze_problems(spec: SkillSpec, current: str) -> List[str]:
     problems = [] if _skill_md(spec) is not None else [f"{spec.name}: no skill_md part"]
+    root = _root()
+    problems += [f"{part.path}: part file missing" for part in spec.parts if not (root / part.path).is_file()]
     for behavior in spec.behaviors:
         if behavior.state == BehaviorState.DROPPED:
             continue
@@ -785,8 +799,9 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     spec, problems = spec_problems(args.name)
     if spec is None:
         raise Refused(problems)
-    if spec.frozen is not None:
-        raise Refused(["already frozen"])
+    previous = spec.frozen
+    if previous is not None and not args.refreeze:
+        raise Refused(["already frozen; after a part change, rerun freeze with --refreeze"])
     current = skill_hash(spec)
     problems += freeze_problems(spec, current)
     if problems:
@@ -796,7 +811,8 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     frozen = Frozen(skill_hash=current, grader=grader, at=_now())
     save(spec.model_copy(update={"frozen": frozen,
                                  "behaviors": _with_states(spec, live, BehaviorState.GREEN)}))
-    print(f"freeze [done] | {spec.name} | {current[:12]} | grader {grader.value}")
+    was = f" | was {previous.skill_hash[:12]}" if previous is not None else ""
+    print(f"freeze [done] | {spec.name} | {current[:12]} | grader {grader.value}{was}")
     return 0
 
 
@@ -848,8 +864,11 @@ def _parser() -> argparse.ArgumentParser:
     for command, text in (("check", "Validate the spec and lint its parts."),
                           ("red", "Run the mechanical planned tests red."), ("draw", "Draw scenarios."),
                           ("judge-row", "Print the judge dispatch row."), ("scaffold", "Render the parts."),
-                          ("freeze", "Apply the final gate."), ("api", "Run stdin against strap_api.")):
+                          ("api", "Run stdin against strap_api.")):
         _named(sub, command, text)
+    freeze = _named(sub, "freeze", "Apply the final gate.")
+    freeze.add_argument("--refreeze", action="store_true",
+                        help="Freeze a frozen spec again after a part change; every gate runs again.")
     run = _named(sub, "run", "Create a scenario run and print the runner row.")
     run.add_argument("behavior", help="Behavior id, such as B1.")
     run.add_argument("--arm", required=True, choices=[arm.value for arm in Arm])

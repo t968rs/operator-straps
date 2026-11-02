@@ -2,8 +2,9 @@
 
 Pins ``find_plugin_dir`` (one manifest name match under the project; ``.git``, ``node_modules``, hidden
 directories and linked worktrees, which hold a ``.git`` file, skipped; none or two refused), ``planned_parts``
-(``skill_md`` and ``contract_test`` always; ``models`` and ``api`` only with a mechanical behavior; author
-parts kept; the contract test under the first configured test root) and ``render_parts`` (real templates
+(``skill_md`` and ``contract_test`` always; ``models`` and ``api`` only with a mechanical behavior, and in an
+EDIT spec only when the file exists; author parts kept; the contract test under the first configured test
+root) and ``render_parts`` (real templates
 from the shipped plugin; every target checked before any write, so a NEW refusal writes nothing; an EDIT
 spec writes only missing parts; ``$title`` and the ``TODO: Use when`` description stub; the rendered
 SKILL.md lints with at most the fixed description-prefix message and launches the API through one quoted
@@ -212,7 +213,30 @@ def test_render_parts_edit_writes_only_missing_parts(project: Path) -> None:
     written = {_abs(project, p) for p in render_parts(spec, project)}
     assert skill.read_text(encoding="utf-8") == "original\n"
     assert skill.resolve() not in written
-    assert written == {(project / rel).resolve() for rel in (_MODELS, _API, _CONTRACT)}
+    assert written == {(project / _CONTRACT).resolve()}
+
+
+def test_planned_parts_edit_skips_absent_models_and_api(project: Path) -> None:
+    """An edit's existing driver may own the mechanics, so absent models and api modules are not planned."""
+    spec = _spec([_mechanical()], mode=SpecMode.EDIT, base=git(project, "rev-parse", "HEAD"))
+    assert _pairs(planned_parts(spec)) == {("skill_md", _SKILL_MD), ("contract_test", _CONTRACT)}
+
+
+def test_planned_parts_edit_keeps_present_models(project: Path) -> None:
+    models = project / _MODELS
+    models.parent.mkdir(parents=True)
+    models.write_text('"""Models."""\n', encoding="utf-8", newline="\n")
+    spec = _spec([_mechanical()], mode=SpecMode.EDIT, base=git(project, "rev-parse", "HEAD"))
+    pairs = _pairs(planned_parts(spec))
+    assert ("models", _MODELS) in pairs and ("api", _API) not in pairs
+
+
+def test_planned_parts_edit_keeps_an_author_listed_api(project: Path) -> None:
+    """An author who wants a new api module in an edit lists it with add_part; scaffold then renders it."""
+    api = Part(kind=PartKind.API, path=_API)
+    spec = _spec([_mechanical()], mode=SpecMode.EDIT, base=git(project, "rev-parse", "HEAD"), parts=[api])
+    written = {_abs(project, p) for p in render_parts(_planned(spec), project)}
+    assert (project / _API).resolve() in written
 
 
 def _mirror_shipped_plugin(project: Path) -> None:

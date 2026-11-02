@@ -104,10 +104,12 @@ is one `problem:` line per defect and exit 1.
    ```
 
    It renders each planned part that does not exist from `${CLAUDE_PLUGIN_ROOT}/skills/strap-skills/templates/`
-   (SKILL.md and the contract test always; the models and API modules when a behavior is mechanical), records
-   the parts in the spec and prints one `wrote:` line per file and a `bump:` line naming the plugin manifest.
-   Add every other deliverable (a driver, an agent, a reference) with `add_part`, so the content hash covers
-   it.
+   (SKILL.md and the contract test always; the models and API modules when a behavior is mechanical, and for
+   an `--edit` spec only when they already exist), records the parts in the spec and prints one `wrote:` line
+   per file and a `bump:` line naming the plugin manifest. Add every other deliverable (a driver, an agent, a
+   reference, a new models module for an edit) with `add_part`, so the content hash covers it. A listed part
+   that is not a deliverable comes off with `remove_part`; a part `scaffold` plans (the SKILL.md, the contract
+   test, a new skill's models and API modules) stays. `freeze` refuses a listed part whose file is missing.
 
 6. **Fill the mechanical parts.** Copy each planned test file to its repo path, write the models, API and
    driver until every planned node passes, and run `check` again. Leave the judgment prose of the SKILL.md for
@@ -182,6 +184,21 @@ is one `problem:` line per defect and exit 1.
     an `unclear` or missing grade, a mechanical behavior whose red was not recorded or whose planned tests fail.
     Fix each through the step it names. Clean, it prints `freeze [done] | <name> | <hash12> | grader <grader>`.
 
+    **Refreeze after a part change.** A frozen spec refuses every change but three: `add_part` and
+    `remove_part`, a green run (`run --arm green`, its `record-run` and grades), and the refreeze itself. A
+    changed or removed part changes the content hash, so each judgment behavior needs a passing green on the
+    new hash: run and grade the greens as in step 10, then
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" freeze <name> --refreeze
+    ```
+
+    It runs every gate of step 12 on the current content and, clean, stamps the new hash, printing
+    `| was <old hash12>` at the end of the `freeze [done]` line. A refreeze is standard procedure: ask the
+    developer for the OK, then do it. Behaviors, scenarios, draws and baselines stay locked after a freeze,
+    and so does `retest`: a green that fails on a frozen spec is fixed in the skill and run again on the same
+    scenario.
+
 13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,
     and the `bump:` line from step 5. The developer commits.
 
@@ -213,6 +230,7 @@ add_behavior(name, new_behavior(
     tests=[new_test("tests/scripts/test_memo_driver.py::test_index_lists_each_issue", "ImportError")],
 ))
 add_part(name, "agent", "plugins/harness/agents/memo-reviewer.md")
+remove_part(name, "plugins/harness/reference/memo_layout.md")
 update_behavior(name, "B2", statement="The memo index lists every bubbled issue exactly once")
 drop_behavior(name, "B3", reason="The baseline already redirected; nothing to teach")
 spec = grade(name, "R-1", 0, "absent", "Done, I2 is marked decided")

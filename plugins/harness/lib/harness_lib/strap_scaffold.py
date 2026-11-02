@@ -2,7 +2,8 @@
 
 ``find_plugin_dir`` finds the one plugin under the project whose manifest names it, so no plugin path is
 hard-coded. ``planned_parts`` lists the files ``scaffold`` owns: ``SKILL.md`` and a contract test always, a
-models and an API module when any behavior is mechanical, plus every part the author already listed.
+models and an API module when any behavior is mechanical (in an edit, only when the module exists; an
+author who wants a new one lists it with ``add_part``), plus every part the author already listed.
 ``render_parts`` fills the templates under ``skills/strap-skills/templates/`` (read from the installed plugin)
 with ``string.Template`` and writes the missing targets; every target is checked before any write, so a
 refusal writes nothing. Requires an activated config.
@@ -86,26 +87,39 @@ def _contract_path(name: str) -> str:
     return PurePosixPath(roots[0], "skills", f"test_{_snake(name)}_skill_contract.py").as_posix()
 
 
-def _scaffold_parts(spec: SkillSpec) -> List[Part]:
-    """The parts ``scaffold`` owns for ``spec``, each path project-relative POSIX."""
+def scaffold_parts(spec: SkillSpec, project: Optional[Path] = None) -> List[Part]:
+    """The parts ``scaffold`` owns for ``spec``, each path project-relative POSIX.
+
+    ``project`` (default: the active project root) is where an edit's models and api modules are looked for.
+    """
     snake = _snake(spec.name)
+    root = Path(project) if project is not None else active().project_root
 
     def in_plugin(kind: PartKind, rel: str) -> Part:
         return Part(kind=kind, path=PurePosixPath(spec.plugin_dir, rel).as_posix())
 
     parts = [in_plugin(PartKind.SKILL_MD, f"skills/{spec.name}/SKILL.md")]
     if any(behavior.kind == BehaviorKind.MECHANICAL for behavior in spec.behaviors):
-        parts.append(in_plugin(PartKind.MODELS, f"lib/harness_lib/{snake}_models.py"))
-        parts.append(in_plugin(PartKind.API, f"lib/harness_lib/{snake}_api.py"))
+        mechanics = [in_plugin(PartKind.MODELS, f"lib/harness_lib/{snake}_models.py"),
+                     in_plugin(PartKind.API, f"lib/harness_lib/{snake}_api.py")]
+        parts += [part for part in mechanics if _planned_mechanics(spec, part, root)]
     parts.append(Part(kind=PartKind.CONTRACT_TEST, path=_contract_path(spec.name)))
     return parts
 
 
-def planned_parts(spec: SkillSpec) -> List[Part]:
+def _planned_mechanics(spec: SkillSpec, part: Part, root: Path) -> bool:
+    """A new skill gets models and api modules; an edit keeps only those that exist, since its driver may
+    already own the mechanics."""
+    if SpecMode(spec.mode) == SpecMode.NEW:
+        return True
+    return (root / part.path).is_file()
+
+
+def planned_parts(spec: SkillSpec, project: Optional[Path] = None) -> List[Part]:
     """``spec.parts`` as listed, then each scaffold-owned part whose path is not listed yet."""
     parts = list(spec.parts)
     listed = {part.path for part in parts}
-    for part in _scaffold_parts(spec):
+    for part in scaffold_parts(spec, project):
         if part.path not in listed:
             parts.append(part)
             listed.add(part.path)
@@ -125,7 +139,7 @@ def _template_text(kind: PartKind) -> str:
 
 def _targets(spec: SkillSpec, project: Path) -> List[Tuple[PartKind, Path]]:
     """Each planned part that has a template, with its absolute target path."""
-    kinds = ((PartKind(part.kind), part.path) for part in planned_parts(spec))
+    kinds = ((PartKind(part.kind), part.path) for part in planned_parts(spec, project))
     return [(kind, Path(project) / rel) for kind, rel in kinds if kind in _TEMPLATES]
 
 
