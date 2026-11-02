@@ -433,6 +433,7 @@ def test_freeze_refuses_a_behavior_that_never_ran(built: Callable[..., Dict[str,
 def test_freeze_stamps_hash_and_grader(built: Callable[..., Dict[str, Any]], strap: Strap,
                                        piped: Callable[..., Result], project: Path) -> None:
     built()
+    write_file(project, SKILL_REL, SKILL_TEXT)
     ok(piped('drop_behavior(name, "B1", "baseline never showed the tempted move")\n', "api", NAME))
     out = ok(strap("freeze", NAME))
     match = re.match(rf"freeze \[done\] \| {NAME} \| ([0-9a-f]{{12}}) \| grader session", out)

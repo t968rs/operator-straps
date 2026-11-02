@@ -1,9 +1,13 @@
 """strap-skills: the author's API over ``SkillSpec``, as validating factories and piecewise operations.
 
 Every operation takes the skill name first, loads ``<plans>/strap/<name>/SkillSpec.json``, refuses a spec
-whose driver-owned fields no longer match the stored ``driver_digest`` (or one already frozen), applies one
-change, re-validates the whole document from its dump, stamps a fresh digest and only then writes the file.
-A refusal or a failed validation writes nothing.
+whose driver-owned fields no longer match the stored ``driver_digest`` (or one already frozen, outside the
+part and green-run operations below), applies one change, re-validates the whole document from its dump,
+stamps a fresh digest and only then writes the file. A refusal or a failed validation writes nothing.
+
+A frozen spec still takes part edits (``add_part``, ``remove_part``) and the reply and grades of a green
+run, so a part change can be proven again on the new skill hash before ``strap.py freeze --refreeze``.
+Behaviors, scenarios, draws and baselines stay locked.
 
 ``__all__`` is the surface ``skill_api.py`` binds for an api heredoc. ``record_run`` stays importable for
 ``strap.py record-run`` but is left out of it, so an api session cannot record a reply. Requires an
@@ -18,15 +22,16 @@ from typing import Any, Callable, Iterable, List, Optional, Sequence, Union
 
 from harness_lib.config import active
 from harness_lib.strap_models import (
-    DRIVER_OWNED_BEHAVIOR, NAME_PATTERN, SPEC_FILE, Behavior, BehaviorKind, BehaviorState, Check, CheckKind,
-    Grade, Grader, GradeValue, JudgedItem, JudgmentType, Part, PartKind, PlannedTest, Pressure, RedException,
-    ReplyAct, Run, Scenario, SkillSpec, driver_digest, dump_spec, load_spec,
+    DRIVER_OWNED_BEHAVIOR, NAME_PATTERN, SEAL_BROKEN, SPEC_FILE, Arm, Behavior, BehaviorKind, BehaviorState,
+    Check, CheckKind, Grade, Grader, GradeValue, JudgedItem, JudgmentType, Part, PartKind, PlannedTest,
+    Pressure, RedException, ReplyAct, Run, Scenario, SkillSpec, driver_digest, dump_spec, load_spec,
+    part_path, seal_broken, sealed,
 )
 from harness_lib.strap_runs import quote_found
 
 __all__ = [
     "StrapError", "spec_path", "new_behavior", "new_test", "new_scenario", "new_check", "new_judged",
-    "add_behavior", "update_behavior", "drop_behavior", "add_scenario", "add_part", "grade",
+    "add_behavior", "update_behavior", "drop_behavior", "add_scenario", "add_part", "remove_part", "grade",
 ]
 
 _TAMPERED = "driver-owned fields changed outside strap.py"
@@ -84,30 +89,40 @@ def new_judged(act: Union[ReplyAct, str], of: str, baseline: Union[GradeValue, s
 
 # --- load, re-validate, write ---------------------------------------------------------------------------
 
-def _load(name: str) -> SkillSpec:
-    """The spec as stored, refused when missing, hand-edited in driver-owned fields, or frozen."""
+def _load(name: str, frozen_ok: bool = False) -> SkillSpec:
+    """The spec as stored; refused when missing, hand-edited in driver-owned fields or, once frozen, in
+    authored fields, or frozen (unless ``frozen_ok``)."""
     path = spec_path(name)
     if not path.is_file():
         raise StrapError(f"no spec for {name} at {path.as_posix()}")
     spec = load_spec(path)
     if spec.driver_digest != driver_digest(spec):
         raise StrapError(_TAMPERED)
-    if spec.frozen is not None:
+    if seal_broken(spec):
+        raise StrapError(SEAL_BROKEN)
+    if spec.frozen is not None and not frozen_ok:
         raise StrapError(f"{name} is frozen")
     return spec
 
 
 def _commit(name: str, changed: SkillSpec) -> SkillSpec:
-    """Re-validate ``changed`` from its dump, stamp the digest, then write; nothing is written on failure."""
-    checked = SkillSpec.model_validate(changed.model_dump())
+    """Re-validate ``changed`` from its dump, seal a frozen spec, stamp the digest, then write; nothing is
+    written on failure."""
+    checked = sealed(SkillSpec.model_validate(changed.model_dump()))
     stamped = checked.model_copy(update={"driver_digest": driver_digest(checked)})
     spec_path(name).write_text(dump_spec(stamped), encoding="utf-8", newline="\n")
     return stamped
 
 
-def _apply(name: str, change: Callable[[SkillSpec], SkillSpec]) -> SkillSpec:
-    """Load ``name``'s spec, apply ``change`` and commit the result."""
-    return _commit(name, change(_load(name)))
+def _apply(name: str, change: Callable[[SkillSpec], SkillSpec], frozen_ok: bool = False) -> SkillSpec:
+    """Load ``name``'s spec, apply ``change`` and commit the result; ``frozen_ok`` admits a frozen spec."""
+    return _commit(name, change(_load(name, frozen_ok)))
+
+
+def _refuse_frozen_baseline(spec: SkillSpec, run: Run) -> None:
+    """A frozen spec takes the reply and grades of a green run only."""
+    if spec.frozen is not None and run.arm != Arm.GREEN:
+        raise StrapError(f"{spec.name} is frozen; {run.id} is a {Arm(run.arm).value} run")
 
 
 # --- lookups --------------------------------------------------------------------------------------------
@@ -224,7 +239,7 @@ def add_scenario(name: str, behavior_id: str, scenario: Scenario) -> SkillSpec:
 
 
 def add_part(name: str, kind: Union[PartKind, str], path: str) -> SkillSpec:
-    """Append a deliverable part; a path already listed is refused."""
+    """Append a deliverable part; a path already listed is refused. Allowed on a frozen spec."""
     part = Part(kind=kind, path=path)
 
     def change(spec: SkillSpec) -> SkillSpec:
@@ -232,7 +247,30 @@ def add_part(name: str, kind: Union[PartKind, str], path: str) -> SkillSpec:
             raise StrapError(f"{part.path} is already a part")
         return spec.model_copy(update={"parts": [*spec.parts, part]})
 
-    return _apply(name, change)
+    return _apply(name, change, frozen_ok=True)
+
+
+def remove_part(name: str, path: str) -> SkillSpec:
+    """Drop the part listed at ``path``; an unlisted path and a path ``scaffold`` plans are refused.
+
+    ``scaffold`` plans the SKILL.md, the contract test and, for a mechanical behavior, the models and api
+    modules (in an edit, only those that exist); removing one would only see it planned again. ``path``
+    matches in any spelling ``Part`` normalizes. Allowed on a frozen spec.
+    """
+    from harness_lib.strap_scaffold import scaffold_parts  # strap_scaffold imports this module
+    try:
+        path = part_path(path)
+    except ValueError as exc:
+        raise StrapError(str(exc)) from None
+
+    def change(spec: SkillSpec) -> SkillSpec:
+        if not any(part.path == path for part in spec.parts):
+            raise StrapError(f"{path} is not a part")
+        if path in {part.path for part in scaffold_parts(spec)}:
+            raise StrapError(f"{path} is a part scaffold requires")
+        return spec.model_copy(update={"parts": [part for part in spec.parts if part.path != path]})
+
+    return _apply(name, change, frozen_ok=True)
 
 
 # --- driver and grading operations ----------------------------------------------------------------------
@@ -242,6 +280,7 @@ def record_run(name: str, run_id: str, reply: str) -> SkillSpec:
     def change(spec: SkillSpec) -> SkillSpec:
         index = _run_index(spec, run_id)
         run = spec.runs[index]
+        _refuse_frozen_baseline(spec, run)
         if run.recorded:
             raise StrapError(f"{run_id} already recorded")
         sha = hashlib.sha256(reply.encode("utf-8")).hexdigest()
@@ -249,7 +288,7 @@ def record_run(name: str, run_id: str, reply: str) -> SkillSpec:
         runs[index] = run.model_copy(update={"reply": reply, "reply_sha256": sha, "recorded": True})
         return spec.model_copy(update={"runs": runs})
 
-    return _apply(name, change)
+    return _apply(name, change, frozen_ok=True)
 
 
 def _as_grader(grader: Union[Grader, str]) -> Grader:
@@ -287,10 +326,11 @@ def grade(name: str, run_id: str, item: int, value: Union[GradeValue, str], quot
 
     def change(spec: SkillSpec) -> SkillSpec:
         _refuse_grader(spec, who)
+        _refuse_frozen_baseline(spec, spec.runs[_run_index(spec, run_id)])
         run = _gradable_run(spec, run_id, item)
         if not quote_found(quote, run.reply):
             raise StrapError(f"quote not found in {run_id}")
         given = Grade(run=run_id, item=item, value=value, quote=quote, grader=who)
         return spec.model_copy(update={"grades": [*spec.grades, given]})
 
-    return _apply(name, change)
+    return _apply(name, change, frozen_ok=True)

@@ -17,12 +17,13 @@ to track review progress, keep Git state visible, preserve context through compa
 | Your goal                 | Use                                                 | What you get                                                                                                                                                                                                                      | Agent 'Ensurance'                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 |---------------------------|-----------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Review a PR               | `pr-review` or `pr-team`                            | Multiple reviewers, a consolidated review, branch checks before fixes, and fix waves with recorded resolutions.                                                                                                                   | • Configured agent-use Python runtime via `hpy`.<br>• Branch checks before fixes; schema validation on review writes.<br>• `Stop` hook blocks a stop attempt while the review session has an active Phase 5 sentinel.                                                                                                                                                                                                                                                                                                                           |
-| Commit message, single    | `c-msg`                                             | A message for the pending change, saved in your project artifact folders.                                                                                                                                                         | • Configured Python runtime via `hpy`.<br>• Build checks file coverage and message format before saving the draft.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| Commit message, range     | `branch-commit-msg`                                 | A proposed breakdown into commits.                                                                                                                                                                                                | • Configured Python runtime via `hpy`.<br>• Build checks file coverage and message format before saving the draft.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Commit message, single    | `c-msg`                                             | One message for everything that differs from HEAD (staged, unstaged, untracked), saved as `<branch>_pending.txt`. `/harness:c-msg <change>` rewrites the saved message.                                                           | • One capture call saves the skeleton and prints a size-budgeted diff, the agent's whole input.<br>• Build checks file coverage and message format before saving the draft.<br>• A matching carried draft or a canned message is kept unless a change is asked.                                                                                                                                                                                                                                                                                 |
+| Commit message, range     | `branch-commit-msg`                                 | The branch broken into ordered commits (a block per module with its tests, then Docs, Planning and artifacts), saved as `<branch>.txt`. `--base REF` drafts against another base; `--merge-msg` adds the PR merge message.        | • The script buckets, pairs and orders the blocks; the agent reviews the plan and writes messages.<br>• Build rejects a dropped or duplicated path and format defects.<br>• An existing TXT carries forward; a replaced one is kept as `.txt.bak`.                                                                                                                                                                                                                                                                                              |
 | Change message            | `amend-commit-msg`                                  | Amendment of message breakdown (rewritten messages, files moved between blocks).                                                                                                                                                  | • Configured Python runtime via `hpy`.<br>• Build checks file coverage and message format before saving the draft.                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Merge message, PR         | `merge-commit-msg`                                  | A squash-merge subject and body for an open PR, saved as `PR<N>_merge.txt`, ready to paste into the merge UI or `gh pr merge`.                                                                                                    | • Capture prints the PR facts, size-capped diffs and a skeleton with subject, lineage and review lines filled; nothing is written before build.<br>• Build reads the title from `gh` again and rejects a changed subject, placeholders and filler.<br>• A guard hook denies hand edits of the saved TXT.                                                                                                                                                                                                                                        |
 | Write PR Summary          | `pr-sum`                                            | A summary grounded in PR metadata and the diff. <br/>`--level 1\|2\|3` sets how much it draws (1 prose only, 2 flows and Changed Symbols, the default, 3 more diagram types)                                                      | • Script captures PR metadata, commits, file lists, and counts.<br>• Build requires a title, summary, and descriptions covering the listed non-artifact files.                                                                                                                                                                                                                                                                                                                                                                                  |
 | Plan multi-step work      | `write-plan`                                        | An `ActionPlan` JSON whose claims about the code become script-enforced validation anchors, test files planned as real files, a PIP rendered from the JSON, and `parallel2` lanes for its open items.                             | • `check` opens every cited line range, reruns every search, and rejects hard-coded commit SHAs, pytest runs of directories and values that assume a rejected option.<br>• `red` runs the planned tests in a throwaway worktree; each must fail with its planned exception.<br>• `freeze` refuses open decisions, items nothing proves and red failures; later edits are detected.<br>• `record` reruns the item's tests on a throwaway worktree at the commit before marking it COMPLETE; `check` reports a COMPLETE item without that record. |
-| New `harness`-style skill | `strap-skills`                                      | A skill under `plugins/harness/skills/<name>/` with its SKILL.md, models, api and a contract test scaffolded from templates, plus judgment behaviors drawn, run and graded through scenario agents before the spec freezes.       | • `freeze` refuses until each judgment behavior has a failing baseline, a passing green and a grade that quotes the reply.<br>• Drawn scenarios are locked: a behavior's scenarios, kind and type cannot change after its first draw.<br>• A SKILL.md fix needs a retest on its new content hash before the skill can freeze.<br>• Mechanical behaviors must fail as planned before freeze.                                                                                                                                                     |
+| New `harness`-style skill | `strap-skills`                                      | A skill under `plugins/harness/skills/<name>/` with its SKILL.md, models, api and a contract test scaffolded from templates, plus judgment behaviors drawn, run and graded through scenario agents before the spec freezes.       | • `freeze` refuses until each judgment behavior has a failing baseline, a passing green and a grade that quotes the reply.<br>• Drawn scenarios are locked: a behavior's scenarios, kind and type cannot change after its first draw.<br>• A SKILL.md fix needs a retest on its new content hash before the skill can freeze.<br>• Mechanical behaviors must fail as planned before freeze.<br>• A frozen spec takes part edits and green runs only; `freeze --refreeze` restamps the hash after every gate passes again. Behaviors, scenarios, draws and `retest` stay locked.                                                                                                                                                     |
 | Generate Issue Memo       | `bubble-memo`                                       | A memo, `PR_<N>_Bubbles.md`, with an index and one short entry per bubbled issue (description, recommendation, checked references), saved in your project's reviews folder.                                                       | • Driver proves every bubbled issue has an entry and checks each reference against the working tree.<br>• The memo is a snapshot; decisions are stamped in by `bubble-stamp`, never written by the skill.                                                                                                                                                                                                                                                                                                                                       |
 | Isolated task's checkout  | `d-w`                                               | A detached-HEAD worktree cut from HEAD, an integration branch, or another ref.                                                                                                                                                    | • Script resolves the base ref to a commit and creates a detached worktree.<br>• Failed integration-branch fetches stop creation; directory collisions get a fresh path.<br>• Runs the project's configured `worktree_setup`, then `worktree_baseline`, in the new worktree; failures are reported, never fatal, and `--no-setup` skips both.<br>• Warns when run from a linked worktree.                                                                                                                                                       |
 | Diagnose `harness`        | `doctor`                                            | A read-only report on the interpreter `hpy` picks, the three Python modules, `git`, `gh` and `.claude/harness.json`, each marked `ok`, `warn` or `fail`, with the fix beside every failure.                                       | • Standard library only, so it runs when `pydantic`, `jsonschema` or `referencing` are missing.<br>• Installs nothing and writes nothing; the install line is for you to run, naming the interpreter `hpy` uses.                                                                                                                                                                                                                                                                                                                                |
@@ -175,6 +176,54 @@ arguments:
 - `tests/skills/test_skill_guidance_tail_contract.py` pins the hint, the pointer to the reference and the absence
   of `$ARGUMENTS` from fenced commands for each skill, and fails on an unclassified new skill.
 
+### c-msg
+
+`/harness:c-msg` drafts one commit message for the pending change: everything that differs from HEAD, staged,
+unstaged and untracked. It runs as a fork of the `harness:messenger` agent.
+
+```text
+/harness:c-msg
+/harness:c-msg -- name the retry limit in the subject
+```
+
+- `branch_commit_msg.py capture --pending --save --diff` saves the skeleton and prints the block's diff in one
+  call; that output is the agent's whole input. A path over its budget prints as a summary (a hunk outline, a
+  head with the definitions past it, or JSON key tallies).
+- `message <skeleton> --block 1 --build` sets the message from stdin and writes `<branch>_pending.txt` in the
+  commit_messages directory, with `Merge base:` set to HEAD. The branch ledger `<branch>.txt` is never touched,
+  and files under the commit_messages directory are not part of the pending change.
+- A bare rerun keeps a carried draft that still matches the diff, and a canned message, as they stand. Text after
+  the command (a leading `--` is optional) is a change to the saved message.
+
+### branch-commit-msg
+
+`/harness:branch-commit-msg` breaks everything on the branch into Conventional Commits. The plan assumes the
+developer mixed-resets the branch to its merge base and re-commits it block by block, so every path lands in
+exactly one block and every block is a bisect point.
+
+```text
+/harness:branch-commit-msg
+/harness:branch-commit-msg --base 3b5d53a
+/harness:branch-commit-msg --fresh -- keep the hook change apart from the driver
+/harness:branch-commit-msg --merge-msg
+```
+
+| Arguments                  | Writes                  | Plan                                                                                  |
+|----------------------------|-------------------------|---------------------------------------------------------------------------------------|
+| none                       | `<branch>.txt`          | whole branch against `base_branch` (else `origin/HEAD`); the existing TXT carries forward |
+| `--fresh`                  | `<branch>.txt`          | whole branch regrouped from the rules; carried messages dropped (canned ones refill)  |
+| `--base REF` or bare `REF` | `<branch>_<sha7>.txt`   | paths that differ from REF; the branch TXT is never overwritten                       |
+| `--merge-msg`              | also `PR<N>_merge.txt`  | after the build, runs `merge-commit-msg` for the branch's open PR                     |
+
+- The script groups the plan: the test registry first, one block per source module with its tests, then one
+  Docs block, one Planning block and the artifacts last. The agent changes it only for an ordering dependency or
+  a RESTRUCTURE review verdict, and records the reason in the skeleton's `split`.
+- `diff <skeleton> --block N ...` prints every block that needs a message in one call, within per-block line and
+  character budgets; `message <skeleton> --all` sets them all from one stdin text.
+- `build` rejects a dropped or duplicated path and the format defects named in
+  `plugins/harness/reference/commit_format.md`; a replaced TXT is kept as `.txt.bak`. Change a drafted TXT with
+  `amend-commit-msg` instead of a redraft. `--no-fetch` skips fetching the base branch.
+
 ### amend-commit-msg
 
 `/harness:amend-commit-msg` amends the breakdown `branch-commit-msg` drafted instead of redrafting it. The session
@@ -198,6 +247,27 @@ that runs it knows what changed since the draft; the forked `branch-commit-msg` 
   reads every block in one call; repeated `--block N` reads the named blocks.
 - The replaced TXT is kept as `<name>.txt.bak`, one generation.
 
+### merge-commit-msg
+
+`/harness:merge-commit-msg <PR>` drafts the squash-merge subject and body for an open PR, ready to paste into the
+merge UI or `gh pr merge`.
+
+```text
+/harness:merge-commit-msg 123
+/harness:merge-commit-msg 123 -- lead with the hook change
+```
+
+- `capture <PR>` prints the PR's facts, changed files, size-capped diffs, commits and a message skeleton, and
+  writes nothing. The subject (`Merge PR #N — <title>`), `Branch lineage:` and, when a review JSON exists, the
+  review-artifact and review-fix lines come filled.
+- The agent replaces the prose and bullet placeholders (format: `plugins/harness/skills/merge-commit-msg/message_format.md`)
+  and passes the whole message to `build <PR>` on stdin.
+- `build` reads the title from `gh` again and rejects a changed subject, a leftover placeholder, an indented line,
+  filler words, commit SHAs and vendor names. Clean, it writes `PR<N>_merge.txt` and keeps a replaced copy as
+  `.txt.bak`. A PR that is no longer open, or a `gh` failure, stops the run.
+- To change a saved message, rerun `build` with `PR<N>_merge.txt`, changed as asked, on stdin. A rerun of
+  `capture` would replace the prose.
+
 ### Canned commit messages
 
 A change made only of generated files whose message never varies skips drafting: `capture` fills the block with a
@@ -220,14 +290,11 @@ changed files ──► every file fits one entry's patterns? ──no──► 
 - `c-msg`, `branch-commit-msg` and `amend-commit-msg` keep a prefilled message as it stands, unless the developer
   asks for a change (`/harness:c-msg <change>`, `/harness:amend-commit-msg [--base <sha7>] -- <change>`, with the
   `--base` the draft used). `merge-commit-msg` capture applies the same lookup to the PR's changed files and
-  prefills the prose; `merge-commit-msg` changes a saved message by `build` with `PR<NNN>_merge.txt`, changed as
+  prefills the prose; `merge-commit-msg` changes a saved message by `build` with `PR<N>_merge.txt`, changed as
   asked, on stdin.
 - A saved message is final: the build receipt ends with a `Final as saved` line, and a PreToolUse hook
-  (`guard_commit_txt.py`) denies Write and Edit on the saved `.txt` files, `PR<NNN>_merge.txt` included. Shell
+  (`guard_commit_txt.py`) denies Write and Edit on the saved `.txt` files, `PR<N>_merge.txt` included. Shell
   writes (redirects, heredocs, `sed -i`, `Set-Content`) are covered only by the standing rule.
-- `merge-commit-msg` leaves no working document: `capture` prints the PR's facts and a message skeleton, and
-  `build` takes the finished message on stdin, asks `gh` for the title again and writes only `PR<NNN>_merge.txt`
-  (a replaced copy kept as `.txt.bak`).
 - Entries use the plugin's default file names (and, for review artifacts, folders); a project that renames them
   drafts as usual.
 

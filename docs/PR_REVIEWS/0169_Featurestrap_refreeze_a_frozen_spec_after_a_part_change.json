@@ -1,0 +1,431 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 169,
+  "pr_title": "Feature(strap): refreeze a frozen spec after a part change",
+  "branch": "1109-c-msg-spec",
+  "base_branch": "main",
+  "base_sha": "0fde62414b5ea1d9f7db97b0e93df59b1925f99c",
+  "head_sha": "d987285eeb9d6874fa5af371a8db61e118be1e56",
+  "review_date": "2026-11-01",
+  "verdict": "READY TO MERGE - 15 of 15 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 441,
+    "deletions": 61,
+    "files_changed": 11
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0169/pr169_20261102T053053Z/findings/tests.json",
+    "docs/_scratch/pr_review/0169/pr169_20261102T053053Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0169/pr169_20261102T053053Z/findings/docs.json",
+    "docs/_scratch/pr_review/0169/pr169_20261102T053053Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every new refusal test, at both the API and driver level, compares the spec to its earlier state (path.read_bytes() or read_spec) after the refusal, so 'a refusal writes nothing' is pinned throughout.",
+    "test_refreeze_needs_a_green_on_the_new_hash runs the whole refreeze path through the driver: the refused refreeze, a green run on the frozen spec, its grade, the '| was <old>' suffix and the new hash equal to the green run's hash.",
+    "The driver tests assert exact problem lines through has_problem, including the reworded 'already frozen; after a part change, rerun freeze with --refreeze'. A stray extra word fails the test.",
+    "The scaffold edit-mode tests cover absent, present and author-listed models/api modules, and the updated test_render_parts_edit_writes_only_missing_parts drops the old expectation that models and api are rendered.",
+    "No mock-chain tests: every test runs the real API or driver in-process against a throwaway git project.",
+    "The baseline lock on a frozen spec is enforced in both layers: the driver's `_refuse_frozen_baseline` in cmd_run and cmd_record_run, and the API's own `_refuse_frozen_baseline` in record_run and grade. A direct api heredoc cannot bypass the CLI check.",
+    "`remove_part` imports `scaffold_parts` lazily, which breaks the strap_scaffold -> strap_api import cycle, and refuses any path that scaffold would only plan again. The part list and the planner cannot disagree.",
+    "`freeze_problems` now requires every listed part file to exist, so neither a first freeze nor a refreeze can stamp a hash computed over missing files.",
+    "`scaffold_parts` takes an explicit `project` that `_targets` passes down, so render and plan check edit-mode mechanics existence against the same root.",
+    "The refreeze output names the previous hash (`was <old>`), so the transition is auditable from the command line.",
+    "c-msg SkillSpec refreeze is consistent at the head: canonical form, driver_digest and the frozen skill_hash 67c817fe42db all recompute to the stored values over the remaining seven parts.",
+    "Dropping c_msg_models.py and c_msg_api.py from the c-msg parts matches the code: neither file exists, and scaffold_parts plans models/api for an edit only when the module exists (strap_scaffold.py:110-115), so remove_part would not refuse them.",
+    "strap-skills step 5 and step 12 prose agrees with the driver: remove_part refuses scaffold-owned paths (strap_api.py:248-264), freeze refuses a missing part file (strap.py:787), --refreeze appends '| was <hash12>' (strap.py:814-815), and frozen specs admit only green runs, their record-run and grades.",
+    "New README c-msg, branch-commit-msg and merge-commit-msg sections track their SKILL.md files closely (flags, output names, budgets, build rejections, change-a-saved-message route) and replace the stale merge-commit-msg bullet in Canned commit messages instead of duplicating it.",
+    "The frozen-spec baseline refusal is enforced twice: in the driver (before a tree is built) and in strap_api (the writer). Tests assert the spec bytes are unchanged on every refusal.",
+    "freeze now refuses a listed part whose file is missing. This closes the gap where content_hash hashed a missing file as a marker, which let c-msg freeze with phantom models/api parts.",
+    "remove_part reuses scaffold_parts for its guard, so the removal refusal and the scaffold plan cannot drift apart.",
+    "The refrozen c-msg SkillSpec checks out: its stored frozen hash equals the current content hash of its parts, and its driver_digest is valid.",
+    "The refreeze receipt adds `| was <old hash12>` as an audit trail, and gate tests pin the exact receipt line for refreeze and for refreeze on an unfrozen spec.",
+    "The edit-mode scaffold change (models/api planned only when present) is documented in the module docstring, SKILL.md step 5 and tests, including the add_part route to a new api module."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Nothing reports a frozen spec whose stored hash no longer matches its parts",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "docs/plans/strap/merge-commit-msg/SkillSpec.json",
+          "plugins/harness/lib/harness_lib/strap_api.py"
+        ],
+        "lines": "338-347",
+        "reviewer": "overall, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The PR makes a frozen spec editable (add_part, remove_part) and adds `freeze --refreeze`, but nothing tells the author that a refreeze is due. `cmd_check` (strap.py:338-347) prints `check [ok]` on a frozen spec even when `frozen.skill_hash` differs from `skill_hash(spec)`. The SKILL.md refreeze paragraph (lines 187-200) leaves it to the agent to notice that a part changed. This repo already shows the drift: docs/plans/strap/merge-commit-msg/SkillSpec.json is frozen at ef99f80a885e while its parts now hash to 65b5cf4cb633, and no check reported it. Project rule: a condition the driver can read and act on belongs in the driver, not in skill prose the agent must remember.\n\nAlso (runtime): The PR makes it routine for a frozen spec to take `add_part` and `remove_part`, which changes `skill_hash(spec)` while `spec.frozen.skill_hash` keeps the old value until `freeze --refreeze` runs. `cmd_check` (lines 338-347) and `spec_problems` never compare the two, so a spec in the middle of a refreeze still reports `check [ok]` and looks sealed. Nothing reminds the author that the greens and the refreeze are still owed.",
+        "fix": [
+          "In cmd_check, when spec.frozen is not None and spec.frozen.skill_hash != skill_hash(spec), print `stale: frozen at <old12>, content <cur12>; run freeze --refreeze` (or exit 1 with a problem line), and pin it with a gate test.",
+          "Also print the same stale line from `new` when it resumes a spec (`_resume`), so a resumed session sees it first.",
+          "In cmd_check, when `spec.frozen is not None` and `spec.frozen.skill_hash != skill_hash(spec)`, print `stale: frozen at <old[:12]>, parts now hash <new[:12]>; prove greens then freeze --refreeze` (an informational line like `open:`), so the state is visible without failing check."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README strap-skills row omits the refreeze path this PR adds",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/strap-skills/SKILL.md"
+        ],
+        "lines": "26",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The 'New harness-style skill' row of the What-you-can-do table still lists only the pre-freeze gates ('A SKILL.md fix needs a retest on its new content hash before the skill can freeze'). After this PR a frozen spec takes add_part/remove_part and green runs, and `strap.py freeze <name> --refreeze` reruns every gate and stamps the new hash (strap.py:798-816); retest is locked once frozen. The README is the only user-facing summary and says nothing about either, so a reader with a frozen spec and a changed part has no pointer to the route.\n\nAlso (overall): This PR adds `freeze --refreeze` and `remove_part` and opens frozen specs to part edits and green runs. The README 'New harness-style skill' row (README.md:26) still lists only the original freeze guarantees, while the same PR adds about 70 README lines for the messaging skills.",
+        "fix": [
+          "Add a bullet to the Agent 'Ensurance' cell of README.md:26, e.g. '<br>• A part change after the freeze needs passing greens on the new hash and `freeze --refreeze`; behaviors, scenarios, draws and `retest` stay locked.'",
+          "Add a bullet to the row: 'A frozen spec takes part edits and green runs only; `freeze --refreeze` restamps the hash after every gate passes again.'"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "New merge-commit-msg README section spells the file PR<NNN>_merge.txt",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py"
+        ],
+        "lines": "266,268",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The new section (README.md:266,268) names the output `PR<NNN>_merge.txt`, while the new table row (README.md:23) and the branch-commit-msg table (README.md:216) say `PR<N>_merge.txt`. The script writes `PR{pr}_merge.txt` with no padding (merge_commit_msg.py:86) and the skill says `PR<N>_merge.txt`; `<NNN>` reads as a zero-padded three-digit number, which a developer looking for PR7 would not find.",
+        "fix": [
+          "Replace `PR<NNN>_merge.txt` with `PR<N>_merge.txt` at README.md:266 and README.md:268 (and the pre-existing occurrences at README.md:293 and README.md:296 for consistency)."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "merge-commit-msg spec has the same phantom models/api parts this PR removed from c-msg",
+        "file": "docs/plans/strap/merge-commit-msg/SkillSpec.json",
+        "lines": "22,26,215",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "c-msg had stale `models`/`api` parts for modules that were never written. This PR removed them and refroze the spec; the stored hash now matches the content (checked). The sibling docs/plans/strap/merge-commit-msg/SkillSpec.json still lists plugins/harness/lib/harness_lib/merge_commit_msg_models.py and merge_commit_msg_api.py (lines 22, 26), and neither file exists. Its frozen hash (line 215) is also stale. Under the new `part file missing` freeze gate, that spec cannot be refrozen until those parts come off.",
+        "fix": [
+          "Run `remove_part` for both paths through `strap.py api merge-commit-msg`, rerun any greens the gate needs, then `strap.py freeze merge-commit-msg --refreeze`, in this PR or a tracked follow-up."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "strap_api docstrings still say every operation refuses a frozen spec",
+        "file": "plugins/harness/lib/harness_lib/strap_api.py",
+        "lines": "3-4,92",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring's first paragraph (lines 3-4) says every operation refuses a spec 'already frozen', and `_load`'s docstring (line 92) says it refuses a frozen spec unconditionally. In the code, `_load` admits a frozen spec when `frozen_ok` is set, and `add_part`, `remove_part`, `record_run` and `grade` all pass `frozen_ok=True`. The new paragraph at lines 8-10 describes the exception, but it now contradicts the opening sentence instead of qualifying it.\n\nAlso (overall): The module docstring (strap_api.py:3-4) says every operation refuses a spec 'already frozen', and `_load`'s docstring (line 92) says the spec is 'refused when ... frozen'. With `frozen_ok`, add_part, remove_part, record_run and grade accept a frozen spec. The second paragraph at lines 8-10 corrects the first, but the two claims conflict.",
+        "fix": [
+          "Line 4: replace '(or one already frozen)' with '(or one already frozen, outside the part and green-run operations below)'. Line 92: change '..., or frozen.' to '..., or frozen unless ``frozen_ok``.'",
+          "Line 4: '(or one already frozen, except the operations listed below)'.",
+          "Line 92: '... or frozen unless ``frozen_ok``.'"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "--refreeze is accepted on an unchanged or never-frozen spec, despite the documented contract",
+        "file": "plugins/harness/scripts/strap.py",
+        "lines": "30-34,798-816",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The CLI docstring (strap.py:31-32) describes `--refreeze` as rerunning the gates 'on a frozen spec whose parts changed'. `cmd_freeze` (lines 802-804) only checks that a frozen spec carries the flag. With an unchanged hash, it reruns every gate, including the mechanical planned-test pytest runs, and then stamps a new `at` over the same `skill_hash`. On a spec that was never frozen, the flag is silently ignored. Both paths are harmless, but the docstring promises a precondition the code does not enforce.",
+        "fix": [
+          "In cmd_freeze, after `current = skill_hash(spec)`, refuse when `previous is not None and previous.skill_hash == current` ('unchanged since freeze at <hash>; nothing to refreeze'), and refuse `args.refreeze` when `previous is None` ('not frozen; run freeze without --refreeze').",
+          "Or reword strap.py:31-32 to say `--refreeze` reruns every gate on a frozen spec and stamps the current hash, whether or not it changed."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "A baseline left open at freeze becomes an orphaned worktree, and its refusal points to a refused command",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "tests/scripts/test_strap_gate.py"
+        ],
+        "lines": "601-609,642-646",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "cmd_record_run runs `_live_run` before `_refuse_frozen_baseline` (strap.py:643-645). For an open baseline on a frozen spec whose tree is gone, the problem line says to rerun `run ... --arm baseline`, which `cmd_run` then refuses. When the tree still exists, record-run refuses and nothing ever drops it, so the throwaway git worktree stays under worktree_root for good. test_frozen_spec_refuses_a_baseline_opened_before_the_freeze treats 'its tree stays' as intended.",
+        "fix": [
+          "Resolve the run with `_run_of` and call `_refuse_frozen_baseline` before `_live_run`, so the frozen refusal comes first.",
+          "On that refusal, drop the run's tree (`pr.drop_tree(_root(), Path(run.tree))`) or name its path in the problem line; or have `freeze` drop the trees of unrecorded non-green runs when it stamps."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "strap-skills Rules still state retest unconditionally",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "lines": "39-40,198-200",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The Rules bullet 'Green is pinned to the content hash' (SKILL.md:39-40) says 'a failed green needs `retest` once the skill has changed', while the new step 12 paragraph (SKILL.md:198-200) says retest stays locked after a freeze and a failed green on a frozen spec is rerun on the same scenario. cmd_retest loads the spec writable (strap.py:706-707) and so refuses a frozen spec. A session that reads the Rules first gets the wrong instruction for the frozen case.\n\nAlso (overall): Rules (SKILL.md:39-40) state: 'a failed green needs `retest` once the skill has changed.' The new refreeze paragraph (SKILL.md:198-200) says retest stays locked on a frozen spec and that a failed green is fixed and rerun on the same scenario. The driver matches the paragraph: cmd_retest loads with writable=True, so it refuses a frozen spec. The rule is now false for frozen specs.",
+        "fix": [
+          "Qualify the rule at SKILL.md:40: 'a failed green needs `retest` once the skill has changed (before the freeze; after it, rerun the green on the same scenario, step 12)'.",
+          "Qualify the rule: 'a failed green needs `retest` once the skill has changed (on a frozen spec, rerun the same scenario; see step 12)'."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Step 12 problem list omits the new part-file-missing refusal",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "182-185",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "freeze_problems now emits `<path>: part file missing` (strap.py:787). Step 12's list of freeze problems (SKILL.md:182-184) does not include it; only step 5 mentions it in passing.",
+        "fix": [
+          "Add 'a listed part whose file is missing (take it off with `remove_part` or restore it)' to the step 12 problem list."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "remove_part's edit-mode branch has no test",
+        "file": "tests/lib/test_strap_api.py",
+        "files": [
+          "tests/lib/test_strap_api.py",
+          "plugins/harness/lib/harness_lib/strap_api.py"
+        ],
+        "lines": "432-441",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The remove_part docstring says that in an edit the models and api modules are required only when they exist. Every remove_part test seeds a NEW spec (_seed sets mode=SpecMode.NEW), so two cases are never exercised: an EDIT spec dropping an absent-on-disk models part (should succeed) and an EDIT spec refusing a models part that exists (should refuse). The scaffold tests pin planned_parts, but nothing pins remove_part's own call into scaffold_parts or the project root it resolves.",
+        "fix": [
+          "Add a parametrized test that seeds an EDIT spec with a mechanical behavior and a models part, toggles whether the models file exists under the project, and asserts removal succeeds (absent) or raises 'scaffold requires' with the bytes unchanged (present)."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Frozen-baseline refusals match the generic 'is frozen' text",
+        "file": "tests/lib/test_strap_api.py",
+        "lines": "471-482",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_frozen_spec_refuses_everything_else uses match='is frozen' for all four cases. The baseline-reply and baseline-grade cases are meant to pin _refuse_frozen_baseline ('<name> is frozen; R-1 is a baseline run'), but the same pattern also matches _load's blanket '<name> is frozen'. The test can tell a refusal from no refusal, but not which guard fired.",
+        "fix": [
+          "Parametrize the expected text: 'R-1 is a baseline run' for baseline-reply, 'R-2 is a baseline run' for baseline-grade, and re.escape(f\"{NAME} is frozen\") + '$' for add_scenario and drop_behavior."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "The new project argument of planned_parts / scaffold_parts is untested",
+        "file": "tests/lib/test_strap_scaffold.py",
+        "files": [
+          "tests/lib/test_strap_scaffold.py",
+          "plugins/harness/lib/harness_lib/strap_scaffold.py"
+        ],
+        "lines": "219-239",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "scaffold_parts and planned_parts gained `project` ('where an edit's models and api modules are looked for'), and _targets now passes it through. Every new edit test calls planned_parts(spec) with no project, or render_parts with the same root that is active, so the active root and the argument always agree. Dropping the argument from _targets, or ignoring it in scaffold_parts, would leave every test green.",
+        "fix": [
+          "Add a test that creates the models file under a second make_project root (not the activated one), then asserts ('models', _MODELS) is in planned_parts(spec, other_root) and absent from planned_parts(spec)."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Refused refreeze in the remove_part flow does not assert the spec is unchanged",
+        "file": "tests/scripts/test_strap_gate.py",
+        "lines": "300-303",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "In test_refreeze_after_remove_part_restamps_a_mechanical_spec, the refusal for the missing part only checks the problem line. Every other refusal in the new refreeze block (lines 267-270, 343-346, 355-358) takes `before = read_spec(...)` and asserts the spec is unchanged. This one would miss a refreeze that wrote a partial stamp or behavior states before refusing.",
+        "fix": [
+          "Take `before = read_spec(mechanical)` after unlinking the part and add `assert read_spec(mechanical) == before` after the refused refreeze."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "cross_os marker applied unevenly across the new mechanical freeze tests",
+        "file": "tests/scripts/test_strap_gate.py",
+        "lines": "312-329",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_freeze_refuses_a_listed_part_that_does_not_exist and test_refreeze_on_an_unfrozen_spec_is_a_freeze both run `red` and `freeze`, which re-run planned tests through the launcher. They carry no @pytest.mark.cross_os, while test_refreeze_reruns_the_planned_tests and test_freeze_passes_a_mechanical_behavior, with the same setup, do. Windows CI therefore skips the part-file-missing gate and the unfrozen --refreeze path.\n\nAlso (overall): test_freeze_refuses_a_listed_part_that_does_not_exist (test_strap_gate.py:312) and test_refreeze_on_an_unfrozen_spec_is_a_freeze (line 323) run `strap red`, which builds a throwaway git worktree, and then freeze. The analogous test_freeze_passes_a_mechanical_behavior (line 498) and the new test_refreeze_reruns_the_planned_tests (line 350) are marked `cross_os`, so Windows CI skips these two.",
+        "fix": [
+          "Add @pytest.mark.cross_os to both tests, as the sibling mechanical freeze tests have.",
+          "Or, if the gap is deliberate, note in the module docstring which tests stay Ubuntu-only and why.",
+          "Add `@pytest.mark.cross_os` to both tests."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Docstring promises the open baseline tree survives the refusal; no assertion pins it",
+        "file": "tests/scripts/test_strap_gate.py",
+        "files": [
+          "tests/scripts/test_strap_gate.py",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "337-346",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_frozen_spec_refuses_a_baseline_opened_before_the_freeze says 'its tree stays', but the test never captures the TREE path printed by `run` and never checks it after the refused record-run. cmd_record_run calls _refuse_frozen_baseline before changed_paths/sa.record_run, so today the tree survives, but a reorder that moved the refusal after the tree teardown (record-run drops the tree on success, see test_record_run_stores_reply_and_drops_tree) would destroy the run's evidence and this test would still pass.",
+        "fix": [
+          "Keep the `run` output, parse the tree with re.search(r\"TREE: (.+?)\\s*$\", out, re.MULTILINE), and after the refusal add `assert Path(tree).is_dir()`.",
+          "Or drop 'its tree stays' from the docstring if the tree is not part of the contract."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 169 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"d987285eeb9d6874fa5af371a8db61e118be1e56\",\"headRefName\":\"1109-c-msg-spec\",\"headRefOid\":\"d987285eeb9d6874fa5af371a8db61e118be1e56\",\"last_sha\":\"d987285eeb9d6874fa5af371a8db61e118be1e56\",\"mergeCommit\":null,\"number\":169,\"state\":\"OPEN\",\"title\":\"Feature(strap): refreeze a frozen spec after a part change\",\"url\":\"https://github.com/t968rs/operator-straps/pull/169\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1109-c-msg-spec",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1109-c-msg-spec",
+        "head_ref_name": "1109-c-msg-spec",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "d987285eeb9d6874fa5af371a8db61e118be1e56",
+        "head_sha": "d987285eeb9d6874fa5af371a8db61e118be1e56",
+        "base_ancestor_command": "git merge-base --is-ancestor d987285eeb9d6874fa5af371a8db61e118be1e56 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor d987285eeb9d6874fa5af371a8db61e118be1e56 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - README row is the other part's edit; SKILL.md: no edit, step 12 already documents the refreeze route, remove_part and the locked retest; README.md:26 Ensurance cell gains a bullet: a frozen spec takes part edits and green runs only, freeze --refreeze restamps the hash after every gate passes again; behaviors, scenarios, draws and retest stay locked."
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - Reworded the freeze docstring: --refreeze reruns every gate and stamps the current hash whether or not the parts changed, and acts as a plain freeze on a never-frozen spec (tests pin both behaviors, so the code stays)"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - Qualified the 'Green is pinned' rule: on a frozen spec a failed green reruns the same scenario instead of retest, pointing to step 12"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - Added the missing-part-file problem (remove_part or restore) to the step 12 problem list; strap.py: no edit, freeze_problems already emits the line"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - Fix lands in the test (other part); strap.py: no edit, cmd_record_run already refuses before the tree teardown; test_frozen_spec_refuses_a_baseline_opened_before_the_freeze: parse TREE from the run output with re.search(r\"TREE: (.+?)\\s*$\") and assert Path(tree).is_dir() after the refused record-run"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - Removed the phantom merge_commit_msg_models.py and merge_commit_msg_api.py parts through strap.py api remove_part, then strap.py freeze merge-commit-msg --refreeze (gates passed; hash ef99f80a885e -> 0466076841ae)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - Module docstring now says a frozen spec is refused outside the part and green-run operations below; _load docstring says frozen unless frozen_ok"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - Added test_remove_part_edit_plans_models_only_when_on_disk: an EDIT spec with a mechanical behavior drops an absent models part and refuses one on disk with bytes unchanged; strap_api.py: cited, remove_part code already correct, no edit for this issue"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - test_frozen_spec_refuses_everything_else parametrizes the expected text: 'R-1/R-2 is a baseline run' for the baseline cases, re.escape(f'{NAME} is frozen') + '$' for add_scenario and drop_behavior"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - added test_planned_parts_edit_looks_under_the_given_project: a models file under a second make_project root is planned only when that root is passed as project; strap_scaffold.py cited, its project argument already threads through _targets and scaffold_parts so no edit"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - test_refreeze_after_remove_part_restamps_a_mechanical_spec: before = read_spec(mechanical) after unlinking the part, assert the spec is unchanged after the refused refreeze"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - added @pytest.mark.cross_os to test_freeze_refuses_a_listed_part_that_does_not_exist and test_refreeze_on_an_unfrozen_spec_is_a_freeze"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - README.md:266, 268, 293, 296 changed from PR<NNN>_merge.txt to PR<N>_merge.txt; the script already writes PR{pr}_merge.txt unpadded (merge_commit_msg.py:86), so no script edit."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - cmd_record_run resolves the run with _run_of and calls new _refuse_frozen_open_run before _live_run, so the frozen refusal comes first and an unrecorded non-green run's tree is dropped (pr.drop_tree) on that refusal; gate test now asserts the tree is gone, and a new test pins the frozen refusal (no rebuild hint) when the tree is already gone"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-01",
+      "evidence": "d987285 (working-tree snapshot; developer commits) - new stale_line(spec) in strap.py prints 'stale: frozen at <old12>, parts now hash <new12>; prove greens then freeze --refreeze' from cmd_check (informational, check stays ok) and from new on resume; gate test pins both; SKILL.md refreeze paragraph names the stale line as the cue. SkillSpec.json: no edit, the drift it shows is now reported by check and its refreeze needs greens and the developer's OK; strap_api.py: no edit, add_part/remove_part need no change once check reports the drift"
+    }
+  ]
+}

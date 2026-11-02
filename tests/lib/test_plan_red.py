@@ -68,6 +68,36 @@ FAILED tests/test_mix.py::test_type - TypeError: object of type 'int' has no ...
 
 PASS = ".                                                                        [100%]\n1 passed in 0.01s\n"
 
+LONG_ID = "test_long[" + "x" * 90 + "]"
+
+# A node id wider than the terminal gets a one-underscore fence; the "_ _ _" line between two long traceback
+# entries is a frame separator, not a header.
+LONG = f"""\
+FF                                                                       [100%]
+================================== FAILURES ===================================
+_ {LONG_ID} _
+
+    def test_long(value):
+>       helper()
+
+tests\\test_long.py:9:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+    def helper():
+>       raise NotImplementedError("later")
+E       NotImplementedError: later
+
+tests\\test_long.py:5: NotImplementedError
+_________________________________ test_short __________________________________
+
+    def test_short():
+>       len(3)
+E       TypeError: object of type 'int' has no len()
+
+tests\\test_long.py:13: TypeError
+2 failed in 0.05s
+"""
+
 CLASS_FAIL = """\
 F                                                                        [100%]
 ================================== FAILURES ===================================
@@ -185,6 +215,14 @@ def test_classify_ignores_a_collection_error_of_another_file() -> None:
 
 def test_classify_falls_back_to_the_only_failure_of_a_single_node_run() -> None:
     assert pr.classify(CLASS_FAIL, "sub/test_q.py::test_renamed") == "KeyError"
+
+
+@pytest.mark.parametrize(("node", "expected"), [
+    (f"tests/test_long.py::{LONG_ID}", "NotImplementedError"),
+    ("tests/test_long.py::test_short", "TypeError"),
+])
+def test_classify_reads_a_one_underscore_header_past_a_frame_separator(node: str, expected: str) -> None:
+    assert pr.classify(LONG, node) == expected
 
 
 def test_classify_a_class_method_with_parameters() -> None:

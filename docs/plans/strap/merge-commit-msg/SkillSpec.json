@@ -18,14 +18,6 @@
       "path": "plugins/harness/skills/merge-commit-msg/message_format.md"
     },
     {
-      "kind": "models",
-      "path": "plugins/harness/lib/harness_lib/merge_commit_msg_models.py"
-    },
-    {
-      "kind": "api",
-      "path": "plugins/harness/lib/harness_lib/merge_commit_msg_api.py"
-    },
-    {
       "kind": "contract_test",
       "path": "tests/skills/test_merge_commit_msg_skill_contract.py"
     }
@@ -212,9 +204,10 @@
   "runs": [],
   "grades": [],
   "frozen": {
-    "skill_hash": "ef99f80a885ea44f9de08e519f8b62e97262085fdf8f46b8642729b8bc77198c",
+    "skill_hash": "0466076841ae264080bdc41640ae93e618f55855da0fabcffc8bf6bd10caf417",
     "grader": "session",
-    "at": "2026-10-31T04:31:28+00:00"
+    "at": "2026-11-02T16:26:06+00:00",
+    "authored": "9f27c4ae4d4d2b842a6b655b17c71b7c3d017483fa55e42eda72c2b54d195243"
   },
-  "driver_digest": "cb600cb37ef63fe343800e541faf82ea1a1ae901c2fcec9b5711e9ed1deacef8"
+  "driver_digest": "7aba94ef58d0a473210d05a9d228b25889b79e3d2a4332566544501b4fc589a6"
 }

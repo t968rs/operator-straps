@@ -223,6 +223,25 @@ def test_grade_rejects_blank_quote() -> None:
         sm.Grade.model_validate({**base, "quote": "  \n"})
 
 
+@pytest.mark.parametrize("given, stored", [
+    ("plugins/demo/SKILL.md", "plugins/demo/SKILL.md"),
+    ("./plugins/demo/SKILL.md", "plugins/demo/SKILL.md"),
+    ("plugins\\demo\\SKILL.md", "plugins/demo/SKILL.md"),
+    ("plugins//demo/./SKILL.md", "plugins/demo/SKILL.md"),
+])
+def test_part_path_normalizes_to_repo_relative_posix(given: str, stored: str) -> None:
+    """Every spelling of one file stores the same path."""
+    assert sm.Part(kind="reference", path=given).path == stored
+
+
+@pytest.mark.parametrize("path", ["", ".", "/abs/SKILL.md", "C:/x/SKILL.md", "c:SKILL.md",
+                                  "../SKILL.md", "plugins/../../SKILL.md"])
+def test_part_path_rejects_paths_outside_the_repo(path: str) -> None:
+    """A part path is repo-relative: no root, no drive, no ``..``, not empty."""
+    with pytest.raises(ValidationError):
+        sm.Part(kind="reference", path=path)
+
+
 @pytest.mark.parametrize("name", ["Demo", "demo_skill", "-demo", "demo-", "demo--x", ""])
 def test_spec_rejects_bad_name(name: str) -> None:
     """The skill name follows ``NAME_PATTERN``."""
@@ -289,6 +308,58 @@ def test_driver_digest_sensitivity() -> None:
     assert _digest({**doc, "behaviors": [_judgment(state="drawn"), _mechanical()]}) != base
     edited = _judgment(scenarios=[_scenario("SC-1", task="Different task."), _scenario("SC-2")])
     assert _digest({**doc, "behaviors": [edited, _mechanical()]}) == base
+
+
+FROZEN_DOC = {"skill_hash": "a" * 64, "grader": "session", "at": "2026-01-01T00:00:00+00:00"}
+
+
+def test_driver_digest_of_an_unsealed_stamp_matches_the_pre_seal_formula() -> None:
+    """A frozen stamp without ``authored`` digests as it did before the field existed."""
+    spec = sm.SkillSpec.model_validate(_spec(draws=[_draw()], frozen=FROZEN_DOC))
+    dumped = spec.model_dump(mode="json")
+    owned: Dict[str, Any] = {name: dumped[name] for name in ("draws", "runs", "grades")}
+    owned["frozen"] = FROZEN_DOC
+    owned["behavior_states"] = {b["id"]: {"state": b["state"]} for b in dumped["behaviors"]}
+    text = json.dumps(owned, sort_keys=True, separators=(",", ":"))
+    assert sm.driver_digest(spec) == hashlib.sha256(text.encode("utf-8")).hexdigest()
+    sealed = spec.model_copy(update={"frozen": spec.frozen.model_copy(update={"authored": "b" * 64})})
+    assert sm.driver_digest(sealed) != sm.driver_digest(spec)
+
+
+def test_dump_of_an_unsealed_stamp_keeps_the_pre_seal_text() -> None:
+    """An unsealed stamp dumps without ``authored``, so a spec frozen before the seal stays canonical."""
+    legacy = sm.SkillSpec.model_validate(_spec(frozen=FROZEN_DOC))
+    assert json.loads(sm.dump_spec(legacy))["frozen"] == FROZEN_DOC
+    stamped = json.loads(sm.dump_spec(sm.sealed(legacy)))["frozen"]
+    assert stamped["authored"] == sm.authored_digest(legacy)
+
+
+def test_authored_digest_covers_authored_fields_only() -> None:
+    """Scenario, statement and part edits move the authored digest; draws, states and the stamp do not."""
+    doc = _spec(draws=[_draw()])
+    base = sm.authored_digest(sm.SkillSpec.model_validate(doc))
+
+    def moved(**over: Any) -> bool:
+        return sm.authored_digest(sm.SkillSpec.model_validate({**doc, **over})) != base
+
+    edited = _judgment(scenarios=[_scenario("SC-1", task="Different task."), _scenario("SC-2")])
+    assert moved(behaviors=[edited, _mechanical()])
+    assert moved(behaviors=[_judgment(statement="Other."), _mechanical()])
+    assert moved(parts=[{"kind": "reference", "path": "plugins/demo/notes.md"}])
+    assert not moved(behaviors=[_judgment(state="drawn"), _mechanical()])
+    assert not moved(draws=[], frozen=FROZEN_DOC)
+
+
+def test_seal_stamps_frozen_specs_and_detects_a_break() -> None:
+    """``sealed`` stamps only a frozen spec; ``seal_broken`` holds only for a set stamp gone stale."""
+    open_spec = sm.SkillSpec.model_validate(_spec())
+    assert sm.sealed(open_spec) == open_spec
+    legacy = sm.SkillSpec.model_validate(_spec(frozen=FROZEN_DOC))
+    assert not sm.seal_broken(legacy)
+    stamped = sm.sealed(legacy)
+    assert stamped.frozen.authored == sm.authored_digest(legacy)
+    assert not sm.seal_broken(stamped)
+    assert sm.seal_broken(stamped.model_copy(update={"plugin_dir": "plugins/other"}))
 
 
 def test_dump_and_load_round_trip(tmp_path: Path) -> None:

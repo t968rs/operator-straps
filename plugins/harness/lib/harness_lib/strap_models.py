@@ -3,15 +3,16 @@
 ``SkillSpec`` is the one JSON file (``<plans>/strap/<name>/SkillSpec.json``) the strap-skills driver and the
 author's API edit. Authored fields (behaviors, scenarios, planned tests) are the author's; the fields marked
 ``driver_owned`` (draws, runs, grades, frozen, driver_digest and each behavior's state) are written only by
-``strap.py``. ``driver_digest`` fingerprints the driver-owned fields so a hand edit is detectable. This module
-imports no other ``harness_lib`` module.
+``strap.py``. ``driver_digest`` fingerprints the driver-owned fields so a hand edit is detectable. Once the
+spec is frozen, ``Frozen.authored`` seals the authored fields too: every save restamps it and every load
+refuses a spec it no longer matches. This module imports no other ``harness_lib`` module.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 from enum import Enum
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -26,6 +27,8 @@ SCHEMA_ID = "https://github.com/t968rs/operator-straps/plugins/harness/schemas/S
 _BEHAVIOR_ID = r"^B\d+$"
 _SCENARIO_ID = r"^SC-\d+$"
 _RUN_ID = r"^R-\d+$"
+SEAL_BROKEN = ("frozen spec: authored fields changed by hand since the freeze; revert the edit "
+               "(part changes go through add_part or remove_part)")
 _DRIVER_OWNED = {"driver_owned": True}
 _MODEL_CONFIG = ConfigDict(extra="forbid")
 
@@ -149,13 +152,28 @@ class RedException(str, Enum):
     TYPE_ERROR = "TypeError"
 
 
+def part_path(path: str) -> str:
+    """``path`` as repo-relative POSIX: backslashes, ``.`` steps and doubled slashes go; a root, a drive,
+    a ``..`` step or an empty path raises ``ValueError``."""
+    pure = PurePosixPath(path.replace("\\", "/"))
+    steps = pure.parts
+    if not steps or steps == (".",) or pure.is_absolute() or ":" in steps[0] or ".." in steps:
+        raise ValueError(f"part path {path!r} is not repo-relative")
+    return pure.as_posix()
+
+
 class Part(BaseModel):
-    """One file of the deliverable set; ``path`` is repo-relative POSIX."""
+    """One file of the deliverable set; ``path`` is stored repo-relative POSIX, whatever its spelling."""
 
     model_config = _MODEL_CONFIG
 
     kind: PartKind
     path: str
+
+    @field_validator("path")
+    @classmethod
+    def _repo_relative_posix(cls, value: str) -> str:
+        return part_path(value)
 
 
 class PlannedTest(BaseModel):
@@ -341,13 +359,16 @@ class Grade(BaseModel):
 
 
 class Frozen(BaseModel):
-    """The seal: the skill hash and grader the spec was frozen with."""
+    """The seal: the skill hash and grader the spec was frozen with, and ``authored``, the digest of the
+    authored fields that every save of the frozen spec restamps. None marks a stamp written before the field
+    existed; its first save seals it."""
 
     model_config = _MODEL_CONFIG
 
     skill_hash: str
     grader: Grader
     at: str
+    authored: Optional[str] = None
 
 
 class SkillSpec(BaseModel):
@@ -425,14 +446,52 @@ def driver_digest(spec: SkillSpec) -> str:
 
     ``driver_digest`` itself is excluded.
     """
-    dumped = spec.model_dump(mode="json")
+    dumped = _dumped(spec)
     owned: Dict[str, Any] = {name: dumped[name] for name in DRIVER_OWNED_TOP if name != "driver_digest"}
     owned["behavior_states"] = {
         behavior["id"]: {name: behavior[name] for name in DRIVER_OWNED_BEHAVIOR}
         for behavior in dumped["behaviors"]
     }
-    text = json.dumps(owned, sort_keys=True, separators=(",", ":"))
+    return _sha256_json(owned)
+
+
+def _dumped(spec: SkillSpec) -> Dict[str, Any]:
+    """JSON dump of ``spec``; an unsealed stamp drops ``authored`` so its text and digest predate the seal."""
+    dumped = spec.model_dump(mode="json")
+    if dumped["frozen"] is not None and dumped["frozen"]["authored"] is None:
+        del dumped["frozen"]["authored"]
+    return dumped
+
+
+def authored_digest(spec: SkillSpec) -> str:
+    """sha256 hex of the canonical JSON of every authored field, parts included: the spec minus the
+    driver-owned fields and each behavior's state."""
+    dumped = spec.model_dump(mode="json")
+    authored = {name: value for name, value in dumped.items() if name not in DRIVER_OWNED_TOP}
+    authored["behaviors"] = [
+        {name: value for name, value in behavior.items() if name not in DRIVER_OWNED_BEHAVIOR}
+        for behavior in dumped["behaviors"]
+    ]
+    return _sha256_json(authored)
+
+
+def _sha256_json(value: Any) -> str:
+    text = json.dumps(value, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def sealed(spec: SkillSpec) -> SkillSpec:
+    """``spec`` with its frozen stamp's ``authored`` set to the current authored digest; unfrozen, as is."""
+    if spec.frozen is None:
+        return spec
+    stamp = spec.frozen.model_copy(update={"authored": authored_digest(spec)})
+    return spec.model_copy(update={"frozen": stamp})
+
+
+def seal_broken(spec: SkillSpec) -> bool:
+    """True when a sealed frozen spec's authored fields no longer match the stamp."""
+    return (spec.frozen is not None and spec.frozen.authored is not None
+            and spec.frozen.authored != authored_digest(spec))
 
 
 def load_spec(path: Path) -> SkillSpec:
@@ -442,7 +501,7 @@ def load_spec(path: Path) -> SkillSpec:
 
 def dump_spec(spec: SkillSpec) -> str:
     """Canonical file text of ``spec``: indented JSON and a trailing newline."""
-    return json.dumps(spec.model_dump(mode="json"), indent=2) + "\n"
+    return json.dumps(_dumped(spec), indent=2) + "\n"
 
 
 def schema_text() -> str:
