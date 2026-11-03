@@ -1,0 +1,765 @@
+{
+  "plan_id": "0004",
+  "plan_created": "2026-11-03",
+  "source_document": "docs/superpowers/specs/2026-11-03-writing-docstrings-dispatch-design.md",
+  "documentation": "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_PIP.md",
+  "branch": "1117-writing-docstrings",
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "strap.target harness for this repository",
+      "action": "Add \"strap\": {\"target\": \"harness\"} to .claude/harness.json (after \"todo\"). Rewrite the CLAUDE.md 'Strapping a harness skill' paragraph: the line is in place since 0.51.0 reached main (PR #188); strap.py new <name> here scaffolds under plugins/harness/; open specs keep their recorded plugin_dir.",
+      "files": [
+        ".claude/harness.json",
+        "CLAUDE.md"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": ".claude/harness.json:5-7",
+          "expect": "\"plans\": \"docs/plans\""
+        },
+        {
+          "at": "CLAUDE.md:38-42",
+          "expect": "That line waits for a published release whose schema carries the `strap` key"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -c \"import sys; sys.path.insert(0, 'plugins/harness/lib'); from pathlib import Path; from harness_lib.config import load_config; print(load_config(Path('.')).strap.target)\"",
+          "expect": "harness"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "Scope, row and probe models and API",
+      "action": "Copy docs/plans/0004/tests/tests/lib/test_writing_docstrings_dispatch_api.py to tests/lib/test_writing_docstrings_dispatch_api.py. In plugins/harness/lib/harness_lib/writing_docstrings_models.py add AGENT='harness:docstring-writer', WORK_MODEL='opus', PROBE_MODEL='haiku', PROBE_NAME='_docstring_probe.py', PROBE_RECORD='writing-docstrings/probes.txt' (relative to state_dir), PROBE_SOURCE (a module with one undocumented two-line function), FileScope (path: absolute posix str; names: List[str], empty meaning all; extra forbid; line() -> 'Scope: <path>: all' or 'Scope: <path>: a, b') and DispatchRow (model, project_root, new_docstrings: bool, scopes: List[FileScope] with min_length 1, probe: bool = False; extra forbid; text() -> 'agent=<AGENT> model=<model>', 'Project root: <root>', 'New docstrings: yes|no', one Scope line per scope, then 'Probe: yes' on a probe row). In plugins/harness/lib/harness_lib/writing_docstrings_api.py add DispatchError(ValueError) carrying .problems (every defect, collected before raising); first_path(tokens, cwd) -> Optional[Path] (the first path-shaped token, '::name' stripped, resolved against cwd); resolve_scope(root, tokens, cwd) per spec D1 and plan D11 (split '::' with rsplit so a drive colon survives; tokens resolved against cwd and kept inside root; a directory becomes its git ls-files tracked .py files, recursive; names checked through report and unmatched; every file parsed; scopes keyed on the resolved path and sorted by it); plan_rows(root, scopes, *, new_docstrings, parallel); write_probes(root, scopes, record) -> List[Path] (plan D12: one probe per distinct parent folder in scope order, replacing an untracked stale probe, DispatchError for a git-tracked file of that name, each path appended to record); probe_row(root, probes) (PROBE_MODEL, new_docstrings True, probe True, one Scope per probe); clear_probes(root, record) -> List[Path] (removes each recorded path under root named PROBE_NAME and untracked, skips every other entry, deletes the record, returns the removed paths in record order; [] with no record). Paths are resolve()d and printed as_posix. Export the new names in __all__. Functions under 50 lines; Optional/Union typing; no first or second person.",
+      "files": [
+        "plugins/harness/lib/harness_lib/writing_docstrings_models.py",
+        "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+        "tests/lib/test_writing_docstrings_dispatch_api.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/writing_docstrings_api.py:24-25",
+          "expect": "\"unmatched\"]"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/writing_docstrings_api.py:281",
+          "expect": "def report(path: Path, wanted: Sequence[str], max_line: int) -> List[SymbolReport]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/writing_docstrings_api.py:302",
+          "expect": "def unmatched(rows: Sequence[SymbolReport], wanted: Sequence[str]) -> List[str]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/writing_docstrings_models.py:56-59",
+          "expect": "model_config = ConfigDict(extra=\"forbid\")"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/lib/test_writing_docstrings_api.py -q",
+          "expect": "all passed"
+        },
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/lib/harness_lib/writing_docstrings_models.py plugins/harness/lib/harness_lib/writing_docstrings_api.py tests/lib/test_writing_docstrings_dispatch_api.py",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_path_scopes_every_function",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_double_colon_narrows_its_file_only",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_absolute_token_with_double_colon_keeps_the_drive",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_symbols_narrow_a_single_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_relative_tokens_resolve_against_cwd",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_symbols_with_two_files_are_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_one_file_named_bare_and_narrowed_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_a_file_named_twice_is_one_scope",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_double_colon_names_of_one_file_merge",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_a_directory_and_a_file_in_it_are_one_scope_per_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_a_directory_and_a_narrowed_file_in_it_are_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_scopes_come_in_path_order",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_directory_expands_to_tracked_python_files_recursively",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_directory_without_tracked_python_files_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_a_bare_symbol_named_like_a_folder_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_unknown_symbol_is_refused_before_any_row",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_method_name_or_qualname_matches",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_unparsable_file_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_missing_path_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_non_python_file_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_path_outside_the_project_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_every_defect_is_reported_together",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_first_path_skips_bare_symbols_and_strips_names",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_one_row_without_parallel",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_one_row_per_file_with_parallel",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_parallel_over_one_file_is_one_row",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_row_text_is_the_header_then_the_prompt_lines",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_probes_go_beside_each_folder_over_a_stale_one",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_probe_beside_a_tracked_file_of_that_name_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_probe_row_asks_for_a_new_docstring_on_each_probe_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_clear_probes_removes_only_recorded_probes_under_the_project",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_writing_docstrings_dispatch_api.py::test_dispatch_models_forbid_extra_keys",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "docstring_dispatch.py driver and its root-separation case",
+      "action": "Copy docs/plans/0004/tests/tests/skills/test_docstring_dispatch_command.py and docs/plans/0004/tests/tests/contract/test_root_separation.py to their repo paths. New plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py, shaped like docstring_tiers.py (sys.path insert of lib, one activate(load_config(project_root(start)))): argparse with allow_abbrev=False, parse_intermixed_args (flags may sit between paths), and an error() that raises DispatchError; options --repo, --include-new/-in, --parallel/-p, --clear-probe (store_true, no path); tokens nargs='*'. start is --repo, else the folder of first_path(tokens, cwd), else cwd (plan D13). record = cfg.path(cfg.state_dir) / PROBE_RECORD. Every run first calls clear_probes(root, record); --clear-probe alone prints 'cleared <posix path>' per removed probe and exits 0. No token and no --clear-probe is a problem. Rows print separated by one blank line; with -p and two or more rows, write_probes runs after every check passes and probe_row prints before the work rows. A DispatchError or ConfigError prints one 'problem: <text>' line per defect on stderr, exit 1, nothing on stdout and no probe written. The module docstring states the usage.",
+      "files": [
+        "plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py",
+        "tests/skills/test_docstring_dispatch_command.py",
+        "tests/contract/test_root_separation.py"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py:44",
+          "expect": "cfg = activate(load_config(project_root(start)))"
+        },
+        {
+          "at": "tests/contract/test_root_separation.py:206",
+          "expect": "MUST_EXIT_ZERO = frozenset({\"strap new\", \"plan new\", \"plan_api write\", \"docstring-tiers\"})"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_docstring_tiers_command.py -q",
+          "expect": "all passed"
+        },
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py tests/skills/test_docstring_dispatch_command.py tests/contract/test_root_separation.py",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_two_files_print_one_row",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_project_root_is_the_first_path_s_checkout",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_parallel_prints_the_probe_row_then_one_row_per_file",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_parallel_over_two_folders_probes_each_folder",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_long_parallel_flag_matches_the_short_one",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_flags_between_paths_are_accepted",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_a_directory_and_a_file_in_it_give_one_row_per_file",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_parallel_over_one_file_writes_no_probe",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_include_new_flags_set_new_docstrings",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_a_problem_prints_nothing_on_stdout",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_unknown_flag_is_a_problem_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_no_path_is_a_problem_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_clear_probe_removes_the_recorded_probes",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_clear_probe_leaves_an_unrecorded_probe_named_file",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_docstring_dispatch_command.py::test_a_later_run_removes_a_stale_probe_in_another_folder",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[docstring-dispatch]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_root_separation.py::test_docstring_probe_lands_in_the_project",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "docstring-writer agent and dispatching SKILL.md through the strap gate",
+      "action": "First mkdir -p docs/plans/strap/_archive, then git mv docs/plans/strap/writing-docstrings to docs/plans/strap/_archive/writing-docstrings-187 (D10), then run strap.py new writing-docstrings --edit (base HEAD) and continue harness:strap-skills from step 2. Before adding docstring-writer role scenarios or running check, write a frontmatter-only plugins/harness/agents/docstring-writer.md (name docstring-writer, model opus, tools Read, Edit, Grep, Bash), register it with add_part, and add 'harness:docstring-writer' to DEFINED_AGENTS in plugins/pr-review-watch/hooks/contract.ts in sorted position (after harness:bubble-memo-reviewer); the body is written at strap step 10 against the baselines. Behaviors: mechanical - SKILL.md runs docstring_dispatch.py through hpy and dispatches harness:docstring-writer; the agent file runs the tier command through hpy, reads ${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/docstring_format.md, names every flag, the full-tier threshold, the D7 prompt lines, the D8 reply headings and the J4 probe reply lines (the contract-test pins move from the SKILL.md body to the agent file). Judgment - J1-J4 of plan D15; B6-B8 are not re-baselined (D15). The agent body holds the procedure now in SKILL.md (What a restyle touches, Procedure, Tier 1-3, All tiers), the New docstrings rule, the Scope-only edit rule, the probe reply and the D8 reply. SKILL.md becomes: split the arguments, interpret intent (D3 and D14; non-argument instructions of a plain request become the Developer guidance line), answer a layout question from docstring_format.md, run the driver, dispatch the probe row alone, stop on any BLOCKED or permission prompt (fix with update-config, rerun the driver), then run the driver with --clear-probe, dispatch every work row in one message with the Developer guidance line appended, relay the replies (the session may read the files to paste docstrings back when asked); it states the D5 departure from harness:parallel2 and its reason. The Use-when description stays; the argument-hint gains -in and -p.",
+      "files": [
+        "plugins/harness/agents/docstring-writer.md",
+        "plugins/harness/skills/writing-docstrings/SKILL.md",
+        "tests/skills/test_writing_docstrings_skill_contract.py",
+        "docs/plans/strap/writing-docstrings/SkillSpec.json",
+        "docs/plans/strap/_archive/writing-docstrings-187/SkillSpec.json",
+        "plugins/pr-review-watch/hooks/contract.ts"
+      ],
+      "dependencies": [
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/writing-docstrings/SKILL.md:38",
+          "expect": "1. **Measure.** Run the tier command with the Bash tool on each file in scope"
+        },
+        {
+          "at": "plugins/harness/skills/writing-docstrings/SKILL.md:25-26",
+          "expect": "Name each undocumented symbol in the reply"
+        },
+        {
+          "at": "tests/skills/test_writing_docstrings_skill_contract.py:22-23",
+          "expect": "skills/writing-docstrings/commands/docstring_tiers.py"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/contract.ts:122-123",
+          "expect": "'harness:bubble-memo-investigator', 'harness:bubble-memo-reviewer', 'harness:messenger'"
+        }
+      ],
+      "commands": [
+        {
+          "run": "mkdir -p docs/plans/strap/_archive",
+          "expect": "exit 0"
+        },
+        {
+          "run": "git mv docs/plans/strap/writing-docstrings docs/plans/strap/_archive/writing-docstrings-187",
+          "expect": "exit 0",
+          "writes": [
+            "docs/plans/strap/_archive/writing-docstrings-187/SkillSpec.json"
+          ]
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py new writing-docstrings --edit",
+          "expect": "new [done] | writing-docstrings"
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check writing-docstrings",
+          "expect": "check [ok]"
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze writing-docstrings",
+          "expect": "freeze [done] | writing-docstrings"
+        },
+        {
+          "run": "python -m pytest tests/skills/test_writing_docstrings_skill_contract.py tests/skills/test_skill_guidance_tail_contract.py -q",
+          "expect": "all passed"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "no errors"
+        },
+        {
+          "run": "python -m pytest tests/mods/test_pr_review_watch_usage_contract.py -q",
+          "expect": "all passed"
+        },
+        {
+          "run": "claude plugin test plugins/pr-review-watch",
+          "expect": "all passed"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "README row and harness 0.52.0",
+      "action": "README skills-table row 'Docstrings by tier': the session turns the request into arguments and dispatches harness:docstring-writer; --include-new / -in adds docstrings to undocumented functions; --parallel / -p runs one agent per file after a tool probe. Bump plugins/harness/.claude-plugin/plugin.json to 0.52.0. Bump plugins/pr-review-watch/.claude-plugin/plugin.json to 0.5.1 (its contract.ts changed in TASK-4).",
+      "files": [
+        "README.md",
+        "plugins/harness/.claude-plugin/plugin.json",
+        "plugins/pr-review-watch/.claude-plugin/plugin.json"
+      ],
+      "dependencies": [
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "README.md:28",
+          "expect": "| Docstrings by tier | `writing-docstrings`"
+        },
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.51.0\","
+        },
+        {
+          "at": "plugins/pr-review-watch/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.5.0\","
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "no errors"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/pr-review-watch",
+          "expect": "no errors"
+        }
+      ]
+    }
+  ],
+  "base_commit": "577f51693b51b2596cd6282d13c363ed92435a65",
+  "frozen": {
+    "commit": "0755ef609b1385f7d331dd1786c9675910213f88",
+    "tree": "bc99ab067c8f3d3470b24cfa93ca365113e95386",
+    "date": "2026-11-03",
+    "digest": "5251741cd1afe8a89ca89bfd52210f0578d40ef6073d76e21c416841d316ca47"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "How are files and symbols named on the command line?",
+      "options": [
+        {
+          "id": "per-file-scope",
+          "summary": "bare path = all; file.py::name narrows; bare symbols only with one file; directory = tracked .py files"
+        },
+        {
+          "id": "row-wide-symbols",
+          "summary": "one Symbols line for the whole row"
+        }
+      ],
+      "chosen": "per-file-scope",
+      "rationale": "Spec D1 after the builder check: each file carries its own scope."
+    },
+    {
+      "id": "D2",
+      "question": "How is the undocumented-symbols question answered?",
+      "options": [
+        {
+          "id": "include-new-flag",
+          "summary": "--include-new / -in, default off, sets New docstrings: yes|no"
+        },
+        {
+          "id": "ask-mid-run",
+          "summary": "the agent asks the developer during the run"
+        }
+      ],
+      "chosen": "include-new-flag",
+      "rationale": "Developer decision; a subagent cannot pause for an answer."
+    },
+    {
+      "id": "D3",
+      "question": "Where does a request for new docstrings in words set -in?",
+      "options": [
+        {
+          "id": "session-sets-flag",
+          "summary": "the session reads the request and the -- tail and passes -in; restyle words never do"
+        },
+        {
+          "id": "flag-only",
+          "summary": "only the literal flag sets it"
+        }
+      ],
+      "chosen": "session-sets-flag",
+      "rationale": "Interpreting intent is the session's job (issue goal 2)."
+    },
+    {
+      "id": "D4",
+      "question": "How does one invocation split across files?",
+      "options": [
+        {
+          "id": "parallel-flag",
+          "summary": "--parallel / -p, default off; one row per file, one row for a single file"
+        },
+        {
+          "id": "always-one",
+          "summary": "always one agent"
+        }
+      ],
+      "chosen": "parallel-flag",
+      "rationale": "Developer decision."
+    },
+    {
+      "id": "D5",
+      "question": "Where do parallel agents write, and where does the tool probe edit?",
+      "options": [
+        {
+          "id": "checkout-probe-beside",
+          "summary": "direct edits in the checkout; probe file _docstring_probe.py beside the first target"
+        },
+        {
+          "id": "checkout-probe-state-dir",
+          "summary": "direct edits; probe under state_dir"
+        },
+        {
+          "id": "parallel2-worktrees",
+          "summary": "one parallel2 worktree per file"
+        }
+      ],
+      "chosen": "checkout-probe-beside",
+      "rationale": "Developer decision: one file per agent is disjoint by construction; the probe meets the real Edit allow rules."
+    },
+    {
+      "id": "D6",
+      "question": "Which model runs a work row?",
+      "options": [
+        {
+          "id": "opus",
+          "summary": "opus in both modes"
+        },
+        {
+          "id": "sonnet",
+          "summary": "sonnet"
+        }
+      ],
+      "chosen": "opus",
+      "rationale": "Tiering turns on reading caveats (B6-B8)."
+    },
+    {
+      "id": "D7",
+      "question": "What is the dispatch row format?",
+      "options": [
+        {
+          "id": "header-plus-lines",
+          "summary": "agent=<type> model=<m>, then Project root, New docstrings, one Scope line per file, Probe: yes on the probe row"
+        },
+        {
+          "id": "json",
+          "summary": "a JSON object per row"
+        }
+      ],
+      "chosen": "header-plus-lines",
+      "rationale": "Same header as the pr_review, strap and bubble_memo rows."
+    },
+    {
+      "id": "D8",
+      "question": "What does the agent reply?",
+      "options": [
+        {
+          "id": "per-file-sections",
+          "summary": "per file: tier lines, Rewritten, Kept (in layout), Undocumented (rerun with --include-new), Defects (not fixed), Check"
+        },
+        {
+          "id": "free-text",
+          "summary": "free text"
+        }
+      ],
+      "chosen": "per-file-sections",
+      "rationale": "The session relays it unedited and concatenates -p replies in row order."
+    },
+    {
+      "id": "D9",
+      "question": "Which tools does the agent carry?",
+      "options": [
+        {
+          "id": "read-edit-grep-bash",
+          "summary": "Read, Edit, Grep, Bash"
+        },
+        {
+          "id": "plus-write-glob",
+          "summary": "adds Write and Glob"
+        }
+      ],
+      "chosen": "read-edit-grep-bash",
+      "rationale": "Edits stay on Scope files; Bash runs the tier command through hpy and read-only git."
+    },
+    {
+      "id": "D10",
+      "question": "The writing-docstrings SkillSpec is frozen (mode new): a frozen spec takes only part changes, greens and --refreeze, its behaviors stay locked, and its B5 contract pins and session-role B6-B8 scenarios no longer fit the change. How does the strap gate cover this edit?",
+      "options": [
+        {
+          "id": "archive-and-edit",
+          "summary": "git mv the frozen spec folder to docs/plans/strap/_archive/writing-docstrings-187/, then strap.py new writing-docstrings --edit opens a fresh edit spec"
+        },
+        {
+          "id": "refreeze-only",
+          "summary": "keep the frozen spec: add_part the agent and driver, greens on the new hash, freeze --refreeze; no new behaviors"
+        },
+        {
+          "id": "no-strap",
+          "summary": "skip the strap gate; the plan's tests and the contract test are the proof"
+        }
+      ],
+      "chosen": "archive-and-edit",
+      "rationale": "Developer decision: a fresh edit spec lets the new dispatch and -in behaviors take baselines and moves B6-B8 to the docstring-writer role; the frozen spec stays readable in the archive."
+    },
+    {
+      "id": "D11",
+      "question": "How does resolve_scope tell a path from a bare symbol, and what happens to a file reached twice?",
+      "options": [
+        {
+          "id": "syntax-then-disk",
+          "summary": "a token is a path when it holds '::', '/' or '\\', ends in '.py', or names an existing file or directory; a separator-free token that names a directory and also a function in a named file is a problem (write '<dir>/'); scopes key on the resolved path: a file reached twice bare is one 'all' scope, '::' names of one file merge in first-seen order, a file both whole (bare or through a directory) and narrowed is a problem; scopes sort by path"
+        },
+        {
+          "id": "existence-only",
+          "summary": "spec D1 as written: a path is a token naming an existing .py file or directory"
+        }
+      ],
+      "chosen": "syntax-then-disk",
+      "rationale": "Review EXECUTABILITY-2, DESIGN-2, TESTS-1, DESIGN-3: existence alone turns a missing path into a symbol and a folder-named symbol into a scope; without a dedup rule -p can put two agents on one file (spec anti-goal)."
+    },
+    {
+      "id": "D12",
+      "question": "Where do probes go, and how is a probe left by an interrupted run removed?",
+      "options": [
+        {
+          "id": "per-folder-recorded",
+          "summary": "one probe per distinct parent folder of the rows, listed on one probe row; each written path is appended to <state_dir>/writing-docstrings/probes.txt; every driver run and --clear-probe (no path) remove the recorded probes that sit under the project, carry PROBE_NAME and are untracked, then drop the record; a git-tracked file of that name is never overwritten"
+        },
+        {
+          "id": "first-folder-only",
+          "summary": "spec D5 as written: one probe beside the first target, cleared by path"
+        }
+      ],
+      "chosen": "per-folder-recorded",
+      "rationale": "Review DESIGN-6, DESIGN-7, TESTS-3, TESTS-7: one folder's probe does not cover Edit rules elsewhere, and a probe from a crashed run was cleaned only by chance. Refines D5; the probe still sits beside the real targets."
+    },
+    {
+      "id": "D13",
+      "question": "Which checkout anchors the driver?",
+      "options": [
+        {
+          "id": "first-path-checkout",
+          "summary": "--repo, else the git top level of the first path token's folder (resolved against cwd), else cwd; a token outside that root is a problem"
+        },
+        {
+          "id": "cwd",
+          "summary": "--repo or cwd"
+        }
+      ],
+      "chosen": "first-path-checkout",
+      "rationale": "Review DESIGN-10: docstring_tiers.py anchored at the file, so a file in a d-w worktree worked from the main session; cwd anchoring would refuse it."
+    },
+    {
+      "id": "D14",
+      "question": "What does the session do when it writes new functions itself, or is asked which layout to use?",
+      "options": [
+        {
+          "id": "own-code-is-an-ask",
+          "summary": "functions the session itself wrote count as an explicit ask: it dispatches with -in scoped to them (file.py::name); a layout question is answered from docstring_format.md without a dispatch; the description keeps 'writing'"
+        },
+        {
+          "id": "narrow-description",
+          "summary": "drop the 'writing' and 'choosing a layout' triggers"
+        }
+      ],
+      "chosen": "own-code-is-an-ask",
+      "rationale": "Review DESIGN-1: with every tier rule in the agent file, the authoring trigger would otherwise leave new code undocumented or written without the convention."
+    },
+    {
+      "id": "D15",
+      "question": "Which judgment behaviors does the fresh edit spec baseline, and how do B6-B8 survive?",
+      "options": [
+        {
+          "id": "new-moves-only",
+          "summary": "baseline only moves the base skill does not make: (J1) the session dispatches every printed row and never edits a docstring itself; (J2) the session passes -in only on an explicit ask or for functions it wrote (D14), and turns a plain request's non-argument instructions into the Developer guidance line; (J3) the docstring-writer edits only its Scope files when the guidance tempts a wider tidy-up; (J4) on a Probe: yes row the agent reports 'Probe tier: SUCCESS|BLOCKED' and 'Probe edit: SUCCESS|BLOCKED' and skips the D8 sections. B6-B8 are unchanged rules carried by moved prose, pinned by the contract test on the agent file, not re-baselined"
+        },
+        {
+          "id": "rebaseline-b6-b8",
+          "summary": "baseline B6-B8 on the docstring-writer role"
+        }
+      ],
+      "chosen": "new-moves-only",
+      "rationale": "Review RULES-2, DESIGN-4, DESIGN-5: edit-spec baselines carry the base SKILL.md, which already teaches B6-B8, so their baselines pass and strap-skills would drop them."
+    }
+  ],
+  "values": [
+    {
+      "name": "work model",
+      "value": "opus",
+      "source": "docs/superpowers/specs/2026-11-03-writing-docstrings-dispatch-design.md D6",
+      "assumes": [
+        "opus"
+      ]
+    },
+    {
+      "name": "probe model",
+      "value": "haiku",
+      "source": "docs/superpowers/specs/2026-11-03-writing-docstrings-dispatch-design.md D5",
+      "assumes": [
+        "checkout-probe-beside",
+        "per-folder-recorded"
+      ]
+    },
+    {
+      "name": "probe file name",
+      "value": "_docstring_probe.py",
+      "source": "docs/superpowers/specs/2026-11-03-writing-docstrings-dispatch-design.md D5",
+      "assumes": [
+        "checkout-probe-beside",
+        "per-folder-recorded"
+      ]
+    },
+    {
+      "name": "agent",
+      "value": "harness:docstring-writer",
+      "source": "docs/superpowers/specs/2026-11-03-writing-docstrings-dispatch-design.md Intent"
+    },
+    {
+      "name": "harness plugin version",
+      "value": "0.52.0",
+      "source": "docs/superpowers/specs/2026-11-03-writing-docstrings-dispatch-design.md Constraints"
+    },
+    {
+      "name": "probe record",
+      "value": "writing-docstrings/probes.txt",
+      "source": "plan D12 (relative to state_dir)",
+      "assumes": [
+        "per-folder-recorded"
+      ]
+    },
+    {
+      "name": "pr-review-watch version",
+      "value": "0.5.1",
+      "source": "CLAUDE.md Releases; review RULES-1"
+    }
+  ],
+  "formats": [
+    {
+      "name": "dispatch row",
+      "example": "agent=harness:docstring-writer model=opus\nProject root: C:/p\nNew docstrings: no\nScope: C:/p/src/a.py: all",
+      "source": {
+        "at": "plugins/harness/scripts/strap.py:550",
+        "expect": "f\"agent={RUNNER_AGENT} model={AGENT_MODEL}\""
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "\"\\$\\{CLAUDE_PLUGIN_ROOT\\}/skills/writing-docstrings/commands/docstring_tiers\\.py\"",
+      "hits": {
+        "plugins/harness/skills/writing-docstrings/SKILL.md": "the measure step moves to the agent file (TASK-4)",
+        "tests/skills/test_writing_docstrings_skill_contract.py": "the COMMAND pin moves from the SKILL.md body to the agent file (TASK-4)"
+      }
+    }
+  ]
+}
