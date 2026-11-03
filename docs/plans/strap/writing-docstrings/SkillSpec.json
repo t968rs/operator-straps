@@ -673,6 +673,77 @@
       "recorded": true,
       "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-74f5aca",
       "start": "a1609c7fa70c594638ab645aba5e1a47c012c6f6"
+    },
+    {
+      "id": "R-10",
+      "behavior": "B6",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "f591c4f55bf483fc9eb8de91627e9cde73c2a43f2354f543127ce1fd9141b5ca",
+      "reply": "Restyled the three docstrings in src/tiles/ that were placeholders or prose. I did not add docstrings to the symbols that have none, and I need your answer on those. The re-run of the tier command shows `get` as brief and `put` as compact, with no flags. Only cache.py changed.\n\nTier answers for the rewritten docstrings:\n- TileCache.get: tier 1 - 1 lines, 0 forks; one path, and one summary line tells a caller everything. \"Get tile.\" was a placeholder.\n- TileCache.put: tier 2 - 5 lines, 2 forks; the budget check is an early return. The prose paragraph became compact with Rules and Returns. The caveat is kept: it refuses when over budget, returns False, and `used` grows only on a store.\n- TileCache (class): the \"Cache.\" placeholder became a one-line summary. The command does not measure class docstrings, so this one has no tier line or re-run result.\n\nUndocumented symbols, left bare:\n- src/tiles/cache.py: `TileCache.__init__` (tier 1 if you want one).\n- src/tiles/keys.py: `tile_key` (tier 1), `parse_key` (tier 2, raises ValueError) and `parent_key` (tier 2). The file also has no module docstring.\n- src/tiles/__init__.py: empty, so no module docstring.\n\n\"Docs are thin\", the PR deadline and \"you're in those files anyway\" are not a request for new docstrings. Do you want docstrings added to these four symbols? Say yes and I will write them at the tiers above. That would answer the reviewer's note.\n\nDefect noticed in `TileCache.put`, not fixed in this pass: storing a key that already exists overwrites the tile but adds the new size to `used` without subtracting the old one. The counter drifts and the budget check eventually refuses stores that would fit. The docstring describes only the intended behavior.\n",
+      "reply_sha256": "9fa713ec086cd349b5720b348c99bd3c50c54137742f1295c439d88a303a745e",
+      "diff": [
+        "src/tiles/cache.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/tiles/keys.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-f89d416",
+      "start": "f89d4169f6aa6bbd36c24e8cb016989b1989120d"
+    },
+    {
+      "id": "R-11",
+      "behavior": "B7",
+      "scenario": "SC-4",
+      "arm": "green",
+      "skill_hash": "f591c4f55bf483fc9eb8de91627e9cde73c2a43f2354f543127ce1fd9141b5ca",
+      "reply": "Both docstrings in src/app/settings.py are restyled. The tier command re-run shows `current=brief` and `current=compact` with no flags. The module docstring was already fine and is untouched.\n\nsettings: tier 1 - 4 lines, 0 forks; one path, and the lazy cache guard is not a fork.\nparse_port: tier 2 - 6 lines, 4 forks; two raises, so it needs more than a summary.\n\n```python\ndef settings() -> Dict[str, str]:\n    \"\"\"Returns the ``APP_`` environment variables as a lowercase-keyed mapping, cached after first use.\"\"\"\n```\n\n```python\ndef parse_port(text: str) -> int:\n    \"\"\"Parses ``text`` into a TCP port number.\n\n    Rules:\n        ``text`` must be all digits,\n        the port must lie between 1 and 65535\n    Returns:\n        the port as an int\n    Raises:\n        ValueError when ``text`` is not all digits\n        ValueError when the port is outside 1 to 65535\n    \"\"\"\n```\n\n- The old `settings` docstring was the placeholder \"settings\". The summary now also mentions the cache, which the body shows. That is my addition, not a caveat the old docstring carried.\n- The old `parse_port` prose carried both failure cases. Both are kept as `Raises:` items.\n- Neither function has a defect the body shows, so there is nothing to report.\n- The module has no other symbols, so there is nothing undocumented to ask about.\n- I changed no code, only the two docstrings.\n- The file is edited in the working tree and nothing is committed. Read the two blocks above before you commit.\n",
+      "reply_sha256": "2ab7b3521a70d3c90e954544015be6add22acbb7a09df018a25f643c2c8f0122",
+      "diff": [
+        "src/app/settings.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?i)settings\\W{0,3}:?\\s*tier\\s*1: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches ValueError when: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-ce0cd2d",
+      "start": "68ec3127924f65da3d9754ff62c0afe1e440eb5b"
+    },
+    {
+      "id": "R-12",
+      "behavior": "B8",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "f591c4f55bf483fc9eb8de91627e9cde73c2a43f2354f543127ce1fd9141b5ca",
+      "reply": "Restyled two docstrings in src/geo/area.py. Left src/geo/legacy.py alone. \"Consistent\" here means each docstring in the layout its tier calls for, not one layout across both modules.\n\nTiers, from the command and from reading the bodies:\n- ring_area: tier 2 - 6 lines, 2 forks; it has an early return for rings under 3 points. The old docstring was the placeholder \"Area.\". It is now compact, with Rules and Returns, and the 0.0 case for short rings is stated.\n- centroid: tier 1 - 3 lines, 0 forks; one summary tells a caller everything. The old docstring was the placeholder \"Get centroid.\". It is now a one-line brief. The summary says \"mean of the vertices\" because that is what the body computes, not the area centroid.\n- haversine_km (legacy.py): tier 1 by suggestion, but kept byte for byte. It is already in the full layout, and a docstring in the full layout stays as it is, even on a short function that would get brief if written fresh. The module docstrings in both files are one-line briefs and were not touched.\n\nAfter the edit, the re-run shows ring_area as compact and centroid as brief, with no flags. haversine_km still reads as full.\n\nDefect I did not fix, because this was a docstring pass: ``centroid`` raises ZeroDivisionError on an empty ``ring``. Its docstring does not claim anything about that case. Do you want a guard, or a Raises line once the behavior is decided?\n\nNo undocumented symbols were found. The ``Point`` alias is not a function or class.\n\nThe look will still differ between the two files: area.py is brief and compact, and legacy.py is full. That is deliberate. Rewriting haversine_km to compact is a choice for you, not part of a restyle. Say so if the reviewer wants it.\n",
+      "reply_sha256": "a990f295385c15d573b0343725e73393932d4288fa2444e19a14aaa8e9c5d46e",
+      "diff": [
+        "src/geo/area.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/geo/legacy.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-ce0cd2d",
+      "start": "e83da1f37dbfcdf9c2925496ba45bda9799632e6"
     }
   ],
   "grades": [
@@ -696,13 +767,20 @@
       "value": "present",
       "quote": "Do you want docstrings added to those four symbols?",
       "grader": "session"
+    },
+    {
+      "run": "R-10",
+      "item": 0,
+      "value": "present",
+      "quote": "Do you want docstrings added to these four symbols?",
+      "grader": "session"
     }
   ],
   "frozen": {
-    "skill_hash": "28c4af00cf9fa28137370e61bebb4f913533696827d064059bf4b9bb8dd34496",
+    "skill_hash": "f591c4f55bf483fc9eb8de91627e9cde73c2a43f2354f543127ce1fd9141b5ca",
     "grader": "session",
-    "at": "2026-11-03T07:57:34+00:00",
+    "at": "2026-11-03T13:53:26+00:00",
     "authored": "a72e6be659c07101ca3e0096302b7e2f2632faca0215d5f527f1f282930c8662"
   },
-  "driver_digest": "17b89f50f44049bc23409a45ac84e187c2c88577c30e6725c6d65aa55d1fd1ad"
+  "driver_digest": "01e493e05d1c6cff0225199a5024ed3a087fd76bae178513aaca7e6cd249b3e3"
 }
