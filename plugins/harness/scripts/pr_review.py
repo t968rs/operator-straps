@@ -231,12 +231,26 @@ BUCKET_SCOPE = (
     "Bucket `{bucket}`: review these paths for correctness, broken contracts and the conventions of this "
     "kind of file."
 )
+REMOVAL_DEFECTS = (
+    "broken (wrong behavior or a failing test), unreachable or dead, a duplicate of code that exists "
+    "elsewhere, leftover (debug output, commented-out code, a stray temporary file), unsafe, or "
+    "contradicting a contract"
+)
+PROSE_GAP_RULE = (
+    "A change the commit messages or the PR description do not mention is a documentation gap, not a defect "
+    "in the code: that text is drafted after the code and lags it. Report the gap alone as a `minor` finding "
+    "whose fix updates that text. It never grounds an `important` or `critical` grade, and a revert is never "
+    "a fix option on that ground. When the code itself is wrong, the finding states that defect; the missing "
+    "mention is at most context. A revert or deletion of code the change added is a fix option only when the "
+    f"finding names one of these defects in that code: {REMOVAL_DEFECTS}."
+)
 SEVERITY_RULES = (
     "Severity: `critical` blocks the merge (wrong behavior, data loss, broken contract, a test that cannot "
     "fail); `important` should be fixed before merging; `minor` is polish.",
     "fix_kind: `mechanical` when the fix is an exact edit a small model can apply; `judgment` otherwise.",
     "Each finding names one primary `file` (repo-relative) with `lines` when known (`12`, `12-18,40`), and "
     "`also` for other files it touches. `fix` lists one or more options, any of which resolves it.",
+    PROSE_GAP_RULE,
 )
 BUBBLE_QUESTIONS = (
     "Are there two or more reasonable resolutions, AND does picking one need domain knowledge this session "
@@ -1779,7 +1793,7 @@ def _issue_block(issue: Mapping[str, object], part: Sequence[str]) -> List[str]:
     tier = _TIER[str(issue["id"])[0]]
     lines = [f"### {issue['id']} ({tier}, {issue.get('fix_kind', 'judgment')}) - {issue['name']}", "",
              f"Files: {where}", *part_lines(issue, part), "", str(issue["summary"]), "",
-             "Fix options (any one resolves it; pick the safest, most mechanical):"]
+             "Fix options (any one resolves it; pick the safest, most mechanical; a repair before a revert):"]
     return lines + [f"- {option}" for option in issue["fix"]] + [""]  # type: ignore[union-attr]
 
 
@@ -1816,7 +1830,8 @@ def _tests_block(ctx: BriefContext, files: Sequence[str], entries: Sequence[Tupl
 
 
 def _fixer_rules() -> List[str]:
-    """Fixer operating rules, including the three bubble questions."""
+    """Fixer operating rules: the three bubble questions, the repair-before-revert guard and the
+    prose-only-fix bubble."""
     rules = ["Fix only the issues above, in the order given; Read a file before editing it.",
              "Stay inside the file set above (the issues' files, the registered tests that target them and "
              "the existing paths a fix option names); new files are allowed. For an issue with other parts, "
@@ -1832,8 +1847,15 @@ def _fixer_rules() -> List[str]:
              "because of an edit and cannot be fixed inside the file set, undo that edit and bubble the id "
              "`fixer_failed`, naming the test in the reason. Never run a test marked deferred: it is too "
              "slow for a fix wave, and closeout lists it for one run after the waves.",
-             "Bubble an issue only when one of these answers yes; otherwise pick the safest option and "
-             "fix it:",
+             "Bubble an issue only when one of these answers yes, or under the revert and commit-text "
+             "rules below; otherwise pick the safest option and fix it:",
+             "Never revert or delete code the change under review added unless the issue names one of these "
+             f"defects in that code and the removal resolves it: {REMOVAL_DEFECTS}. Any other ground for a "
+             "removal, a commit message or PR description that omits the change included, does not count. "
+             "When the options hold a revert and a repair, apply the repair. When the only option is the "
+             "removal, bubble the id `architectural_ambiguity` and edit nothing for it.",
+             "An issue whose only fix changes a commit message or the PR description edits no file: bubble "
+             "it `out_of_scope`, naming that text in the reason.",
              "No git writes (no add, commit, stash, checkout, reset, restore).",
              "Record each id with your part's files plus any new file you created and any test or named "
              "path of the set you edited for it (the `Your part` line names the part); an issue is resolved "
