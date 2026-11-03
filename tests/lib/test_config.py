@@ -203,11 +203,26 @@ def test_docstrings_line_length_default_and_override(make_project) -> None:
     assert load_config(make_project()).docstrings.line_length == 110
     override = load_config(make_project({"docstrings": {"line_length": 88}}, name="p2"))
     assert override.docstrings.line_length == 88
-    for index, bad in enumerate([0, "110", None, 1.5]):
+    for index, bad in enumerate([0, "110", None, 1.5, True]):
         with pytest.raises(ConfigError):
             load_config(make_project({"docstrings": {"line_length": bad}}, name=f"bad{index}"))
     with pytest.raises(ConfigError):
         load_config(make_project({"docstrings": {"width": 88}}, name="unknown"))
+
+
+@pytest.mark.parametrize("bad", [
+    {"line_length": 0},
+    {"line_length": "110"},
+    {"line_length": None},
+    {"line_length": 1.5},
+    {"line_length": True},
+    {"width": 88},
+])
+def test_invalid_docstrings_raise_without_jsonschema(make_project, monkeypatch: pytest.MonkeyPatch,
+                                                     bad: dict) -> None:
+    monkeypatch.setitem(sys.modules, "jsonschema", None)
+    with pytest.raises(ConfigError, match="docstrings"):
+        load_config(make_project({"docstrings": bad}))
 
 
 TODO_DIR = "docs/RESEARCH/_TODO"

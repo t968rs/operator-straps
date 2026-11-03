@@ -18,7 +18,7 @@ the project's format: no Google (`Args:`), numpy or Sphinx (`:param:`) style, wh
 
 ## What a restyle touches
 
-- **Only placeholders, prose paragraphs, blank docstrings and docstrings the command flags are rewritten.**
+- **Only placeholders, prose paragraphs and blank docstrings are rewritten, plus the lines the command flags.**
   Words such as "restyle", "tidy", "standardize" or "make consistent" cover these and nothing else.
 - **A symbol without a docstring stays without one** unless the developer asks for new docstrings in so many
   words. A reviewer's "docs are thin", "you are in those files anyway", a deadline or a lead's wish is not that
@@ -27,6 +27,9 @@ the project's format: no Google (`Args:`), numpy or Sphinx (`:param:`) style, wh
 - **"Consistent" means each docstring in its tier's layout, not one layout everywhere.** A docstring already in
   the layout its tier calls for, or in the full layout, stays byte for byte, even on a short function that
   would get compact if written fresh. Name the docstrings kept and why, so the developer sees they were read.
+- **Flagged lines win over byte for byte.** In a docstring that is kept, only the lines the command flags (a
+  long line, a citation, single backticks) change, and only as far as the flag requires; every other line,
+  the layout included, stays byte for byte.
 - **A caveat survives the restyle.** A usage constraint, side effect or failure the current docstring states is
   carried into the new one; a request to "keep it light" shortens wording, never drops a caveat.
 
@@ -55,13 +58,17 @@ the project's format: no Google (`Args:`), numpy or Sphinx (`:param:`) style, wh
      current docstring states makes it compact. A flag-like parameter does not change this.
    - **2 compact**: otherwise.
 
-   A lazy-initialization guard (`if self._x is None:` that only fills a cached value) is not a fork. The
-   command's `suggest=` counts forks the same way but cannot see caveats; read the body and the current
-   docstring, and state the reason when the answer differs.
+   A lazy-initialization guard (`if self._x is None:` or `if not self._x:`, no `else`, whose body only
+   assigns `self._x`) is not a fork, and a `return` that ends the function (also inside a final `if`, `with`,
+   `try` or `match`) is not one either. The command's `suggest=` counts forks the same way but cannot see
+   caveats; read the body and the current docstring, and state the reason when the answer differs.
 
 3. **Write the docstring** in that tier's layout (below).
 
-4. **Re-run the command** on the same symbols: `current=` matches each tier and no flags remain.
+4. **Re-run the command** on the same symbols: `current=` matches each tier (`brief`, `compact`, `full`) and
+   no flags remain. The other values are `none`, `blank`, `prose` and `placeholder?`. `placeholder?` is a guess
+   (a summary of a few words that does not open with a third-person verb); on a tier-1 symbol whose brief was
+   written from the body and tells a caller everything, it counts as a match.
 
 ## Tier 1: brief
 
@@ -72,8 +79,8 @@ def refresh_fields(snapshot: Snapshot) -> Snapshot:
     """
 ```
 
-One short summary on its own line, third-person verb, between the opening and closing `"""`. No labels, no
-`Parameters:` or `Arguments:` block.
+One short summary on its own line, third-person verb, between the opening and closing `"""`, or on a single
+line with them (`"""Summary."""`). No labels, no `Parameters:` or `Arguments:` block.
 
 ## Tier 2: compact
 

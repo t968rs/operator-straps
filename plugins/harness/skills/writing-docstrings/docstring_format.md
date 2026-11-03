@@ -23,9 +23,11 @@ Answer for each symbol, in this order; the first match wins:
 3. **Compact (2)** otherwise.
 
 A **fork** is a point where the body can end differently: an `if` / `elif`, a conditional expression
-(`x if c else y`), an `except` handler, a `raise` or `assert`, or a `return` before the last statement.
-Comprehension filters are not forks, and neither is a lazy-initialization guard: an `if x is None:` (or
-`if not x:`) with no `else` whose body only fills a cached value.
+(`x if c else y`), an `except` handler, each `case` of a `match`, a `raise` or `assert`, or a `return` that
+does not end the function. A `return` ends the function when it is the last statement, or the last statement
+of a branch of a final `if`, `with`, `try` or `match`. Comprehension filters are not forks, and neither is a
+lazy-initialization guard: an `if x is None:` (or `if not x:`) with no `else`, `x` a name or attribute, whose
+body only assigns `x` (imports aside).
 
 The skill's tier command counts body lines and forks per function, suggests the tier, names the current layout
 and flags format issues. The suggestion is a starting point; a symbol may take a different tier when the rule
@@ -164,8 +166,8 @@ def function_name(param1: str, param2: int) -> ReturnType:
 
 ### Section headers
 
-Each header is `HeaderName:` followed by a dashed underline on the next line, matching the width of the header
-word. Sections are separated by one blank line.
+Each header is `HeaderName:` followed by a dashed underline on the next line, as wide as the header including
+its colon. Sections are separated by one blank line.
 
 ### Parameters
 
@@ -241,8 +243,8 @@ item's own indentation.
 
 ### Separator lines
 
-A line of only separator characters (`-`, `=`, `_`, `*`, `#`, `~`) appears only as the dashed underline directly
-below a full-layout section label. No docstring is blank or made of separators alone.
+A line of only separator characters (`-`, `=`, `_`, `*`, `#`, `~`, `+`, `.`, `:`, `;`, `|`) appears only as the
+dashed underline directly below a full-layout section label. No docstring is blank or made of separators alone.
 
 ### Citations
 
@@ -254,12 +256,15 @@ research-doc references. The rule or reason a citation annotated is stated on it
 
 | Existing docstring                                     | Treatment when the code is touched                                       |
 |--------------------------------------------------------|--------------------------------------------------------------------------|
-| Already in the layout its tier calls for               | kept as is                                                               |
-| Already in the full layout                             | kept as is                                                               |
-| A single-line `"""Summary."""` on a brief-tier symbol  | kept as is                                                               |
+| Already in the layout its tier calls for               | kept as is, except the lines the tier command flags                      |
+| Already in the full layout                             | kept as is, except the lines the tier command flags                      |
+| A single-line `"""Summary."""` on a brief-tier symbol  | kept as is, except the lines the tier command flags                      |
 | Placeholder ("Push.", "Get desc.", "Generate tables.") | rewritten from the body, in its tier's layout                            |
 | Prose paragraph                                        | rewritten in its tier's layout; for full, sections added below the prose |
 | No docstring                                           | none added unless asked                                                  |
+
+A line the tier command flags (a long line, a citation, single backticks) changes even in a docstring kept as
+is, and only as far as the flag requires; every other line stays byte for byte.
 
 Content carried into a restyled docstring keeps its meaning; every item is checked against the body.
 

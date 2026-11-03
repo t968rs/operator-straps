@@ -344,6 +344,8 @@ def _runlogs(r: Dict[str, Any]) -> RunLogsConfig:
 def _docstrings(d: Dict[str, Any]) -> DocstringsConfig:
     """``docstrings`` with ``line_length`` checked as a positive integer, also on a load without
     ``jsonschema``."""
+    if not isinstance(d, dict):
+        raise ConfigError("docstrings: must be an object")
     unknown = sorted(set(d) - {"line_length"})
     if unknown:
         raise ConfigError(f"docstrings: unknown keys {unknown}")

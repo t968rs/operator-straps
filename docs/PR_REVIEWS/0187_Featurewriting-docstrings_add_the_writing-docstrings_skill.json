@@ -1,0 +1,546 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 187,
+  "pr_title": "Feature(writing-docstrings): add the writing-docstrings skill and its…",
+  "branch": "1115-port-writing-docstrings",
+  "base_branch": "main",
+  "base_sha": "4e2393d935e50a483e1a65bc10adb60472dad0cd",
+  "head_sha": "8833c3df19b67051eb987b4468c78584ce055572",
+  "review_date": "2026-11-03",
+  "verdict": "READY TO MERGE - 19 of 19 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1823,
+    "deletions": 3,
+    "files_changed": 19
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0187/pr187_20261103T073806Z/findings/config.json",
+    "docs/_scratch/pr_review/0187/pr187_20261103T073806Z/findings/tests.json",
+    "docs/_scratch/pr_review/0187/pr187_20261103T073806Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0187/pr187_20261103T073806Z/findings/docs.json",
+    "docs/_scratch/pr_review/0187/pr187_20261103T073806Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The docstrings block in harness.schema.json sets additionalProperties false and integer minimum 1 for line_length, matching the _docstrings builder in config.py (unknown keys, bool and non-positive values rejected).",
+    "The new key touches the four required places together: defaults.json (110), the schema, DocstringsConfig and its builder in config.py, and the README key table.",
+    "The schema description of line_length names the long-lines flag, which writing_docstrings_api.py emits when a docstring line exceeds the limit (indentation included, as the code measures raw lines).",
+    "No mocks anywhere in scope: the api tests parse real source and the command tests run the real script as a subprocess against make_project repos with CLAUDE_PROJECT_DIR stripped.",
+    "suggest_tier tests sit on the boundaries (50 vs 51 lines, 1 vs 2 forks), so an off-by-one in FULL_MIN_LINES or FULL_MIN_FORKS fails.",
+    "The CRLF test asserts the exact 42-character line at max_line=42, so counting the carriage return would fail it.",
+    "The skill contract test imports SECTION_ORDER, KNOWN_LABELS, FLAG_NAMES and FULL_MIN_LINES from the models module, so the prose checks follow the code.",
+    "Adding docstring-tiers to MUST_EXIT_ZERO keeps the root-separation case from passing because the script failed to run.",
+    "The syntax-error test asserts no Traceback, which pins the problem-line contract instead of only checking the exit code.",
+    "writing_docstrings_models.py imports no other harness_lib module, uses str enums and extra=forbid, so report rows serialize as plain strings and reject stray keys.",
+    "docstring_tiers.py follows the driver rule: one activate(load_config(project_root(...))) call, with the library receiving line_length as a parameter instead of reading config at import time.",
+    "config._docstrings repeats the schema's positive-integer and unknown-key checks for loads without jsonschema and rejects bool explicitly.",
+    "_own_nodes stops at nested functions, classes and lambdas, and tests pin nested-scope, comprehension-filter and lazy-guard cases.",
+    "Functions are short and single-purpose, with Optional/List typing and no first- or second-person prose.",
+    "SkillSpec.json frozen.skill_hash (c697380c...) matches the content hash of the eight part files at the PR head, so the committed SKILL.md and reference are the ones the green runs graded.",
+    "The full-tier threshold (body over 50 lines and two or more forks), the flag names and the compact label order in SKILL.md and docstring_format.md match FULL_MIN_LINES, FULL_MIN_FORKS, FLAG_NAMES and SECTION_ORDER in writing_docstrings_models.py.",
+    "The README key-table row for docstrings.line_length matches the code: indentation counts and line endings do not (rstrip of CR/LF in docstring_flags).",
+    "The PROVENANCE row records what changed in the port (CR no longer counted, problem lines, config key, neutral examples) and what stayed in the source repository (decompose-phase1).",
+    "Each SKILL.md tier rule, caveat rule and no-new-docstring rule has a matching frozen scenario with recorded baseline failures and green passes in SkillSpec.json.",
+    "The new `docstrings.line_length` key lands in all four places together (defaults.json, the schema with additionalProperties false, the DocstringsConfig dataclass and builder, the README key table). _docstrings also validates without jsonschema and rejects bool, str, None, float, 0 and unknown keys, and test_config pins each case.",
+    "The tier command resolves the project from the file (or --repo), not the cwd, and test_a_file_outside_the_cwd_reads_its_own_project proves the config comes from the file's own project.",
+    "The contract test imports SECTION_ORDER, KNOWN_LABELS, FLAG_NAMES and FULL_MIN_LINES from the models instead of copying literals, so the SKILL.md and reference text cannot drift from what the command enforces.",
+    "test_root_separation gains a docstring-tiers case in MUST_EXIT_ZERO, so a refusal cannot pass the writes-nothing-under-plugins check vacuously.",
+    "Every new test is behavioral (real AST parsing, a real subprocess against make_project repos); none stubs the code under test.",
+    "The PROVENANCE row records the source commit, which files were split or reworded, and that decompose-phase1 stays in the source repository."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "count_forks counts tail returns nested in the last statement as forks",
+        "file": "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+          "tests/lib/test_writing_docstrings_api.py",
+          "plugins/harness/skills/writing-docstrings/docstring_format.md"
+        ],
+        "lines": "33,35,50-58,61-72",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The count_forks docstring (and docstring_format.md line 26) counts 'returns before the last statement', but line 70 counts every Return that is not the very node func.body[-1]. A return inside the last statement is therefore a fork: 'with open(p) as f: return f.read()' reports forks=1 and suggest=2-compact for a straight-line function; 'try: return a() except KeyError: return None' reports 3 forks for one handler; a final 'if c: return a else: return b' reports 3 instead of 1. Any function whose last statement is a with/try/if wrapping its return gets an inflated count, which also pushes long single-fork functions over FULL_MIN_FORKS. No test covers a return inside a with/try/if tail.\n\nAlso (overall): _is_lazy_guard (writing_docstrings_api.py:50-58) is documented, here and in docstring_format.md:27-28, as an `if x is None:` / `if not x:` guard \"whose body only fills a cached value\". _FILL_STMTS (line 33) includes ast.Expr, so any bare call statement counts as a fill, and `is_not` accepts `not <any expression>`. So `if not ok: sys.exit(1)`, `if not path.exists(): log.warning(...)` and `if x is None: abort()` are all skipped as lazy guards. A function whose only branch is one of these gets forks=0 and suggest=1-brief, though by the convention's own definition that branch is a point where the body ends differently. The command then under-suggests in exactly the case where the convention wants compact. B1's test (test_lazy_guard_is_not_a_fork) covers only the positive case, so nothing pins the rejection.\n\nAlso (runtime): _is_lazy_guard documents a guard 'whose body only fills a value (a cache)', and the convention says the same. _FILL_STMTS includes ast.Expr, so any bare call qualifies: 'if not args: parser.print_help()', 'if x is None: warnings.warn(...)' and 'if not ok: sys.exit(1)' are all skipped as non-forks although each is a point where the body ends differently. is_not also matches 'not <any expression>', e.g. 'if not path.exists(): path.mkdir()'.\n\nAlso (runtime): _FORK_NODES covers If, IfExp, ExceptHandler, Raise and Assert, so a function dispatching through a Python 3.10+ 'match' statement with several cases reports forks=0 and suggest=1-brief, although each case is a branch point in the convention's sense ('a point where the body can end differently').\n\nAlso (overall): count_forks says it counts \"returns before the last statement\" (writing_docstrings_api.py:62-63; docstring_format.md:26), but line 70 counts every ast.Return that is not the top-level last node. A function ending in `if c: return a` / `else: return b` scores 3 forks (the if plus both returns) where the documented rule gives 1. The same goes for a trailing try whose body ends in a return. For bodies over 50 lines this tips one-branch functions into suggest=3-full, which docstring_format.md:276 lists as an anti-pattern. Separately, `match` / `case` (Python 3.10+) is neither counted nor listed in the convention, so a match-driven dispatcher reports few forks.",
+        "fix": [
+          "Compute the set of tail returns before the walk: the last statement of func.body, and recursively the last statement of each block of a tail With/AsyncWith (body), Try (body when no orelse, orelse, each handler body, finalbody) and If (body and orelse); count a Return as a fork only when it is not in that set. Add tests: a with-wrapped return is 0 forks, a final if/else of two returns is 1 fork.",
+          "Drop ast.Expr from _FILL_STMTS, or keep it only for a docstring-like constant. Require the guard body to assign to the name or attribute the test checks (`x is None` / `not x` where x is a Name or Attribute). Add a test that `if not ok: sys.exit(1)` counts as one fork.",
+          "Remove ast.Expr from _FILL_STMTS (the _LAZY test still counts 0 forks), and optionally restrict the 'not' operand to an ast.Name or ast.Attribute; add a test that 'if not ok: sys.exit(1)' counts as a fork.",
+          "Count each ast.match_case after the first (or each case) as a fork, add a test, and name match/case in the fork definition of docstring_format.md and the count_forks docstring.",
+          "Count a Return only when it does not sit in the tail position of the last statement: walk the last statement's tail branches (if/else bodies, try body/handlers, match cases) and exclude their final Return. Add a test for the if/else-return shape.",
+          "Or keep the code and reword the count_forks docstring and docstring_format.md:26 to say \"a return other than the function's final statement\"."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Short briefs report placeholder?, so SKILL step 4 can never pass for them",
+        "file": "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+          "plugins/harness/skills/writing-docstrings/SKILL.md",
+          "plugins/harness/skills/writing-docstrings/docstring_format.md",
+          "tests/lib/test_writing_docstrings_api.py",
+          "plugins/harness/lib/harness_lib/writing_docstrings_models.py"
+        ],
+        "lines": "96-98",
+        "reviewer": "overall, runtime, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "current_layout (writing_docstrings_api.py:96-97) labels any docstring of PLACEHOLDER_WORDS (4) words or fewer without double backticks as `placeholder?`, so a proper brief such as \"\"\"Closes the pool.\"\"\" or \"\"\"Returns the cached value.\"\"\" never reports `current=brief`. SKILL.md step 4 (line 64) makes the re-run the completion check: `current=` matches each tier. The convention says the opposite about these docstrings: docstring_format.md:259 keeps a single-line \"\"\"Summary.\"\"\" on a brief-tier symbol as is, and SKILL.md:27-29 keeps an in-layout docstring byte for byte. The verify step pushes the agent to pad or rewrite a correct short brief just to clear the `placeholder?` label. SKILL.md:21 also lists placeholders as the first thing a restyle rewrites, and the command marks these briefs as placeholders.\n\nAlso (runtime): current_layout returns Layout.BRIEF for up to two lines of text, while the convention's brief layout is one short summary and states that a summary needing a second line makes the symbol compact. A two-line prose docstring is thus shown as current=brief and reads as 'already in the layout its tier calls for' (kept as is) instead of prose (rewritten).\n\nAlso (docs): SKILL.md step 4 tells the agent to re-run the command until `current=` matches each tier and no flags remain. `current_layout` (writing_docstrings_api.py:96-97) names any docstring of PLACEHOLDER_WORDS (4) words or fewer without double backticks `placeholder?`. A correct tier-1 brief such as \"\"\"Closes the pool.\"\"\" (the SC-3 close_pool case) therefore reports `current=placeholder?` however often it is rewritten. SKILL.md never lists the layout names (`none`, `blank`, `placeholder?`, `prose`) and never says `placeholder?` is a heuristic, so an agent following step 4 either loops or pads a good brief past four words to clear the check.",
+        "fix": [
+          "In SKILL.md steps 1 and 4, state that `placeholder?` is a hint: a short brief that tells a caller everything is kept, and `current=placeholder?` on such a brief-tier symbol counts as a match in step 4.",
+          "Or narrow the classifier: report `placeholder?` only when the text lacks a third-person verb summary (for example a single word, or a bare noun/imperative such as \"Push.\" or \"Get desc.\"), and add a test that \"\"\"Closes the pool.\"\"\" reports `brief`.",
+          "Use len(text.splitlines()) <= 1 for BRIEF and add a two-line case to the layout test.",
+          "State in the current_layout docstring that a wrapped two-line summary counts as brief, if that is intended.",
+          "In SKILL.md step 1 or step 4, list the `current=` values and state that `placeholder?` on a brief whose summary was written from the body is accepted (the question mark marks a guess), so step 4 holds when the agent's tier-1 answer stands.",
+          "Alternatively, in current_layout, return Layout.BRIEF for a short one-line summary that starts with a third-person verb (ends in 's'), keeping `placeholder?` for fragments such as 'Push.' and 'Get desc.', and pin the case in tests/lib/test_writing_docstrings_api.py."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Contradictory rules for a flagged full-layout or in-tier docstring",
+        "file": "plugins/harness/skills/writing-docstrings/SKILL.md",
+        "files": [
+          "plugins/harness/skills/writing-docstrings/SKILL.md",
+          "plugins/harness/skills/writing-docstrings/docstring_format.md"
+        ],
+        "lines": "21-22,27-29,122-123",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:21 says docstrings the command flags are rewritten. SKILL.md:27-28 says a docstring already in its tier's layout, or in the full layout, stays byte for byte. SKILL.md:122-123 says citations are dropped from the docstring. docstring_format.md:255-258 keeps the full layout 'as is' with no exception. The common case, a full-layout docstring carrying a `long-lines` or `citation` flag, gets opposite instructions, and that is the B8 discipline the scenarios test. Nothing sets which rule wins.",
+        "fix": [
+          "State the precedence once in SKILL.md 'What a restyle touches' and in the docstring_format.md 'Existing docstrings' table. For example: an in-layout or full-layout docstring stays byte for byte except the lines the command flags, and only those lines change. Then re-run the B8 greens and `freeze --refreeze`, because the SKILL.md hash changes."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Non-UTF-8 or null-byte source escapes the command's problem-line contract",
+        "file": "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py",
+        "files": [
+          "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py"
+        ],
+        "lines": "10-12,50-59",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The command docstring promises that source that does not parse yields one 'problem:' line on stderr with exit 1, and report() documents only OSError and SyntaxError. report() reads with encoding utf-8-sig, so a cp1252/Latin-1 file raises UnicodeDecodeError (a ValueError), and on Python 3.11 ast.parse raises ValueError for source holding a null byte. main() catches SyntaxError and (OSError, ConfigError, LookupError) only, so both inputs end in a traceback instead of the documented problem line.\n\nAlso (overall): The command promises one `problem:` line and exit 1 for bad input, and B3 says \"never a traceback\". report() reads with read_text(encoding=\"utf-8-sig\") (writing_docstrings_api.py:191), which raises UnicodeDecodeError, a ValueError and not an OSError. On Python 3.11, ast.parse raises ValueError for source holding a null byte. main() (docstring_tiers.py:52-59) catches only SyntaxError, OSError, ConfigError and LookupError, so both cases print a traceback.",
+        "fix": [
+          "Add ValueError to the second except tuple in main() (ConfigError is already a ValueError subclass, so the tuple can become (OSError, ValueError, LookupError)) and name UnicodeDecodeError/ValueError in the Raises line of report() and of _rows(); add a command test with a Latin-1 encoded file.",
+          "Catch UnicodeDecodeError and ValueError inside report() and re-raise as SyntaxError with the file name, keeping main() unchanged.",
+          "Catch ValueError (UnicodeDecodeError included) in docstring_tiers.py main as `problem: <file>: <exc>`, list it in the report() Raises line, and add a command test with a latin-1 byte file."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "docstrings builder validation never runs without the schema",
+        "file": "tests/lib/test_config.py",
+        "files": [
+          "tests/lib/test_config.py",
+          "plugins/harness/lib/harness_lib/config.py"
+        ],
+        "lines": "202-210",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_docstrings_line_length_default_and_override runs with jsonschema installed, so the schema (integer, minimum 1, additionalProperties false) rejects every bad value before _docstrings sees it. The builder's own checks, which its docstring says hold 'also on a load without jsonschema' (bool rejection, non-int, < 1, unknown keys), are never exercised: deleting them leaves the suite green. True is also absent from the bad list, so the explicit isinstance(length, bool) guard has no test on either path. The file already has the pattern for this (test_minimal_validation_without_jsonschema, test_invalid_worktree_steps_raise_without_jsonschema).",
+        "fix": [
+          "Add a parametrized test next to the existing one: @pytest.mark.parametrize(\"bad\", [{\"line_length\": 0}, {\"line_length\": \"110\"}, {\"line_length\": None}, {\"line_length\": 1.5}, {\"line_length\": True}, {\"width\": 88}]) def test_invalid_docstrings_raise_without_jsonschema(make_project, monkeypatch, bad): monkeypatch.setitem(sys.modules, \"jsonschema\", None); with pytest.raises(ConfigError, match=\"docstrings\"): load_config(make_project({\"docstrings\": bad})). Also add True to the bad list of the schema-path test."
+        ]
+      },
+      {
+        "id": "I7",
+        "name": "two of eight flags have no behavioral test",
+        "file": "tests/lib/test_writing_docstrings_api.py",
+        "files": [
+          "tests/lib/test_writing_docstrings_api.py",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+          "plugins/harness/lib/harness_lib/writing_docstrings_models.py"
+        ],
+        "lines": "134-191",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "docstring_flags emits single-backticks and section-order (writing_docstrings_api.py:115-120), but no test triggers either: _ALIGNED and _FULL only prove their absence. A regression in the _SINGLE_TICK lookarounds or in _in_section_order (or the dashes skip in front of it) would pass. Nothing ties the flag strings the api emits to models.FLAG_NAMES either, so the contract test that checks SKILL.md against FLAG_NAMES can pass while the api emits a name the list and the skill never mention.",
+        "fix": [
+          "Add to tests/lib/test_writing_docstrings_api.py: assert \"single-backticks\" in _flags('def f():\\n    \"\"\"Returns `x`.\"\"\"\\n'); a compact docstring with Returns: before Rules: ('def f(x):\\n    \"\"\"Sets a flag.\\n\\n    Returns:\\n        ``x``\\n    Rules:\\n        fails when missing\\n    \"\"\"\\n    return x\\n') asserting \"section-order\" in its flags; and a test that collects every flag from the module's fixtures, splits each at '=', and asserts the names are a subset of models.FLAG_NAMES."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README flag list reads as exhaustive but drops three flags",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/lib/harness_lib/writing_docstrings_models.py"
+        ],
+        "lines": "28",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The README feature row for writing-docstrings lists the tier command's flags in parentheses as long lines, single backticks, citations, label order and unknown labels. FLAG_NAMES (writing_docstrings_models.py:23-24) also has `misaligned`, `blank` and `separator-line`, which SKILL.md:41-42 names.\n\nAlso (overall): The README `writing-docstrings` row says the command \"flags format issues (long lines ..., single backticks, citations, label order, unknown labels)\", which reads as the full list. FLAG_NAMES (writing_docstrings_models.py:23-24) and SKILL.md:41-42 also have `misaligned`, `blank` and `separator-line`.",
+        "fix": [
+          "Append 'misaligned lines, blank docstrings, stray separator lines' to the parenthesized list in the README writing-docstrings row, or prefix the list with 'for example'.",
+          "Add \"misalignment, blank or separator-only text\" to the parenthesis in the README row, or write \"for example\" before the list."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "_docstrings raises TypeError, not ConfigError, for a non-object block",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "lines": "344-353",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The _docstrings docstring says the block is checked 'also on a load without jsonschema'. Without jsonschema, deep_merge replaces the default object with whatever the project wrote, so 'docstrings': null or 'docstrings': 120 reaches set(d) and raises TypeError. The tier command catches ConfigError only, so the user gets a traceback instead of a problem line.",
+        "fix": [
+          "Start _docstrings with 'if not isinstance(d, dict): raise ConfigError(\"docstrings: must be an object\")'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Separator character class is wider than the convention's list",
+        "file": "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+          "plugins/harness/skills/writing-docstrings/docstring_format.md"
+        ],
+        "lines": "31-32",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "docstring_format.md (Separator lines) names the separator characters as -, =, _, *, #, ~, but _SEPARATORS_ONLY also accepts + . : ; |. A docstring line holding only '...' (a doctest continuation or an elided line inside an Example block) or '|' is flagged separator-line, contradicting the documented rule.",
+        "fix": [
+          "Narrow the class to r\"^[\\s\\-=_*#~]*$\" and keep a test for a '...' line in an Example block.",
+          "Name the extra characters in the Separator lines rule of docstring_format.md if they are intended."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "_own_nodes walks decorators, defaults and annotations, not only the body",
+        "file": "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+        "lines": "40-47",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_own_nodes says it walks func's body, but it seeds the stack with ast.iter_child_nodes(func), which also yields decorator_list, the arguments node (defaults) and the returns annotation. A conditional expression in a decorator argument or a parameter default ('def f(x=a if c else b)') is counted as a fork of the function body.",
+        "fix": [
+          "Seed the stack with list(func.body) instead of list(ast.iter_child_nodes(func))."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "iter_functions skips functions under module- or class-level compound statements",
+        "file": "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+        "lines": "170-178",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "iter_functions yields every module-level function and method, but it only looks at direct children of the module and of classes. Functions defined under 'if TYPE_CHECKING:', 'try: ... except ImportError:' or 'if sys.platform == ...:' are never reported, and naming one on the command line fails with 'no function named X' although the function exists.",
+        "fix": [
+          "Recurse with the same prefix into the bodies of non-scope compound statements (If, Try, With, For, While and their orelse/handlers/finalbody) while still not entering function bodies.",
+          "Document the omission in the iter_functions docstring and the command usage text."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "FLAG_NAMES is not tied to the flags the API emits",
+        "file": "plugins/harness/lib/harness_lib/writing_docstrings_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/writing_docstrings_models.py",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py"
+        ],
+        "lines": "22-24",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "FLAG_NAMES claims to list the flag names a row can carry in check order, and the skill contract test compares it with SKILL.md. docstring_flags and _separator_flags spell every flag as a separate string literal and never read FLAG_NAMES, so a flag added or renamed in the API drifts from FLAG_NAMES and SKILL.md without any test failing.",
+        "fix": [
+          "Add a test that runs docstring_flags over sources triggering each flag and asserts every emitted flag name (the part before '=') is in FLAG_NAMES.",
+          "Build the emitted flag strings from named constants that FLAG_NAMES is assembled from."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "SKILL.md Tier 1 rule omits the single-line form the convention allows",
+        "file": "plugins/harness/skills/writing-docstrings/SKILL.md",
+        "files": [
+          "plugins/harness/skills/writing-docstrings/SKILL.md",
+          "plugins/harness/skills/writing-docstrings/docstring_format.md"
+        ],
+        "lines": "75-76",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:75 says a brief is \"One short summary on its own line ... between the opening and closing `\"\"\"`\". docstring_format.md:49-50 also allows the single-line `\"\"\"Summary.\"\"\"`, as do SKILL.md:44-45 and the table at docstring_format.md:259. An agent reading only the Tier 1 section could reflow a correct one-line brief into three lines, which breaks the byte-for-byte rule at SKILL.md:27-29.",
+        "fix": [
+          "In SKILL.md:75, append \"or on a single line with them (`\\\"\\\"\\\"Summary.\\\"\\\"\\\"`)\", matching docstring_format.md:49-50."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "suggest= does not count forks 'the same way' as the written rule",
+        "file": "plugins/harness/skills/writing-docstrings/docstring_format.md",
+        "files": [
+          "plugins/harness/skills/writing-docstrings/docstring_format.md",
+          "plugins/harness/skills/writing-docstrings/SKILL.md",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py"
+        ],
+        "lines": "25-28",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:58-59 says the command's `suggest=` counts forks the same way as the rule. docstring_format.md:25-28 defines a fork as 'a return before the last statement', and a lazy guard as one whose body only fills a cached value. The code differs in two ways. (1) count_forks (writing_docstrings_api.py:65-71) counts every Return that is not itself the last top-level statement, so a return inside a trailing `with`, `try` or `for` counts as a fork, and `with open(p) as fh: return fh.read()` reports forks=1 and suggests compact where the rule gives brief. (2) _is_lazy_guard (writing_docstrings_api.py:50-58) accepts any `if not x:` / `if x is None:` whose body holds assignments or expression statements, without checking that the body fills the tested name. So a real branch such as `if not ok: status = \"failed\"` or `if x is None: log(...)` is not counted.\n\nAlso (docs): docstring_format.md:25-26 lists the forks as if/elif, conditional expressions, except, raise/assert and an early return. A `match` statement, where each `case` ends the body differently, is a fork under the document's own definition ('a point where the body can end differently'), but neither the text nor _FORK_NODES (writing_docstrings_api.py:35) counts it. So a Python 3.11 function that dispatches with match/case gets forks=0 and is graded brief.",
+        "fix": [
+          "Bring the code in line with the rule: count a Return only when a statement follows it in its own block or in an enclosing block of the function, and have _is_lazy_guard require every Assign or AnnAssign target to be the name or attribute the test reads. Pin both cases in tests/lib/test_writing_docstrings_api.py.",
+          "Alternatively, reword SKILL.md:58-60 and docstring_format.md:25-28 to describe what the command counts (any non-final top-level return; any else-less `is None` / `not` guard whose body only assigns or calls), and drop 'the same way'.",
+          "Add `match` cases to the fork list in docstring_format.md:25-26 (one fork per `case` after the first, or per match_case). Add ast.match_case to _FORK_NODES and pin the count in tests/lib/test_writing_docstrings_api.py."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Underline width described as the header word, examples include the colon",
+        "file": "plugins/harness/skills/writing-docstrings/docstring_format.md",
+        "lines": "167-168",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "docstring_format.md:167-168 says the dashed underline matches 'the width of the header word'. Every example underline is one character longer, because it matches the header including its colon: 'Parameters:' has 11 dashes (lines 139-140, 202-203), and 'Returns:', 'Raises:' and 'Example:' have 8, 7 and 8.",
+        "fix": [
+          "Reword docstring_format.md:167-168 to 'followed by a dashed underline on the next line, as wide as the header including its colon.'"
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Separator-character list and underline rule narrower than the command",
+        "file": "plugins/harness/skills/writing-docstrings/docstring_format.md",
+        "files": [
+          "plugins/harness/skills/writing-docstrings/docstring_format.md",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py"
+        ],
+        "lines": "244-245",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "docstring_format.md:244-245 names separator characters as `-`, `=`, `_`, `*`, `#`, `~` and allows them only as the dashed underline under a full-layout label. _SEPARATORS_ONLY (writing_docstrings_api.py:32) also treats `+`, `.`, `:`, `;` and `|` as separators, so a docstring of '...' gets `blank` and a line of '|' or '...' gets `separator-line`. _stray_separator_lines (lines 136-144) also accepts any separator line under any `Label:` line, for example `====` under `Rules:`, and does not limit this to a dashed underline under a full-layout label.",
+        "fix": [
+          "Extend the list in docstring_format.md:244 to `-`, `=`, `_`, `*`, `#`, `~`, `+`, `.`, `:`, `;`, `|` so it matches _SEPARATORS_ONLY.",
+          "Alternatively, narrow _SEPARATORS_ONLY to the six documented characters and require _DASHES (not any separator) under the label in _stray_separator_lines."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "fork counting leaves most fork kinds and the second guard form untested",
+        "file": "tests/lib/test_writing_docstrings_api.py",
+        "files": [
+          "tests/lib/test_writing_docstrings_api.py",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py"
+        ],
+        "lines": "57-70",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "count_forks documents ifs, conditional expressions, except handlers, raise/assert and early returns, plus the lazy guard in two forms (if x is None / if not x, no else). The tests cover If, Return and the is-None guard only (raise is reached only through the command test). IfExp, ExceptHandler, Assert, the 'if not x:' guard, and the rule that a guard with an else is a fork are unpinned, as is whether a return inside the last statement (an if/else or try tail) counts, which the docstring's 'returns before the last statement' leaves ambiguous.",
+        "fix": [
+          "Add small fixtures: 'def f(x):\\n    return a if x else b\\n' -> 1; 'def f(x):\\n    assert x\\n    return x\\n' -> 1; a try/except tail; 'def f():\\n    global _C\\n    if not _C:\\n        _C = load()\\n    return _C\\n' -> 0; the same guard with an else branch -> counted. Pin the if/else-tail return count to whatever the convention intends."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "row checks accept trailing spurious flags",
+        "file": "tests/skills/test_docstring_tiers_command.py",
+        "lines": "48-49",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_prints_one_row_per_function checks each row with a substring `in`, so a regression that appends flags to either row (for example a misaligned or single-backticks false positive) still passes. Neither docstring in SOURCE should carry a flag at the default limit.",
+        "fix": [
+          "Assert exact rows: rows == [\"    2 Store.get lines=3 forks=2 suggest=2-compact current=placeholder?\", \"    9 load lines=1 forks=0 suggest=1-brief current=brief\"]."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "--repo option has no test",
+        "file": "tests/skills/test_docstring_tiers_command.py",
+        "files": [
+          "tests/skills/test_docstring_tiers_command.py",
+          "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py"
+        ],
+        "lines": "82-96",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "docstring_tiers.py documents and implements --repo (line 41: the config comes from --repo when given, else the file's project). Every command test, and the root-separation case, passes only the file, so the --repo branch is never run.\n\nAlso (tests): test_a_file_outside_the_cwd_reads_its_own_project runs from tmp_path, and make_project builds the project under tmp_path, so the file sits inside the cwd's tree. What the test proves is that a cwd outside any project does not decide the config; the file's own project does.",
+        "fix": [
+          "Add a test: build project A with the file at default config and project B with {\"docstrings\": {\"line_length\": 60}}; run _run(tmp_path, \"--repo\", str(B), str(A / \"src\" / \"store.py\"), \"load\") and assert \"long-lines=[10]\" in stdout.",
+          "Rename to test_the_files_own_project_wins_over_a_cwd_outside_any_project (or similar)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 187 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"8833c3df19b67051eb987b4468c78584ce055572\",\"headRefName\":\"1115-port-writing-docstrings\",\"headRefOid\":\"8833c3df19b67051eb987b4468c78584ce055572\",\"last_sha\":\"8833c3df19b67051eb987b4468c78584ce055572\",\"mergeCommit\":null,\"number\":187,\"state\":\"OPEN\",\"title\":\"Feature(writing-docstrings): add the writing-docstrings skill and its…\",\"url\":\"https://github.com/t968rs/operator-straps/pull/187\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1115-port-writing-docstrings",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1115-port-writing-docstrings",
+        "head_ref_name": "1115-port-writing-docstrings",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "8833c3df19b67051eb987b4468c78584ce055572",
+        "head_sha": "8833c3df19b67051eb987b4468c78584ce055572",
+        "base_ancestor_command": "git merge-base --is-ancestor 8833c3df19b67051eb987b4468c78584ce055572 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 8833c3df19b67051eb987b4468c78584ce055572 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - SKILL.md Tier 1 rule now also allows the single-line form (\"\"\"Summary.\"\"\"), matching docstring_format.md:49-50; docstring_format.md already states it, no edit"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - docstring_format.md Section headers rule now says the underline is as wide as the header including its colon"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - docstring_format.md Separator lines list extended to -, =, _, *, #, ~, +, ., :, ;, | to match _SEPARATORS_ONLY; the writing_docstrings_api.py part is another fixer's; first option applied by the docstring_format.md part (doc list extended to match _SEPARATORS_ONLY); writing_docstrings_api.py: _SEPARATORS_ONLY and _stray_separator_lines stay as the reference behavior, so no edit"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - precedence stated once: SKILL.md 'What a restyle touches' gains a 'Flagged lines win over byte for byte' bullet and its first bullet rewrites flagged lines, not whole docstrings; docstring_format.md 'Existing docstrings' table rows read 'kept as is, except the lines the tier command flags' plus a sentence below; B8 greens rerun and freeze --refreeze left to closeout (SKILL.md hash changed)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - _own_nodes seeds its stack with func.body, so decorators, parameter defaults and annotations are no longer walked; docstring says so; test test_decorator_and_default_conditionals_are_not_forks added"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - iter_functions recurses with the same prefix into non-scope compound statements (any ast.stmt, except handlers, match cases) without entering function bodies; docstring names the covered statements; test test_report_finds_functions_under_compound_statements added"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - second option: report() reads bytes via _read_source, which re-raises UnicodeDecodeError as SyntaxError with the failing line, and parses via _parse, which re-raises the null-byte ValueError as SyntaxError, so main()'s SyntaxError branch prints the problem line unchanged; report() Raises line updated; newline translation of read_text kept; tests for Latin-1 and null-byte source added; main() adds an except ValueError clause after the (OSError, ConfigError, LookupError) clause, printing 'problem: <file>: <exc>'; _rows() and the module docstring name ValueError and UnicodeDecodeError. Added Latin-1 and null-byte command tests."
+    },
+    {
+      "id": "I7",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - tests added: single-backticks on a single-tick docstring, section-order on Returns before Rules, and every flag emitted across the module's fixtures split at '=' is a subset of FLAG_NAMES; writing_docstrings_api.py: emits the flags under test, no edit needed for I7; No edit in this part: writing_docstrings_models.py holds only FLAG_NAMES and the enums; the behavioral flag tests and the api emission tie belong to the other part's test file and api module."
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - No edit in this part: the README writing-docstrings row is owned by the other part; FLAG_NAMES in writing_docstrings_models.py already lists all eight names including misaligned, blank and separator-line.; README.md:28 writing-docstrings row: parenthesized list now opens with 'for example:' and adds misaligned lines, blank docstrings, stray separator lines"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - test_prints_one_row_per_function now asserts the exact two printed rows instead of substring membership, so trailing flags fail the test."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - Added test_repo_option_sets_the_project_over_the_files_own (--repo selects project B's line_length 60 over the file's default project A) and renamed the cwd test to test_the_files_own_project_wins_over_a_cwd_outside_any_project."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - config.py _docstrings: added isinstance(d, dict) guard raising ConfigError('docstrings: must be an object') before set(d)"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - tests/lib/test_config.py: added True to the schema-path bad list and a parametrized test_invalid_docstrings_raise_without_jsonschema (jsonschema hidden via monkeypatch) covering line_length 0, '110', None, 1.5, True and unknown key width"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - code brought in line with the rule: _tail_returns excludes returns ending the function (last statement, or last of a final if/with/try/match branch); _is_lazy_guard needs a Name/Attribute test operand and a body of imports plus Assign/AnnAssign to that name only (ast.Expr and AugAssign dropped); ast.match_case added to _FORK_NODES; docstring_format.md fork definition and SKILL.md step 2 describe the same rule, so 'the same way' holds; tests pin with-tail, guard-calls, guard-fills-other-name and match cases"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - parametrized fork tests added: IfExp, Assert, 'if not x' guard (0), guard with else (1), guard calling or filling another name (1), with/if-else/try-except tails and early return; count_forks docstring states which returns end the function"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - count_forks skips the returns _tail_returns collects (with body, try body or orelse plus handlers and finalbody, if body/orelse, match cases); lazy guard no longer accepts bare calls or 'not <expr>' and needs assignments to the tested name; each match case is a fork; count_forks docstring and docstring_format.md:25-30 updated; tests: with-wrapped return 0, final if/else returns 1, 'if not ok: sys.exit(1)' 1, two-case match 2"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - current_layout: new _is_placeholder keeps placeholder? only for one word or a short text not opening with a third-person verb, and BRIEF now needs exactly one line (two lines are prose); SKILL.md step 4 lists the current= values and says placeholder? is a guess that counts as a match on a body-written tier-1 brief; tests pin 'Closes the pool.' as brief, 'Get desc.' as placeholder and a two-line summary as prose; docstring_format.md:259 already keeps a single-line summary and models.py PLACEHOLDER_WORDS stays, no edit"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - docstring_format.md Separator lines list widened to the full _SEPARATORS_ONLY class (with M10), so the convention and the command agree (outside fixer waves)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "8833c3d (working-tree snapshot; developer commits) - test_the_emitted_flags_are_exactly_the_listed_flag_names asserts the flags the api emits equal set(FLAG_NAMES) (outside fixer waves)"
+    }
+  ]
+}

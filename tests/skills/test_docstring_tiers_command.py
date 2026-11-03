@@ -43,10 +43,10 @@ def test_prints_one_row_per_function(make_project) -> None:
     root = make_project(files={"src/store.py": SOURCE})
     done = _run(root, "src/store.py")
     assert done.returncode == 0, done.stderr
-    rows = _rows(done)
-    assert len(rows) == 2
-    assert "Store.get lines=3 forks=2 suggest=2-compact current=placeholder?" in rows[0]
-    assert "load lines=1 forks=0 suggest=1-brief current=brief" in rows[1]
+    assert _rows(done) == [
+        "    2 Store.get lines=3 forks=2 suggest=2-compact current=placeholder?",
+        "    9 load lines=1 forks=0 suggest=1-brief current=brief",
+    ]
 
 
 def test_symbols_filter_by_name_or_qualname(make_project) -> None:
@@ -89,8 +89,37 @@ def test_line_length_comes_from_config(make_project) -> None:
     assert "long-lines=[10]" in flagged[0]
 
 
-def test_a_file_outside_the_cwd_reads_its_own_project(make_project, tmp_path: Path) -> None:
+def test_the_files_own_project_wins_over_a_cwd_outside_any_project(make_project, tmp_path: Path) -> None:
     narrow = make_project({"docstrings": {"line_length": 60}}, files={"src/store.py": SOURCE}, name="far")
     done = _run(tmp_path, str(narrow / "src" / "store.py"), "load")
     assert done.returncode == 0, done.stderr
     assert "long-lines=[10]" in done.stdout
+
+
+def test_repo_option_sets_the_project_over_the_files_own(make_project) -> None:
+    default = make_project(files={"src/store.py": SOURCE}, name="default")
+    narrow = make_project({"docstrings": {"line_length": 60}}, name="narrow")
+    done = _run(default, "--repo", str(narrow), str(default / "src" / "store.py"), "load")
+    assert done.returncode == 0, done.stderr
+    assert "long-lines=[10]" in done.stdout
+
+
+def test_non_utf8_source_is_a_problem(make_project) -> None:
+    root = make_project()
+    (root / "src").mkdir()
+    (root / "src" / "latin.py").write_bytes(b'def f():\n    """Caf\xe9 au lait."""\n    return 1\n')
+    done = _run(root, "src/latin.py")
+    assert done.returncode == 1
+    assert done.stderr.startswith("problem: ")
+    assert "src/latin.py" in done.stderr
+    assert "Traceback" not in done.stderr
+
+
+def test_null_byte_source_is_a_problem(make_project) -> None:
+    root = make_project()
+    (root / "src").mkdir()
+    (root / "src" / "nul.py").write_bytes(b"def f():\n    pass\x00\n")
+    done = _run(root, "src/nul.py")
+    assert done.returncode == 1
+    assert done.stderr.startswith("problem: ")
+    assert "Traceback" not in done.stderr

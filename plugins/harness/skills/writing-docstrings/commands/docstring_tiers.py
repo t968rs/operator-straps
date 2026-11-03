@@ -8,8 +8,9 @@ or its last part)::
     <line> <qualname> lines=<n> forks=<n> suggest=<tier> current=<layout> [flags]
 
 The line limit is the project's ``docstrings.line_length``. The project is ``--repo`` when given, else the one
-holding the file. A named symbol that matches no function, a missing file, source that does not parse and an
-invalid configuration are each one ``problem:`` line on stderr with exit 1. Nothing is written.
+holding the file. A named symbol that matches no function, a missing file, source that does not parse or
+decode as UTF-8 and an invalid configuration are each one ``problem:`` line on stderr with exit 1. Nothing is
+written.
 """
 from __future__ import annotations
 
@@ -34,7 +35,8 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _rows(args: argparse.Namespace) -> List[str]:
-    """The report lines; raises ``OSError``, ``SyntaxError``, ``ConfigError`` or ``LookupError``."""
+    """The report lines; raises ``OSError``, ``SyntaxError``, ``ValueError`` (``ConfigError``,
+    ``UnicodeDecodeError`` and null-byte source included) or ``LookupError``."""
     path = Path(args.file).resolve()
     if not path.is_file():
         raise OSError(f"{args.file}: no such file")
@@ -56,6 +58,9 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
     except (OSError, ConfigError, LookupError) as exc:
         print(f"problem: {exc}", file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"problem: {args.file}: {exc}", file=sys.stderr)
         return 1
     if lines:
         print("\n".join(lines))
