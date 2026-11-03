@@ -89,7 +89,7 @@ def test_line_length_comes_from_config(make_project) -> None:
     assert "long-lines=[10]" in flagged[0]
 
 
-def test_the_files_own_project_wins_over_a_cwd_outside_any_project(make_project, tmp_path: Path) -> None:
+def test_a_file_outside_the_cwd_reads_its_own_project(make_project, tmp_path: Path) -> None:
     narrow = make_project({"docstrings": {"line_length": 60}}, files={"src/store.py": SOURCE}, name="far")
     done = _run(tmp_path, str(narrow / "src" / "store.py"), "load")
     assert done.returncode == 0, done.stderr
