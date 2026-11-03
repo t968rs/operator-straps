@@ -1530,6 +1530,49 @@ class TestPathsAndScope:
         assert "closeout resolves it once one of those files changed since the build" in rules
         assert "Never run a test marked deferred" in rules
 
+    @pytest.mark.parametrize("path", ["src/pkg/a.py", "docs/a.md", ".github/workflows/ci.yml"])
+    def test_reviewer_rules_grade_a_missing_mention_as_docs(self, script: ModuleType, path: str) -> None:
+        slot = script.rp.Slot("overall", "overall", "opus", (path,), ())
+        rules = _normalized(script.rules_section(slot))
+        assert _normalized(script.PROSE_GAP_RULE) in rules
+        # The literals pin the constant's wording; the constant check alone is tautological.
+        assert "documentation gap" in rules and "`minor`" in rules
+        assert "never grounds an `important` or `critical` grade" in rules
+        assert "a revert is never a fix option on that ground" in rules
+
+    def test_fixer_rules_repair_before_revert(self, script: ModuleType) -> None:
+        rules = _normalized("\n".join(script._fixer_rules()))
+        assert "Never revert or delete code the change under review added" in rules
+        assert "apply the repair" in rules
+        assert "only option is the removal, bubble the id `architectural_ambiguity` and edit nothing" in rules
+        assert "Any other ground for a removal" in rules and "right choice is unclear" not in rules
+        assert "only fix changes a commit message or the PR description" in rules
+        assert "answers yes, or under the revert and commit-text rules below; otherwise" in rules
+
+    def test_removal_defects_are_a_closed_list(self, script: ModuleType) -> None:
+        defects = _normalized(script.REMOVAL_DEFECTS)
+        for word in ("broken", "unreachable or dead", "duplicate", "leftover", "debug output", "unsafe",
+                     "contradicting a contract"):
+            assert word in defects
+        slot = script.rp.Slot("overall", "overall", "opus", ("src/pkg/a.py",), ())
+        assert defects in _normalized(script.rules_section(slot))
+        assert defects in _normalized("\n".join(script._fixer_rules()))
+
+    @pytest.mark.parametrize("doc", [
+        "agents/pr-fixer.md", "agents/pr-team-fixer.md", "agents/pr-reviewer.md",
+        "agents/pr-team-orchestrator.md", "skills/pr-review/SKILL.md", "skills/pr-review/operating_rules.md",
+    ])
+    def test_review_docs_spell_the_removal_defects(self, script: ModuleType, plugin_root: Path,
+                                                   doc: str) -> None:
+        text = (plugin_root / doc).read_text(encoding="utf-8")
+        assert _normalized(script.REMOVAL_DEFECTS) in _normalized(text)
+
+    def test_issue_block_prefers_repair(self, script: ModuleType) -> None:
+        issue = {"id": "I1", "name": "n", "file": "src/pkg/a.py", "lines": "4", "summary": "s",
+                 "fix": ["repair the branch", "revert the hunk"], "fix_kind": "judgment"}
+        block = "\n".join(script._issue_block(issue, ["src/pkg/a.py"]))
+        assert "pick the safest, most mechanical; a repair before a revert" in block
+
 
 _URL = f"https://github.com/o/r/pull/{_PR}#pullrequestreview-77"
 
