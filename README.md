@@ -328,9 +328,12 @@ option. `pytest-scope` options (see `plugins/pytest-scope/README.md`):
 
 ### Python
 
-Every hook and script runs through `plugins/harness/scripts/hpy`, which picks the first interpreter that starts:
-`HARNESS_PY` (project settings `env`), then the `python` option (hooks only), then `python`, then `py -3`. It
-skips the Windows Store `python3` stub and does not probe for `jsonschema` / `referencing` / `pydantic`; the code
+Every hook and script runs through `plugins/harness/scripts/hpy`, which tries in order `HARNESS_PY` (project
+settings `env`), then the `python` option (hooks only), then `python`, then `py -3`. An explicit candidate (the
+first two) that exists and is executable wins unprobed, saving an interpreter start per hook; the others win when
+they start. A present-but-broken `HARNESS_PY` (a venv whose base interpreter was removed, a stale shim) is
+therefore not skipped: every hook fails, and `/harness:doctor` cannot run under it either, so unset it to
+diagnose. It skips the Windows Store `python3` stub and does not probe for `jsonschema` / `referencing` / `pydantic`; the code
 that needs them reports a missing module itself. The schema hook stands down with a one-line warning; `pr-review`
 and `pr-team` check all three before any subcommand and exit 1 with a `problem:` line naming the first one
 missing. Commit, summary and worktree tooling need only the standard library.
