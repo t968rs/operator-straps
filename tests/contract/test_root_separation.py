@@ -200,10 +200,13 @@ CASES = {
     "strap new": lambda r, t: (_strap_new_args(r), None),
     "docstring-tiers": lambda r, t: (["skills/writing-docstrings/commands/docstring_tiers.py",
                                       str(r / "src" / "a.py")], None),
+    "docstring-dispatch": lambda r, t: (["skills/writing-docstrings/commands/docstring_dispatch.py", "-p",
+                                         str(r / "src" / "a.py"), str(r / "src" / "b.py")], None),
 }
 
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
-MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers"})
+MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers",
+                            "docstring-dispatch"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
@@ -243,6 +246,14 @@ def test_parallel2_plan_lands_in_the_project(project: Path, tmp_path: Path) -> N
     assert done.returncode == 0, done.stderr
     state = project / ".claude/state/harness/parallel2/feature.json"
     assert state.is_file(), f"parallel2 plan did not write {state}:\n{done.stderr}"
+
+
+def test_docstring_probe_lands_in_the_project(project: Path, tmp_path: Path) -> None:
+    script, payload = CASES["docstring-dispatch"](project, tmp_path)
+    done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project, payload)
+    assert done.returncode == 0, done.stderr
+    assert (project / "src" / "_docstring_probe.py").is_file()
+    assert (project / ".claude/state/harness/writing-docstrings/probes.txt").is_file()
 
 
 TODO_OUTPUTS = {
