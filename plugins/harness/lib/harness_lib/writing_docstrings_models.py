@@ -1,8 +1,9 @@
-"""Writing-docstrings: the tiers, layouts, labels and flags of the docstring convention, and one report row.
+"""Writing-docstrings: the tiers, layouts, labels and flags of the docstring convention, one report row, and
+the dispatch rows that hand files to the ``harness:docstring-writer`` agent.
 
-Enums are ``str`` enums, so a value serializes as its plain string. ``SymbolReport`` forbids extra keys. The
-analysis module (``writing_docstrings_api``) builds the rows; this module imports no other ``harness_lib``
-module.
+Enums are ``str`` enums, so a value serializes as its plain string. ``SymbolReport``, ``FileScope`` and
+``DispatchRow`` forbid extra keys. The analysis module (``writing_docstrings_api``) builds the rows; this
+module imports no other ``harness_lib`` module.
 """
 from __future__ import annotations
 
@@ -10,6 +11,16 @@ from enum import Enum
 from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
+
+#: The agent every dispatch row names, and the models of a work row and a probe row.
+AGENT = "harness:docstring-writer"
+WORK_MODEL = "opus"
+PROBE_MODEL = "haiku"
+#: The tool-probe file a parallel run writes beside its targets, and its record under ``state_dir``.
+PROBE_NAME = "_docstring_probe.py"
+PROBE_RECORD = "writing-docstrings/probes.txt"
+PROBE_SOURCE = '"""Tool probe for a parallel writing-docstrings run; removed after the probe."""\n\n\n' \
+               "def probe(value):\n    return value\n"
 
 FULL_MIN_LINES = 50
 FULL_MIN_FORKS = 2
@@ -71,3 +82,36 @@ class SymbolReport(BaseModel):
         text = (f"{self.line:>5} {self.qualname} lines={self.lines} forks={self.forks} "
                 f"suggest={self.suggest.value} current={self.current.value}")
         return text + (f" [{', '.join(self.flags)}]" if self.flags else "")
+
+
+class FileScope(BaseModel):
+    """One file of a dispatch row: its absolute POSIX path and the names in scope (empty: every function)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    path: str = Field(min_length=1)
+    names: List[str] = Field(default_factory=list)
+
+    def line(self) -> str:
+        """``Scope: <path>: all`` or ``Scope: <path>: <name>, <name>``."""
+        return f"Scope: {self.path}: {', '.join(self.names) if self.names else 'all'}"
+
+
+class DispatchRow(BaseModel):
+    """One agent dispatch: the model, the project root, the new-docstrings switch and the file scopes."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = Field(min_length=1)
+    project_root: str = Field(min_length=1)
+    new_docstrings: bool
+    scopes: List[FileScope] = Field(min_length=1)
+    probe: bool = False
+
+    def text(self) -> str:
+        """The header line ``agent=<AGENT> model=<model>``, then the prompt lines, ``Probe: yes`` last on a
+        probe row."""
+        lines = [f"agent={AGENT} model={self.model}", f"Project root: {self.project_root}",
+                 f"New docstrings: {'yes' if self.new_docstrings else 'no'}",
+                 *(scope.line() for scope in self.scopes)]
+        return "\n".join(lines + (["Probe: yes"] if self.probe else []))
