@@ -1,6 +1,7 @@
 """Contract: every harness hooks.json command is the ``sh hpy`` shell form naming an existing hook script."""
 from __future__ import annotations
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -17,12 +18,18 @@ SHELL_FORM = re.compile(
 
 EXPECTED: Dict[Tuple[str, str], List[str]] = {
     ("SessionStart", ""): ["session_rules.py", "todo_sync_session.py"],
-    ("PreToolUse", "Bash"): ["bash_discipline.py", "bash_allow_shapes.py", "approve_python_c.py"],
+    ("PreToolUse", "Bash"): ["bash_pretool.py"],
     ("PreToolUse", "PowerShell"): ["powershell_allow_shapes.py"],
     ("PreToolUse", "Write|Edit"): ["guard_commit_txt.py"],
     ("PostToolUse", "Write|Edit|Bash"): ["validate_pr_json_schema.py"],
     ("Stop", ""): ["check_phase5_sentinel.py", "check_min_viz_sentinel.py"],
     ("SubagentStop", ""): ["check_min_viz_sentinel.py"],
+}
+
+# Public hook scripts that stay runnable on their own but are decided inside a registered dispatcher
+# (one interpreter launch for all of them), so hooks.json does not name them.
+COMPOSED: Dict[str, List[str]] = {
+    "bash_pretool.py": ["bash_discipline.py", "approve_python_c.py", "bash_allow_shapes.py"],
 }
 
 
@@ -56,7 +63,32 @@ def test_no_unexpected_registrations() -> None:
     assert {(e, m) for e, m, _ in _entries()} == set(EXPECTED)
 
 
-def test_every_public_hook_script_is_registered() -> None:
-    """A ``*.py`` under hooks/ without a leading underscore is a hook entry point and must be wired."""
+def test_every_public_hook_script_is_registered_or_composed() -> None:
+    """A ``*.py`` under hooks/ without a leading underscore is a hook entry point: wired in hooks.json, or
+    decided inside a registered dispatcher that names it in ``COMPOSED``."""
     registered = {SHELL_FORM.match(h["command"]).group("name") for _, _, h in _entries()}
-    assert {p.name for p in HOOKS_DIR.glob("*.py") if not p.name.startswith("_")} == registered
+    composed = {name for names in COMPOSED.values() for name in names}
+    assert {p.name for p in HOOKS_DIR.glob("*.py") if not p.name.startswith("_")} == registered | composed
+
+
+def _imported_hook_stems(dispatcher: str) -> set:
+    """Public hook stems the dispatcher imports, in any ``import`` or ``from ... import`` form."""
+    hook_stems = {p.stem for p in HOOKS_DIR.glob("*.py") if not p.name.startswith("_")}
+    tree = ast.parse((HOOKS_DIR / dispatcher).read_text(encoding="utf-8"))
+    modules = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            modules.add(node.module.split(".")[0])
+    return modules & hook_stems
+
+
+@pytest.mark.parametrize("dispatcher", sorted(COMPOSED))
+def test_a_dispatcher_imports_exactly_its_composed_hooks(dispatcher: str) -> None:
+    """The dispatcher is registered and imports each composed hook, and only those, so a hook added to
+    one side without the other fails here. Imports are not calls: ``tests/hooks/test_bash_pretool.py``
+    covers that each composed ``decide`` runs."""
+    registered = {SHELL_FORM.match(h["command"]).group("name") for _, _, h in _entries()}
+    assert dispatcher in registered
+    assert _imported_hook_stems(dispatcher) == {name[: -len(".py")] for name in COMPOSED[dispatcher]}

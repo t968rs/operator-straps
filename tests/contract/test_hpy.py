@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+from typing import Tuple
 
 import pytest
 
@@ -31,7 +32,7 @@ def test_harness_py_wins(plugin_root: Path) -> None:
     assert Path(done.stdout.strip()).resolve() == Path(sys.executable).resolve()
 
 
-def test_broken_candidate_is_skipped(plugin_root: Path, tmp_path: Path) -> None:
+def test_missing_candidate_is_skipped(plugin_root: Path, tmp_path: Path) -> None:
     env = {
         "HARNESS_PY": _posix(str(tmp_path / "missing.exe")),
         "CLAUDE_PLUGIN_OPTION_PYTHON": _posix(sys.executable),
@@ -76,16 +77,66 @@ def test_arguments_and_exit_code_pass_through(plugin_root: Path) -> None:
     assert done.returncode == 7
 
 
-def test_launch_never_probes_schema_libraries(plugin_root: Path, tmp_path: Path) -> None:
+def _logging_shim(tmp_path: Path, name: str = "python") -> Tuple[Path, Path]:
     log = tmp_path / "calls.log"
-    shim = tmp_path / "python"
+    shim = tmp_path / name
     body = f'#!/bin/sh\necho "$@" >> "{_posix(str(log))}"\nexec "{_posix(sys.executable)}" "$@"\n'
     shim.write_text(body, encoding="utf-8", newline="\n")
     shim.chmod(0o755)
+    return shim, log
+
+
+def test_launch_never_probes_schema_libraries(plugin_root: Path, tmp_path: Path) -> None:
+    shim, log = _logging_shim(tmp_path)
     done = _run(plugin_root, {"HARNESS_PY": _posix(str(shim))}, "-c", "raise SystemExit(5)")
     assert done.returncode == 5, done.stderr
     assert "WARNING" not in done.stderr
     calls = log.read_text(encoding="utf-8")
     for name in ("jsonschema", "referencing", "pydantic"):
         assert name not in calls
-    assert len(calls.splitlines()) == 2, calls  # the start probe, then the exec
+    assert len(calls.splitlines()) == 1, calls  # the exec alone: an executable file is not probed
+
+
+def test_windowsapps_candidate_is_never_started(plugin_root: Path, tmp_path: Path) -> None:
+    """An executable file under a WindowsApps path is a Store alias stub: neither trusted nor probed."""
+    store = tmp_path / "WindowsApps"
+    store.mkdir()
+    shim, log = _logging_shim(store)
+    env = {"HARNESS_PY": _posix(str(shim)), "CLAUDE_PLUGIN_OPTION_PYTHON": _posix(sys.executable)}
+    done = _run(plugin_root, env, "-c", "import sys; print(sys.executable)")
+    assert done.returncode == 0, done.stderr
+    assert not log.exists()
+    assert Path(done.stdout.strip()).resolve() == Path(sys.executable).resolve()
+
+
+def test_plugin_option_python_is_not_probed_either(plugin_root: Path, tmp_path: Path) -> None:
+    shim, log = _logging_shim(tmp_path)
+    done = _run(plugin_root, {"CLAUDE_PLUGIN_OPTION_PYTHON": _posix(str(shim))}, "-c", "raise SystemExit(5)")
+    assert done.returncode == 5, done.stderr
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 1
+
+
+def test_bare_command_name_is_still_probed_and_used(plugin_root: Path, tmp_path: Path) -> None:
+    """A name with no path fails ``[ -x ]``; the probe resolves it through PATH as before."""
+    shim, log = _logging_shim(tmp_path, "mypython")
+    path = os.pathsep.join([str(tmp_path), os.environ.get("PATH", "")])
+    done = _run(plugin_root, {"HARNESS_PY": "mypython", "PATH": path}, "-c", "raise SystemExit(5)")
+    assert done.returncode == 5, done.stderr
+    assert len(log.read_text(encoding="utf-8").splitlines()) == 2  # probe, then exec
+
+
+def test_directory_candidate_is_skipped(plugin_root: Path, tmp_path: Path) -> None:
+    """A directory passes ``-x``; it must not be taken for an interpreter."""
+    env = {"HARNESS_PY": _posix(str(tmp_path)), "CLAUDE_PLUGIN_OPTION_PYTHON": _posix(sys.executable)}
+    done = _run(plugin_root, env, "-c", "import sys; print(sys.executable)")
+    assert done.returncode == 0, done.stderr
+    assert Path(done.stdout.strip()).resolve() == Path(sys.executable).resolve()
+
+
+def test_non_executable_file_candidate_is_skipped(plugin_root: Path, tmp_path: Path) -> None:
+    plain = tmp_path / "notes.txt"
+    plain.write_text("not an interpreter\n", encoding="utf-8")
+    env = {"HARNESS_PY": _posix(str(plain)), "CLAUDE_PLUGIN_OPTION_PYTHON": _posix(sys.executable)}
+    done = _run(plugin_root, env, "-c", "import sys; print(sys.executable)")
+    assert done.returncode == 0, done.stderr
+    assert Path(done.stdout.strip()).resolve() == Path(sys.executable).resolve()

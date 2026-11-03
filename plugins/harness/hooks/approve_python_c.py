@@ -17,7 +17,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
@@ -46,16 +46,25 @@ def allow(reason: str) -> str:
         "hookEventName": "PreToolUse", "permissionDecision": "allow", "permissionDecisionReason": reason}})
 
 
+def decide(payload: Any) -> Optional[str]:
+    """The allow output for an opted-in project's ``python -c`` one-liner, else None."""
+    if not isinstance(payload, dict) or payload.get("tool_name") != "Bash":
+        return None
+    tool_input = payload.get("tool_input")
+    command = tool_input.get("command", "") if isinstance(tool_input, dict) else ""
+    if isinstance(command, str) and is_python_c(command) and project_opted_in(payload):
+        return allow("python -c auto-approved (harness.json auto_approve_python_c)")
+    return None
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, UnicodeDecodeError):
         return 0
-    if not isinstance(payload, dict) or payload.get("tool_name") != "Bash":
-        return 0
-    command = (payload.get("tool_input") or {}).get("command", "")
-    if isinstance(command, str) and is_python_c(command) and project_opted_in(payload):
-        print(allow("python -c auto-approved (harness.json auto_approve_python_c)"))
+    output = decide(payload)
+    if output:
+        print(output)
     return 0
 
 

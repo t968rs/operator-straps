@@ -16,7 +16,9 @@ import referencing.exceptions
 
 from harness_lib.config import activate, load_config
 from harness_lib.validation.artifact_names import (
+    PLAN_ARTIFACT_SUFFIX,
     SENTINEL_PREFIX,
+    is_plan_artifact_name,
     is_review_artifact_name,
     phase5_sentinel_dir,
     phase5_sentinel_path,
@@ -49,6 +51,30 @@ def _parent_validator(cfg, registry: referencing.Registry):
 def test_is_review_artifact_name(name: str, expected: bool) -> None:
     """Only a 4-digit zero-padded PR number followed by an underscore qualifies."""
     assert is_review_artifact_name(name) is expected
+
+
+@pytest.mark.parametrize("name, expected", [
+    ("0004_writing_docstrings_ActionPlan.json", True),
+    ("0001_ActionPlan.json", True),
+    ("bad_ActionPlan.json", True),
+    ("SkillSpec.json", False),
+    ("0001_ActionPlan.json.bak", False),
+    ("0001_PIP.md", False),
+    ("ActionPlan.json", False),
+    ("", False),
+])
+def test_is_plan_artifact_name(name: str, expected: bool) -> None:
+    """Only a ``*_ActionPlan.json`` file is a plan; other JSON under the plans directory is not."""
+    assert is_plan_artifact_name(name) is expected
+
+
+def test_plan_artifact_suffix_mirrors_the_plan_driver() -> None:
+    """The hook-side suffix is spelled out to skip the plan_models tree; it must equal the plan driver's
+    and the todo_sync copy, so a rename cannot split the hook from either."""
+    from harness_lib.plan_doc import PLAN_SUFFIX as DRIVER_SUFFIX
+    from harness_lib.todo_sync.sources import PLAN_SUFFIX as TODO_SYNC_SUFFIX
+
+    assert PLAN_ARTIFACT_SUFFIX == DRIVER_SUFFIX == TODO_SYNC_SUFFIX
 
 
 def test_sentinel_dir_follows_default_state_dir(make_project) -> None:

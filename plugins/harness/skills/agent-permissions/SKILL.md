@@ -21,8 +21,9 @@ When a user pastes a permission-prompt block, they want the prompt eliminated fo
 
 ## Tool Stack Asymmetry (Read First)
 
-The harness plugin ships the hooks and wires them in its own `hooks/hooks.json` (each runs through
-`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/hooks/<hook>.py"`).
+The harness plugin ships the hooks and wires them in its own `hooks/hooks.json`: the three Bash hooks run as
+one command through the dispatcher `hooks/bash_pretool.py` (see below), and the other hooks each through
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/hooks/<hook>.py"`.
 
 | Tool | Discipline hook | Allow-shapes hook | Settings matcher |
 |---|---|---|---|
@@ -34,6 +35,12 @@ The `hooks.json` matchers route each hook to its tool; `approve_python_c.py` and
 also check `tool_name` as a second guard, while `bash_discipline.py`, `bash_allow_shapes.py` and
 `guard_commit_txt.py` rely on the matcher alone. Allow-shapes hooks never block;
 they either emit `allow` or stay silent. A deny from `bash_discipline.py` wins over any allow.
+
+The three Bash hooks are registered as one command, `bash_pretool.py`, which decides all three in one
+interpreter launch and prints the merged result (a deny first, then an allow, else nothing). Each of the
+three files still runs on its own and carries its own `decide(payload)`; a change to one hook's rules
+belongs in that file, and a new Bash hook is added to the dispatcher and to `COMPOSED` in
+`tests/contract/test_hooks_json_paths.py`.
 
 ## Process (Mandatory)
 
@@ -66,6 +73,7 @@ flowchart TD
 5. **Test (pipe)**: feed a synthesized payload on stdin:
    `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/hooks/<hook>.py" <<< '{"tool_name":"PowerShell","cwd":"<project>","tool_input":{"command":"..."}}'`.
    Confirm `permissionDecision: "allow"` JSON for the new shape; silent `rc=0` for deferred shapes; `permissionDecision: "deny"` for discipline violations.
+   For Bash, also pipe the payload to `hooks/bash_pretool.py`, the registered command, to confirm the merged decision (deny over allow).
 6. **Live-verify** with one subagent on the cheapest model. Dispatch with: the new shape, a regression that should still prompt, and one control. **Subagents must cancel (not approve) any prompt and report PROMPT.** Absence of PROMPT for the new shape = success.
 7. **Record the shape** wherever the project keeps its permissions notes (memory index or docs): append it to the handled-shapes list for its tool. Update on every meaningful shape addition, even allowlist-only ones.
 8. **Don't commit.** The developer commits and pushes; finish with the list of changed files.
@@ -103,7 +111,8 @@ All of these mean: stop, re-read this skill, follow the process.
 
 ## Files
 
-- Hooks: `${CLAUDE_PLUGIN_ROOT}/hooks/{bash_discipline,bash_allow_shapes,powershell_allow_shapes,approve_python_c,guard_commit_txt}.py`
+- Hooks: `${CLAUDE_PLUGIN_ROOT}/hooks/{bash_pretool,bash_discipline,bash_allow_shapes,powershell_allow_shapes,approve_python_c,guard_commit_txt}.py`
+  (`bash_pretool.py` is the registered Bash entry point; it runs the three Bash hooks)
 - Hook wiring: `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`
 - Allowlist (single source of truth): `<project>/.claude/settings.json` (+ `settings.local.json`) and the user settings directory
 - Project opt-ins: `<project>/.claude/harness.json` (`auto_approve_python_c`); plugin options `bash_discipline`, `inject_rules`

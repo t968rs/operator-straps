@@ -34,7 +34,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import List, Optional, Sequence, Tuple
+from typing import Any, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -59,24 +59,33 @@ _ROUTED_PYTEST_RE = re.compile(r'^"([^"]+)"\s+-m\s+pytest(?=\s|$)(.*)$', re.DOTA
 _BARE_PYTEST_FORMS = ("pytest", "py.test", "python -m pytest", "python3 -m pytest")
 
 
+def decide(payload: Any) -> Optional[str]:
+    """The allow output when every sub-command of a recognized shape is allowlisted, else None."""
+    tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
+    cmd = tool_input.get("command", "") if isinstance(tool_input, dict) else ""
+    interpreters = configured_interpreters()
+    subs = command_subcommands(cmd, interpreters) if isinstance(cmd, str) and cmd else None
+    if subs is None:
+        return None
+    patterns = load_allow_patterns(payload, "Bash")
+    if not all(is_allowed(s, patterns, interpreters) for s in subs):
+        return None
+    return json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse", "permissionDecision": "allow",
+        "permissionDecisionReason": (
+            "shell construct; every internal command is allowlisted or a read-only builtin"
+        ),
+    }})
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, UnicodeDecodeError):
         return 0
-    cmd = (payload.get("tool_input") or {}).get("command", "") if isinstance(payload, dict) else ""
-    interpreters = configured_interpreters()
-    subs = command_subcommands(cmd, interpreters) if isinstance(cmd, str) and cmd else None
-    if subs is None:
-        return 0
-    patterns = load_allow_patterns(payload, "Bash")
-    if all(is_allowed(s, patterns, interpreters) for s in subs):
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse", "permissionDecision": "allow",
-            "permissionDecisionReason": (
-                "shell construct; every internal command is allowlisted or a read-only builtin"
-            ),
-        }}))
+    output = decide(payload)
+    if output:
+        print(output)
     return 0
 
 
