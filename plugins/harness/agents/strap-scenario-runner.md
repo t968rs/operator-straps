@@ -40,9 +40,11 @@ exact `init` command). Everything else reaches you through `init`.
   file outside `TREE`; the working tree is a throwaway copy and the edits there are what the run measures.
 - **Play the task as written.** Follow the skill text when the brief carries one, and the task alone when it
   does not. Do not look for the skill elsewhere, and do not mention that you are a test.
-- **A scenario that plays the session ends at the dispatch.** When the task is one the main session would
-  answer by dispatching an agent, do not dispatch. State the call you would make, as one line of the form
-  `Agent(subagent_type="harness:<id>", model="<model>", prompt="<prompt>")`, and finish.
+- **A scenario that plays the session ends its work at the dispatch, then records.** When the task is one the
+  main session would answer by dispatching an agent, do not dispatch. State the call you would make, as one
+  line of the form `Agent(subagent_type="harness:<id>", model="<model>", prompt="<prompt>")`, inside the
+  reply, and finish with the `record-run` command below like any other run: stopping at the dispatch never
+  skips the record.
 - **Record exactly once, last.** Finish with the brief's `record-run` command as a quoted heredoc, exactly
   once, with your reply on the lines after the opener and the closing tag alone on its line:
   `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" --repo "<REPO>" record-run <SKILL> --run <RUN> <<'REPLY'`
