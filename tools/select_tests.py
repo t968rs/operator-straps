@@ -11,7 +11,12 @@ A test file is selected when any of these holds:
   ``tests/`` directory holding a ``_``-prefixed helper (reached through ``sys.path.insert``) and the
   importing file's own directory;
 - its source names a changed or deleted file: the basename, or for a ``.py`` file the bare module name. This
-  covers hooks and scripts that tests load by path instead of by import;
+  covers hooks and scripts that tests load by path instead of by import. A non-``.py`` basename that other
+  files share (``SKILL.md``, ``README.md``) counts only with its anchor: the source must also name, as a
+  whole word, the nearest folder above the file that no other file of that basename has at the same height
+  (``pr-sum`` for ``plugins/harness/skills/pr-sum/SKILL.md``); for a shared name at the repo root, a line
+  holding the basename must also name a root or repo (``REPO_ROOT / "README.md"``). When no folder tells the
+  files apart, the basename alone counts;
 - its code walks a tree (calls matching ``rglob(``, ``.glob(``, ``iglob(``, ``iterdir(``, ``.walk(`` other
   than ``ast.walk(``, ``copytree(``, ``scandir(`` or ``listdir(``; comments and docstrings do not count) and
   a changed or deleted path sits under one of the directories its module-level literal ``WALK_ROOTS``
@@ -23,13 +28,15 @@ A changed or deleted non-``.py`` file under ``plugins/`` or ``tools/`` also coun
 ``.py`` file there whose code names its basename in a string literal (a module that reads the data file by
 path); docstrings and comments do not count, since a module that only describes ``plugin.json`` would
 otherwise pull every importer of it into the run. The same holds for a non-``.py`` file under ``tests/`` and
-every ``_``-prefixed helper module under ``tests/``.
+every ``_``-prefixed helper module under ``tests/``. A shared basename needs its anchor here too, except in a
+module under the data file's own folder, which can reach the file through ``Path(__file__)``.
 
 Anything the rules cannot judge selects everything: a shared file (conftest, pyproject, the workflow, this
 script), a deleted ``.py`` file, a path with characters outside ``[A-Za-z0-9_./-]``, a test or helper that
 does not parse, or a diff that cannot be read. Those escalations cost CI time, never coverage. Under-selection
 remains possible: a test that reaches a file through a path built at runtime, without spelling the file name
-out, is skipped on the pull request, and only the full run on push to ``main`` catches it after the merge.
+(and, for a shared basename, its anchor) out, is skipped on the pull request, and only the full run on push
+to ``main`` catches it after the merge.
 
 Writes ``selected-tests.txt`` and ``ruff-files.txt`` (one path per line) under ``--out-dir`` (default
 ``<root>/.artifacts``), prints the plan as JSON and, when ``GITHUB_OUTPUT`` is set, appends
@@ -62,6 +69,7 @@ PLUGIN_PREFIXES = ("plugins/", ".claude-plugin/")
 TREE_WALK = re.compile(r"\brglob\(|\.glob\(|\biglob\(|\biterdir\(|(?<!\bast)\.walk\(|\bcopytree\("
                        r"|\bscandir\(|\blistdir\(")
 WALK_MARKER = "WALK_ROOTS"
+ROOT_NAME = re.compile(r"root|repo", re.IGNORECASE)
 DEFAULT_PYTHONPATH = ("plugins/harness/lib", "tests")
 CONFTEST = "tests/conftest.py"
 SKIP_DIRS = frozenset({"node_modules", "__pycache__", ".git", ".venv"})
@@ -166,17 +174,59 @@ def closure(root: Path, starts: Sequence[str], roots: Sequence[str],
     return seen
 
 
-def mentions(text: str, path: str) -> bool:
-    """Whether a test's source names ``path``: its basename, or for ``.py`` the bare module name."""
+def basename_index(root: Path) -> Dict[str, List[str]]:
+    """Basename to repo paths for every file of the tree outside ``SKIP_DIRS``."""
+    index: Dict[str, List[str]] = {}
+    for here, dirs, files in os.walk(root):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        rel_dir = Path(here).relative_to(root).as_posix()
+        for name in files:
+            index.setdefault(name, []).append(name if rel_dir == "." else f"{rel_dir}/{name}")
+    return index
+
+
+def name_anchor(path: str, index: Dict[str, List[str]]) -> Optional[str]:
+    """What a source must name besides the basename of a non-``.py`` ``path`` other files share: the nearest
+    folder name that no other file of that basename has at the same height, or ``""`` for a file at the
+    repo root. None keeps the plain basename rule: a unique basename, or no folder tells the files apart."""
+    *dirs, name = path.split("/")
+    others = [p.split("/")[:-1] for p in index.get(name, []) if p != path]
+    if name.endswith(".py") or not others:
+        return None
+    if not dirs:
+        return ""
+    for height in range(1, len(dirs) + 1):
+        if all(len(o) < height or o[-height] != dirs[-height] for o in others):
+            return dirs[-height]
+    return None
+
+
+def name_anchors(changed: Sequence[str], index: Dict[str, List[str]]) -> Dict[str, str]:
+    """``name_anchor`` of each changed path that has one."""
+    found = {c: name_anchor(c, index) for c in changed}
+    return {c: a for c, a in found.items() if a is not None}
+
+
+def _names_anchor(text: str, name: str, anchor: str) -> bool:
+    """Whether ``text`` names the folder ``anchor`` as a whole word; for ``""``, whether a line holding
+    ``name`` also names a root or repo (``REPO_ROOT / "README.md"``)."""
+    if anchor:
+        return re.search(rf"(?<![\w-]){re.escape(anchor)}(?![\w-])", text) is not None
+    return any(ROOT_NAME.search(line.replace(name, "")) for line in text.splitlines() if name in line)
+
+
+def mentions(text: str, path: str, anchor: Optional[str] = None) -> bool:
+    """Whether a source names ``path``: its basename, or for ``.py`` the bare module name. With an
+    ``anchor`` from ``name_anchor``, the basename counts only when ``_names_anchor`` holds as well."""
     name = path.rsplit("/", 1)[-1]
     if name in text:
-        return True
+        return anchor is None or _names_anchor(text, name, anchor)
     if name.endswith(".py"):
         return re.search(rf"(?<!\w){re.escape(name[:-3])}(?!\w)", text) is not None
     return False
 
 
-def _why(rel: str, text: str, deps: Set[str], changed: Sequence[str],
+def _why(rel: str, text: str, deps: Set[str], changed: Sequence[str], anchors: Dict[str, str],
          walk: Callable[[], Optional[str]]) -> Optional[str]:
     """The first rule that selects test ``rel``, else None; the walk rule runs last, only when needed."""
     if rel in changed:
@@ -184,7 +234,7 @@ def _why(rel: str, text: str, deps: Set[str], changed: Sequence[str],
     hit = next((c for c in changed if c in deps), None)
     if hit:
         return f"imports {hit}"
-    hit = next((c for c in changed if mentions(text, c)), None)
+    hit = next((c for c in changed if mentions(text, c, anchors.get(c))), None)
     if hit:
         return f"names {hit}"
     return walk()
@@ -304,39 +354,49 @@ def code_strings(text: str) -> str:
                      if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in prose)
 
 
-def _readers_of(root: Path, data: Sequence[str], rels: Sequence[str]) -> List[str]:
+def _inside(rel: str, data: str) -> bool:
+    """Whether module ``rel`` sits under the folder of ``data``: it can reach the file through
+    ``Path(__file__)``, so the basename alone counts."""
+    folder = data.rpartition("/")[0]
+    return bool(folder) and rel.startswith(f"{folder}/")
+
+
+def _readers_of(root: Path, data: Sequence[str], rels: Sequence[str], anchors: Dict[str, str]) -> List[str]:
     """The files in ``rels`` whose code names one of the changed ``data`` files in a string literal."""
     found: List[str] = []
     if not data:
         return found
     for rel in rels:
         text = code_strings((root / rel).read_text(encoding="utf-8", errors="replace"))
-        if any(mentions(text, d) for d in data):
+        if any(mentions(text, d, None if _inside(rel, d) else anchors.get(d)) for d in data):
             found.append(rel)
     return found
 
 
-def data_readers(root: Path, changed: Sequence[str], index: Dict[str, List[str]]) -> List[str]:
+def data_readers(root: Path, changed: Sequence[str], index: Dict[str, List[str]],
+                 anchors: Dict[str, str]) -> List[str]:
     """Indexed ``.py`` files whose source names a changed non-``.py`` file under ``plugins/``/``tools/``, and
     test helpers whose source names a changed non-``.py`` file under ``tests/``."""
     data = [c for c in changed if not c.endswith(".py")]
     script_data = [c for c in data if c.startswith(("plugins/", "tools/"))]
     helper_data = [c for c in data if c.startswith("tests/")]
     scripts = sorted(r for rels in index.values() for r in rels)
-    return [*_readers_of(root, script_data, scripts), *_readers_of(root, helper_data, helper_files(root))]
+    return [*_readers_of(root, script_data, scripts, anchors),
+            *_readers_of(root, helper_data, helper_files(root), anchors)]
 
 
 def affected_tests(root: Path, changed: Sequence[str]) -> Tuple[List[str], List[str]]:
     """``(selected test files, one reason line each)``; raises Unresolvable when a file does not parse."""
     roots, cache, index = import_bases(root), {}, path_loadable(root)
-    changed = [*changed, *data_readers(root, changed, index)]
+    anchors = name_anchors(changed, basename_index(root))
+    changed = [*changed, *data_readers(root, changed, index, anchors)]
     non_docs = any(not c.startswith("docs/") for c in changed)
     chosen: List[str] = []
     reasons: List[str] = []
     for rel in list_tests(root):
         text = (root / rel).read_text(encoding="utf-8", errors="replace")
         deps = closure(root, [rel, CONFTEST, *named_scripts(text, index)], roots, cache)
-        why = _why(rel, text, deps, changed, lambda: walk_reason(text, changed, non_docs))
+        why = _why(rel, text, deps, changed, anchors, lambda: walk_reason(text, changed, non_docs))
         if why:
             chosen.append(rel)
             reasons.append(f"{rel}: {why}")

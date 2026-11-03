@@ -52,17 +52,23 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   validation and the mod tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
   changed, when its import closure holds a changed file (the closure follows the `pythonpath` entries and every
   `tests/` folder holding a `_`-prefixed helper), when its source names a changed or deleted file (the
-  basename, or a `.py` file's bare module name), or when it walks a tree that holds a changed path. A test whose
+  basename, or a `.py` file's bare module name), or when it walks a tree that holds a changed path. A
+  non-`.py` basename other files share (`SKILL.md`, `README.md`, `plugin.json`) counts only with its anchor:
+  the source must also name the nearest folder that tells the file apart (`pr-sum` for
+  `plugins/harness/skills/pr-sum/SKILL.md`), and a shared name at the repo root must sit on a line that names
+  a root or repo (`REPO_ROOT / "README.md"`). A test whose
   code walks (`rglob`, `.glob`, `iglob`, `iterdir`, `.walk` other than `ast.walk`, `copytree`, `scandir`,
   `listdir`) declares the repo folders it walks in a module-level literal
   `WALK_ROOTS = ("plugins/harness/skills/",)` and runs only for changes under them; `WALK_ROOTS = ()` marks a
   test that walks only temporary folders. A walking test without a valid marker runs on every change outside
   `docs/`, and `tests/scripts/test_select_tests.py` fails until it gets one. A data file under `plugins/` or
   `tools/` counts as a change to each `.py` file there that names it in a code string literal (docstrings and
-  comments do not count, so a module that reads a data file must spell its name in code). Ruff files and the plugin jobs are
+  comments do not count, so a module that reads a data file must spell its name in code; a shared name needs
+  its anchor there too, unless the module sits under the data file's folder). Ruff files and the plugin jobs are
   selected from the same diff. Shared files such as `tests/conftest.py` and deleted `.py` files force
   everything; pushes to `main` run it all. A test that reaches a file by a route the script cannot see (a path
-  built at runtime) must spell that file name out in its source: otherwise the pull request skips it and only
+  built at runtime) must spell that file name, and a shared name's anchor, out in its source: otherwise the
+  pull request skips it and only
   the full run after the merge to `main` catches the break.
   Preview a diff with `python tools/select_tests.py --base main`.
 

@@ -266,6 +266,84 @@ def test_data_file_built_in_an_fstring_selects_its_reader(sel: ModuleType, tree:
     assert "tests/lib/test_solo.py" in _tests(sel, tree, "plugins/harness/config/defaults.json")
 
 
+_TWO_SKILLS = {
+    "plugins/harness/skills/other/SKILL.md": "# other\n",
+    "tests/skills/test_demo_skill.py": 'SKILL = ROOT / "skills" / "demo" / "SKILL.md"\n',
+    "tests/skills/test_other_skill.py": 'SKILL = ROOT / "skills" / "other" / "SKILL.md"\n',
+}
+
+
+@pytest.mark.parametrize("how", ["changed", "deleted"])
+def test_shared_name_selects_only_tests_naming_its_folder(sel: ModuleType, tree: Path, how: str) -> None:
+    _write(tree, _TWO_SKILLS)
+    path = "plugins/harness/skills/demo/SKILL.md"
+    got = _tests(sel, tree, path) if how == "changed" else _tests(sel, tree, deleted=[path])
+    assert "tests/skills/test_demo_skill.py" in got
+    assert "tests/skills/test_other_skill.py" not in got
+
+
+def test_folder_name_matches_as_a_whole_word(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        "plugins/harness/skills/demo-two/SKILL.md": "# two\n",
+        "tests/skills/test_two.py": 'SKILL = ROOT / "skills" / "demo-two" / "SKILL.md"\n',
+    })
+    assert "tests/skills/test_two.py" not in _tests(sel, tree, "plugins/harness/skills/demo/SKILL.md")
+
+
+def test_unique_name_keeps_the_basename_rule(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        "plugins/harness/skills/demo/notes.json": "{}\n",
+        "tests/skills/test_notes.py": "NOTES = 'notes.json'\n",
+    })
+    assert "tests/skills/test_notes.py" in _tests(sel, tree, "plugins/harness/skills/demo/notes.json")
+
+
+def test_shared_name_with_no_telling_folder_keeps_the_basename_rule(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        "plugins/demo/README.md": "# demo\n",
+        "tests/fixtures/plugins/demo/README.md": "# copy\n",
+        "tests/skills/test_readme.py": "README = 'README.md'\n",
+    })
+    assert "tests/skills/test_readme.py" in _tests(sel, tree, "plugins/demo/README.md")
+
+
+def test_shared_root_name_needs_a_root_name_on_its_line(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        "README.md": "# repo\n",
+        "plugins/harness/README.md": "# harness\n",
+        "tests/contract/test_root_readme.py": 'TEXT = (REPO_ROOT / "README.md").read_text()\n',
+        "tests/contract/test_root_readme_call.py": 'TEXT = _text(repo_root, "README.md")\n',
+        "tests/scripts/test_fixture_readme.py": 'FILES = {"README.md": "x\\n"}\n',
+    })
+    got = _tests(sel, tree, "README.md")
+    assert "tests/contract/test_root_readme.py" in got
+    assert "tests/contract/test_root_readme_call.py" in got
+    assert "tests/scripts/test_fixture_readme.py" not in got
+
+
+def test_module_naming_a_shared_name_reads_only_a_file_whose_folder_it_names(
+        sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        **_TWO_SKILLS,
+        "plugins/harness/lib/harness_lib/solo.py": 'FALLBACK = "SKILL.md"\n',
+        "plugins/harness/lib/harness_lib/base.py": 'SKILL = ("skills", "demo", "SKILL.md")\n',
+    })
+    got = _tests(sel, tree, "plugins/harness/skills/other/SKILL.md")
+    assert "tests/lib/test_solo.py" not in got
+    assert "tests/lib/test_mid.py" not in got
+    assert "tests/lib/test_mid.py" in _tests(sel, tree, "plugins/harness/skills/demo/SKILL.md")
+
+
+def test_module_inside_the_folder_reads_a_shared_name_by_basename(sel: ModuleType, tree: Path) -> None:
+    _write(tree, {
+        **_TWO_SKILLS,
+        "plugins/harness/skills/demo/commands/run.py": 'SKILL = Path(__file__).parents[1] / "SKILL.md"\n',
+        "tests/skills/test_run.py": "SCRIPT = 'run.py'\n",
+    })
+    assert "tests/skills/test_run.py" in _tests(sel, tree, "plugins/harness/skills/demo/SKILL.md")
+    assert "tests/skills/test_run.py" not in _tests(sel, tree, "plugins/harness/skills/other/SKILL.md")
+
+
 def test_relative_imports_are_followed(sel: ModuleType, tree: Path) -> None:
     _write(tree, {
         "plugins/harness/lib/harness_lib/rel_pkg.py": "from . import solo\n",

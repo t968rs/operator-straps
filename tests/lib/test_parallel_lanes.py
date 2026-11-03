@@ -1,6 +1,7 @@
 """Unit tests of ``harness_lib.parallel_lanes``: plan checks, overlap, waves, probes, staging, rendering."""
 from __future__ import annotations
 
+import re
 from typing import Dict, List, Optional
 
 import pytest
@@ -347,12 +348,72 @@ def test_probe_prompt_exercises_one_call_per_tool() -> None:
     text = pl.render_probe_prompt(tools, "C:/wt/p2-a", "src/a.py")
     assert "Read the first 5 lines of src/a.py" in text
     assert "C:/wt/p2-a/.p2_probe" in text
-    assert 'git -C "C:/wt/p2-a" status --short' in text
-    assert "pytest --version" in text
+    assert "`git status -h`" in text
+    assert "`pytest --help`" in text
     assert "exercise Glob once with a harmless call" in text
     assert "delete" in text.lower()
-    ending = "For each action report SUCCESS or BLOCKED (describe what appeared). Do nothing else."
+    ending = ("For each action report SUCCESS or BLOCKED (describe what appeared), or the status the step "
+              "names. Do nothing else.")
     assert text.rstrip().endswith(ending)
+
+
+def _steps(text: str) -> List[str]:
+    """The numbered step lines of a probe prompt, without their numbers."""
+    return [line.split(". ", 1)[1] for line in text.splitlines() if re.match(r"\d+\. ", line)]
+
+
+def test_probe_prompt_writes_the_probe_file_before_editing_it() -> None:
+    steps = _steps(pl.render_probe_prompt(("Bash(git add *)", "Edit", "Read", "Write"), "C:/wt/a", None))
+    heads = [step.split(":", 1)[0] for step in steps]
+    assert heads.index("Write") < heads.index("Edit")
+    assert steps[-1].startswith("Delete C:/wt/a/.p2_probe")
+
+
+# The tool lists of the two lanes of the 2026-11-02 run (issue 181).
+_RUN_TOOLS = (
+    "Read", "Write", "Edit", "Grep", "Glob", "Bash(python -m pytest *)", "Bash(python -m ruff *)",
+    "Bash(python tools/select_tests.py *)", "Bash(gh run *)", "Bash(gh issue view *)",
+    "Bash(git add *)", "Bash(git commit *)", "Bash(git -C *)",
+)
+
+
+@pytest.mark.parametrize("rule, command", [
+    ("Bash(git add *)", "git add -h"),
+    ("Bash(git commit *)", "git commit -h"),
+    ("Bash(git -C *)", 'git -C "C:/wt/a" status --short'),
+    ("Bash(git *)", "git --version"),
+    ("Bash(git status:*)", "git status -h"),
+    ("Bash(python -m pytest *)", "python -m pytest --help"),
+    ("Bash(python -m ruff *)", "python -m ruff --help"),
+    ("Bash(gh run *)", "gh run --help"),
+    ("Bash(gh issue view *)", "gh issue view --help"),
+])
+def test_probe_bash_step_runs_a_command_under_the_rule_prefix(rule: str, command: str) -> None:
+    steps = _steps(pl.render_probe_prompt((rule,), "C:/wt/a", None))
+    assert steps == [f"Bash: run `{command}` (rule {rule})."]
+    prefix = rule[5:-1].rstrip("*").rstrip(":").strip()
+    assert command.startswith(prefix)
+
+
+@pytest.mark.parametrize("rule", ["Bash(python tools/select_tests.py *)", "Bash(./deploy.sh *)",
+                                  "Bash(npm test)", "Bash(git -C E:/repo *)"])
+def test_probe_bash_step_without_a_harmless_form_reports_untested(rule: str) -> None:
+    steps = _steps(pl.render_probe_prompt((rule,), "C:/wt/a", None))
+    assert steps == [f"Bash: no harmless command is known for rule {rule}; run nothing and report UNTESTED."]
+
+
+def test_probe_prompt_for_the_two_lane_run_lists_each_bash_rule_once() -> None:
+    steps = _steps(pl.render_probe_prompt(tuple(sorted(_RUN_TOOLS)), "C:/wt/a", "src/a.py"))
+    bash = [step for step in steps if step.startswith("Bash:")]
+    rules = [tool for tool in _RUN_TOOLS if tool.startswith("Bash(")]
+    assert len(bash) == len(rules) == len(set(bash))
+    for rule in rules:
+        assert sum(rule in step for step in bash) == 1
+
+
+def test_probe_prompt_merges_rules_with_the_same_prefix() -> None:
+    steps = _steps(pl.render_probe_prompt(("Bash(git add *)", "Bash(git add:*)"), "C:/wt/a", None))
+    assert steps == ["Bash: run `git add -h` (rules Bash(git add *), Bash(git add:*))."]
 
 
 def test_probe_prompt_without_read_target_and_without_write_tools() -> None:
