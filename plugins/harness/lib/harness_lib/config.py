@@ -9,10 +9,11 @@ from __future__ import annotations
 import json
 import posixpath
 import re
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
+
+from harness_lib.project import run_git
 
 CONFIG_REL = Path(".claude") / "harness.json"
 _CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
@@ -463,6 +464,6 @@ def _bucket(b: Dict[str, Any]) -> BucketRule:
 def _origin_head(root: Path) -> Optional[str]:
     """Branch name ``refs/remotes/origin/HEAD`` points at, or None."""
     argv = ["git", "-C", str(root), "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]
-    done = subprocess.run(argv, capture_output=True, text=True)
+    done = run_git(argv)
     ref = done.stdout.strip()
     return ref.split("/", 1)[1] if done.returncode == 0 and "/" in ref else None

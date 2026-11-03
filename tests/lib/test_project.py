@@ -1,13 +1,16 @@
 """Contract tests for harness_lib.project: project root, plugin root, schema resolution."""
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 
 import pytest
 
 from conftest import git
+from harness_lib import config as config_module
+from harness_lib import project as project_module
 from harness_lib.config import load_config
-from harness_lib.project import main_worktree, plugin_root, project_root, schema_path
+from harness_lib.project import main_worktree, plugin_root, project_root, run_git, schema_path
 
 
 def test_project_root_from_subdirectory(make_project) -> None:
@@ -68,3 +71,45 @@ def test_schema_path_prefers_project_pinned_copy(make_project) -> None:
 def test_schema_path_falls_back_to_plugin(make_project) -> None:
     cfg = load_config(make_project())
     assert schema_path("PR_REVIEW.schema.json", cfg) == plugin_root() / "schemas" / "PR_REVIEW.schema.json"
+
+
+def _recording_run(calls: list):
+    def fake_run(argv, **kwargs):
+        calls.append(kwargs)
+        return subprocess.CompletedProcess(argv, 1, "", "")
+
+    return fake_run
+
+
+def test_run_git_closes_stdin_and_bounds_the_wait(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A git child must not inherit the caller's stdin nor wait forever."""
+    calls: list = []
+    monkeypatch.setattr(project_module.subprocess, "run", _recording_run(calls))
+    run_git(["git", "status"])
+    assert calls[0]["stdin"] == subprocess.DEVNULL
+    assert isinstance(calls[0]["timeout"], (int, float)) and calls[0]["timeout"] > 0
+
+
+def test_run_git_timeout_surfaces_as_oserror(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A hung git becomes an OSError subclass, the failure the hooks already report and skip."""
+
+    def hang(argv, **kwargs):
+        raise subprocess.TimeoutExpired(argv, kwargs["timeout"])
+
+    monkeypatch.setattr(project_module.subprocess, "run", hang)
+    with pytest.raises(OSError, match="timed out"):
+        run_git(["git", "status"])
+
+
+@pytest.mark.parametrize("caller", [
+    lambda root: project_module._git_toplevel(root),
+    lambda root: project_module.main_worktree(root),
+    lambda root: config_module._origin_head(root),
+])
+def test_every_git_lookup_goes_through_run_git(make_project, monkeypatch: pytest.MonkeyPatch, caller) -> None:
+    """Project, main-worktree and origin/HEAD lookups all carry the closed stdin and the timeout."""
+    root = make_project()
+    calls: list = []
+    monkeypatch.setattr(project_module.subprocess, "run", _recording_run(calls))
+    caller(root)
+    assert calls and all(c["stdin"] == subprocess.DEVNULL and c["timeout"] > 0 for c in calls)

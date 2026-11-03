@@ -361,3 +361,47 @@ def test_missing_git_exits_zero_with_notice(make_project, tmp_path: Path) -> Non
     assert result.returncode == 0, f"stderr={result.stderr!r}"
     assert "Traceback" not in result.stderr
     assert "git not found" in result.stderr
+
+
+_SLOW_HOOK_SECONDS = 15
+
+
+def _timed_hook(payload: Dict[str, Any]) -> subprocess.CompletedProcess:
+    """Run the hook with a hard timeout so a regression fails fast instead of hanging the suite."""
+    return subprocess.run([sys.executable, str(_HOOK_PY)], input=json.dumps(payload), capture_output=True,
+                          text=True, env=_hook_env(), check=False, timeout=_SLOW_HOOK_SECONDS)
+
+
+@pytest.mark.parametrize(
+    "blob",
+    ["a" * 200_000, "docs/PLANS/" + "a" * 200_000, "docs/PLANS/" * 20_000],
+    ids=["plain", "one-dir-hit", "many-dir-hits"],
+)
+def test_long_whitespace_free_token_does_not_stall_the_hook(make_project, blob: str) -> None:
+    """A Bash command holding a plan directory, ``.json`` and one huge whitespace-free token finishes
+    promptly: the target scan is linear in the command, not quadratic or worse in a token."""
+    project = make_project()
+    result = _timed_hook(_bash_payload(project, f"echo {blob} > out.json"))
+    assert result.returncode == 0, f"stderr={result.stderr!r}"
+
+
+def test_long_token_does_not_hide_a_real_plan_path(make_project) -> None:
+    project = make_project()
+    bad = _write(project / "docs" / "PLANS" / "bad_ActionPlan.json", _INVALID_PLAN)
+    result = _timed_hook(_bash_payload(project, f"echo {'a' * 200_000} && cat {bad}"))
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "ActionPlan SCHEMA VIOLATION" in result.stderr
+
+
+@pytest.mark.parametrize("command", [
+    "cat {bad}",
+    "cat '{bad}'",
+    "cat \"{bad}\" | head",
+    "cat docs/PLANS/bad_ActionPlan.json",
+])
+def test_bash_path_token_shapes_still_validate(make_project, command: str) -> None:
+    project = make_project()
+    bad = _write(project / "docs" / "PLANS" / "bad_ActionPlan.json", _INVALID_PLAN)
+    result = _timed_hook(_bash_payload(project, command.format(bad=bad)))
+    assert result.returncode == 1, f"stderr={result.stderr!r}"
+    assert "ActionPlan SCHEMA VIOLATION" in result.stderr

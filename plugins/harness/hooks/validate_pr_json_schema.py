@@ -33,7 +33,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Pattern, Tuple, Union
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
@@ -48,6 +48,10 @@ _REVIEW = ("PR_REVIEW.schema.json", "PR_REVIEW")
 # A SHA-shaped token (7-40 hex chars) at the start of resolution evidence. Layer 3 requires one so a
 # closeout draft landing before the fixer commits cannot clear the sentinel early.
 _SHA_EVIDENCE_PATTERN = re.compile(r"^[0-9a-f]{7,40}( |$)")
+
+# Bash command tokens split on whitespace and quotes; a longer token is no filesystem path.
+_TOKEN_SPLIT = re.compile(r"[\s'\"]+")
+_MAX_TOKEN_CHARS = 4096
 
 # Fallback when the schema shape moves; the schema's const is the single source.
 _PENDING_FALLBACK = "pending - to be populated in Phase 4"
@@ -86,9 +90,49 @@ def _dirs_alternation(cfg: HarnessConfig) -> str:
     return _alternation((cfg.artifacts.plans, cfg.artifacts.reviews))
 
 
-def _bash_target_pattern(cfg: HarnessConfig) -> Pattern[str]:
-    """Path tokens under the plan or review directory, either slash style, with any prefix."""
-    return re.compile(r"[^\s'\"]*" + _dirs_alternation(cfg) + r"[/\\][^\s'\"]+?\.json")
+def _dir_prefixes(cfg: HarnessConfig) -> List[str]:
+    """``<dir>/`` in POSIX form for the plan and review directories."""
+    return [rel.replace("\\", "/").strip("/") + "/" for rel in (cfg.artifacts.plans, cfg.artifacts.reviews)]
+
+
+def _next_json_end(norm: str, pos: int, prefixes: List[str]) -> int:
+    """End offset of the first ``.json`` at or after ``pos`` that follows a directory prefix and at least
+    one further character, else -1. Linear in the token per ``.json`` occurrence."""
+    end = norm.find(".json", pos)
+    while end >= 0:
+        if any(norm.rfind(prefix, pos, end - 1) >= 0 for prefix in prefixes):
+            return end + len(".json")
+        end = norm.find(".json", end + 1)
+    return -1
+
+
+def _token_targets(token: str, prefixes: List[str]) -> List[str]:
+    """Non-overlapping path candidates ending in ``.json`` under a directory prefix, either slash style."""
+    norm = token.replace("\\", "/")
+    out: List[str] = []
+    pos = 0
+    while pos < len(token):
+        end = _next_json_end(norm, pos, prefixes)
+        if end < 0:
+            break
+        out.append(token[pos:end])
+        pos = end
+    return out
+
+
+def _bash_target_tokens(command: str, cfg: HarnessConfig) -> List[str]:
+    """Path tokens of a Bash command that name a ``.json`` under the plan or review directory.
+
+    Splits on whitespace and quotes, then scans each token with ``str`` searches: the cost stays linear in
+    the command, where a backtracking pattern over a long whitespace-free token is quadratic or worse.
+    A token over ``_MAX_TOKEN_CHARS`` is no path and is skipped.
+    """
+    prefixes = _dir_prefixes(cfg)
+    out: List[str] = []
+    for token in _TOKEN_SPLIT.split(command):
+        if token and len(token) <= _MAX_TOKEN_CHARS and ".json" in token:
+            out.extend(_token_targets(token, prefixes))
+    return out
 
 
 def _existing_candidate(token: str, cfg: HarnessConfig) -> Optional[str]:
@@ -113,7 +157,7 @@ def _resolve_file_paths(tool_input: Dict[str, Any], tool_response: Dict[str, Any
     if not isinstance(command, str) or not command:
         return []
     out: List[str] = []
-    for token in _bash_target_pattern(cfg).findall(command):
+    for token in _bash_target_tokens(command, cfg):
         resolved = _existing_candidate(token, cfg)
         if resolved and resolved not in out:
             out.append(resolved)
