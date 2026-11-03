@@ -1,10 +1,10 @@
 ---
 name: strap-skills
-description: Use when writing a new harness skill or changing an existing one and its behavior must be proven test-first, with failing baselines before passing greens, instead of asserted. Triggers on "strap a skill", "write a harness skill", "edit the skill test-first", "strap-skills". Classifies each behavior as mechanical (models, API, driver, pytest) or judgment (prose, tested by randomly drawn subagent scenarios) and freezes the skill only when every gate holds.
+description: Use when writing a new skill or changing an existing one, either a project skill in a repository's .claude/skills/ backed by models and API modules in its folder or a harness plugin skill, and its behavior must be proven test-first, with failing baselines before passing greens, instead of asserted. Triggers on "strap a skill", "write a project skill", "write a harness plugin skill", "edit the skill test-first", "strap-skills". Classifies each behavior as mechanical (models, API, driver, pytest) or judgment (prose, tested by randomly drawn subagent scenarios) and freezes the skill only when every gate holds.
 argument-hint: "<name> [--edit] [--judge] [-- <guidance>]"
 ---
 
-# strap-skills: a harness skill, written test-first
+# strap-skills: a skill, written test-first
 
 Arguments: `$ARGUMENTS`
 
@@ -15,8 +15,9 @@ this run, applied to the session's own authoring (which behaviors to cover, a fi
 preference). It never reaches a command, and no dispatch carries it: the runner and the judge measure the
 skill, and an instruction they would not see in real use changes what they measure.
 
-The skill under test ships in the harness plugin: a SKILL.md, plus `<skill>_models.py`, `<skill>_api.py`, a
-driver, agents and references where its behaviors earn them, and a contract test. `strap.py` owns the gate. It
+The skill under test is a SKILL.md, plus `<skill>_models.py`, `<skill>_api.py`, a driver, agents and
+references where its behaviors earn them, and a contract test; the Profiles section says where each lands.
+`strap.py` owns the gate. It
 keeps the spec at `<artifacts.plans>/strap/<name>/SkillSpec.json`, with planned tests under `tests/` and
 scenario fixtures under `fixtures/` in the same folder, draws the scenarios, builds the throwaway trees, records
 the runs and refuses to freeze a skill whose tests did not run. Each rule below closes a way the gate could be
@@ -24,6 +25,28 @@ gamed; a skill that passes a gamed gate teaches nothing.
 
 Every command below is written out in full and runs with the Bash tool from the project checkout. Every refusal
 is one `problem:` line per defect and exit 1.
+
+## Profiles
+
+`new` records one profile in the spec, from the project's `strap.target` key in `.claude/harness.json`; a later
+change of the key never re-targets an open spec.
+
+| | `project` (the default) | `harness` |
+|---|---|---|
+| SKILL.md | `<skills_dir>/<name>/SKILL.md` | `<plugin>/skills/<name>/SKILL.md` |
+| Models, API, driver | `<skills_dir>/<name>/scripts/<snake>_models.py`, `<snake>_api.py`, `<snake>.py` | `<plugin>/lib/harness_lib/<snake>_{models,api}.py`, `<plugin>/scripts/<snake>.py` |
+| Role agents | `<agents_dir>/<role>.md` | `<plugin>/agents/<role>.md` |
+| API heredoc | `harness-skill-api --repo "${CLAUDE_PROJECT_DIR}" --file "${CLAUDE_SKILL_DIR}/scripts/<snake>_api.py" <name>` | the plugin's `skill_api.py` launcher with the module name |
+| Lint | frontmatter, folder name, `Use when` description, no first or second person, `${CLAUDE_SKILL_DIR}` paths exist | frontmatter, folder name, `Use when` description, no first or second person, plus the harness house rules (argument pointer, `${CLAUDE_PLUGIN_ROOT}` paths, `harness:` agents, `harness_lib` modules, hpy-only fences, no vendor names) |
+| Templates | `templates/project/` | `templates/` |
+
+`skills_dir` defaults to `.claude/skills/` and `agents_dir` to `.claude/agents/`. A project skill needs the
+harness plugin enabled at run time (it puts `harness-skill-api` on the Bash PATH) and, for `red` and `freeze`,
+`HARNESS_PY` pointing at an interpreter with `pydantic>=2`, `jsonschema`, `referencing`, `pytest` and the
+project's own test dependencies: the gate runs the planned tests under it. In a project skill's run brief
+(its SKILL.md and role agent), `${CLAUDE_SKILL_DIR}` points at the skill folder of the arm's source and
+`${CLAUDE_PROJECT_DIR}` at the scenario tree; the API heredoc's `--repo` carries the latter, so a scenario's
+writes land where `record-run` looks.
 
 ## Rules
 
@@ -71,7 +94,16 @@ is one `problem:` line per defect and exit 1.
    (API section): `add_behavior` with `new_behavior(...)`.
    - **Mechanical:** give each behavior its planned pytest nodes (`new_test(node, red)`, `red` the exception
      the node raises before the code exists) and write each planned test file at
-     `<artifacts.plans>/strap/<name>/tests/<repo path>`.
+     `<artifacts.plans>/strap/<name>/tests/<repo path>`. A project skill's modules sit in its folder's
+     `scripts/`, which nothing puts on `sys.path`: each planned test loads them by path with a few inlined
+     lines that raise `ImportError` when the file is absent, append the folder to `sys.path` (the API imports
+     its models as a sibling) and register the module in `sys.modules` under its own stem before running it
+     (pydantic resolves postponed annotations there), returning the registered module when the stem is
+     already loaded. A test and the API then share one models module, so a models object the test builds
+     passes the API's `isinstance` checks; an alias name would load a second copy of every class. The
+     scaffolded contract test's `_load` is that idiom. A module missing at
+     the start commit then fails `red` as the planned `ImportError` (a bare load raises `FileNotFoundError`,
+     which `red` rejects).
    - **Judgment:** set `type` and add at least two scenarios with `add_scenario` and `new_scenario(...)`; a
      `discipline` scenario carries three or more distinct pressures. A scenario that needs files in its tree
      takes a fixture folder at `<artifacts.plans>/strap/<name>/fixtures/<SC-n or fixture name>/`. A scenario
@@ -105,10 +137,11 @@ is one `problem:` line per defect and exit 1.
    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" scaffold <name>
    ```
 
-   It renders each planned part that does not exist from `${CLAUDE_PLUGIN_ROOT}/skills/strap-skills/templates/`
-   (SKILL.md and the contract test always; the models and API modules when a behavior is mechanical, and for
-   an `--edit` spec only when they already exist), records the parts in the spec and prints one `wrote:` line
-   per file and a `bump:` line naming the plugin manifest. Add every other deliverable (a driver, an agent, a
+   It renders each planned part that does not exist from the profile's templates under
+   `${CLAUDE_PLUGIN_ROOT}/skills/strap-skills/templates/` (SKILL.md and the contract test always; the models
+   and API modules when a behavior is mechanical, and for an `--edit` spec only when they already exist) at the
+   profile's paths, records the parts in the spec and prints one `wrote:` line per file; a harness skill also
+   gets a `bump:` line naming the plugin manifest. Add every other deliverable (a driver, an agent, a
    reference, a new models module for an edit) with `add_part`, so the content hash covers it. A listed part
    that is not a deliverable comes off with `remove_part`; a part `scaffold` plans (the SKILL.md, the contract
    test, a new skill's models and API modules) stays. `freeze` refuses a listed part whose file is missing.
@@ -205,7 +238,7 @@ is one `problem:` line per defect and exit 1.
     command refuses the spec until the edit is reverted.
 
 13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,
-    and the `bump:` line from step 5. The developer commits.
+    and the `bump:` line from step 5 when one printed. The developer commits.
 
 ## API
 
@@ -244,6 +277,9 @@ PY
 ```
 
 `record_run` is not bound: only the runner's `record-run` call stores a reply.
+
+Part paths follow the Profiles table: the example's paths fit a harness-profile skill, while a project
+skill's agent part is, for example, `.claude/agents/memo-reviewer.md`.
 
 ## Judgment
 

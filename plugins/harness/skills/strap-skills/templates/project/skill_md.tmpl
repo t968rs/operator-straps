@@ -1,0 +1,46 @@
+---
+name: $name
+description: "$description"
+argument-hint: "<document name> [-- <guidance>]"
+---
+
+# $name: $title
+
+Arguments: `$$ARGUMENTS`
+
+Split them at the first standalone `--` token. Before it: the document name. After it: guidance for this run,
+applied to the session's own writing. It never reaches a command: no command below carries the guidance.
+
+TODO(fill): one paragraph on what the skill produces, who reads it, and why its rules exist.
+
+Every command below is written out in full and runs with the Bash tool from the project checkout. Every API
+refusal is one `problem:` line and exit 1. The API runs through `harness-skill-api`, which the harness plugin
+puts on the Bash PATH.
+
+## Rules
+
+$api_rule
+- **A refusal is information.** Read the `problem:` line, fix the input it names and run the same heredoc
+  again. Never work around a refusal by changing the file another way.
+- TODO(fill): the skill's own rules, one bold claim per bullet.
+
+## Steps
+
+1. **Resolve the document name** from the arguments before the `--` token. TODO(fill): how the name is chosen
+   when none is given.
+$api_step
+3. TODO(fill): the skill's next step.
+4. **Hand off.** Give the developer the document path the API printed and anything left unresolved.
+
+$api_section
+## Judgment
+
+| Situation | Call |
+|---|---|
+| A `problem:` line names a field | Fix that field in the heredoc and run it again; never edit the document by hand. |
+| The arguments name no document | Ask the developer for the name; never invent one. |
+| TODO(fill): a case the steps leave open | TODO(fill): the call and its reason. |
+
+## Related
+
+$related
