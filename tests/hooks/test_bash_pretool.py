@@ -13,7 +13,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Set, Tuple
 
 import pytest
 
@@ -66,6 +66,7 @@ def _run(script: Path, stdin: str, env: Dict[str, str]) -> subprocess.CompletedP
 
 
 def _decision(done: subprocess.CompletedProcess) -> Optional[str]:
+    """The permission decision in ``done``'s output; ``json.loads`` rejects several concatenated documents."""
     assert done.returncode == 0, done.stderr
     if not done.stdout.strip():
         return None
@@ -82,14 +83,24 @@ def _merged(project: Path, command: str, env: Dict[str, str]) -> Optional[str]:
     return max(outcomes, key=_RANK.__getitem__)
 
 
-def _mismatches(project: Path, env: Dict[str, str]) -> List[str]:
-    found = []
+def _compare(project: Path, env: Dict[str, str]) -> Tuple[List[str], Set[Optional[str]]]:
+    """Mismatches between the dispatcher and the merged standalone hooks, plus every merged outcome seen.
+
+    The dispatcher's output goes through ``_decision``, so a run that prints more than one JSON document
+    fails here as well.
+    """
+    found, outcomes = [], set()
     for command in CORPUS:
         want = _merged(project, command, env)
+        outcomes.add(want)
         got = _decision(_run(DISPATCHER, _payload(project, command), env))
         if got != want:
             found.append(f"{command!r}: standalone hooks merge to {want}, dispatcher gave {got}")
-    return found
+    return found, outcomes
+
+
+def _mismatches(project: Path, env: Dict[str, str]) -> List[str]:
+    return _compare(project, env)[0]
 
 
 def test_dispatcher_exists() -> None:
@@ -97,8 +108,25 @@ def test_dispatcher_exists() -> None:
 
 
 def test_dispatcher_matches_the_three_hooks_merged(make_project, tmp_path: Path) -> None:
+    """Equal outcomes, with a control that the corpus reaches a deny, an allow and no decision."""
     project = make_project(config={"auto_approve_python_c": True}, files={".claude/settings.json": _SETTINGS})
-    assert _mismatches(project, _env(project, tmp_path)) == []
+    found, outcomes = _compare(project, _env(project, tmp_path))
+    assert found == []
+    assert outcomes == {"deny", "allow", None}
+
+
+def test_python_c_approval_reaches_the_dispatcher(make_project, tmp_path: Path) -> None:
+    """``python -c`` is allowed only by the approval hook, so the dispatcher's approval return runs."""
+    one_liner = 'python -c "print(1)"'
+    on = make_project(config={"auto_approve_python_c": True}, files={".claude/settings.json": _SETTINGS})
+    on_env = _env(on, tmp_path)
+    assert _decision(_run(HOOKS / "approve_python_c.py", _payload(on, one_liner), on_env)) == "allow"
+    assert _decision(_run(HOOKS / "bash_allow_shapes.py", _payload(on, one_liner), on_env)) is None
+    assert _decision(_run(DISPATCHER, _payload(on, one_liner), on_env)) == "allow"
+    off = make_project(files={".claude/settings.json": _SETTINGS})
+    off_env = _env(off, tmp_path)
+    assert _decision(_run(HOOKS / "approve_python_c.py", _payload(off, one_liner), off_env)) is None
+    assert _decision(_run(DISPATCHER, _payload(off, one_liner), off_env)) is None
 
 
 def test_dispatcher_matches_with_python_c_approval_off(make_project, tmp_path: Path) -> None:
@@ -124,16 +152,6 @@ def test_a_deny_still_wins_over_an_allow_the_shapes_hook_would_give(make_project
     chained = _payload(project, "N=3; git status")
     assert _decision(_run(HOOKS / "bash_allow_shapes.py", chained, env)) == "allow"
     assert _decision(_run(DISPATCHER, chained, env)) == "deny"
-
-
-def test_dispatcher_prints_at_most_one_json_object(make_project, tmp_path: Path) -> None:
-    project = make_project(config={"auto_approve_python_c": True}, files={".claude/settings.json": _SETTINGS})
-    env = _env(project, tmp_path)
-    for command in CORPUS:
-        done = _run(DISPATCHER, _payload(project, command), env)
-        assert done.returncode == 0, done.stderr
-        if done.stdout.strip():
-            json.loads(done.stdout)  # one document, not several concatenated
 
 
 @pytest.mark.parametrize("stdin", ["", "not json", "[]", "null", "{}", '{"tool_input": {"command": 5}}'])
