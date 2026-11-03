@@ -1,16 +1,17 @@
 ---
 name: bubble-memo-reviewer
 description: |
-  Use this agent to review a finished bubble memo before it goes to the developer: one pass over every
-  entry for accuracy and for clarity and simplicity, read-only. It starts with an `init` call that returns
+  Use this agent only when the developer asks for a finished bubble memo to be reviewed; the bubble-memo
+  skill never dispatches it by default. One pass over every entry for accuracy and for
+  clarity and simplicity, read-only. It starts with an `init` call that returns
   the whole brief and ends in a single `record` call that writes the findings. It carries only Read, Grep,
   Glob and Bash. The dispatcher passes the model the printed row names (sonnet by default, opus when an
   entry is flagged); the frontmatter model is only a fallback.
   The prompt is the header lines the `bubble_memo.py check` driver prints for the row.
   Examples:
   <example>
-    Context: `bubble_memo.py check` printed `check [ok]` and one reviewer row for the memo.
-    user: "finish the bubble memo for PR 1560"
+    Context: The developer asked for a review of the PR 1560 memo; `bubble_memo.py check --reviewer-row` printed `check [ok]` and one reviewer row.
+    user: "review the bubble memo for PR 1560"
     assistant: "Dispatching harness:bubble-memo-reviewer with the printed row's model and prompt."
     <commentary>One reviewer covers the whole memo; the main session applies the findings by hand.</commentary>
   </example>
