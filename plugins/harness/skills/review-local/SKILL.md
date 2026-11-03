@@ -109,10 +109,12 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
    sentinel `.phase5_pending_local-<label>`, which the `closeout` write clears. Any failed check is a STOP.
 6. **Bubble audit, then waves.** For each undispositioned issue, bubble it only when (a) two or more
    reasonable fixes exist and choosing needs domain knowledge the session lacks, (b) the fix is outside the
-   range's scope, or (c) it is a convention call with no precedent in the codebase:
-   `bubble --pr local-<label> <ID> --classification <C> --reason "<R>"`. A `fix` list with several options is
-   not a bubble: pick the safest, a repair before a revert. Then `waves --pr local-<label>` and dispatch each
-   wave's rows in one message
+   range's scope, (c) it is a convention call with no precedent in the codebase, (d) its only fix is a
+   removal on a ground outside the closed defect list of the pr-review skill (bubble
+   `architectural_ambiguity`), or (e) its only fix changes a commit message or the PR description (bubble
+   `out_of_scope`, naming that text): `bubble --pr local-<label> <ID> --classification <C> --reason "<R>"`.
+   A `fix` list with several options is not a bubble: pick the safest, a repair before a revert. Then
+   `waves --pr local-<label>` and dispatch each wave's rows in one message
    (`Agent(subagent_type="harness:pr-fixer", model=<row model>, prompt=<row prompt>)`), each later wave after
    the previous one returns. After the last wave, `bubbles --pr local-<label>` lists the fixers' bubbles; audit
    them the same way. Surviving bubbles are the one pause: list each id with its classification, reason and

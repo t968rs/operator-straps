@@ -1,0 +1,349 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 186,
+  "pr_title": "Fix(pr-review): grade a missing mention as minor, repair before revert",
+  "branch": "1114-BUG-pr-review",
+  "base_branch": "main",
+  "base_sha": "008f05113e4c0538bdb0589b9f2546e3dbd6a18d",
+  "head_sha": "88599a72137fca6ed914dc6b23870252e5a94304",
+  "review_date": "2026-11-02",
+  "verdict": "READY TO MERGE - 11 of 11 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 68,
+    "deletions": 7,
+    "files_changed": 9
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (sonnet)",
+    "docs (opus)",
+    "overall (opus)",
+    "copilot_review (external)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0186/pr186_20261103T010416Z/findings/tests.json",
+    "docs/_scratch/pr_review/0186/pr186_20261103T010416Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0186/pr186_20261103T010416Z/findings/docs.json",
+    "docs/_scratch/pr_review/0186/pr186_20261103T010416Z/findings/overall.json",
+    "docs/_scratch/pr_review/0186/pr186_20261103T010416Z/findings/copilot_review.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The three new tests call the real `rules_section`, `_fixer_rules` and `_issue_block` and assert on their rendered text, with no stubbed helpers, so they are not mock-chain wiring tests.",
+    "The new tests sit beside the existing prose-contract tests (`test_fixer_rules_cover_failed_and_out_of_scope`) and follow the same `_normalized` convention, so line wrapping in the source does not break them.",
+    "Every literal asserted in the new tests matches the code at the head: `PROSE_GAP_RULE`, the repair-before-revert fixer rule and the `_issue_block` option header.",
+    "PROSE_GAP_RULE is one constant shared by SEVERITY_RULES, so every reviewer slot receives the identical grading text and the test compares against the constant.",
+    "The new fixer rules sit after the rules[:4] split point, so the bubble questions still follow the 'Bubble an issue only when...' lead-in; the slice logic in _fixer_rules is unaffected.",
+    "The repair-before-revert wording is repeated consistently in the issue block, the fixer rules and pr-fixer.md, and the PR adds tests for each of the three code sites.",
+    "The reviewer rule in pr-reviewer.md:47-51, the orchestrator clause and the grading rule in operating_rules.md:162-165 state the same three parts (minor only, no revert option, code defect graded on its own) with matching wording, so no surface contradicts another.",
+    "pr-fixer.md:46-55 matches the generated fixer brief (pr_review.py:1845-1851) rule for rule, including the `architectural_ambiguity` and `out_of_scope` classifications, and the rules[:4] split keeps the three bubble questions directly under their lead-in line.",
+    "operating_rules.md keeps the code-defect carve-out explicit, so the minor regrade cannot be used to bury a real defect sitting in an unmentioned hunk.",
+    "`PROSE_GAP_RULE` is a single constant that both `SEVERITY_RULES` and the test use, so the reviewer brief and its assertion cannot drift apart.",
+    "The parametrized reviewer-rules test covers source, docs and CI paths, which shows the clause is unconditional, unlike `TEST_DESIGN_CLAUSE`, which is gated on test paths.",
+    "The new fixer rules go after index 3, so `rules[:4] + questions + rules[4:]` still puts the three bubble questions straight after their lead-in line.",
+    "The bubble classifications the new rules name (`architectural_ambiguity`, `out_of_scope`) match `BUBBLE_QUESTIONS`. The wording in pr-team-fixer.md and pr-team-orchestrator.md matches each agent's own vocabulary (uppercase classes, `suggestion` field).",
+    "The same rule lands in all layers together: reviewer brief, pr-reviewer agent, orchestrator prompt clause, operating_rules regrade step and both fixer agents. The harness version is bumped as the release rule requires."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "pr-team planner has no route for the prose-gap findings the orchestrator now requests",
+        "file": "plugins/harness/agents/pr-team-fixer.md",
+        "files": [
+          "plugins/harness/agents/pr-team-fixer.md",
+          "plugins/harness/agents/pr-team-orchestrator.md"
+        ],
+        "lines": "213-219",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "pr-team-orchestrator.md:240-245 now makes every reviewer report a missing commit-message or PR-description mention as a minor finding whose suggestion updates that text. pr-team-fixer.md Step 3 (lines 154-219) gained only the revert rule (line 215-217); unlike pr-fixer.md:54-55 and the waves brief (pr_review.py:1850-1851), it has no rule that an issue whose only fix changes a commit message or the PR description edits no file and bubbles `out_of_scope`. Such an issue passes the three-question audit as MECHANICAL (question 2 asks about module scope, not about non-file text), is batched into a fixer prompt, and that fixer cannot meet the Step 5 contract `EDITED: (file count, MUST be >= 1)` (line 249): it either fails (a spurious `fixer_failed` bubble at closeout) or edits some file to satisfy the count. The two pipelines now disagree on the same finding class this PR introduces.\n\nAlso (overall): pr-fixer.md and the generated fixer brief both say an issue whose only fix changes a commit message or the PR description edits no file and is bubbled `out_of_scope`. The pr-team-fixer.md audit adds only the revert clause, so the team path has no guidance for that case. The two fixer paths diverge on the same issue shape.",
+        "fix": [
+          "Add a bullet under the misclassification patterns in plugins/harness/agents/pr-team-fixer.md (after line 217): \"An issue whose only fix changes a commit message or the PR description edits no file: classify `OUT_OF_SCOPE`, naming that text in the reason.\"",
+          "Alternatively extend question 2 of the Step 3 audit (line 200-201) to count a fix that changes only a commit message or the PR description as outside the PR's scope (`OUT_OF_SCOPE`).",
+          "Add a bullet after the new revert bullet: \"An issue whose only fix changes a commit message or the PR description edits no file: classify `OUT_OF_SCOPE`, naming that text in the reason.\""
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Fixer brief's all-three-no line omits the revert and commit-text bubble exceptions",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "tests/scripts/test_pr_review_driver.py"
+        ],
+        "lines": "1873-1874",
+        "reviewer": "copilot_review",
+        "fix_kind": "mechanical",
+        "summary": "Copilot review comment on pr_review.py: the generated brief keeps a conflicting 'all three are no' restriction. Confirmed: _fixer_rules appends '  When all three are no, bubble only net-new work beyond Phase 5 scope (`needs_follow_up`).' (pr_review.py:1873) after the three questions, while the revert rule and the commit-text rule below require bubbling `architectural_ambiguity` / `out_of_scope` in cases where all three answers are no. The lead-in was fixed (M2); this closing line was not.",
+        "fix": [
+          "In _fixer_rules (plugins/harness/scripts/pr_review.py:1873) change the appended line to '  When all three are no, bubble only net-new work beyond Phase 5 scope (`needs_follow_up`), or under the revert and commit-text rules below.' and add an assertion for that exact wording to test_fixer_rules_repair_before_revert in tests/scripts/test_pr_review_driver.py."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Rule 4.5 audit rejects the bubbles the fixer revert and commit-text rules require",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/agents/pr-team-fixer.md"
+        ],
+        "lines": "860-861",
+        "reviewer": "copilot_review",
+        "fix_kind": "mechanical",
+        "summary": "Copilot review comment on pr_review.py (parent audit, pr-review/SKILL.md:851-869): a fixer bubble raised by the revert rule (only option a removal on a ground outside the closed defect list) or the commit-text rule (only fix changes a commit message or the PR description) can answer no to all three Rule 4.5 questions, and Order step 4 sends audit failures back to a `waves --ids` wave, where the fixer bubbles again. Confirmed: SKILL.md:860-861 reads 'If all three answers are NO, bubble only if the work is genuinely net-new ... Otherwise: pick the safest ... and resolve' with no commit-text case; the revert bullet sits only in the misclassification list. pr-team-fixer.md:206-207 has the same 'If all three answers are NO' gap.",
+        "fix": [
+          "In plugins/harness/skills/pr-review/SKILL.md Rule 4.5, replace the 'If all three answers are NO, ...' paragraph with: 'If all three answers are NO, two cases still bubble: an issue whose only fix is a removal on a ground outside the closed defect list (the revert bullet below) is bubbled `architectural_ambiguity`, and an issue whose only fix changes a commit message or the PR description is bubbled `out_of_scope`, naming that text. Otherwise bubble only if the work is genuinely net-new and exceeds Phase 5 mechanical scope (`needs_follow_up`); else pick the safest, most mechanical option, a repair before a revert, and resolve.' In plugins/harness/agents/pr-team-fixer.md lines 206-207, add the same two cases before 'Otherwise: classify MECHANICAL', as `ARCHITECTURAL_AMBIGUITY` and `OUT_OF_SCOPE`."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "review-local Step 6 audit rejects the revert and commit-text bubbles the shared fixer must raise",
+        "file": "plugins/harness/skills/review-local/SKILL.md",
+        "lines": "110-116",
+        "reviewer": "copilot_review",
+        "fix_kind": "mechanical",
+        "summary": "Copilot review comment on review-local/SKILL.md: Step 6 bubbles only under (a)-(c) and audits fixer bubbles the same way, so a removal-only issue on a ground outside the closed defect list, or a commit-text-only fix, meets none of them and is re-dispatched to the shared pr-fixer, which must bubble it again without edits. Confirmed at review-local/SKILL.md:110-116.",
+        "fix": [
+          "In plugins/harness/skills/review-local/SKILL.md Step 6, extend the condition list after (c) with: '(d) its only fix is a removal on a ground outside the closed defect list of the pr-review skill (bubble `architectural_ambiguity`), or (e) its only fix changes a commit message or the PR description (bubble `out_of_scope`, naming that text)', and keep the lines within the file's 110-character wrap."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "_fixer_rules docstring describes only the bubble questions",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "1827",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The docstring reads 'Fixer operating rules, including the three bubble questions.' The function now also emits the revert-guard rule and the prose-only-fix bubble rule, so the docstring no longer lists what the function builds. Related: the pr-review SKILL.md Phase 4 bubble audit (lines 850-861) still states the same three questions as the full list, so the main-session audit has no entry for fixer bubbles raised by the revert rule.",
+        "fix": [
+          "Update the docstring at pr_review.py:1827 to 'Fixer operating rules: the three bubble questions, the repair-before-revert guard and the prose-only-fix bubble.'"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Fixer brief says bubble only on the three questions, then adds two bubble triggers outside them",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/agents/pr-fixer.md",
+          "tests/scripts/test_pr_review_driver.py",
+          "plugins/harness/agents/pr-team-fixer.md"
+        ],
+        "lines": "1843-1851",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_fixer_rules still opens with 'Bubble an issue only when one of these answers yes; otherwise pick the safest option and fix it' followed by the three BUBBLE_QUESTIONS and the closing 'when all three are no, bubble only net-new work (needs_follow_up)'. The new rules placed right after them (lines 1845-1851) bubble in cases the questions do not cover: a removal whose only ground is a missing commit-message or PR-description mention goes to `architectural_ambiguity` (question 1 requires two reasonable resolutions AND missing domain knowledge, which that case does not state), and a prose-only fix goes to `out_of_scope` whether or not question 2 is yes. A fixer reading the brief top to bottom gets 'only when' and then two unlisted exceptions. The plugin agent doc pr-fixer.md already carries the exception ('or under the revert rule below'); the generated brief does not name it in its lead-in, so the two texts disagree.\n\nAlso (overall): `_fixer_rules` keeps the line \"Bubble an issue only when one of these answers yes; otherwise pick the safest option and fix it:\" right before the three questions, then adds two new rules after them that create other bubble triggers (`architectural_ambiguity` for a revert grounded only on a missing mention, `out_of_scope` for a fix that only edits commit or PR text). The brief now contradicts itself. pr-fixer.md was updated to add \"or under the revert rule below\", but the brief the fixer actually reads was not.\n\nAlso (overall): The new rule (\"Never revert or delete code the change under review added unless the issue names a code-level defect (broken, unreachable, unsafe, contradicting a contract)\") is written to stop reverts made only because the PR text leaves a change out, but it covers any deletion. A finding such as \"this new helper duplicates an existing one, delete it and call the existing one\" or \"drop the leftover debug print\" fits none of the four listed defects, so the fixer bubbles it `architectural_ambiguity` and pr-team-fixer classifies it non-mechanical. That adds developer pauses for routine repairs.",
+        "fix": [
+          "Reword the lead-in at pr_review.py:1843-1844 to 'Bubble an issue only when one of these answers yes, or under the revert and commit-message rules below; otherwise pick the safest option and fix it:' (keep the rules[:4]/rules[4:] split so the new rules still follow the questions).",
+          "Move the two new rules above the lead-in rule and drop the 'only when' wording conflict by naming them as exceptions there.",
+          "Change the line to \"Bubble an issue only when one of these answers yes, or under the revert and commit-text rules below; otherwise pick the safest option and fix it:\" and extend `test_fixer_rules_repair_before_revert` to assert the new wording.",
+          "Scope the bar to removals whose only ground is the missing mention or an unclear choice, for example: \"Never revert or delete code the change under review added on the ground that the commit messages or PR description omit it\", and keep the repair-before-revert preference for the rest.",
+          "Add duplication and leftover debug or dead artifacts to the list of defects that justify a removal, in the brief, pr-fixer.md and pr-team-fixer.md together."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "pr-review Rule 4.5 audit lacks the repair-before-revert default the sibling skills gained",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/skills/review-local/SKILL.md"
+        ],
+        "lines": "861,867-869",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The PR adds \"a repair before a revert\" to the main-session bubble audit in review-local/SKILL.md:114 and to pr-team-fixer.md:214-217, but the pr-review skill's own audit (pr-review/SKILL.md:861 \"pick the safest, most mechanical option and resolve\" and the misclassification bullet at 867-869) is unchanged, with no revert-on-omission rule. The fixer brief enforces the rule at wave time, so behavior is covered, but the main session running pr-review audits by a weaker rule than review-local, which delegates to the same procedure.",
+        "fix": [
+          "In plugins/harness/skills/pr-review/SKILL.md line 861 append \", a repair before a revert\", and add a misclassification bullet after line 869: a revert or deletion of code the PR added resolves only a code-level defect (broken, unreachable, unsafe, contradicting a contract); when the only ground is that the commit messages or PR description omit the change, bubble `architectural_ambiguity`."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "review-local Step 6 line overruns the file's wrap width",
+        "file": "plugins/harness/skills/review-local/SKILL.md",
+        "lines": "114",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "review-local/SKILL.md:114 now runs to about 135 characters while the surrounding list item wraps at about 110 (the project's line length); the inserted phrase was not rewrapped.\n\nAlso (overall): The edited line (\"not a bubble: pick the safest, a repair before a revert. Then `waves --pr local-<label>` and dispatch each wave's rows in one message\") runs to about 135 characters. The rest of the numbered step wraps near 110. It is cosmetic, but it breaks the file's line-width convention.",
+        "fix": [
+          "Rewrap Step 6 so line 114 ends after \"a repair before a revert.\" and \"Then `waves --pr local-<label>` and dispatch each wave's rows in one message\" moves to the start of the next line, reflowing lines 115-118 to stay within 110 characters.",
+          "Rewrap step lines 113-117 to the 110-character width the surrounding text uses."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Reviewer-rules test repeats literals already implied by the PROSE_GAP_RULE check",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "1533-1540",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "In `test_reviewer_rules_grade_a_missing_mention_as_docs` the first assertion checks the whole `PROSE_GAP_RULE` constant against the rendered rules, which makes the following four literal-substring assertions redundant if the constant is unchanged. They are the only guard against someone weakening the constant itself, because the first assertion compares the constant to itself. The parametrization over three paths exercises nothing path-dependent: the rule sits in the unconditional SEVERITY_RULES, so one slot would do. Both points are polish.",
+        "fix": [
+          "Keep the literals and add a comment saying they pin the constant's wording, since the constant check alone is tautological.",
+          "Keep one parametrized case that has a test file and one that does not, to show the rule is emitted whether or not the TEST_DESIGN_CLAUSE is present."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "architectural_ambiguity assertion in the fixer-rules test cannot fail",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "files": [
+          "tests/scripts/test_pr_review_driver.py",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "1545",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`test_fixer_rules_repair_before_revert` asserts that \"`architectural_ambiguity`\" is in the joined fixer rules. `_fixer_rules` always appends the BUBBLE_QUESTIONS, and questions 1 and 3 already contain that token, so the assertion passes even if the new repair-before-revert rule is removed or stops naming it. The other two assertions in the same test do pin the new text.",
+        "fix": [
+          "Pin the token inside the new sentence, for example assert \"bubble the id `architectural_ambiguity` and edit nothing for it\" in rules.",
+          "Or drop the assertion and rely on the \"apply the repair\" and \"Never revert or delete code\" checks."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Stray whitespace edit to _URL assignment",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "1555",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The diff rewrites `_URL = f\"...\"` as `_URL =f\"...\"` (missing space after `=`). It is unrelated to the PR's purpose and violates PEP 8 E225. Ruff's configured selection (`E4`, `E7`, `E9`, `F`, `E501`) does not include E225, so lint passes and the typo goes unnoticed. `_URL` is a fold-test constant that no new test touches.\n\nAlso (overall): The PR changes `_URL = f\"...\"` to `_URL =f\"...\"`, an unrelated edit that drops the space after `=`. Ruff's selected rules (E4, E7, E9, F, E501) do not include E225, so lint passes, but the line now departs from the file's style and adds noise to the diff for no reason.",
+        "fix": [
+          "Restore the line to `_URL = f\"https://github.com/o/r/pull/{_PR}#pullrequestreview-77\"`.",
+          "Restore the original line: `_URL = f\"https://github.com/o/r/pull/{_PR}#pullrequestreview-77\"`."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 186 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"88599a72137fca6ed914dc6b23870252e5a94304\",\"headRefName\":\"1114-BUG-pr-review\",\"headRefOid\":\"88599a72137fca6ed914dc6b23870252e5a94304\",\"last_sha\":\"88599a72137fca6ed914dc6b23870252e5a94304\",\"mergeCommit\":null,\"number\":186,\"state\":\"OPEN\",\"title\":\"Fix(pr-review): grade a missing mention as minor, repair before revert\",\"url\":\"https://github.com/t968rs/operator-straps/pull/186\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1114-BUG-pr-review",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1114-BUG-pr-review",
+        "head_ref_name": "1114-BUG-pr-review",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "e73064581d22da7e04427209e45a466036d2a37b",
+        "head_sha": "9bdb7f5fefbfa5ddd9c49d46fae37a9541b8f215",
+        "base_ancestor_command": "git merge-base --is-ancestor e73064581d22da7e04427209e45a466036d2a37b HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 9bdb7f5fefbfa5ddd9c49d46fae37a9541b8f215 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "9bdb7f5 (working-tree snapshot; developer commits) - _fixer_rules docstring now lists the three bubble questions, the repair-before-revert guard and the prose-only-fix bubble; pr-review SKILL.md Rule 4.5 audit now names the repair-before-revert default (line 861) and adds a revert-guard misclassification bullet (after the multiple-fix-options bullet), so the main-session audit covers fixer bubbles raised by the revert rule; the pr_review.py docstring is in the other part"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "9bdb7f5 (working-tree snapshot; developer commits) - kept the literal assertions and added a comment saying they pin PROSE_GAP_RULE's wording, since the constant check alone is tautological"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "9bdb7f5 (working-tree snapshot; developer commits) - assertion now pins the token inside the new sentence: 'bubble the id `architectural_ambiguity` and edit nothing for it'; pr_review.py: cited for the rule text, which already holds that sentence, so no edit needed"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "9bdb7f5 (working-tree snapshot; developer commits) - restored `_URL = f\"...\"` with the space after `=`"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "9bdb7f5 (working-tree snapshot; developer commits) - pr-review SKILL.md line 861 appends ', a repair before a revert' and a new misclassification bullet states that a revert or deletion of PR-added code resolves only a code-level defect, bubbling architectural_ambiguity when the only ground is omission from commit messages or the PR description"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "9bdb7f5 (working-tree snapshot; developer commits) - review-local SKILL.md Step 6 rewrapped so the edited phrase no longer overruns the wrap width; the 'Then waves --pr local-<label>' clause moves to the next line and the following lines reflow"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "9bdb7f5 (working-tree snapshot; developer commits) - pr-team-fixer.md Step 3 misclassification patterns: added bullet after the revert rule classifying an issue whose only fix changes a commit message or the PR description as OUT_OF_SCOPE, naming that text in the reason; orchestrator prose-gap clause (lines 240-245) already makes the finding a minor suggestion on that text, so the orchestrator needed no edit"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "9bdb7f5 (working-tree snapshot; developer commits) - Lead-in rule in _fixer_rules now reads 'Bubble an issue only when one of these answers yes, or under the revert and commit-text rules below; otherwise pick the safest option and fix it:' (rules[:4]/rules[4:] split kept); test_fixer_rules_repair_before_revert asserts the new wording; pr-fixer.md: already names the revert-rule exception at lines 47-49, no edit; pr-team-fixer.md: cited for the revert classification, wording unaffected by the lead-in fix, no edit"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "40a61b7 (working-tree snapshot; developer commits) - _fixer_rules closing line now reads 'or under the revert and commit-text rules below'; test_fixer_rules_repair_before_revert asserts the exact wording"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "40a61b7 (working-tree snapshot; developer commits) - Rule 4.5 'all three NO' paragraph now bubbles the revert-outside-closed-list case as architectural_ambiguity and the commit-text/PR-description-only case as out_of_scope; else needs_follow_up or repair-before-revert (SKILL.md Rule 4.5); pr-team-fixer.md classify block gains the same two cases before MECHANICAL"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-02",
+      "evidence": "40a61b7 (working-tree snapshot; developer commits) - review-local SKILL.md Step 6: added (d) removal on a ground outside the closed defect list (architectural_ambiguity) and (e) commit-message or PR-description-only fix (out_of_scope) to the bubble condition list; wrapped within 110 columns"
+    }
+  ]
+}

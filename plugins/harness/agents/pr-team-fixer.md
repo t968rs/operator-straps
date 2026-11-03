@@ -203,8 +203,11 @@ Before classifying ANY issue as a bubble-up, answer three explicit questions:
    the codebase has no clear precedent?** If yes: classify `ARCHITECTURAL_AMBIGUITY`
    (bubble-up). If no: continue.
 
-If all three answers are NO: classify `NEEDS_FOLLOW_UP` only when the fix is genuinely
-net-new work that exceeds Phase 5 mechanical scope. Otherwise: classify MECHANICAL.
+If all three answers are NO: two cases still bubble. An issue whose only fix is a removal on a ground
+outside the closed defect list (the revert bullet below) is classified `ARCHITECTURAL_AMBIGUITY`, and an
+issue whose only fix changes a commit message or the PR description is classified `OUT_OF_SCOPE`, naming
+that text. Otherwise: classify `NEEDS_FOLLOW_UP` only when the fix is genuinely net-new work that exceeds
+Phase 5 mechanical scope. Otherwise: classify MECHANICAL.
 
 Only bubble-up classifications enter `bubble_ups.json`.
 Misclassification patterns this audit blocks (PR #1224 worked example: 25 initial

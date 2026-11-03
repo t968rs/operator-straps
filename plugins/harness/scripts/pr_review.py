@@ -1871,7 +1871,7 @@ def _fixer_rules() -> List[str]:
              "issue still needs every part covered), unless another issue's accepted entry edited that file."]
     questions = [f"  {n}. {q}" for n, q in enumerate(BUBBLE_QUESTIONS, start=1)]
     questions.append("  When all three are no, bubble only net-new work beyond Phase 5 scope "
-                     "(`needs_follow_up`).")
+                     "(`needs_follow_up`), or under the revert and commit-text rules below.")
     return ["## Rules", ""] + [f"- {r}" for r in rules[:4]] + questions + [f"- {r}" for r in rules[4:]]
 
 

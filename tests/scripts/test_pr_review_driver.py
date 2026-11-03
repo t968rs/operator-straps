@@ -1548,6 +1548,8 @@ class TestPathsAndScope:
         assert "Any other ground for a removal" in rules and "right choice is unclear" not in rules
         assert "only fix changes a commit message or the PR description" in rules
         assert "answers yes, or under the revert and commit-text rules below; otherwise" in rules
+        assert ("When all three are no, bubble only net-new work beyond Phase 5 scope "
+                "(`needs_follow_up`), or under the revert and commit-text rules below.") in rules
 
     def test_removal_defects_are_a_closed_list(self, script: ModuleType) -> None:
         defects = _normalized(script.REMOVAL_DEFECTS)

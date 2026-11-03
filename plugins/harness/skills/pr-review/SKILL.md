@@ -857,8 +857,11 @@ bubble. For each candidate bubble, answer three explicit questions:
 3. **Does the fix require user judgment on an aesthetic or convention call where the codebase has no clear
    precedent?** If yes: bubble as `architectural_ambiguity`.
 
-If all three answers are NO, bubble only if the work is genuinely net-new and exceeds Phase 5 mechanical scope
-(`needs_follow_up`). Otherwise: pick the safest, most mechanical option, a repair before a revert, and resolve.
+If all three answers are NO, two cases still bubble: an issue whose only fix is a removal on a ground outside the
+closed defect list (the revert bullet below) is bubbled `architectural_ambiguity`, and an issue whose only fix changes
+a commit message or the PR description is bubbled `out_of_scope`, naming that text. Otherwise bubble only if the work
+is genuinely net-new and exceeds Phase 5 mechanical scope (`needs_follow_up`); else pick the safest, most mechanical
+option, a repair before a revert, and resolve.
 
 Survivors are recorded with `bubble <ID> --classification <C> --reason "<R>"` (an unknown id is a problem and leaves
 the file unchanged). Items that are NOT bubbled join the waves — through a `waves --ids` follow-up wave when a
