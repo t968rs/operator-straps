@@ -125,6 +125,24 @@ def test_hook_skips_paths_outside_artifact_dirs(make_project) -> None:
     assert "SCHEMA VIOLATION" not in result.stderr
 
 
+def test_hook_skips_non_plan_json_under_plans_dir(make_project) -> None:
+    """A strap ``SkillSpec.json`` lives under the plans directory but is not an ActionPlan."""
+    project = make_project(config={"artifacts": {"plans": "docs/plans"}})
+    spec = _write(project / "docs" / "plans" / "strap" / "demo" / "SkillSpec.json", {"frozen": {"x": 1}})
+    result = _run_hook(_write_payload(project, spec))
+    assert result.returncode == 0, f"stderr: {result.stderr!r}"
+    assert result.stderr == ""
+
+
+def test_bash_command_skips_non_plan_json_under_plans_dir(make_project) -> None:
+    """The Bash scan applies the same name test as the Write and Edit path."""
+    project = make_project(config={"artifacts": {"plans": "docs/plans"}})
+    _write(project / "docs" / "plans" / "strap" / "demo" / "SkillSpec.json", {"frozen": {"x": 1}})
+    result = _run_hook(_bash_payload(project, "cat docs/plans/strap/demo/SkillSpec.json"))
+    assert result.returncode == 0, f"stderr: {result.stderr!r}"
+    assert result.stderr == ""
+
+
 def test_hook_skips_non_review_json_under_reviews_dir(make_project) -> None:
     project = make_project()
     catalog = _write(project / "docs" / "PR_REVIEWS" / "Catalog.json", {"entries": []})

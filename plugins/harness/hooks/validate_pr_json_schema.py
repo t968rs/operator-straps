@@ -1,10 +1,11 @@
 """PostToolUse hook (Write|Edit|Bash): validate plan and review JSON artifacts against their schemas.
 
 Reads the hook payload from stdin and resolves the consuming project from its ``cwd``. A target is a
-``.json`` file under the project's configured ``artifacts.plans`` directory (``ActionPlan.schema.json``)
-or ``artifacts.reviews`` directory (``PR_REVIEW.schema.json``; only names passing
-``is_review_artifact_name``, so auxiliary files such as ``Catalog.json`` are skipped). Write/Edit
-payloads name the file; Bash payloads are scanned for artifact paths that exist on disk. Schemas
+``*_ActionPlan.json`` file under the project's configured ``artifacts.plans`` directory
+(``ActionPlan.schema.json``; only names passing ``is_plan_artifact_name``, so a strap ``SkillSpec.json``
+beside the plans is skipped) or a ``.json`` file under ``artifacts.reviews`` (``PR_REVIEW.schema.json``;
+only names passing ``is_review_artifact_name``, so auxiliary files such as ``Catalog.json`` are skipped).
+Write/Edit payloads name the file; Bash payloads are scanned for artifact paths that exist on disk. Schemas
 resolve through ``schema_path`` (a project-pinned copy first, else the plugin copy).
 
 Review targets get three further layers after the schema check:
@@ -69,12 +70,12 @@ def _rel_token(rel: str) -> str:
 
 def _target_kind(file_path: str, cfg: HarnessConfig) -> Optional[Tuple[str, str]]:
     """``(schema name, label)`` for a plan or review artifact path, else None."""
-    from harness_lib.validation.artifact_names import is_review_artifact_name
+    from harness_lib.validation.artifact_names import is_plan_artifact_name, is_review_artifact_name
 
     norm = "/" + file_path.replace("\\", "/").lstrip("/")
     if not norm.endswith(".json"):
         return None
-    if _rel_token(cfg.artifacts.plans) in norm:
+    if _rel_token(cfg.artifacts.plans) in norm and is_plan_artifact_name(Path(norm).name):
         return _PLAN
     if _rel_token(cfg.artifacts.reviews) in norm and is_review_artifact_name(Path(norm).name):
         return _REVIEW

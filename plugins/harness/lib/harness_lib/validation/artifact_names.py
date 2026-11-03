@@ -18,6 +18,18 @@ _LABEL_BODY = LABEL_PATTERN.strip("^$")
 REVIEW_ARTIFACT_PATTERN = re.compile(rf"^(\d{{4}}|{REVIEW_PREFIX}{_LABEL_BODY})_")
 SENTINEL_PREFIX = ".phase5_pending_"
 SENTINEL_GLOB = f"{SENTINEL_PREFIX}*"
+# Spelled out here, not imported from ``harness_lib.plan_doc.PLAN_SUFFIX``: that module pulls in pydantic and
+# the hooks keep their import cost low. A test pins the two equal.
+PLAN_ARTIFACT_SUFFIX = "_ActionPlan.json"
+
+
+def is_plan_artifact_name(name: str) -> bool:
+    """True iff ``name`` ends in ``_ActionPlan.json``, the plan file suffix.
+
+    Other JSON under the plans directory (a strap ``SkillSpec.json``, research data) is not an ActionPlan
+    and is never validated against its schema.
+    """
+    return name.endswith(PLAN_ARTIFACT_SUFFIX)
 
 
 def is_review_artifact_name(name: str) -> bool:
