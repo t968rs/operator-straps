@@ -11,6 +11,7 @@
   "todo": {
     "folder": "docs/TODO"
   },
+  "strap": {"target": "harness"},
   "commit_buckets": [
     {"bucket": "Planning", "prefixes": ["docs/plans/"], "names": ["CLAUDE.md"]},
     {"bucket": "Cicd", "prefixes": [".github/workflows/"]},

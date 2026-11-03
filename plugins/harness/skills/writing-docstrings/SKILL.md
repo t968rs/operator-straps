@@ -1,132 +1,84 @@
 ---
 name: writing-docstrings
 description: Use when writing, restyling or reformatting Python docstrings, when a docstring is a placeholder such as "Push.", "Get desc." or "Generate tables.", when a docstring is a paragraph of prose describing behavior rules, or when choosing a docstring layout (brief, compact or full).
-argument-hint: "<file> [<symbol> ...] [-- <guidance>]"
+argument-hint: "<path> [<path> ...] [<symbol> ...] [--include-new | -in] [--parallel | -p] [-- <guidance>]"
 ---
 
-# writing-docstrings: three docstring tiers, chosen per symbol
+# writing-docstrings: the session reads the request, the docstring-writer agent writes
 
 Arguments: `$ARGUMENTS`
 
 Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
-it: the files and symbols in scope; with none, the scope is what the developer's request names. After it:
-guidance for this run (a tier preference, a symbol to look at hard). The guidance never reaches the command.
+it: paths, symbols and flags for the driver. After it: guidance for this run (a tier preference, a symbol to
+read hard); it never reaches the driver and rides on every work-row prompt as the last line; the probe row goes out without it.
 
-Every docstring is one of three tiers: **1 brief**, **2 compact**, **3 full**. The tier is decided per symbol
-before a word of the docstring is written. The convention is `${CLAUDE_SKILL_DIR}/docstring_format.md`. It is
-the project's format: no Google (`Args:`), numpy or Sphinx (`:param:`) style, whatever the existing code mixes.
+The docstrings are written by the `harness:docstring-writer` agent, which carries the three-tier convention
+(`${CLAUDE_SKILL_DIR}/docstring_format.md`) and the tier command. The session turns the request into driver
+arguments, dispatches the rows the driver prints and relays the replies. **The session never edits a
+docstring itself**: not one placeholder, not "just this once" before a merge, not because an agent for one
+line looks wasteful. The agent is the one place the convention is applied, measured and checked.
 
-## What a restyle touches
+## Read the request
 
-- **Only placeholders, prose paragraphs and blank docstrings are rewritten, plus the lines the command flags.**
-  Words such as "restyle", "tidy", "standardize" or "make consistent" cover these and nothing else.
-- **A symbol without a docstring stays without one** unless the developer asks for new docstrings in so many
-  words. A reviewer's "docs are thin", "you are in those files anyway", a deadline or a lead's wish is not that
-  ask; neither is an empty module, which gets no module docstring. Name each undocumented symbol in the reply and
-  ask whether to add docstrings to them.
-- **"Consistent" means each docstring in its tier's layout, not one layout everywhere.** A docstring already in
-  the layout its tier calls for, or in the full layout, stays byte for byte, even on a short function that
-  would get compact if written fresh. Name the docstrings kept and why, so the developer sees they were read.
-- **Flagged lines win over byte for byte.** In a docstring that is kept, only the lines the command flags (a
-  long line, a citation, single backticks) change, and only as far as the flag requires; every other line,
-  the layout included, stays byte for byte.
-- **A caveat survives the restyle.** A usage constraint, side effect or failure the current docstring states is
-  carried into the new one; a request to "keep it light" shortens wording, never drops a caveat.
+| Argument | Means |
+|---|---|
+| `<path>` | a `.py` file (every function in it), a folder (its git-tracked `.py` files) |
+| `file.py::name` | that file, narrowed to `name` (a function, method or qualname such as `C.h`) |
+| `<symbol>` | a bare name; narrows the one file in scope |
+| `--include-new`, `-in` | the agent also writes docstrings for the undocumented functions in scope |
+| `--parallel`, `-p` | one agent per file, after a tool probe |
+
+- Resolve what the request names into paths with Grep or Glob; when the files still cannot be told, ask.
+- **`-in` only on an explicit ask** for new docstrings ("add docstrings", "document the undocumented
+  functions"), or for functions the session wrote itself in this task: then `-in` with each new function as
+  `file.py::name`, so the agent writes those and nothing else. "Restyle", "tidy", "make consistent", "docs are
+  thin", "you're in those files anyway" or a deadline never set it: without `-in` the agent lists the
+  undocumented functions, and the reply asks the developer.
+- **The request's other instructions travel as guidance.** "Keep it light", "look hard at `open_pool`", "the
+  caveat must survive": with no `--` tail, those words become the `Developer guidance:` line, verbatim where
+  possible.
+- A question about which layout to use ("brief, compact or full?") is answered from
+  `${CLAUDE_SKILL_DIR}/docstring_format.md` and the tier rules there, without a dispatch.
 
 ## Procedure
 
-1. **Measure.** Run the tier command with the Bash tool on each file in scope, naming the symbols in scope:
+1. **Run the driver** with the Bash tool:
 
    ```bash
-   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/commands/docstring_tiers.py" <file> [<symbol> ...]
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/commands/docstring_dispatch.py" <paths and symbols> [-in] [-p]
    ```
 
-   Each line reports `lines=`, `forks=`, `suggest=`, `current=` and any flags (`long-lines`, `single-backticks`,
-   `citation`, `section-order`, `unknown-label`, `misaligned`, `blank`, `separator-line`). `unknown-label` names
-   a label outside the convention (`Args:`, `Logic:`); `misaligned` is a line indented left of the opening
-   `"""`. The line limit is the project's `docstrings.line_length` (default 110). A one-line brief
-   (`"""Summary."""`) is fine; a docstring that is blank or only separator characters is not, nor is a
-   separator-only line anywhere except the dashed underline under a full-layout label. A `problem:` line (a
-   symbol the file does not define, a file that does not parse) names the input to fix.
+   Each row is an `agent=harness:docstring-writer model=<m>` line and its prompt lines; rows are separated by
+   one blank line. A `problem:` line (a missing path, an unknown symbol, a file named both whole and with
+   `::`) names the input to fix; nothing was printed and no probe written.
 
-2. **Answer "1, 2 or 3?" for each symbol**, as one line in the reply, before its docstring when the docstring
-   is pasted back: `<symbol>: tier <n> - <lines> lines, <forks> forks; <reason>`. The line goes to the
-   developer, never into the file. The first match wins:
-   - **3 full**: body over about 50 lines **and** two or more forks.
-   - **1 brief**: no forks (one path: no branch, fallback, early return or raise of its own) **and** one summary
-     line tells a caller everything. A usage constraint ("call once per process"), side effect or caveat the
-     current docstring states makes it compact. A flag-like parameter does not change this.
-   - **2 compact**: otherwise.
+2. **Probe first under `-p`.** With two or more files the first row ends in `Probe: yes` (model `haiku`).
+   Dispatch it alone. Its reply is two lines, `Probe tier:` and `Probe edit:`. Any `BLOCKED`, or a permission
+   prompt the developer saw, stops the run: fix the rule with the `update-config` skill and run the driver
+   again. Whatever the outcome, then remove the probe files:
 
-   A lazy-initialization guard (`if self._x is None:` or `if not self._x:`, no `else`, whose body only
-   assigns `self._x`) is not a fork, and a `return` that ends the function (also inside a final `if`, `with`,
-   `try` or `match`) is not one either. The command's `suggest=` counts forks the same way but cannot see
-   caveats; read the body and the current docstring, and state the reason when the answer differs.
+   ```bash
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/commands/docstring_dispatch.py" --clear-probe --repo "<the probe row's Project root>"
+   ```
 
-3. **Write the docstring** in that tier's layout (below).
+   The root is the `Project root:` line of the probe row, so the probes are removed from the checkout they were
+   written in, even when the first path sits in a worktree.
 
-4. **Re-run the command** on the same symbols: `current=` matches each tier (`brief`, `compact`, `full`) and
-   no flags remain. The other values are `none`, `blank`, `prose` and `placeholder?`. `placeholder?` is a guess
-   (a summary of a few words that does not open with a third-person verb); on a tier-1 symbol whose brief was
-   written from the body and tells a caller everything, it counts as a match.
+3. **Dispatch every work row in one message**, one call per row, with the row's model, never another:
 
-## Tier 1: brief
+   ```
+   Agent(subagent_type="harness:docstring-writer", model=<model from the row>, prompt=<the row's lines after the agent= line>)
+   ```
 
-```python
-def refresh_fields(snapshot: Snapshot) -> Snapshot:
-    """
-    Refreshes *field changes* in a ``Snapshot``
-    """
-```
+   When there is guidance, each prompt gains one last line, newlines folded to spaces:
+   `Developer guidance: <text>`.
 
-One short summary on its own line, third-person verb, between the opening and closing `"""`, or on a single
-line with them (`"""Summary."""`). No labels, no `Parameters:` or `Arguments:` block.
+4. **Relay the replies unedited**, concatenated in row order under `-p`. The session does not re-read the
+   files to second-guess them; it reads them only to paste docstrings back when the developer asks.
 
-## Tier 2: compact
+## Parallel runs without worktrees
 
-```python
-def column_index(table_path, *, leading=None, columns=None) -> Dict[str, int]:
-    """Maps each column name of ``table_path`` to its position in a row.
-
-    Rules:
-        generated columns excluded,
-        ``columns``, when given, keeps only the existing columns it names,
-        ``leading`` (for example "rowid") comes first
-    Returns:
-        {column name: index}; empty when the table's columns cannot be listed
-    Raises:
-        ValueError when ``table_path`` is empty
-    """
-```
-
-1. **Intro** on the opening `"""` line: one line, third-person verb. A property may use a noun phrase.
-2. **One blank line**.
-3. **Sections**: `Label:` at the docstring's indentation, items indented 4 more, no dashed underline, no blank
-   line between sections. Only the labels that apply, always in this order:
-
-| Order | Label                                | Holds                                                                            |
-|-------|--------------------------------------|----------------------------------------------------------------------------------|
-| 1     | `Operation:` / `Tries:` / `Columns:` | what the code does, step by step, or the shape it builds                         |
-| 2     | `Rules:`                             | behavior conditions: lowercase fragments, each ending in a comma except the last |
-| 3     | `Returns:`                           | the value, then the failure path ("empty when...", "logged and returns False")   |
-| 4     | `Raises:`                            | `ExcType when <condition>`, one per line                                         |
-| 5     | `Notes:`                             | why a rule exists, one item per reason                                           |
-
-4. **Closing `"""`** on its own line.
-
-No `Parameters:` section; a parameter whose behavior matters is named in double backticks inside an item.
-
-## Tier 3: full
-
-Read `${CLAUDE_SKILL_DIR}/docstring_format.md`, section "3. Full layout", and follow it: summary on the line
-after `"""`, then dashed `Parameters:`, `Returns:`, `Raises:` and `Example:` sections.
-
-## All tiers
-
-- **Symbols** take double backticks (` ``name`` `); single backticks only in `#` comments.
-- **Line length:** the project's `docstrings.line_length` (default 110), indentation included; a long item
-  continues at its own indentation.
-- **Citations** (report sections, PR numbers, review IDs such as "I2:", plan or spec references) are dropped
-  from the docstring and from comments in the same body; the rule they annotate stays.
-- **Accuracy:** every item is checked against the body. A defect the body shows (a counter that drifts, an
-  unhandled empty input) is reported to the developer, not fixed in a docstring pass.
+`-p` departs from `harness:parallel2`: the agents edit the checkout directly, with no worktree per lane. One
+file per agent keeps the lanes disjoint by construction, and a worktree, a staging step and a cleanup per file
+cost more than the edits they would isolate. The probe row stands in for the parallel2 probe: it meets the
+same Edit allow rules as the work rows, because each probe file sits in a folder the work rows edit.

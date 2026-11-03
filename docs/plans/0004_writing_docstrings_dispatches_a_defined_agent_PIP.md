@@ -54,7 +54,7 @@ Scope: C:/p/src/a.py: all`, copied from `plugins/harness/scripts/strap.py:550`
 
 ### TASK-1: strap.target harness for this repository
 
-**Status:** PENDING | **Model:** haiku | **Depends on:** none
+**Status:** COMPLETE | **Model:** haiku | **Depends on:** none
 **Files:** `.claude/harness.json`, `CLAUDE.md`
 
 **Anchors:**
@@ -63,14 +63,17 @@ Scope: C:/p/src/a.py: all`, copied from `plugins/harness/scripts/strap.py:550`
 
 Add "strap": {"target": "harness"} to .claude/harness.json (after "todo"). Rewrite the CLAUDE.md 'Strapping a harness skill' paragraph: the line is in place since 0.51.0 reached main (PR #188); strap.py new <name> here scaffolds under plugins/harness/; open specs keep their recorded plugin_dir.
 
-- [ ] Run `python -c "import sys; sys.path.insert(0, 'plugins/harness/lib'); from pathlib import Path; from harness_lib.config import load_config; print(load_config(Path('.')).strap.target)"`: harness
-- [ ] Record the commit: `plan.py record 0004 TASK-1 --sha <sha>`
+- [x] Run `python -c "import sys; sys.path.insert(0, 'plugins/harness/lib'); from pathlib import Path; from harness_lib.config import load_config; print(load_config(Path('.')).strap.target)"`: harness
+- [x] Record the commit: `plan.py record 0004 TASK-1 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 92f2b63
+
+- `92f2b638f12e7de98f785faea9e234dbc1665cbc`
+- `tree 9314c238dc59e20a18bca3c3f8722a2e79382379`
 
 ### TASK-2: Scope, row and probe models and API
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** TASK-1
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** TASK-1
 **Files:** `plugins/harness/lib/harness_lib/writing_docstrings_models.py`, `plugins/harness/lib/harness_lib/writing_docstrings_api.py`, `tests/lib/test_writing_docstrings_dispatch_api.py`
 
 **Anchors:**
@@ -81,47 +84,51 @@ Add "strap": {"target": "harness"} to .claude/harness.json (after "todo"). Rewri
 
 Copy docs/plans/0004/tests/tests/lib/test_writing_docstrings_dispatch_api.py to tests/lib/test_writing_docstrings_dispatch_api.py. In plugins/harness/lib/harness_lib/writing_docstrings_models.py add AGENT='harness:docstring-writer', WORK_MODEL='opus', PROBE_MODEL='haiku', PROBE_NAME='_docstring_probe.py', PROBE_RECORD='writing-docstrings/probes.txt' (relative to state_dir), PROBE_SOURCE (a module with one undocumented two-line function), FileScope (path: absolute posix str; names: List[str], empty meaning all; extra forbid; line() -> 'Scope: <path>: all' or 'Scope: <path>: a, b') and DispatchRow (model, project_root, new_docstrings: bool, scopes: List[FileScope] with min_length 1, probe: bool = False; extra forbid; text() -> 'agent=<AGENT> model=<model>', 'Project root: <root>', 'New docstrings: yes|no', one Scope line per scope, then 'Probe: yes' on a probe row). In plugins/harness/lib/harness_lib/writing_docstrings_api.py add DispatchError(ValueError) carrying .problems (every defect, collected before raising); first_path(tokens, cwd) -> Optional[Path] (the first path-shaped token, '::name' stripped, resolved against cwd); resolve_scope(root, tokens, cwd) per spec D1 and plan D11 (split '::' with rsplit so a drive colon survives; tokens resolved against cwd and kept inside root; a directory becomes its git ls-files tracked .py files, recursive; names checked through report and unmatched; every file parsed; scopes keyed on the resolved path and sorted by it); plan_rows(root, scopes, *, new_docstrings, parallel); write_probes(root, scopes, record) -> List[Path] (plan D12: one probe per distinct parent folder in scope order, replacing an untracked stale probe, DispatchError for a git-tracked file of that name, each path appended to record); probe_row(root, probes) (PROBE_MODEL, new_docstrings True, probe True, one Scope per probe); clear_probes(root, record) -> List[Path] (removes each recorded path under root named PROBE_NAME and untracked, skips every other entry, deletes the record, returns the removed paths in record order; [] with no record). Paths are resolve()d and printed as_posix. Export the new names in __all__. Functions under 50 lines; Optional/Union typing; no first or second person.
 
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_path_scopes_every_function` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_double_colon_narrows_its_file_only` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_absolute_token_with_double_colon_keeps_the_drive` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_symbols_narrow_a_single_file` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_relative_tokens_resolve_against_cwd` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_symbols_with_two_files_are_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_one_file_named_bare_and_narrowed_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_a_file_named_twice_is_one_scope` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_double_colon_names_of_one_file_merge` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_a_directory_and_a_file_in_it_are_one_scope_per_file` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_a_directory_and_a_narrowed_file_in_it_are_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_scopes_come_in_path_order` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_directory_expands_to_tracked_python_files_recursively` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_directory_without_tracked_python_files_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_a_bare_symbol_named_like_a_folder_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_unknown_symbol_is_refused_before_any_row` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_method_name_or_qualname_matches` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_unparsable_file_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_missing_path_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_non_python_file_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_path_outside_the_project_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_every_defect_is_reported_together` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_first_path_skips_bare_symbols_and_strips_names` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_one_row_without_parallel` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_one_row_per_file_with_parallel` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_parallel_over_one_file_is_one_row` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_row_text_is_the_header_then_the_prompt_lines` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_probes_go_beside_each_folder_over_a_stale_one` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_probe_beside_a_tracked_file_of_that_name_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_probe_row_asks_for_a_new_docstring_on_each_probe_file` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_clear_probes_removes_only_recorded_probes_under_the_project` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_dispatch_models_forbid_extra_keys` fails with ImportError, then passes
-- [ ] Run `python -m pytest tests/lib/test_writing_docstrings_api.py -q`: all passed
-- [ ] Run `python -m ruff check --no-cache plugins/harness/lib/harness_lib/writing_docstrings_models.py plugins/harness/lib/harness_lib/writing_docstrings_api.py tests/lib/test_writing_docstrings_dispatch_api.py`: All checks passed!
-- [ ] Record the commit: `plan.py record 0004 TASK-2 --sha <sha>`
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_path_scopes_every_function` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_double_colon_narrows_its_file_only` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_absolute_token_with_double_colon_keeps_the_drive` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_symbols_narrow_a_single_file` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_relative_tokens_resolve_against_cwd` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_symbols_with_two_files_are_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_one_file_named_bare_and_narrowed_is_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_a_file_named_twice_is_one_scope` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_double_colon_names_of_one_file_merge` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_a_directory_and_a_file_in_it_are_one_scope_per_file` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_a_directory_and_a_narrowed_file_in_it_are_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_scopes_come_in_path_order` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_directory_expands_to_tracked_python_files_recursively` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_directory_without_tracked_python_files_is_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_a_bare_symbol_named_like_a_folder_is_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_unknown_symbol_is_refused_before_any_row` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_method_name_or_qualname_matches` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_unparsable_file_is_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_missing_path_is_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_non_python_file_is_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_path_outside_the_project_is_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_every_defect_is_reported_together` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_first_path_skips_bare_symbols_and_strips_names` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_one_row_without_parallel` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_one_row_per_file_with_parallel` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_parallel_over_one_file_is_one_row` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_row_text_is_the_header_then_the_prompt_lines` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_probes_go_beside_each_folder_over_a_stale_one` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_probe_beside_a_tracked_file_of_that_name_is_refused` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_probe_row_asks_for_a_new_docstring_on_each_probe_file` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_clear_probes_removes_only_recorded_probes_under_the_project` fails with ImportError, then passes
+- [x] Test `tests/lib/test_writing_docstrings_dispatch_api.py::test_dispatch_models_forbid_extra_keys` fails with ImportError, then passes
+- [x] Run `python -m pytest tests/lib/test_writing_docstrings_api.py -q`: all passed
+- [x] Run `python -m ruff check --no-cache plugins/harness/lib/harness_lib/writing_docstrings_models.py plugins/harness/lib/harness_lib/writing_docstrings_api.py tests/lib/test_writing_docstrings_dispatch_api.py`: All checks passed!
+- [x] Record the commit: `plan.py record 0004 TASK-2 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 0f70c5a: 32 test node(s) passed
+
+- `0f70c5a950c0e285b4ae3d65e5b37b4388d2b6a5`
+- `tree 6fa0e9108b6a83bb4cec0269f2e6d107cfdc853b`
+- `python -m pytest -q tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_path_scopes_every_function tests/lib/test_writing_docstrings_dispatch_api.py::test_double_colon_narrows_its_file_only tests/lib/test_writing_docstrings_dispatch_api.py::test_absolute_token_with_double_colon_keeps_the_drive tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_symbols_narrow_a_single_file tests/lib/test_writing_docstrings_dispatch_api.py::test_relative_tokens_resolve_against_cwd tests/lib/test_writing_docstrings_dispatch_api.py::test_bare_symbols_with_two_files_are_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_one_file_named_bare_and_narrowed_is_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_a_file_named_twice_is_one_scope tests/lib/test_writing_docstrings_dispatch_api.py::test_double_colon_names_of_one_file_merge tests/lib/test_writing_docstrings_dispatch_api.py::test_a_directory_and_a_file_in_it_are_one_scope_per_file tests/lib/test_writing_docstrings_dispatch_api.py::test_a_directory_and_a_narrowed_file_in_it_are_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_scopes_come_in_path_order tests/lib/test_writing_docstrings_dispatch_api.py::test_directory_expands_to_tracked_python_files_recursively tests/lib/test_writing_docstrings_dispatch_api.py::test_directory_without_tracked_python_files_is_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_a_bare_symbol_named_like_a_folder_is_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_unknown_symbol_is_refused_before_any_row tests/lib/test_writing_docstrings_dispatch_api.py::test_method_name_or_qualname_matches tests/lib/test_writing_docstrings_dispatch_api.py::test_unparsable_file_is_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_missing_path_is_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_non_python_file_is_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_path_outside_the_project_is_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_every_defect_is_reported_together tests/lib/test_writing_docstrings_dispatch_api.py::test_first_path_skips_bare_symbols_and_strips_names tests/lib/test_writing_docstrings_dispatch_api.py::test_one_row_without_parallel tests/lib/test_writing_docstrings_dispatch_api.py::test_one_row_per_file_with_parallel tests/lib/test_writing_docstrings_dispatch_api.py::test_parallel_over_one_file_is_one_row tests/lib/test_writing_docstrings_dispatch_api.py::test_row_text_is_the_header_then_the_prompt_lines tests/lib/test_writing_docstrings_dispatch_api.py::test_probes_go_beside_each_folder_over_a_stale_one tests/lib/test_writing_docstrings_dispatch_api.py::test_probe_beside_a_tracked_file_of_that_name_is_refused tests/lib/test_writing_docstrings_dispatch_api.py::test_probe_row_asks_for_a_new_docstring_on_each_probe_file tests/lib/test_writing_docstrings_dispatch_api.py::test_clear_probes_removes_only_recorded_probes_under_the_project tests/lib/test_writing_docstrings_dispatch_api.py::test_dispatch_models_forbid_extra_keys`
 
 ### TASK-3: docstring_dispatch.py driver and its root-separation case
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** TASK-2
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** TASK-2
 **Files:** `plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py`, `tests/skills/test_docstring_dispatch_command.py`, `tests/contract/test_root_separation.py`
 
 **Anchors:**
@@ -130,32 +137,36 @@ Copy docs/plans/0004/tests/tests/lib/test_writing_docstrings_dispatch_api.py to 
 
 Copy docs/plans/0004/tests/tests/skills/test_docstring_dispatch_command.py and docs/plans/0004/tests/tests/contract/test_root_separation.py to their repo paths. New plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py, shaped like docstring_tiers.py (sys.path insert of lib, one activate(load_config(project_root(start)))): argparse with allow_abbrev=False, parse_intermixed_args (flags may sit between paths), and an error() that raises DispatchError; options --repo, --include-new/-in, --parallel/-p, --clear-probe (store_true, no path); tokens nargs='*'. start is --repo, else the folder of first_path(tokens, cwd), else cwd (plan D13). record = cfg.path(cfg.state_dir) / PROBE_RECORD. Every run first calls clear_probes(root, record); --clear-probe alone prints 'cleared <posix path>' per removed probe and exits 0. No token and no --clear-probe is a problem. Rows print separated by one blank line; with -p and two or more rows, write_probes runs after every check passes and probe_row prints before the work rows. A DispatchError or ConfigError prints one 'problem: <text>' line per defect on stderr, exit 1, nothing on stdout and no probe written. The module docstring states the usage.
 
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_two_files_print_one_row` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_project_root_is_the_first_path_s_checkout` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_parallel_prints_the_probe_row_then_one_row_per_file` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_parallel_over_two_folders_probes_each_folder` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_long_parallel_flag_matches_the_short_one` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_flags_between_paths_are_accepted` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_a_directory_and_a_file_in_it_give_one_row_per_file` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_parallel_over_one_file_writes_no_probe` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_include_new_flags_set_new_docstrings` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_a_problem_prints_nothing_on_stdout` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_unknown_flag_is_a_problem_line` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_no_path_is_a_problem_line` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_clear_probe_removes_the_recorded_probes` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_clear_probe_leaves_an_unrecorded_probe_named_file` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_docstring_dispatch_command.py::test_a_later_run_removes_a_stale_probe_in_another_folder` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[docstring-dispatch]` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_root_separation.py::test_docstring_probe_lands_in_the_project` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/skills/test_docstring_tiers_command.py -q`: all passed
-- [ ] Run `python -m ruff check --no-cache plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py tests/skills/test_docstring_dispatch_command.py tests/contract/test_root_separation.py`: All checks passed!
-- [ ] Record the commit: `plan.py record 0004 TASK-3 --sha <sha>`
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_two_files_print_one_row` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_project_root_is_the_first_path_s_checkout` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_parallel_prints_the_probe_row_then_one_row_per_file` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_parallel_over_two_folders_probes_each_folder` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_long_parallel_flag_matches_the_short_one` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_flags_between_paths_are_accepted` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_a_directory_and_a_file_in_it_give_one_row_per_file` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_parallel_over_one_file_writes_no_probe` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_include_new_flags_set_new_docstrings` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_a_problem_prints_nothing_on_stdout` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_unknown_flag_is_a_problem_line` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_no_path_is_a_problem_line` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_clear_probe_removes_the_recorded_probes` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_clear_probe_leaves_an_unrecorded_probe_named_file` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_docstring_dispatch_command.py::test_a_later_run_removes_a_stale_probe_in_another_folder` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[docstring-dispatch]` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_root_separation.py::test_docstring_probe_lands_in_the_project` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/skills/test_docstring_tiers_command.py -q`: all passed
+- [x] Run `python -m ruff check --no-cache plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py tests/skills/test_docstring_dispatch_command.py tests/contract/test_root_separation.py`: All checks passed!
+- [x] Record the commit: `plan.py record 0004 TASK-3 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 0421c4a: 17 test node(s) passed
+
+- `0421c4a79c1308c5222daf45821303c7840b31c5`
+- `tree 1ad5bc5286cdb39cea464cbef299dc1206518ca6`
+- `python -m pytest -q tests/skills/test_docstring_dispatch_command.py::test_two_files_print_one_row tests/skills/test_docstring_dispatch_command.py::test_project_root_is_the_first_path_s_checkout tests/skills/test_docstring_dispatch_command.py::test_parallel_prints_the_probe_row_then_one_row_per_file tests/skills/test_docstring_dispatch_command.py::test_parallel_over_two_folders_probes_each_folder tests/skills/test_docstring_dispatch_command.py::test_long_parallel_flag_matches_the_short_one tests/skills/test_docstring_dispatch_command.py::test_flags_between_paths_are_accepted tests/skills/test_docstring_dispatch_command.py::test_a_directory_and_a_file_in_it_give_one_row_per_file tests/skills/test_docstring_dispatch_command.py::test_parallel_over_one_file_writes_no_probe tests/skills/test_docstring_dispatch_command.py::test_include_new_flags_set_new_docstrings tests/skills/test_docstring_dispatch_command.py::test_a_problem_prints_nothing_on_stdout tests/skills/test_docstring_dispatch_command.py::test_unknown_flag_is_a_problem_line tests/skills/test_docstring_dispatch_command.py::test_no_path_is_a_problem_line tests/skills/test_docstring_dispatch_command.py::test_clear_probe_removes_the_recorded_probes tests/skills/test_docstring_dispatch_command.py::test_clear_probe_leaves_an_unrecorded_probe_named_file tests/skills/test_docstring_dispatch_command.py::test_a_later_run_removes_a_stale_probe_in_another_folder tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[docstring-dispatch] tests/contract/test_root_separation.py::test_docstring_probe_lands_in_the_project`
 
 ### TASK-4: docstring-writer agent and dispatching SKILL.md through the strap gate
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-3
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-3
 **Files:** `plugins/harness/agents/docstring-writer.md`, `plugins/harness/skills/writing-docstrings/SKILL.md`, `tests/skills/test_writing_docstrings_skill_contract.py`, `docs/plans/strap/writing-docstrings/SkillSpec.json`, `docs/plans/strap/_archive/writing-docstrings-187/SkillSpec.json`, `plugins/pr-review-watch/hooks/contract.ts`
 
 **Anchors:**
@@ -166,22 +177,25 @@ Copy docs/plans/0004/tests/tests/skills/test_docstring_dispatch_command.py and d
 
 First mkdir -p docs/plans/strap/_archive, then git mv docs/plans/strap/writing-docstrings to docs/plans/strap/_archive/writing-docstrings-187 (D10), then run strap.py new writing-docstrings --edit (base HEAD) and continue harness:strap-skills from step 2. Before adding docstring-writer role scenarios or running check, write a frontmatter-only plugins/harness/agents/docstring-writer.md (name docstring-writer, model opus, tools Read, Edit, Grep, Bash), register it with add_part, and add 'harness:docstring-writer' to DEFINED_AGENTS in plugins/pr-review-watch/hooks/contract.ts in sorted position (after harness:bubble-memo-reviewer); the body is written at strap step 10 against the baselines. Behaviors: mechanical - SKILL.md runs docstring_dispatch.py through hpy and dispatches harness:docstring-writer; the agent file runs the tier command through hpy, reads ${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/docstring_format.md, names every flag, the full-tier threshold, the D7 prompt lines, the D8 reply headings and the J4 probe reply lines (the contract-test pins move from the SKILL.md body to the agent file). Judgment - J1-J4 of plan D15; B6-B8 are not re-baselined (D15). The agent body holds the procedure now in SKILL.md (What a restyle touches, Procedure, Tier 1-3, All tiers), the New docstrings rule, the Scope-only edit rule, the probe reply and the D8 reply. SKILL.md becomes: split the arguments, interpret intent (D3 and D14; non-argument instructions of a plain request become the Developer guidance line), answer a layout question from docstring_format.md, run the driver, dispatch the probe row alone, stop on any BLOCKED or permission prompt (fix with update-config, rerun the driver), then run the driver with --clear-probe, dispatch every work row in one message with the Developer guidance line appended, relay the replies (the session may read the files to paste docstrings back when asked); it states the D5 departure from harness:parallel2 and its reason. The Use-when description stays; the argument-hint gains -in and -p.
 
-- [ ] Run `mkdir -p docs/plans/strap/_archive`: exit 0
-- [ ] Run `git mv docs/plans/strap/writing-docstrings docs/plans/strap/_archive/writing-docstrings-187`: exit 0
-- [ ] Run `sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py new writing-docstrings --edit`: new [done] | writing-docstrings
-- [ ] Run `sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check writing-docstrings`: check [ok]
-- [ ] Run `sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze writing-docstrings`: freeze [done] | writing-docstrings
-- [ ] Run `python -m pytest tests/skills/test_writing_docstrings_skill_contract.py tests/skills/test_skill_guidance_tail_contract.py -q`: all passed
-- [ ] Run `claude plugin validate --strict plugins/harness`: no errors
-- [ ] Run `python -m pytest tests/mods/test_pr_review_watch_usage_contract.py -q`: all passed
-- [ ] Run `claude plugin test plugins/pr-review-watch`: all passed
-- [ ] Record the commit: `plan.py record 0004 TASK-4 --sha <sha>`
+- [x] Run `mkdir -p docs/plans/strap/_archive`: exit 0
+- [x] Run `git mv docs/plans/strap/writing-docstrings docs/plans/strap/_archive/writing-docstrings-187`: exit 0
+- [x] Run `sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py new writing-docstrings --edit`: new [done] | writing-docstrings
+- [x] Run `sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check writing-docstrings`: check [ok]
+- [x] Run `sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze writing-docstrings`: freeze [done] | writing-docstrings
+- [x] Run `python -m pytest tests/skills/test_writing_docstrings_skill_contract.py tests/skills/test_skill_guidance_tail_contract.py -q`: all passed
+- [x] Run `claude plugin validate --strict plugins/harness`: no errors
+- [x] Run `python -m pytest tests/mods/test_pr_review_watch_usage_contract.py -q`: all passed
+- [x] Run `claude plugin test plugins/pr-review-watch`: all passed
+- [x] Record the commit: `plan.py record 0004 TASK-4 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 652f5f5
+
+- `652f5f50aa8e28932390116c7bd8e79df983d308`
+- `tree 994f99b00f3f68c75c16764bf2cc8885a659434d`
 
 ### TASK-5: README row and harness 0.52.0
 
-**Status:** PENDING | **Model:** haiku | **Depends on:** TASK-4
+**Status:** COMPLETE | **Model:** haiku | **Depends on:** TASK-4
 **Files:** `README.md`, `plugins/harness/.claude-plugin/plugin.json`, `plugins/pr-review-watch/.claude-plugin/plugin.json`
 
 **Anchors:**
@@ -191,8 +205,11 @@ First mkdir -p docs/plans/strap/_archive, then git mv docs/plans/strap/writing-d
 
 README skills-table row 'Docstrings by tier': the session turns the request into arguments and dispatches harness:docstring-writer; --include-new / -in adds docstrings to undocumented functions; --parallel / -p runs one agent per file after a tool probe. Bump plugins/harness/.claude-plugin/plugin.json to 0.52.0. Bump plugins/pr-review-watch/.claude-plugin/plugin.json to 0.5.1 (its contract.ts changed in TASK-4).
 
-- [ ] Run `claude plugin validate --strict plugins/harness`: no errors
-- [ ] Run `claude plugin validate --strict plugins/pr-review-watch`: no errors
-- [ ] Record the commit: `plan.py record 0004 TASK-5 --sha <sha>`
+- [x] Run `claude plugin validate --strict plugins/harness`: no errors
+- [x] Run `claude plugin validate --strict plugins/pr-review-watch`: no errors
+- [x] Record the commit: `plan.py record 0004 TASK-5 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 3f1b75c
+
+- `3f1b75c0f1065636bfffcc073baba2d2770c3850`
+- `tree e7038e6edf78b4ad495524764e0dc2bf4a879f77`

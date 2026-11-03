@@ -35,11 +35,8 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 
 - **Porting a file in** from another repository follows the project skill `porting-into-straps`
   (`.claude/skills/porting-into-straps/`); its `port_scan.py` lists the decoupling work before the copy.
-- **Strapping a harness skill** needs `"strap": {"target": "harness"}` in `.claude/harness.json`. That line
-  waits for a published release whose schema carries the `strap` key (0.51.0; plan 0003 deferred entry).
-  Until it lands, `strap.py new <name>` here defaults to the project profile and scaffolds under
-  `.claude/skills/<name>/`, so a new harness skill waits for that line. Open specs keep their recorded
-  `plugin_dir` and are unaffected.
+- **Strapping a harness skill**: `.claude/harness.json` sets `"strap": {"target": "harness"}` (the key ships
+  in 0.51.0), so `strap.py new <name>` here scaffolds under `plugins/harness/`. Open specs keep their recorded `plugin_dir`.
 
 ## Tests
 

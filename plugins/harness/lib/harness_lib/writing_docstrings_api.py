@@ -4,25 +4,37 @@
 suggested tier, the current layout and the format flags. The line limit is a parameter; the tier command
 reads it from ``docstrings.line_length``. The suggestion is a starting point: the convention's decision rule,
 applied by reading the body and the current docstring, has the final say.
+
+The dispatch section turns command-line tokens into ``FileScope`` entries (``resolve_scope``), groups them
+into ``DispatchRow`` values (``plan_rows``), and writes, lists and removes the tool-probe files of a parallel
+run (``write_probes``, ``probe_row``, ``clear_probes``).
 """
 from __future__ import annotations
 
 import ast
 import re
+import subprocess
 from pathlib import Path
-from typing import Iterable, Iterator, List, Optional, Sequence, Tuple
+from typing import Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple
 
 from harness_lib.writing_docstrings_models import (
     KNOWN_LABELS,
     PLACEHOLDER_WORDS,
+    PROBE_MODEL,
+    PROBE_NAME,
+    PROBE_SOURCE,
     SECTION_ORDER,
+    WORK_MODEL,
+    DispatchRow,
+    FileScope,
     Layout,
     SymbolReport,
     suggest_tier,
 )
 
 __all__ = ["count_forks", "body_lines", "current_layout", "docstring_flags", "iter_functions", "report",
-           "unmatched"]
+           "unmatched", "DispatchError", "first_path", "resolve_scope", "plan_rows", "write_probes",
+           "probe_row", "clear_probes"]
 
 _DASHES = re.compile(r"^\s*-{3,}\s*$", re.MULTILINE)
 _LABEL = re.compile(r"^\s*[A-Z][A-Za-z ]*:\s*$", re.MULTILINE)
@@ -303,3 +315,281 @@ def unmatched(rows: Sequence[SymbolReport], wanted: Sequence[str]) -> List[str]:
     """Each name in ``wanted`` that no row's qualname, or its last part, matches."""
     names = {row.qualname for row in rows} | {row.qualname.rsplit(".", 1)[-1] for row in rows}
     return [name for name in wanted if name not in names]
+
+
+# --- dispatch ---------------------------------------------------------------------------------------------
+
+#: A line limit no source line reaches: scope resolution parses files and checks names, not format.
+_NO_LIMIT = 1 << 30
+
+
+class DispatchError(ValueError):
+    """Every defect found in a dispatch request, collected before raising; ``problems`` holds one per line."""
+
+    def __init__(self, problems: Sequence[str]) -> None:
+        super().__init__("\n".join(problems))
+        self.problems = list(problems)
+
+
+_GIT_TIMEOUT_SECONDS = 30
+
+
+def _git(root: Path, *args: str) -> subprocess.CompletedProcess:
+    """Runs git in ``root``; a missing git, a failed launch or a timed-out call returns a failed
+    CompletedProcess whose stderr names the cause, with stdin closed so a child cannot stall the caller."""
+    argv = ["git", "-C", str(root), *args]
+    try:
+        return subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                              stdin=subprocess.DEVNULL, timeout=_GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return subprocess.CompletedProcess(argv, 1, stdout="", stderr=str(exc))
+
+
+def _posix(path: Path) -> str:
+    return Path(path).resolve().as_posix()
+
+
+def _inside(path: Path, root: Path) -> bool:
+    try:
+        Path(path).resolve().relative_to(Path(root).resolve())
+    except ValueError:
+        return False
+    return True
+
+
+def _tracked(root: Path, path: Path) -> bool:
+    """True when git tracks ``path`` in the repository at ``root``."""
+    done = _git(root, "ls-files", "--", str(path))
+    return done.returncode == 0 and bool(done.stdout.strip())
+
+
+def _split(token: str) -> Tuple[str, Optional[str]]:
+    """``(path, name)`` for ``path::name`` (split at the last ``::``, so a drive colon survives), else
+    ``(token, None)``."""
+    if "::" in token:
+        path, name = token.rsplit("::", 1)
+        return path, name
+    return token, None
+
+
+def _bare(token: str) -> bool:
+    """True for a token with no ``::``, separator or ``.py`` ending: a symbol unless it names a path."""
+    return not ("::" in token or "/" in token or "\\" in token or token.endswith(".py"))
+
+
+def _path_shaped(token: str, cwd: Path) -> bool:
+    """True when ``token`` names a path: ``::``, a separator, a ``.py`` ending, or an existing file or
+    directory under ``cwd``."""
+    return not _bare(token) or (Path(cwd) / token).exists()
+
+
+def first_path(tokens: Sequence[str], cwd: Path) -> Optional[Path]:
+    """The resolved path of the first path-shaped token, ``::name`` stripped; ``None`` when there is none."""
+    for token in tokens:
+        if _path_shaped(token, cwd):
+            return (Path(cwd) / _split(token)[0]).resolve()
+    return None
+
+
+def _tracked_python(root: Path, folder: Path) -> Tuple[List[Path], Optional[str]]:
+    """The git-tracked ``.py`` files under ``folder``, recursively, that exist in the working tree and
+    resolve inside ``root`` (a symlink leading out is skipped), and the first line of git's stderr when
+    ``git ls-files`` fails (``None`` otherwise)."""
+    rel = folder.relative_to(root).as_posix()
+    done = _git(root, "ls-files", "-z", "--", rel)
+    if done.returncode != 0:
+        detail = (done.stderr or "").strip().splitlines()
+        return [], f"git ls-files failed: {detail[0] if detail else f'exit {done.returncode}'}"
+    names = [name for name in done.stdout.split("\0") if name.endswith(".py")]
+    paths = ((root / name).resolve() for name in names)
+    return [path for path in paths if path.is_file() and _inside(path, root)], None
+
+
+def _token_files(root: Path, token: str, cwd: Path, problems: List[str]) -> List[Path]:
+    """The files a path token reaches; a defect appends a problem and reaches nothing."""
+    raw, name = _split(token)
+    path = (Path(cwd) / raw).resolve()
+    if not _inside(path, root):
+        problems.append(f"{token}: outside the project {root.as_posix()}")
+    elif not path.exists():
+        problems.append(f"{token}: no such file or directory")
+    elif path.is_dir():
+        if name is not None:
+            problems.append(f"{token}: '::' needs a file, not a folder")
+            return []
+        files, failure = _tracked_python(root, path)
+        if failure is not None:
+            problems.append(f"{token}: {failure}")
+        elif not files:
+            problems.append(f"{token}: no git-tracked .py files under it")
+        return files
+    elif path.suffix != ".py":
+        problems.append(f"{token}: not a .py file")
+    else:
+        return [path]
+    return []
+
+
+def _collect(root: Path, tokens: Sequence[str], cwd: Path,
+             problems: List[str]) -> Tuple[Dict[Path, List[str]], Set[Path], List[str], List[str]]:
+    """Sorts tokens into narrowed files (path -> names), whole files, bare symbols and bare folder tokens."""
+    narrowed: Dict[Path, List[str]] = {}
+    whole: Set[Path] = set()
+    symbols: List[str] = []
+    folders: List[str] = []
+    for token in tokens:
+        if not _path_shaped(token, cwd):
+            symbols.append(token)
+            continue
+        name = _split(token)[1]
+        if _bare(token) and (Path(cwd) / token).is_dir():
+            folders.append(token)
+        for path in _token_files(root, token, cwd, problems):
+            if name is None:
+                whole.add(path)
+            elif name not in narrowed.setdefault(path, []):
+                narrowed[path].append(name)
+    return narrowed, whole, symbols, folders
+
+
+def _rel(root: Path, path: Path) -> str:
+    return path.relative_to(root).as_posix()
+
+
+def _merge(root: Path, narrowed: Dict[Path, List[str]], whole: Set[Path], symbols: List[str],
+           problems: List[str]) -> Dict[Path, List[str]]:
+    """One entry per file (empty names: all); a file both whole and narrowed is a problem, and bare symbols
+    narrow the one file in scope."""
+    for path in sorted(whole & set(narrowed)):
+        problems.append(f"{_rel(root, path)}: named whole and with '::'; name it one way")
+    scopes = {path: [] for path in whole} | {path: names for path, names in narrowed.items()}
+    if not symbols or (not scopes and problems):
+        return scopes
+    if len(scopes) != 1:
+        problems.append(f"bare symbols {', '.join(symbols)} need exactly one file in scope; write "
+                        "<file>::<name>")
+        return scopes
+    path = next(iter(scopes))
+    scopes[path] = list(dict.fromkeys([*scopes[path], *symbols]))
+    return scopes
+
+
+def _check_names(root: Path, scopes: Dict[Path, List[str]], folders: List[str], explicit: Set[Path],
+                 problems: List[str]) -> None:
+    """Parses every file, checks each named symbol, and refuses a bare folder token that also names a
+    function in an explicitly named file."""
+    found: Set[str] = set()
+    for path in sorted(scopes):
+        try:
+            rows = report(path, [], _NO_LIMIT)
+        except (OSError, SyntaxError) as exc:
+            problems.append(f"{_rel(root, path)}: does not parse ({exc})")
+            continue
+        missing = unmatched(rows, scopes[path])
+        problems.extend(f"{_rel(root, path)}: no function named {name}" for name in missing)
+        if path in explicit:
+            found |= {row.qualname.rsplit(".", 1)[-1] for row in rows}
+    problems.extend(f"{token}: names a folder and a function; write {token}/ for the folder or "
+                    f"<file>::{token} for the function" for token in folders if token in found)
+
+
+def resolve_scope(root: Path, tokens: Sequence[str], cwd: Path) -> List[FileScope]:
+    """The file scopes ``tokens`` name, sorted by path; raises ``DispatchError`` listing every defect.
+
+    Rules:
+        A token is a path when it holds ``::``, a separator or a ``.py`` ending, or names an existing file
+        or folder under ``cwd``; any other token is a bare symbol. A folder reaches its git-tracked ``.py``
+        files. A file reached twice is one scope; the ``::`` names of one file merge.
+    """
+    root = Path(root).resolve()
+    problems: List[str] = []
+    narrowed, whole, symbols, folders = _collect(root, tokens, cwd, problems)
+    explicit = {(Path(cwd) / _split(t)[0]).resolve() for t in tokens
+                if _path_shaped(t, cwd) and t not in folders}
+    scopes = _merge(root, narrowed, whole, symbols, problems)
+    if not tokens or not (scopes or problems):
+        problems.append("no file in scope")
+    _check_names(root, scopes, folders, explicit, problems)
+    if problems:
+        raise DispatchError(problems)
+    return [FileScope(path=path.as_posix(), names=scopes[path])
+            for path in sorted(scopes, key=lambda p: p.as_posix())]
+
+
+def plan_rows(root: Path, scopes: Sequence[FileScope], *, new_docstrings: bool,
+              parallel: bool) -> List[DispatchRow]:
+    """One work row over every scope, or one per scope when ``parallel``."""
+    groups = [[scope] for scope in scopes] if parallel else [list(scopes)]
+    return [DispatchRow(model=WORK_MODEL, project_root=_posix(root), new_docstrings=new_docstrings,
+                        scopes=group) for group in groups]
+
+
+def _probe_clash(root: Path, probe: Path) -> Optional[str]:
+    """The problem line for a file already at ``probe``'s path, tracked or not; ``None`` when it is free.
+
+    The driver clears recorded probes first, so a file still there belongs to the developer.
+    """
+    if _tracked(root, probe):
+        return f"{probe.as_posix()}: git tracks a file named {PROBE_NAME} here; run without -p"
+    if probe.exists():
+        return f"{probe.as_posix()}: a file named {PROBE_NAME} exists here; remove it or run without -p"
+    return None
+
+
+def _drop(paths: Iterable[Path]) -> None:
+    """Removes each of ``paths``, ignoring a file that is gone or cannot be removed."""
+    for path in paths:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+
+
+def write_probes(root: Path, scopes: Sequence[FileScope], record: Path) -> List[Path]:
+    """Writes one probe file per distinct folder of ``scopes``, in scope order, and appends each path to
+    ``record``.
+
+    Raises ``DispatchError`` before writing anything when a file of the probe's name exists in a target
+    folder (tracked or not), and when a folder or the record cannot be written; the probes already written
+    are then removed.
+    """
+    folders = dict.fromkeys(Path(scope.path).resolve().parent for scope in scopes)
+    probes = [folder / PROBE_NAME for folder in folders]
+    clashes = [line for line in (_probe_clash(root, probe) for probe in probes) if line is not None]
+    if clashes:
+        raise DispatchError(clashes)
+    written: List[Path] = []
+    try:
+        record.parent.mkdir(parents=True, exist_ok=True)
+        with record.open("a", encoding="utf-8") as handle:
+            for probe in probes:
+                written.append(probe)
+                probe.write_text(PROBE_SOURCE, encoding="utf-8")
+                handle.write(probe.as_posix() + "\n")
+    except OSError as exc:
+        _drop(written)
+        raise DispatchError([f"cannot write probe files under {root.as_posix()}: {exc}"]) from exc
+    return probes
+
+
+def probe_row(root: Path, probes: Sequence[Path]) -> DispatchRow:
+    """The probe row: the probe model, new docstrings on, one ``all`` scope per probe file."""
+    return DispatchRow(model=PROBE_MODEL, project_root=_posix(root), new_docstrings=True, probe=True,
+                       scopes=[FileScope(path=_posix(probe)) for probe in probes])
+
+
+def clear_probes(root: Path, record: Path) -> List[Path]:
+    """Removes each recorded probe that sits under ``root``, carries the probe name and is untracked, then
+    deletes ``record``; returns the removed paths in record order (none without a record)."""
+    if not record.is_file():
+        return []
+    removed: List[Path] = []
+    for line in record.read_text(encoding="utf-8").splitlines():
+        path = Path(line.strip()) if line.strip() else None
+        if (path is None or path.name != PROBE_NAME or not _inside(path, root) or not path.is_file()
+                or _tracked(root, path)):
+            continue
+        path.unlink()
+        removed.append(path)
+    record.unlink()
+    return removed

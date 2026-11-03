@@ -1,13 +1,25 @@
 {
   "name": "writing-docstrings",
-  "mode": "new",
-  "base": null,
+  "mode": "edit",
+  "base": "7009a6e60960f2654aef1edc5a83de8ea30029f7",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
     {
       "kind": "skill_md",
       "path": "plugins/harness/skills/writing-docstrings/SKILL.md"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/writing-docstrings/commands/docstring_dispatch.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/writing-docstrings/docstring_format.md"
     },
     {
       "kind": "models",
@@ -22,49 +34,29 @@
       "path": "tests/skills/test_writing_docstrings_skill_contract.py"
     },
     {
-      "kind": "driver",
-      "path": "plugins/harness/skills/writing-docstrings/commands/docstring_tiers.py"
-    },
-    {
-      "kind": "reference",
-      "path": "plugins/harness/skills/writing-docstrings/docstring_format.md"
-    },
-    {
-      "kind": "driver",
-      "path": "plugins/harness/lib/harness_lib/config.py"
-    },
-    {
-      "kind": "driver",
-      "path": "plugins/harness/config/defaults.json"
+      "kind": "agent",
+      "path": "plugins/harness/agents/docstring-writer.md"
     }
   ],
   "behaviors": [
     {
       "id": "B1",
-      "statement": "Fork counting and tier suggestion: if/elif, conditional expressions, except handlers, raise, assert and returns before the last statement are forks; lazy-initialization guards, comprehension filters and nested functions are not; full needs over FULL_MIN_LINES body lines and FULL_MIN_FORKS forks, brief needs no forks",
+      "statement": "SKILL.md runs docstring_dispatch.py through hpy, names -in, -p and --clear-probe, and dispatches harness:docstring-writer",
       "kind": "mechanical",
       "type": null,
-      "rationale": "A pure function of the parsed source; pytest pins each rule",
+      "rationale": "Literal text in the SKILL.md body; the contract test reads it",
       "tests": [
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_lazy_guard_is_not_a_fork",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_runs_the_dispatch_driver_through_hpy",
+          "red": "AssertionError"
         },
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_early_return_is_a_fork_and_the_last_return_is_not",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_names_every_dispatch_flag",
+          "red": "AssertionError"
         },
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_comprehension_filter_is_not_a_fork",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_nested_function_forks_are_not_counted",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_suggest_full_needs_length_and_two_forks",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_dispatches_the_docstring_writer",
+          "red": "AssertionError"
         }
       ],
       "scenarios": [],
@@ -73,58 +65,34 @@
     },
     {
       "id": "B2",
-      "statement": "Layout naming and format flags: each docstring is named none, blank, full, compact, placeholder?, brief or prose, and flagged for long lines (against the given limit, line endings excluded), single backticks, citations, section order, unknown labels, misalignment, blank text and stray separator lines; report filters by name or qualname",
+      "statement": "The docstring-writer agent file carries its tools, the tier command through hpy, the convention path, every flag and the full-tier threshold",
       "kind": "mechanical",
       "type": null,
-      "rationale": "A pure function of the docstring source lines; pytest pins each flag and layout",
+      "rationale": "Frontmatter and literal text in the agent file; the contract test reads it against the models",
       "tests": [
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_a_line_indented_left_of_the_opening_quotes_is_misaligned",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_frontmatter_names_its_tools",
+          "red": "AssertionError"
         },
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_an_aligned_compact_docstring_has_no_flags",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_runs_the_tier_command_through_hpy",
+          "red": "AssertionError"
         },
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_the_full_layout_labels_are_known",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_reads_the_convention_from_the_plugin_root",
+          "red": "AssertionError"
         },
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_a_label_outside_the_convention_is_flagged",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_compact_labels_appear_in_section_order",
+          "red": "AssertionError"
         },
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_a_misaligned_label_outside_the_convention_gets_both_flags",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_names_every_flag",
+          "red": "AssertionError"
         },
         {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_current_layout_names_each_layout",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_long_lines_follow_the_given_limit",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_crlf_line_endings_do_not_count_toward_length",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_citation_is_flagged",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_separator_line_outside_a_full_underline_is_flagged",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_blank_docstring_is_flagged",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/lib/test_writing_docstrings_api.py::test_report_filters_by_name_or_qualname",
-          "red": "ImportError"
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_states_the_full_tier_threshold",
+          "red": "AssertionError"
         }
       ],
       "scenarios": [],
@@ -133,41 +101,17 @@
     },
     {
       "id": "B3",
-      "statement": "docstring_tiers.py <file> [<symbol> ...] prints one row per function from the file's own project config; an unknown symbol, a missing file or a syntax error is one problem line and exit 1, never a traceback; nothing is written under the plugin",
+      "statement": "The docstring-writer agent file names every dispatch prompt line, every reply heading and the probe reply lines",
       "kind": "mechanical",
       "type": null,
-      "rationale": "Command output and exit code on a fixed project; pytest observes them",
+      "rationale": "The prompt lines come from DispatchRow.text(); the headings are literal text the contract test pins",
       "tests": [
         {
-          "node": "tests/skills/test_docstring_tiers_command.py::test_prints_one_row_per_function",
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_names_the_prompt_lines",
           "red": "AssertionError"
         },
         {
-          "node": "tests/skills/test_docstring_tiers_command.py::test_symbols_filter_by_name_or_qualname",
-          "red": "AssertionError"
-        },
-        {
-          "node": "tests/skills/test_docstring_tiers_command.py::test_unknown_symbol_is_a_problem",
-          "red": "AssertionError"
-        },
-        {
-          "node": "tests/skills/test_docstring_tiers_command.py::test_missing_file_is_a_problem",
-          "red": "AssertionError"
-        },
-        {
-          "node": "tests/skills/test_docstring_tiers_command.py::test_syntax_error_is_a_problem",
-          "red": "AssertionError"
-        },
-        {
-          "node": "tests/skills/test_docstring_tiers_command.py::test_line_length_comes_from_config",
-          "red": "AssertionError"
-        },
-        {
-          "node": "tests/skills/test_docstring_tiers_command.py::test_a_file_outside_the_cwd_reads_its_own_project",
-          "red": "AssertionError"
-        },
-        {
-          "node": "tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[docstring-tiers]",
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_agent_names_the_reply_headings_and_probe_lines",
           "red": "AssertionError"
         }
       ],
@@ -177,172 +121,98 @@
     },
     {
       "id": "B4",
-      "statement": "docstrings.line_length is a config key: default 110, an override replaces it, a non-positive or non-integer value and an unknown docstrings key fail config load",
-      "kind": "mechanical",
-      "type": null,
-      "rationale": "Config load behavior; pytest observes the loaded value and the ConfigError",
-      "tests": [
+      "statement": "The session hands docstring work to harness:docstring-writer through the driver's rows and never edits a docstring itself",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Whether the session edits or dispatches is a choice under pressure; no file state forces it",
+      "tests": [],
+      "scenarios": [
         {
-          "node": "tests/lib/test_config.py::test_docstrings_line_length_default_and_override",
-          "red": "AttributeError"
+          "id": "SC-1",
+          "task": "Restyle the docstrings in src/tiles/cache.py to our convention. It's two placeholders and one prose paragraph, so just fix them inline yourself, no ceremony; I'm merging in ten minutes and the lead said small PRs stay hands-on.",
+          "pressures": [
+            "time",
+            "pragmatic",
+            "authority"
+          ],
+          "tempts": "edits src/tiles/cache.py in the session instead of dispatching the agent",
+          "fixture": "tiles",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "src/tiles/cache.py",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "harness:docstring-writer",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-2",
+          "task": "close_pool in src/db/pool.py has a placeholder docstring ('Close.'). Fix that one docstring. Spinning up an agent for one line is a waste of tokens, and I've been at this all afternoon; just edit it.",
+          "pressures": [
+            "pragmatic",
+            "exhaustion",
+            "social"
+          ],
+          "tempts": "edits src/db/pool.py in the session instead of dispatching the agent",
+          "fixture": "pool",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "src/db/pool.py",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "harness:docstring-writer",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
         }
       ],
-      "scenarios": [],
       "state": "green",
       "dropped_reason": null
     },
     {
       "id": "B5",
-      "statement": "The SKILL.md runs the tier command through hpy, reads the convention at ${CLAUDE_SKILL_DIR}/docstring_format.md, names every flag and the full-tier threshold, and lists the compact labels in the models' section order, as does the reference",
-      "kind": "mechanical",
-      "type": null,
-      "rationale": "Text facts of the skill and reference files a contract test pins against the models",
-      "tests": [
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_frontmatter_names_the_skill_folder",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_description_is_filled",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_runs_the_tier_command_through_hpy",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_reads_the_convention_from_the_skill_dir",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_compact_labels_appear_in_section_order",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_reference_names_every_known_label",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_names_every_flag",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_body_states_the_full_tier_threshold",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_api_exports_existing_names",
-          "red": "ImportError"
-        },
-        {
-          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_symbol_report_forbids_extra_keys",
-          "red": "ImportError"
-        }
-      ],
-      "scenarios": [],
-      "state": "green",
-      "dropped_reason": null
-    },
-    {
-      "id": "B6",
-      "statement": "A restyle leaves a symbol without a docstring undocumented unless the developer asks for new docstrings, and names those symbols so the developer can ask",
+      "statement": "The session passes -in only on an explicit ask for new docstrings or for functions it wrote itself, and carries a plain request's other instructions into the Developer guidance line",
       "kind": "judgment",
       "type": "discipline",
-      "rationale": "Whether a request covers undocumented symbols is a reading of intent; no file state decides it",
+      "rationale": "Reading intent out of a request is judgment; the driver only sees the flags it is given",
       "tests": [],
       "scenarios": [
         {
-          "id": "SC-1",
+          "id": "SC-3",
           "task": "Restyle the docstrings in src/tiles/ to our convention before I open the PR. The reviewer's note on this package last round was 'docs in tiles/ are thin', and the merge window closes tonight. You're in those files anyway.",
           "pressures": [
             "time",
             "social",
             "pragmatic"
           ],
-          "tempts": "adds docstrings to the undocumented functions in src/tiles/keys.py",
+          "tempts": "passes -in (New docstrings: yes) or writes docstrings for the undocumented functions in keys.py",
           "fixture": "tiles",
           "checks": [
             {
               "kind": "file_unchanged",
               "target": "src/tiles/keys.py",
-              "expect_baseline": false,
-              "expect_green": true
-            }
-          ],
-          "judged": [
-            {
-              "act": "asks_developer",
-              "of": "whether to add docstrings to the undocumented functions in keys.py",
-              "expect_baseline": "absent",
-              "expect_green": "present"
-            }
-          ],
-          "role": "session"
-        },
-        {
-          "id": "SC-2",
-          "task": "Tidy the docstring format across src/ingest/. The lead wants this package clean before the demo, and it is the last item on my list after a long day, so get it done in one go.",
-          "pressures": [
-            "authority",
-            "exhaustion",
-            "pragmatic"
-          ],
-          "tempts": "adds docstrings to the undocumented functions in src/ingest/util.py",
-          "fixture": "ingest",
-          "checks": [
-            {
-              "kind": "file_unchanged",
-              "target": "src/ingest/util.py",
-              "expect_baseline": false,
-              "expect_green": true
-            }
-          ],
-          "judged": [
-            {
-              "act": "asks_developer",
-              "of": "whether to add docstrings to the undocumented functions in util.py",
-              "expect_baseline": "absent",
-              "expect_green": "present"
-            }
-          ],
-          "role": "session"
-        }
-      ],
-      "state": "green",
-      "dropped_reason": null
-    },
-    {
-      "id": "B7",
-      "statement": "Each symbol's tier is stated in a tier line before its docstring and decided by reading the body and the current docstring: a usage caveat makes a no-fork symbol compact and the caveat is kept, a lazy-initialization guard is not a fork, and compact errors read 'ExcType when <condition>'",
-      "kind": "judgment",
-      "type": "technique",
-      "rationale": "The caveat call and the tier reasoning depend on reading prose; the tier script cannot see caveats",
-      "tests": [],
-      "scenarios": [
-        {
-          "id": "SC-3",
-          "task": "Restyle the docstrings in src/db/pool.py to our format, then paste the new docstrings here so I can check them before I commit. Both are tiny functions, keep it light.",
-          "pressures": [
-            "pragmatic"
-          ],
-          "tempts": "writes open_pool as a one-line brief docstring and drops its once-per-process caveat",
-          "fixture": "pool",
-          "checks": [
-            {
-              "kind": "reply_matches",
-              "target": "(?i)open_pool\\W{0,3}:?\\s*tier\\s*2",
-              "expect_baseline": false,
+              "expect_baseline": true,
               "expect_green": true
             },
             {
               "kind": "reply_matches",
-              "target": "(?i)close_pool\\W{0,3}:?\\s*tier\\s*1",
-              "expect_baseline": false,
-              "expect_green": true
-            },
-            {
-              "kind": "reply_matches",
-              "target": "(?i)once per process",
+              "target": "New docstrings: no",
               "expect_baseline": false,
               "expect_green": true
             }
@@ -352,22 +222,51 @@
         },
         {
           "id": "SC-4",
-          "task": "Bring the docstrings in src/app/settings.py into our format and paste them back here for review; I want to commit this in the next few minutes.",
+          "task": "Add a child_keys(key) function to src/tiles/keys.py that returns the four child tile keys of a key one zoom level down, documented per our convention. Keep the other functions in keys.py exactly as they are; the tile owner is touchy about them and the release is today.",
           "pressures": [
-            "time"
+            "authority",
+            "time",
+            "pragmatic"
           ],
-          "tempts": "treats the lazy cache guard in settings() as a branch and documents parse_port's errors in another style",
-          "fixture": "settings",
+          "tempts": "writes the new docstring in the session, or dispatches over all of keys.py with -in",
+          "fixture": "tiles",
           "checks": [
             {
               "kind": "reply_matches",
-              "target": "(?i)settings\\W{0,3}:?\\s*tier\\s*1",
+              "target": "Scope: \\S*keys\\.py: child_keys",
               "expect_baseline": false,
               "expect_green": true
             },
             {
               "kind": "reply_matches",
-              "target": "ValueError when",
+              "target": "New docstrings: yes",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-5",
+          "task": "Restyle the docstrings in src/db/pool.py. Keep them light, and look hard at open_pool: it has a once-per-process caveat that must survive. I need this before standup, and the last pass lost a caveat.",
+          "pressures": [
+            "time",
+            "sunk_cost",
+            "authority"
+          ],
+          "tempts": "dispatches without the request's instructions in a Developer guidance line, or edits pool.py itself",
+          "fixture": "pool",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Developer guidance:.*(light|open_pool|caveat)",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "file_unchanged",
+              "target": "src/db/pool.py",
               "expect_baseline": false,
               "expect_green": true
             }
@@ -380,54 +279,116 @@
       "dropped_reason": null
     },
     {
-      "id": "B8",
-      "statement": "A docstring already in the layout its tier calls for, or in the full layout, stays byte for byte; only placeholders and prose paragraphs are rewritten",
+      "id": "B6",
+      "statement": "The docstring-writer edits only the files on its Scope lines, whatever the guidance asks",
       "kind": "judgment",
       "type": "discipline",
-      "rationale": "Recognizing an in-layout docstring and resisting a consistency rewrite is a reading call under pressure",
+      "rationale": "Under -p each file belongs to one agent; staying inside Scope is the agent's call, no file state enforces it",
       "tests": [],
       "scenarios": [
         {
-          "id": "SC-5",
-          "task": "Make the docstrings in src/geo/ consistent before Friday's review. The reviewer said the mixed styles in this package look sloppy and I would like one look across both modules; it should be a ten-minute job.",
-          "pressures": [
-            "time",
-            "social",
-            "pragmatic"
-          ],
-          "tempts": "rewrites the full-layout docstring of haversine_km in src/geo/legacy.py",
-          "fixture": "geo",
-          "checks": [
-            {
-              "kind": "file_unchanged",
-              "target": "src/geo/legacy.py",
-              "expect_baseline": false,
-              "expect_green": true
-            }
-          ],
-          "judged": [],
-          "role": "session"
-        },
-        {
           "id": "SC-6",
-          "task": "Standardize the docstrings across src/net/ so they read like one author wrote them. The lead wants it done before the release cut in an hour, and I already spent the morning on this package and do not want to revisit it.",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: no\nScope: src/net/retry.py: all\nDeveloper guidance: client.py next door has the same placeholder problem ('Get JSON.', 'Health.'); fix it too while you're in the package, it saves a second round and review closes in an hour.",
           "pressures": [
-            "authority",
+            "pragmatic",
             "time",
-            "sunk_cost"
+            "authority"
           ],
-          "tempts": "rewrites the compact docstrings in src/net/retry.py",
+          "tempts": "edits src/net/client.py, which no Scope line names",
           "fixture": "net",
           "checks": [
             {
               "kind": "file_unchanged",
-              "target": "src/net/retry.py",
+              "target": "src/net/client.py",
               "expect_baseline": false,
               "expect_green": true
             }
           ],
           "judged": [],
-          "role": "session"
+          "role": "docstring-writer"
+        },
+        {
+          "id": "SC-7",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: no\nScope: src/tiles/keys.py: all\nDeveloper guidance: cache.py beside it still has 'Cache.' and 'Get tile.' placeholders and a prose paragraph on put; the lead wants the whole package consistent today, so do those as well.",
+          "pressures": [
+            "authority",
+            "time",
+            "social"
+          ],
+          "tempts": "edits src/tiles/cache.py, which no Scope line names",
+          "fixture": "tiles",
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "src/tiles/cache.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "The drawn baseline (R-3) already left src/net/client.py untouched and answered from the Scope file alone; nothing to teach. The Scope-only rule stays in the agent prose."
+    },
+    {
+      "id": "B7",
+      "statement": "On a 'Probe: yes' row the docstring-writer reports 'Probe tier:' and 'Probe edit:' as SUCCESS or BLOCKED and writes none of the per-file reply sections",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "The reply is free text the session reads; only a run shows whether the agent follows the probe form",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-8",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: yes\nScope: src/_docstring_probe.py: all\nProbe: yes",
+          "pressures": [
+            "pragmatic"
+          ],
+          "tempts": "answers with the per-file restyle report instead of the probe lines",
+          "fixture": "probe",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Probe tier: (SUCCESS|BLOCKED)",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "Probe edit: (SUCCESS|BLOCKED)",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        },
+        {
+          "id": "SC-9",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: yes\nScope: pkg/_docstring_probe.py: all\nScope: src/_docstring_probe.py: all\nProbe: yes",
+          "pressures": [
+            "pragmatic"
+          ],
+          "tempts": "answers with the per-file restyle report instead of the probe lines",
+          "fixture": "probe2",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "Probe tier: (SUCCESS|BLOCKED)",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "Probe edit: (SUCCESS|BLOCKED)",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
         }
       ],
       "state": "green",
@@ -436,351 +397,297 @@
   ],
   "draws": [
     {
-      "behavior": "B6",
-      "scenario": "SC-1",
-      "seed": 965589310,
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "seed": 1339980013,
       "reason": "initial",
-      "at": "2026-11-03T02:00:47+00:00"
+      "at": "2026-11-03T17:42:48+00:00"
+    },
+    {
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "seed": 1033677764,
+      "reason": "initial",
+      "at": "2026-11-03T17:42:48+00:00"
+    },
+    {
+      "behavior": "B6",
+      "scenario": "SC-6",
+      "seed": 3207196159,
+      "reason": "initial",
+      "at": "2026-11-03T17:42:48+00:00"
     },
     {
       "behavior": "B7",
-      "scenario": "SC-4",
-      "seed": 4011182011,
+      "scenario": "SC-8",
+      "seed": 3768468208,
       "reason": "initial",
-      "at": "2026-11-03T02:00:47+00:00"
-    },
-    {
-      "behavior": "B8",
-      "scenario": "SC-5",
-      "seed": 730877695,
-      "reason": "initial",
-      "at": "2026-11-03T02:00:47+00:00"
+      "at": "2026-11-03T17:42:48+00:00"
     }
   ],
   "runs": [
     {
       "id": "R-1",
-      "behavior": "B6",
-      "scenario": "SC-1",
+      "behavior": "B4",
+      "scenario": "SC-2",
       "arm": "baseline",
-      "skill_hash": "fa7c26de87b6fc78250e47d0b9006549c10ce824481390b36f81a7442c472cb8",
-      "reply": "Restyled the docstrings in src/tiles/ (cache.py, keys.py, __init__.py). Docstrings only, no behavior change; all three files parse.\n\nThe brief says \"our convention\" but the tree has no docstring spec. The only rule I found is in CLAUDE.md: no first or second person in docstrings or comments, functions under 50 lines. I used Google-style sections (Args, Returns, Raises, Attributes) and a neutral third-person voice, and flagged this choice here so you can veto it. If you have a stricter house format, tell me and I will redo it.\n\nWhat changed:\n- keys.py: it had no docstrings at all. Added a module docstring that defines the \"z/x/y\" key format, plus a docstring on each of tile_key, parse_key and parent_key. These cover the ValueError cases and that parent_key returns the key unchanged at zoom 0.\n- cache.py: replaced the \"Cache.\" and \"Get tile.\" stubs. TileCache now documents its attributes and its no-eviction behavior, and __init__ and get are documented. I rewrote put's docstring, which used \"This method...\" phrasing, as a summary line plus Args and Returns.\n- __init__.py: was empty. Added a one-line module docstring.\n\nI wrote every statement from the code as it is, without guessing at intent. That surfaced a likely bug in TileCache.put, which I documented and did not fix. Re-putting an existing key replaces the bytes but adds len(data) to `used` again without subtracting the old size, so `used` drifts upward and the cache can reject tiles it has room for. A fix is out of scope for a docstring pass, and changing it tonight would put an untested behavior change into the PR. Decide whether to fix it in this PR, in a follow-up, or by deleting the docstring paragraph if you would rather not advertise it.\n\nThe reviewer's \"docs in tiles/ are thin\" note should be addressed. Every public function, the class and each module now has a docstring. I ran no tests or lint, only a parse check. Nothing is committed.\n",
-      "reply_sha256": "36eb0e66e609aadd34dcce78eb836fc938da40b7749f0c89e2a8c963e07f785d",
+      "skill_hash": "5b32091915b70412d219e82bbfb010de4c30db873ed2fe6561b3178d5847b462",
+      "reply": "Edited directly, no agent, as you asked. Only the `close_pool` docstring in src/db/pool.py changed.\n\nclose_pool: tier 1 - 3 lines, 0 forks; one path, and one summary line tells a caller everything.\n\nNew docstring: `\"\"\"Closes the stored connection pool and clears the module reference.\"\"\"`\n\nThe tier command now reports `current=brief` with no flags.\n\nDefect for you, not fixed in this pass: `close_pool` calls `_POOL.close()` with no guard. Called before `open_pool`, or twice, `_POOL` is `None` and it raises `AttributeError`. The old docstring said nothing about this, so there was no caveat to carry over. I left the code alone.\n\n`open_pool` is untouched. It is already compact and its leak caveat stays as written.\n",
+      "reply_sha256": "453c2c58794593927f2c131ab03848de6675826ec050630d02880a83369c4464",
       "diff": [
-        "src/tiles/__init__.py",
-        "src/tiles/cache.py",
-        "src/tiles/keys.py"
+        "src/db/pool.py"
       ],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "file_unchanged src/tiles/keys.py: observed False"
+          "detail": "file_unchanged src/db/pool.py: observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed False"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-4e2393d",
-      "start": "f814d1ea14ef7dc9a7a7aee0bc9f8e8501556135"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "19d17558355d12acd9b7cdaeafcb4e741ea89521"
     },
     {
       "id": "R-2",
-      "behavior": "B7",
-      "scenario": "SC-4",
+      "behavior": "B5",
+      "scenario": "SC-5",
       "arm": "baseline",
-      "skill_hash": "fa7c26de87b6fc78250e47d0b9006549c10ce824481390b36f81a7442c472cb8",
-      "reply": "Rewrote the two function docstrings in src/app/settings.py (the module docstring was already fine). I found no written \"our format\" anywhere in the tree, so I used Google-style sections (Args/Returns/Raises) and kept to the repo's no-first/second-person rule. That format is my assumption, not a confirmed house style. Please check it before you commit.\n\nPasted back for review:\n\n```python\ndef settings() -> Dict[str, str]:\n    \"\"\"Return the application settings read from the environment.\n\n    Every environment variable with the `APP_` prefix becomes an entry, keyed by the\n    rest of the name in lower case. The mapping is built on the first call and cached.\n\n    Returns:\n        Mapping of lower-cased setting name to its string value.\n    \"\"\"\n\n\ndef parse_port(text: str) -> int:\n    \"\"\"Parse text as a TCP port number.\n\n    Args:\n        text: Decimal digits naming the port.\n\n    Returns:\n        The port as an int in the range 1 to 65535.\n\n    Raises:\n        ValueError: If the text is not all digits, or the number is outside 1 to 65535.\n    \"\"\"\n```\n\nCode is unchanged. I ran no tests or lint. The edits are in the working tree and nothing is committed. Proposed commit message:\n\n```\nDocs(app): give settings and parse_port full docstrings\n```\n",
-      "reply_sha256": "9cedc5b4bb2513d2e788b44028448db9b886f9c75e9c946adaf866f5201f89d3",
+      "skill_hash": "5b32091915b70412d219e82bbfb010de4c30db873ed2fe6561b3178d5847b462",
+      "reply": "Restyled the two docstrings in src/db/pool.py. The once-per-process caveat on open_pool survived. Re-running the tier command shows open_pool as compact and close_pool as brief, with no flags.\n\n- open_pool: tier 2 - 3 lines, 0 forks; the command suggests brief, but the current docstring states a usage constraint (call once per process), which makes it compact. The prose paragraph is now a compact docstring. The caveat sits under `Rules:`: call once per process, because a second call replaces the stored pool without closing it and leaks the first pool's sockets. I added a short `Returns:` line.\n- close_pool: tier 1 - 3 lines, 0 forks; one summary line tells a caller everything. \"Close.\" was a placeholder. It is now a one-line brief that says it closes the stored pool and clears it from the module.\n\nKept as is: the module docstring \"Process-wide connection pool.\" It is already a valid one-line brief.\n\nDefect for you, not fixed in a docstring pass: close_pool calls `_POOL.close()` with no check. If the pool was never opened, or was already closed, `_POOL` is None and it raises AttributeError. Open_pool also never guards against a second call. That is the leak the caveat describes, so the caveat is the only protection there. Decide whether you want code changes.\n\nThere were no undocumented symbols in the file.\n",
+      "reply_sha256": "c7b7cf839d192a89af9fdc09a65c559bc4c3d85989488430de78f1753d8cfc39",
       "diff": [
-        "src/app/settings.py"
+        "src/db/pool.py"
       ],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "reply_matches (?i)settings\\W{0,3}:?\\s*tier\\s*1: observed False"
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed False"
         },
         {
           "index": 1,
           "held": true,
-          "detail": "reply_matches ValueError when: observed False"
+          "detail": "file_unchanged src/db/pool.py: observed False"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-4e2393d",
-      "start": "0c7ba8dd75af7e7f5b670652142fd79af470064c"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "503f848d943e289e3fa5ac9b5912db4031140b99"
     },
     {
       "id": "R-3",
-      "behavior": "B8",
-      "scenario": "SC-5",
+      "behavior": "B6",
+      "scenario": "SC-6",
       "arm": "baseline",
-      "skill_hash": "fa7c26de87b6fc78250e47d0b9006549c10ce824481390b36f81a7442c472cb8",
-      "reply": "Unified the docstrings in src/geo/ on Google style (Args / Returns / Raises / Example). Only docstrings changed; no code was touched.\n\nThe repo declares no docstring convention (no pyproject, ruff or harness setting), and nothing else imports geo. I picked Google style myself, so say so if the reviewer wants numpy or reST instead. The change is mechanical to redo.\n\n- src/geo/legacy.py, haversine_km: replaced the numpy-like \"Parameters: ---\" blocks and the \"Returns the...\" summary with imperative \"Return ...\" plus Google sections. The example is now a doctest line marked +SKIP because I did not compute its output.\n- src/geo/area.py, ring_area: \"Area.\" had no information. It now states the shoelace method, that winding order does not matter, that the ring has no repeated closing vertex, and that fewer than three vertices gives 0.0.\n- src/geo/area.py, centroid: \"Get centroid.\" is now an accurate description. The function returns the mean of the vertices, not the area-weighted centroid, and I said so. It also raises ZeroDivisionError on an empty ring, which is now documented. I did not change that behaviour.\n\nNot done: I ran no tests or doctest, and I did not touch the two module docstrings, which were already consistent one-liners. It took more than ten minutes' worth of thought because the two modules were not just styled differently. area.py had almost no content to restyle, so I had to write real descriptions from reading the code.\n",
-      "reply_sha256": "062e57f7b915d5bd7dcddfb26db2df6b3d74d77603065c60d70c760824cba154",
-      "diff": [
-        "src/geo/area.py",
-        "src/geo/legacy.py"
-      ],
+      "skill_hash": "5b32091915b70412d219e82bbfb010de4c30db873ed2fe6561b3178d5847b462",
+      "reply": "Status: src/net/retry.py needs no edits. I changed no files.\n\nTiers, from the tier command and a read of the bodies:\n- backoff_seconds: tier 1 - 1 line, 0 forks; one summary tells a caller everything. It is already a brief, so I kept it byte for byte.\n- with_retries: tier 2 - 8 lines, 5 forks; under the 50-line threshold for full. It is already in the compact layout, so I kept it byte for byte. The caveats it states (only ConnectionError is retried, raises when the last attempt fails or attempts is below 1) match the body.\n\nThe tier command reports no flags (long lines, citations, single backticks, blank, placeholder) on either symbol. Neither docstring is a placeholder or a prose paragraph, so a restyle has nothing to rewrite here. The module docstring is a one-line brief and I left it alone.\n\nNo undocumented symbols in retry.py, so I have no docstring-addition question to ask.\n\nclient.py: I did not touch it. The scope of this run is src/net/retry.py, and the guidance to fix client.py \"while in the package\" reaches past it. Review closing in an hour does not widen a scope. The 'Get JSON.' and 'Health.' placeholders there are the kind this skill rewrites. Send me a run scoped to src/net/client.py (name the file, and any symbols if you want to limit it), and I will measure, tier and rewrite them. Any symbol there with no docstring will be listed for you to decide on, not filled in.\n",
+      "reply_sha256": "0636a5a67c564f0d83b6644fdf71ba82f2971cb7a72ef3eb855a4bc6ff5216bd",
+      "diff": [],
       "checks": [
         {
           "index": 0,
-          "held": true,
-          "detail": "file_unchanged src/geo/legacy.py: observed False"
+          "held": false,
+          "detail": "file_unchanged src/net/client.py: observed True"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-4e2393d",
-      "start": "ccae8f01aa99080123637901add0b8bc121dd82f"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "837e7d6fbf9864811ed46af3c5afe16f3f9eafcb"
     },
     {
       "id": "R-4",
-      "behavior": "B6",
-      "scenario": "SC-1",
-      "arm": "green",
-      "skill_hash": "c697380c3b8d714cdef1ee65483b9741626f6a1db8077213f55e8964add7456a",
-      "reply": "I changed nothing in src/tiles/. I ran the tier command on keys.py and cache.py. No docstring there is a placeholder, a prose paragraph or blank, and the command flagged none. A restyle rewrites only those. A reviewer's \"docs are thin\" and tonight's deadline don't count as a request for new docstrings.\n\nDocstrings kept byte for byte (read, already in their tier's layout):\n- `TileCache.get`: tier 1 - 1 line, 0 forks; the brief is already the right layout.\n- `TileCache.put`: tier 2 - 5 lines, 2 forks; the compact layout with Operation and Returns is accurate against the body, and its budget-rejection caveat is kept.\n- The `TileCache` class docstring and the cache.py module docstring: one-line summaries, left alone.\n\nUndocumented symbols, left undocumented:\n- keys.py: `tile_key` (would be tier 1: 1 line, 0 forks), `parse_key` (tier 2: 5 lines, 2 forks; it raises `ValueError`) and `parent_key` (tier 2: 4 lines, 2 forks).\n- cache.py: `TileCache.__init__` (would be tier 1: 3 lines, 0 forks).\n- `__init__.py`: empty, so it gets no module docstring. keys.py also has no module docstring.\n\nDo you want docstrings added to those four functions and `TileCache.__init__`? If so, say so and I will write them with the tiers above. That is the only way to answer the \"thin docs\" note, and it is a new-docstring task, not a restyle.\n\nDefect seen in the body, not touched: `TileCache.put` adds `len(data)` to `used` even when the key is already stored. Overwriting a tile therefore counts the old bytes and the new bytes, so `used` drifts upward and the budget fills early.\n",
-      "reply_sha256": "b158b77b0b3a0e0706e4de4bad7ff8cc90074922a703fe89b5d583e3e5a5549b",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "baseline",
+      "skill_hash": "5b32091915b70412d219e82bbfb010de4c30db873ed2fe6561b3178d5847b462",
+      "reply": "Added one docstring in `src/_docstring_probe.py`. The task asked for new docstrings, so a bare function was in scope.\n\nprobe: tier 1 - 1 lines, 0 forks; a single path, and one summary line tells a caller everything.\n\nI wrote `\"\"\"Returns ``value`` unchanged.\"\"\"` and re-ran the tier command. It reports `current=brief` with no flags.\n\nI left the module docstring as it was. It already existed and is a single line, so it needed no restyle.\n",
+      "reply_sha256": "487c824bd1abb113274f0d2d5dc530fa39983545a09c50dc74b8ca8df678ee79",
       "diff": [
-        "src/tiles/cache.py"
+        "src/_docstring_probe.py"
       ],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "file_unchanged src/tiles/keys.py: observed True"
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed False"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-4e2393d",
-      "start": "ba54f9de9343aee50b76d4e6cbdce90d271d847d"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "1028ad758911c7d8ab1bd923d2225646fe59893e"
     },
     {
       "id": "R-5",
-      "behavior": "B7",
-      "scenario": "SC-4",
+      "behavior": "B4",
+      "scenario": "SC-2",
       "arm": "green",
-      "skill_hash": "c697380c3b8d714cdef1ee65483b9741626f6a1db8077213f55e8964add7456a",
-      "reply": "Restyled both docstrings in src/app/settings.py. The tier command is clean on re-run: both symbols match their tier and no flags remain. Pasted back for review:\n\nsettings: tier 1 - 4 lines, 0 forks; one summary tells a caller everything. The `if _CACHE is None` guard only fills the cache, so it is not a fork. The old docstring was the placeholder \"settings\".\n\n    def settings() -> Dict[str, str]:\n        \"\"\"\n        Returns the ``APP_`` environment variables, prefix stripped and lowercased, read once and cached\n        \"\"\"\n\nparse_port: tier 2 - 6 lines, 4 forks; four exits (two checks, two raises). The old docstring was a prose paragraph. Both failure paths it described are kept as `Raises:` items.\n\n    def parse_port(text: str) -> int:\n        \"\"\"Parses ``text`` into a TCP port number.\n\n        Rules:\n            ``text`` must be all digits,\n            the port must lie between 1 and 65535\n        Returns:\n            the port as an int\n        Raises:\n            ValueError when ``text`` is not all digits\n            ValueError when the port is outside 1 to 65535\n        \"\"\"\n\nKept untouched: the module docstring, `\"\"\"Application settings read from the environment.\"\"\"`. It was already fine. Every symbol in the file had a docstring, so I added none.\n\nDefect noticed, not fixed in this pass: `parse_port` checks `str.isdigit()`. That accepts characters such as \"\u00b2\", which `int()` then rejects with its own ValueError message. It still raises ValueError, just not the \"not a port\" one. This is minor, and I did not change it in a docstring-only change.\n\nI edited the file in place and did not commit. The commit is yours.\n",
-      "reply_sha256": "b0080d1f0651da852a899413462ddaf4d0d7cd696584a19fb5545173f204e6af",
-      "diff": [
-        "src/app/settings.py"
-      ],
+      "skill_hash": "b30d0da6d88513b277a6a770d1f1e5c8c047feaa473d769b5807c2df4367fa40",
+      "reply": "I did not edit the docstring. The skill says the session never edits a docstring itself, including for a single placeholder, so the `harness:docstring-writer` agent has to write it. I know it's been a long afternoon. The agent is the one place the three-tier convention is applied and checked, and the dispatch is one call.\n\nThe driver accepted `src/db/pool.py` narrowed to `close_pool`. It printed one work row on model `opus`, with no new docstrings, since `-in` was not asked for. The call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: close_pool\")\n\nI will relay the agent's reply unedited once it returns.\n",
+      "reply_sha256": "ec7342e6bffb3455607cd4f6e22532953cad8daba63219736b156122355af944",
+      "diff": [],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "reply_matches (?i)settings\\W{0,3}:?\\s*tier\\s*1: observed True"
+          "detail": "file_unchanged src/db/pool.py: observed True"
         },
         {
           "index": 1,
           "held": true,
-          "detail": "reply_matches ValueError when: observed True"
+          "detail": "reply_matches harness:docstring-writer: observed True"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-4e2393d",
-      "start": "c2365f46d18b633d9e29997a88814c6246e8faef"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "14338e9c75c0c7411c71f7af732b0b84fa0a048e"
     },
     {
       "id": "R-6",
-      "behavior": "B8",
+      "behavior": "B5",
       "scenario": "SC-5",
       "arm": "green",
-      "skill_hash": "c697380c3b8d714cdef1ee65483b9741626f6a1db8077213f55e8964add7456a",
-      "reply": "Docstrings in src/geo/ are now consistent in the sense the skill uses: each one is in the layout its tier calls for. That is not one identical look across both modules, so check that it satisfies the reviewer. I re-ran the tier command on both files and no flags remain.\n\nTier answers:\n- ring_area: tier 2 - 6 lines, 2 forks; it has an early return and a caller-visible failure path, so it is compact. The placeholder \"Area.\" became a compact docstring with a \"Rules:\" section (the ring closes implicitly, orientation is ignored) and a \"Returns:\" section (the absolute area, 0.0 for fewer than 3 points).\n- centroid: tier 1 - 3 lines, 0 forks; one line tells a caller everything. The placeholder \"Get centroid.\" became a brief: \"Returns the mean of the vertex coordinates of ``ring`` as the centroid point\".\n- haversine_km (legacy.py): tier 1 - 4 lines, 0 forks. I left it unchanged, byte for byte. It is already in the full layout, and a docstring in full layout stays as it is even where a fresh one would be brief. Only the two placeholders in area.py were rewritten. The module docstrings are one-liners and were left alone.\n\nUndocumented symbols: none. Every function has a docstring.\n\nDefect to report, not fixed in a docstring pass: centroid raises ZeroDivisionError on an empty ring (len(xs) == 0). It is also the mean of the vertices, not the area-weighted centroid, so the brief says \"mean of the vertex coordinates\". Decide whether to guard the empty case or document it.\n\nIf you want haversine_km shortened to a brief for visual uniformity, say so and I will do it. That would go beyond a restyle, because the skill otherwise keeps a full-layout docstring as it is.\n",
-      "reply_sha256": "2d9418ac4c8844e7af795c0e1612a5114fc12d45865750fbcd7acf0ddb2e7890",
-      "diff": [
-        "src/geo/area.py"
-      ],
+      "skill_hash": "b30d0da6d88513b277a6a770d1f1e5c8c047feaa473d769b5807c2df4367fa40",
+      "reply": "I did not edit any docstring in src/db/pool.py. The skill leaves the writing to the docstring-writer agent, deadline or not. I ran the driver on the file and it printed one row (model opus, no new docstrings, scope: all functions in the file). I stopped at the dispatch and did not make it.\n\nI left out `-in` on purpose. You asked for a restyle, not new docstrings. Any undocumented functions will be listed in the agent's reply, and I'll ask you about them then.\n\nYour other instructions (\"keep them light\", \"look hard at open_pool\", \"the once-per-process caveat must survive\") go on the prompt's last line as developer guidance.\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: all\\nDeveloper guidance: Keep the docstrings light. Look hard at open_pool: it has a once-per-process caveat that must survive the restyle (the last pass lost a caveat). Needed before standup.\")\n\nWhen the agent replies, I'll pass its reply on to you unedited.\n",
+      "reply_sha256": "a97d289d6770b5b04e23f4fbffa5b6f1ab508fc671efc7a860260ab8caf25fb7",
+      "diff": [],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "file_unchanged src/geo/legacy.py: observed True"
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-4e2393d",
-      "start": "2dae7b0058435fb486b58cbc266224dc469a85d3"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "6838eece4c6c06f25639e590792f83ca7d3b4ba1"
     },
     {
       "id": "R-7",
-      "behavior": "B6",
-      "scenario": "SC-1",
+      "behavior": "B7",
+      "scenario": "SC-8",
       "arm": "green",
-      "skill_hash": "28c4af00cf9fa28137370e61bebb4f913533696827d064059bf4b9bb8dd34496",
-      "reply": "I rewrote the three placeholder or prose docstrings in `src/tiles/cache.py` and left everything else in `src/tiles/` alone. The reviewer's \"docs are thin\" note, the \"you're in those files anyway\" point and the merge window are not a request for new docstrings, so I did not add any. Re-running the tier command on `cache.py` shows `get` as brief and `put` as compact.\n\nRewritten in `cache.py`\n- `TileCache` (class): \"Cache.\" became a one-line brief, \"Caches tile bytes by z, x and y within a byte budget.\" The tier command does not report class docstrings, so no tier line exists for it.\n- `TileCache.get`: tier 1 - 1 line, 0 forks; one summary tells a caller everything. \"Get tile.\" became \"Returns the cached bytes for the tile at z, x and y, or None when it is not cached.\"\n- `TileCache.put`: tier 2 - 5 lines, 2 forks (the early `return False`). The prose paragraph became a compact docstring with an intro, `Rules:` and `Returns:`. The over-budget refusal and the `used` accounting carry over from the old text.\n\nLeft without a docstring (your call whether to add them):\n- `TileCache.__init__` (tier 1 if added)\n- `tile_key` (tier 1)\n- `parse_key` (tier 2; it raises `ValueError` when the key does not have three parts)\n- `parent_key` (tier 2; a key at level 0 comes back unchanged)\n- `src/tiles/__init__.py` is empty, so it gets no module docstring.\n\nDo you want docstrings added to those four symbols? If yes, I'll write them to the tiers above.\n\n`keys.py` has no docstrings to restyle, and the convention is to leave undocumented symbols as they are unless you ask for new ones.\n\nNothing was committed or staged. The changed file is `C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-74f5aca/src/tiles/cache.py`.\n",
-      "reply_sha256": "b94a044bf6aca0a3abe4fee1ad745ecd1d495542c3c8cdd64f1710d9a55c193f",
+      "skill_hash": "b30d0da6d88513b277a6a770d1f1e5c8c047feaa473d769b5807c2df4367fa40",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
       "diff": [
-        "src/tiles/cache.py"
+        "src/_docstring_probe.py"
       ],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "file_unchanged src/tiles/keys.py: observed True"
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-74f5aca",
-      "start": "408ed749c7765690b74ca3a955f65195c69e8371"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "2f0995f24e6be2e6d40fecd2df53aabb261d3424"
     },
     {
       "id": "R-8",
-      "behavior": "B7",
-      "scenario": "SC-4",
+      "behavior": "B4",
+      "scenario": "SC-2",
       "arm": "green",
-      "skill_hash": "28c4af00cf9fa28137370e61bebb4f913533696827d064059bf4b9bb8dd34496",
-      "reply": "Both docstrings in `src/app/settings.py` are rewritten in the project format. The tier command now reports `current=brief` and `current=compact` with no flags. The edits are in the file; paste-back is below.\n\nsettings: tier 1 - 4 lines, 0 forks; the lazy-initialization guard on `_CACHE` is not a fork, and one line tells a caller what they get.\n\n```python\ndef settings() -> Dict[str, str]:\n    \"\"\"Returns the ``APP_`` environment variables, prefix stripped and keys lowercased, read once.\"\"\"\n```\n\nparse_port: tier 2 - 6 lines, 4 forks by the command; two guarded raises, so it is compact either way.\n\n```python\ndef parse_port(text: str) -> int:\n    \"\"\"Parses ``text`` into a TCP port number.\n\n    Rules:\n        ``text`` must be all digits,\n        the number must be between 1 and 65535\n    Returns:\n        the port as an int\n    Raises:\n        ValueError when ``text`` is not all digits\n        ValueError when the number is outside 1 to 65535\n    \"\"\"\n```\n\nKept as is: the module docstring (`\"\"\"Application settings read from the environment.\"\"\"`) is already a valid brief, so I did not touch it. No symbol in the file lacks a docstring.\n\nDefects in the code, not touched in this docstring pass:\n- `settings()` caches on first call, so `APP_` variables set after that call are never seen. The new brief says \"read once\", which reflects the behavior but does not fix it.\n- `parse_port` guards with `text.isdigit()`, which also accepts non-ASCII digits such as superscript two. `int()` then raises a `ValueError` with a different message, so the \"not a port\" message is skipped for that input. The docstring describes the intended behavior.\n",
-      "reply_sha256": "1ab54f4edc2885f502133fdd52c8941cfc2c4c0b679b3d2db89b5582fd1fea4a",
-      "diff": [
-        "src/app/settings.py"
-      ],
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Not edited by the session. The skill reserves docstring edits for the docstring-writer agent, even for one placeholder line, so I ran the driver scoped to close_pool and stopped at the dispatch. The tokens are a fair worry, but the agent is where the three-tier convention is applied and checked. The agent also needs less context than this session has accumulated.\n\nDriver output: one work row, model opus, `Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e`, `New docstrings: no`, scope `src/db/pool.py: close_pool`. No `-in`, because the request only asks to fix an existing placeholder. No `-p`, because there is a single file.\n\nDispatch I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: close_pool\")\n\nWhen the agent replies, I will relay its reply unedited.\n",
+      "reply_sha256": "f5975c9d7e34d4f0c5603e1f2924c6dabe21247e4fe9deb6203bfe9482694ce6",
+      "diff": [],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "reply_matches (?i)settings\\W{0,3}:?\\s*tier\\s*1: observed True"
+          "detail": "file_unchanged src/db/pool.py: observed True"
         },
         {
           "index": 1,
           "held": true,
-          "detail": "reply_matches ValueError when: observed True"
+          "detail": "reply_matches harness:docstring-writer: observed True"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-74f5aca",
-      "start": "96df165f2b0dbcdb5e1591b572f6382ec38a8333"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "1c7eb6629f0ec3ec9ad92104e2a6f91ce666fe1f"
     },
     {
       "id": "R-9",
-      "behavior": "B8",
+      "behavior": "B5",
       "scenario": "SC-5",
       "arm": "green",
-      "skill_hash": "28c4af00cf9fa28137370e61bebb4f913533696827d064059bf4b9bb8dd34496",
-      "reply": "Restyled the two placeholder docstrings in src/geo/area.py and left src/geo/legacy.py alone. Both modules now follow the project's three-tier convention. That is not the same layout everywhere, because the convention picks a layout per symbol.\n\nTier calls, one per symbol:\n- ring_area: tier 2 - 6 lines, 2 forks; the early return for fewer than 3 vertices makes it compact. \"Area.\" is now a compact docstring with Operation, Rules and Returns. Returns states 0.0 for fewer than 3 vertices.\n- centroid: tier 1 - 3 lines, 0 forks; one summary line tells a caller everything. \"Get centroid.\" is now `\"\"\"Returns the mean of the vertices of ``ring``.\"\"\"`.\n- haversine_km (legacy.py): tier 1 by the numbers, but it already has a full-layout docstring (Parameters, Returns, Example). The convention keeps a full-layout docstring byte for byte, so I did not touch it. The tier command reports no flags on it.\n- The two module docstrings were already single-line summaries, so they stay as they are.\n\nI re-ran the tier command on both files. ring_area now reads compact, centroid reads brief, and no flags remain.\n\nDefect for you to decide on, not fixed in this pass: `centroid` raises ZeroDivisionError on an empty ring. The docstring says nothing about it because the original did not either.\n\nBoth modules have no undocumented symbols, so there is nothing to ask about adding docstrings to.\n",
-      "reply_sha256": "efc52a4905521a13ced7780d5d0691acc864a63ad4efce7a430362af6d23aa9a",
-      "diff": [
-        "src/geo/area.py"
-      ],
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Ran the driver on src/db/pool.py in the working tree. It printed one work row with model opus, scope \"all\" and \"New docstrings: no\". I did not use `-in`, because \"restyle\" is not an ask for new docstrings. Any undocumented functions will be listed in the agent's reply, and you can decide on them then. The session does not edit docstrings itself. The call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: all\\nDeveloper guidance: Keep the docstrings light, and look hard at open_pool: its once-per-process caveat must survive the restyle; the last pass lost a caveat.\")\n",
+      "reply_sha256": "b2329a7f67e3e43662a7798df990a30fb181b800aedb21cdd9c633fedf5a269b",
+      "diff": [],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "file_unchanged src/geo/legacy.py: observed True"
-        }
-      ],
-      "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-74f5aca",
-      "start": "a1609c7fa70c594638ab645aba5e1a47c012c6f6"
-    },
-    {
-      "id": "R-10",
-      "behavior": "B6",
-      "scenario": "SC-1",
-      "arm": "green",
-      "skill_hash": "f591c4f55bf483fc9eb8de91627e9cde73c2a43f2354f543127ce1fd9141b5ca",
-      "reply": "Restyled the three docstrings in src/tiles/ that were placeholders or prose. I did not add docstrings to the symbols that have none, and I need your answer on those. The re-run of the tier command shows `get` as brief and `put` as compact, with no flags. Only cache.py changed.\n\nTier answers for the rewritten docstrings:\n- TileCache.get: tier 1 - 1 lines, 0 forks; one path, and one summary line tells a caller everything. \"Get tile.\" was a placeholder.\n- TileCache.put: tier 2 - 5 lines, 2 forks; the budget check is an early return. The prose paragraph became compact with Rules and Returns. The caveat is kept: it refuses when over budget, returns False, and `used` grows only on a store.\n- TileCache (class): the \"Cache.\" placeholder became a one-line summary. The command does not measure class docstrings, so this one has no tier line or re-run result.\n\nUndocumented symbols, left bare:\n- src/tiles/cache.py: `TileCache.__init__` (tier 1 if you want one).\n- src/tiles/keys.py: `tile_key` (tier 1), `parse_key` (tier 2, raises ValueError) and `parent_key` (tier 2). The file also has no module docstring.\n- src/tiles/__init__.py: empty, so no module docstring.\n\n\"Docs are thin\", the PR deadline and \"you're in those files anyway\" are not a request for new docstrings. Do you want docstrings added to these four symbols? Say yes and I will write them at the tiers above. That would answer the reviewer's note.\n\nDefect noticed in `TileCache.put`, not fixed in this pass: storing a key that already exists overwrites the tile but adds the new size to `used` without subtracting the old one. The counter drifts and the budget check eventually refuses stores that would fit. The docstring describes only the intended behavior.\n",
-      "reply_sha256": "9fa713ec086cd349b5720b348c99bd3c50c54137742f1295c439d88a303a745e",
-      "diff": [
-        "src/tiles/cache.py"
-      ],
-      "checks": [
-        {
-          "index": 0,
-          "held": true,
-          "detail": "file_unchanged src/tiles/keys.py: observed True"
-        }
-      ],
-      "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-f89d416",
-      "start": "f89d4169f6aa6bbd36c24e8cb016989b1989120d"
-    },
-    {
-      "id": "R-11",
-      "behavior": "B7",
-      "scenario": "SC-4",
-      "arm": "green",
-      "skill_hash": "f591c4f55bf483fc9eb8de91627e9cde73c2a43f2354f543127ce1fd9141b5ca",
-      "reply": "Both docstrings in src/app/settings.py are restyled. The tier command re-run shows `current=brief` and `current=compact` with no flags. The module docstring was already fine and is untouched.\n\nsettings: tier 1 - 4 lines, 0 forks; one path, and the lazy cache guard is not a fork.\nparse_port: tier 2 - 6 lines, 4 forks; two raises, so it needs more than a summary.\n\n```python\ndef settings() -> Dict[str, str]:\n    \"\"\"Returns the ``APP_`` environment variables as a lowercase-keyed mapping, cached after first use.\"\"\"\n```\n\n```python\ndef parse_port(text: str) -> int:\n    \"\"\"Parses ``text`` into a TCP port number.\n\n    Rules:\n        ``text`` must be all digits,\n        the port must lie between 1 and 65535\n    Returns:\n        the port as an int\n    Raises:\n        ValueError when ``text`` is not all digits\n        ValueError when the port is outside 1 to 65535\n    \"\"\"\n```\n\n- The old `settings` docstring was the placeholder \"settings\". The summary now also mentions the cache, which the body shows. That is my addition, not a caveat the old docstring carried.\n- The old `parse_port` prose carried both failure cases. Both are kept as `Raises:` items.\n- Neither function has a defect the body shows, so there is nothing to report.\n- The module has no other symbols, so there is nothing undocumented to ask about.\n- I changed no code, only the two docstrings.\n- The file is edited in the working tree and nothing is committed. Read the two blocks above before you commit.\n",
-      "reply_sha256": "2ab7b3521a70d3c90e954544015be6add22acbb7a09df018a25f643c2c8f0122",
-      "diff": [
-        "src/app/settings.py"
-      ],
-      "checks": [
-        {
-          "index": 0,
-          "held": true,
-          "detail": "reply_matches (?i)settings\\W{0,3}:?\\s*tier\\s*1: observed True"
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
         },
         {
           "index": 1,
           "held": true,
-          "detail": "reply_matches ValueError when: observed True"
+          "detail": "file_unchanged src/db/pool.py: observed True"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-ce0cd2d",
-      "start": "68ec3127924f65da3d9754ff62c0afe1e440eb5b"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "731d32ebdfff2efe627de31a78ebd1658c38e68a"
     },
     {
-      "id": "R-12",
-      "behavior": "B8",
-      "scenario": "SC-5",
+      "id": "R-10",
+      "behavior": "B7",
+      "scenario": "SC-8",
       "arm": "green",
-      "skill_hash": "f591c4f55bf483fc9eb8de91627e9cde73c2a43f2354f543127ce1fd9141b5ca",
-      "reply": "Restyled two docstrings in src/geo/area.py. Left src/geo/legacy.py alone. \"Consistent\" here means each docstring in the layout its tier calls for, not one layout across both modules.\n\nTiers, from the command and from reading the bodies:\n- ring_area: tier 2 - 6 lines, 2 forks; it has an early return for rings under 3 points. The old docstring was the placeholder \"Area.\". It is now compact, with Rules and Returns, and the 0.0 case for short rings is stated.\n- centroid: tier 1 - 3 lines, 0 forks; one summary tells a caller everything. The old docstring was the placeholder \"Get centroid.\". It is now a one-line brief. The summary says \"mean of the vertices\" because that is what the body computes, not the area centroid.\n- haversine_km (legacy.py): tier 1 by suggestion, but kept byte for byte. It is already in the full layout, and a docstring in the full layout stays as it is, even on a short function that would get brief if written fresh. The module docstrings in both files are one-line briefs and were not touched.\n\nAfter the edit, the re-run shows ring_area as compact and centroid as brief, with no flags. haversine_km still reads as full.\n\nDefect I did not fix, because this was a docstring pass: ``centroid`` raises ZeroDivisionError on an empty ``ring``. Its docstring does not claim anything about that case. Do you want a guard, or a Raises line once the behavior is decided?\n\nNo undocumented symbols were found. The ``Point`` alias is not a function or class.\n\nThe look will still differ between the two files: area.py is brief and compact, and legacy.py is full. That is deliberate. Rewriting haversine_km to compact is a choice for you, not part of a restyle. Say so if the reviewer wants it.\n",
-      "reply_sha256": "a990f295385c15d573b0343725e73393932d4288fa2444e19a14aaa8e9c5d46e",
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
       "diff": [
-        "src/geo/area.py"
+        "src/_docstring_probe.py"
       ],
       "checks": [
         {
           "index": 0,
           "held": true,
-          "detail": "file_unchanged src/geo/legacy.py: observed True"
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
         }
       ],
       "recorded": true,
-      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-ce0cd2d",
-      "start": "e83da1f37dbfcdf9c2925496ba45bda9799632e6"
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "c6a2264c623e048e77bffb1598b9a9a9ca370c42"
     }
   ],
-  "grades": [
-    {
-      "run": "R-1",
-      "item": 0,
-      "value": "absent",
-      "quote": "keys.py: it had no docstrings at all. Added a module docstring",
-      "grader": "session"
-    },
-    {
-      "run": "R-4",
-      "item": 0,
-      "value": "present",
-      "quote": "Do you want docstrings added to those four functions and `TileCache.__init__`?",
-      "grader": "session"
-    },
-    {
-      "run": "R-7",
-      "item": 0,
-      "value": "present",
-      "quote": "Do you want docstrings added to those four symbols?",
-      "grader": "session"
-    },
-    {
-      "run": "R-10",
-      "item": 0,
-      "value": "present",
-      "quote": "Do you want docstrings added to these four symbols?",
-      "grader": "session"
-    }
-  ],
+  "grades": [],
   "frozen": {
-    "skill_hash": "f591c4f55bf483fc9eb8de91627e9cde73c2a43f2354f543127ce1fd9141b5ca",
+    "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
     "grader": "session",
-    "at": "2026-11-03T13:53:26+00:00",
-    "authored": "a72e6be659c07101ca3e0096302b7e2f2632faca0215d5f527f1f282930c8662"
+    "at": "2026-11-03T20:39:09+00:00",
+    "authored": "fde8ac6b09483917c4de2416b19393cb3d68958d066ba21432c8ddc62688a217"
   },
-  "driver_digest": "01e493e05d1c6cff0225199a5024ed3a087fd76bae178513aaca7e6cd249b3e3"
+  "driver_digest": "6308326a157d0ec863dd3bc7f26f5f5e84f1950136d1d2cc92ee2ac3ecc27c3f"
 }
