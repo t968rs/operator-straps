@@ -203,10 +203,12 @@ CASES = {
     "bash discipline hook": lambda r, t: (["hooks/bash_discipline.py"], {
         "cwd": str(r), "tool_name": "Bash", "tool_input": {"command": "git status && git log"}}),
     "strap new": lambda r, t: (_strap_new_args(r), None),
+    "docstring-tiers": lambda r, t: (["skills/writing-docstrings/commands/docstring_tiers.py",
+                                      str(r / "src" / "a.py")], None),
 }
 
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
-MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write"})
+MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
