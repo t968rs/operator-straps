@@ -35,6 +35,12 @@ also check `tool_name` as a second guard, while `bash_discipline.py`, `bash_allo
 `guard_commit_txt.py` rely on the matcher alone. Allow-shapes hooks never block;
 they either emit `allow` or stay silent. A deny from `bash_discipline.py` wins over any allow.
 
+The three Bash hooks are registered as one command, `bash_pretool.py`, which decides all three in one
+interpreter launch and prints the merged result (a deny first, then an allow, else nothing). Each of the
+three files still runs on its own and carries its own `decide(payload)`; a change to one hook's rules
+belongs in that file, and a new Bash hook is added to the dispatcher and to `COMPOSED` in
+`tests/contract/test_hooks_json_paths.py`.
+
 ## Process (Mandatory)
 
 ```mermaid

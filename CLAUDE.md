@@ -31,7 +31,10 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 - **Skills and agents** invoke code as `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/..."`,
   skill-local files as `${CLAUDE_SKILL_DIR}/...`, and dispatch agents as `harness:<name>`.
 - **Hooks** register in `plugins/harness/hooks/hooks.json` in shell form through `hpy`. A file under `hooks/`
-  without a leading underscore must be registered (`tests/contract/test_hooks_json_paths.py`).
+  without a leading underscore must be registered, or named under `COMPOSED` as decided inside a registered
+  dispatcher (`bash_pretool.py` runs the three Bash hooks in one launch); both are checked by
+  `tests/contract/test_hooks_json_paths.py`. Every hook launch costs an interpreter start, so a new hook
+  for an event that already has one joins that dispatcher instead of adding a command.
 
 - **Porting a file in** from another repository follows the project skill `porting-into-straps`
   (`.claude/skills/porting-into-straps/`); its `port_scan.py` lists the decoupling work before the copy.

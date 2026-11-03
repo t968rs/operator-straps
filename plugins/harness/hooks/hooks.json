@@ -13,9 +13,7 @@
       {
         "matcher": "Bash",
         "hooks": [
-          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/bash_discipline.py\""},
-          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/bash_allow_shapes.py\""},
-          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/approve_python_c.py\""}
+          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/bash_pretool.py\""}
         ]
       },
       {

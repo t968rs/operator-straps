@@ -15,11 +15,20 @@ probe() {
     "$@" -c "import sys" >/dev/null 2>&1
 }
 
+# An explicit candidate that is an executable regular file is taken as is: starting it just to test it
+# costs a full interpreter launch per hook. A bare command name (no such file), a directory and a
+# non-executable file fall through to probe, which resolves PATH names and rejects the rest.
+trusted() {
+    [ -n "$1" ] || return 1
+    case "$1" in *WindowsApps*) return 1 ;; esac
+    [ -f "$1" ] && [ -x "$1" ]
+}
+
 # PY is always one executable path, kept quoted; PYFLAG carries the "-3" of the py launcher, if any.
 pick() {
     PYFLAG=
     for cand in "$HARNESS_PY" "$CLAUDE_PLUGIN_OPTION_PYTHON"; do
-        if probe "$cand"; then PY="$cand"; return 0; fi
+        if trusted "$cand" || probe "$cand"; then PY="$cand"; return 0; fi
     done
     if probe python; then PY=python; return 0; fi
     if probe py -3; then PY=py; PYFLAG=-3; return 0; fi

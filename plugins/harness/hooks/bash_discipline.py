@@ -17,7 +17,7 @@ import json
 import os
 import re
 import sys
-from typing import Optional
+from typing import Any, Optional
 
 OPTION_ENV = "CLAUDE_PLUGIN_OPTION_BASH_DISCIPLINE"
 
@@ -127,6 +127,16 @@ def deny(reason: str) -> str:
         "hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}})
 
 
+def decide(payload: Any) -> Optional[str]:
+    """The deny output for a payload whose command chains with ``&&`` or ``;``, else None."""
+    if not enabled():
+        return None
+    tool_input = payload.get("tool_input") if isinstance(payload, dict) else None
+    command = tool_input.get("command", "") if isinstance(tool_input, dict) else ""
+    error = check_command(command) if isinstance(command, str) and command else None
+    return deny(error) if error else None
+
+
 def main() -> int:
     if not enabled():
         return 0
@@ -134,10 +144,9 @@ def main() -> int:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, UnicodeDecodeError):
         return 0
-    command = (payload.get("tool_input") or {}).get("command", "") if isinstance(payload, dict) else ""
-    error = check_command(command) if isinstance(command, str) and command else None
-    if error:
-        print(deny(error))
+    output = decide(payload)
+    if output:
+        print(output)
     return 0
 
 
