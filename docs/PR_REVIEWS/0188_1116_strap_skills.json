@@ -1,0 +1,643 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 188,
+  "pr_title": "1116 strap skills",
+  "branch": "1116-strap-skills",
+  "base_branch": "main",
+  "base_sha": "b79439279ce3b950cdb94303b5dde0e4d81d80ac",
+  "head_sha": "dd2089c59a91f39530b41c9103323ba19516f7fb",
+  "review_date": "2026-11-03",
+  "verdict": "READY TO MERGE - 22 of 22 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2951,
+    "deletions": 96,
+    "files_changed": 37
+  },
+  "reviewers": [
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0188/pr188_20261103T142758Z/findings/config.json",
+    "docs/_scratch/pr_review/0188/pr188_20261103T142758Z/findings/tests.json",
+    "docs/_scratch/pr_review/0188/pr188_20261103T142758Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0188/pr188_20261103T142758Z/findings/docs.json",
+    "docs/_scratch/pr_review/0188/pr188_20261103T142758Z/findings/overall.json",
+    "docs/_scratch/pr_review/0188/pr188_20261103T142758Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0188/pr188_20261103T142758Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The new config keys agents_dir and strap.target touch all four required places together: harness.schema.json, defaults.json (agents_dir .claude/agents/, strap.target project), the StrapConfig dataclass and _strap builder in config.py, and the README key table rows.",
+    "config.py _strap repeats the schema's enum and additionalProperties:false checks, so a load without jsonschema still rejects an unknown strap key or a bad target, which matches the schema contract.",
+    "SkillSpec.schema.json is generated from strap_models (schema_text) and pinned byte for byte by test_skillspec_schema_drift.py, so the plugin_dir-optional / target change cannot drift from the model.",
+    "The harness plugin version moves 0.50.0 -> 0.51.0 alongside the schema contract change, per the release rule.",
+    "test_strap_lint_project's CLEAN_BODY triggers every harness house rule (argument-hint tail, pointer, bare python fence, vendor name, harness: agent, harness_lib module), so the clean result proves those rules are skipped.",
+    "test_strap_target_spec checks every SkillSpec.json on disk for byte-identical dump, driver digest and seal, with a >=5 count guard against an empty glob and a valid WALK_ROOTS marker.",
+    "test_strap_scaffold_project runs the rendered contract test in a subprocess with PYTHONPATH removed and fails on a skip, a real integration check that the project parts need no harness.",
+    "test_strap_project_profile drives the real strap.py main against throwaway git repos end to end (new, --edit, scaffold, check, draw, run, init), with cross_os marks on the worktree-dependent init tests.",
+    "test_strap_profile checks both profiles' path tables and rewrites with exact expected strings, and checks that new_fields folds backslash, ./ and trailing-slash spellings.",
+    "Existing driver and gate fixtures pin strap.target=harness explicitly, so the default change to project leaves their harness coverage intact.",
+    "No mock-chain wiring tests: every new test uses real collaborators (git repos, the real launcher, real config loading).",
+    "_dumped drops a None target and authored_digest now goes through _dumped, so pre-existing harness specs keep their text, driver digest and authored seal byte for byte.",
+    "SkillSpec._one_destination makes plugin_dir and target mutually exclusive at the model, and profile_of turns that invariant into one place every driver path query goes through.",
+    "config._strap re-checks strap.target and unknown keys without jsonschema, matching the existing _argv_list pattern for loads that skip schema validation.",
+    "_edit_parts derives part kinds from the profile's own paths, so a project skill's scripts/ modules are classified correctly with no profile branch in the driver.",
+    "skill_api --file restores the working directory in a finally block and loads the module under a unique name, appending (not prepending) its folder to sys.path.",
+    "render_parts still checks every target before writing and picks the API section from the planned part kinds, so a prose-only project skill never names a module that does not exist.",
+    "The Profiles table in strap-skills SKILL.md (lines 34-41) matches strap_profile.py `_harness`/`_project` path for path, including agents_dir, the templates folder and the absent bump for the project profile.",
+    "The planned-test idiom in step 2 (ImportError on a missing file, folder appended to sys.path, sys.modules registration) is exactly what the project contract_test.tmpl `_load` does, so the prose and the scaffold agree.",
+    "The `bump:` line is made conditional in steps 5 and 13, matching strap.py:729-731, which prints it only when profile.bump is set.",
+    "The SKILL.md description of the rewrite (`${CLAUDE_SKILL_DIR}` at the arm's source, `${CLAUDE_PROJECT_DIR}` at the run tree, agent bodies rewritten only for project skills) matches Profile.rewrite and strap.py:612.",
+    "The writing-docstrings refreeze is complete: each judgment behavior (B6-B8) has a green on the new hash f591c4f5 (R-10..R-12), the one judged item has a quoted grade, and the frozen stamp moves to that hash.",
+    "The plan states its deviations from the frozen spec openly (the appended sys.path, the api_section template, the deferred harness.json edit) instead of editing the spec.",
+    "D6 is carried out exactly: _dumped drops a None target and authored_digest now goes through _dumped, so every existing spec keeps its text, driver digest and seal, and test_strap_target_spec pins that against the real specs under docs/plans/strap/.",
+    "strap_profile centralizes every path the driver used to hard-code (SKILL.md, models, API, driver, agents, bump, rewrites); the plan's S1 sweep shows no spec.plugin_dir reference left in plugins/.",
+    "The new config keys touch all four places (defaults.json, harness.schema.json, StrapConfig with _strap validating without jsonschema, README key table), and test_strap_target_config pins each of them.",
+    "Project templates import no harness_lib, and test_strap_scaffold_project proves it behaviorally: the rendered contract test runs in a subprocess with PYTHONPATH stripped, and the rendered API writes under the working directory's repository.",
+    "skill_api --file restores the working directory in a finally block and appends (never prepends) the module folder, and the shim's 100755 index mode and LF endings are both pinned by tests and .gitattributes.",
+    "The deferred .claude/harness.json strap.target line is recorded in the ActionPlan's deferred_to_future_plans with the reason (the published plugin's schema rejects the key until a release).",
+    "The new config keys follow the CLAUDE.md four-place rule in lockstep: defaults.json, harness.schema.json, StrapConfig plus _strap in config.py (with a jsonschema-free fallback check), and README rows, pinned by tests/lib/test_strap_target_config.py.",
+    "The legacy-spec anti-goal is enforced, not just asserted: _dumped drops a None target in both the dump and the authored digest, and test_existing_spec_keeps_its_text_digest_and_seal checks every spec on disk with a WALK_ROOTS marker.",
+    "strap_profile centralises the path questions that strap.py and strap_scaffold used to hard-code, and test_strap_profile pins harness paths and rewrites byte for byte against the old behaviour.",
+    "The project templates' cwd-walk root (api.tmpl) matches skill_api --file's chdir to the --repo project and the run-brief rewrite of ${CLAUDE_PROJECT_DIR} to the run tree, so the three agree on where scenario writes land; test_init_green_rewrites_project_dir_to_the_run_tree and test_api_writes_under_the_working_directory exercise both ends.",
+    "The scaffolded contract test is proven to run without harness on sys.path (test_contract_test_passes_without_harness_on_the_path runs pytest in a subprocess with PYTHONPATH stripped), backing the design constraint behaviourally.",
+    "The tests are behavioural throughout: real throwaway repos via make_project, real driver main() calls, and a real sh run of the bin shim; nothing stubs the code under test.",
+    "test_existing_spec_keeps_its_text_digest_and_seal walks every spec on disk and pins text, driver digest and seal, so the no-migration anti-goal is enforced by a test, not just promised.",
+    "strap_profile collapses a dozen hard-coded plugin_dir f-strings in strap.py and strap_scaffold.py into one resolver; the harness paths are pinned verbatim in test_strap_profile.py.",
+    "The scaffolded contract test is run in a subprocess with PYTHONPATH stripped and must pass with no skips, which proves the no-harness_lib constraint instead of asserting it by grep alone.",
+    "skill_api --file restores the working directory in a finally block and appends rather than prepends the API folder, so a module named like a stdlib module cannot hijack imports.",
+    "_strap validates the target enum and unknown keys itself, so a load without jsonschema still refuses a bad config; the four-place config rule is followed in full.",
+    "test_check_applies_the_project_lint feeds a SKILL.md with a bare python fence and a vendor name, so the test proves the harness house rules are really skipped for project skills."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "This repo flips to the project profile on release, and nothing tracks the fix",
+        "file": "docs/superpowers/specs/2026-11-03-strap-skills-target-aware-design.md",
+        "files": [
+          "docs/superpowers/specs/2026-11-03-strap-skills-target-aware-design.md",
+          ".claude/harness.json",
+          "plugins/harness/config/defaults.json",
+          "docs/plans/0003_strap_skills_target_aware_ActionPlan.json",
+          "CLAUDE.md"
+        ],
+        "lines": "83",
+        "reviewer": "roast, docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The new default is `strap.target: project`, and this repo's `.claude/harness.json` does not set `harness`. The design states it does (line 83). The plan (TASK-1) defers the line because the published 0.50.0 schema would reject the key. That is a fair reason, but no TODO or plan item tracks the follow-up. Once 0.51.0 is published, `strap.py new <name>` in operator-straps opens a project-profile spec and scaffolds into `.claude/skills/<name>/` instead of `plugins/harness/skills/<name>/`. The only kind of skill this repo straps then goes to the wrong place.\n\nAlso (docs): docs/superpowers/specs/2026-11-03-strap-skills-target-aware-design.md:83 states that this repo's `.claude/harness.json` sets `\"strap\": {\"target\": \"harness\"}`. At head `.claude/harness.json` has no `strap` key, so `new_fields` (plugins/harness/lib/harness_lib/strap_profile.py:110-113) falls through to the project profile. The plan records this as deferred (0003 ActionPlan `deferred_to_future_plans`), but nothing a session reads before running `strap.py new` says so. A new harness skill strapped in this repo with the local plugin (the `--plugin-dir` route CLAUDE.md recommends, and the one the pending STR-11 session uses) would land under `.claude/skills/<name>/` instead of `plugins/harness/skills/<name>/`. Open specs are not affected because the recorded `plugin_dir` pins them.\n\nAlso (system_shape): design.md:83 states 'This repo's .claude/harness.json sets \"strap\": {\"target\": \"harness\"}'. At the PR head, .claude/harness.json has no strap key, and the plan defers the line (ActionPlan deferred_to_future_plans, PIP TASK-1) because the published 0.50.0 schema would reject it. The deferral is reasoned. The effect: after merge, until a follow-up lands, `strap.py new <name>` in this repo opens a project-profile spec under .claude/skills/ instead of plugins/harness/skills/. Nothing in the README or the strap-skills SKILL.md warns about this, and the only tracker is the plan's deferred list.",
+        "fix": [
+          "Add a docs/TODO item (or a plan follow-up) to set `\"strap\": {\"target\": \"harness\"}` in `.claude/harness.json` once 0.51.0 is published, and change design line 83 to say the line is deferred until that release.",
+          "Have `strap.py new` warn when the project profile is chosen in a repository whose plugin manifest is named `harness`, so the deferred config cannot fail silently.",
+          "Leave the frozen spec as it is. Add a short note to CLAUDE.md (Rules for changes) saying that until a release carries the `strap` schema key, `strap.py new` here opens project-profile specs, and that a new harness skill must wait for the `strap.target: harness` line in `.claude/harness.json`.",
+          "Open a tracked TODO or issue for the deferred `.claude/harness.json` edit, gated on the 0.51.0 release, and cite it from the plan's deferred entry.",
+          "Track the follow-up (set strap.target to harness in .claude/harness.json once 0.51.0 is published) as an item in the docs/TODO catalog, so it lands right after the merge.",
+          "Since the design spec is frozen, record the divergence from design.md:83 in the plan's deferred entry text, which already exists, rather than editing the spec."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Prose-only project SKILL.md tells the author to rerun scaffold, which refuses a new spec",
+        "file": "plugins/harness/lib/harness_lib/strap_scaffold.py",
+        "lines": "45-46,172-181",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "_NO_API_SECTION (rendered into a project SKILL.md when no API part is planned) says 'Add a mechanical behavior and rerun scaffold, or delete this section.' For a NEW spec, render_parts (strap_scaffold.py:174-178) raises StrapError as soon as any planned target exists ('<name> is a new skill but these parts exist: ...'), and the SKILL.md just rendered is always one of them. Even if the refusal were lifted, an existing SKILL.md is never re-rendered (line 181 renders only missing targets), so the API section would still not appear. The only guidance the generated file gives for adding an API later leads to a refusal.",
+        "fix": [
+          "Reword _NO_API_SECTION to a path that works, e.g. 'TODO(fill): this skill has no API module yet. To add one, add a mechanical behavior, list the models and API modules with add_part, and copy the heredoc from the strap-skills project api_section template; or delete this section.'",
+          "Let render_parts for a NEW spec write the missing parts when every existing target is a scaffold-owned part already listed in spec.parts, and document that the SKILL.md API section must then be added by hand."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Contract-test load idiom gives the API a second copy of the models classes",
+        "file": "plugins/harness/skills/strap-skills/templates/project/contract_test.tmpl",
+        "files": [
+          "plugins/harness/skills/strap-skills/templates/project/contract_test.tmpl",
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/skills/strap-skills/templates/project/api.tmpl"
+        ],
+        "lines": "35-48",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The scaffolded `_load` registers each module as `<stem>_under_contract`, but the rendered API does a bare sibling import (`from <snake>_models import ...`), so loading both yields two distinct `Entry`/`Document` classes. SKILL.md step 2 tells authors to copy this idiom into planned tests. A planned test that builds `models.Entry(...)` and hands it to `api.add_entry` fails the `isinstance(entry, Entry)` check (api.tmpl:105) with `add_entry takes an Entry built by new_entry`. The test is correct, and the error points at the wrong cause. The shipped contract test avoids the trap only because no test there crosses the two modules.",
+        "fix": [
+          "In contract_test.tmpl `_load`, register under the bare stem (`spec_from_file_location(stem, path)`, `sys.modules[stem] = module`) and return `sys.modules[stem]` when it is already loaded, so the API's sibling import and the test share one models module; update the step 2 prose in strap-skills SKILL.md to state that the module is registered under its own stem.",
+          "Keep the alias, and have SKILL.md step 2 tell planned tests to take models classes from the API's namespace (`sys.modules['<snake>_models']`) rather than from a separately loaded copy."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README key table has no skills_dir row, though strap-skills now writes to it by default",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/config/harness.schema.json"
+        ],
+        "lines": "440-441",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:27 (feature row) and plugins/harness/skills/strap-skills/SKILL.md:36-43 send the default project profile to `<skills_dir>/<name>/`, and the new `agents_dir` row (README.md:440) is defined as the folder beside it. The configuration key table (README.md:418-444) still has no `skills_dir` row (the only `skills_dir` mention in README.md is the feature row). A consumer who wants project skills somewhere other than `.claude/skills/` cannot find the key in the table.\n\nAlso (system_shape): This PR makes the existing skills_dir key choose where every project-profile skill lands (strap_profile.new_fields). The README feature row (README.md:27) and the strap-skills Profiles section (SKILL.md:36-43) refer to <skills_dir>. The README key table gains agents_dir and strap.target (README.md:440-441) but has no skills_dir row, so the key that sits beside agents_dir is undocumented there. harness.schema.json:20 still describes skills_dir as '(review lens detection)' only, while agents_dir's description (line 21) names the strap-skills project profile. The two new rows are also not padded to the table's column widths.",
+        "fix": [
+          "Add a row above `agents_dir` in README.md: | `skills_dir` | `.claude/skills/` | review lens detection; `strap-skills` project profile: the folder holding `<name>/SKILL.md` |",
+          "Add a README key-table row: | `skills_dir` | `.claude/skills/` | review lens detection; `strap-skills` project profile: where project skills land |, and pad the agents_dir and strap.target rows to the table's widths.",
+          "Extend the skills_dir description in plugins/harness/config/harness.schema.json:20 to mention the strap-skills project profile."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "New plugins/harness/bin/ surface is missing from the README layout table",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          ".gitattributes"
+        ],
+        "lines": "503-512",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The PR adds plugins/harness/bin/harness-skill-api, a folder that Claude Code puts on the Bash PATH. It is the only route from project-skill content to harness code (design D3) and has its own rules: LF endings (.gitattributes:5) and index mode 100755 (test_skill_api_file.py:95-97). The README layout table (README.md:503-512) lists lib, scripts/hooks, skills/agents and config/schemas but not bin/. A contributor who adds a second shim finds neither the PATH behavior nor the mode rule documented.",
+        "fix": [
+          "Add a README layout row: | `plugins/harness/bin/` | shims on the Bash PATH while the plugin is enabled (`harness-skill-api`); LF endings, mode 100755 |."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Plan 0003 evidence cites a commit that is not in the PR history",
+        "file": "docs/plans/0003_strap_skills_target_aware_ActionPlan.json",
+        "files": [
+          "docs/plans/0003_strap_skills_target_aware_ActionPlan.json",
+          "docs/plans/0003_strap_skills_target_aware_PIP.md"
+        ],
+        "lines": "23-27,616-619,637-643",
+        "reviewer": "docs, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Every COMPLETE item in docs/plans/0003_strap_skills_target_aware_ActionPlan.json (lines 23-27, 82-86, ... 616-619) and its rendered PIP records `commit 156cbf1` / `tree 2300ac65...` as its evidence. 156cbf1 exists locally but is not an ancestor of the head dd2089c (`git merge-base --is-ancestor` exits 1), and its tree matches none of the PR's commits: the work was apparently re-split into 544b290..dd2089c after `plan.py record` ran. Once the branch is merged and that local commit is pruned, the recorded evidence points at an object nobody can check out, and the tests it lists ran on a tree that differs from the merged code.\n\nAlso (system_shape): Every task's evidence in docs/plans/0003_strap_skills_target_aware_ActionPlan.json (and its rendered PIP) names commit 156cbf1 / tree 2300ac6, and the plan's frozen record names b56b363. `git branch -a --contains` finds neither, and no commit tree in b794392..dd2089c matches 2300ac6. The plugins/ and tests/ content at 156cbf1 matches the head, but the evidence points at objects that a gc will remove, so the record cannot be traced through the merged history.\n\nAlso (roast): Every task's evidence cites commit `156cbf1c98...` (tree `2300ac65...`), which no branch contains. `frozen.commit` `b56b3636...` is not an ancestor of the head either. The branch history was rewritten into eight commits. After the merge and a gc, the plan's verification references point at objects that no longer exist, so the evidence cannot be re-checked from the merged history.",
+        "fix": [
+          "Re-record each item against a commit in the branch (for example `plan.py record 0003 TASK-n --sha dd2089c`, or the feature commit that carries each task), then render the PIP again.",
+          "If re-recording a COMPLETE item is refused, keep 156cbf1 reachable (a pushed tag or ref) and add one line to the plan saying the evidence commit is the pre-split collector commit.",
+          "Re-record the items against the PR commit that carries the same code (for example c3fcb5f, or the head) with plan.py record, then re-render the PIP.",
+          "Or add a note to the plan that 156cbf1 is the collector commit the PR commits were split from.",
+          "Re-record each task against a reachable commit (for example `plan.py record 0003 TASK-n --sha c3fcb5f` or the head), then render the PIP again.",
+          "Or keep the SHAs and add a note to the plan naming the reachable commit whose tree matches, so a reader can map the evidence."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "strap-skills spec parts do not cover the new project templates or the new contract test",
+        "file": "docs/plans/strap/strap-skills/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/strap-skills/SkillSpec.json",
+          "plugins/harness/skills/strap-skills/templates/project/skill_md.tmpl",
+          "tests/skills/test_strap_skills_project_profile_contract.py"
+        ],
+        "lines": "7-32",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "docs/plans/strap/strap-skills/SkillSpec.json lists SKILL.md, the four harness templates as reference parts and tests/skills/test_strap_skills_skill_contract.py. This PR adds five deliverables of the same skill folder (templates/project/{skill_md,models,api,contract_test,api_section}.tmpl) and a second contract test (tests/skills/test_strap_skills_project_profile_contract.py), none of which are parts. The content hash the pending STR-11 self-gate freezes would therefore not go stale when a project template changes, which is the drift the parts list exists to catch (SKILL.md step 5: 'Add every other deliverable ... with add_part, so the content hash covers it').",
+        "fix": [
+          "Run strap.py api strap-skills with add_part(name, \"reference\", \"plugins/harness/skills/strap-skills/templates/project/<file>.tmpl\") for each of the five templates, and add_part(name, \"contract_test\", \"tests/skills/test_strap_skills_project_profile_contract.py\") (or fold that file's three tests into the existing contract test)."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "strap_lint docstring says lint_skill applies the generic rules, but it skips the CLAUDE_SKILL_DIR path check",
+        "file": "plugins/harness/lib/harness_lib/strap_lint.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/strap_lint.py",
+          "docs/superpowers/specs/2026-11-03-strap-skills-target-aware-design.md"
+        ],
+        "lines": "3-8,217-226",
+        "reviewer": "system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (strap_lint.py:3-6) says lint_skill 'applies the generic rules and the harness house rules', and the next sentence defines the generic rules as frontmatter, folder name, description and ${CLAUDE_SKILL_DIR} paths that exist. lint_skill (strap_lint.py:217-226) never calls _skill_dir_problems, so a harness skill naming a missing ${CLAUDE_SKILL_DIR}/x passes. The design spec's Lint section (2026-11-03-strap-skills-target-aware-design.md:113-115) also puts that check in the set shared by both profiles. The strap-skills SKILL.md Lint row (SKILL.md:40) and plan TASK-4 ('lint_skill output stays byte-identical') match the code, so the docstring and the design spec are the texts that drift.\n\nAlso (roast): The module docstring says `lint_skill` \"applies the generic rules and the harness house rules\" and defines the generic rules as including `${CLAUDE_SKILL_DIR}` paths that exist. `lint_skill` never calls `_skill_dir_problems`; only `lint_project_skill` does. The design (lines 113-115) also lists that check as generic for both profiles. The plan kept harness lint output byte-identical, which is the sensible choice, but the docstring did not get the memo.",
+        "fix": [
+          "Reword strap_lint.py:3-6 so lint_skill applies the shared frontmatter, folder-name and description rules plus the harness house rules, and the ${CLAUDE_SKILL_DIR} path check is project-only.",
+          "Or add _skill_dir_problems(plugin_dir / 'skills' / name, body) to lint_skill so the harness profile gets the generic set the design spec describes, then rerun tests/lib/test_strap_lint.py and strap.py check on the existing harness specs.",
+          "Reword the docstring: `lint_skill` applies the frontmatter, folder-name and description rules plus the harness house rules; `lint_project_skill` applies those shared rules plus the `${CLAUDE_SKILL_DIR}` path check.",
+          "Add `_skill_dir_problems(plugin_dir / 'skills' / name, body)` to `lint_skill` and accept the harness output change (update tests/lib/test_strap_lint.py)."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "SkillSpec schema description says exactly one of plugin_dir and target is set, but the schema allows neither or both",
+        "file": "plugins/harness/lib/harness_lib/strap_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/strap_models.py",
+          "plugins/harness/schemas/SkillSpec.schema.json",
+          "tests/schemas/test_skillspec_schema_drift.py"
+        ],
+        "lines": "244-247,409-413",
+        "reviewer": "system_shape, config",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The regenerated SkillSpec.schema.json carries the model docstring ('exactly one of the two is set') as its top-level description, while both properties are nullable with default null and neither is required. A JSON document with neither field, or with both, validates against the schema, and only the pydantic _one_destination validator (strap_models.py:409-413) rejects it. An editor or any jsonschema consumer is told one rule and enforces a looser one.\n\nAlso (config): The top-level description (line 606) says exactly one of plugin_dir and target is set. The schema now requires only name and mode (713-716), and both fields are anyOf [x, null] with default null, so a JSON Schema consumer accepts a spec with neither field or with both. Only the pydantic _one_destination validator (strap_models.py:409-413) enforces the rule. The drift test's only sample spec is harness-shaped (tests/schemas/test_skillspec_schema_drift.py:60), so no test validates a target-only document against the committed schema, and none shows that the schema accepts a neither/both document the model rejects. _base_iff_edit has the same model-only precedent, so this is a documentation-fidelity gap, not a runtime break.",
+        "fix": [
+          "Add a json_schema_extra to SkillSpec that emits the constraint (for example a oneOf over {plugin_dir: string, target: null} and {plugin_dir: null, target: object}), then regenerate with tools/gen_skillspec_schema.py.",
+          "Or reword the docstring so it says the exactly-one rule is checked by the model validator, not by the schema.",
+          "Encode the rule in the generated schema: add a json_schema_extra to SkillSpec's model_config with a oneOf of two branches (plugin_dir a string with target absent or null, and target an object with plugin_dir absent or null), regenerate, and add drift-test cases: a target-only spec validates, and neither/both are rejected.",
+          "Or keep the schema permissive, and reword the description to say the model enforces the exactly-one rule beyond the schema. Then add a target-shaped sample to test_dump_spec_validates_against_committed_schema so the project profile's document shape is pinned against the committed file."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Profile.templates is dead; scaffold keeps its own template-folder truth",
+        "file": "plugins/harness/lib/harness_lib/strap_profile.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/strap_profile.py",
+          "plugins/harness/lib/harness_lib/strap_scaffold.py",
+          "tests/lib/test_strap_profile.py",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "26,33-34,49,70,81",
+        "reviewer": "runtime, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "strap_profile.py declares TEMPLATES (line 26) and a Profile.templates field (line 49) set per profile (lines 70, 81), and the module docstring claims the profile answers 'every path ... the driver asks of a spec'. No runtime code reads Profile.templates: strap_scaffold.py resolves templates from its own _TEMPLATE_DIR (line 30) and the 'project/'-prefixed _PROJECT_TEMPLATES (lines 38-43), switching on profile.kind (line 162). Only tests/lib/test_strap_profile.py:37,49 assert the field. Two sources describe the same folder layout and can drift apart. strap_profile._snake (line 33) also duplicates strap_scaffold._snake (line 91).\n\nAlso (overall): Profile.templates (strap_profile.py:49, filled at 70 and 81 from TEMPLATES at 26) is read by no production code: strap_scaffold picks templates from its own _TEMPLATE_DIR plus _PROJECT_TEMPLATES and branches on profile.kind (strap_scaffold.py:30-44, 160-163). Only tests/lib/test_strap_profile.py:37,49 assert the field. strap_profile._snake (33-34) also duplicates strap_scaffold._snake. The two template-folder definitions can drift silently, and the module docstring's claim that the profile answers 'every path ... the driver asks' does not hold for templates.\n\nAlso (system_shape): strap_profile.py defines TEMPLATES (line 26) and fills Profile.templates for both profiles (lines 49, 70, 81). Its module docstring says it answers 'every path and rewrite the driver asks of a spec'. No production code reads Profile.templates. strap_scaffold.py chooses the template set from its own _TEMPLATE_DIR, _TEMPLATES and _PROJECT_TEMPLATES (lines 33-50, 160-163), switching on profile.kind == PROJECT. strap.py:333 and :612 tell the profiles apart by profile.plugin_dir is not None instead. Only tests/lib/test_strap_profile.py:37,49 asserts the field. That leaves two sources of truth for the template folder that can drift, and the strap_scaffold literals have to stay (tools/select_tests.py anchors on them).\n\nAlso (roast): No production code reads `Profile.templates` or `strap_profile.TEMPLATES`. `strap_scaffold._template_text` keeps its own `_TEMPLATE_DIR` literal (needed as the select_tests anchor) and chooses the set by `profile.kind == PROJECT`. Only the two assertions in test_strap_profile.py touch the field, so it is a second source of truth that can drift unnoticed.",
+        "fix": [
+          "Delete TEMPLATES and the Profile.templates field from strap_profile.py, and drop the two assertions in tests/lib/test_strap_profile.py; strap_scaffold stays the single owner of template names (it must spell them for tools/select_tests.py anyway).",
+          "Or make strap_scaffold._template_text join plugin_root() with profile.templates and the bare template name, keeping the spelled literals only as select_tests anchors; import _snake from one module in the other.",
+          "Delete the templates field, TEMPLATES and the two test assertions; keep strap_scaffold's literals (the select_tests anchor).",
+          "Or make _template_text read plugin_root().joinpath(*profile.templates, <basename>) and keep the spelled-out names only as the anchor literals.",
+          "Remove Profile.templates, the TEMPLATES constant and the two test assertions, and leave the template choice to strap_scaffold's literal tables.",
+          "Optionally make strap.py tell the profiles apart through profile.kind (HARNESS/PROJECT) like strap_scaffold does, so one discriminator is used everywhere.",
+          "Delete the `templates` field and the `TEMPLATES` constant from strap_profile.py and drop the two `profile.templates` assertions in tests/lib/test_strap_profile.py.",
+          "Or have `_template_text` derive the folder from `profile.templates` while keeping the `_TEMPLATE_DIR` literal in strap_scaffold only as the select_tests anchor, with an equality assert between the two."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "SkillTarget folders claim repo-relative but accept absolute paths",
+        "file": "plugins/harness/schemas/SkillSpec.schema.json",
+        "files": [
+          "plugins/harness/schemas/SkillSpec.schema.json",
+          "plugins/harness/lib/harness_lib/strap_models.py",
+          "plugins/harness/lib/harness_lib/strap_profile.py"
+        ],
+        "lines": "573-594",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The SkillTarget description says the skills and agents folders are \"repo-relative\", but skills_dir and agents_dir are only minLength 1 strings. Neither the generated schema nor the model (strap_models.py:379-380) rejects an absolute or drive-letter path. target is an authored field, not driver_owned, so a hand-edited spec can set target.skills_dir to C:/elsewhere. profile_of then builds skill_folder, models, api and driver from it (strap_profile.py:73-81), and Profile.rewrite joins it onto the source tree, so the skill files land outside the project. The harness.json side forbids this: skills_dir and agents_dir use $defs/relPath with pattern ^(?![/\\x5c])(?![A-Za-z]:). The spec-side copy of the same values drops that guard, and new_fields only covers the config-built path.",
+        "fix": [
+          "In plugins/harness/lib/harness_lib/strap_models.py, give SkillTarget.skills_dir and agents_dir the relPath pattern (Field(min_length=1, pattern=r\"^(?![/\\\\])(?![A-Za-z]:)\")), regenerate the schema with tools/gen_skillspec_schema.py, and add a model test that an absolute skills_dir is rejected.",
+          "Or drop \"repo-relative\" from the SkillTarget docstring (and the regenerated schema description) if absolute targets are meant to be allowed, and state that in the strap-skills SKILL.md."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "skill_api.py summary line still says it only runs harness_lib modules",
+        "file": "plugins/harness/scripts/skill_api.py",
+        "lines": "1",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring's first line, 'run a stdin heredoc against the public names of one harness_lib module', is also the argparse description (skill_api.py:113). With --file the module is any file loaded by path, so the summary and --help contradict the new mode the rest of the docstring describes.",
+        "fix": [
+          "Change line 1 to 'skill_api driver: run a stdin heredoc against the public names of one API module (a harness_lib module, or a file with --file).'"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "--file API module is imported before the chdir to the project root",
+        "file": "plugins/harness/scripts/skill_api.py",
+        "lines": "97-109",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "skill_api._run calls _select(args) (line 99), which runs spec.loader.exec_module (line 73) in the caller's working directory; the os.chdir(cfg.project_root) happens only around the heredoc exec (lines 104-109). The docstring (lines 7-9) justifies the chdir so 'an API that resolves its repository from the working directory writes into the project --repo names', but an API module that resolves the repository at import time (a module-level REPO = repo_root()) still binds the caller's checkout. During a green scenario run that is the developer checkout rather than the run tree, so writes land in the wrong repository. The shipped api.tmpl resolves lazily, so the generated code is unaffected today.",
+        "fix": [
+          "In _run, chdir to cfg.project_root before _select(args) and keep the try/finally around both the module load and the exec, so import-time and call-time resolution agree; update the docstring to say the module is loaded and the heredoc runs from the project root."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "_agent_text docstring and role messages lag the project profile",
+        "file": "plugins/harness/scripts/strap.py",
+        "lines": "338-342,602-612",
+        "reviewer": "runtime, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "strap.py _agent_text (lines 602-612) now rewrites a project skill's agent file through profile.rewrite (line 612), but its docstring (line 603) still describes only which tree the file comes from. The absent-agent message (line 610) and _role_problems (line 340) still say 'agents/<role>.md', while a project profile reads profile.agents_dir (default .claude/agents), so the message names a folder the driver does not look in.\n\nAlso (system_shape): _role_problems now looks under profile.agents_dir (strap.py:339), which is .claude/agents for a project skill, but the message still reads 'role X has no agents/X.md' (strap.py:340). The _agent_text fallback brief says 'agents/{role}.md is absent' (strap.py:610). A project author is pointed at a folder that is not the one checked.",
+        "fix": [
+          "Extend the _agent_text docstring with 'a project skill's file gets the same variable rewrite as its SKILL.md', and build both messages from profile.agents_dir, e.g. f\"{profile.agents_dir}/{scenario.role}.md\".",
+          "Interpolate the profile's folder: f\"{sc.id}: role {sc.role} has no {agents_dir}/{sc.role}.md\" with agents_dir = profile_of(spec).agents_dir, and the same in _agent_text."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "API example in strap-skills SKILL.md shows only harness part paths",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "lines": "267-268",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/skills/strap-skills/SKILL.md:267-268 shows `add_part(name, \"agent\", \"plugins/harness/agents/memo-reviewer.md\")` and `remove_part(... \"plugins/harness/reference/...\")`. Under the project profile, which is now the default, role agents live at `<agents_dir>/<role>.md` (Profiles table, line 38), and that is where `_role_problems` and `_agent_text` look (plugins/harness/scripts/strap.py:339, 607-608). A session that copies the example in a consuming repo adds a part at a plugin path that does not exist there, and `freeze` refuses it.",
+        "fix": [
+          "After the heredoc at SKILL.md:276, add one sentence: part paths follow the Profiles table, for example `.claude/agents/memo-reviewer.md` for a project skill's agent."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Prose-only project SKILL.md still renders API rules and steps with no API",
+        "file": "plugins/harness/skills/strap-skills/templates/project/skill_md.tmpl",
+        "files": [
+          "plugins/harness/skills/strap-skills/templates/project/skill_md.tmpl",
+          "plugins/harness/lib/harness_lib/strap_scaffold.py"
+        ],
+        "lines": "22-23,32-33",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "For a skill with no mechanical behavior, _project_sections (strap_scaffold.py:148-157) swaps the API section for a fill-in note, and its docstring promises 'a prose-only skill names no module that does not exist'. The project skill_md.tmpl still renders, with no TODO(fill) marker, the rule 'The document changes only through the API ... `validate` refuses a file edited by hand' (skill_md.tmpl:22-23) and step 2 'Run the heredoc in the API section' (lines 32-33). A prose-only scaffold therefore states rules about an API and heredoc that do not exist, and the project lint cannot catch it.",
+        "fix": [
+          "Move the API-dependent Rules bullet and step 2 into substitutions that _project_sections fills: the current text when an API part is planned, a TODO(fill) line otherwise.",
+          "Or mark both lines TODO(fill) in the template so the author has to confirm or delete them."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Root-separation strap case seeds a plugin tree its docstring calls ignored",
+        "file": "tests/contract/test_root_separation.py",
+        "lines": "150-158",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "_strap_new_args still writes plugins/harness/.claude-plugin/plugin.json and commits it, while its new docstring states that `strap.py new` under the default project profile ignores the seed. The manifest write and the extra commit are now dead setup: the case passes the same way without them, and a reader expects the seed to matter. The case also no longer covers the harness-profile `new` path, the one that looks for the plugin directory.",
+        "fix": [
+          "Drop the manifest write and the `git add`/`git commit` from _strap_new_args, and reword the docstring to say the run proves the project-profile spec lands under the project.",
+          "Or keep the seed and give the strap case a `{\"strap\": {\"target\": \"harness\"}}` config, so the seed is needed and the harness `new` path (find_plugin_dir) keeps its root-separation coverage. Reword the docstring to match."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Stray blank line splits the stdlib imports",
+        "file": "tests/lib/test_strap_profile.py",
+        "lines": "9-11",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`from pathlib import Path` and `from types import SimpleNamespace` sit in separate blocks with a blank line between them, although both are stdlib imports.",
+        "fix": [
+          "Remove the blank line at line 10 so the two stdlib imports form one block."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "In-process API loads leave sys.path and sys.modules changed for later tests",
+        "file": "tests/lib/test_strap_scaffold_project.py",
+        "files": [
+          "tests/lib/test_strap_scaffold_project.py",
+          "tests/scripts/test_skill_api_file.py"
+        ],
+        "lines": "63-69,117-125",
+        "reviewer": "tests, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_load in test_strap_scaffold_project.py calls sys.path.insert(0, ...) and never undoes it. The rendered API's `import demo_skill_models` then stays cached in sys.modules for the rest of the session. test_skill_api_file.py has the same leak through the launcher's sys.path.append and its cached `demo_models` and `_skill_api_file_N` modules. A later test in the same process that imports a sibling module of the same name from another tmp project would silently get the stale module.\n\nAlso (overall): tests/lib/test_strap_scaffold_project.py:_load does sys.path.insert(0, <tmp scripts folder>) and the rendered API imports demo_skill_models by bare name; neither is undone, so the pytest process keeps a stale demo_skill_models bound to a deleted tmp folder. tests/scripts/test_skill_api_file.py runs launcher.main in-process, so _load_file appends each tmp folder to sys.path and leaves demo_models and _skill_api_file_<n> in sys.modules. No test fails today, but a later test that loads a module of the same bare name gets the cached one from another tmp project.\n\nAlso (roast): `_load` in test_strap_scaffold_project.py inserts the rendered tmp folder at `sys.path[0]` and leaves `demo_skill_models` cached in `sys.modules`. `test_file_binds_the_api_module_and_its_sibling` does the same through `_load_file`, appending to `sys.path` and caching `demo_models`. A later test in the same pytest process that renders or imports a module with the same name gets the stale copy from a deleted tmp folder, and it fails depending on test order.",
+        "fix": [
+          "In _load, take `monkeypatch` and use `monkeypatch.syspath_prepend(str(path.parent))`, then `monkeypatch.delitem(sys.modules, \"demo_skill_models\", raising=False)` once the test ends (or pop it in a finalizer).",
+          "In test_skill_api_file.py, snapshot the state with `monkeypatch.setattr(sys, \"path\", list(sys.path))` and `monkeypatch.setattr(sys, \"modules\", dict(sys.modules))` inside _code.",
+          "In _load use monkeypatch.syspath_prepend(str(path.parent)) and remove demo_skill_models from sys.modules at teardown (monkeypatch.delitem(sys.modules, 'demo_skill_models', raising=False)); in test_skill_api_file add a fixture that snapshots and restores sys.path and sys.modules around each launcher.main call.",
+          "Use `monkeypatch.syspath_prepend` in `_load`, and `monkeypatch.delitem(sys.modules, name, raising=False)` for the sibling module names after each test (or a fixture that snapshots and restores `sys.path` and `sys.modules`)."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Module docstring says --file puts the API folder first on sys.path; the launcher appends it",
+        "file": "tests/scripts/test_skill_api_file.py",
+        "files": [
+          "tests/scripts/test_skill_api_file.py",
+          "plugins/harness/scripts/skill_api.py",
+          "docs/superpowers/specs/2026-11-03-strap-skills-target-aware-design.md",
+          "docs/plans/0003_strap_skills_target_aware_PIP.md"
+        ],
+        "lines": "3-4",
+        "reviewer": "tests, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The test module docstring says `--file` loads the module 'with its folder first on sys.path'. skill_api._load_file (plugins/harness/scripts/skill_api.py:68-70) calls sys.path.append, and its own docstring says 'appended'. An earlier sys.path entry holding a same-named sibling module would shadow the skill's models, which is the opposite of what this docstring promises.\n\nAlso (overall): The module docstring says --file loads 'with its folder first on sys.path', but skill_api._load_file appends the folder (skill_api.py:68-70), and the launcher's own docstring says it is appended so a file named like a standard library module never shadows it. The test docstring describes the rejected design.\n\nAlso (system_shape): skill_api.py:_load_file (lines 60-73) appends the API folder to sys.path, and its own module docstring explains why (a file named like a stdlib module never shadows it). The docstring of tests/scripts/test_skill_api_file.py:3 says '--file loads an API module by path, with its folder first on sys.path', and the design spec's Launcher section (design.md:124-125) says the same. Plan TASK-5's action text says both 'first on sys.path' and 'appended to sys.path'. A reader who trusts the test docstring will expect a sibling module to win over an installed module of the same name, which the code does not do.\n\nAlso (roast): `_load_file` appends the folder (skill_api.py:70), and its module docstring explains why: the folder must never shadow the standard library. The test module docstring still says \"with its folder first on sys.path\" (test_skill_api_file.py:3), and so does the design (line 125). The plan text was updated; these two were not.",
+        "fix": [
+          "Change line 3 of the docstring to 'with its folder appended to ``sys.path`` so a sibling models module imports'.",
+          "Replace 'with its folder first on ``sys.path``' with 'with its folder appended to ``sys.path``' in tests/scripts/test_skill_api_file.py:3.",
+          "Change tests/scripts/test_skill_api_file.py:3 to 'with its folder appended to sys.path'. The design spec is frozen, so note the divergence in the plan's deferred or decision record instead of editing the spec.",
+          "Change \"first on ``sys.path``\" to \"appended to ``sys.path``\" in tests/scripts/test_skill_api_file.py:3 and in design line 125."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Module-plus-file refusal test accepts any problem line",
+        "file": "tests/scripts/test_skill_api_file.py",
+        "lines": "75-82",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_module_and_file_together_are_refused checks only exit 1 and a `problem: ` prefix. A different failure in the same run (a bad --repo, a load error in the file) would also pass, so the test does not pin the 'not both' refusal in skill_api._select.",
+        "fix": [
+          "Also assert `\"not both\" in err`, matching the LauncherError text at plugins/harness/scripts/skill_api.py:84."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Role-agent check test has no negative control",
+        "file": "tests/scripts/test_strap_project_profile.py",
+        "lines": "153-160",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_check_finds_role_agents_in_agents_dir shows only that `check` passes when .claude/agents/helper.md exists. No test shows that `check` reports `role helper has no agents/helper.md` when the file is missing from agents_dir, or when it sits only in the harness location. So the docstring's claim 'role agents from agents_dir' is pinned only on the passing side.",
+        "fix": [
+          "Add a test that builds with role='helper', writes no agent file (or writes it under plugins/harness/agents/), and asserts that `check` exits non-zero with 'role helper has no agents/helper.md' in its output."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 188 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":8,\"first_sha\":\"544b290cebb60434dcfa251d4d12abe68a08c7e3\",\"headRefName\":\"1116-strap-skills\",\"headRefOid\":\"dd2089c59a91f39530b41c9103323ba19516f7fb\",\"last_sha\":\"dd2089c59a91f39530b41c9103323ba19516f7fb\",\"mergeCommit\":null,\"number\":188,\"state\":\"OPEN\",\"title\":\"1116 strap skills\",\"url\":\"https://github.com/t968rs/operator-straps/pull/188\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1116-strap-skills",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1116-strap-skills",
+        "head_ref_name": "1116-strap-skills",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "544b290cebb60434dcfa251d4d12abe68a08c7e3",
+        "head_sha": "dd2089c59a91f39530b41c9103323ba19516f7fb",
+        "base_ancestor_command": "git merge-base --is-ancestor 544b290cebb60434dcfa251d4d12abe68a08c7e3 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor dd2089c59a91f39530b41c9103323ba19516f7fb HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Repointed every COMPLETE item's verification_references at the reachable head dd2089c and its tree 484da59, with evidence naming 156cbf1 as the pre-split collector commit the tests ran on (git diff 156cbf1 dd2089c touches only the plan, PIP and usage log, so plugins/ and tests/ are identical); plan.py record was not usable because wave edits leave item files dirty; only mutable fields changed, so the freeze digest holds and check reports no completion problem; PIP re-rendered. frozen.commit b56b363 stays until a freeze --refreeze with the developer's OK"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Reworded the strap_lint module docstring: lint_skill applies the shared frontmatter, folder-name and description rules plus the harness house rules, and the CLAUDE_SKILL_DIR path check is project-only (lint_project_skill); design spec: frozen, the code and plan TASK-4 are the truth, no edit"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Design spec: frozen after the review patch, the launcher code and plan TASK-5 (appended to sys.path) are the truth, no edit; PIP: rendered from the frozen plan, whose TASK-5 action already states the folder is appended, and dropping its stale 'first on' phrase needs a plan edit plus freeze --refreeze with the developer's OK; the test docstring belongs to the other part; test_skill_api_file.py module docstring now says the folder is appended to sys.path, matching _load_file"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Added a CLAUDE.md Rules for changes bullet: a harness skill needs strap.target harness in .claude/harness.json, deferred until the 0.51.0 release (plan 0003 deferred entry), and until then strap.py new here scaffolds project-profile skills under .claude/skills/; spec frozen, plan deferred entry already tracks it, harness.json and defaults.json correct as they stand"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - skill_api.py module docstring line 1 now names both the harness_lib module and the --file mode (argparse description follows it)"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - _run resolves a relative --file against the caller's directory, then chdirs to the project root before _select loads the module and runs the heredoc; the chdir is restored in finally; docstring says the module is loaded and the heredoc runs from the project root"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - autouse fixture _restore_import_state in test_skill_api_file.py snapshots sys.path (monkeypatch) and sys.modules around each test and restores them after; demo_models and _skill_api_file_N no longer leak; _load takes monkeypatch, uses syspath_prepend and records/clears the demo_skill_models sys.modules entry via setitem so teardown restores sys.path and sys.modules; the test passes monkeypatch"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - test_module_and_file_together_are_refused also asserts 'not both' in stderr, pinning the _select refusal"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - SkillSpec docstring (and regenerated schema description) now says the model validator enforces exactly-one of plugin_dir/target and the schema leaves both optional; drift test adds a target-shaped dump_spec sample validated against the committed schema"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - SkillTarget.skills_dir/agents_dir take REL_PATH_PATTERN (the harness.json relPath guard; SkillTarget uses regex_engine python-re for the look-ahead), schema regenerated with the pattern, drift tests reject absolute/drive-letter folders in model and schema; strap_profile.py: no edit, new_fields builds SkillTarget from relPath-guarded config values and profile_of now receives only validated relative folders"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - SKILL.md after the API heredoc: one sentence that part paths follow the Profiles table, with .claude/agents/memo-reviewer.md as the project-skill agent example"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - SKILL.md step 2 prose now states the module is registered under its own stem and an already-loaded stem is returned, so tests and the API share one models module (matches the bare-stem _load already in contract_test.tmpl); contract_test.tmpl _load now registers each module under its bare stem and returns sys.modules[stem] when already loaded, so the API's sibling import and the test share one models module; docstring states the rule (SKILL.md step 2 prose is another fixer's part); api.tmpl sibling import (line 20) is the module the fix must share; the fix lives in contract_test.tmpl _load and SKILL.md step 2 (other parts), so no edit here"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Added a skills_dir row above agents_dir in the README key table (review lens detection; strap-skills project profile: the folder holding <name>/SKILL.md) and padded the agents_dir and strap.target rows to the table's column widths; harness.schema.json skills_dir description now says strap-skills' project profile writes each skill to <skills_dir>/<name>/; README key-table row is the other part's fix"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Added a plugins/harness/bin/ row to the README layout table: shims on the Bash PATH while the plugin is enabled (harness-skill-api); LF endings, mode 100755; README layout row is the other part's fix; .gitattributes:5 (LF endings for bin/) cited, no edit needed"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - No edit in this part: the fix lists the project templates as reference parts in SkillSpec.json (another fixer's part); skill_md.tmpl is cited only as one of those deliverables; SkillSpec.json parts now list the five templates/project/*.tmpl as reference parts and tests/skills/test_strap_skills_project_profile_contract.py as a contract_test part"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Moved the API-dependent Rules bullet and step 2 of the project skill_md.tmpl into $api_rule and $api_step substitutions; _project_sections fills the API text when an API part is planned and a TODO(fill) line otherwise"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Reworded _NO_API_SECTION to a working path: add a mechanical behavior, list the models and API modules with add_part, copy the heredoc from the strap-skills project api_section template, or delete the section"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - _role_problems and _agent_text build the absent-agent messages from profile.agents_dir; _agent_text docstring notes a project skill's file gets the same variable rewrite as its SKILL.md"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Dropped the dead plugin manifest seed and its git add/commit from _strap_new_args; docstring now says the run proves the project-profile spec lands under the project"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Removed the blank line between the pathlib and types imports so the stdlib imports form one block"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Added test_check_ignores_a_role_agent_outside_agents_dir: helper agent only under plugins/harness/agents/, check exits 1 with 'role helper has no .claude/agents/helper.md' on stderr"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "dd2089c (working-tree snapshot; developer commits) - Deleted the dead TEMPLATES constant and Profile.templates field (and their fills) from strap_profile.py, narrowed its docstring to skill-file paths with templates owned by strap_scaffold, made strap_profile.snake_case the single snake helper and dropped strap_scaffold's duplicate _snake in favor of it, removed the two profile.templates assertions; strap.py: cited only, no read of Profile.templates and the optional discriminator change was not needed to resolve the issue"
+    }
+  ]
+}
