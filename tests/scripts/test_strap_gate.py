@@ -90,7 +90,8 @@ def driver(plugin_root: Path) -> ModuleType:
 @pytest.fixture()
 def project(make_project, tmp_path: Path) -> Path:
     """A project holding a ``harness`` plugin source tree; scenario trees land in ``tmp_path/trees``."""
-    config = {"base_branch": "main", "worktree_root": (tmp_path / "trees").as_posix()}
+    config = {"base_branch": "main", "worktree_root": (tmp_path / "trees").as_posix(),
+              "strap": {"target": "harness"}}
     return make_project(config, files=dict(PLUGIN_FILES))
 
 

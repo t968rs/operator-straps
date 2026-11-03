@@ -79,7 +79,8 @@ def driver(plugin_root: Path) -> ModuleType:
 @pytest.fixture()
 def project(make_project, tmp_path: Path) -> Path:
     """A project holding a ``harness`` plugin source tree; scenario trees land in ``tmp_path/trees``."""
-    config = {"base_branch": "main", "worktree_root": (tmp_path / "trees").as_posix()}
+    config = {"base_branch": "main", "worktree_root": (tmp_path / "trees").as_posix(),
+              "strap": {"target": "harness"}}
     return make_project(config, files=dict(PLUGIN_FILES))
 
 
@@ -268,7 +269,7 @@ def test_check_refuses_a_role_without_an_agent_file(built: Callable[..., Dict[st
                                                     strap: Strap) -> None:
     built(role="helper")
     err = refused(strap("check", NAME))
-    assert "role helper has no agents/helper.md" in err
+    assert "role helper has no plugins/harness/agents/helper.md" in err
 
 
 # --- draw -------------------------------------------------------------------------------------------------

@@ -148,12 +148,7 @@ def _parallel2_plan_args(root: Path, tmp: Path) -> List[str]:
 
 
 def _strap_new_args(root: Path) -> List[str]:
-    """Seed a ``harness`` plugin source tree so ``strap.py new`` finds its plugin dir instead of refusing."""
-    manifest = root / "plugins" / "harness" / ".claude-plugin" / "plugin.json"
-    manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(json.dumps({"name": "harness"}) + "\n", encoding="utf-8", newline="\n")
-    git(root, "add", "-A")
-    git(root, "commit", "-q", "-m", "plugin manifest")
+    """``strap.py new`` under the default project profile; the run proves the spec lands under the project."""
     return ["scripts/strap.py", "--repo", str(root), "new", "demo-skill"]
 
 
