@@ -211,7 +211,15 @@ Misclassification patterns this audit blocks (PR #1224 worked example: 25 initia
 bubbles re-audited down to 10 genuinely architectural/domain calls):
 
 - A reviewer's `fix` array with > 1 option means "any of these would resolve," NOT
-  "the user must choose." Default: pick the safest, most mechanical option.
+  "the user must choose." Default: pick the safest, most mechanical option, a repair before a revert.
+- A revert or deletion of code the PR added is MECHANICAL only when the issue names one of these defects in
+  that code and the removal resolves it: broken (wrong behavior or a failing test), unreachable or dead, a
+  duplicate of code that exists elsewhere, leftover (debug output, commented-out code, a stray temporary
+  file), unsafe, or contradicting a contract. The list is closed: on any other ground, a commit message or PR
+  description that omits the change included, apply the repair option when the issue offers one, else
+  classify `ARCHITECTURAL_AMBIGUITY`.
+- An issue whose only fix changes a commit message or the PR description edits no file: classify
+  `OUT_OF_SCOPE`, naming that text in the reason.
 - `NEEDS_FOLLOW_UP` is a load-bearing classification, not a synonym for "bubble."
   Small docstring fixes and one-line generator changes are MECHANICAL.
 

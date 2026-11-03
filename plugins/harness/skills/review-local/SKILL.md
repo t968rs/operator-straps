@@ -111,7 +111,8 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
    reasonable fixes exist and choosing needs domain knowledge the session lacks, (b) the fix is outside the
    range's scope, or (c) it is a convention call with no precedent in the codebase:
    `bubble --pr local-<label> <ID> --classification <C> --reason "<R>"`. A `fix` list with several options is
-   not a bubble: pick the safest. Then `waves --pr local-<label>` and dispatch each wave's rows in one message
+   not a bubble: pick the safest, a repair before a revert. Then `waves --pr local-<label>` and dispatch each
+   wave's rows in one message
    (`Agent(subagent_type="harness:pr-fixer", model=<row model>, prompt=<row prompt>)`), each later wave after
    the previous one returns. After the last wave, `bubbles --pr local-<label>` lists the fixers' bubbles; audit
    them the same way. Surviving bubbles are the one pause: list each id with its classification, reason and

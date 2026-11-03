@@ -159,6 +159,12 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
 - **Re-grade reviewer severity by blast radius** with `amend --regrade <ID>=<severity>` before `build`. Count the
   callers the contract change reaches. A "minor" label on a return-type, annotation-widening or raises-vs-returns
   change with more than ~5 callers is almost never minor.
+- **A missing mention is a documentation gap.** A finding whose only ground is that the commit messages or PR
+  description omit a change regrades to `minor`, whatever the reviewer called it; the fixer brief bars a revert
+  on that ground. A code-level defect in the same hunk is graded on its own. A revert or deletion of code the
+  PR added resolves only one of these defects in that code: broken (wrong behavior or a failing test),
+  unreachable or dead, a duplicate of code that exists elsewhere, leftover (debug output, commented-out code, a
+  stray temporary file), unsafe, or contradicting a contract.
 - **A docstring cited as evidence is a claim, not a fact.** Probe the runtime the docstring describes before fixing.
   After any test edit, run the test before recording `RESOLVED`.
 - **"Dead code" findings need proof.** Grep the project's test roots (`tests.roots`), including tests that only run

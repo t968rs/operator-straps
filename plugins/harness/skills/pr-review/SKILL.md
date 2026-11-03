@@ -858,7 +858,7 @@ bubble. For each candidate bubble, answer three explicit questions:
    precedent?** If yes: bubble as `architectural_ambiguity`.
 
 If all three answers are NO, bubble only if the work is genuinely net-new and exceeds Phase 5 mechanical scope
-(`needs_follow_up`). Otherwise: pick the safest, most mechanical option and resolve.
+(`needs_follow_up`). Otherwise: pick the safest, most mechanical option, a repair before a revert, and resolve.
 
 Survivors are recorded with `bubble <ID> --classification <C> --reason "<R>"` (an unknown id is a problem and leaves
 the file unchanged). Items that are NOT bubbled join the waves — through a `waves --ids` follow-up wave when a
@@ -867,6 +867,12 @@ late-discovered candidate fails the audit after the plan was made. Three misclas
 - **Multiple `fix` options ≠ "developer must choose."** A reviewer's `fix` array with > 1 option means "any of
   these would resolve," not "the user must pick." The default is: the agent picks the safest, most mechanical
   option and resolves. Tag `architectural_ambiguity` only when question 1 above is a genuine double-yes.
+- **A revert is not a repair by default.** A revert or deletion of code the PR added resolves only one of these
+  defects in that code: broken (wrong behavior or a failing test), unreachable or dead, a duplicate of code that
+  exists elsewhere, leftover (debug output, commented-out code, a stray temporary file), unsafe, or
+  contradicting a contract. The list is closed: on any other ground, a commit message or PR description that
+  omits the change included, the repair option wins, and an issue whose only option is the removal is bubbled
+  `architectural_ambiguity`.
 - **`needs_follow_up` is not a synonym for "bubble."** It is a load-bearing classification reserved for net-new
   work that genuinely exceeds in-session scope. Small docstring fixes, one-line generator changes, and similar
   shippable edits run through the fix dispatch, not the bubble list.

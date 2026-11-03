@@ -237,6 +237,15 @@ For EACH planned reviewer, write a markdown prompt file at
   Mock-chain wiring tests — tests that stub the helpers and then assert the stubs were
   called — are NEITHER. Flag each one as Critical, recommending removal or
   conversion to a behavioral or integration test."
+- The prose-gap clause (mandatory): "A change the commit messages or the PR description
+  do not mention is a documentation gap, not a defect in the code. Report the gap alone
+  as a minor finding whose suggestion updates that text. It never grounds an important
+  or critical grade, and a revert is never a suggestion on that ground. When the code
+  itself is wrong, state that defect; the missing mention is at most context. A revert
+  or deletion of code the change added is a suggestion only when the finding names one
+  of these defects in that code: broken (wrong behavior or a failing test), unreachable
+  or dead, a duplicate of code that exists elsewhere, leftover (debug output,
+  commented-out code, a stray temporary file), unsafe, or contradicting a contract."
 - Each `review.domain_pointers[].pointer` whose `prefix` starts a path in the
   reviewer's scope, verbatim
 - The strict return-contract block reminder (point at `return_contract.md`)
