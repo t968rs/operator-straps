@@ -7,12 +7,29 @@ from __future__ import annotations
 import os
 import subprocess
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
 
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2]
+
+_GIT_TIMEOUT_SECONDS = 30
+
+
+def run_git(argv: List[str]) -> subprocess.CompletedProcess[str]:
+    """Run a git lookup with stdin closed and a bounded wait.
+
+    A child that inherits the caller's stdin, or never returns, would stall a hook for as long as the host
+    lets it run. A timeout raises ``TimeoutError`` (an ``OSError``). Callers that catch ``OSError``
+    (``main_worktree``, ``config._origin_head``, the hooks' project lookup) treat it as "git unusable";
+    ``project_root`` lets it propagate.
+    """
+    try:
+        return subprocess.run(argv, capture_output=True, text=True, stdin=subprocess.DEVNULL,
+                              timeout=_GIT_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as exc:
+        raise TimeoutError(f"git timed out after {_GIT_TIMEOUT_SECONDS}s: {' '.join(argv)}") from exc
 
 
 def project_root(start: Optional[Path] = None) -> Path:
@@ -38,7 +55,7 @@ def main_worktree(start: Path) -> Path:
     cwd = base if base.is_dir() else base.parent
     argv = ["git", "-C", str(cwd), "rev-parse", "--path-format=absolute", "--git-common-dir"]
     try:
-        done = subprocess.run(argv, capture_output=True, text=True)
+        done = run_git(argv)
     except OSError:
         return base.resolve()
     common = Path(done.stdout.strip()) if done.returncode == 0 else None
@@ -61,5 +78,5 @@ def schema_path(name: str, cfg: HarnessConfig) -> Path:
 def _git_toplevel(base: Path) -> Optional[Path]:
     cwd = base if base.is_dir() else base.parent
     argv = ["git", "-C", str(cwd), "rev-parse", "--show-toplevel"]
-    done = subprocess.run(argv, capture_output=True, text=True)
+    done = run_git(argv)
     return Path(done.stdout.strip()).resolve() if done.returncode == 0 else None
