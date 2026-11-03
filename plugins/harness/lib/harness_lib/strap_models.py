@@ -21,6 +21,7 @@ MIN_SCENARIOS = 2
 MIN_DISCIPLINE_PRESSURES = 3
 DESCRIPTION_MAX = 1024
 NAME_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
+REL_PATH_PATTERN = r"^(?![/\\])(?![A-Za-z]:)"
 SPEC_FILE = "SkillSpec.json"
 SCHEMA_DRAFT = "https://json-schema.org/draft/2020-12/schema"
 SCHEMA_ID = "https://github.com/t968rs/operator-straps/plugins/harness/schemas/SkillSpec.schema.json"
@@ -371,8 +372,21 @@ class Frozen(BaseModel):
     authored: Optional[str] = None
 
 
+class SkillTarget(BaseModel):
+    """Where a project-profile skill lands: the project's skills and agents folders, repo-relative (no
+    leading slash or backslash, no drive letter)."""
+
+    # The relative-path pattern needs look-ahead, which only the Python regex engine supports.
+    model_config = ConfigDict(extra="forbid", regex_engine="python-re")
+
+    skills_dir: str = Field(min_length=1, pattern=REL_PATH_PATTERN)
+    agents_dir: str = Field(min_length=1, pattern=REL_PATH_PATTERN)
+
+
 class SkillSpec(BaseModel):
-    """The strap-skills document for one skill."""
+    """The strap-skills document for one skill: ``plugin_dir`` names a harness-profile plugin, ``target``
+    a project-profile destination. The model validator requires exactly one of the two; the schema leaves
+    both optional and does not check that rule."""
 
     model_config = _MODEL_CONFIG
 
@@ -380,7 +394,8 @@ class SkillSpec(BaseModel):
     mode: SpecMode
     base: Optional[str] = None
     judge: bool = False
-    plugin_dir: str
+    plugin_dir: Optional[str] = None
+    target: Optional[SkillTarget] = None
     parts: List[Part] = Field(default_factory=list)
     behaviors: List[Behavior] = Field(default_factory=list)
     draws: List[Draw] = Field(default_factory=list, json_schema_extra=_DRIVER_OWNED)
@@ -393,6 +408,12 @@ class SkillSpec(BaseModel):
     def _base_iff_edit(self) -> SkillSpec:
         if (self.mode == SpecMode.EDIT) != (self.base is not None):
             raise ValueError("base is set exactly when mode is 'edit'")
+        return self
+
+    @model_validator(mode="after")
+    def _one_destination(self) -> SkillSpec:
+        if (self.plugin_dir is None) == (self.target is None):
+            raise ValueError("exactly one of plugin_dir and target is set")
         return self
 
     @model_validator(mode="after")
@@ -456,17 +477,20 @@ def driver_digest(spec: SkillSpec) -> str:
 
 
 def _dumped(spec: SkillSpec) -> Dict[str, Any]:
-    """JSON dump of ``spec``; an unsealed stamp drops ``authored`` so its text and digest predate the seal."""
+    """JSON dump of ``spec``; an unsealed stamp drops ``authored`` and a harness spec drops ``target``, so
+    the text and digests of a spec written before either field existed stay byte for byte."""
     dumped = spec.model_dump(mode="json")
     if dumped["frozen"] is not None and dumped["frozen"]["authored"] is None:
         del dumped["frozen"]["authored"]
+    if dumped["target"] is None:
+        del dumped["target"]
     return dumped
 
 
 def authored_digest(spec: SkillSpec) -> str:
     """sha256 hex of the canonical JSON of every authored field, parts included: the spec minus the
     driver-owned fields and each behavior's state."""
-    dumped = spec.model_dump(mode="json")
+    dumped = _dumped(spec)
     authored = {name: value for name, value in dumped.items() if name not in DRIVER_OWNED_TOP}
     authored["behaviors"] = [
         {name: value for name, value in behavior.items() if name not in DRIVER_OWNED_BEHAVIOR}
