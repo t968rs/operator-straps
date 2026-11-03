@@ -1,0 +1,6 @@
+#!/bin/sh
+# Runs scripts/skill_api.py through hpy; on the Bash PATH while the harness plugin is enabled.
+# pwd -W gives the native Windows path under Git Bash (MSYS_NO_PATHCONV=1 stops the /e/... rewrite); elsewhere
+# it fails and plain pwd answers.
+here=$(CDPATH= cd -- "$(dirname -- "$0")" && { pwd -W 2>/dev/null || pwd; })
+exec sh "$here/../scripts/hpy" "$here/../scripts/skill_api.py" "$@"

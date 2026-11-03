@@ -3,6 +3,10 @@
   "base_branch": null,
   "integration_branches": [],
   "skills_dir": ".claude/skills/",
+  "agents_dir": ".claude/agents/",
+  "strap": {
+    "target": "project"
+  },
   "schemas_dir": ".claude/agent-schemas",
   "state_dir": ".claude/state/harness",
   "matrix_path": "docs/_harness/pr_review_invocation_test_matrix.jsonl",

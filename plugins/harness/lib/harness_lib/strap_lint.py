@@ -1,8 +1,11 @@
 """Lint for plugin skills and Python parts: skill frontmatter and body rules, person words in comments.
 
 ``lint_skill`` returns one problem string per defect of ``<plugin_dir>/skills/<name>/SKILL.md``, each prefixed
-``"<name>: "``. ``lint_python`` returns the first and second person words found in the comments and docstrings
-of one Python file; code and string literals are never scanned. Both return an empty list for a clean input.
+``"<name>: "``; it applies the shared rules (frontmatter, folder name, description) and the harness house
+rules. ``lint_project_skill`` does the same for a project skill at ``<skill_folder>/SKILL.md`` with the
+shared rules plus the project-only check that ``${CLAUDE_SKILL_DIR}`` paths exist. ``lint_python``
+returns the first and second person words found in the comments and docstrings of one Python file; code and
+string literals are never scanned. All three return an empty list for a clean input.
 """
 from __future__ import annotations
 
@@ -11,7 +14,7 @@ import io
 import re
 import tokenize
 from pathlib import Path
-from typing import Dict, Iterator, List, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from harness_lib.skill_parts import skill_parts
 from harness_lib.strap_models import DESCRIPTION_MAX
@@ -22,6 +25,7 @@ _PERSON = re.compile(r"\b(?:I|we|you|your)\b", re.IGNORECASE)
 _PY_PERSON = re.compile(r"\b(?:we|you|your|our)\b", re.IGNORECASE)
 _PY_UPPER_I = re.compile(r"\bI\b")
 _PLUGIN_PATH = re.compile(r"\$\{CLAUDE_PLUGIN_ROOT\}/((?:scripts|skills)/[\w./-]++)(?![<*{$\[])")
+_SKILL_PATH = re.compile(r"\$\{CLAUDE_SKILL_DIR\}/([\w./-]++)(?![<*{$\[])")
 _AGENT = re.compile(r"\bharness:([a-z][a-z0-9-]*[a-z0-9])")
 _LIB_MODULE = re.compile(r"\bharness_lib\.([A-Za-z_][A-Za-z0-9_]*)")
 _BARE_PYTHON = re.compile(r"^\s*(?:\w+=\S+\s+)*python3?(?=\s|$)|[|;&(]\s*python3?(?=\s|$)")
@@ -114,20 +118,53 @@ def _text_problems(body: str) -> List[str]:
     return problems
 
 
-def lint_skill(plugin_dir: Path, name: str) -> List[str]:
-    """One problem string per defect of skill ``name`` under ``plugin_dir``, each prefixed ``"<name>: "``."""
-    path = plugin_dir / "skills" / name / "SKILL.md"
+def _skill_dir_problems(skill_folder: Path, body: str) -> List[str]:
+    """``${CLAUDE_SKILL_DIR}`` paths the body names that do not exist under ``skill_folder``."""
+    problems = []
+    for rel in sorted({match.rstrip(".") for match in _SKILL_PATH.findall(body)}):
+        if not (skill_folder / rel).exists():
+            problems.append(f"names ${{CLAUDE_SKILL_DIR}}/{rel}, which does not exist")
+    return problems
+
+
+def _parse_skill(path: Path) -> Tuple[Optional[str], Dict[str, str], str]:
+    """(error, keys, body) of the SKILL.md at path; error is None when it parses."""
     if not path.is_file():
-        return [f"{name}: no SKILL.md"]
+        return "no SKILL.md", {}, ""
     try:
         raw, body = skill_parts(path)
     except AssertionError:
-        return [f"{name}: SKILL.md has no frontmatter"]
-    keys = {key: _unquote(value) for key, value in raw.items()}
+        return "SKILL.md has no frontmatter", {}, ""
+    return None, {key: _unquote(value) for key, value in raw.items()}, body
+
+
+def _generic_problems(keys: Dict[str, str], name: str) -> List[str]:
+    """Folder-name and description defects shared by plugin and project skills."""
     problems = []
     if keys.get("name") != name:
         problems.append(f"frontmatter name {keys.get('name')!r} does not match the folder name")
     problems.extend(_description_problems(keys))
+    return problems
+
+
+def lint_project_skill(skill_folder: Path, name: str) -> List[str]:
+    """Generic problems of the project skill name at skill_folder, each prefixed "<name>: ".
+
+    Only the generic rules apply: frontmatter, folder name, description and ${CLAUDE_SKILL_DIR} paths.
+    """
+    error, keys, body = _parse_skill(skill_folder / "SKILL.md")
+    if error:
+        return [f"{name}: {error}"]
+    problems = _generic_problems(keys, name) + _skill_dir_problems(skill_folder, body)
+    return [f"{name}: {problem}" for problem in problems]
+
+
+def lint_skill(plugin_dir: Path, name: str) -> List[str]:
+    """One problem string per defect of skill name under plugin_dir, each prefixed "<name>: "."""
+    error, keys, body = _parse_skill(plugin_dir / "skills" / name / "SKILL.md")
+    if error:
+        return [f"{name}: {error}"]
+    problems = _generic_problems(keys, name)
     problems.extend(_argument_problems(keys, body))
     problems.extend(_reference_problems(plugin_dir, body))
     problems.extend(_text_problems(body))
