@@ -34,7 +34,8 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   without a leading underscore must be registered, or named under `COMPOSED` as decided inside a registered
   dispatcher (`bash_pretool.py` runs the three Bash hooks in one launch); both are checked by
   `tests/contract/test_hooks_json_paths.py`. Every hook launch costs an interpreter start, so a new hook
-  for an event that already has one joins that dispatcher instead of adding a command.
+  for an event and matcher that already has a command joins that command's dispatcher (or turns it into one,
+  with a `COMPOSED` entry) instead of adding a command.
 
 - **Porting a file in** from another repository follows the project skill `porting-into-straps`
   (`.claude/skills/porting-into-straps/`); its `port_scan.py` lists the decoupling work before the copy.
