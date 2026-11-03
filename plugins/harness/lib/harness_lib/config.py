@@ -101,6 +101,13 @@ class RunLogsConfig:
 
 
 @dataclass(frozen=True)
+class DocstringsConfig:
+    """Project values of the docstring convention."""
+
+    line_length: int
+
+
+@dataclass(frozen=True)
 class TodoSnapshots:
     """Where dated TODO snapshots live and how a snapshot file name carries its date."""
 
@@ -174,6 +181,7 @@ class HarnessConfig:
     worktree_setup: Tuple[Tuple[str, ...], ...]
     worktree_baseline: Tuple[Tuple[str, ...], ...]
     runlogs: RunLogsConfig
+    docstrings: DocstringsConfig
     todo: TodoConfig
 
     def path(self, rel: str) -> Path:
@@ -296,7 +304,8 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
         worktree_setup=_argv_list(m["worktree_setup"], "worktree_setup"),
         worktree_baseline=_argv_list(m["worktree_baseline"], "worktree_baseline"),
-        runlogs=_runlogs(m["runlogs"]), todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
+        runlogs=_runlogs(m["runlogs"]), docstrings=_docstrings(m["docstrings"]),
+        todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
     )
 
 
@@ -330,6 +339,18 @@ def _runlogs(r: Dict[str, Any]) -> RunLogsConfig:
     """``runlogs`` with ``name_pattern`` compiled and checked for the required named group ``date``."""
     _require_group(r["name_pattern"], "date", "runlogs/name_pattern")
     return RunLogsConfig(r["dir"], r["name_pattern"])
+
+
+def _docstrings(d: Dict[str, Any]) -> DocstringsConfig:
+    """``docstrings`` with ``line_length`` checked as a positive integer, also on a load without
+    ``jsonschema``."""
+    unknown = sorted(set(d) - {"line_length"})
+    if unknown:
+        raise ConfigError(f"docstrings: unknown keys {unknown}")
+    length = d.get("line_length")
+    if isinstance(length, bool) or not isinstance(length, int) or length < 1:
+        raise ConfigError(f"docstrings/line_length: {length!r} is not a positive integer")
+    return DocstringsConfig(length)
 
 
 def _inside_root(rel: str, where: str) -> str:

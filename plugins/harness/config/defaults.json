@@ -55,6 +55,9 @@
     "dir": null,
     "name_pattern": "(?:.*\\D)?(?P<date>\\d{4}-\\d{2}-\\d{2})(?:_(?P<time>\\d{6}))?\\.(?:txt|log)"
   },
+  "docstrings": {
+    "line_length": 110
+  },
   "todo": {
     "folder": null,
     "catalog": "RepoToDo.json",

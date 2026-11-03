@@ -199,6 +199,17 @@ def test_runlogs_default_and_override(make_project) -> None:
     assert override.name_pattern == default.name_pattern
 
 
+def test_docstrings_line_length_default_and_override(make_project) -> None:
+    assert load_config(make_project()).docstrings.line_length == 110
+    override = load_config(make_project({"docstrings": {"line_length": 88}}, name="p2"))
+    assert override.docstrings.line_length == 88
+    for index, bad in enumerate([0, "110", None, 1.5]):
+        with pytest.raises(ConfigError):
+            load_config(make_project({"docstrings": {"line_length": bad}}, name=f"bad{index}"))
+    with pytest.raises(ConfigError):
+        load_config(make_project({"docstrings": {"width": 88}}, name="unknown"))
+
+
 TODO_DIR = "docs/RESEARCH/_TODO"
 
 

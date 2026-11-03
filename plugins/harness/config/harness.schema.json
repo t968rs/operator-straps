@@ -104,6 +104,14 @@
         "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a log file name must fully match; named group date (YYYY-MM-DD) required (checked at config load), time (HHMMSS) optional, a date-only name sorts as midnight."}
       }
     },
+    "docstrings": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The docstring convention's project values; read by the writing-docstrings tier command.",
+      "properties": {
+        "line_length": {"type": "integer", "minimum": 1, "description": "Longest docstring line, indentation included; a longer line gets the long-lines flag."}
+      }
+    },
     "todo": {
       "type": "object",
       "additionalProperties": false,
