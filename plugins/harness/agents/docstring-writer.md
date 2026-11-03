@@ -162,7 +162,7 @@ sections.
 
 ## Probe row
 
-A row ending in `Probe: yes` checks the tools before a parallel run, on throwaway probe files. Run the tier
+A row with a `Probe: yes` line checks the tools before a parallel run, on throwaway probe files. Run the tier
 command once on each probe file, then write one brief docstring into each with Edit. Reply with exactly two
 lines and nothing else, no per-file sections:
 
@@ -172,7 +172,7 @@ Probe edit: SUCCESS
 ```
 
 A line reads `Probe tier: BLOCKED` or `Probe edit: BLOCKED` instead when that tool was refused or prompted on
-any probe file, followed by the refused command or path.
+any probe file, with the refused command or path after it on the same line (`Probe edit: BLOCKED <path>`).
 
 ## Reply
 

@@ -331,10 +331,18 @@ class DispatchError(ValueError):
         self.problems = list(problems)
 
 
+_GIT_TIMEOUT_SECONDS = 30
+
+
 def _git(root: Path, *args: str) -> subprocess.CompletedProcess:
-    """Runs git in ``root`` without raising."""
-    return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, encoding="utf-8",
-                          errors="replace")
+    """Runs git in ``root``; a missing git, a failed launch or a timed-out call returns a failed
+    CompletedProcess whose stderr names the cause, with stdin closed so a child cannot stall the caller."""
+    argv = ["git", "-C", str(root), *args]
+    try:
+        return subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                              stdin=subprocess.DEVNULL, timeout=_GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return subprocess.CompletedProcess(argv, 1, stdout="", stderr=str(exc))
 
 
 def _posix(path: Path) -> str:
@@ -383,12 +391,18 @@ def first_path(tokens: Sequence[str], cwd: Path) -> Optional[Path]:
     return None
 
 
-def _tracked_python(root: Path, folder: Path) -> List[Path]:
-    """The git-tracked ``.py`` files under ``folder``, recursively, that exist in the working tree."""
+def _tracked_python(root: Path, folder: Path) -> Tuple[List[Path], Optional[str]]:
+    """The git-tracked ``.py`` files under ``folder``, recursively, that exist in the working tree and
+    resolve inside ``root`` (a symlink leading out is skipped), and the first line of git's stderr when
+    ``git ls-files`` fails (``None`` otherwise)."""
     rel = folder.relative_to(root).as_posix()
     done = _git(root, "ls-files", "-z", "--", rel)
+    if done.returncode != 0:
+        detail = (done.stderr or "").strip().splitlines()
+        return [], f"git ls-files failed: {detail[0] if detail else f'exit {done.returncode}'}"
     names = [name for name in done.stdout.split("\0") if name.endswith(".py")]
-    return [path for path in ((root / name).resolve() for name in names) if path.is_file()]
+    paths = ((root / name).resolve() for name in names)
+    return [path for path in paths if path.is_file() and _inside(path, root)], None
 
 
 def _token_files(root: Path, token: str, cwd: Path, problems: List[str]) -> List[Path]:
@@ -400,9 +414,12 @@ def _token_files(root: Path, token: str, cwd: Path, problems: List[str]) -> List
     elif not path.exists():
         problems.append(f"{token}: no such file or directory")
     elif path.is_dir():
-        files = [] if name is not None else _tracked_python(root, path)
         if name is not None:
             problems.append(f"{token}: '::' needs a file, not a folder")
+            return []
+        files, failure = _tracked_python(root, path)
+        if failure is not None:
+            problems.append(f"{token}: {failure}")
         elif not files:
             problems.append(f"{token}: no git-tracked .py files under it")
         return files
@@ -446,12 +463,14 @@ def _merge(root: Path, narrowed: Dict[Path, List[str]], whole: Set[Path], symbol
     for path in sorted(whole & set(narrowed)):
         problems.append(f"{_rel(root, path)}: named whole and with '::'; name it one way")
     scopes = {path: [] for path in whole} | {path: names for path, names in narrowed.items()}
-    if symbols and len(scopes) != 1:
+    if not symbols or (not scopes and problems):
+        return scopes
+    if len(scopes) != 1:
         problems.append(f"bare symbols {', '.join(symbols)} need exactly one file in scope; write "
                         "<file>::<name>")
-    elif symbols:
-        path = next(iter(scopes))
-        scopes[path] = list(dict.fromkeys([*scopes[path], *symbols]))
+        return scopes
+    path = next(iter(scopes))
+    scopes[path] = list(dict.fromkeys([*scopes[path], *symbols]))
     return scopes
 
 
@@ -505,23 +524,51 @@ def plan_rows(root: Path, scopes: Sequence[FileScope], *, new_docstrings: bool,
                         scopes=group) for group in groups]
 
 
-def write_probes(root: Path, scopes: Sequence[FileScope], record: Path) -> List[Path]:
-    """Writes one probe file per distinct folder of ``scopes``, in scope order, over any untracked stale
-    probe, and appends each path to ``record``.
+def _probe_clash(root: Path, probe: Path) -> Optional[str]:
+    """The problem line for a file already at ``probe``'s path, tracked or not; ``None`` when it is free.
 
-    Raises ``DispatchError`` before writing anything when git tracks a file of the probe's name there.
+    The driver clears recorded probes first, so a file still there belongs to the developer.
+    """
+    if _tracked(root, probe):
+        return f"{probe.as_posix()}: git tracks a file named {PROBE_NAME} here; run without -p"
+    if probe.exists():
+        return f"{probe.as_posix()}: a file named {PROBE_NAME} exists here; remove it or run without -p"
+    return None
+
+
+def _drop(paths: Iterable[Path]) -> None:
+    """Removes each of ``paths``, ignoring a file that is gone or cannot be removed."""
+    for path in paths:
+        try:
+            path.unlink()
+        except OSError:
+            pass
+
+
+def write_probes(root: Path, scopes: Sequence[FileScope], record: Path) -> List[Path]:
+    """Writes one probe file per distinct folder of ``scopes``, in scope order, and appends each path to
+    ``record``.
+
+    Raises ``DispatchError`` before writing anything when a file of the probe's name exists in a target
+    folder (tracked or not), and when a folder or the record cannot be written; the probes already written
+    are then removed.
     """
     folders = dict.fromkeys(Path(scope.path).resolve().parent for scope in scopes)
     probes = [folder / PROBE_NAME for folder in folders]
-    tracked = [probe for probe in probes if _tracked(root, probe)]
-    if tracked:
-        raise DispatchError([f"{probe.as_posix()}: git tracks a file named {PROBE_NAME} here; run without -p"
-                             for probe in tracked])
-    record.parent.mkdir(parents=True, exist_ok=True)
-    with record.open("a", encoding="utf-8") as handle:
-        for probe in probes:
-            probe.write_text(PROBE_SOURCE, encoding="utf-8")
-            handle.write(probe.as_posix() + "\n")
+    clashes = [line for line in (_probe_clash(root, probe) for probe in probes) if line is not None]
+    if clashes:
+        raise DispatchError(clashes)
+    written: List[Path] = []
+    try:
+        record.parent.mkdir(parents=True, exist_ok=True)
+        with record.open("a", encoding="utf-8") as handle:
+            for probe in probes:
+                written.append(probe)
+                probe.write_text(PROBE_SOURCE, encoding="utf-8")
+                handle.write(probe.as_posix() + "\n")
+    except OSError as exc:
+        _drop(written)
+        raise DispatchError([f"cannot write probe files under {root.as_posix()}: {exc}"]) from exc
     return probes
 
 

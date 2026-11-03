@@ -603,14 +603,91 @@
       "recorded": true,
       "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
       "start": "2f0995f24e6be2e6d40fecd2df53aabb261d3424"
+    },
+    {
+      "id": "R-8",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Not edited by the session. The skill reserves docstring edits for the docstring-writer agent, even for one placeholder line, so I ran the driver scoped to close_pool and stopped at the dispatch. The tokens are a fair worry, but the agent is where the three-tier convention is applied and checked. The agent also needs less context than this session has accumulated.\n\nDriver output: one work row, model opus, `Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e`, `New docstrings: no`, scope `src/db/pool.py: close_pool`. No `-in`, because the request only asks to fix an existing placeholder. No `-p`, because there is a single file.\n\nDispatch I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: close_pool\")\n\nWhen the agent replies, I will relay its reply unedited.\n",
+      "reply_sha256": "f5975c9d7e34d4f0c5603e1f2924c6dabe21247e4fe9deb6203bfe9482694ce6",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "1c7eb6629f0ec3ec9ad92104e2a6f91ce666fe1f"
+    },
+    {
+      "id": "R-9",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Ran the driver on src/db/pool.py in the working tree. It printed one work row with model opus, scope \"all\" and \"New docstrings: no\". I did not use `-in`, because \"restyle\" is not an ask for new docstrings. Any undocumented functions will be listed in the agent's reply, and you can decide on them then. The session does not edit docstrings itself. The call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"Project root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e\\nNew docstrings: no\\nScope: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e/src/db/pool.py: all\\nDeveloper guidance: Keep the docstrings light, and look hard at open_pool: its once-per-process caveat must survive the restyle; the last pass lost a caveat.\")\n",
+      "reply_sha256": "b2329a7f67e3e43662a7798df990a30fb181b800aedb21cdd9c633fedf5a269b",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "731d32ebdfff2efe627de31a78ebd1658c38e68a"
+    },
+    {
+      "id": "R-10",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
+      "start": "c6a2264c623e048e77bffb1598b9a9a9ca370c42"
     }
   ],
   "grades": [],
   "frozen": {
-    "skill_hash": "b30d0da6d88513b277a6a770d1f1e5c8c047feaa473d769b5807c2df4367fa40",
+    "skill_hash": "63ed32105c7d9209fb39da2104f82cbceaa1647461e03dff58c336d8a19f6334",
     "grader": "session",
-    "at": "2026-11-03T20:03:33+00:00",
+    "at": "2026-11-03T20:39:09+00:00",
     "authored": "fde8ac6b09483917c4de2416b19393cb3d68958d066ba21432c8ddc62688a217"
   },
-  "driver_digest": "9ba450dbe5ed8c2d4b844db8c3d9f7da973e1ce92634500b95e77d5236e9299b"
+  "driver_digest": "6308326a157d0ec863dd3bc7f26f5f5e84f1950136d1d2cc92ee2ac3ecc27c3f"
 }

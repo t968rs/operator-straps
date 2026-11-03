@@ -1,7 +1,7 @@
 """The writing-docstrings dispatch API: scope resolution, dispatch rows and the parallel probe files.
 
-Each test builds a ``make_project`` repo and calls ``writing_docstrings_api`` directly; the row models come
-from ``writing_docstrings_models``. The probe record is a file the caller names (the driver passes
+Each test but the model check builds a ``make_project`` repo and calls ``writing_docstrings_api`` directly;
+the last test validates the row models alone. The probe record is a file the caller names (the driver passes
 ``<state_dir>/writing-docstrings/probes.txt``).
 """
 from __future__ import annotations
@@ -180,6 +180,12 @@ def test_missing_path_is_refused(make_project) -> None:
     assert len(problems) == 1 and "zzz.py" in problems[0]
 
 
+def test_missing_path_with_a_bare_symbol_reports_only_the_path(make_project) -> None:
+    root = _project(make_project)
+    problems = _problems(root, "src/zzz.py", "f")
+    assert len(problems) == 1 and "zzz.py" in problems[0]
+
+
 def test_non_python_file_is_refused(make_project) -> None:
     root = _project(make_project)
     problems = _problems(root, "src/notes.md")
@@ -243,14 +249,26 @@ def test_row_text_is_the_header_then_the_prompt_lines(make_project) -> None:
     ])
 
 
-def test_probes_go_beside_each_folder_over_a_stale_one(make_project) -> None:
+def test_probes_go_beside_each_folder(make_project) -> None:
     root = make_project(files={"src/a.py": A, "src/b.py": A, "pkg/c.py": B})
     scopes = resolve_scope(root, ["src/a.py", "src/b.py", "pkg/c.py"], cwd=root)
-    (root / "src" / PROBE_NAME).write_text("stale = True\n", encoding="utf-8")
     probes = write_probes(root, scopes, _record(root))
     assert probes == [root.resolve() / "pkg" / PROBE_NAME, root.resolve() / "src" / PROBE_NAME]
     assert all(probe.read_text(encoding="utf-8") == PROBE_SOURCE for probe in probes)
     assert _record(root).is_file()
+
+
+def test_probe_beside_an_unrecorded_untracked_file_of_that_name_is_refused(make_project) -> None:
+    root = make_project(files={"src/a.py": A, "pkg/c.py": B})
+    scopes = resolve_scope(root, ["src/a.py", "pkg/c.py"], cwd=root)
+    (root / "src" / PROBE_NAME).write_text("mine = True\n", encoding="utf-8")
+    with pytest.raises(DispatchError) as caught:
+        write_probes(root, scopes, _record(root))
+    assert caught.value.problems == [f"{(root.resolve() / 'src' / PROBE_NAME).as_posix()}: a file named "
+                                     f"{PROBE_NAME} exists here; remove it or run without -p"]
+    assert (root / "src" / PROBE_NAME).read_text(encoding="utf-8") == "mine = True\n"
+    assert not (root / "pkg" / PROBE_NAME).exists()
+    assert not _record(root).exists()
 
 
 def test_probe_beside_a_tracked_file_of_that_name_is_refused(make_project) -> None:
@@ -260,6 +278,7 @@ def test_probe_beside_a_tracked_file_of_that_name_is_refused(make_project) -> No
         write_probes(root, scopes, _record(root))
     assert PROBE_NAME in caught.value.problems[0]
     assert (root / "src" / PROBE_NAME).read_text(encoding="utf-8") == "kept = 1\n"
+    assert not _record(root).exists()
 
 
 def test_probe_row_asks_for_a_new_docstring_on_each_probe_file(make_project) -> None:
@@ -283,6 +302,16 @@ def test_clear_probes_removes_only_recorded_probes_under_the_project(make_projec
     assert outside.is_file() and (root / "src" / "a.py").is_file()
     assert not _record(root).exists()
     assert clear_probes(root, _record(root)) == []
+
+
+def test_clear_probes_keeps_a_recorded_tracked_probe_named_file(make_project) -> None:
+    root = make_project(files={"src/a.py": A, f"src/{PROBE_NAME}": "kept = 1\n"})
+    tracked = root / "src" / PROBE_NAME
+    _record(root).parent.mkdir(parents=True, exist_ok=True)
+    _record(root).write_text(f"{_p(tracked)}\n", encoding="utf-8")
+    assert clear_probes(root, _record(root)) == []
+    assert tracked.read_text(encoding="utf-8") == "kept = 1\n"
+    assert not _record(root).exists()
 
 
 def test_dispatch_models_forbid_extra_keys() -> None:

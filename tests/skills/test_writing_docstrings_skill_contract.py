@@ -1,11 +1,15 @@
 """Contract test for the ``writing-docstrings`` skill: its SKILL.md, its ``harness:docstring-writer`` agent,
 its convention reference and its models.
 
-Labels, flags, thresholds and prompt lines are imported from ``writing_docstrings_models``, never copied: a
-literal pinned here would drift from the module the commands read.
+Labels, flags, thresholds and prompt lines are imported from ``writing_docstrings_models``, and the dispatch
+flags are read from the driver's parser, never copied: a literal pinned here would drift from the module the
+commands read. The reply headings and probe lines are pinned on purpose: no module defines them, the agent
+prose owns them and the session parses them.
 """
 from __future__ import annotations
 
+import argparse
+import importlib.util
 from typing import List
 
 import pytest
@@ -21,6 +25,7 @@ SKILL_DIR = plugin_root() / "skills" / NAME
 SKILL = SKILL_DIR / "SKILL.md"
 AGENT = plugin_root() / "agents" / "docstring-writer.md"
 REFERENCE = SKILL_DIR / "docstring_format.md"
+DISPATCH_PY = SKILL_DIR / "commands" / "docstring_dispatch.py"
 TIERS = ('sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" '
          '"${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/commands/docstring_tiers.py"')
 DISPATCH = ('sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" '
@@ -59,10 +64,20 @@ def test_body_runs_the_dispatch_driver_through_hpy() -> None:
     assert TIERS not in _body()
 
 
+def _dispatch_flags() -> List[str]:
+    """Every option string of the dispatch driver's parser except ``--help``."""
+    spec = importlib.util.spec_from_file_location("docstring_dispatch", DISPATCH_PY)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    actions = [action for action in module._parser()._actions if not isinstance(action, argparse._HelpAction)]
+    return [option for action in actions for option in action.option_strings]
+
+
 def test_body_names_every_dispatch_flag() -> None:
     body = _body()
-    missing = [flag for flag in ("--include-new", "`-in`", "--parallel", "`-p`", "--clear-probe")
-               if flag not in body]
+    flags = _dispatch_flags()
+    assert "--clear-probe" in flags and "--repo" in flags, flags
+    missing = [flag for flag in flags if (flag if flag.startswith("--") else f"`{flag}`") not in body]
     assert not missing, missing
 
 

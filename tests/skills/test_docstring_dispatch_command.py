@@ -162,10 +162,45 @@ def test_clear_probe_removes_the_recorded_probes(make_project) -> None:
 
 def test_clear_probe_leaves_an_unrecorded_probe_named_file(make_project) -> None:
     root = _project(make_project)
-    (root / "src" / PROBE).write_text("mine = 1\n", encoding="utf-8")
+    assert _run(root, "-p", "src/a.py", "src/b.py").returncode == 0
+    (root / "pkg" / PROBE).write_text("mine = 1\n", encoding="utf-8")
     done = _run(root, "--clear-probe")
     assert done.returncode == 0, done.stderr
-    assert (root / "src" / PROBE).read_text(encoding="utf-8") == "mine = 1\n"
+    assert not (root / "src" / PROBE).exists()
+    assert (root / "pkg" / PROBE).read_text(encoding="utf-8") == "mine = 1\n"
+
+
+def test_clear_probe_with_a_path_is_a_problem_line(make_project) -> None:
+    root = _project(make_project)
+    assert _run(root, "-p", "src/a.py", "src/b.py").returncode == 0
+    done = _run(root, "--clear-probe", "pkg")
+    assert done.returncode == 1
+    assert done.stdout == "" and done.stderr.startswith("problem: ")
+    assert (root / "src" / PROBE).is_file()
+
+
+def test_repo_flag_names_the_project(make_project) -> None:
+    root = _project(make_project)
+    done = _run(root.parent, "--repo", str(root), str(root / "src" / "a.py"))
+    assert done.returncode == 0, done.stderr
+    assert _rows(done)[0][1] == f"Project root: {_p(root)}"
+
+
+def test_clear_probe_with_repo_clears_that_project(make_project) -> None:
+    root = _project(make_project)
+    assert _run(root, "-p", "src/a.py", "src/b.py").returncode == 0
+    done = _run(root.parent, "--clear-probe", "--repo", str(root))
+    assert done.returncode == 0, done.stderr
+    assert not (root / "src" / PROBE).exists()
+    assert _p(root / "src" / PROBE) in done.stdout
+
+
+def test_an_invalid_config_is_a_problem_line(make_project) -> None:
+    root = make_project(config={"no_such_key": 1}, files={"src/a.py": A})
+    done = _run(root, "src/a.py")
+    assert done.returncode == 1
+    assert done.stdout == ""
+    assert done.stderr.startswith("problem: ")
 
 
 def test_a_later_run_removes_a_stale_probe_in_another_folder(make_project) -> None:

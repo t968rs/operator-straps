@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 
 Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
 it: paths, symbols and flags for the driver. After it: guidance for this run (a tier preference, a symbol to
-read hard); it never reaches the driver and rides on every dispatch prompt as the last line.
+read hard); it never reaches the driver and rides on every work-row prompt as the last line; the probe row goes out without it.
 
 The docstrings are written by the `harness:docstring-writer` agent, which carries the three-tier convention
 (`${CLAUDE_SKILL_DIR}/docstring_format.md`) and the tier command. The session turns the request into driver
@@ -58,8 +58,11 @@ line looks wasteful. The agent is the one place the convention is applied, measu
    again. Whatever the outcome, then remove the probe files:
 
    ```bash
-   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/commands/docstring_dispatch.py" --clear-probe
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/commands/docstring_dispatch.py" --clear-probe --repo "<the probe row's Project root>"
    ```
+
+   The root is the `Project root:` line of the probe row, so the probes are removed from the checkout they were
+   written in, even when the first path sits in a worktree.
 
 3. **Dispatch every work row in one message**, one call per row, with the row's model, never another:
 

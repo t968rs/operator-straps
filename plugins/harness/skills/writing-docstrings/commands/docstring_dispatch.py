@@ -9,7 +9,8 @@ A path is a ``.py`` file, ``file.py::name`` (that file narrowed to ``name``) or 
 line ``agent=harness:docstring-writer model=<m>`` and its prompt lines; rows are separated by one blank line.
 With ``--parallel`` and two or more files, one probe file is written per target folder and the probe row
 prints first. Every run first removes the probes an earlier run recorded under ``state_dir``;
-``--clear-probe`` does only that and prints ``cleared <path>`` per probe.
+``--clear-probe`` does only that and prints ``cleared <path>`` per probe; it takes no paths, so a project
+other than the current checkout is named with ``--repo``.
 
 The project is ``--repo`` when given, else the checkout of the first path. Every defect is one ``problem:``
 line on stderr with exit 1, nothing on stdout and no probe written.
@@ -17,6 +18,7 @@ line on stderr with exit 1, nothing on stdout and no probe written.
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from pathlib import Path
 from typing import List, NoReturn, Optional
@@ -70,6 +72,8 @@ def _start(args: argparse.Namespace, cwd: Path) -> Path:
 
 def _output(args: argparse.Namespace, cwd: Path) -> List[str]:
     """The stdout blocks; raises ``DispatchError`` or ``ConfigError``."""
+    if args.clear_probe and args.tokens:
+        raise DispatchError(["--clear-probe takes no paths; pass --repo DIR to name the project"])
     cfg = activate(load_config(project_root(_start(args, cwd))))
     root = cfg.project_root.resolve()
     record = cfg.path(cfg.state_dir) / PROBE_RECORD
@@ -91,8 +95,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     try:
         args = _parser().parse_intermixed_args(argv)
         blocks = _output(args, cwd)
-    except (DispatchError, ConfigError) as exc:
-        problems = exc.problems if isinstance(exc, DispatchError) else [str(exc)]
+    except (DispatchError, ConfigError, OSError, subprocess.SubprocessError) as exc:
+        problems = exc.problems if isinstance(exc, DispatchError) else [str(exc) or type(exc).__name__]
         print("\n".join(f"problem: {problem}" for problem in problems), file=sys.stderr)
         return 1
     if blocks:
