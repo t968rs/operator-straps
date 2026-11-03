@@ -43,7 +43,7 @@ exact `init` command). Everything else reaches you through `init`.
 - **A scenario that plays the session ends its work at the dispatch, then records.** When the task is one the
   main session would answer by dispatching an agent, do not dispatch. State the call you would make, as one
   line of the form `Agent(subagent_type="harness:<id>", model="<model>", prompt="<prompt>")`, inside the
-  reply, and finish with the `record-run` command below like any other run: stopping at the dispatch never
+  reply you pass to record-run (the heredoc body), and finish with the `record-run` command below like any other run: stopping at the dispatch never
   skips the record.
 - **Record exactly once, last.** Finish with the brief's `record-run` command as a quoted heredoc, exactly
   once, with your reply on the lines after the opener and the closing tag alone on its line:

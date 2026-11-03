@@ -1,0 +1,406 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 196,
+  "pr_title": "1118 post tool use hook",
+  "branch": "1118-post-tool-use-hook",
+  "base_branch": "main",
+  "base_sha": "577f51693b51b2596cd6282d13c363ed92435a65",
+  "head_sha": "c8577443d43f023971f03534e7ec8cf3ce0aa8b7",
+  "review_date": "2026-11-03",
+  "verdict": "READY TO MERGE - 13 of 13 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1300,
+    "deletions": 15,
+    "files_changed": 11
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0196/pr196_20261103T182017Z/findings/tests.json",
+    "docs/_scratch/pr_review/0196/pr196_20261103T182017Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0196/pr196_20261103T182017Z/findings/docs.json",
+    "docs/_scratch/pr_review/0196/pr196_20261103T182017Z/findings/overall.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "_timed_hook puts a hard subprocess timeout on the hook, so a reintroduced backtracking scan fails one test fast instead of hanging the whole suite.",
+    "test_long_token_does_not_hide_a_real_plan_path is a good negative control: a skipped oversized token must not mask a real plan path later in the same command.",
+    "test_bash_path_token_shapes_still_validate covers bare, single-quoted, double-quoted-with-pipe and relative path shapes against the new quote-aware token split, end to end through the real hook.",
+    "test_run_git_timeout_surfaces_as_oserror checks the real exception translation in run_git (TimeoutExpired to TimeoutError, an OSError), which the existing OSError handlers depend on.",
+    "The backtracking `[^\\s'\"]*<dir>[/\\\\][^\\s'\"]+?\\.json` findall is replaced by a whitespace/quote split plus str.find/rfind scanning. This removes the quadratic-or-worse stall on long whitespace-free tokens, and the 4096-char cap bounds the per-token cost.",
+    "The new scanner splits adjacent paths in one token into separate candidates, e.g. 'docs/PLANS/a.json,docs/PLANS/b.json'. The old greedy prefix merged them into a single non-existent path, so this also improves detection.",
+    "run_git centralizes stdin=DEVNULL and a bounded wait, and maps TimeoutExpired to TimeoutError (an OSError subclass). The existing `except OSError` paths in main_worktree and _activate_project absorb a hung git without new handlers.",
+    "Every git lookup in project.py and config.py now routes through run_git, and tests/lib/test_project.py adds a parametrized guard that checks this, so a future direct subprocess.run is caught.",
+    "Plan decisions D11-D15 record every change from the frozen spec (path syntax, dedup, probes for each folder, checkout anchoring, J1-J4 baselines), each tied to a review ID, so the spec stays frozen and the plan holds the current design.",
+    "All plan anchors other than TASK-5's resolve at head: writing_docstrings_api.py:25/281/302, writing_docstrings_models.py:59, docstring_tiers.py:44, test_root_separation.py:206, SKILL.md:25/38, contract.ts:123, README.md:28 and strap.py:550. Every regression command it names points to a test file that exists.",
+    "The spec's anti-goals (no -in from restyle words, never two -p agents on one file) are concrete, testable failures, and plan D11's dedup on resolved paths enforces the second.",
+    "The runner agent change closes a real hole (a session-role scenario stopping before record-run). It matches strap-skills SKILL.md:110 and does not trip the init-before-record pin in test_strap_agents_contract.py:70-75.",
+    "The Bash target scan swaps a backtracking regex, which went quadratic on long whitespace-free tokens, for whitespace and quote splitting plus str.find/rfind, with a 4096-char token cap. Quoted, piped and absolute path shapes still validate.",
+    "The regression tests run the real hook as a subprocess with a hard 15s timeout, so a stall fails fast instead of hanging the suite. A 200k-char token placed next to a real invalid plan path still blocks.",
+    "run_git puts stdin=DEVNULL and a bounded wait in one helper and turns TimeoutExpired into an OSError subclass, so the existing `except OSError` handlers keep working unchanged.",
+    "Plan 0004 records each review-driven departure from the spec as decisions D11-D15 with rationale and leaves the frozen spec untouched. Its freeze digest matches the plan content at head.",
+    "The strap-scenario-runner rule now states that a scenario ending at a dispatch still runs record-run, which closes the gap that let session-role runs skip the record.",
+    "The harness plugin version moves 0.51.0 -> 0.51.1 for the hook, lib and agent changes, as the Releases rule requires."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "test_run_git_closes_stdin_and_bounds_the_wait is a mock-wiring test",
+        "file": "tests/lib/test_project.py",
+        "files": [
+          "tests/lib/test_project.py",
+          "plugins/harness/lib/harness_lib/project.py"
+        ],
+        "lines": "76-90,262-276",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The test replaces subprocess.run with a recorder and asserts only that the stub received stdin=DEVNULL and a positive timeout. run_git does nothing but forward those keyword arguments, so the test restates the implementation's call shape: it cannot show that a child is actually detached from the caller's stdin or actually killed after the bound. A refactor that passes stdin through a different route (for example Popen plus communicate) breaks the test even though behavior holds. A refactor that keeps the kwargs but loses the effect passes it. Under the brief's test-design rule, a stub-then-assert-the-stub-call test is neither behavioral nor integration.\n\nAlso (overall): The test swaps `subprocess.run` for a recorder and asserts that `run_git` passed `stdin=subprocess.DEVNULL` and a positive `timeout`. It checks the call's kwargs, not behavior: it never shows that a child sees EOF on stdin or that a slow child is cut off. Under the project's test-design rule this is neither behavioral nor integration.",
+        "fix": [
+          "Convert to behavioral tests that run real children through run_git. Stdin: start a child interpreter with stdin=subprocess.PIPE that is never written or closed, have it call run_git([sys.executable, '-c', 'import sys; sys.stdin.read()']) (or git hash-object --stdin), and assert that it finishes within a short timeout. Without DEVNULL the grandchild blocks on the open pipe. Timeout: monkeypatch project_module._GIT_TIMEOUT_SECONDS to 0.5 and assert that run_git([sys.executable, '-c', 'import time; time.sleep(10)']) raises TimeoutError within a couple of seconds.",
+          "Delete the test and keep test_run_git_timeout_surfaces_as_oserror plus the behavioral replacement above as the only run_git coverage.",
+          "Make it behavioral: point fd 0 at an open pipe (`r, w = os.pipe(); saved = os.dup(0); os.dup2(r, 0)`, restore in `finally`), monkeypatch `project_module._GIT_TIMEOUT_SECONDS` to 2, run `run_git([sys.executable, '-c', 'import sys; print(repr(sys.stdin.read()))'])` and assert stdout is `''`. An inherited stdin blocks on the open pipe and times out, so the test fails.",
+          "Add a real-child timeout case: monkeypatch `_GIT_TIMEOUT_SECONDS` to 1, run `run_git([sys.executable, '-c', 'import time; time.sleep(30)'])` and assert `TimeoutError`. Then delete the kwargs-recording test."
+        ]
+      },
+      {
+        "id": "C2",
+        "name": "test_every_git_lookup_goes_through_run_git asserts stub call kwargs, not routing or behavior",
+        "file": "tests/lib/test_project.py",
+        "files": [
+          "tests/lib/test_project.py",
+          "plugins/harness/lib/harness_lib/config.py"
+        ],
+        "lines": "104-115,290-301",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Each parametrized caller (_git_toplevel, main_worktree, config._origin_head) runs against a recorder that replaces the global subprocess.run, and the test then checks the recorded kwargs. That is a mock-chain wiring test under the brief's rule. Its name also claims more than it checks: the patch targets the shared subprocess module, so a caller that calls subprocess.run directly with its own stdin/timeout kwargs passes, and nothing proves the call goes through run_git. A call missing the kwargs fails with a bare KeyError on c['stdin'] rather than an assertion message.\n\nAlso (overall): The test stubs `subprocess.run`, calls `_git_toplevel`, `main_worktree` and `_origin_head`, and asserts only that the stub received `stdin=DEVNULL` and `timeout>0`. That is routing verification through a stub, not behavior. Its name also claims every git lookup, yet `branch_capture.py:41`, `plan_checks.py:237` and `todo_sync/scaffold.py:96` still call git through `subprocess.run` directly.",
+        "fix": [
+          "Convert to a behavioral test with a fake git executable: put a git (git.cmd on Windows, a shell script elsewhere) on a tmp PATH that sleeps, or that blocks reading stdin. Monkeypatch project_module._GIT_TIMEOUT_SECONDS to a small value, then assert that each caller returns or raises promptly (_git_toplevel and _origin_head raise OSError, main_worktree returns the start path). Mark the test cross_os if it depends on the launcher shape.",
+          "If a wiring check is kept anyway, rename it to state what it checks (every subprocess call from these lookups closes stdin and sets a timeout), use c.get('stdin') and c.get('timeout') so a missing kwarg fails as an assertion, and pair it with the behavioral test above.",
+          "Make it behavioral: put a fake `git` on PATH that sleeps (POSIX shim, `skipif` on win32), monkeypatch `project_module._GIT_TIMEOUT_SECONDS` to 1, then assert that `main_worktree(root)` returns `root.resolve()`, that `project_root(root)` raises `TimeoutError`, and that `cfg.resolve_base_branch()` behaves as specified.",
+          "Replace it with a contract test that parses `harness_lib/project.py` and `harness_lib/config.py` and fails on any `subprocess.run` call outside `run_git`. Name it for the lookups it covers, not 'every'."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Plan 0004 TASK-5 anchor goes stale inside this PR",
+        "file": "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_ActionPlan.json",
+        "files": [
+          "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_ActionPlan.json",
+          "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_PIP.md",
+          "plugins/harness/.claude-plugin/plugin.json"
+        ],
+        "lines": "416-419,438-443",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "TASK-5 anchors `plugins/harness/.claude-plugin/plugin.json:3` with expect `\"version\": \"0.51.0\",` (ActionPlan.json lines 416-419, PIP line 189). Commit c5c884e in this same PR bumps that line to `\"version\": \"0.51.1\",`, so on the merged result `plan.py check 0004` reports `anchor TASK-5 plugins/harness/.claude-plugin/plugin.json:3: '\"version\": \"0.51.0\",' not found` (plan_checks.anchor_problem). The plan was frozen before the bump, so a frozen plan lands on main already failing its own anchor check. The 0.52.0 target value still holds; only the anchor is wrong.\n\nAlso (overall): TASK-5 anchors `plugins/harness/.claude-plugin/plugin.json:3` on `\"version\": \"0.51.0\",`, but this PR bumps that line to 0.51.1. `plan.py check 0004` runs `anchor_problems` (plugins/harness/scripts/plan.py:213) and at the PR head reports: anchor TASK-5 plugins/harness/.claude-plugin/plugin.json:3: '\"version\": \"0.51.0\",' not found; line 3 reads '\"version\": \"0.51.1\",'. The plan therefore merges already failing its own check. Changing an anchor on a frozen plan needs a refreeze. Related: `frozen.commit` 0755ef6 (and the PIP 'Frozen ... at 0755ef6' line) names a commit that is not in this PR's history (577f516..c857744 holds e5e97ea, not 0755ef6). The digest still matches the content, so only the commit pointer is foreign to the branch.",
+        "fix": [
+          "Change the TASK-5 anchor expect to `\"version\": \"0.51.1\",` through the plan driver, refreeze plan 0004 (developer OK, routine) and re-render the PIP so line 189 matches.",
+          "Or drop the version-line anchor from TASK-5 (the bump target 0.52.0 does not depend on the old value), then refreeze and re-render.",
+          "Through the plan driver, set the TASK-5 anchor expect to `\"version\": \"0.51.1\",`, refreeze plan 0004 on this branch (so frozen.commit is a commit in this history), then re-render the PIP.",
+          "Land the plan docs on the 1117-writing-docstrings branch instead and refreeze there after this PR merges, so the anchor is taken against the 0.51.1 line."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Stall test never reaches the per-token target scan; the length cap and _next_json_end are unpinned",
+        "file": "tests/hooks/test_hooks_schema_validation.py",
+        "files": [
+          "tests/hooks/test_hooks_schema_validation.py",
+          "plugins/harness/hooks/validate_pr_json_schema.py"
+        ],
+        "lines": "200-210,375-385",
+        "reviewer": "tests, runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "In all three blobs the huge token has no '.json' (the only '.json' sits in the separate token 'out.json'), and every blob exceeds _MAX_TOKEN_CHARS. So _bash_target_tokens drops the huge token before _token_targets runs, and the 'plain' case exits even earlier at the stdlib pre-check because it names no plan directory. The docstring ('holding a plan directory, .json and one huge whitespace-free token ... the target scan is linear in the command, not quadratic or worse in a token') does not match what runs. Removing the 4096 cap still passes all three cases, because the '.json' filter alone skips them. Yet without the cap, _next_json_end rescans pos..end with rfind for every '.json' occurrence, which is quadratic for a token like 'docs/PLANS/' + 'a.json' * 40000. The test guards the old regex, but not the new code's load-bearing cap.\n\nAlso (runtime): All three blobs in test_long_whitespace_free_token_does_not_stall_the_hook (200k chars) and the long token in test_long_token_does_not_hide_a_real_plan_path are longer than _MAX_TOKEN_CHARS (4096). _bash_target_tokens drops them at line 133 before _token_targets/_next_json_end runs. The test docstring says 'the target scan is linear in the command', but the scan never runs on those inputs. If the scanner regressed (for example, a backtracking regex reintroduced inside _token_targets), these tests would still pass. The scanner's worst case is a token just under the cap with many '.json' occurrences and directory prefixes, and no test covers it.\n\nAlso (overall): The command `echo aaaa... > out.json` names no plan or review directory, so `_cannot_target` (validate_pr_json_schema.py:372-377) returns True and the hook exits before config load and before `_bash_target_tokens`. The case passes against the old backtracking regex too, so it cannot catch a regression. It also contradicts the test docstring, which says every case holds a plan directory. All three cases also lack `.json` in the long token, so `_MAX_TOKEN_CHARS` and the `.json` membership guard both skip the token, and none of them runs the new `_token_targets` scan on a long input.",
+        "fix": [
+          "Add blobs whose huge token itself carries a directory prefix and '.json', for example 'docs/PLANS/' + 'a.json' * 40_000 (ids 'many-json-hits') and 'docs/PLANS/' * 20_000 + 'x.json' (ids 'dir-run-then-json'), so the cap, or a truly linear scan, is what keeps the hook under _SLOW_HOOK_SECONDS.",
+          "Change the docstring to describe what the cases cover, and drop or rename the 'plain' case, since it tests only the pre-check.",
+          "Add a parametrized case with a token just under the cap that holds many '.json' and 'docs/PLANS/' occurrences (e.g. `('docs/PLANS/x' + '.json') * 250`, trimmed under 4096 chars), and keep the 15-second _timed_hook bound.",
+          "Reword the test docstring to say the length cap skips the huge token, and add a separate scanner-focused case.",
+          "Change the command to `f\"echo {blob} > docs/PLANS/out.json\"` so every case passes the pre-check and reaches the scanner, and add a case whose long token (at or under 4096 chars) contains `docs/PLANS/` and repeated `.json`, so the str-search loop itself is timed."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Planned test files the plan copies are not in the PR",
+        "file": "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_ActionPlan.json",
+        "files": [
+          "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_ActionPlan.json",
+          ".gitignore",
+          "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_PIP.md"
+        ],
+        "lines": "41,215",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "TASK-2 and TASK-3 start with `Copy docs/plans/0004/tests/tests/...` (ActionPlan.json lines 41 and 215), and plan_checks requires each test node's file to exist or sit under `<plans>/0004/tests/`. Those three files exist only in this checkout: `.gitignore:237` (`docs/plans/**/*.py`) ignores them (`git status --ignored` shows `!! docs/plans/0004/`). On a fresh clone, or a worktree made from main after the merge, the copy steps have nothing to copy and `plan.py check 0004` flags all 49 test nodes. Plans 0002 and 0003 follow the same convention, so this is an existing pattern, but the merged plan cannot run anywhere except the machine that wrote it.",
+        "fix": [
+          "Track planned tests: add `!docs/plans/*/tests/**` after `.gitignore:237` and commit `docs/plans/0004/tests/`.",
+          "Or state in the PIP header (through the plan driver) that TASK-2 and TASK-3 need the planned tests from the authoring checkout, and copy them into the build worktree before TASK-2."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Freeze record names a commit outside the branch history",
+        "file": "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_ActionPlan.json",
+        "files": [
+          "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_ActionPlan.json",
+          "docs/plans/0004_writing_docstrings_dispatches_a_defined_agent_PIP.md"
+        ],
+        "lines": "438-443",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "`frozen.commit` is 0755ef609b13 (ActionPlan.json line 439; PIP line 9 renders `Frozen: 2026-11-03 at 0755ef6`). That commit is the pre-amend version of the plan commit: `git branch -a --contains 0755ef6` is empty, its plan file has 584 lines against the committed 765, and the PR carries e5e97ea instead. Anyone tracing the freeze to its commit finds an unreachable object that gc will eventually drop. The digest is what plan.py checks, so nothing fails today; the record is just misleading.",
+        "fix": [
+          "Refreeze plan 0004 on the branch (together with the TASK-5 anchor fix) so `frozen.commit` and `frozen.tree` name a commit reachable from main after the merge, then re-render the PIP."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Runner rule says 'inside the reply' without saying which one",
+        "file": "plugins/harness/agents/strap-scenario-runner.md",
+        "lines": "45-46",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The new rule puts the `Agent(...)` line `inside the reply` (strap-scenario-runner.md:45-46). The file uses 'reply' for two different things: the record-run heredoc body (line 51, `The reply is what you would tell the developer`) and the agent's final output (line 81, `The block record-run printed, verbatim, and nothing else`). A runner that reads it as the final output puts the dispatch line where the judge never sees it, and that also breaks the Reply contract.",
+        "fix": [
+          "Replace `inside the reply,` with `inside the reply you pass to record-run (the heredoc body),` at strap-scenario-runner.md:45-46."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Hook docs still say only 'git missing from PATH' reaches the OSError skip",
+        "file": "plugins/harness/hooks/validate_pr_json_schema.py",
+        "files": [
+          "plugins/harness/hooks/validate_pr_json_schema.py",
+          "plugins/harness/lib/harness_lib/project.py"
+        ],
+        "lines": "23-25,388",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "run_git now raises TimeoutError (an OSError) when git hangs past 30 s. In this hook, _activate_project's `except (ConfigError, OSError)` turns that into an exit-0 skip. The module docstring's list of non-violation failure modes (lines 23-25) and the inline comment at line 388 ('OSError: git missing from PATH during the project lookup') still name only a missing git, so the new timeout path is undocumented where readers look for it.\n\nAlso (overall): `_activate_project` comments `OSError: git missing from PATH during the project lookup`, and the module docstring lists 'git missing from PATH' among the exit-0 failure modes. Since `run_git`, a git lookup that times out also raises OSError (TimeoutError) along that path and exits 0.",
+        "fix": [
+          "Line 24: 'unusable harness config, git missing from PATH or a git lookup timing out'. Line 388: '# OSError: git missing from PATH or timed out during the project lookup'.",
+          "Update the comment at line 388 to `OSError: git missing from PATH or timed out during the project lookup` and the module docstring (lines 24-25) to `git missing from PATH or timing out`."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "_next_json_end searches the whole token when .json sits at offset 0",
+        "file": "plugins/harness/hooks/validate_pr_json_schema.py",
+        "lines": "93-95,98-106",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_next_json_end calls norm.rfind(prefix, pos, end - 1). When a token starts with '.json' (pos 0, end 0) the slice end is -1, which Python reads as 'up to the last character', so rfind scans the whole token and finds any directory prefix that comes AFTER the '.json'. For a token such as '.json,docs/PLANS/a.json' the scanner emits the spurious candidate '.json' (token[0:5]) before the real one. That breaks the docstring contract 'the first .json ... that follows a directory prefix'. The real path is still found and _target_kind filters out the stray '.json' later, so the visible impact is one wasted is_file probe. Still, the guard depends on a negative-index accident.\n\nAlso (overall): `_dir_prefixes` rebuilds `rel.replace('\\\\', '/').strip('/') + '/'`, which is `_rel_token(rel)` (line 65-67) without the leading slash. Two copies of the directory normalization can drift apart.",
+        "fix": [
+          "Clamp the slice end: `norm.rfind(prefix, pos, max(end - 1, pos))`, so an empty slice returns -1.",
+          "Or rewrite the scan so it is linear and has no negative index: compute `threshold = min(norm.find(p, pos) + len(p) for p in prefixes if norm.find(p, pos) >= 0)`, then `end = norm.find('.json', threshold + 1)`. That gives the same result without the per-occurrence rfind.",
+          "Return `[_rel_token(rel)[1:] for rel in (cfg.artifacts.plans, cfg.artifacts.reviews)]`."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "config.py now imports harness_lib.project at module top but keeps function-local imports of it",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "lines": "16,213,234",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PR adds `from harness_lib.project import run_git` at module level (line 16). resolve_worktree_root (line 213) and active() (line 234) still defer `from harness_lib.project import main_worktree` / `project_root` inside the function. No import cycle forces this: project.py imports config only under TYPE_CHECKING. The deferred imports now do nothing, and the mixed style suggests a cycle that does not exist.\n\nAlso (overall): config.py now imports `run_git` from `harness_lib.project` at module level (line 16), which shows there is no import cycle. `resolve_worktree_root` (line 213) and `active` (line 234) still import `main_worktree` and `project_root` inside the function.",
+        "fix": [
+          "Extend line 16 to `from harness_lib.project import main_worktree, project_root, run_git` and drop the two local imports at lines 213 and 234.",
+          "Or keep the deferred style and move the run_git import inside _origin_head to match.",
+          "Change line 16 to `from harness_lib.project import main_worktree, project_root, run_git` and delete the imports at lines 213 and 234."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "run_git docstring overstates how callers handle a timeout",
+        "file": "plugins/harness/lib/harness_lib/project.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/project.py",
+          "plugins/harness/lib/harness_lib/config.py"
+        ],
+        "lines": "20-31",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "The docstring says a timeout raises TimeoutError, 'the failure callers already treat as \"git unusable\"'. Only `main_worktree` (project.py:56-59) and the hook's `_activate_project` catch OSError. `_git_toplevel`/`project_root` and `config._origin_head` (config.py:464-469) let it propagate, so a hung git in `resolve_base_branch` ends a driver with a traceback instead of falling back to `main`.",
+        "fix": [
+          "Catch OSError in `_origin_head` and return None, so `resolve_base_branch` falls back as documented, and narrow the run_git docstring to the callers that handle it.",
+          "Reword the docstring to: callers that catch OSError (main_worktree, the hooks' project lookup) treat it as git unusable; others propagate it."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "'cat {bad}' parameter duplicates test_bash_command_naming_a_plan_still_validates",
+        "file": "tests/hooks/test_hooks_schema_validation.py",
+        "lines": "396-407",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The first case of test_bash_path_token_shapes_still_validate builds the same payload and asserts the same exit 1 and violation line as the existing test at lines 260-265. The only difference is the timeout.",
+        "fix": [
+          "Drop the 'cat {bad}' parameter from the new test.",
+          "Remove the older test_bash_command_naming_a_plan_still_validates now that the parametrized test covers it under a timeout."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Module docstring omits the new run_git coverage",
+        "file": "tests/lib/test_project.py",
+        "lines": "1",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The test_project.py module docstring lists project root, plugin root and schema resolution. The file now also covers run_git's stdin/timeout contract and the git lookups that use it.",
+        "fix": [
+          "Extend the docstring: 'Contract tests for harness_lib.project: project root, plugin root, schema resolution, and the bounded git runner.'"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 196 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"18a4b94f0703c5b8aa15f8b429a4b67bb0d2465f\",\"headRefName\":\"1118-post-tool-use-hook\",\"headRefOid\":\"c8577443d43f023971f03534e7ec8cf3ce0aa8b7\",\"last_sha\":\"c8577443d43f023971f03534e7ec8cf3ce0aa8b7\",\"mergeCommit\":null,\"number\":196,\"state\":\"OPEN\",\"title\":\"1118 post tool use hook\",\"url\":\"https://github.com/t968rs/operator-straps/pull/196\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1118-post-tool-use-hook",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1118-post-tool-use-hook",
+        "head_ref_name": "1118-post-tool-use-hook",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/pr_review_agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "18a4b94f0703c5b8aa15f8b429a4b67bb0d2465f",
+        "head_sha": "c8577443d43f023971f03534e7ec8cf3ce0aa8b7",
+        "base_ancestor_command": "git merge-base --is-ancestor 18a4b94f0703c5b8aa15f8b429a4b67bb0d2465f HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor c8577443d43f023971f03534e7ec8cf3ce0aa8b7 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - project.py part needs no edit: the stale wording lives only in the hook's docstring and line-388 comment, owned by the other part's fixer; Module docstring now lists 'git missing from PATH or a git lookup timing out' among exit-0 modes; _activate_project comment reads 'OSError: git missing from PATH or timed out (TimeoutError) during the project lookup' (moved above the except to stay under 110 chars)"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - config.py line 16 now imports main_worktree, project_root, run_git at module level; dropped the function-local imports in resolve_worktree_root and active()"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - _origin_head catches OSError and returns None so resolve_base_branch falls back to main; run_git docstring now names the callers that catch OSError and says project_root propagates it"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - test_project.py module docstring now lists the bounded git runner"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - replaced the kwargs-recording test with behavioral tests: a child with an open, silent stdin pipe runs run_git on a stdin-reading grandchild and must finish with EOF; a real sleeping child under a 1 s bound must raise TimeoutError promptly; project.py needs no edit (run_git behavior unchanged by the test rewrite)"
+    },
+    {
+      "id": "C2",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - replaced the stub-kwargs test with a behavioral test (POSIX, skipif win32): a hanging fake git on PATH and a 1 s bound; asserts main_worktree returns the start path, _origin_head returns None, resolve_base_branch gives main, project_root raises TimeoutError, all promptly; config.py change for the fallback is recorded under M8"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - _next_json_end clamps the rfind slice end to max(end - 1, pos), so a '.json' at the scan start yields an empty slice instead of a negative-index whole-token search"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - Dropped the 'cat {bad}' parameter from test_bash_path_token_shapes_still_validate; test_bash_command_naming_a_plan_still_validates keeps that case"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - Stall test now targets docs/PLANS/out.json so every case passes the pre-check and reaches the token scan, adds over-cap 'many-json-hits' and 'dir-run-then-json' blobs pinning the length cap, and a new test_token_under_the_length_cap_scans_promptly times three under-cap tokens dense with '.json' and directory prefixes; docstring describes what runs. Hook needed no further edit (M5 clamp covers the scanner side)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - Added !docs/plans/*/tests/** after the docs/plans/**/*.py ignore line, so docs/plans/0004/tests/ (and the 0001-0003 planned tests) now show as untracked, ready for the developer to commit; ActionPlan.json and PIP.md: the copy steps stay valid once the tests are tracked, so no edit for this issue"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - Changed the TASK-5 anchor expect to \"version\": \"0.51.1\", then ran plan.py freeze 0004 --refreeze and render; plan.py check 0004 now passes and PIP line 189 matches; plugin.json: already reads 0.51.1 at line 3, so no edit"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - The refreeze moved frozen.commit and frozen.tree to the branch head c857744, which is in the branch history (it was the unreachable 0755ef6); the re-rendered PIP line 9 now reads Frozen 2026-11-03 at c857744"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-03",
+      "evidence": "c857744 (working-tree snapshot; developer commits) - strap-scenario-runner.md:45-46: 'inside the reply' now reads 'inside the reply you pass to record-run (the heredoc body)'"
+    }
+  ]
+}

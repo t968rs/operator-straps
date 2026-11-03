@@ -21,9 +21,9 @@ so ``harness_lib`` and the validators are imported only when one might.
 Exit 1 with a stderr report on a violation; exit 0 otherwise. A schema (typically a stale pinned copy) whose
 ``$ref`` no longer resolves also exits 1, with a report naming the ref and telling the project to fix or drop
 the pinned copy. Failure modes that are not a violation
-(no target, missing schema, malformed stdin, unusable harness config or git missing from PATH, a payload
-without ``tool_input`` such as a Stop event) exit 0. A missing ``jsonschema`` or ``referencing`` exits 0
-with a one-line stderr warning naming the missing module.
+(no target, missing schema, malformed stdin, unusable harness config, git missing from PATH or a git lookup
+timing out, a payload without ``tool_input`` such as a Stop event) exit 0. A missing ``jsonschema`` or
+``referencing`` exits 0 with a one-line stderr warning naming the missing module.
 """
 from __future__ import annotations
 
@@ -100,7 +100,7 @@ def _next_json_end(norm: str, pos: int, prefixes: List[str]) -> int:
     one further character, else -1. Linear in the token per ``.json`` occurrence."""
     end = norm.find(".json", pos)
     while end >= 0:
-        if any(norm.rfind(prefix, pos, end - 1) >= 0 for prefix in prefixes):
+        if any(norm.rfind(prefix, pos, max(end - 1, pos)) >= 0 for prefix in prefixes):
             return end + len(".json")
         end = norm.find(".json", end + 1)
     return -1
@@ -385,7 +385,8 @@ def _activate_project(payload: Dict[str, Any]) -> Optional[HarnessConfig]:
     start = _start_dir(payload)
     try:
         return activate(load_config(project_root(start)))
-    except (ConfigError, OSError) as exc:  # OSError: git missing from PATH during the project lookup
+    # OSError: git missing from PATH or timed out (TimeoutError) during the project lookup
+    except (ConfigError, OSError) as exc:
         sys.stderr.write(f"validate_pr_json_schema: harness config unusable, skipping ({exc})\n")
         return None
 

@@ -6,7 +6,7 @@
 **Spec:** `docs/superpowers/specs/2026-11-03-writing-docstrings-dispatch-design.md`
 **Branch:** 1117-writing-docstrings -> main
 **Base commit:** `577f516`
-**Frozen:** 2026-11-03 at `0755ef6`
+**Frozen:** 2026-11-03 at `c857744`
 **Execution model:** serial
 
 ## Decisions
@@ -186,7 +186,7 @@ First mkdir -p docs/plans/strap/_archive, then git mv docs/plans/strap/writing-d
 
 **Anchors:**
 - `README.md:28` holds `` | Docstrings by tier | `writing-docstrings` ``
-- `plugins/harness/.claude-plugin/plugin.json:3` holds `"version": "0.51.0",`
+- `plugins/harness/.claude-plugin/plugin.json:3` holds `"version": "0.51.1",`
 - `plugins/pr-review-watch/.claude-plugin/plugin.json:3` holds `"version": "0.5.0",`
 
 README skills-table row 'Docstrings by tier': the session turns the request into arguments and dispatches harness:docstring-writer; --include-new / -in adds docstrings to undocumented functions; --parallel / -p runs one agent per file after a tool probe. Bump plugins/harness/.claude-plugin/plugin.json to 0.52.0. Bump plugins/pr-review-watch/.claude-plugin/plugin.json to 0.5.1 (its contract.ts changed in TASK-4).

@@ -21,8 +21,9 @@ def run_git(argv: List[str]) -> subprocess.CompletedProcess[str]:
     """Run a git lookup with stdin closed and a bounded wait.
 
     A child that inherits the caller's stdin, or never returns, would stall a hook for as long as the host
-    lets it run. A timeout raises ``TimeoutError`` (an ``OSError``), the failure callers already treat as
-    "git unusable".
+    lets it run. A timeout raises ``TimeoutError`` (an ``OSError``). Callers that catch ``OSError``
+    (``main_worktree``, ``config._origin_head``, the hooks' project lookup) treat it as "git unusable";
+    ``project_root`` lets it propagate.
     """
     try:
         return subprocess.run(argv, capture_output=True, text=True, stdin=subprocess.DEVNULL,

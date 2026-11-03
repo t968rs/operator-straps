@@ -1,7 +1,12 @@
-"""Contract tests for harness_lib.project: project root, plugin root, schema resolution."""
+"""Contract tests for harness_lib.project: project root, plugin root, schema resolution, and the bounded
+git runner."""
 from __future__ import annotations
 
+import os
 import subprocess
+import sys
+import time
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -73,21 +78,45 @@ def test_schema_path_falls_back_to_plugin(make_project) -> None:
     assert schema_path("PR_REVIEW.schema.json", cfg) == plugin_root() / "schemas" / "PR_REVIEW.schema.json"
 
 
-def _recording_run(calls: list):
-    def fake_run(argv, **kwargs):
-        calls.append(kwargs)
-        return subprocess.CompletedProcess(argv, 1, "", "")
+_STDIN_PROBE = """\
+import sys
+sys.path.insert(0, sys.argv[1])
+from harness_lib.project import run_git
+done = run_git([sys.executable, "-c", "import sys; print(repr(sys.stdin.read()))"])
+print(done.stdout.strip())
+"""
 
-    return fake_run
+
+def _run_with_open_stdin(script: str, *args: str, wait: float = 20) -> subprocess.CompletedProcess[str]:
+    """Run ``script`` in a child whose stdin is a pipe held open (never written, never closed) meanwhile."""
+    proc = subprocess.Popen([sys.executable, "-c", script, *args], stdin=subprocess.PIPE,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    try:
+        code = proc.wait(timeout=wait)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        pytest.fail(f"child still blocked after {wait}s: run_git passed the open stdin through")
+    finally:
+        proc.stdin.close()
+    return subprocess.CompletedProcess(proc.args, code, proc.stdout.read(), proc.stderr.read())
 
 
-def test_run_git_closes_stdin_and_bounds_the_wait(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A git child must not inherit the caller's stdin nor wait forever."""
-    calls: list = []
-    monkeypatch.setattr(project_module.subprocess, "run", _recording_run(calls))
-    run_git(["git", "status"])
-    assert calls[0]["stdin"] == subprocess.DEVNULL
-    assert isinstance(calls[0]["timeout"], (int, float)) and calls[0]["timeout"] > 0
+def test_run_git_child_sees_eof_not_the_callers_stdin() -> None:
+    """A child reading stdin gets EOF at once even when the caller's stdin is an open, silent pipe."""
+    lib = Path(project_module.__file__).resolve().parents[1]
+    done = _run_with_open_stdin(_STDIN_PROBE, str(lib))
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == "''"
+
+
+def test_run_git_cuts_off_a_slow_child(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A child that outlives the bound is killed and surfaces as ``TimeoutError``."""
+    monkeypatch.setattr(project_module, "_GIT_TIMEOUT_SECONDS", 1)
+    started = time.monotonic()
+    with pytest.raises(TimeoutError, match="timed out"):
+        run_git([sys.executable, "-c", "import time; time.sleep(30)"])
+    assert time.monotonic() - started < 15
 
 
 def test_run_git_timeout_surfaces_as_oserror(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -101,15 +130,28 @@ def test_run_git_timeout_surfaces_as_oserror(monkeypatch: pytest.MonkeyPatch) ->
         run_git(["git", "status"])
 
 
-@pytest.mark.parametrize("caller", [
-    lambda root: project_module._git_toplevel(root),
-    lambda root: project_module.main_worktree(root),
-    lambda root: config_module._origin_head(root),
-])
-def test_every_git_lookup_goes_through_run_git(make_project, monkeypatch: pytest.MonkeyPatch, caller) -> None:
-    """Project, main-worktree and origin/HEAD lookups all carry the closed stdin and the timeout."""
+def _hanging_git_on_path(bin_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Put a ``git`` that never returns first on PATH and shrink the run_git bound to one second."""
+    bin_dir.mkdir()
+    shim = bin_dir / "git"
+    shim.write_text("#!/bin/sh\nexec sleep 30\n", encoding="utf-8")
+    shim.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ.get('PATH', '')}")
+    monkeypatch.setattr(project_module, "_GIT_TIMEOUT_SECONDS", 1)
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX shell shim stands in for git")
+def test_project_main_worktree_and_origin_head_lookups_survive_a_hung_git(
+        make_project, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A hung git is cut off: main_worktree falls back to the start path, the base branch to ``main``,
+    and the project-root lookup raises ``TimeoutError`` instead of stalling."""
     root = make_project()
-    calls: list = []
-    monkeypatch.setattr(project_module.subprocess, "run", _recording_run(calls))
-    caller(root)
-    assert calls and all(c["stdin"] == subprocess.DEVNULL and c["timeout"] > 0 for c in calls)
+    cfg = replace(load_config(root), base_branch=None)
+    _hanging_git_on_path(tmp_path / "bin", monkeypatch)
+    started = time.monotonic()
+    assert main_worktree(root) == root.resolve()
+    assert config_module._origin_head(root) is None
+    assert cfg.resolve_base_branch() == "main"
+    with pytest.raises(TimeoutError):
+        project_root(root)
+    assert time.monotonic() - started < 30

@@ -374,14 +374,35 @@ def _timed_hook(payload: Dict[str, Any]) -> subprocess.CompletedProcess:
 
 @pytest.mark.parametrize(
     "blob",
-    ["a" * 200_000, "docs/PLANS/" + "a" * 200_000, "docs/PLANS/" * 20_000],
-    ids=["plain", "one-dir-hit", "many-dir-hits"],
+    [
+        "a" * 200_000,
+        "docs/PLANS/" + "a" * 200_000,
+        "docs/PLANS/" * 20_000,
+        "docs/PLANS/" + "a.json" * 40_000,
+        "docs/PLANS/" * 20_000 + "x.json",
+    ],
+    ids=["plain", "one-dir-hit", "many-dir-hits", "many-json-hits", "dir-run-then-json"],
 )
 def test_long_whitespace_free_token_does_not_stall_the_hook(make_project, blob: str) -> None:
-    """A Bash command holding a plan directory, ``.json`` and one huge whitespace-free token finishes
-    promptly: the target scan is linear in the command, not quadratic or worse in a token."""
+    """A Bash command naming a plan path plus one huge whitespace-free token finishes promptly. The plan
+    path passes the stdlib pre-check, so every case reaches the token scan; a token over
+    ``_MAX_TOKEN_CHARS``, even one packed with directory prefixes and ``.json``, is skipped there."""
     project = make_project()
-    result = _timed_hook(_bash_payload(project, f"echo {blob} > out.json"))
+    result = _timed_hook(_bash_payload(project, f"echo {blob} > docs/PLANS/out.json"))
+    assert result.returncode == 0, f"stderr={result.stderr!r}"
+
+
+@pytest.mark.parametrize(
+    "token",
+    [("docs/PLANS/x" + ".json") * 240, "docs/PLANS/" + "a.json" * 680, "a.json" * 680],
+    ids=["many-targets", "one-dir-many-json", "many-json-no-dir"],
+)
+def test_token_under_the_length_cap_scans_promptly(make_project, token: str) -> None:
+    """A token at or under ``_MAX_TOKEN_CHARS`` dense with ``.json`` and directory prefixes runs the full
+    ``str``-search scan and still finishes inside the timeout."""
+    assert len(token) <= 4096
+    project = make_project()
+    result = _timed_hook(_bash_payload(project, f"echo {token} > docs/PLANS/out.json"))
     assert result.returncode == 0, f"stderr={result.stderr!r}"
 
 
@@ -394,7 +415,6 @@ def test_long_token_does_not_hide_a_real_plan_path(make_project) -> None:
 
 
 @pytest.mark.parametrize("command", [
-    "cat {bad}",
     "cat '{bad}'",
     "cat \"{bad}\" | head",
     "cat docs/PLANS/bad_ActionPlan.json",

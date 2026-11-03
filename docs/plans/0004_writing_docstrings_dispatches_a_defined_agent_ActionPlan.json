@@ -415,7 +415,7 @@
         },
         {
           "at": "plugins/harness/.claude-plugin/plugin.json:3",
-          "expect": "\"version\": \"0.51.0\","
+          "expect": "\"version\": \"0.51.1\","
         },
         {
           "at": "plugins/pr-review-watch/.claude-plugin/plugin.json:3",
@@ -436,10 +436,10 @@
   ],
   "base_commit": "577f51693b51b2596cd6282d13c363ed92435a65",
   "frozen": {
-    "commit": "0755ef609b1385f7d331dd1786c9675910213f88",
-    "tree": "bc99ab067c8f3d3470b24cfa93ca365113e95386",
+    "commit": "c8577443d43f023971f03534e7ec8cf3ce0aa8b7",
+    "tree": "c0397981b8fcd9f95a3cbbddc20d7aff5820b7a1",
     "date": "2026-11-03",
-    "digest": "5251741cd1afe8a89ca89bfd52210f0578d40ef6073d76e21c416841d316ca47"
+    "digest": "4f51fda56f15bc8eff1fd4d2c1a7278bdc792673fbd1934ac14e439a414f7b76"
   },
   "decisions": [
     {

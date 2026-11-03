@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from harness_lib.project import run_git
+from harness_lib.project import main_worktree, project_root, run_git
 
 CONFIG_REL = Path(".claude") / "harness.json"
 _CONFIG_DIR = Path(__file__).resolve().parents[2] / "config"
@@ -210,7 +210,6 @@ class HarnessConfig:
 
     def resolve_worktree_root(self) -> Path:
         """Folder for new linked worktrees: ``worktree_root`` (``~``, ``{repo}`` expanded) or the default."""
-        from harness_lib.project import main_worktree
         template = self.worktree_root or DEFAULT_WORKTREE_ROOT
         return Path(template.replace("{repo}", main_worktree(self.project_root).name)).expanduser()
 
@@ -231,7 +230,6 @@ def activate(cfg: HarnessConfig) -> HarnessConfig:
 def active() -> HarnessConfig:
     """The activated configuration, else one loaded (and activated) for the cwd's project."""
     if _ACTIVE is None:
-        from harness_lib.project import project_root
         return activate(load_config(project_root()))
     return _ACTIVE
 
@@ -462,8 +460,11 @@ def _bucket(b: Dict[str, Any]) -> BucketRule:
 
 
 def _origin_head(root: Path) -> Optional[str]:
-    """Branch name ``refs/remotes/origin/HEAD`` points at, or None."""
+    """Branch name ``refs/remotes/origin/HEAD`` points at, or None (also when git is missing or hangs)."""
     argv = ["git", "-C", str(root), "symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]
-    done = run_git(argv)
+    try:
+        done = run_git(argv)
+    except OSError:
+        return None
     ref = done.stdout.strip()
     return ref.split("/", 1)[1] if done.returncode == 0 and "/" in ref else None
