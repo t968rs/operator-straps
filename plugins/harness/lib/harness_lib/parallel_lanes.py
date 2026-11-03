@@ -26,12 +26,17 @@ PROBE_FILE = ".p2_probe"
 _ID = re.compile(r"[a-z0-9][a-z0-9-]*")
 _GLOB_CHARS = "*?["
 _DRIVE = re.compile(r"[A-Za-z]:")
-_BASH_TOOL = re.compile(r"Bash\(\s*([^\s:)*]+)")
+_BASH_RULE = re.compile(r"Bash\((.*)\)\s*$")
+_SCRIPT_WORD = re.compile(r"[/\\]|\.(?:sh|ps1|py|bat|cmd)$")
+_FILE_TOOLS = ("Read", "Write", "Edit")
 _SLUG_FOREIGN = re.compile(r"[^A-Za-z0-9._-]")
 _TOOLS_NOTE = (
     "If a tool NOT listed here is needed: stop and report it back to the caller instead of prompting."
 )
-_PROBE_END = "For each action report SUCCESS or BLOCKED (describe what appeared). Do nothing else."
+_PROBE_END = (
+    "For each action report SUCCESS or BLOCKED (describe what appeared), or the status the step names. "
+    "Do nothing else."
+)
 
 
 class PlanError(ValueError):
@@ -441,14 +446,45 @@ def render_status_line(item: Lane) -> str:
     )
 
 
-def _bash_step(tool: str, worktree: str) -> str:
-    match = _BASH_TOOL.match(tool)
-    if not match:
+def _rule_prefix(tool: str) -> Optional[Tuple[str, bool]]:
+    """``(prefix, wildcard)`` of a ``Bash(...)`` permission rule; None when the tool names no command."""
+    match = _BASH_RULE.match(tool.strip())
+    body = match.group(1).strip() if match else ""
+    wildcard = body.endswith("*")
+    prefix = body.rstrip("*").rstrip().removesuffix(":").strip() if wildcard else body
+    return (prefix, wildcard) if prefix else None
+
+
+def _harmless_command(tool: str, worktree: str) -> Optional[str]:
+    """A read-only command that starts with the rule's prefix, so it exercises that very rule; None for a
+    rule with no wildcard or a script path (either may act on any arguments) and for an unknown git form."""
+    parsed = _rule_prefix(tool)
+    if parsed is None or not parsed[1]:
+        return None
+    prefix = parsed[0]
+    words = prefix.split()
+    if any(_SCRIPT_WORD.search(word) for word in words):
+        return None
+    if words[0] != "git":
+        return f"{prefix} --help"
+    if words == ["git"]:
+        return "git --version"
+    if words == ["git", "-C"]:
+        return f'git -C "{worktree}" status --short'
+    # ``git <sub> --help`` opens a browser on Windows; ``-h`` prints usage for every subcommand.
+    return None if words[1].startswith("-") else f"{prefix} -h"
+
+
+def _bash_step(tool: str) -> str:
+    """The step for a Bash tool with no harmless command."""
+    if _rule_prefix(tool) is None:
         return f"Bash: exercise {tool} once with a harmless call."
-    command = match.group(1)
-    if command == "git":
-        return f'Bash: run `git -C "{worktree}" status --short`.'
-    return f"Bash: run `{command} --version`."
+    return f"Bash: no harmless command is known for rule {tool}; run nothing and report UNTESTED."
+
+
+def _run_step(command: str, rules: Sequence[str]) -> str:
+    label = "rule" if len(rules) == 1 else "rules"
+    return f"Bash: run `{command}` ({label} {', '.join(rules)})."
 
 
 def _probe_step(tool: str, worktree: str, read_target: Optional[str], tools: Sequence[str]) -> str:
@@ -463,13 +499,29 @@ def _probe_step(tool: str, worktree: str, read_target: Optional[str], tools: Seq
         note = "" if "Write" in tools else " (report SKIPPED if absent: Write is not in this profile)"
         return f'Edit: change the text of {probe} to "probe-edited"{note}.'
     if tool.startswith("Bash"):
-        return _bash_step(tool, worktree)
+        return _bash_step(tool)
     return f"{tool}: exercise {tool} once with a harmless call."
+
+
+def _probe_order(tools: Sequence[str]) -> List[str]:
+    """Read, Write, Edit first, so the Edit finds the file the Write created; other tools keep their order."""
+    rank = {tool: number for number, tool in enumerate(_FILE_TOOLS)}
+    return sorted(tools, key=lambda tool: rank.get(tool, len(rank)))
+
+
+def _probe_steps(tools: Sequence[str], worktree: str, read_target: Optional[str]) -> List[str]:
+    """One step per tool; Bash rules whose harmless command is the same (one prefix) share one step."""
+    groups: Dict[Tuple[str, str], List[str]] = {}
+    for tool in _probe_order(tools):
+        command = _harmless_command(tool, worktree)
+        groups.setdefault(("run", command) if command else ("tool", tool), []).append(tool)
+    return [_run_step(key, rules) if kind == "run" else _probe_step(key, worktree, read_target, tools)
+            for (kind, key), rules in groups.items()]
 
 
 def render_probe_prompt(tools: Sequence[str], worktree: str, read_target: Optional[str]) -> str:
     """Prompt for one probe agent: one representative call per tool inside ``worktree``."""
-    steps = [_probe_step(tool, worktree, read_target, tools) for tool in tools]
+    steps = _probe_steps(tools, worktree, read_target)
     if "Write" in tools:
         steps.append(
             f"Delete {worktree}/{PROBE_FILE} (Bash rm when authorized; else report that it remains)."

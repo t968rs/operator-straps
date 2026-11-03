@@ -306,7 +306,7 @@ def test_probe_prints_a_prompt_per_profile_inside_the_first_lane_worktree(plan, 
     tree = Path(lane_state(project, "task1")["worktree"]).as_posix()
     assert f"Working directory: {tree}" in out
     assert "Read the first 5 lines of src/a.py" in out
-    assert "pytest --version" in out
+    assert "`pytest --help`" in out
     assert out.count("For each action report SUCCESS or BLOCKED") == 2
 
 

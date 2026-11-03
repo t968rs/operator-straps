@@ -53,7 +53,10 @@ Below, `P2` stands for `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_
    different waves.
 3. **`P2 setup --wave N`**, then **`P2 probe --wave N`**. Dispatch each printed probe prompt as its own agent
    with the printed model. Any `BLOCKED`: fix the rule with the `update-config` skill (a worktree path outside
-   the project glob is the usual gap), re-probe, and dispatch nothing until every probe is clean. `P2 probe`
+   the project glob is the usual gap), re-probe, and dispatch nothing until every probe is clean. Each Bash
+   step runs a harmless command under its rule's own prefix (`git add -h`, `python -m pytest --help`). An
+   `UNTESTED` rule (a script path, or a rule with no wildcard) has no safe form: check it in the allow list
+   by hand, since a prompt on it would stop the lane mid-run. `P2 probe`
    covers implement lanes with a live worktree only; a read-only wave prints `nothing to probe`. For a
    read-only wave whose tools the session has not run without a prompt, dispatch one hand-written probe
    agent (model `haiku`) that runs each listed tool once and reports any prompt as `BLOCKED`. Read-only
