@@ -69,10 +69,12 @@ def test_is_plan_artifact_name(name: str, expected: bool) -> None:
 
 
 def test_plan_artifact_suffix_mirrors_the_plan_driver() -> None:
-    """The hook-side suffix is spelled out to skip the pydantic import; it must equal the driver's."""
-    from harness_lib.plan_doc import PLAN_SUFFIX
+    """The hook-side suffix is spelled out to skip the plan_models tree; it must equal the plan driver's
+    and the todo_sync copy, so a rename cannot split the hook from either."""
+    from harness_lib.plan_doc import PLAN_SUFFIX as DRIVER_SUFFIX
+    from harness_lib.todo_sync.sources import PLAN_SUFFIX as TODO_SYNC_SUFFIX
 
-    assert PLAN_ARTIFACT_SUFFIX == PLAN_SUFFIX
+    assert PLAN_ARTIFACT_SUFFIX == DRIVER_SUFFIX == TODO_SYNC_SUFFIX
 
 
 def test_sentinel_dir_follows_default_state_dir(make_project) -> None:

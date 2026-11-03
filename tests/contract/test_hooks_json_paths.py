@@ -1,6 +1,7 @@
 """Contract: every harness hooks.json command is the ``sh hpy`` shell form naming an existing hook script."""
 from __future__ import annotations
 
+import ast
 import json
 import re
 from pathlib import Path
@@ -70,12 +71,24 @@ def test_every_public_hook_script_is_registered_or_composed() -> None:
     assert {p.name for p in HOOKS_DIR.glob("*.py") if not p.name.startswith("_")} == registered | composed
 
 
+def _imported_hook_stems(dispatcher: str) -> set:
+    """Public hook stems the dispatcher imports, in any ``import`` or ``from ... import`` form."""
+    hook_stems = {p.stem for p in HOOKS_DIR.glob("*.py") if not p.name.startswith("_")}
+    tree = ast.parse((HOOKS_DIR / dispatcher).read_text(encoding="utf-8"))
+    modules = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            modules.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module and not node.level:
+            modules.add(node.module.split(".")[0])
+    return modules & hook_stems
+
+
 @pytest.mark.parametrize("dispatcher", sorted(COMPOSED))
-def test_a_dispatcher_runs_exactly_its_composed_hooks(dispatcher: str) -> None:
+def test_a_dispatcher_imports_exactly_its_composed_hooks(dispatcher: str) -> None:
     """The dispatcher is registered and imports each composed hook, and only those, so a hook added to
-    one side without the other fails here."""
+    one side without the other fails here. Imports are not calls: ``tests/hooks/test_bash_pretool.py``
+    covers that each composed ``decide`` runs."""
     registered = {SHELL_FORM.match(h["command"]).group("name") for _, _, h in _entries()}
     assert dispatcher in registered
-    source = (HOOKS_DIR / dispatcher).read_text(encoding="utf-8")
-    imported = set(re.findall(r"^[ \t]+import (\w+)$", source, re.M))  # indented: the lazy imports in decide
-    assert imported == {name[: -len(".py")] for name in COMPOSED[dispatcher]}
+    assert _imported_hook_stems(dispatcher) == {name[: -len(".py")] for name in COMPOSED[dispatcher]}
