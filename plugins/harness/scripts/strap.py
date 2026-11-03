@@ -62,15 +62,15 @@ from harness_lib.plan_enums import ItemStatus
 from harness_lib.plan_enums import RedException as PlanRed
 from harness_lib.plan_models import ActionItem, ActionPlan, PlannedTest
 from harness_lib.project import project_root
-from harness_lib.strap_lint import lint_python, lint_skill
+from harness_lib.strap_lint import lint_project_skill, lint_python, lint_skill
 from harness_lib.strap_models import (
     Arm, Behavior, BehaviorKind, BehaviorState, Draw, DrawReason, Frozen, Grader, GradeValue, Part, PartKind,
     Run, Scenario, SkillSpec, SpecMode,
 )
-from harness_lib.strap_scaffold import find_plugin_dir, planned_parts, render_parts
+from harness_lib.strap_profile import Profile, new_fields, profile_of
+from harness_lib.strap_scaffold import planned_parts, render_parts
 
 PROBLEMS = (CaptureError, ValueError, OSError)
-PLUGIN_NAME = "harness"
 RUNNER_AGENT = "harness:strap-scenario-runner"
 JUDGE_AGENT = "harness:strap-judge"
 AGENT_MODEL = "sonnet"
@@ -80,8 +80,6 @@ SCRIPT_DIR = SCRIPT.parent
 TAMPERED = "driver-owned fields changed outside strap.py"
 REPLY_TAG = "REPLY"
 FIXTURE_IDENTITY = ("-c", "user.name=strap", "-c", "user.email=strap@localhost")
-PLUGIN_VAR = "${CLAUDE_PLUGIN_ROOT}"
-SKILL_DIR_VAR = "${CLAUDE_SKILL_DIR}"
 
 
 class Refused(Exception):
@@ -272,16 +270,17 @@ def _edit_base(root: Path, name: str, skill_rel: str, ref: Optional[str]) -> str
     return sha
 
 
-def _edit_parts(root: Path, spec: SkillSpec, skill_rel: str) -> List[Part]:
-    """The skill's tracked folder files, plus its models, API, driver and contract test when present."""
-    folder = f"{spec.plugin_dir}/skills/{spec.name}"
-    tracked = [p for p in git_out(root, "ls-files", "-z", "--", folder).split("\0") if p]
-    parts = [Part(kind=PartKind.SKILL_MD if rel == skill_rel else PartKind.REFERENCE, path=rel)
-             for rel in sorted(tracked)]
-    snake = spec.name.replace("-", "_")
-    extra = [(PartKind.MODELS, f"{spec.plugin_dir}/lib/harness_lib/{snake}_models.py"),
-             (PartKind.API, f"{spec.plugin_dir}/lib/harness_lib/{snake}_api.py"),
-             (PartKind.DRIVER, f"{spec.plugin_dir}/scripts/{snake}.py")]
+def _edit_parts(root: Path, spec: SkillSpec) -> List[Part]:
+    """The skill's tracked folder files, plus its models, API, driver and contract test when present.
+
+    A tracked file at the profile's models, API or driver path takes that kind (a project skill keeps them in
+    its folder's ``scripts/``); every other folder file is a reference."""
+    profile = profile_of(spec)
+    special = {profile.skill_md: PartKind.SKILL_MD, profile.models: PartKind.MODELS,
+               profile.api: PartKind.API, profile.driver: PartKind.DRIVER}
+    tracked = [p for p in git_out(root, "ls-files", "-z", "--", profile.skill_folder).split("\0") if p]
+    parts = [Part(kind=special.get(rel, PartKind.REFERENCE), path=rel) for rel in sorted(tracked)]
+    extra = [(kind, rel) for rel, kind in special.items() if kind != PartKind.SKILL_MD]
     extra += [(p.kind, p.path) for p in planned_parts(spec) if p.kind == PartKind.CONTRACT_TEST]
     listed = {part.path for part in parts}
     parts += [Part(kind=kind, path=rel) for kind, rel in extra
@@ -295,17 +294,17 @@ def cmd_new(args: argparse.Namespace) -> int:
     if args.base and not args.edit:
         raise Refused(["--base needs --edit"])
     root = _root()
-    plugin_dir = _rel(find_plugin_dir(root, PLUGIN_NAME))
-    skill_rel = f"{plugin_dir}/skills/{args.name}/SKILL.md"
+    fields = new_fields(active(), root)
+    skill_rel = profile_of(SkillSpec(name=args.name, mode=SpecMode.NEW, **fields)).skill_md
     base: Optional[str] = None
     if args.edit:
         base = _edit_base(root, args.name, skill_rel, args.base)
     elif (root / skill_rel).is_file():
         raise Refused([f"{args.name} exists; use --edit"])
     spec = SkillSpec(name=args.name, mode=SpecMode.EDIT if args.edit else SpecMode.NEW, base=base,
-                     judge=args.judge, plugin_dir=plugin_dir)
+                     judge=args.judge, **fields)
     if args.edit:
-        spec = spec.model_copy(update={"parts": _edit_parts(root, spec, skill_rel)})
+        spec = spec.model_copy(update={"parts": _edit_parts(root, spec)})
     spec = save(spec)
     detail = f"edit from {base[:12]} | {len(spec.parts)} parts" if base else "new"
     print(f"new [done] | {spec.name} | {detail} | judge {spec.judge} | {_rel(sa.spec_path(spec.name))}")
@@ -323,15 +322,23 @@ def _lint_problems(spec: SkillSpec) -> List[str]:
         if not target.is_file():
             continue
         if part.kind == PartKind.SKILL_MD:
-            problems += lint_skill(root / spec.plugin_dir, spec.name)
+            problems += _lint_skill_md(root, profile_of(spec), spec.name)
         elif target.suffix == ".py":
             problems += lint_python(target)
     return problems
 
 
+def _lint_skill_md(root: Path, profile: Profile, name: str) -> List[str]:
+    """The harness house lint for a harness skill, the generic project lint for a project skill."""
+    if profile.plugin_dir is not None:
+        return lint_skill(root / profile.plugin_dir, name)
+    return lint_project_skill(root / profile.skill_folder, name)
+
+
 def _role_problems(spec: SkillSpec) -> List[str]:
-    agents = _root() / spec.plugin_dir / "agents"
-    return [f"{sc.id}: role {sc.role} has no agents/{sc.role}.md"
+    profile = profile_of(spec)
+    agents = _root() / profile.agents_dir
+    return [f"{sc.id}: role {sc.role} has no {profile.agents_dir}/{sc.role}.md"
             for behavior in spec.behaviors for sc in behavior.scenarios
             if sc.role != SESSION_ROLE and not (agents / f"{sc.role}.md").is_file()]
 
@@ -572,11 +579,10 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 # --- init -------------------------------------------------------------------------------------------------
 
-def _rewrite(text: str, source: Path, spec: SkillSpec, skill_rel: str) -> str:
-    """``text`` with the plugin and skill-dir variables pointing at ``source``'s copy of the plugin."""
-    plugin = (source / spec.plugin_dir).as_posix()
-    skill_dir = (source / skill_rel).parent.as_posix()
-    return text.replace(PLUGIN_VAR, plugin).replace(SKILL_DIR_VAR, skill_dir)
+def _rewrite(text: str, source: Path, spec: SkillSpec, run: Run) -> str:
+    """``text`` with the skill's variables pointing at ``source`` (and a project skill's
+    ``${CLAUDE_PROJECT_DIR}`` at the run tree, where the scenario's writes must land)."""
+    return profile_of(spec).rewrite(text, source, Path(run.tree))
 
 
 def _skill_text(spec: SkillSpec, run: Run) -> Optional[str]:
@@ -587,22 +593,28 @@ def _skill_text(spec: SkillSpec, run: Run) -> Optional[str]:
         path = root / part.path
         if not path.is_file():
             raise Refused([f"{run.id}: green needs {part.path}, which does not exist"])
-        return _rewrite(path.read_text(encoding="utf-8"), root, spec, part.path)
+        return _rewrite(path.read_text(encoding="utf-8"), root, spec, run)
     if SpecMode(spec.mode) != SpecMode.EDIT:
         return None
     done = git(root, "show", f"{spec.base}:{part.path}")
-    return _rewrite(done.stdout, Path(run.tree), spec, part.path) if done.returncode == 0 else None
+    return _rewrite(done.stdout, Path(run.tree), spec, run) if done.returncode == 0 else None
 
 
 def _agent_text(spec: SkillSpec, run: Run, scenario: Scenario) -> Optional[str]:
-    """The role agent's file: the working tree's for green, the run tree's for baseline."""
+    """The role agent's file: the working tree's for green, the run tree's for baseline.
+
+    A project skill's file gets the same variable rewrite as its SKILL.md.
+    """
     if scenario.role == SESSION_ROLE:
         return None
     source = _root() if run.arm == Arm.GREEN else Path(run.tree)
-    path = source / spec.plugin_dir / "agents" / f"{scenario.role}.md"
+    profile = profile_of(spec)
+    path = source / profile.agents_dir / f"{scenario.role}.md"
     if not path.is_file():
-        return f"agents/{scenario.role}.md is absent at the start commit; play the role from the task alone."
-    return path.read_text(encoding="utf-8")
+        return (f"{profile.agents_dir}/{scenario.role}.md is absent at the start commit; "
+                "play the role from the task alone.")
+    text = path.read_text(encoding="utf-8")
+    return text if profile.plugin_dir is not None else profile.rewrite(text, source, Path(run.tree))
 
 
 def brief(spec: SkillSpec, run: Run, scenario: Scenario) -> str:
@@ -719,7 +731,9 @@ def cmd_scaffold(args: argparse.Namespace) -> int:
     print(f"scaffold [done] | {spec.name} | {len(written)} written | {len(spec.parts)} parts")
     for path in written:
         print(f"wrote: {_rel(path)}")
-    print(f"bump: {spec.plugin_dir}/.claude-plugin/plugin.json")
+    bump = profile_of(spec).bump
+    if bump is not None:
+        print(f"bump: {bump}")
     return 0
 
 

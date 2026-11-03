@@ -570,6 +570,30 @@
       "title": "Scenario",
       "type": "object"
     },
+    "SkillTarget": {
+      "additionalProperties": false,
+      "description": "Where a project-profile skill lands: the project's skills and agents folders, repo-relative (no\nleading slash or backslash, no drive letter).",
+      "properties": {
+        "skills_dir": {
+          "minLength": 1,
+          "pattern": "^(?![/\\\\])(?![A-Za-z]:)",
+          "title": "Skills Dir",
+          "type": "string"
+        },
+        "agents_dir": {
+          "minLength": 1,
+          "pattern": "^(?![/\\\\])(?![A-Za-z]:)",
+          "title": "Agents Dir",
+          "type": "string"
+        }
+      },
+      "required": [
+        "skills_dir",
+        "agents_dir"
+      ],
+      "title": "SkillTarget",
+      "type": "object"
+    },
     "SpecMode": {
       "description": "Whether the spec creates a skill or edits an existing one.",
       "enum": [
@@ -581,7 +605,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "The strap-skills document for one skill.",
+  "description": "The strap-skills document for one skill: ``plugin_dir`` names a harness-profile plugin, ``target``\na project-profile destination. The model validator requires exactly one of the two; the schema leaves\nboth optional and does not check that rule.",
   "properties": {
     "name": {
       "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
@@ -609,8 +633,27 @@
       "type": "boolean"
     },
     "plugin_dir": {
-      "title": "Plugin Dir",
-      "type": "string"
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Plugin Dir"
+    },
+    "target": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SkillTarget"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "parts": {
       "items": {
@@ -671,8 +714,7 @@
   },
   "required": [
     "name",
-    "mode",
-    "plugin_dir"
+    "mode"
   ],
   "title": "SkillSpec",
   "type": "object"

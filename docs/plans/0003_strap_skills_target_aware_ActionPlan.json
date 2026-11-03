@@ -1,0 +1,884 @@
+{
+  "plan_id": "0003",
+  "plan_created": "2026-11-03",
+  "completed": "2026-11-03",
+  "source_document": "docs/superpowers/specs/2026-11-03-strap-skills-target-aware-design.md",
+  "documentation": "docs/plans/0003_strap_skills_target_aware_PIP.md",
+  "branch": null,
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "Config keys strap.target and agents_dir",
+      "action": "Add top-level agents_dir (relPath, default '.claude/agents/') beside skills_dir, and a strap object with target (enum harness|project, default 'project') in defaults.json and harness.schema.json (additionalProperties false). In config.py add a frozen StrapConfig(target: str) dataclass, HarnessConfig.agents_dir and HarnessConfig.strap, built in _build. README key table: rows for agents_dir and strap.target. This repo's .claude/harness.json stays unchanged: its sessions run the published plugin, whose schema rejects an unknown strap key, so the line lands after a release (deferred). config.py and defaults.json are parts of the writing-docstrings spec, so its hash goes stale (closed by TASK-9).",
+      "files": [
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/harness/lib/harness_lib/config.py",
+        "README.md",
+        "tests/lib/test_strap_target_config.py"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327: 5 test node(s) passed",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd",
+        "python -m pytest -q tests/lib/test_strap_target_config.py::test_strap_target_defaults_to_project tests/lib/test_strap_target_config.py::test_strap_target_reads_the_override tests/lib/test_strap_target_config.py::test_agents_dir_defaults_beside_skills_dir tests/lib/test_strap_target_config.py::test_schema_declares_both_keys tests/lib/test_strap_target_config.py::test_readme_key_table_lists_both_keys"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/config/defaults.json:5",
+          "expect": "\"skills_dir\": \".claude/skills/\","
+        },
+        {
+          "at": "plugins/harness/config/harness.schema.json:20",
+          "expect": "\"skills_dir\": {\"$ref\": \"#/$defs/relPath\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:169",
+          "expect": "skills_dir: str"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:299",
+          "expect": "skills_dir=m[\"skills_dir\"]"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_target_config.py::test_strap_target_defaults_to_project",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_strap_target_config.py::test_strap_target_reads_the_override",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_strap_target_config.py::test_agents_dir_defaults_beside_skills_dir",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_strap_target_config.py::test_schema_declares_both_keys",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_strap_target_config.py::test_readme_key_table_lists_both_keys",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "SkillSpec target field, legacy dumps unchanged",
+      "action": "In strap_models add SkillTarget(skills_dir: str, agents_dir: str; extra forbid). SkillSpec: plugin_dir: Optional[str] = None, target: Optional[SkillTarget] = None, and a validator requiring exactly one. _dumped drops the 'target' key when None; authored_digest drops it the same way, so every existing spec keeps its canonical text, driver digest and seal. Regenerate SkillSpec.schema.json with tools/gen_skillspec_schema.py. Guard: strap.py check on each existing spec still prints check [ok]. test_strap_models.py::test_dump_and_load_round_trip compares against the dump minus a None target.",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_models.py",
+        "plugins/harness/schemas/SkillSpec.schema.json",
+        "tests/lib/test_strap_target_spec.py",
+        "tests/lib/test_strap_models.py"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327: 5 test node(s) passed",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd",
+        "python -m pytest -q tests/lib/test_strap_target_spec.py::test_project_spec_round_trips_through_its_dump tests/lib/test_strap_target_spec.py::test_harness_spec_dump_has_no_target_key tests/lib/test_strap_target_spec.py::test_spec_needs_exactly_one_of_plugin_dir_and_target tests/lib/test_strap_target_spec.py::test_existing_specs_are_found tests/lib/test_strap_target_spec.py::test_existing_spec_keeps_its_text_digest_and_seal"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_models.py:383",
+          "expect": "plugin_dir: str"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_models.py:458-463",
+          "expect": "dumped = spec.model_dump(mode=\"json\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_models.py:466-475",
+          "expect": "dumped = spec.model_dump(mode=\"json\")"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:349",
+          "expect": "if path.read_text(encoding=\"utf-8\") != sm.dump_spec(spec):"
+        }
+      ],
+      "commands": [
+        {
+          "run": "sh plugins/harness/scripts/hpy tools/gen_skillspec_schema.py",
+          "expect": "exit 0",
+          "writes": [
+            "plugins/harness/schemas/SkillSpec.schema.json"
+          ]
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy tools/gen_skillspec_schema.py --check",
+          "expect": "exit 0"
+        },
+        {
+          "run": "python -m pytest tests/schemas/test_skillspec_schema_drift.py tests/lib/test_strap_models.py -q",
+          "expect": "all passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_target_spec.py::test_project_spec_round_trips_through_its_dump",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_target_spec.py::test_harness_spec_dump_has_no_target_key",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_target_spec.py::test_spec_needs_exactly_one_of_plugin_dir_and_target",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_target_spec.py::test_existing_specs_are_found",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_target_spec.py::test_existing_spec_keeps_its_text_digest_and_seal",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "strap_profile resolver",
+      "action": "New module harness_lib/strap_profile.py: profile_of(spec) returns a frozen Profile with skill_folder, skill_md, models, api, driver, agents_dir (project-relative POSIX), bump (Optional[str]), templates (path parts under the plugin root) and rewrite(text, source, run_tree). Harness: today's paths from strap.py:277-284 and strap_scaffold.py:101-104, and the ${CLAUDE_PLUGIN_ROOT} / ${CLAUDE_SKILL_DIR} rewrite against source as strap.py:575-579 does. Project: <skills_dir>/<name>/ with scripts/<snake>_{models,api}.py and scripts/<snake>.py, agents_dir from the target, bump None, templates plus 'project', ${CLAUDE_SKILL_DIR} against source and ${CLAUDE_PROJECT_DIR} against run_tree. Also new_fields(cfg, root) -> dict for cmd_new: harness -> plugin_dir via find_plugin_dir (function-local import, as strap_api.py:260 does), project -> SkillTarget with trailing slashes stripped from skills_dir and agents_dir. Functions under 50 lines. new_fields records the folders in canonical POSIX form (backslashes, ./ and the trailing slash folded) and keeps a linked plugin folder's absolute path when it resolves outside the project, as the driver's _rel did.",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_profile.py",
+        "tests/lib/test_strap_profile.py"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327: 5 test node(s) passed",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd",
+        "python -m pytest -q tests/lib/test_strap_profile.py::test_harness_profile_keeps_todays_paths tests/lib/test_strap_profile.py::test_project_profile_puts_modules_in_the_skill_folder tests/lib/test_strap_profile.py::test_harness_rewrite_matches_today tests/lib/test_strap_profile.py::test_project_rewrite_points_project_dir_at_the_run_tree tests/lib/test_strap_profile.py::test_new_fields_records_canonical_project_folders"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/strap.py:575-579",
+          "expect": "return text.replace(PLUGIN_VAR, plugin).replace(SKILL_DIR_VAR, skill_dir)"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:282-284",
+          "expect": "(PartKind.DRIVER, f\"{spec.plugin_dir}/scripts/{snake}.py\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_scaffold.py:101-104",
+          "expect": "in_plugin(PartKind.MODELS, f\"lib/harness_lib/{snake}_models.py\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_api.py:260",
+          "expect": "from harness_lib.strap_scaffold import scaffold_parts"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_profile.py::test_harness_profile_keeps_todays_paths",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_profile.py::test_project_profile_puts_modules_in_the_skill_folder",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_profile.py::test_harness_rewrite_matches_today",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_profile.py::test_project_rewrite_points_project_dir_at_the_run_tree",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_profile.py::test_new_fields_records_canonical_project_folders",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "Lint split: generic rules for project skills",
+      "action": "In strap_lint add lint_project_skill(skill_folder: Path, name: str): frontmatter present, name matches the folder, the _description_problems rules, and each ${CLAUDE_SKILL_DIR}/<rel> path the body names exists under skill_folder (trailing '.' stripped, placeholders skipped as _PLUGIN_PATH does). No argument-pointer, hpy-fence, vendor, harness: agent or harness_lib rules. lint_skill output for harness skills stays byte-identical (tests/lib/test_strap_lint.py unchanged).",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_lint.py",
+        "tests/lib/test_strap_lint_project.py"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327: 5 test node(s) passed",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd",
+        "python -m pytest -q tests/lib/test_strap_lint_project.py::test_clean_project_skill_skips_the_harness_house_rules tests/lib/test_strap_lint_project.py::test_description_rules_still_apply tests/lib/test_strap_lint_project.py::test_folder_name_must_match tests/lib/test_strap_lint_project.py::test_missing_skill_dir_path_is_a_problem tests/lib/test_strap_lint_project.py::test_every_problem_is_prefixed_with_the_skill_name"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_lint.py:117-134",
+          "expect": "def lint_skill(plugin_dir: Path, name: str) -> List[str]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_lint.py:24",
+          "expect": "_PLUGIN_PATH = re.compile("
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/lib/test_strap_lint.py -q",
+          "expect": "all passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_lint_project.py::test_clean_project_skill_skips_the_harness_house_rules",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint_project.py::test_description_rules_still_apply",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint_project.py::test_folder_name_must_match",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint_project.py::test_missing_skill_dir_path_is_a_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_lint_project.py::test_every_problem_is_prefixed_with_the_skill_name",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "skill_api --file and the bin/harness-skill-api shim",
+      "action": "skill_api.py: the module positional becomes optional; add --file PATH. Exactly one of module or --file, else a LauncherError problem line (exit 1, never an argparse exit). --file loads the file by path under a unique module name with its folder first on sys.path; a missing file is 'no API module at <path>'. Config activation order unchanged. New plugins/harness/bin/harness-skill-api: POSIX sh, resolves its own folder and execs sh ../scripts/hpy ../scripts/skill_api.py \"$@\"; LF endings; index mode 100755. Update the skill_api.py docstring usage line. The API folder is appended to sys.path (never shadows the standard library); a --file heredoc runs with the activated project root as its working directory, restored afterwards. The shim resolves its folder with pwd -W where MSYS has it. .gitattributes keeps plugins/harness/bin/* on LF. The shim run test looks sh up on PATH and skips without one.",
+      "files": [
+        "plugins/harness/scripts/skill_api.py",
+        "plugins/harness/bin/harness-skill-api",
+        "tests/scripts/test_skill_api_file.py",
+        ".gitattributes"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327: 6 test node(s) passed",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd",
+        "python -m pytest -q tests/scripts/test_skill_api_file.py::test_file_binds_the_api_module_and_its_sibling tests/scripts/test_skill_api_file.py::test_module_and_file_together_are_refused tests/scripts/test_skill_api_file.py::test_missing_file_is_one_problem_line tests/scripts/test_skill_api_file.py::test_shim_is_executable_in_the_index tests/scripts/test_skill_api_file.py::test_shim_runs_the_launcher tests/scripts/test_skill_api_file.py::test_file_heredoc_runs_in_the_repo_root"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/skill_api.py:44-47",
+          "expect": "return importlib.import_module(f\"{PACKAGE}.{module}\")"
+        },
+        {
+          "at": "plugins/harness/scripts/skill_api.py:58-62",
+          "expect": "space = _namespace(_load_module(args.module), args.name)"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:853-857",
+          "expect": "spec_from_file_location(\"strap_skill_api\", SCRIPT_DIR / \"skill_api.py\")"
+        }
+      ],
+      "commands": [
+        {
+          "run": "git update-index --chmod=+x plugins/harness/bin/harness-skill-api",
+          "expect": "exit 0"
+        },
+        {
+          "run": "python -m pytest tests/scripts/test_skill_api.py -q",
+          "expect": "all passed"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "no errors"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_skill_api_file.py::test_file_binds_the_api_module_and_its_sibling",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api_file.py::test_module_and_file_together_are_refused",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api_file.py::test_missing_file_is_one_problem_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api_file.py::test_shim_is_executable_in_the_index",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api_file.py::test_shim_runs_the_launcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_skill_api_file.py::test_file_heredoc_runs_in_the_repo_root",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "Project template set and profile-driven scaffold",
+      "action": "Add skills/strap-skills/templates/project/{skill_md,models,api,contract_test}.tmpl. skill_md: heredoc through harness-skill-api --repo \"${CLAUDE_PROJECT_DIR}\" --file \"${CLAUDE_SKILL_DIR}/scripts/${snake}_api.py\", no ${CLAUDE_PLUGIN_ROOT}, no skill_arguments pointer, same skeleton and TODO(fill) markers. models: today's models.tmpl without the harness_lib mention. api: today's shape, sibling import from ${snake}_models, root found by walking up from Path.cwd() to the folder holding .git (file or folder), document under a DOCUMENT_DIR constant; no harness_lib. contract_test: stdlib, pydantic and pytest only; finds the repo root from its own file, loads models and API by path with the ImportError idiom, parses SKILL.md frontmatter itself, skips a missing optional module as today. strap_scaffold: scaffold_parts and _template_text use profile_of(spec) for paths and the template folder; spell each project template name in a code literal with its 'project/' anchor for tools/select_tests.py; add a skill_folder substitution. Harness rendering stays byte-identical. The API section and Related bullets render from project/api_section.tmpl only when an API part is planned; a prose-only skill gets a fill-in note and names no missing module, and its contract test skips the launcher check. strap_scaffold keeps its own templates folder literal (the anchor tools/select_tests.py needs for the shared harness basenames). The contract test appends the scripts folder to sys.path and registers each loaded module in sys.modules.",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_scaffold.py",
+        "plugins/harness/skills/strap-skills/templates/project/skill_md.tmpl",
+        "plugins/harness/skills/strap-skills/templates/project/models.tmpl",
+        "plugins/harness/skills/strap-skills/templates/project/api.tmpl",
+        "plugins/harness/skills/strap-skills/templates/project/contract_test.tmpl",
+        "tests/lib/test_strap_scaffold_project.py",
+        "plugins/harness/skills/strap-skills/templates/project/api_section.tmpl"
+      ],
+      "dependencies": [
+        "TASK-3",
+        "TASK-4",
+        "TASK-5"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327: 7 test node(s) passed",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd",
+        "python -m pytest -q tests/lib/test_strap_scaffold_project.py::test_parts_land_in_the_skill_folder tests/lib/test_strap_scaffold_project.py::test_skill_md_drives_the_api_through_the_bin_launcher tests/lib/test_strap_scaffold_project.py::test_python_parts_import_no_harness_lib tests/lib/test_strap_scaffold_project.py::test_rendered_skill_is_clean_under_the_project_lint tests/lib/test_strap_scaffold_project.py::test_contract_test_passes_without_harness_on_the_path tests/lib/test_strap_scaffold_project.py::test_api_writes_under_the_working_directory tests/lib/test_strap_scaffold_project.py::test_prose_only_skill_names_no_missing_module"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_scaffold.py:26-33",
+          "expect": "_TEMPLATE_DIR = (\"skills\", \"strap-skills\", \"templates\")"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_scaffold.py:136-137",
+          "expect": "return plugin_root().joinpath(*_TEMPLATE_DIR, _TEMPLATES[kind])"
+        },
+        {
+          "at": "plugins/harness/skills/strap-skills/templates/api.tmpl:16",
+          "expect": "from harness_lib.config import active"
+        },
+        {
+          "at": "plugins/harness/skills/strap-skills/templates/contract_test.tmpl:13",
+          "expect": "from harness_lib.project import plugin_root"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_red.py:162-171",
+          "expect": "src = tree / \"src\""
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/lib/test_strap_scaffold.py -q",
+          "expect": "all passed"
+        },
+        {
+          "run": "python tools/select_tests.py --base main",
+          "expect": "tests/lib/test_strap_scaffold_project.py listed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_scaffold_project.py::test_parts_land_in_the_skill_folder",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold_project.py::test_skill_md_drives_the_api_through_the_bin_launcher",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold_project.py::test_python_parts_import_no_harness_lib",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold_project.py::test_rendered_skill_is_clean_under_the_project_lint",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold_project.py::test_contract_test_passes_without_harness_on_the_path",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold_project.py::test_api_writes_under_the_working_directory",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_strap_scaffold_project.py::test_prose_only_skill_names_no_missing_module",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-7",
+      "title": "Driver wiring through the profile",
+      "action": "strap.py: cmd_new takes plugin_dir or target from profile new_fields(active(), root) per active().strap.target and checks the profile's skill_md for exists / --edit. _edit_parts lists the profile's skill_folder and gives the profile's models / api / driver paths their kinds when tracked inside the folder (project) or appends them when outside (harness). _lint_problems: harness -> lint_skill as today, project -> lint_project_skill. _role_problems and _agent_text read profile.agents_dir. _rewrite delegates to profile.rewrite(text, source, Path(run.tree)). cmd_scaffold prints the bump: line only when profile.bump is set. Harness-layout fixtures (tests/scripts/test_strap_driver.py, tests/scripts/test_strap_gate.py) add \"strap\": {\"target\": \"harness\"} to their config; the _strap_new_args docstring in tests/contract/test_root_separation.py no longer claims a plugin is required. A project role agent's body goes through the same rewrite as the SKILL.md (its ${CLAUDE_PROJECT_DIR} points at the run tree); a harness agent body is copied unchanged.",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "tests/scripts/test_strap_driver.py",
+        "tests/scripts/test_strap_gate.py",
+        "tests/contract/test_root_separation.py",
+        "tests/scripts/test_strap_project_profile.py"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-3",
+        "TASK-4",
+        "TASK-6"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327: 8 test node(s) passed",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd",
+        "python -m pytest -q tests/scripts/test_strap_project_profile.py::test_new_records_the_project_target tests/scripts/test_strap_project_profile.py::test_new_refuses_an_existing_project_skill tests/scripts/test_strap_project_profile.py::test_edit_gives_scripts_their_part_kinds tests/scripts/test_strap_project_profile.py::test_scaffold_writes_the_skill_folder_without_a_bump_line tests/scripts/test_strap_project_profile.py::test_check_applies_the_project_lint tests/scripts/test_strap_project_profile.py::test_check_finds_role_agents_in_agents_dir tests/scripts/test_strap_project_profile.py::test_init_reads_the_role_agent_from_agents_dir tests/scripts/test_strap_project_profile.py::test_init_green_rewrites_project_dir_to_the_run_tree"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/strap.py:73",
+          "expect": "PLUGIN_NAME = \"harness\""
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:297-306",
+          "expect": "plugin_dir = _rel(find_plugin_dir(root, PLUGIN_NAME))"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:275-289",
+          "expect": "def _edit_parts(root: Path, spec: SkillSpec, skill_rel: str) -> List[Part]:"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:325-326",
+          "expect": "problems += lint_skill(root / spec.plugin_dir, spec.name)"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:332-336",
+          "expect": "agents = _root() / spec.plugin_dir / \"agents\""
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:582-594",
+          "expect": "return _rewrite(path.read_text(encoding=\"utf-8\"), root, spec, part.path)"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:601-602",
+          "expect": "path = source / spec.plugin_dir / \"agents\" / f\"{scenario.role}.md\""
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:722",
+          "expect": "print(f\"bump: {spec.plugin_dir}/.claude-plugin/plugin.json\")"
+        },
+        {
+          "at": "tests/scripts/test_strap_driver.py:80-83",
+          "expect": "config = {\"base_branch\": \"main\", \"worktree_root\": (tmp_path / \"trees\").as_posix()}"
+        },
+        {
+          "at": "tests/scripts/test_strap_gate.py:91-94",
+          "expect": "config = {\"base_branch\": \"main\", \"worktree_root\": (tmp_path / \"trees\").as_posix()}"
+        },
+        {
+          "at": "tests/contract/test_root_separation.py:150-151",
+          "expect": "def _strap_new_args(root: Path) -> List[str]:"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/scripts/test_strap_driver.py tests/scripts/test_strap_gate.py tests/contract/test_root_separation.py -q",
+          "expect": "all passed"
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check writing-docstrings",
+          "expect": "check [ok] apart from the stale: line TASK-9 closes"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_strap_project_profile.py::test_new_records_the_project_target",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_strap_project_profile.py::test_new_refuses_an_existing_project_skill",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_strap_project_profile.py::test_edit_gives_scripts_their_part_kinds",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_strap_project_profile.py::test_scaffold_writes_the_skill_folder_without_a_bump_line",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_strap_project_profile.py::test_check_applies_the_project_lint",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_strap_project_profile.py::test_check_finds_role_agents_in_agents_dir",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_strap_project_profile.py::test_init_reads_the_role_agent_from_agents_dir",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_strap_project_profile.py::test_init_green_rewrites_project_dir_to_the_run_tree",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-8",
+      "title": "strap-skills SKILL.md for both profiles, version bump",
+      "action": "Edit plugins/harness/skills/strap-skills/SKILL.md: description and title cover harness and project skills (drop 'harness skill', name 'project skill'); a short Profiles section naming strap.target, skills_dir, agents_dir and the project prerequisites (harness plugin enabled so harness-skill-api is on PATH; HARNESS_PY pointing at an environment with pydantic>=2, jsonschema, referencing, pytest and the repo's test dependencies); step 2 states the planned-test idiom for project skills (load by path, raise ImportError on a missing file); step 5 names the profile's part paths and template folder, the bump: line for the harness profile only. Keep tests/skills/test_strap_skills_skill_contract.py passing. Bump harness to 0.51.0. Direct edit per D10. The README feature row describes both profiles.",
+      "files": [
+        "plugins/harness/skills/strap-skills/SKILL.md",
+        "plugins/harness/.claude-plugin/plugin.json",
+        "tests/skills/test_strap_skills_project_profile_contract.py",
+        "README.md"
+      ],
+      "dependencies": [
+        "TASK-7"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327: 3 test node(s) passed",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd",
+        "python -m pytest -q tests/skills/test_strap_skills_project_profile_contract.py::test_description_is_not_limited_to_harness_skills tests/skills/test_strap_skills_project_profile_contract.py::test_body_names_the_target_key_and_the_launcher tests/skills/test_strap_skills_project_profile_contract.py::test_body_states_the_project_prerequisites"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/strap-skills/SKILL.md:3",
+          "expect": "description: Use when writing a new harness skill"
+        },
+        {
+          "at": "plugins/harness/skills/strap-skills/SKILL.md:7",
+          "expect": "# strap-skills: a harness skill, written test-first"
+        },
+        {
+          "at": "plugins/harness/skills/strap-skills/SKILL.md:108-111",
+          "expect": "per file and a `bump:` line naming the plugin manifest"
+        },
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.50.0\""
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_strap_skills_skill_contract.py -q",
+          "expect": "all passed"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "no errors"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_strap_skills_project_profile_contract.py::test_description_is_not_limited_to_harness_skills",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_project_profile_contract.py::test_body_names_the_target_key_and_the_launcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_project_profile_contract.py::test_body_states_the_project_prerequisites",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-9",
+      "title": "Refreeze writing-docstrings after the config edits",
+      "action": "On the target branch after harness:a-w, with the developer's OK: config.py and defaults.json are writing-docstrings parts, so its hash is stale. Run strap.py check writing-docstrings (expect the stale: line), run and grade a green per judgment behavior on the new hash, then freeze writing-docstrings --refreeze. Command-only item.",
+      "files": [
+        "docs/plans/strap/writing-docstrings/SkillSpec.json"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-8"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 6d25327",
+      "verification_references": [
+        "6d2532769986bd8572d242799377a71f4c0b3664",
+        "tree 45d59ce26bafe8be1d267282bcaae45f981ad9dd"
+      ],
+      "model": "opus",
+      "commands": [
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check writing-docstrings",
+          "expect": "stale: frozen at <old12>"
+        },
+        {
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze writing-docstrings --refreeze",
+          "expect": "freeze [done] | writing-docstrings | ... | was <old12>",
+          "writes": [
+            "docs/plans/strap/writing-docstrings/SkillSpec.json"
+          ]
+        }
+      ]
+    }
+  ],
+  "base_commit": "4e2393d935e50a483e1a65bc10adb60472dad0cd",
+  "frozen": {
+    "commit": "b56b36362b958af6a0f3f928ee60df49c76d3a8c",
+    "tree": "c1ea503557e8727a12f3999a18c62c6f037ef458",
+    "date": "2026-11-03",
+    "digest": "cdeb998422f14803393dcaaebd92dffa9522c79355a505e3b5aca8222ce53309"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Where do a project skill's models and API live?",
+      "options": [
+        {
+          "id": "skill-folder",
+          "summary": "<skills_dir>/<name>/scripts/, loaded by path"
+        },
+        {
+          "id": "repo-package",
+          "summary": "a configured repo package holding every skill's modules"
+        },
+        {
+          "id": "separate-skill",
+          "summary": "a second SKILL.md over the same engine"
+        }
+      ],
+      "chosen": "skill-folder",
+      "rationale": "Developer pick (approach A): self-contained folder, no repo setup."
+    },
+    {
+      "id": "D2",
+      "question": "Does a scaffolded project skill need the harness plugin at runtime?",
+      "options": [
+        {
+          "id": "plugin-required",
+          "summary": "heredoc runs through the harness launcher"
+        },
+        {
+          "id": "standalone",
+          "summary": "each skill ships its own launcher"
+        }
+      ],
+      "chosen": "plugin-required",
+      "rationale": "Developer decision."
+    },
+    {
+      "id": "D3",
+      "question": "How does project skill content reach harness code?",
+      "options": [
+        {
+          "id": "bin-shim",
+          "summary": "plugins/harness/bin/harness-skill-api on the Bash PATH"
+        },
+        {
+          "id": "env-file",
+          "summary": "SessionStart writes HARNESS_ROOT to CLAUDE_ENV_FILE"
+        }
+      ],
+      "chosen": "bin-shim",
+      "rationale": "Documented and survives resume; env-file is Bash-only with PowerShell caveats."
+    },
+    {
+      "id": "D4",
+      "question": "Default strap.target for a consuming project",
+      "options": [
+        {
+          "id": "project",
+          "summary": "project profile by default; this repo sets harness"
+        },
+        {
+          "id": "harness",
+          "summary": "harness profile by default"
+        }
+      ],
+      "chosen": "project",
+      "rationale": "Only operator-straps writes harness skills."
+    },
+    {
+      "id": "D5",
+      "question": "Which key names the project skills folder?",
+      "options": [
+        {
+          "id": "reuse-skills-dir",
+          "summary": "the existing top-level skills_dir"
+        },
+        {
+          "id": "strap-skills-dir",
+          "summary": "a new strap.skills_dir"
+        }
+      ],
+      "chosen": "reuse-skills-dir",
+      "rationale": "One source of truth; review lens detection already reads it."
+    },
+    {
+      "id": "D6",
+      "question": "How does a spec record its profile without changing existing spec files?",
+      "options": [
+        {
+          "id": "optional-target",
+          "summary": "target: Optional[SkillTarget], plugin_dir Optional, exactly one set; a None target is left out of the dump and the authored digest"
+        },
+        {
+          "id": "profile-field",
+          "summary": "a profile field with a default written into every dump"
+        }
+      ],
+      "chosen": "optional-target",
+      "rationale": "Existing specs keep text, driver digest and seal byte for byte."
+    },
+    {
+      "id": "D7",
+      "question": "Where does ${CLAUDE_PROJECT_DIR} point in a run brief?",
+      "options": [
+        {
+          "id": "run-tree",
+          "summary": "the run tree, both arms"
+        },
+        {
+          "id": "source-tree",
+          "summary": "the arm's source tree (working tree on green)"
+        }
+      ],
+      "chosen": "run-tree",
+      "rationale": "Green writes must land in the scenario tree, where record-run diffs."
+    },
+    {
+      "id": "D8",
+      "question": "How does the project API template find the repository root?",
+      "options": [
+        {
+          "id": "cwd-walk",
+          "summary": "walk up from the working directory to the folder holding .git"
+        },
+        {
+          "id": "file-walk",
+          "summary": "walk up from the module's own file"
+        }
+      ],
+      "chosen": "cwd-walk",
+      "rationale": "On green the module loads from the working tree while the runner works in the run tree."
+    },
+    {
+      "id": "D9",
+      "question": "How do planned tests reach a project skill's modules?",
+      "options": [
+        {
+          "id": "inline-idiom",
+          "summary": "inlined load-by-path that raises ImportError on a missing file"
+        },
+        {
+          "id": "helper",
+          "summary": "a scaffolded helper or conftest"
+        }
+      ],
+      "chosen": "inline-idiom",
+      "rationale": "A helper would itself be absent at the start commit red runs from."
+    },
+    {
+      "id": "D10",
+      "question": "Is the strap-skills SKILL.md change proven through strap-skills itself?",
+      "options": [
+        {
+          "id": "direct-edit",
+          "summary": "direct edit; STR-11 self-gate covers it later"
+        },
+        {
+          "id": "strap-now",
+          "summary": "add judgment behaviors to the strap-skills spec now"
+        }
+      ],
+      "chosen": "direct-edit",
+      "rationale": "The strap-skills spec is unfrozen with zero behaviors; STR-11 is pending."
+    }
+  ],
+  "values": [
+    {
+      "name": "harness plugin version",
+      "value": "0.51.0",
+      "source": "plugins/harness/.claude-plugin/plugin.json:3 (0.50.0) plus a minor bump"
+    },
+    {
+      "name": "skills_dir default",
+      "value": ".claude/skills/",
+      "source": "plugins/harness/config/defaults.json:5",
+      "assumes": [
+        "reuse-skills-dir"
+      ]
+    },
+    {
+      "name": "agents_dir default",
+      "value": ".claude/agents/",
+      "source": "spec, Configuration table"
+    },
+    {
+      "name": "strap.target default",
+      "value": "project",
+      "source": "spec, Configuration table",
+      "assumes": [
+        "project"
+      ]
+    },
+    {
+      "name": "project template folder",
+      "value": "skills/strap-skills/templates/project",
+      "source": "spec, Project templates",
+      "assumes": [
+        "skill-folder"
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "name": "skill_api --file launch line",
+      "example": "harness-skill-api --repo \"${CLAUDE_PROJECT_DIR}\" --file \"${CLAUDE_SKILL_DIR}/scripts/<snake>_api.py\" <name>",
+      "source": {
+        "at": "plugins/harness/scripts/skill_api.py:65-70",
+        "expect": "parser.add_argument(\"module\", help=\"Module of harness_lib whose __all__ is bound.\")"
+      }
+    },
+    {
+      "name": "SkillSpec target key",
+      "example": "\"target\": {\"skills_dir\": \".claude/skills\", \"agents_dir\": \".claude/agents\"}",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/strap_models.py:458-463",
+        "expect": "def _dumped(spec: SkillSpec) -> Dict[str, Any]:"
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "spec\\.plugin_dir|PLUGIN_NAME|find_plugin_dir",
+      "hits": {
+        "plugins/harness/scripts/strap.py": "rewire through strap_profile (TASK-7)",
+        "plugins/harness/lib/harness_lib/strap_scaffold.py": "rewire through strap_profile (TASK-6); find_plugin_dir stays",
+        "tests/lib/test_strap_scaffold.py": "harness-profile tests; unchanged"
+      }
+    }
+  ],
+  "deferred_to_future_plans": [
+    {
+      "topic": "Set strap.target to harness in this repository's .claude/harness.json",
+      "rationale": "This repo's sessions run the published plugin, whose harness.schema.json rejects the strap key until a release carries it; until then strap.py new here defaults to the project profile.",
+      "affected_sites": [
+        ".claude/harness.json"
+      ]
+    }
+  ]
+}

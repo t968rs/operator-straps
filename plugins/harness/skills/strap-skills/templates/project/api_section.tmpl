@@ -1,0 +1,14 @@
+## API
+
+The heredoc runs with the names of the API module's `__all__` bound, plus `name`. Its delimiter is quoted, so
+the shell expands nothing inside it. `--repo` names the project the document belongs to, and the API writes
+under it.
+
+```
+harness-skill-api --repo "$${CLAUDE_PROJECT_DIR}" --file "$${CLAUDE_SKILL_DIR}/scripts/${snake}_api.py" <name> <<'PY'
+if not document_path(name).is_file():
+    create(name)
+document = add_entry(name, new_entry(kind="first", text="<entry text>"))
+print(f"{document_path(name).as_posix()}: {len(document.entries)} entries")
+PY
+```

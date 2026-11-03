@@ -108,6 +108,13 @@ class DocstringsConfig:
 
 
 @dataclass(frozen=True)
+class StrapConfig:
+    """Project values of strap-skills: which skills it writes (``harness`` or ``project``)."""
+
+    target: str
+
+
+@dataclass(frozen=True)
 class TodoSnapshots:
     """Where dated TODO snapshots live and how a snapshot file name carries its date."""
 
@@ -167,6 +174,7 @@ class HarnessConfig:
     base_branch: Optional[str]
     integration_branches: Tuple[str, ...]
     skills_dir: str
+    agents_dir: str
     schemas_dir: str
     state_dir: str
     matrix_path: str
@@ -183,6 +191,7 @@ class HarnessConfig:
     runlogs: RunLogsConfig
     docstrings: DocstringsConfig
     todo: TodoConfig
+    strap: StrapConfig
 
     def path(self, rel: str) -> Path:
         """Absolute path of a project-relative POSIX path."""
@@ -297,7 +306,8 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
     return HarnessConfig(
         project_root=root, source=source, harness_version=m["harness_version"], base_branch=m["base_branch"],
         integration_branches=tuple(m["integration_branches"]), skills_dir=m["skills_dir"],
-        schemas_dir=m["schemas_dir"], state_dir=m["state_dir"], matrix_path=m["matrix_path"],
+        agents_dir=m["agents_dir"], schemas_dir=m["schemas_dir"], state_dir=m["state_dir"],
+        matrix_path=m["matrix_path"],
         agent_usage_path=m["agent_usage_path"], exclusions=m["exclusions"],
         artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
@@ -306,7 +316,21 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         worktree_baseline=_argv_list(m["worktree_baseline"], "worktree_baseline"),
         runlogs=_runlogs(m["runlogs"]), docstrings=_docstrings(m["docstrings"]),
         todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
+        strap=_strap(m["strap"]),
     )
+
+
+def _strap(s: Dict[str, Any]) -> StrapConfig:
+    """``strap`` with ``target`` checked against its two profiles, also on a load without ``jsonschema``."""
+    if not isinstance(s, dict):
+        raise ConfigError("strap: must be an object")
+    unknown = sorted(set(s) - {"target"})
+    if unknown:
+        raise ConfigError(f"strap: unknown keys {unknown}")
+    target = s.get("target")
+    if target not in ("harness", "project"):
+        raise ConfigError(f"strap/target: {target!r} is not 'harness' or 'project'")
+    return StrapConfig(target)
 
 
 def _require_group(pattern: str, group: str, where: str) -> None:

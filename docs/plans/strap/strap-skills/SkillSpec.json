@@ -26,8 +26,32 @@
       "path": "plugins/harness/skills/strap-skills/templates/skill_md.tmpl"
     },
     {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/project/skill_md.tmpl"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/project/models.tmpl"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/project/api.tmpl"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/project/contract_test.tmpl"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/skills/strap-skills/templates/project/api_section.tmpl"
+    },
+    {
       "kind": "contract_test",
       "path": "tests/skills/test_strap_skills_skill_contract.py"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_strap_skills_project_profile_contract.py"
     }
   ],
   "behaviors": [],

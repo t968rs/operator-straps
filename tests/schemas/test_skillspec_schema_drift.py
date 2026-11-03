@@ -4,7 +4,8 @@ Pins that the committed ``plugins/harness/schemas/SkillSpec.schema.json`` equals
 ``strap_models.schema_text()`` byte for byte (after CRLF -> LF, since ``text=auto`` with ``core.autocrlf``
 checks JSON out with CRLF on Windows), that its ``$schema`` / ``$id`` follow the harness schemas convention,
 that ``tools/gen_skillspec_schema.py`` writes the schema and its ``--check`` mode exits 0 in sync and 1 on
-drift, and that a ``dump_spec`` document validates against the committed schema under Draft 2020-12.
+drift, that harness-shaped and target-shaped ``dump_spec`` documents validate against the committed schema
+under Draft 2020-12, and that ``target`` folders reject absolute paths in both the model and the schema.
 """
 from __future__ import annotations
 
@@ -16,6 +17,7 @@ from typing import Any, Dict, List
 
 import pytest
 from jsonschema import Draft202012Validator
+from pydantic import ValidationError
 
 from harness_lib import strap_models as sm
 
@@ -108,6 +110,39 @@ def test_schema_marks_driver_owned_top_fields() -> None:
 def test_dump_spec_validates_against_committed_schema() -> None:
     """A model-valid spec, dumped by ``dump_spec``, has no Draft 2020-12 error against the committed file."""
     assert _errors(json.loads(sm.dump_spec(_sample_spec()))) == []
+
+
+def _target_spec() -> Dict[str, Any]:
+    """The sample spec dumped with a project-profile ``target`` in place of ``plugin_dir``."""
+    target = sm.SkillTarget(skills_dir=".claude/skills", agents_dir=".claude/agents")
+    spec = _sample_spec().model_copy(update={"plugin_dir": None, "target": target})
+    return json.loads(sm.dump_spec(sm.SkillSpec.model_validate(spec.model_dump())))
+
+
+def test_dump_target_spec_validates_against_committed_schema() -> None:
+    """A project-profile spec (``target`` set, ``plugin_dir`` null) validates against the committed file."""
+    assert _errors(_target_spec()) == []
+
+
+_ABSOLUTE = ["C:/elsewhere", "c:x", "/abs/skills", "\\\\server\\share"]
+
+
+@pytest.mark.parametrize("value", _ABSOLUTE)
+@pytest.mark.parametrize("field", ["skills_dir", "agents_dir"])
+def test_skill_target_rejects_absolute_folder(field: str, value: str) -> None:
+    """``SkillTarget`` folders are repo-relative: an absolute or drive-letter path fails the model."""
+    folders = {"skills_dir": ".claude/skills", "agents_dir": ".claude/agents", field: value}
+    with pytest.raises(ValidationError):
+        sm.SkillTarget(**folders)
+
+
+@pytest.mark.parametrize("value", _ABSOLUTE)
+@pytest.mark.parametrize("field", ["skills_dir", "agents_dir"])
+def test_committed_schema_rejects_absolute_target_folder(field: str, value: str) -> None:
+    """The committed schema carries the same relative-path guard on ``target`` folders."""
+    document = _target_spec()
+    document["target"][field] = value
+    assert _errors(document) != []
 
 
 @pytest.mark.parametrize("field, value", [("bogus", 1), ("mode", "rewrite")])
