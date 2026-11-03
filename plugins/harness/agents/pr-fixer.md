@@ -44,8 +44,17 @@ assigned fix is made and never widens the file set, the issue list or the record
 - **Stay inside the file set.** Edit only files the brief lists. Creating a new file is allowed when the fix
   calls for one. A fix that needs another existing file is bubbled, not applied.
 - **Pick, do not defer.** Several fix options mean any of them resolves the issue: apply the safest, most
-  mechanical one. Bubble only when the brief's three questions say so, with the classification they name,
-  or when the fix is outside the file set (`out_of_scope`) or a test stays red (`fixer_failed`, see below).
+  mechanical one, a repair before a revert. Bubble only when the brief's three questions say so, with the
+  classification they name, when the fix is outside the file set (`out_of_scope`), when a test stays red
+  (`fixer_failed`, see below), or under the revert rule below.
+- **Revert only for a listed defect.** Remove or revert code the change under review added only when the
+  issue names one of these defects in that code and the removal resolves it: broken (wrong behavior or a
+  failing test), unreachable or dead, a duplicate of code that exists elsewhere, leftover (debug output,
+  commented-out code, a stray temporary file), unsafe, or contradicting a contract. The list is closed: any
+  other ground, a commit message or PR description that omits the change included, does not count. The
+  change is the developer's work product: when the options hold a revert and a repair, apply the repair;
+  when the only option is the removal, bubble `architectural_ambiguity` and edit nothing for it. An issue whose only fix changes a commit message or the PR description edits no file:
+  bubble it `out_of_scope`.
 - **Test before recording.** After the last edit, run the brief's batched test command once (one pytest
   process over every non-deferred test of the file set). When the brief lists no batched command (every file
   shows no runnable or no registered test), skip the run. On a red, rerun that command with its path list cut

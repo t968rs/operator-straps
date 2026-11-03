@@ -56,30 +56,30 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 37,
+    "items": 35,
     "needs_decision": 19,
     "trackers": 0,
-    "close_candidates": 11,
+    "close_candidates": 13,
     "by_status": {
       "NEEDS_DECISION": 19,
-      "OPEN": 18
+      "OPEN": 16
     },
     "by_impact": {
-      "dev_velocity": 15,
+      "dev_velocity": 14,
       "docs_tooling": 16,
       "maintainability": 2,
       "runtime_failure": 3,
-      "data_correctness": 1
+      "data_correctness": 0
     },
     "by_loe": {
       "XS": 2,
       "S": 12,
-      "M": 16,
+      "M": 14,
       "L": 6,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 37,
+      "gh_issue": 35,
       "impl_stub": 0,
       "research_folder": 0
     },
@@ -149,63 +149,6 @@
     {
       "id": "TODO-002",
       "rank": 2,
-      "title": "pr-sum: refuse control bytes in a summary and check flowchart connector alignment",
-      "kind": "bug",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#177",
-          "url": "https://github.com/t968rs/operator-straps/issues/177"
-        }
-      ],
-      "gh_issues": [
-        177
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "A pr-sum run saved a New Behavior flowchart holding 0x01/0x02 control bytes and misaligned connectors (from the issue: floodplain_development PR #1691, harness 0.48.0, unverified here). Checked: plugins/harness/scripts/pr_sum.py:277-282 writes the summary whenever build_problems is empty, and plugins/harness/lib/harness_lib/pr_summary.py:335-346 (draft_problems) has no control-character check; fenced lines are checked only for width (pr_summary.py:316-319), and _flow_problems (pr_summary.py:227-246) checks only `Behavior:` headings (:27), so a `New Behavior:` flow gets no flow checks at all. The skill's grammar example already draws a labeled fork (plugins/harness/skills/pr-sum/SKILL.md:172-184, `│ok`, `│yes`), but no prose rule says a decision is drawn as a fork rather than a chain. Root cause of the bytes is unconfirmed.",
-      "proposed_change": "Add a draft_problems check refusing `[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]` anywhere in the drafted strings; add a connector-alignment check that every `│ ▼ ├ └` in a flow fence sits under a node or connector column on the line above (accounting for side-by-side BEFORE/AFTER fences); say in pr-sum SKILL.md near :165-170 that decisions are drawn as forks with labeled arms; add tests for both checks.",
-      "files": [
-        "plugins/harness/lib/harness_lib/pr_summary.py",
-        "plugins/harness/scripts/pr_sum.py",
-        "plugins/harness/skills/pr-sum/SKILL.md"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "The pr-sum build validator and its skill text; only pr-sum output is affected.",
-        "consumers": [
-          "plugins/harness/scripts/pr_sum.py"
-        ]
-      },
-      "loe": {
-        "size": "M",
-        "reasoning": "The control-byte guard is small; the column-alignment check must handle side-by-side fences without false refusals."
-      },
-      "impact": "data_correctness",
-      "severity": 3,
-      "priority": {
-        "score": 2.1,
-        "components": {
-          "impact_weight": 1.4,
-          "value": 4.2,
-          "loe_points": 4,
-          "blast_factor": 1.0,
-          "cost": 4.0,
-          "base_score": 2.1,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 3 wrong output on an uncommon input with a missing guard, data_correctness impact, M size."
-    },
-    {
-      "id": "TODO-003",
-      "rank": 3,
       "title": "a-w: attach refuses whenever the target checkout has any tracked change",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -260,8 +203,8 @@
       "why_ranked": "Severity 3 refusal that blocks attaching onto a busy checkout, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-004",
-      "rank": 4,
+      "id": "TODO-003",
+      "rank": 3,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -314,8 +257,8 @@
       "why_ranked": "Severity 2 missing guard, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-005",
-      "rank": 5,
+      "id": "TODO-004",
+      "rank": 4,
       "title": "pr-review: let a trivial judgment fix run cheaper (amend regrades fix_kind, or lower fixer effort)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -371,8 +314,8 @@
       "why_ranked": "Severity 2 fixer cost on small judgment fixes, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-006",
-      "rank": 6,
+      "id": "TODO-005",
+      "rank": 5,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -431,8 +374,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (a repeated five-reviewer fan-out), dev_velocity impact, S size."
     },
     {
-      "id": "TODO-007",
-      "rank": 7,
+      "id": "TODO-006",
+      "rank": 6,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "kind": "feature",
       "status": "OPEN",
@@ -492,8 +435,8 @@
       "why_ranked": "Severity 3 failure on a supported but uncommon input (release-sized PRs), runtime_failure impact, L size."
     },
     {
-      "id": "TODO-008",
-      "rank": 8,
+      "id": "TODO-007",
+      "rank": 7,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -551,66 +494,8 @@
       "why_ranked": "Severity 2 latent nested-worktree defect, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-009",
-      "rank": 9,
-      "title": "CI: update the change-based test selection so PR runs stop growing",
-      "kind": "cicd",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#151",
-          "url": "https://github.com/t968rs/operator-straps/issues/151"
-        }
-      ],
-      "gh_issues": [
-        151
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The issue reports CI test runtime back at about 6 minutes despite change-based selection and asks to update the lookup (unverified: the cited run digest is an artifact sha256, not a commit, and no run timing was read). The lookup is tools/select_tests.py (.github/workflows/ci.yml:44, :108). Checked: tools/select_tests.py:259 selects every test whose source matches TREE_WALK (tools/select_tests.py:57: rglob, .glob, iterdir, os.walk) on any non-docs change; 22 test files under tests/ match it today, so they run on nearly every PR. tools/select_tests.py:258 puts tests/conftest.py in every test's import closure, and tests/conftest.py is a FULL_TRIGGERS entry (tools/select_tests.py:47-53). The per-test runtime catalog is already produced (.github/workflows/ci.yml:79, tools/ci_test_runtime_catalog.py), but nothing feeds it back into selection.",
-      "proposed_change": "Pull test-runtime-catalog.json from a recent PR run and rank the selected files by seconds and by selection reason; narrow the `walks the tree` rule in tools/select_tests.py (for example, match a walking test only when a changed path sits under the root it walks, or mark walking tests explicitly), and fix any other rule the catalog shows pulling slow files into unrelated PRs. Cover each changed rule in tests/scripts/test_select_tests.py.",
-      "files": [
-        "tools/select_tests.py",
-        "tools/ci_test_runtime_catalog.py",
-        ".github/workflows/ci.yml",
-        "tests/scripts/test_select_tests.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "CI test selection only; no shipped plugin path changes, but a too-narrow rule lets a break reach main.",
-        "consumers": [
-          ".github/workflows/ci.yml"
-        ]
-      },
-      "loe": {
-        "size": "M",
-        "reasoning": "Read one runtime catalog, rework the tree-walk rule and test the selection change."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.0,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 4,
-          "blast_factor": 1.0,
-          "cost": 4.0,
-          "base_score": 1.0,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 CI slowdown with no output change, dev_velocity impact, M size."
-    },
-    {
-      "id": "TODO-010",
-      "rank": 10,
+      "id": "TODO-008",
+      "rank": 8,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -666,8 +551,8 @@
       "why_ranked": "Severity 2 missing capability with a concrete cost, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-011",
-      "rank": 11,
+      "id": "TODO-009",
+      "rank": 9,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -726,8 +611,8 @@
       "why_ranked": "Severity 2 missing workflow with a concrete cost, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-012",
-      "rank": 12,
+      "id": "TODO-010",
+      "rank": 10,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -785,8 +670,8 @@
       "why_ranked": "Severity 2 usage cost with no output change, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-013",
-      "rank": 13,
+      "id": "TODO-011",
+      "rank": 11,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "kind": "feature",
       "status": "OPEN",
@@ -844,8 +729,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost (judgment behaviors past capture cannot be tested), dev_velocity impact, M size."
     },
     {
-      "id": "TODO-014",
-      "rank": 14,
+      "id": "TODO-012",
+      "rank": 12,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -899,8 +784,8 @@
       "why_ranked": "Severity 2 lost discipline plus a dangling reference, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-015",
-      "rank": 15,
+      "id": "TODO-013",
+      "rank": 13,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -960,8 +845,8 @@
       "why_ranked": "Severity 2 dangling REQUIRED step, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-016",
-      "rank": 16,
+      "id": "TODO-014",
+      "rank": 14,
       "title": "writing-docstrings: interpret intent in session, then dispatch a defined subagent",
       "kind": "skill",
       "status": "OPEN",
@@ -1018,8 +903,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (docstring work held in the main session), docs_tooling impact, S size."
     },
     {
-      "id": "TODO-017",
-      "rank": 17,
+      "id": "TODO-015",
+      "rank": 15,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1093,8 +978,8 @@
       "why_ranked": "Severity 3 hang of agents without Write on large payloads, runtime_failure impact, XL size."
     },
     {
-      "id": "TODO-018",
-      "rank": 18,
+      "id": "TODO-016",
+      "rank": 16,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1151,8 +1036,8 @@
       "why_ranked": "Severity 2 interop conflict while both plugins are installed, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-019",
-      "rank": 19,
+      "id": "TODO-017",
+      "rank": 17,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -1207,8 +1092,8 @@
       "why_ranked": "Severity 2 lost guarantee once superpowers-lt retires, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-020",
-      "rank": 20,
+      "id": "TODO-018",
+      "rank": 18,
       "title": "strap: add remove_part and a refreeze path; edit specs list absent models/api parts",
       "kind": "feature",
       "status": "OPEN",
@@ -1269,8 +1154,8 @@
       "why_ranked": "Severity 2 spec drift with no output change, maintainability impact, M size."
     },
     {
-      "id": "TODO-021",
-      "rank": 21,
+      "id": "TODO-019",
+      "rank": 19,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1332,8 +1217,8 @@
       "why_ranked": "Severity 2 missing review loop with a concrete cost, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-022",
-      "rank": 22,
+      "id": "TODO-020",
+      "rank": 20,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -1392,8 +1277,8 @@
       "why_ranked": "Severity 2 missing review path with a concrete cost, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-023",
-      "rank": 23,
+      "id": "TODO-021",
+      "rank": 21,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -1453,8 +1338,8 @@
       "why_ranked": "Severity 2 missing guard on plan completeness, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-024",
-      "rank": 24,
+      "id": "TODO-022",
+      "rank": 22,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1520,8 +1405,8 @@
       "why_ranked": "Severity 2 missing capability with a concrete cost (discarded findings and repeated reviews), dev_velocity impact, L size."
     },
     {
-      "id": "TODO-025",
-      "rank": 25,
+      "id": "TODO-023",
+      "rank": 23,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -1582,8 +1467,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, M size."
     },
     {
-      "id": "TODO-026",
-      "rank": 26,
+      "id": "TODO-024",
+      "rank": 24,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1641,8 +1526,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (slow brainstorming sessions and extra truth sources), docs_tooling impact, M size."
     },
     {
-      "id": "TODO-027",
-      "rank": 27,
+      "id": "TODO-025",
+      "rank": 25,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1702,8 +1587,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost (no light replacement for brainstorming), docs_tooling impact, M size."
     },
     {
-      "id": "TODO-028",
-      "rank": 28,
+      "id": "TODO-026",
+      "rank": 26,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -1760,8 +1645,8 @@
       "why_ranked": "Severity 2 missing guard on a new agent skill, docs_tooling impact, M size."
     },
     {
-      "id": "TODO-029",
-      "rank": 29,
+      "id": "TODO-027",
+      "rank": 27,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -1814,8 +1699,8 @@
       "why_ranked": "Severity 1 hygiene, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-030",
-      "rank": 30,
+      "id": "TODO-028",
+      "rank": 28,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -1874,8 +1759,8 @@
       "why_ranked": "Severity 1 stale references with a working fallback, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-031",
-      "rank": 31,
+      "id": "TODO-029",
+      "rank": 29,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -1929,8 +1814,8 @@
       "why_ranked": "Severity 1 test gap for working behavior, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-032",
-      "rank": 32,
+      "id": "TODO-030",
+      "rank": 30,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1986,8 +1871,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, L size."
     },
     {
-      "id": "TODO-033",
-      "rank": 33,
+      "id": "TODO-031",
+      "rank": 31,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2039,8 +1924,8 @@
       "why_ranked": "Severity 1, nothing depends on the skill, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-034",
-      "rank": 34,
+      "id": "TODO-032",
+      "rank": 32,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2094,8 +1979,8 @@
       "why_ranked": "Severity 1 stale reference and development tooling, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-035",
-      "rank": 35,
+      "id": "TODO-033",
+      "rank": 33,
       "title": "Port writing-docstrings from floodplain_development",
       "kind": "skill",
       "status": "OPEN",
@@ -2152,8 +2037,8 @@
       "why_ranked": "Severity 1 hygiene port of an existing skill, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-036",
-      "rank": 36,
+      "id": "TODO-034",
+      "rank": 34,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -2210,8 +2095,8 @@
       "why_ranked": "Severity 1 hygiene audit, maintainability impact, M size."
     },
     {
-      "id": "TODO-037",
-      "rank": 37,
+      "id": "TODO-035",
+      "rank": 35,
       "title": "merge-commit-msg: drop the PR<N>_merge.md working document and its fixtures",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2373,6 +2258,24 @@
       "current_state": "LIKELY_RESOLVED",
       "evidence": "Merge 8b19c3e (\"Merge PR #148 - 1101 writing plans rewrite\") is on main and origin/main (`git branch -a --contains ca0ed01`). Its commits ca0ed01 (\"Feature(plan): define ActionPlan as pydantic models and move the plan modules onto them\"), 366f037, d5a36f5 (\"generate ActionPlan.schema.json from the models and validate every plan command\") and 465cb65 add plugins/harness/lib/harness_lib/plan_models.py (schema emitted from ActionPlan.model_json_schema() at :260, `Mutable` markers replacing the MUTABLE_TOP / MUTABLE_ITEM lists), plan_enums.py (str Enum ItemStatus, ModelName, red exceptions) and plan_api.py; plan_doc.py validates through the models and reports `schema:` lines. The drift guard tests/contract/test_plan_schema_generated.py passed in this run (13 passed). Departure from the issue's \"Done when\": plan tests were rewritten to build models and assert attributes rather than passing unchanged apart from imports. The pinned-copy question is not settled by these commits for the schema hook: plugins/harness/lib/harness_lib/validation/schema_registry.py:3 still prefers a project's pinned copy (tests/hooks/test_hook_unresolvable_ref.py covers a pinned ActionPlan schema).",
       "recommended_action": "Close as completed by PR #148 (commits ca0ed01, d5a36f5, 465cb65); no closing keyword names #145 in the log. If the pinned-schema behavior for the hook still matters, file it separately.",
+      "related_todo_ids": []
+    },
+    {
+      "number": 177,
+      "title": "pr-sum: flowchart code block contains control bytes (SOH/STX) and misaligned connectors",
+      "url": "https://github.com/t968rs/operator-straps/issues/177",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "`gh pr view 183` reports MERGED at 2026-11-02T23:46:00Z (merge a8461ba, on main). Its commit e312bd6 (\"Feature(pr-sum): check flow connector alignment and control characters\") makes plugins/harness/lib/harness_lib/pr_summary.py refuse control bytes in drafted strings (spelled `<U+XXXX>` in problem lines), check connector alignment on every fence of `Behavior:` and `New Behavior:` sections and limit `New Behavior:` to one unlabeled fence; plugins/harness/skills/pr-sum/SKILL.md documents fork drawing with labeled arms and the new build checks. tests/lib/test_pr_summary.py:257 (TestControlCharacters) and tests/scripts/test_pr_sum.py:825 (test_control_bytes_block_the_save) cover it. The root cause of the bytes in the reported run is still unconfirmed; the build now refuses them instead. `gh issue view 177` reports OPEN; no closing keyword names #177.",
+      "recommended_action": "Close as completed by PR #183 (commit e312bd6).",
+      "related_todo_ids": []
+    },
+    {
+      "number": 151,
+      "title": "Update \"Change-Based\" CI Run Lookup Reference",
+      "url": "https://github.com/t968rs/operator-straps/issues/151",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "`gh pr view 183` reports MERGED at 2026-11-02T23:46:00Z (merge a8461ba, on main). Its commit 6d9ce2c (\"Feature(select_tests): select walking tests by WALK_ROOTS\") replaces the any-non-docs rule for tree-walking tests in tools/select_tests.py: the walk pattern is matched against code only (docstrings and comments blanked) and a test runs only when a changed path sits under its module-level WALK_ROOTS; c0ce516 declares WALK_ROOTS in the walking tests and 11f34c6 documents the rule. tests/scripts/test_select_tests.py:468 (test_every_walking_test_declares_existing_walk_roots) fails on a walking test without a valid marker. 008f051 (PR #185) follows up with anchored shared-name selection. tests/conftest.py stays a full trigger by design (tools/select_tests.py:60). No post-merge PR run timing was read, so the runtime drop is unmeasured. `gh issue view 151` reports OPEN.",
+      "recommended_action": "Close as completed by PR #183 (commit 6d9ce2c), after a glance at the CI runtime of the next PR run confirms the drop.",
       "related_todo_ids": []
     }
   ]

@@ -44,6 +44,13 @@ brief's scope and lens and never changes the scope, the lens or the record contr
   like any other file.
 - **Findings come from the code at the PR head.** Cite the primary file and its lines as they stand at the head
   the brief names; other affected files go in `also`. No finding without a concrete location and a fix.
+- **A missing mention is not a defect.** Commit messages and PR descriptions are drafted after the code and
+  lag it. A change they omit is at most a `minor` documentation finding whose fix updates that text; it never
+  grounds an `important` or `critical` grade, and never a revert option. When the code itself is wrong, the
+  finding states that defect; the omission is at most context. A revert or deletion of code the change added
+  is a fix option only when the finding names one of these defects in that code: broken (wrong behavior or a
+  failing test), unreachable or dead, a duplicate of code that exists elsewhere, leftover (debug output,
+  commented-out code, a stray temporary file), unsafe, or contradicting a contract.
 - **Record once, after the analysis.** Write every finding and strength to the draft file, then run the
   brief's `record_draft` heredoc once. A retry replaces the report, so a corrected rerun after a validation
   error is safe. The brief's second heredoc, `record_add`, appends a few findings per call instead: fill its

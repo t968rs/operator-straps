@@ -203,15 +203,26 @@ Before classifying ANY issue as a bubble-up, answer three explicit questions:
    the codebase has no clear precedent?** If yes: classify `ARCHITECTURAL_AMBIGUITY`
    (bubble-up). If no: continue.
 
-If all three answers are NO: classify `NEEDS_FOLLOW_UP` only when the fix is genuinely
-net-new work that exceeds Phase 5 mechanical scope. Otherwise: classify MECHANICAL.
+If all three answers are NO: two cases still bubble. An issue whose only fix is a removal on a ground
+outside the closed defect list (the revert bullet below) is classified `ARCHITECTURAL_AMBIGUITY`, and an
+issue whose only fix changes a commit message or the PR description is classified `OUT_OF_SCOPE`, naming
+that text. Otherwise: classify `NEEDS_FOLLOW_UP` only when the fix is genuinely net-new work that exceeds
+Phase 5 mechanical scope. Otherwise: classify MECHANICAL.
 
 Only bubble-up classifications enter `bubble_ups.json`.
 Misclassification patterns this audit blocks (PR #1224 worked example: 25 initial
 bubbles re-audited down to 10 genuinely architectural/domain calls):
 
 - A reviewer's `fix` array with > 1 option means "any of these would resolve," NOT
-  "the user must choose." Default: pick the safest, most mechanical option.
+  "the user must choose." Default: pick the safest, most mechanical option, a repair before a revert.
+- A revert or deletion of code the PR added is MECHANICAL only when the issue names one of these defects in
+  that code and the removal resolves it: broken (wrong behavior or a failing test), unreachable or dead, a
+  duplicate of code that exists elsewhere, leftover (debug output, commented-out code, a stray temporary
+  file), unsafe, or contradicting a contract. The list is closed: on any other ground, a commit message or PR
+  description that omits the change included, apply the repair option when the issue offers one, else
+  classify `ARCHITECTURAL_AMBIGUITY`.
+- An issue whose only fix changes a commit message or the PR description edits no file: classify
+  `OUT_OF_SCOPE`, naming that text in the reason.
 - `NEEDS_FOLLOW_UP` is a load-bearing classification, not a synonym for "bubble."
   Small docstring fixes and one-line generator changes are MECHANICAL.
 
