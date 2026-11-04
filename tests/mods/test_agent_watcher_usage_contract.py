@@ -1,9 +1,10 @@
 """Pin the agent-watcher mod's usage-row validator to the harness agent usage JSON schema.
 
-The mod validates agent usage rows in TypeScript (``plugins/agent-watcher/hooks/usageRow.ts``), where the
-plugin test sandbox cannot read repository files. This test reads both sides and fails when
-``plugins/harness/schemas/agent_usage.schema.json`` changes its required fields, count fields,
-enums, ``logged_at`` pattern, nullable strings or non-empty strings without the mod following.
+The mod validates agent usage rows in TypeScript (``plugins/agent-watcher/hooks/core/usageRow.ts``), where
+the plugin test sandbox cannot read repository files. This test reads both sides and fails when
+``plugins/harness/schemas/agent_usage.schema.json`` changes its required fields, count fields, optional
+``fields`` object and its key, length and no-path rules, the skill and role patterns, the model family enum,
+``logged_at`` pattern, nullable strings or non-empty strings without the mod following.
 """
 from __future__ import annotations
 
@@ -13,12 +14,12 @@ from pathlib import Path
 
 import pytest
 
-from mods._mods_helpers import ts_string, ts_string_array
+from mods._mods_helpers import ts_number, ts_string, ts_string_array
 
 WALK_ROOTS = ("plugins/",)
 _SCHEMA_REL = "plugins/harness/schemas/agent_usage.schema.json"
-_USAGE_ROW_REL = "plugins/agent-watcher/hooks/usageRow.ts"
-_CONTRACT_REL = "plugins/agent-watcher/hooks/contract.ts"
+_USAGE_ROW_REL = "plugins/agent-watcher/hooks/core/usageRow.ts"
+_CONTRACT_REL = "plugins/agent-watcher/hooks/core/contract.ts"
 
 
 @pytest.fixture(scope="module")
@@ -37,17 +38,44 @@ def test_required_fields_match(schema: dict, usage_row_ts: str) -> None:
 
 def test_count_fields_are_the_conditional_rest(schema: dict, usage_row_ts: str) -> None:
     counts = ts_string_array(usage_row_ts, "USAGE_COUNT_FIELDS")
+    optional = ts_string_array(usage_row_ts, "USAGE_OPTIONAL")
     assert counts == schema["then"]["required"]
-    assert set(schema["properties"]) - set(schema["required"]) == set(counts)
+    assert set(schema["properties"]) - set(schema["required"]) == set(counts) | set(optional)
+    assert optional == ["fields"]
 
 
-def test_roles_match(schema: dict, usage_row_ts: str) -> None:
-    assert ts_string_array(usage_row_ts, "USAGE_ROLES") == schema["properties"]["role"]["enum"]
+def test_role_pattern_matches(schema: dict, usage_row_ts: str) -> None:
+    assert ts_string(usage_row_ts, "ROLE_PATTERN") == schema["properties"]["role"]["pattern"]
+    assert "enum" not in schema["properties"]["role"]
     assert ts_string_array(usage_row_ts, "USAGE_COUNTED_ROLES") == schema["if"]["properties"]["role"]["enum"]
 
 
-def test_skills_match(schema: dict, usage_row_ts: str) -> None:
-    assert ts_string_array(usage_row_ts, "USAGE_SKILLS") == schema["properties"]["skill"]["enum"]
+def test_skill_pattern_matches(schema: dict, usage_row_ts: str) -> None:
+    assert ts_string(usage_row_ts, "SKILL_PATTERN") == schema["properties"]["skill"]["pattern"]
+    assert "enum" not in schema["properties"]["skill"]
+
+
+def _ts_literal(source: str, name: str) -> str:
+    """The value of a single-quoted TS string constant, its ``\\\\`` escapes undone."""
+    return ts_string(source, name).replace("\\\\", "\\")
+
+
+def test_fields_rule_matches(schema: dict, usage_row_ts: str) -> None:
+    fields = schema["properties"]["fields"]
+    assert fields["type"] == "object"
+    assert ts_string(usage_row_ts, "FIELD_KEY_PATTERN") == fields["propertyNames"]["pattern"]
+    values = fields["additionalProperties"]
+    assert values["type"] == "string"
+    assert ts_number(usage_row_ts, "FIELD_VALUE_MAX") == values["maxLength"] == 200
+    assert _ts_literal(usage_row_ts, "FIELD_VALUE_PATTERN") == values["pattern"] == "^[^/\\\\]*$"
+
+
+def test_path_free_columns_match(schema: dict, usage_row_ts: str) -> None:
+    columns = ts_string_array(usage_row_ts, "PATH_FREE_COLUMNS")
+    assert columns == ["run_id", "agent_id", "signal", "notes"]
+    for column in columns:
+        assert schema["properties"][column]["pattern"] == "^[^/\\\\]*$", column
+    assert ts_number(usage_row_ts, "FIELD_VALUE_MAX") == schema["properties"]["signal"]["maxLength"]
 
 
 def test_model_families_match(schema: dict, usage_row_ts: str) -> None:
@@ -88,8 +116,10 @@ def test_defined_agents_cover_every_agent_file(repo_root: Path) -> None:
     assert ts_string_array(contract_ts, "DEFINED_AGENTS") == defined
 
 
-def test_standalone_vocabulary_is_in_the_schema(schema: dict, usage_row_ts: str) -> None:
-    assert "other" in schema["properties"]["role"]["enum"]
-    assert "standalone" in schema["properties"]["skill"]["enum"]
-    assert "other" in ts_string_array(usage_row_ts, "USAGE_ROLES")
-    assert "standalone" in ts_string_array(usage_row_ts, "USAGE_SKILLS")
+def test_fallback_vocabulary_matches_the_patterns(schema: dict) -> None:
+    assert re.fullmatch(schema["properties"]["role"]["pattern"], "other")
+    assert re.fullmatch(schema["properties"]["skill"]["pattern"], "standalone")
+    for role in ("reviewer", "fixer", "orchestrator", "planner", "closer"):
+        assert re.fullmatch(schema["properties"]["role"]["pattern"], role), role
+    for skill in ("pr-review", "pr-team"):
+        assert re.fullmatch(schema["properties"]["skill"]["pattern"], skill), skill

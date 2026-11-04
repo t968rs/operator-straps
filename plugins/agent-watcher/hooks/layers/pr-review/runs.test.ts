@@ -1,15 +1,18 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import type { Run } from '../types'
+import type { Run } from '../../../types'
+import { parseReturnBlock } from '../../core/contract'
+import { applyCompletion, applyDispatch, markUsageLogged, newAgent, usageToLog } from '../../core/runs'
+import { NO_COUNTS } from '../../core/usageRow'
 import { readReview } from './bubbles'
-import { identify, parseReturnBlock } from './contract'
+import { identify } from './identify'
 import {
-  applyCompletion, applyDispatch, bandText, currentRunId, fixerBubbledIds, markLogged, markUsageLogged, newAgent,
-  planPhase, prReviewBubbled, recoverReviewers, reviewersSettled, reviewersToLog, settle, usageToLog,
-  withDiskPhase,
+  bandText, closeRun, currentRunId, fixerBubbledIds, markLogged, planPhase, prReviewBubbled, recoverReviewers,
+  reportCounts, reviewersSettled, reviewersToLog, settle, withDiskPhase,
 } from './runs'
 
 const RUN = 'pr1526_20261009T120000Z'
+const LOCAL_RUN = 'local-fix-band_20261102T080910Z'
 /** The pr-team runtime base under the harness default state_dir. */
 const BASE = '.claude/state/harness/pr-team/_runtime'
 const slot = (id: string, role = 'reviewer') =>
@@ -75,10 +78,107 @@ describe('dispatch and completion', () => {
     const closer = identify('pr-team-fixer', `MODE=CLOSEOUT\nRUN_ID=${RUN}`, BASE)!
     runs = applyDispatch(runs, closer, newAgent(closer, {}), 200)
     const block = parseReturnBlock('---\nSIGNAL: DONE\nAGENT_ROLE: fixer\nFIXED: C1\nBUBBLED: I2,M3\nEDITED: 1\nOUTPUT: o\n---')
-    const run = applyCompletion(runs[RUN]!, 'closer', {
+    const folded = applyCompletion(runs[RUN]!, 'closer', {
       tokens: 0, toolUses: 0, durationMs: 0, model: null, block, isMeasured: true, ending: 'ok' as const,
     })
+    const run = closeRun(folded, 'closer', block)
     expect([run.phase, run.bubbled, run.bubbledFrom]).toEqual(['done', ['I2', 'M3'], 'closer'])
+    expect(closeRun(folded, 'r1', block)).toEqual(folded)
+  })
+
+  test('a closer block for a run that holds no closer leaves the run as it is', async () => {
+    const block = parseReturnBlock('---\nSIGNAL: DONE\nAGENT_ROLE: fixer\nBUBBLED: I2\n---')
+    const run = twoReviewers()
+    expect(closeRun(run, 'closer', block)).toEqual(run)
+  })
+})
+
+describe('identify', () => {
+  const reviewerPrompt = [
+    'You are a pr-team reviewer.',
+    'AGENT_ID: r1_config',
+    'AGENT_ROLE: reviewer',
+    'PROMPT_FILE: .claude/state/harness/pr-team/_runtime/pr1526_20261009T120000Z/prompts/r1_config.md',
+    'OUTPUT_FILE: .claude/state/harness/pr-team/_runtime/pr1526_20261009T120000Z/outputs/r1_config.json',
+    `RUN_ID: ${RUN}`,
+  ].join('\n')
+  const OTHER_BASE = 'state/pr-team/_runtime'
+
+  test('pr-team reviewer slot dispatch', async () => {
+    expect(identify('superpowers:code-reviewer', reviewerPrompt, OTHER_BASE)).toEqual({
+      runId: RUN, skill: 'pr-team', agentId: 'r1_config', role: 'reviewer', pr: 1526,
+      runtimeDir: '.claude/state/harness/pr-team/_runtime/pr1526_20261009T120000Z', phase: 'review',
+    })
+  })
+
+  test('pr-team slot without OUTPUT_FILE: the runtime dir sits under the given base', async () => {
+    const d = identify('x', `AGENT_ID: r2\nAGENT_ROLE: fixer\nRUN_ID: ${RUN}`, OTHER_BASE)
+    expect(d?.runtimeDir).toBe(`${OTHER_BASE}/${RUN}`)
+  })
+
+  test('pr-review reviewer: PR line, no runtime dir', async () => {
+    const prompt = `AGENT_ID: runtime\nAGENT_ROLE: reviewer\nRUN_ID: ${RUN}\nPR: 1526`
+    const d = identify('superpowers:code-reviewer', prompt, OTHER_BASE)
+    expect(d?.skill).toBe('pr-review')
+    expect(d?.runtimeDir).toBeNull()
+    expect(d?.pr).toBe(1526)
+  })
+
+  test('pr-review slot with a local key on its PR line: the key is the run key', async () => {
+    const prompt = `AGENT_ID: overall\nAGENT_ROLE: reviewer\nRUN_ID: ${LOCAL_RUN}\nPR: local-fix-band`
+    expect(identify('harness:pr-reviewer', prompt, OTHER_BASE)).toEqual({
+      runId: LOCAL_RUN, skill: 'pr-review', agentId: 'overall', role: 'reviewer', pr: 'local-fix-band',
+      runtimeDir: null, phase: 'review',
+    })
+    const fixer = identify('harness:pr-fixer', `AGENT_ID: f1\nAGENT_ROLE: fixer\nRUN_ID: ${LOCAL_RUN}\nPR: junk`, OTHER_BASE)
+    expect(fixer?.pr).toBe('local-fix-band')
+    const bad = identify('harness:pr-fixer', 'AGENT_ID: f1\nAGENT_ROLE: fixer\nRUN_ID: r\nPR: local-Bad', OTHER_BASE)
+    expect(bad?.pr).toBeNull()
+  })
+
+  test('orchestrator and fixer mode dispatches', async () => {
+    const dir = `.claude/state/harness/pr-team/_runtime/${RUN}`
+    const plan = identify('pr-team-orchestrator', `MODE=PLAN\nPR_NUMBER=1526\nRUN_ID=${RUN}\nRUNTIME_DIR=${dir}`, OTHER_BASE)
+    expect(plan).toEqual({
+      runId: RUN, skill: 'pr-team', agentId: 'orchestrator_plan', role: 'orchestrator', pr: 1526, runtimeDir: dir,
+      phase: 'plan',
+    })
+    expect(identify('pr-team-orchestrator', `MODE=CONSOLIDATE\nRUN_ID=${RUN}`, OTHER_BASE)?.phase).toBe('consolidate')
+    expect(identify('pr-team-fixer', `MODE=PLAN\nRUN_ID=${RUN}`, OTHER_BASE)?.agentId).toBe('fixer_plan')
+    const closer = identify('pr-team-fixer', `MODE=CLOSEOUT\nRUN_ID=${RUN}`, OTHER_BASE)
+    expect([closer?.agentId, closer?.role, closer?.phase]).toEqual(['closer', 'closer', 'closeout'])
+  })
+
+  test('untracked dispatches: no RUN_ID, unknown role, unknown mode, unknown agent', async () => {
+    expect(identify('Explore', 'find the files', OTHER_BASE)).toBeUndefined()
+    expect(identify('x', `AGENT_ID: a\nAGENT_ROLE: poet\nRUN_ID: ${RUN}`, OTHER_BASE)).toBeUndefined()
+    expect(identify('pr-team-orchestrator', `MODE=DANCE\nRUN_ID=${RUN}`, OTHER_BASE)).toBeUndefined()
+    expect(identify('general-purpose', `MODE=PLAN\nRUN_ID=${RUN}`, OTHER_BASE)).toBeUndefined()
+  })
+
+  test('identify itself still ignores a header-less defined agent', async () => {
+    expect(identify('harness:messenger', 'write a commit message', OTHER_BASE)).toBeUndefined()
+  })
+})
+
+describe('fixer report counts', () => {
+  test('reportCounts reads waves.json and fixes/<id>.json', async () => {
+    const waves = JSON.stringify({
+      waves: [[{ id: 'w1_fix_1', issue_ids: ['M1', 'I2'] }], [{ id: 'w2_fix_1', issue_ids: ['C1'] }]],
+    })
+    const report = JSON.stringify({
+      fixer: 'w1_fix_1',
+      fixed: [{ id: 'M1', what: 'w', files: ['a.py', 'b.py'] }, { id: 'I2', what: 'w', files: ['b.py'], no_change: ['c.py'] }],
+      bubbled: [],
+    })
+    expect(reportCounts(waves, report, 'w1_fix_1')).toEqual(
+      { issues_assigned: 2, issues_fixed: 2, issues_bubbled: 0, files_touched: 2 },
+    )
+    expect(reportCounts(waves, undefined, 'w2_fix_1')).toEqual(
+      { issues_assigned: 1, issues_fixed: null, issues_bubbled: null, files_touched: null },
+    )
+    expect(reportCounts('not json', 'not json', 'w1_fix_1')).toEqual(NO_COUNTS)
+    expect(reportCounts(waves, report, 'w9_fix_9').issues_assigned).toBeNull()
   })
 })
 

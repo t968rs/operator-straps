@@ -1,7 +1,8 @@
 """Pin the agent-watcher mod's matrix-row validator to the harness matrix JSON schema.
 
-The mod validates invocation-matrix rows in TypeScript (``plugins/agent-watcher/hooks/matrixRow.ts``,
-family enum in ``plugins/agent-watcher/hooks/contract.ts``), where the plugin test sandbox cannot read
+The mod validates invocation-matrix rows in TypeScript
+(``plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts``, family enum in
+``plugins/agent-watcher/hooks/core/contract.ts``), where the plugin test sandbox cannot read
 repository files. This test reads both sides and fails when
 ``plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json`` changes its required fields, enums
 or ``dev_commit`` pattern without the mod following.
@@ -16,8 +17,8 @@ import pytest
 from mods._mods_helpers import ts_string, ts_string_array
 
 _SCHEMA_REL = "plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json"
-_MATRIX_ROW_REL = "plugins/agent-watcher/hooks/matrixRow.ts"
-_CONTRACT_REL = "plugins/agent-watcher/hooks/contract.ts"
+_MATRIX_ROW_REL = "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts"
+_CONTRACT_REL = "plugins/agent-watcher/hooks/core/contract.ts"
 
 
 @pytest.fixture(scope="module")

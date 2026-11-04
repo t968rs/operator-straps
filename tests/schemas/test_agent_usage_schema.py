@@ -2,7 +2,8 @@
 
 Pins the row contract the agent-watcher mod writes: every role validates, nullable fields accept null,
 the four fixer count fields are required on fixer and closer rows and rejected on every other role, and
-unknown keys, roles, families and malformed timestamps are rejected.
+unknown keys, families and malformed timestamps are rejected. Skill and role names are open patterns
+(``test_agent_usage_open_rows.py``).
 
 A project's live usage log (``<project>/<agent_usage_path>``) is that project's data; its rows are not
 validated here.
@@ -71,12 +72,15 @@ def test_pr_team_skill_validates(schema: dict) -> None:
     pytest.param(_row("orchestrator", issues_fixed=1), id="count-field-on-an-orchestrator-row"),
     pytest.param(_row("planner", files_touched=0), id="count-field-on-a-planner-row"),
     pytest.param(_row("other", issues_fixed=1), id="count-field-on-an-other-row"),
-    pytest.param(_row(skill="adhoc"), id="unknown-skill"),
     pytest.param(_row(model_family="fable"), id="unknown-family-token"),
     pytest.param(_row(tokens=-1), id="negative-tokens"),
     pytest.param(_row(cell="x"), id="unknown-key"),
-    pytest.param(_row(role="roaster"), id="unknown-role"),
     pytest.param(_row(logged_at="2026-10-20 21:00"), id="logged-at-not-utc-iso"),
+    pytest.param(_row(signal="wrote E:/x/report.md"), id="path-in-signal"),
+    pytest.param(_row(notes="agent-watcher auto row; other wrote C:\\x"), id="path-in-notes"),
+    pytest.param(_row(run_id="a/b"), id="path-in-run-id"),
+    pytest.param(_row(agent_id="docs/x"), id="path-in-agent-id"),
+    pytest.param(_row(signal="X" * 201), id="signal-over-200"),
 ])
 def test_rejected_rows(schema: dict, row: dict) -> None:
     with pytest.raises(jsonschema.ValidationError):

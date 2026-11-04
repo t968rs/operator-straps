@@ -26,6 +26,7 @@ EXAMPLES = (
     "tests/lib/test_review_plan.py",
     "tests/contract/test_agent_watcher_name.py",
 )
+OWNER_NOTE_TS = MOD / "hooks" / "layers" / "pr-review" / "layer.ts"
 MIGRATION_NOTE = f"Renamed from `{OLD}`"
 PROVENANCE_SOURCE = f".claude/mods/{{{OLD},"
 
@@ -73,7 +74,8 @@ def test_the_owner_note_names_agent_watcher() -> None:
     skill_md = REPO_ROOT / "plugins" / "harness" / "skills" / "pr-review" / "SKILL.md"
     note = f"[{NEW}] Matrix rows for this run are recorded by the {NEW} mod"
     assert note in skill_md.read_text(encoding="utf-8")
-    assert _grep("-l", "-F", f"'{note}; '", "--", f"plugins/{NEW}/hooks"), f"no hook of {NEW} writes the note"
+    hook = OWNER_NOTE_TS.read_text(encoding="utf-8")
+    assert f"'{note}; '" in hook, f"{OWNER_NOTE_TS.name} of the pr-review layer does not write the note"
 
 
 def _live(hit: str) -> bool:

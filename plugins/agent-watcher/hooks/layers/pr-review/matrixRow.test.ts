@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import type { AgentRec } from '../types'
-import { appendRows, buildRow, MATRIX_REQUIRED, validateRow } from './matrixRow'
+import type { AgentRec } from '../../../types'
+import { appendRows } from '../../core/jsonl'
+import { buildRow, MATRIX_REQUIRED, validateRow } from './matrixRow'
 
 const SHA = '0123456789abcdef0123456789abcdef01234567'
 const agent = (over: Partial<AgentRec> = {}): AgentRec => ({

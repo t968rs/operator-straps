@@ -2,8 +2,14 @@ import type { Engine } from 'claude-code/testing'
 import type { On, ProcessRunResult } from 'claude-code'
 import { describe, expect, mock, test } from 'claude-code/testing'
 
-import { DEFINED_AGENTS } from './contract'
-import { OWNER_NOTE } from './tracker'
+import type { Run } from '../types'
+import { DEFINED_AGENTS, parseReturnBlock, type Dispatch } from './core/contract'
+import type { Io, Layer } from './core/layer'
+import { applyCompletion, applyDispatch, newAgent } from './core/runs'
+import {
+  completeLayer, contextFor, countsFor, foldInto, logUsage, settleLayers, stopReasonOf,
+} from './core/tracker'
+import { OWNER_NOTE, prReviewLayer } from './layers/pr-review/layer'
 
 /**
  * Engine-level behavior of the tracker: what reaches the matrix and agent usage JSONL files, the
@@ -122,13 +128,17 @@ const matrixRows = (seen: Seen): Record<string, unknown>[] => jsonlRows(seen, MA
 const usageRows = (seen: Seen): Record<string, unknown>[] => jsonlRows(seen, USAGE)
 
 describe('Agent hook', () => {
-  test('untracked dispatches pass through untouched', async ($, on) => {
+  test('a built-in dispatch passes through untouched and logs a generic row', async ($, on) => {
     const seen = world(on, () => completed('hi'))
     const r = await dispatch($, 'find files', 'Explore')
     expect(r.context ?? []).toEqual([])
     expect(seen.agentCalls).toBe(1)
     expect(seen.files.has(MATRIX)).toBe(false)
-    expect(seen.files.has(USAGE)).toBe(false)
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({
+      skill: 'standalone', role: 'other', agent_id: 'Explore', subagent_type: 'Explore', pr: null, signal: 'NO_BLOCK',
+    })
+    expect('fields' in (usageRows(seen)[0] ?? {})).toBe(false)
   })
 
   test('pr-review reviewer results carry the ownership note', async ($, on) => {
@@ -430,10 +440,12 @@ describe('standalone agent usage rows', () => {
     expect(new Set(ids).size).toBe(2)
   })
 
-  test('agents outside the defined set write nothing', async ($, on) => {
+  test('agents outside the defined set log a row each too (Decision D5)', async ($, on) => {
     const seen = world(on, () => completed('ok'))
     for (const type of ['Explore', 'general-purpose', 'superpowers:code-reviewer']) await run($, type)
-    expect(seen.files.has(USAGE)).toBe(false)
+    expect(usageRows(seen).map(r => [r.agent_id, r.subagent_type])).toEqual([
+      ['Explore', 'Explore'], ['general-purpose', 'general-purpose'], ['code-reviewer', 'superpowers:code-reviewer'],
+    ])
   })
 
   test('a run header still wins: a defined agent in a pr-review run keeps its run and role', async ($, on) => {
@@ -443,10 +455,11 @@ describe('standalone agent usage rows', () => {
     expect(usageRows(seen)[0]).toMatchObject({ run_id: RUN, skill: 'pr-review', role: 'reviewer', pr: 1526 })
   })
 
-  test('a defined agent with a malformed header falls back to a standalone row', async ($, on) => {
+  test('a header no layer claims is a generic row read from that header', async ($, on) => {
     const seen = world(on, () => completed('ok'))
     await dispatch($, `AGENT_ID: a\nAGENT_ROLE: poet\nRUN_ID: ${RUN}`, 'harness:pr-reviewer')
-    expect(usageRows(seen)[0]).toMatchObject({ skill: 'standalone', role: 'other', agent_id: 'pr-reviewer' })
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'standalone', role: 'poet', agent_id: 'a', run_id: RUN })
+    expect(seen.files.has(MATRIX)).toBe(false)
   })
 
   test('background launch: the row is written when the loop turn ends', async ($, on) => {
@@ -503,6 +516,144 @@ describe('standalone agent usage rows', () => {
     await mainTurnEnd($, 't')
     expect(matrixRows(seen).map(r => r.cell)).toEqual(['pr1526_r1'])
     expect(usageRows(seen).map(r => r.skill)).toEqual(['pr-review', 'standalone'])
+  })
+})
+
+describe('the header convention and row fields (issue #193)', () => {
+  const launched = () => ({
+    result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
+  })
+  const bandLine = async ($: Engine): Promise<string | undefined> => {
+    const props = {
+      hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
+    }
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
+    const text = (await ui.find({ type: 'Text', text: /^PR #/ }))?.text
+    await ui.unmount()
+    return text
+  }
+  /** Every `runs` and `active` value the mod writes. */
+  const stateWrites = (on: On): { runs: Record<string, Run>[]; active: unknown[] } => {
+    const written: { runs: Record<string, Run>[]; active: unknown[] } = { runs: [], active: [] }
+    on('state.set', (_$, e, next) => {
+      if (e.plugin === 'agent-watcher' && e.key === 'runs') written.runs.push(e.value as Record<string, Run>)
+      if (e.plugin === 'agent-watcher' && e.key === 'active') written.active.push(e.value)
+      return next(e)
+    })
+    return written
+  }
+
+  test('a header with the skill key, RUN_ID and extra keys logs skill, run_id and fields', async ($, on) => {
+    const seen = world(on, () => completed('---\nSIGNAL: recorded\nRUN: R-1\n---'))
+    await dispatch($, 'SKILL: strap-skills\nRUN_ID: strap_R-1\nTARGET: retry-policy\nRUN: R-1\n\nPlay it.', 'x:runner')
+    expect(usageRows(seen)[0]).toMatchObject({
+      skill: 'strap-skills', run_id: 'strap_R-1', agent_id: 'runner', role: 'other', signal: 'recorded',
+      fields: { TARGET: 'retry-policy', RUN: 'R-1' },
+    })
+  })
+
+  test('a header block that ends before a body SIGNAL: line keeps that line out of fields', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await dispatch($, 'SKILL: todo-edit\nISSUE: I2\nRead the brief.\nSIGNAL: DONE\nNOTES: body', 'general-purpose')
+    expect(usageRows(seen)[0]?.fields).toEqual({ ISSUE: 'I2' })
+  })
+
+  test('a pr-review slot dispatch logs exactly as before, with no fields key', async ($, on) => {
+    const seen = world(on, () => completed(doneBlock(ZERO)))
+    await dispatch($, reviewerPrompt('r1', 'PR: 1526\nLENS: docs'), 'harness:pr-reviewer')
+    expect(usageRows(seen)).toEqual([{
+      logged_at: new Date(NOW).toISOString(), run_id: RUN, pr: 1526, skill: 'pr-review', role: 'reviewer',
+      agent_id: 'r1', subagent_type: 'harness:pr-reviewer', model: 'claude-opus-5-5', model_family: 'opus',
+      effort: 'default', tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
+      notes: 'agent-watcher auto row; reviewer DONE',
+    }])
+  })
+
+  test('a field value over 200 characters is cut to 197 and ...', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await dispatch($, `SKILL: todo-edit\nCONTEXT: ${'c'.repeat(300)}`, 'general-purpose')
+    expect(usageRows(seen)[0]?.fields).toEqual({ CONTEXT: `${'c'.repeat(197)}...` })
+  })
+
+  test('strap TREE / INIT and bubble-memo FILES lines put no path separator in the row', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    const runner = 'SKILL: strap-skills\nTARGET: retry-policy\nRUN: R-1\nTREE: C:\\w\\tree\nINIT: /w/tree/init.sh'
+    await dispatch($, runner, 'harness:strap-scenario-runner')
+    await dispatch($, 'SKILL: bubble-memo\nISSUE: I2\nFILES: plugins/a.py, plugins/b.py', 'harness:bubble-memo-investigator')
+    const [strap, memo] = usageRows(seen)
+    expect(strap?.fields).toEqual({ TARGET: 'retry-policy', RUN: 'R-1' })
+    expect(memo?.fields).toEqual({ ISSUE: 'I2' })
+    for (const row of usageRows(seen)) expect(JSON.stringify(row.fields)).not.toMatch(/[\\/]/)
+  })
+
+  test('a foreign SKILL over a reviewer header is a generic row: no matrix, band or pr-team run', async ($, on) => {
+    const seen = world(on, p => (p.startsWith('SKILL:') ? completed(doneBlock(ZERO)) : launched()))
+    const written = stateWrites(on)
+    await dispatch($, reviewerPrompt('r1', 'PR: 1526'), 'harness:pr-reviewer')
+    expect(await bandLine($)).toBe('PR #1526 · reviewers 0/1')
+    // Without the SKILL line this header is a pr-team reviewer slot of another run of PR 1526.
+    const memoRun = 'pr1526_20261009T130000Z'
+    const memo = `SKILL: bubble-memo\nRUN_ID: ${memoRun}\nAGENT_ID: inv_I2\nAGENT_ROLE: reviewer`
+    await dispatch($, memo, 'harness:bubble-memo-investigator')
+    expect(await bandLine($)).toBe('PR #1526 · reviewers 0/1')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({
+      skill: 'bubble-memo', run_id: memoRun, agent_id: 'inv_I2', role: 'reviewer', pr: null,
+    })
+    expect(written.runs.some(runs => Object.values(runs).some(r => r.skill === 'pr-team'))).toBe(false)
+    writeReview(seen, { verdict: 'READY TO MERGE', issues: {} })
+    await mainTurnEnd($, 't1')
+    expect(matrixRows(seen).map(r => r.cell)).not.toContain('pr1526_inv_I2')
+  })
+
+  test('SKILL: harness:strap-skills logs strap-skills; SKILL: Strap Skills logs standalone', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await dispatch($, 'SKILL: harness:strap-skills', 'general-purpose')
+    await dispatch($, 'SKILL: Strap Skills', 'general-purpose')
+    const [prefixed, spaced] = usageRows(seen)
+    expect(prefixed).toMatchObject({ skill: 'strap-skills' })
+    expect('fields' in (prefixed ?? {})).toBe(false)
+    expect(spaced).toMatchObject({ skill: 'standalone', fields: { SKILL: 'Strap Skills' } })
+  })
+
+  test('an unclaimed AGENT_ROLE: fixer logs role other and no counts', async ($, on) => {
+    const seen = world(on, () => completed('---\nSIGNAL: DONE\nFIXED: C1\nEDITED: 1\n---'))
+    await dispatch($, 'SKILL: todo-edit\nAGENT_ID: f1\nAGENT_ROLE: fixer', 'general-purpose')
+    expect(usageRows(seen)[0]).toMatchObject({ role: 'other', agent_id: 'f1', fields: { AGENT_ROLE: 'fixer' } })
+    expect('issues_fixed' in (usageRows(seen)[0] ?? {})).toBe(false)
+  })
+
+  test('AGENT_ID: docs/x and RUN_ID: a/b fall back to the type name and the generated id; PR: 208 fills pr', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await dispatch($, 'SKILL: bubble-memo\nAGENT_ID: docs/x\nRUN_ID: a/b\nPR: 208', 'harness:bubble-memo-reviewer')
+    const row = usageRows(seen)[0]
+    expect(row).toMatchObject({ agent_id: 'bubble-memo-reviewer', pr: 208, skill: 'bubble-memo' })
+    expect(String(row?.run_id)).toMatch(/^standalone_\d{8}T\d{6}Z_\d+$/)
+    expect('fields' in (row ?? {})).toBe(false)
+  })
+
+  test('a SKILL: strap-skills dispatch leaves the active run alone and is gone from state after its row', async ($, on) => {
+    const seen = world(on, p => (p.startsWith('SKILL:') ? completed('ok') : launched()))
+    const written = stateWrites(on)
+    await dispatch($, reviewerPrompt('r1', 'PR: 1526'), 'harness:pr-reviewer')
+    const activeBefore = [...written.active]
+    await dispatch($, `SKILL: strap-skills\nRUN_ID: ${RUN}\nTARGET: retry-policy`, 'harness:strap-scenario-runner')
+    expect(written.active).toEqual(activeBefore)
+    expect(await bandLine($)).toBe('PR #1526 · reviewers 0/1')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'strap-skills', run_id: RUN })
+    expect(Object.keys(written.runs.at(-1) ?? {})).toEqual([RUN])
+    expect(Object.values(written.runs.at(-1) ?? {})[0]?.claimedBy).toBe('pr-review')
+  })
+
+  test('two concurrent dispatches under one RUN_ID log two rows', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    const prompt = 'SKILL: strap-skills\nRUN_ID: strap_R-9\nAGENT_ID: runner'
+    await Promise.all([
+      dispatch($, prompt, 'harness:strap-scenario-runner'),
+      dispatch($, prompt, 'harness:strap-scenario-runner'),
+    ])
+    expect(usageRows(seen).map(r => [r.run_id, r.agent_id])).toEqual([['strap_R-9', 'runner'], ['strap_R-9', 'runner']])
   })
 })
 
@@ -821,5 +972,166 @@ describe('harness project', () => {
     writeReview(seen, { verdict: 'READY TO MERGE', issues: {} })
     await mainTurnEnd($, 't')
     expect(seen.git).toContainEqual(['git', '-C', ROOT, 'merge-base', 'HEAD', 'main'])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Two layers: the core's layer-list seams, over an in-memory Io (the engine always loads the plugin under
+// test with its own LAYERS, so a second registerCore would stack a second core beneath it).
+
+const PR_RUN = 'pr1526_20261009T120000Z'
+const STUB_RUN = 'stub_1'
+const SOLO_RUN = 'standalone_1'
+
+type Memory = { runs: Record<string, Run>; active: string | null; missing: string[]; files: Map<string, string> }
+
+/** An Io over plain memory, rooted at ROOT with the harness defaults. */
+const memoryIo = (m: Memory): Io => ({
+  watch: {
+    root: ROOT, harness: {}, sentinelRoot: ROOT,
+    cfg: { stateDir: '.claude/state/harness', agentUsagePath: 'docs/_harness/agent_usage.jsonl' },
+  },
+  readText: async p => m.files.get(p),
+  listDir: async () => [],
+  exists: async p => m.files.has(p),
+  mtimeOf: async () => undefined,
+  write: async (p, t) => {
+    m.files.set(p, t)
+    return true
+  },
+  gitLine: async () => undefined,
+  toast: async () => undefined,
+  now: async () => NOW,
+  runs: async () => m.runs,
+  updateRuns: async change => {
+    m.runs = change(m.runs)
+  },
+  activeRunId: async () => m.active,
+  updateFailures: async () => undefined,
+  setPhase5: async () => undefined,
+  missing: async () => m.missing,
+  setMissing: async ids => {
+    m.missing = ids
+  },
+})
+
+/** `layer` with each per-run member logged as `<name>.<member> <runId>` before it runs. */
+const logged = (layer: Layer, log: string[]): Layer => ({
+  ...layer,
+  foldRun: (run, id, c) => {
+    log.push(`${layer.name}.foldRun ${run.runId}`)
+    return layer.foldRun === undefined ? run : layer.foldRun(run, id, c)
+  },
+  onComplete: async (io, run, id, c) => {
+    log.push(`${layer.name}.onComplete ${run.runId}`)
+    await layer.onComplete?.(io, run, id, c)
+  },
+  rowFields: async (io, run, agent, c) => {
+    log.push(`${layer.name}.rowFields ${run.runId}`)
+    return layer.rowFields?.(io, run, agent, c)
+  },
+  resultContext: async (io, run, agent, r) => {
+    log.push(`${layer.name}.resultContext ${run.runId}`)
+    return (await layer.resultContext?.(io, run, agent, r)) ?? []
+  },
+})
+
+const boom = async (): Promise<never> => {
+  throw new Error('stub layer failed')
+}
+
+/** A second layer: claims `STUB=` headers; its usage counts, settle and Stop check all throw. */
+const stubLayer: Layer = {
+  name: 'stub',
+  identify: (_t, h) => (h.STUB === undefined ? undefined : {
+    runId: STUB_RUN, skill: 'pr-team', agentId: h.STUB, role: 'fixer', pr: null, runtimeDir: null, phase: 'fix',
+  }),
+  resultContext: async () => ['stub line'],
+  rowFields: boom,
+  onSettle: boom,
+  stopReason: boom,
+}
+
+const claimed = (d: Dispatch, claimedBy: string | undefined): Run =>
+  applyCompletion(applyDispatch({}, d, newAgent(d, {}), 1, claimedBy)[d.runId]!, d.agentId, {
+    tokens: 5, toolUses: 1, durationMs: 1000, model: 'claude-opus-5-5', isMeasured: true, ending: 'ok',
+    block: parseReturnBlock('---\nSIGNAL: DONE\n---'),
+  })
+
+const memory = (): Memory => {
+  const pr: Dispatch = {
+    runId: PR_RUN, skill: 'pr-team', agentId: 'r1', role: 'reviewer', pr: 1526, runtimeDir: null, phase: 'review',
+  }
+  const stub = stubLayer.identify(undefined, { STUB: 's1' }, undefined)!
+  const solo: Dispatch = {
+    runId: SOLO_RUN, skill: 'standalone', agentId: 'messenger', role: 'other', pr: null, runtimeDir: null,
+    phase: 'done',
+  }
+  const runs = {
+    [PR_RUN]: claimed(pr, 'pr-review'), [STUB_RUN]: claimed(stub, 'stub'), [SOLO_RUN]: claimed(solo, undefined),
+  }
+  return { runs, active: PR_RUN, missing: [], files: new Map() }
+}
+
+const c0 = {
+  tokens: 0, toolUses: 0, durationMs: 0, model: null, block: undefined, isMeasured: true, ending: 'ok' as const,
+}
+
+describe('two layers', () => {
+  const perRun = async (layers: readonly Layer[], m: Memory, runId: string, agentId: string): Promise<void> => {
+    const io = memoryIo(m)
+    const run = m.runs[runId]!
+    foldInto(layers, run, agentId, c0)
+    await completeLayer(io, layers, { runId, agentId }, c0)
+    await countsFor(io, layers, run, run.agents[agentId]!, c0)
+    await contextFor(io, layers, { ...run, agentId, role: run.agents[agentId]!.role }, {})
+  }
+
+  test('each run reaches only the per-run members of the layer that claimed it', async () => {
+    const log: string[] = []
+    const layers = [logged(prReviewLayer, log), logged(stubLayer, log)]
+    const m = memory()
+    const members = ['foldRun', 'onComplete', 'rowFields', 'resultContext']
+    await perRun(layers, m, PR_RUN, 'r1')
+    expect(log).toEqual(members.map(k => `pr-review.${k} ${PR_RUN}`))
+    log.length = 0
+    await perRun(layers, m, STUB_RUN, 's1')
+    expect(log).toEqual(members.map(k => `stub.${k} ${STUB_RUN}`))
+    log.length = 0
+    await perRun(layers, m, SOLO_RUN, 'messenger')
+    expect(log).toEqual([])
+  })
+
+  test('the claimer alone adds result context', async () => {
+    const m = memory()
+    const io = memoryIo(m)
+    const layers = [prReviewLayer, stubLayer]
+    const stubClaim = stubLayer.identify(undefined, { STUB: 's1' }, undefined)!
+    expect(await contextFor(io, layers, stubClaim, {})).toEqual(['stub line'])
+    const prRun = m.runs[PR_RUN]!
+    expect(await contextFor(io, layers, { ...prRun, agentId: 'r1', role: 'reviewer' }, {})).toEqual([])
+  })
+
+  test('a throwing stub rowFields still lets its usage row append, with no counts', async () => {
+    const m = memory()
+    await logUsage(memoryIo(m), [stubLayer, prReviewLayer], { runId: STUB_RUN, agentId: 's1' }, c0)
+    const rows = (m.files.get(USAGE) ?? '').split('\n').filter(Boolean).map(l => JSON.parse(l))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      run_id: STUB_RUN, agent_id: 's1', role: 'fixer', issues_assigned: null, issues_fixed: null,
+    })
+  })
+
+  test('a throwing stub settle and Stop check still let pr-review settle and block', async () => {
+    const m = memory()
+    m.runs[PR_RUN] = { ...m.runs[PR_RUN]!, bubbled: ['I2'], bubbledFrom: 'closer' }
+    m.missing = ['stale']
+    const io = memoryIo(m)
+    const layers = [stubLayer, prReviewLayer]
+    await settleLayers(io, layers)
+    expect(m.missing).toEqual([])
+    m.missing = ['I2']
+    const reason = await stopReasonOf(io, layers, { stop_hook_active: false })
+    expect(reason).toContain('does not disposition bubbled I2')
   })
 })

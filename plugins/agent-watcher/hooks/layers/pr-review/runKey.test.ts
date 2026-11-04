@@ -2,10 +2,40 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import {
   isLocalKey, keyOfRunId, LABEL_MAX, LABEL_PATTERN, LOCAL_PREFIX, reviewPrefix, RUN_ID_PATTERN, runDirName, runName,
-  toRunKey,
+  startedAtOfRunId, toRunKey,
 } from './runKey'
 
 const STAMP = '20261102T080910Z'
+const RUN = 'pr1526_20261009T120000Z'
+const LOCAL_RUN = 'local-fix-band_20261102T080910Z'
+
+describe('keyOfRunId', () => {
+  test('pr number from a run id, null otherwise', async () => {
+    expect(keyOfRunId(RUN)).toBe(1526)
+    expect(keyOfRunId('run-1')).toBeNull()
+  })
+
+  test('the local key from a review-local run id', async () => {
+    expect(keyOfRunId(LOCAL_RUN)).toBe('local-fix-band')
+    expect(keyOfRunId('local-x_20261102T080910Z')).toBe('local-x')
+    expect(keyOfRunId('local-Bad_20261102T080910Z')).toBeNull()
+    expect(keyOfRunId('local-a--b_20261102T080910Z')).toBeNull()
+    expect(keyOfRunId('local-_20261102T080910Z')).toBeNull()
+  })
+})
+
+describe('startedAtOfRunId', () => {
+  test('epoch ms of the UTC stamp in a run id, null otherwise', async () => {
+    expect(startedAtOfRunId(RUN)).toBe(Date.UTC(2026, 9, 9, 12, 0, 0))
+    expect(startedAtOfRunId('run-1')).toBeNull()
+    expect(startedAtOfRunId('pr1526_20261309T120000Z')).toBeNull()
+  })
+
+  test('a review-local run id carries the same stamp', async () => {
+    expect(startedAtOfRunId(LOCAL_RUN)).toBe(Date.UTC(2026, 10, 2, 8, 9, 10))
+    expect(startedAtOfRunId('local-x_20261302T080910Z')).toBeNull()
+  })
+})
 
 describe('isLocalKey', () => {
   test('local-<label>: lower-case letters, digits and single hyphens, at most LABEL_MAX', async () => {

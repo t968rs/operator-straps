@@ -1,17 +1,13 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  DEFAULT_AGENT_USAGE_PATH, DEFAULT_BASE_BRANCH, DEFAULT_MATRIX_PATH, DEFAULT_REVIEWS, DEFAULT_SCRATCH,
-  DEFAULT_STATE_DIR, readConfig, runtimeBaseOf, sentinelDirOf, under,
+  coreConfigOf, DEFAULT_AGENT_USAGE_PATH, DEFAULT_STATE_DIR, parseHarness, readConfig, under,
 } from './config'
 import { HARNESS_CONFIG_REL, rootCandidates } from './root'
 
-const DEFAULTS = {
-  stateDir: DEFAULT_STATE_DIR, matrixPath: DEFAULT_MATRIX_PATH, agentUsagePath: DEFAULT_AGENT_USAGE_PATH,
-  reviewsDir: DEFAULT_REVIEWS, scratchDir: DEFAULT_SCRATCH, baseBranch: DEFAULT_BASE_BRANCH,
-}
+const DEFAULTS = { stateDir: DEFAULT_STATE_DIR, agentUsagePath: DEFAULT_AGENT_USAGE_PATH }
 
-describe('readConfig (harness.json over the mirrored defaults)', () => {
+describe('readConfig (harness.json over the mirrored core defaults)', () => {
   test('an empty object, malformed JSON or a non-object keeps every default', async () => {
     expect(readConfig('{}')).toEqual(DEFAULTS)
     expect(readConfig('{ not json')).toEqual(DEFAULTS)
@@ -19,28 +15,25 @@ describe('readConfig (harness.json over the mirrored defaults)', () => {
     expect(readConfig('null')).toEqual(DEFAULTS)
   })
 
-  test('the keys it reads replace the defaults; artifacts merge key by key', async () => {
+  test('the keys it reads replace the defaults; other keys are left to the layers', async () => {
     const text = JSON.stringify({
       state_dir: '.state\\harness\\', matrix_path: 'meta/matrix.jsonl', agent_usage_path: 'meta/u.jsonl',
       base_branch: 'dev', artifacts: { reviews: 'reviews/' }, tests: { roots: ['t/'] },
     })
-    expect(readConfig(text)).toEqual({
-      stateDir: '.state/harness', matrixPath: 'meta/matrix.jsonl', agentUsagePath: 'meta/u.jsonl',
-      reviewsDir: 'reviews', scratchDir: DEFAULT_SCRATCH, baseBranch: 'dev',
-    })
+    expect(readConfig(text)).toEqual({ stateDir: '.state/harness', agentUsagePath: 'meta/u.jsonl' })
   })
 
   test('wrong types and blanks fall back to the defaults', async () => {
-    const text = JSON.stringify({
-      state_dir: 3, matrix_path: '  ', agent_usage_path: '  ', base_branch: '', artifacts: 'x',
-    })
-    expect(readConfig(text)).toEqual(DEFAULTS)
+    expect(readConfig(JSON.stringify({ state_dir: 3, agent_usage_path: '  ' }))).toEqual(DEFAULTS)
   })
+})
 
-  test('sentinel and pr-team runtime folders sit under state_dir', async () => {
-    const cfg = readConfig(JSON.stringify({ state_dir: 's' }))
-    expect(sentinelDirOf(cfg)).toBe('s/pr-review')
-    expect(runtimeBaseOf(cfg)).toBe('s/pr-team/_runtime')
+describe('parseHarness (the whole file, kept for the layers)', () => {
+  test('a JSON object as parsed; anything else is empty', async () => {
+    const data = { state_dir: 's', artifacts: { reviews: 'r' } }
+    expect(parseHarness(JSON.stringify(data))).toEqual(data)
+    expect(coreConfigOf(parseHarness(JSON.stringify(data)))).toEqual(readConfig(JSON.stringify(data)))
+    for (const text of ['{ not json', '[1, 2]', 'null', '"x"']) expect(parseHarness(text)).toEqual({})
   })
 })
 
