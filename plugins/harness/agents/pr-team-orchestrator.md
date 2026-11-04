@@ -373,7 +373,7 @@ the same Write step.
 ## Step 5 — Append reviewer stats to JSONL
 
 **Skip when the mod owns the rows.** If `<RUNTIME_DIR>/.matrix_owner` exists, skip this step: the
-`pr-review-watch` mod appends one row per reviewer with engine-measured `tokens` / `tool_uses` / `duration_s`
+`agent-watcher` mod appends one row per reviewer with engine-measured `tokens` / `tool_uses` / `duration_s`
 after this consolidation lands, and validates each row against the schema. Otherwise append as below.
 
 Compute `dev_commit` = `git merge-base HEAD <base branch>`, where the base branch is

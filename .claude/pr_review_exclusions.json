@@ -2,6 +2,6 @@
   "_comment": "Machine-generated paths the pr-review branch check skips (fnmatch patterns over repo-relative POSIX paths).",
   "exclusions": [
     {"pattern": "docs/PR_REVIEWS/*", "reason": "pr-review output"},
-    {"pattern": "docs/_harness/*", "reason": "pr-review-watch invocation matrix rows"}
+    {"pattern": "docs/_harness/*", "reason": "agent-watcher invocation matrix rows"}
   ]
 }
