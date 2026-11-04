@@ -234,8 +234,8 @@ __marimo__/
 # Runtime state written by the harness into consuming projects never belongs here.
 .claude/state/
 .superpowers/
-docs/plans/**/*.py
-!docs/plans/*/tests/**
+#!docs/plans/*/tests/**
 
 # Artifacts / Local Env
 settings.local.json
+docs/plans/**/*.py

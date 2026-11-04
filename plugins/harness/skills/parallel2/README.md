@@ -25,7 +25,8 @@ The prongs are separate checks: `setup` cuts the worktrees first, then `probe` e
 worktrees before any lane of the wave is dispatched.
 
 **Why worktrees.** Subagents sharing one working tree overwrite each other's edits and break each other's test
-runs. Each implement lane gets its own branch and directory, cut from the target branch's HEAD.
+runs. Each implement lane gets its own branch and directory, cut from the target branch's HEAD, or from a
+snapshot of the index on HEAD when changes are staged.
 
 **Why a probe instead of reading `settings.json`.** Reading the allow lists does not prove a tool will not
 prompt: a glob that looks right may not match the argument shape used, worktree paths fall outside globs
@@ -37,15 +38,16 @@ the target's copy. If the developer committed to one of those files after the wo
 checkout silently reverts that commit, and files the lane deleted or renamed are never staged at all. `stage`
 applies the lane's own diff (from the commit the worktree was cut at) three-way onto the target's index:
 target commits made since setup are merged, deletions and renames land, and a real conflict leaves markers
-and is named. It refuses when a lane path has uncommitted edits in the target checkout.
+and is named. It refuses when a lane path is unstaged, untracked or restaged since setup in the target
+checkout.
 
 ## Lifecycle
 
 | Step | Command | Result |
 |---|---|---|
 | Plan | `parallel2.py plan plan.json` (`-` for stdin) | Overlap check, waves, prongs, probe profiles; run state written |
-| Set up a wave | `parallel2.py setup --wave N` | One worktree and branch `p2/<lane>` per implement lane; one brief per lane; dispatch rows |
-| Probe | `parallel2.py probe --wave N` | One probe prompt per tool profile |
+| Set up a wave | `parallel2.py setup --wave N [--probe] [--with-setup]` | One worktree and branch `p2/<lane>` per implement lane, cut at once from HEAD (or an index snapshot of staged work); one brief per lane; dispatch rows; `--probe` adds the probe prompts, `--with-setup` runs `worktree_setup` and `worktree_baseline` per lane |
+| Probe | `parallel2.py probe --wave N [--passed P1 ...]` | One probe prompt per tool profile that no clean probe covers; `--passed` records clean profiles |
 | Stage a lane | `parallel2.py stage <lane>` | Lane's diff merged three-way into the target checkout's index, no commit |
 | Inspect | `parallel2.py status` | Lanes with wave, status, branch, worktree |
 | Clean up | `parallel2.py cleanup` | Staged lanes' worktrees and branches removed; `--all` for every lane |
@@ -78,7 +80,7 @@ Skills that apply per wave (those outside this plugin apply when installed):
 
 | Wave | Concern | Skill |
 |---|---|---|
-| W0 | Worktree placement outside the project, IDE file locks | `harness:d-w` (conventions only; `parallel2 setup` cuts the lanes and does not run `worktree_setup` or `worktree_baseline`) |
+| W0 | Worktree placement outside the project, IDE file locks | `harness:d-w` (conventions only; `parallel2 setup` cuts the lanes and runs `worktree_setup` and `worktree_baseline` only with `--with-setup`) |
 | W1, W2 dispatch | Mechanical overlap and permissions | `harness:parallel2` |
 | W1, W2 dispatch | Conceptual overlap: lanes on different files sharing an invariant | `superpowers-lt:dispatching-parallel-agents` |
 | W1A, W2A | A failing test before runtime code | `superpowers-lt:test-driven-development` |
@@ -95,9 +97,16 @@ Reading the example:
    the merge gate).
 4. **`parallel2` and the dispatch skill pair on every multi-lane wave.** `parallel2` catches shared files; the
    dispatch skill catches shared invariants across different files.
-5. **A wave that reads an earlier wave's output** needs that output committed on the target first: worktrees
-   are cut from the target's HEAD, and staged changes are not in it. `setup` prints a note when the checkout
-   has pending changes.
+5. **A wave that reads an earlier wave's output** gets it from the index: with changes staged, `setup` cuts
+   the wave from a snapshot commit of the index on HEAD that no branch references, so staged earlier lanes
+   are in the new lanes' base without a commit on the target. `setup` notes the snapshot, and notes unstaged
+   or untracked paths, which the snapshot leaves out.
+
+## Companion mod
+
+`parallel2-lanes` (installed separately) reads the run state the driver writes. A lane's `Agent` call that
+opens with `Brief: <path>` starts with the brief text in its prompt, the plan's model and the lane worktree
+as its working directory for an implement lane; a band above the prompt lists each run's lanes with their status.
 
 ## Related
 

@@ -12,20 +12,27 @@ conflict or a partial cleanup records what was done before exiting 1.
     worktree prong and the probe prong. An earlier run with lanes not yet cleaned up is refused unless
     ``--replace``; ``--replace`` itself is refused while an earlier lane still has a worktree.
 
-``setup [--wave N]``
+``setup [--wave N] [--probe] [--with-setup]``
     For the lowest planned wave (or ``N``): cut ``p2/<lane-id>`` branches and worktrees from HEAD for the
-    implement lanes, write a brief for every lane of the wave and print one dispatch row per lane. The
-    checkout must be on the target branch and hold no pending change under a lane's files.
+    implement lanes (all at once), write a brief for every lane of the wave and print one dispatch row per
+    lane, then, with ``--probe``, the wave's probe output as ``probe --wave N`` prints it. ``--with-setup``
+    runs the project's ``worktree_setup`` and ``worktree_baseline`` in each new lane worktree, as ``d-w``
+    does, reported on stderr; a failed step never fails setup. The
+    checkout must be on the target branch and hold no unstaged or untracked change under a lane's files.
+    With changes staged (an earlier wave's ``stage``), the lanes are cut from a commit of the index on HEAD
+    that no branch references, so a later wave builds on the staged work without a commit on the target.
 
-``probe [--wave N]``
-    Print one permission-probe prompt per tool profile of the wave's implement lanes.
+``probe [--wave N] [--passed PROFILE ...]``
+    Print one permission-probe prompt per tool profile of the wave's implement lanes. A profile whose tools
+    lanes already probed clean cover (worktrees in the same folder) prints a ``skipped`` line instead.
+    ``--passed`` records the named profiles' lanes probed clean and prints no prompt.
 
 ``stage LANE [--include-undeclared]``
     Apply a finished implement lane's committed diff (from its base) three-way onto the index of the
     checkout (no commit), so target commits made since setup are merged rather than reverted. A leftover
     probe file is deleted first. Refused when the lane worktree is dirty, the lane has no commits, it changed
-    paths outside its files, or a changed path is pending in the checkout. A conflict leaves markers, records
-    the lane staged and exits 1 naming the conflicted paths.
+    paths outside its files, or a changed path is unstaged, untracked or restaged since setup in the
+    checkout. A conflict leaves markers, records the lane staged and exits 1 naming the conflicted paths.
 
 ``status``
     Print ``id wave kind status branch worktree`` per lane.
@@ -40,8 +47,8 @@ checked out; ``--target`` names the run when that differs from the checked-out b
 after the subcommand. Usage::
 
     parallel2.py [--repo DIR] [--target BRANCH] plan PLAN_JSON [--replace]
-    parallel2.py [--repo DIR] [--target BRANCH] setup [--wave N]
-    parallel2.py [--repo DIR] [--target BRANCH] probe [--wave N]
+    parallel2.py [--repo DIR] [--target BRANCH] setup [--wave N] [--probe] [--with-setup]
+    parallel2.py [--repo DIR] [--target BRANCH] probe [--wave N] [--passed PROFILE ...]
     parallel2.py [--repo DIR] [--target BRANCH] stage LANE [--include-undeclared]
     parallel2.py [--repo DIR] [--target BRANCH] status
     parallel2.py [--repo DIR] [--target BRANCH] cleanup [--lane ID ...] [--all]
@@ -49,11 +56,15 @@ after the subcommand. Usage::
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import ModuleType
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
@@ -65,6 +76,11 @@ from harness_lib.config import ConfigError, active, activate, load_config
 from harness_lib.project import main_worktree, project_root
 
 PROBLEMS = (pl.PlanError, CaptureError, ConfigError)
+MAX_PARALLEL_ADDS = 8
+SNAPSHOT_IDENTITY = {
+    "GIT_AUTHOR_NAME": "parallel2", "GIT_AUTHOR_EMAIL": "parallel2@localhost",
+    "GIT_COMMITTER_NAME": "parallel2", "GIT_COMMITTER_EMAIL": "parallel2@localhost",
+}
 
 
 # --- locations and state ----------------------------------------------------------------------------------
@@ -137,18 +153,38 @@ def _own_state_prefix(repo: Path) -> Optional[str]:
         return None
 
 
-def pending_paths(repo: Path) -> List[str]:
-    """Paths with a staged, unstaged or untracked change (rename old sides included), minus the run state."""
+def status_entries(repo: Path) -> List[Tuple[str, str]]:
+    """``(XY, path)`` per changed path (a rename's old side too, with its entry's XY), minus the run state."""
     tokens = iter(git_out(repo, "status", "--porcelain", "-z", "-uall").split("\0"))
-    paths: List[str] = []
+    entries: List[Tuple[str, str]] = []
     for token in tokens:
         if not token:
             continue
-        paths.append(token[3:])
+        entries.append((token[:2], token[3:]))
         if token[0] in "RC" or token[1:2] in ("R", "C"):
-            paths.append(next(tokens, ""))
+            entries.append((token[:2], next(tokens, "")))
     prefix = _own_state_prefix(repo)
-    return [path for path in paths if path and not (prefix and path.startswith(prefix))]
+    return [(code, path) for code, path in entries if path and not (prefix and path.startswith(prefix))]
+
+
+def dirty_paths(repo: Path) -> List[str]:
+    """Paths with an unstaged or untracked change: what an index snapshot leaves out of a lane's base."""
+    return [path for code, path in status_entries(repo) if code[1] != " "]
+
+
+def _names(listing: str) -> List[str]:
+    return [path for path in listing.split("\0") if path]
+
+
+def overwritten_paths(repo: Path, base_sha: str) -> List[str]:
+    """Checkout paths a lane's apply would overwrite.
+
+    Unstaged or untracked paths, and staged paths whose index content differs from the lane's base (restaged
+    since the snapshot). A staged path equal to the base came in with the snapshot and merges cleanly.
+    """
+    staged = set(_names(git_out(repo, "diff", "--cached", "--name-only", "--no-renames", "-z")))
+    moved = set(_names(git_out(repo, "diff", "--cached", "--name-only", "--no-renames", "-z", base_sha)))
+    return [*dirty_paths(repo), *sorted(staged & moved)]
 
 
 # --- plan -------------------------------------------------------------------------------------------------
@@ -208,18 +244,20 @@ def branch_problems(repo: Path, batch: Sequence[pl.Lane]) -> List[str]:
     ]
 
 
-def overlap_problems(batch: Sequence[pl.Lane], pending: Sequence[str]) -> List[str]:
+def overlap_problems(batch: Sequence[pl.Lane], dirty: Sequence[str]) -> List[str]:
+    """Unstaged or untracked checkout paths inside an implement lane's files: the snapshot would miss them."""
     problems = []
     for item in batch:
-        hit = pl.pending_in_entries(pending, item.files) if item.kind == pl.IMPLEMENT else []
+        hit = pl.pending_in_entries(dirty, item.files) if item.kind == pl.IMPLEMENT else []
         if hit:
             problems.append(f"pending changes in the checkout overlap lane {item.id}: {', '.join(hit)}")
     return problems
 
 
-def free_worktree_path(root: Path, lane_id: str) -> Path:
+def free_worktree_path(root: Path, lane_id: str, taken: Sequence[Path] = ()) -> Path:
+    """First of ``p2-<id>``, ``p2-<id>-2``, ... under ``root`` that neither exists nor is ``taken``."""
     path, number = root / f"p2-{lane_id}", 2
-    while path.exists():
+    while path.exists() or path in taken:
         path, number = root / f"p2-{lane_id}-{number}", number + 1
     return path
 
@@ -243,19 +281,35 @@ def remove_worktree(repo: Path, item: pl.Lane, force: bool = False) -> Tuple[boo
     return True, None
 
 
-def create_worktrees(repo: Path, batch: Sequence[pl.Lane], base_sha: str) -> None:
-    """Cut a branch and worktree per implement lane; undo this call's own creations on a failure."""
+def assign_worktrees(batch: Sequence[pl.Lane]) -> List[pl.Lane]:
+    """Name each implement lane's branch and a free worktree path; return those lanes."""
     root = active().resolve_worktree_root()
     root.mkdir(parents=True, exist_ok=True)
-    made: List[pl.Lane] = []
-    for item in (i for i in batch if i.kind == pl.IMPLEMENT):
-        item.branch, item.worktree = f"p2/{item.id}", free_worktree_path(root, item.id).as_posix()
-        done = git(repo, "worktree", "add", "-b", item.branch, item.worktree, base_sha)
-        if done.returncode != 0:
-            for earlier in made:
-                remove_worktree(repo, earlier, force=True)
-            raise CaptureError([f"lane {item.id}: git worktree add failed: {done.stderr.strip()}"])
-        made.append(item)
+    items = [i for i in batch if i.kind == pl.IMPLEMENT]
+    taken: List[Path] = []
+    for item in items:
+        taken.append(free_worktree_path(root, item.id, taken))
+        item.branch, item.worktree = f"p2/{item.id}", taken[-1].as_posix()
+    return items
+
+
+def add_worktree(repo: Path, item: pl.Lane, base_sha: str) -> Optional[str]:
+    """Cut one lane's branch and worktree; the problem text on a failure, else None."""
+    done = git(repo, "worktree", "add", "-b", str(item.branch), str(item.worktree), base_sha)
+    return None if done.returncode == 0 else f"lane {item.id}: git worktree add failed: {done.stderr.strip()}"
+
+
+def create_worktrees(repo: Path, batch: Sequence[pl.Lane], base_sha: str) -> None:
+    """Cut every implement lane's branch and worktree at once; on any failure, undo all this call made."""
+    items = assign_worktrees(batch)
+    if not items:
+        return
+    with ThreadPoolExecutor(max_workers=min(len(items), MAX_PARALLEL_ADDS)) as pool:
+        problems = list(pool.map(lambda item: add_worktree(repo, item, base_sha), items))
+    if any(problems):
+        for item in (i for i, problem in zip(items, problems) if problem is None):
+            remove_worktree(repo, item, force=True)
+        raise CaptureError([problem for problem in problems if problem])
 
 
 def write_briefs(repo: Path, target: str, batch: Sequence[pl.Lane]) -> List[Path]:
@@ -269,30 +323,87 @@ def write_briefs(repo: Path, target: str, batch: Sequence[pl.Lane]) -> List[Path
     return paths
 
 
+def snapshot_commit(repo: Path, head: str, message: str) -> str:
+    """A commit of the index on ``head``, referenced by no branch, under the fixed snapshot identity."""
+    tree = git_out(repo, "write-tree").strip()
+    done = subprocess.run(["git", "commit-tree", tree, "-p", head, "-m", message], cwd=repo,
+                          capture_output=True, text=True, env={**os.environ, **SNAPSHOT_IDENTITY})
+    if done.returncode != 0:
+        raise CaptureError([f"git commit-tree of the index snapshot failed: {done.stderr.strip()}"])
+    return done.stdout.strip()
+
+
+def cut_base(repo: Path, target: str, wave: int) -> Tuple[str, str, int]:
+    """``(base, head, staged count)``: HEAD itself, or an index snapshot on HEAD when changes are staged.
+
+    The snapshot puts staged work (an earlier wave's ``stage``) into the lanes' base without a commit on the
+    target branch.
+    """
+    head = git_out(repo, "rev-parse", "HEAD").strip()
+    staged = _names(git_out(repo, "diff", "--cached", "--name-only", "--no-renames", "-z"))
+    if not staged:
+        return head, head, 0
+    return snapshot_commit(repo, head, f"parallel2 index snapshot: {target} wave {wave}"), head, len(staged)
+
+
+def dw_commands() -> ModuleType:
+    """d-w's ``new_worktree.py``, whose ``prepare`` runs the project's worktree setup and baseline steps."""
+    path = Path(__file__).resolve().parents[1] / "skills" / "d-w" / "commands" / "new_worktree.py"
+    problem = f"cannot load the d-w worktree setup runner at {path.as_posix()}"
+    spec = importlib.util.spec_from_file_location("harness_dw_new_worktree", path)
+    if spec is None or spec.loader is None:
+        raise CaptureError([problem])
+    module = importlib.util.module_from_spec(spec)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, OSError, SyntaxError) as exc:
+        raise CaptureError([f"{problem}: {exc}"]) from exc
+    return module
+
+
+def prepare_lanes(batch: Sequence[pl.Lane], prepare: Callable[..., object]) -> None:
+    """Run ``worktree_setup``, then ``worktree_baseline``, in each implement lane; stderr names each lane."""
+    for item in (i for i in batch if i.kind == pl.IMPLEMENT):
+        print(f"lane {item.id}:", file=sys.stderr, flush=True)
+        prepare(active(), Path(str(item.worktree)))
+
+
 def cmd_setup(repo: Path, args: argparse.Namespace) -> int:
     target = run_target(repo, args)
     lanes = require_lanes(repo, target)
     require_checked_out(repo, target)
     wave = pick_wave(lanes, args.wave)
     batch = [i for i in lanes if i.wave == wave and i.status == pl.PLANNED]
-    pending = pending_paths(repo)
-    problems = branch_problems(repo, batch) + overlap_problems(batch, pending)
+    dirty = dirty_paths(repo)
+    problems = branch_problems(repo, batch) + overlap_problems(batch, dirty)
     if problems:
         raise CaptureError(problems)
-    base_sha = git_out(repo, "rev-parse", "HEAD").strip()
+    prepare = dw_commands().prepare if args.with_setup else None
+    base_sha, head_sha, staged = cut_base(repo, target, wave)
     create_worktrees(repo, batch, base_sha)
     briefs = write_briefs(repo, target, batch)
     for item in batch:
-        item.status, item.base_sha = pl.DISPATCHED, base_sha
+        item.status, item.base_sha, item.head_sha = pl.DISPATCHED, base_sha, head_sha
     save_lanes(repo, target, lanes)
-    print_dispatch(batch, briefs, pending)
+    if prepare is not None:
+        prepare_lanes(batch, prepare)
+    print_notes(base_sha, head_sha, staged, dirty)
+    print_dispatch(batch, briefs)
+    if args.probe:
+        print_probes(lanes, wave)
     return 0
 
 
-def print_dispatch(batch: Sequence[pl.Lane], briefs: Sequence[Path], pending: Sequence[str]) -> None:
-    if pending:
-        print(f"note: {len(pending)} pending paths in the checkout are not in the lanes' base; "
-              "commit them first if a lane reads them")
+def print_notes(base_sha: str, head_sha: str, staged: int, dirty: Sequence[str]) -> None:
+    if base_sha != head_sha:
+        print(f"note: lanes cut from an index snapshot {base_sha[:7]} of HEAD {head_sha[:7]} "
+              f"({staged} staged paths)")
+    if dirty:
+        print(f"note: {len(dirty)} unstaged or untracked paths in the checkout are not in the lanes' base; "
+              "stage them first if a lane reads them")
+
+
+def print_dispatch(batch: Sequence[pl.Lane], briefs: Sequence[Path]) -> None:
     for item, brief in zip(batch, briefs):
         print(pl.render_dispatch_row(item, item.worktree, brief.resolve().as_posix()))
 
@@ -319,18 +430,49 @@ def probe_wave(lanes: Sequence[pl.Lane], wanted: Optional[int]) -> int:
     return min(live)
 
 
-def cmd_probe(repo: Path, args: argparse.Namespace) -> int:
-    lanes = require_lanes(repo, run_target(repo, args))
-    wave = probe_wave(lanes, args.wave)
-    members = [i for i in lanes if i.wave == wave and i.kind == pl.IMPLEMENT and pl.has_live_worktree(i)]
+def wave_members(lanes: Sequence[pl.Lane], wave: int) -> List[pl.Lane]:
+    """The wave's implement lanes with a live worktree: the lanes a probe covers."""
+    return [i for i in lanes if i.wave == wave and i.kind == pl.IMPLEMENT and pl.has_live_worktree(i)]
+
+
+def print_probes(lanes: Sequence[pl.Lane], wave: int) -> None:
+    """One probe prompt per profile of the wave, or a skip line for a profile earlier probes cover."""
+    members = wave_members(lanes, wave)
     if not members:
         print(f"no implement lanes in wave {wave}: nothing to probe")
     for profile in pl.probe_profiles(members):
         first = lane_by_id(members, profile.lane_ids[0])
+        cover = pl.probed_cover(profile.tools, lanes, str(first.worktree))
+        if cover:
+            print(f"probe={profile.name} skipped: its tools were probed clean ({', '.join(cover)})")
+            continue
         tree = Path(str(first.worktree))
         print(f"probe={profile.name} model={profile.model}")
         print(pl.render_probe_prompt(profile.tools, str(first.worktree), probe_read_target(tree, first)))
         print()
+
+
+def record_passed(repo: Path, target: str, lanes: List[pl.Lane], wave: int, names: Sequence[str]) -> None:
+    """Mark the lanes of each named profile of the wave probed clean; a problem for an unknown name."""
+    profiles = {profile.name: profile for profile in pl.probe_profiles(wave_members(lanes, wave))}
+    unknown = [name for name in names if name not in profiles]
+    if unknown:
+        raise CaptureError([f"no probe profile {name} in wave {wave}" for name in unknown])
+    for name in names:
+        for lane_id in profiles[name].lane_ids:
+            lane_by_id(lanes, lane_id).probed = True
+    save_lanes(repo, target, lanes)
+    print("\n".join(f"recorded {name} clean: {', '.join(profiles[name].lane_ids)}" for name in names))
+
+
+def cmd_probe(repo: Path, args: argparse.Namespace) -> int:
+    target = run_target(repo, args)
+    lanes = require_lanes(repo, target)
+    wave = probe_wave(lanes, args.wave)
+    if args.passed:
+        record_passed(repo, target, lanes, wave, args.passed)
+    else:
+        print_probes(lanes, wave)
     return 0
 
 
@@ -346,11 +488,12 @@ def stageable_lane(lanes: Sequence[pl.Lane], lane_id: str) -> pl.Lane:
 
 
 def moved_note(repo: Path, item: pl.Lane) -> Optional[str]:
-    """A note when the target gained commits since setup, else None."""
+    """A note when the target gained commits since setup, else None (older state has no ``head_sha``)."""
     head = git_out(repo, "rev-parse", "HEAD").strip()
-    if head == item.base_sha:
+    since = str(item.head_sha or item.base_sha)
+    if head == since:
         return None
-    return f"note: target moved from {str(item.base_sha)[:7]} to {head[:7]} since setup; merged three-way"
+    return f"note: target moved from {since[:7]} to {head[:7]} since setup; merged three-way"
 
 
 def require_clean_worktree(item: pl.Lane) -> None:
@@ -370,7 +513,7 @@ def lane_changes(repo: Path, item: pl.Lane, include_undeclared: bool) -> List[Ca
     if outside:
         raise CaptureError([f"lane {item.id} changed paths outside its files: {', '.join(outside)}"])
     changed = [path for change in changes for path in change.paths]
-    pending = pl.pending_overlap(changed, pending_paths(repo))
+    pending = pl.pending_overlap(changed, overwritten_paths(repo, str(item.base_sha)))
     if pending:
         raise CaptureError([f"pending changes in the checkout would be overwritten: {', '.join(pending)}"])
     return changes
@@ -510,8 +653,13 @@ def _parser() -> argparse.ArgumentParser:
     plan.add_argument("--replace", action="store_true", help="Replace a run with unfinished lanes.")
     setup = sub.add_parser("setup", parents=shared, help="Create worktrees and briefs for a wave.")
     setup.add_argument("--wave", type=int, help="Wave to set up (default: the lowest planned wave).")
+    setup.add_argument("--probe", action="store_true", help="Also print the wave's probe prompts.")
+    setup.add_argument("--with-setup", action="store_true",
+                       help="Run the project's worktree_setup and worktree_baseline in each lane worktree.")
     probe = sub.add_parser("probe", parents=shared, help="Print permission-probe prompts for a wave.")
     probe.add_argument("--wave", type=int, help="Wave to probe (default: the lowest set-up wave).")
+    probe.add_argument("--passed", nargs="+", metavar="PROFILE",
+                       help="Record these profiles of the wave probed clean instead of printing prompts.")
     stage = sub.add_parser("stage", parents=shared, help="Stage a finished lane onto the target branch.")
     stage.add_argument("lane", help="Lane id.")
     stage.add_argument(
