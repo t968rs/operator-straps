@@ -37,6 +37,6 @@ decoupling or packaging change against it.
 | `.claude/skills/<generic>/**` | `plugins/harness/skills/` |
 | `.claude/CLAUDE.md` | `plugins/harness/rules/HARNESS_RULES.md` (cut to the generic half) |
 | `docs/conventions/commit_format.md` | `plugins/harness/reference/commit_format.md` |
-| `.claude/mods/{pr-review-watch,session-bookmark}/**` | `plugins/{pr-review-watch,session-bookmark}/` |
+| `.claude/mods/{pr-review-watch,session-bookmark}/**` | `plugins/{agent-watcher,session-bookmark}/` |
 | `.claude/mods/fpm-guardrails/hooks/status{,.test}.ts` | `plugins/git-status/hooks/` (generic half only, after the split) |
 | `scripts/__tests__/{discipline,pr_review,_admin_utils}/...` (the 23 moved + 5 split tests) | `tests/{lib,scripts,hooks,skills,schemas,mods}/` |
