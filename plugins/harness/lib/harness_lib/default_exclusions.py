@@ -34,7 +34,7 @@ def _entries(cfg: HarnessConfig) -> List[dict]:
         (f"{_normalized(cfg.artifacts.commit_messages)}/*", "commit message drafts"),
         (f"{_normalized(cfg.state_dir)}/*", "harness runtime state"),
         (_normalized(cfg.matrix_path), "pr-review-watch invocation matrix rows"),
-        (_normalized(cfg.agent_usage_path), "pr-review agent usage rows"),
+        (_normalized(cfg.agent_usage_path), "agent usage rows"),
         ("*_Bubbles.md", "bubble memos (point-in-time snapshots)"),
         (DEFAULT_EXCLUSIONS, "this file, seeded by the harness"),
     ]

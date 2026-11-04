@@ -26,7 +26,7 @@ def test_default_patterns_cover_reviews_summaries_and_harness_rows(make_project:
     assert "docs/PR_REVIEWS/*" in patterns
     assert "docs/PR_SUMMARIES/*" in patterns
     assert "docs/_harness/pr_review_invocation_test_matrix.jsonl" in patterns
-    assert "docs/_harness/pr_review_agent_usage.jsonl" in patterns
+    assert "docs/_harness/agent_usage.jsonl" in patterns
     assert "docs/_harness/*" not in patterns
     assert DEFAULT_EXCLUSIONS in patterns
 

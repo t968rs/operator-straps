@@ -29,7 +29,7 @@ LOOKUP: Mapping[FrozenSet[str], str] = MappingProxyType({
     frozenset({
         "docs/PR_REVIEWS/*.json",
         "docs/PR_SUMMARIES/*.md",
-        "pr_review_agent_usage.jsonl",
+        "agent_usage.jsonl",
         "pr_review_invocation_test_matrix.jsonl",
     }): "Chore(reviews): record PR review, summary and run-log artifacts",
 })
