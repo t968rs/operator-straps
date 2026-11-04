@@ -6,9 +6,10 @@ description: |
   the plugin's `todo_sync.py` for the mechanical part (renumbering, link rewiring, rescoring, recounting, id
   rewrites in the research catalog and stubs) and edits only the prose the script cannot write: split parts,
   new items drafted from an issue and its linked review, close-candidate evidence, tracker notes, and
-  sentences that named a moved or removed id. The prompt is the five lines the `harness:todo-edit` skill
-  prints (Operation, Ids, Delete retired, Project root, Guidance), or the four lines the
-  `harness:sync-gh-todo` skill prints (Operation `sync`, Issues, Project root, Guidance).
+  sentences that named a moved or removed id. The prompt is the six lines the `harness:todo-edit` skill
+  prints (SKILL, Operation, Ids, Delete retired, Project root, Guidance), or the five lines the
+  `harness:sync-gh-todo` skill prints (SKILL, Operation `sync`, Issues, Project root, Guidance). SKILL names
+  the dispatching skill and asks for no action.
   Examples:
   <example>
     Context: The developer finished two items.

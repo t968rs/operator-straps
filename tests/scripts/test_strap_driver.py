@@ -312,8 +312,8 @@ def test_run_prints_the_runner_row_and_builds_the_tree(built: Callable[..., Dict
     ok(strap("draw", NAME))
     out = ok(strap("run", NAME, "B1", "--arm", "baseline"))
     assert "agent=harness:strap-scenario-runner model=sonnet" in out
-    assert out.index("agent=harness:strap-scenario-runner") < out.index(f"SKILL: {NAME}") \
-        < out.index("RUN: R-1") < out.index("TREE: ")
+    assert out.index("agent=harness:strap-scenario-runner") < out.index("SKILL: strap-skills") \
+        < out.index(f"TARGET: {NAME}") < out.index("RUN: R-1") < out.index("TREE: ")
     init_line = rf'--repo "{re.escape(root_posix(project))}"\s+init\s+{NAME}\s+--run\s+R-1\b'
     assert re.search(init_line, out), out
     tree = Path(re.findall(r"TREE: (.+?)\s*$", out, re.MULTILINE)[-1])
@@ -401,7 +401,7 @@ def test_init_includes_the_role_agent_body(built: Callable[..., Dict[str, Any]],
 def test_record_run_stores_reply_and_drops_tree(started: str, piped: Callable[..., Result],
                                                 project: Path) -> None:
     out = ok(piped(BASELINE_REPLY, "record-run", NAME, "--run", "R-1"))
-    assert "SIGNAL: recorded" in out and "R-1" in out
+    assert out.splitlines() == ["---", "SIGNAL: recorded", "RUN: R-1", f"TARGET: {NAME}", "---"]
     [run] = read_spec(project)["runs"]
     assert run["recorded"] is True and run["reply"].strip() == BASELINE_REPLY.strip()
     assert run["reply_sha256"] == hashlib.sha256(run["reply"].encode("utf-8")).hexdigest()

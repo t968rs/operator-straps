@@ -240,6 +240,54 @@ def test_a_second_freeze_needs_refreeze(run: Run, filled: Fill, project: Path) -
     assert run("freeze", "1", "--refreeze")[0] == 0
 
 
+def rename_add(project: Path) -> str:
+    """Commit the planned test and an implementation that also renames ``add``; return the commit SHA."""
+    source = project / PLANS / "0001" / "tests" / "tests" / "test_calc_sub.py"
+    (project / "tests" / "test_calc_sub.py").write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    body = "def plus(a, b):\n    return a + b\n\n\ndef sub(a, b):\n    return a - b\n"
+    (project / "src" / "calc.py").write_text(body, encoding="utf-8")
+    git(project, "add", "src/calc.py", "tests/test_calc_sub.py")
+    git(project, "commit", "-q", "-m", "add sub, rename add")
+    return git(project, "rev-parse", "HEAD")
+
+
+def test_an_executed_plan_reads_its_anchors_and_sweeps_at_the_base(run: Run, filled: Fill,
+                                                                  project: Path) -> None:
+    filled(sweeps=[{"id": "S1", "pattern": "def add", "hits": {"src/calc.py": "TASK-1 renames it"}}])
+    assert run("freeze", "1")[0] == 0
+    assert run("record", "1", "TASK-1", "--sha", rename_add(project))[0] == 0
+    plan = read_plan(project)
+    plan["items"][0]["action"] = "Add sub beside add; rename add to plus."
+    write_plan(project, plan)
+    code, _, err = run("freeze", "1", "--refreeze")
+    assert code == 0, err
+    code, out, err = run("check", "1")
+    assert code == 0, err
+    assert f"anchors and sweeps at base {plan['base_commit'][:7]}" in out
+
+
+def test_a_first_freeze_needs_its_claims_to_hold_at_the_base(run: Run, filled: Fill, project: Path) -> None:
+    calc = project / "src" / "calc.py"
+    calc.write_text(calc.read_text(encoding="utf-8").replace("def add", "def plus"), encoding="utf-8")
+    git(project, "commit", "-q", "-am", "rename add on the branch before the plan")
+    filled(sub_item(anchors=[{"at": "src/calc.py:1", "expect": "def plus(a, b):"}]))
+    assert run("check", "1")[0] == 0
+    before = read_plan(project)
+    code, _, err = run("freeze", "1")
+    assert code == 1 and "problem: at base " in err and "'def plus(a, b):' not found" in err
+    assert read_plan(project) == before
+
+
+def test_a_plan_with_nothing_done_reads_its_anchors_in_the_tree(run: Run, filled: Fill,
+                                                               project: Path) -> None:
+    filled(sweeps=[{"id": "S1", "pattern": "def add", "hits": {"src/calc.py": "TASK-1 renames it"}}])
+    assert run("freeze", "1")[0] == 0
+    rename_add(project)
+    code, _, err = run("check", "1")
+    assert code == 1 and "problem: anchor TASK-1 src/calc.py:1: 'def add(a, b):' not found" in err
+    assert "problem: sweep S1: src/calc.py is classified but has no hit" in err
+
+
 def test_check_flags_an_edit_after_freeze(run: Run, filled: Fill,
                                           project: Path) -> None:
     filled()

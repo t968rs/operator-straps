@@ -600,7 +600,8 @@ def test_judge_row_lists_ungraded_recorded_runs(gate: Callable[..., Dict[str, An
     baseline = play("baseline", BASELINE_REPLY)
     out = ok(strap("judge-row", NAME))
     assert "agent=harness:strap-judge model=sonnet" in out
-    assert out.index("agent=harness:strap-judge") < out.index(f"SKILL: {NAME}") < out.index("RUNS: ")
+    assert out.index("agent=harness:strap-judge") < out.index("SKILL: strap-skills") \
+        < out.index(f"TARGET: {NAME}") < out.index("RUNS: ")
     assert re.search(rf"^RUNS: {baseline}\s*$", out, re.MULTILINE), out
 
 

@@ -11,9 +11,9 @@
       "description": "Skills, agents, hooks and scripts for PR review, commit breakdowns, PR summaries and worktree flow"
     },
     {
-      "name": "pr-review-watch",
-      "source": "./plugins/pr-review-watch",
-      "description": "pr-review / pr-team run tracking: Phase 5 band, engine-measured matrix and agent usage rows, bubble Stop guard"
+      "name": "agent-watcher",
+      "source": "./plugins/agent-watcher",
+      "description": "Logs every agent dispatch with engine-measured usage rows; tracks pr-review / pr-team runs: Phase 5 band, matrix rows, bubble Stop guard"
     },
     {
       "name": "session-bookmark",

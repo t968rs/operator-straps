@@ -101,8 +101,9 @@ def test_scaffold_prints_one_investigator_row_per_flagged_id(driver: ModuleType,
     rows = out.count("agent=harness:bubble-memo-investigator model=opus")
     assert rows == 1
     tail = out[out.index("agent=harness:bubble-memo-investigator"):].splitlines()
-    assert tail[1:4] == ["PR: 1514", "ISSUE: I3", "FILES: src/a.py, src/b.py"]
-    assert tail[4].startswith("CONTEXT: ") and len(tail[4]) <= len("CONTEXT: ") + driver.CONTEXT_MAX
+    assert tail[1] == "SKILL: bubble-memo"
+    assert tail[2:5] == ["PR: 1514", "ISSUE: I3", "FILES: src/a.py, src/b.py"]
+    assert tail[5].startswith("CONTEXT: ") and len(tail[5]) <= len("CONTEXT: ") + driver.CONTEXT_MAX
 
 
 def test_a_reason_past_the_context_cap_is_cut_to_exactly_the_cap(

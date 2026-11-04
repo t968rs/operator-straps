@@ -165,8 +165,8 @@ writes land where `record-run` looks.
    ```
 
    It builds the scenario tree and prints `run [ready] | ...` and one row: the first line is
-   `agent=harness:strap-scenario-runner model=<model>`, the lines after it are the prompt (`SKILL`, `RUN`,
-   `TREE`, `INIT`). Dispatch it as
+   `agent=harness:strap-scenario-runner model=<model>`, the lines after it are the prompt (`SKILL`, `TARGET`,
+   `RUN`, `TREE`, `INIT`). Dispatch it as
 
    `Agent(subagent_type="harness:strap-scenario-runner", model=<model>, prompt=<the lines after the agent= line>)`
 

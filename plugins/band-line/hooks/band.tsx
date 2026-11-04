@@ -6,7 +6,7 @@ import { formatBanner, needsAttention, NO_FIGURES } from './banner'
 /**
  * The oStraps banner above the prompt: git-status's snapshot, then the session's model and context window.
  * Reads state only; the band redraws when git-status writes its snapshot or ./banner the session figures. It
- * wraps whatever the hooks beneath drew, so another mod's band (pr-review-watch's) stays on screen under it.
+ * wraps whatever the hooks beneath drew, so another mod's band (agent-watcher's) stays on screen under it.
  */
 
 const gitAtom = atom({ plugin: 'git-status', key: 'git' } as const, null)

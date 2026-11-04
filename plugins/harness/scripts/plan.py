@@ -208,18 +208,30 @@ def completion_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     return out
 
 
+def claims_rev(plan: pm.ActionPlan) -> Optional[str]:
+    """The base commit once an item is done, else None (the working tree).
+
+    Anchors and sweeps describe the code before the work; once a done item has changed that code, they hold
+    only at the base, so a refreeze in mid-plan checks them there.
+    """
+    return (plan.base_commit or None) if any(i.status in DONE for i in plan.items) else None
+
+
 def all_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     """Every check of a plan that loaded: loading already validated its shape."""
-    return (pc.lint_problems(plan, repo, plans_dir()) + pc.anchor_problems(plan, repo)
-            + pc.sweep_problems(plan, repo, active().artifacts.plans) + digest_problems(plan)
+    rev = claims_rev(plan)
+    return (pc.lint_problems(plan, repo, plans_dir()) + pc.anchor_problems(plan, repo, rev)
+            + pc.sweep_problems(plan, repo, active().artifacts.plans, rev) + digest_problems(plan)
             + completion_problems(repo, plan))
 
 
 def check_summary(plan: pm.ActionPlan) -> str:
     anchors = sum(1 for _ in pc.anchors_of(plan))
     opened = pc.open_decisions(plan)
+    rev = claims_rev(plan)
+    where = "" if rev is None else f" | anchors and sweeps at base {rev[:7]}"
     return (f"check [ok] | plan {plan.plan_id} | {len(plan.items)} items, {anchors} anchors, "
-            f"{len(plan.sweeps)} sweeps | open decisions: {len(opened)}")
+            f"{len(plan.sweeps)} sweeps | open decisions: {len(opened)}{where}")
 
 
 def cmd_check(repo: Path, args: argparse.Namespace) -> int:
@@ -291,11 +303,26 @@ def started_items(plan: pm.ActionPlan) -> List[str]:
             "record sets the rest" for i in plan.items if i.status != ItemStatus.PENDING]
 
 
+def base_claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
+    """Anchors and sweeps that hold in the tree but not at the base, while no item is done.
+
+    Once an item is done, ``check`` reads them at the base (``claims_rev``), so a freeze before that point
+    makes sure they hold there too: a branch with commits from before ``new`` can move the anchored code.
+    """
+    base = plan.base_commit
+    if not base or claims_rev(plan) is not None:
+        return []
+    found = (pc.anchor_problems(plan, repo, base)
+             + pc.sweep_problems(plan, repo, active().artifacts.plans, base))
+    return [f"at base {base[:7]}: {p}" for p in found]
+
+
 def freeze_problems(repo: Path, plan: pm.ActionPlan, refreeze: bool) -> List[str]:
     frozen = plan.frozen
     if frozen is not None and not refreeze:
         return [f"plan {plan.plan_id} is already frozen ({frozen.date}); pass --refreeze"]
     problems = [p for p in all_problems(repo, plan) if not (refreeze and p.startswith("plan changed after"))]
+    problems += base_claim_problems(repo, plan)
     problems += [f"decision {d} is open: {q}" for d, q in (o.split(": ", 1) for o in pc.open_decisions(plan))]
     problems += started_items(plan) + unproven_items(plan)
     return problems + ([] if plan.items else ["the plan has no items"])

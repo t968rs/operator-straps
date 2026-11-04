@@ -31,7 +31,7 @@ calls with an empty line, so the git state shows once.
 | `session.start` | Reads the session figures and starts a 60 s refresh of them. |
 | `turn.complete`, `prompt.submit` | Read the session figures; a write only when they moved. |
 | `ui.status` | Clears the line when git-status sets it; every other plugin's line passes. |
-| `ui.render` `AbovePrompt` | Draws the banner above whatever the hooks beneath drew (pr-review-watch's band stays on screen); yields to a survey. |
+| `ui.render` `AbovePrompt` | Draws the banner above whatever the hooks beneath drew (agent-watcher's band stays on screen); yields to a survey. |
 
 ## State
 

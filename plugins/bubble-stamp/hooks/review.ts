@@ -1,6 +1,7 @@
 /**
  * Review-JSON reading for the stamp mod: the latest `post_review_resolutions[]` entry per id with its status,
- * date and evidence, the `closedOf` rule of `pr-review-watch/hooks/bubbles.ts`, and review file selection.
+ * date and evidence, the `closedOf` rule of `agent-watcher/hooks/layers/pr-review/bubbles.ts`, and review
+ * file selection.
  * Pure: no `$`.
  */
 

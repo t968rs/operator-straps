@@ -74,6 +74,7 @@ PROBLEMS = (CaptureError, ValueError, OSError)
 RUNNER_AGENT = "harness:strap-scenario-runner"
 JUDGE_AGENT = "harness:strap-judge"
 AGENT_MODEL = "sonnet"
+DISPATCH_SKILL = "strap-skills"
 SESSION_ROLE = "session"
 SCRIPT = Path(__file__).resolve()
 SCRIPT_DIR = SCRIPT.parent
@@ -546,9 +547,26 @@ def _place(spec: SkillSpec, run: Run, scenario: Scenario) -> Tuple[SkillSpec, Ru
         raise
 
 
+def runner_lines(name: str, run_id: str, tree: str, init: str) -> List[str]:
+    """Header lines of a runner row: the dispatching skill, then the skill under test as TARGET."""
+    return [f"agent={RUNNER_AGENT} model={AGENT_MODEL}", f"SKILL: {DISPATCH_SKILL}", f"TARGET: {name}",
+            f"RUN: {run_id}", f"TREE: {tree}", f"INIT: {init}"]
+
+
+def judge_lines(name: str, runs: List[str], spec_path: str) -> List[str]:
+    """Header lines of a judge row, in the same order as the runner row."""
+    return [f"agent={JUDGE_AGENT} model={AGENT_MODEL}", f"SKILL: {DISPATCH_SKILL}", f"TARGET: {name}",
+            f"RUNS: {','.join(runs)}", f"SPEC: {spec_path}"]
+
+
+def recorded_block(name: str, run_id: str) -> str:
+    """The column-1 return block printed by record-run."""
+    return "\n".join(["---", "SIGNAL: recorded", f"RUN: {run_id}", f"TARGET: {name}", "---"])
+
+
 def runner_row(spec: SkillSpec, run: Run) -> str:
-    return "\n".join([f"agent={RUNNER_AGENT} model={AGENT_MODEL}", f"SKILL: {spec.name}", f"RUN: {run.id}",
-                      f"TREE: {run.tree}", f"INIT: {launcher()} init {spec.name} --run {run.id}"])
+    init = f"{launcher()} init {spec.name} --run {run.id}"
+    return "\n".join(runner_lines(spec.name, run.id, run.tree, init))
 
 
 def _next_run_id(spec: SkillSpec) -> str:
@@ -699,7 +717,7 @@ def cmd_record_run(args: argparse.Namespace) -> int:
                                 lambda target: (tree / target).exists(), head_moved, recorded.reply)
     save(_put_run(spec, recorded.model_copy(update={"diff": changed, "checks": checks})))
     pr.drop_tree(_root(), tree)
-    print("\n".join(["```text", "SIGNAL: recorded", f"RUN: {run.id}", f"SKILL: {spec.name}", "```"]))
+    print(recorded_block(spec.name, run.id))
     return 0
 
 
@@ -717,8 +735,7 @@ def cmd_judge_row(args: argparse.Namespace) -> int:
     pending = [run.id for run in spec.runs if run.recorded and _ungraded(spec, run)]
     if not pending:
         raise Refused([f"{spec.name}: no recorded run has an ungraded judged item"])
-    print("\n".join([f"agent={JUDGE_AGENT} model={AGENT_MODEL}", f"SKILL: {spec.name}",
-                     f"RUNS: {','.join(pending)}", f"SPEC: {sa.spec_path(spec.name).as_posix()}"]))
+    print("\n".join(judge_lines(spec.name, pending, sa.spec_path(spec.name).as_posix())))
     return 0
 
 

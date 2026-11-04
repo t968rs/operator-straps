@@ -1,0 +1,159 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/agent_usage.schema.json",
+  "title": "Agent Usage: every Agent dispatch",
+  "description": "One row per returned Agent dispatch, of any agent type: the marketplace's defined agents, built-ins (Explore, general-purpose, Plan) and other plugins' agents (completed or errored; a denied dispatch writes none), written by the agent-watcher mod when the agent returns. A pr-review or pr-team dispatch (reviewer, fixer, orchestrator, planner, closer) belongs to its run; any other dispatch is a generic row whose skill, role, run id, agent id and PR come from its prompt's leading header block (`SKILL:`, `AGENT_ROLE:`, `RUN_ID:`, `AGENT_ID:`, `PR:`), falling back to `standalone`, `other`, a generated run id, the type's name and null; the other header keys land in `fields`. Records who ran (role, subagent_type, model), its cost (tokens, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "logged_at",
+    "run_id",
+    "pr",
+    "skill",
+    "role",
+    "agent_id",
+    "subagent_type",
+    "model",
+    "model_family",
+    "effort",
+    "tokens",
+    "tool_uses",
+    "duration_s",
+    "signal",
+    "notes"
+  ],
+  "properties": {
+    "logged_at": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$",
+      "description": "ISO-8601 UTC time the row was built."
+    },
+    "run_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/\\\\]*$",
+      "description": "The dispatch's RUN_ID (`pr<N>_<UTC yyyymmddTHHMMSSZ>` for pr-review and pr-team); groups the rows of one run. A generic dispatch logs its header RUN_ID, or, when it names none or the value holds a path separator, its own `standalone_<UTC yyyymmddTHHMMSSZ>_<seq>`. Never holds a path separator."
+    },
+    "pr": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "PR number under review, not zero-padded; null when the run names none. A generic row takes its header `PR:` value when it is a positive integer."
+    },
+    "skill": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "The skill that dispatched the run: `pr-review` or `pr-team` for their runs; for any other dispatch the header `SKILL:` value with a leading `<plugin>:` stripped, else `standalone` (no `SKILL:` line, or a value off the pattern)."
+    },
+    "role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_-]*$",
+      "description": "The tracked role: `reviewer`, `fixer`, `orchestrator`, `planner` or `closer` in a pr-review or pr-team run (a roast is a reviewer; `subagent_type` or `agent_id` tells it apart). A generic row takes its header `AGENT_ROLE:` value, else `other` (no line, a value off the pattern, or `fixer` / `closer`, whose counts only a layer computes)."
+    },
+    "agent_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^/\\\\]*$",
+      "description": "Slot id from the dispatch plan, or `orchestrator_plan` / `orchestrator_consolidate` / `fixer_plan` / `closer`. A generic row: its header `AGENT_ID:` value, else the agent type's name without its plugin prefix (`messenger`; `general-purpose` when the call names no type). Never holds a path separator."
+    },
+    "subagent_type": {
+      "type": ["string", "null"],
+      "description": "The Agent call's `subagent_type`; null when the call named none."
+    },
+    "model": {
+      "type": ["string", "null"],
+      "description": "Full model id: the engine-resolved model, else the requested one; null when neither is known."
+    },
+    "model_family": {
+      "type": "string",
+      "enum": ["haiku", "sonnet", "opus", "unknown"],
+      "description": "The family token found in `model`; `unknown` when it holds none (or `model` is null)."
+    },
+    "effort": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Requested effort, else `default`."
+    },
+    "tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Input + output + cache read + cache creation tokens, as the engine reports them; 0 when unmeasured."
+    },
+    "tool_uses": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Tool calls the agent made."
+    },
+    "duration_s": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Wall-clock duration in seconds (milliseconds / 1000)."
+    },
+    "signal": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[^/\\\\]*$",
+      "description": "The return block's SIGNAL, cut to 200 characters; `NO_BLOCK` when the agent returned without a return block; `ERROR` for an errored Agent result; `UNRECOGNIZED` when the SIGNAL value holds a path separator, so no path enters the log."
+    },
+    "notes": {
+      "type": "string",
+      "pattern": "^[^/\\\\]*$",
+      "description": "`agent-watcher auto row; <role> <signal>`, plus `; usage not measured` when the engine reported no usage, or `; usage not measured; agent errored` for an errored result. Never holds a path separator."
+    },
+    "fields": {
+      "type": "object",
+      "description": "Generic rows only, absent when empty: the leading header block's keys the watcher did not consume, plus any consumed value that fell back, each value as written (trimmed). A value holding a path separator is dropped with its key, so no local or absolute path enters the log; any other value is cut to 200 characters.",
+      "propertyNames": {
+        "pattern": "^[A-Z][A-Z_]*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 200,
+        "pattern": "^[^/\\\\]*$"
+      }
+    },
+    "issues_assigned": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Fixer and closer rows only. Number of issues the fixer was assigned (pr-review: the length of its `issue_ids` in the run's waves.json; pr-team: always null, the block carries no assignment); null when unknown."
+    },
+    "issues_fixed": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Fixer and closer rows only. Issues fixed (pr-review: the report's `fixed`; pr-team: the block's FIXED ids); null when unknown."
+    },
+    "issues_bubbled": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Fixer and closer rows only. Issues bubbled (pr-review: the report's `bubbled`; pr-team: the block's BUBBLED ids); null when unknown."
+    },
+    "files_touched": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Fixer and closer rows only. Distinct files edited (pr-review: `files` across the report's `fixed` entries; pr-team: the block's EDITED count); null when unknown."
+    }
+  },
+  "if": {
+    "properties": {
+      "role": {
+        "enum": ["fixer", "closer"]
+      }
+    },
+    "required": ["role"]
+  },
+  "then": {
+    "description": "Fixer and closer rows carry the four outcome counts (null when unknown).",
+    "required": ["issues_assigned", "issues_fixed", "issues_bubbled", "files_touched"]
+  },
+  "else": {
+    "description": "Every other role carries none of the outcome counts.",
+    "not": {
+      "anyOf": [
+        {"required": ["issues_assigned"]},
+        {"required": ["issues_fixed"]},
+        {"required": ["issues_bubbled"]},
+        {"required": ["files_touched"]}
+      ]
+    }
+  }
+}

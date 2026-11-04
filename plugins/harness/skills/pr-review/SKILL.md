@@ -313,7 +313,7 @@ issue ids; ids are assigned at merge.
 
 **Return block.** The reviewer's reply is the block `record` printed (the reviewer form of the pr-team skill's
 `return_contract.md`, with the strict `COUNTS: findings=<N> critical=<C> important=<I>
-minor=<M>` line). The `pr-review-watch` mod attributes engine-measured usage by the header and takes the counts from
+minor=<M>` line). The `agent-watcher` mod attributes engine-measured usage by the header and takes the counts from
 the block, so the Phase 3 Step 4 matrix rows carry real `tokens` / `tool_uses` / `duration_s`; both are inert when the
 mod is not loaded. A reply without the block is recovered with `block --pr <N> --agent <ID>`; a slot with no report
 at all is re-dispatched with its original row.
@@ -399,7 +399,7 @@ The review JSON is the source of truth, written only by `build`; the chat summar
      `NOT READY TO MERGE - Phase 4 first run failed: <reason>` (a READY verdict is never kept), `build` exits 1 — STOP. Do not emit
      Step 5, do not enter Phase 5. `phase4_first_run.json` in the run directory holds stdout, stderr and rc.
 4. **Matrix rows (the manual JSONL append).** When the reviewer `Agent` results carried the
-   `[pr-review-watch] Matrix rows for this run are recorded by the pr-review-watch mod` note, skip this step: the mod
+   `[agent-watcher] Matrix rows for this run are recorded by the agent-watcher mod` note, skip this step: the mod
    appends one validated row per reviewer once the review JSON has its verdict, with engine-measured usage. Without
    that note, append one row per reviewer (`dispatch_shape: "parallel"`, `phase4_script: null`) to
    the project's `matrix_path` (`.claude/harness.json`):
@@ -456,7 +456,7 @@ fixed at its source (a report, the draft, the branch), never by hand-editing the
 - **(g)** **The Phase 4 first run completed** and `verification_log.pre_fix_time` holds the full branch safety struct,
   not the pending literal.
 - **(h)** **Reviewer statistics rows were appended (or the attempt was made and failed)** per Step 4: the
-  `pr-review-watch` ownership note on the reviewer results (the mod makes the attempt and records its failures),
+  `agent-watcher` ownership note on the reviewer results (the mod makes the attempt and records its failures),
   else the manual append. Skipping the attempt is a Phase 3 failure.
 
 If ANY of (a)-(h) is not satisfied, Phase 3 is NOT done. Do not emit the user summary (Step 5). Do not claim
@@ -564,7 +564,7 @@ from ending; other sessions stop with a notice to leave the file alone. A sentin
 session, and a Stop input without a session id is blocked by every hot sentinel (fail closed). Known limitation: a
 session-id change after arming (`/clear`, or a resume that forks a new id) makes the continuing conversation a
 different owner, so the block no longer holds for it (fails open); re-run `phase4_branch_safety.py --second-run
-<PR_NUMBER>` from the continuing session to re-arm the sentinel under its id. With the `pr-review-watch` mod
+<PR_NUMBER>` from the continuing session to re-arm the sentinel under its id. With the `agent-watcher` mod
 installed, a per-prompt `PHASE5_PENDING=<ids>` context line lists every hot sentinel, whichever session armed it; a listed PR is not proof this
 session owns it. The sentinel is deleted **mechanically** by the PostToolUse hook (Layer 3 of
 the plugin's `validate_pr_json_schema.py`) when the matching PR_REVIEW JSON shows EITHER of two closeout shapes:

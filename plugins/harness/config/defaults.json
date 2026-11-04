@@ -10,7 +10,7 @@
   "schemas_dir": ".claude/agent-schemas",
   "state_dir": ".claude/state/harness",
   "matrix_path": "docs/_harness/pr_review_invocation_test_matrix.jsonl",
-  "agent_usage_path": "docs/_harness/pr_review_agent_usage.jsonl",
+  "agent_usage_path": "docs/_harness/agent_usage.jsonl",
   "exclusions": ".claude/review_exclusions.json",
   "artifacts": {
     "reviews": "docs/PR_REVIEWS",

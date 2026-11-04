@@ -91,7 +91,7 @@ project's settings are not read for this variable.
 ```json
 {
   "env": {
-    "CLAUDE_CODE_PLUGIN_DIRS": "C:\\path\\to\\operator-straps\\plugins\\session-bookmark;C:\\path\\to\\operator-straps\\plugins\\pr-review-watch;C:\\path\\to\\operator-straps\\plugins\\git-status"
+    "CLAUDE_CODE_PLUGIN_DIRS": "C:\\path\\to\\operator-straps\\plugins\\session-bookmark;C:\\path\\to\\operator-straps\\plugins\\agent-watcher;C:\\path\\to\\operator-straps\\plugins\\git-status"
   }
 }
 ```

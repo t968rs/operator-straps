@@ -1,8 +1,10 @@
 """Checks a plan's claims against the tree: anchors, lint over commands and decisions, sweeps.
 
 Each function returns one problem line per defect, so a driver prints them all at once. Anchors and sweeps
-read the working tree of ``root``; lint reads the plan plus the tree, to tell a test file from a folder and
-to require each test node's file to exist in the tree or among the planned tests.
+read the working tree of ``root``, or the commit ``rev`` when one is given: a plan whose items already
+changed the code its anchors quote is checked at its base commit, where those claims were made. Lint reads
+the plan plus the tree, to tell a test file from a folder and to require each test node's file to exist in
+the tree or among the planned tests.
 """
 from __future__ import annotations
 
@@ -40,18 +42,23 @@ def anchors_of(plan: ActionPlan) -> Iterator[Tuple[str, Anchor]]:
         yield f"format {fmt.name}", fmt.source
 
 
-def _lines(root: Path, rel: str) -> Optional[List[str]]:
+def _lines(root: Path, rel: str, rev: Optional[str] = None) -> Optional[List[str]]:
+    """The lines of ``rel`` in the working tree, or at commit ``rev``; None when the file is absent."""
+    if rev is not None:
+        done = subprocess.run(["git", "show", f"{rev}:{rel}"], cwd=root, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace")
+        return done.stdout.splitlines() if done.returncode == 0 else None
     path = root / rel
     return path.read_text(encoding="utf-8", errors="replace").splitlines() if path.is_file() else None
 
 
-def anchor_problem(root: Path, owner: str, anchor: Anchor) -> Optional[str]:
-    """None when the anchor's text sits in its line range, else the problem."""
+def anchor_problem(root: Path, owner: str, anchor: Anchor, rev: Optional[str] = None) -> Optional[str]:
+    """None when the anchor's text sits in its line range (in the tree, or at ``rev``), else the problem."""
     at, expect = anchor.at, anchor.expect
     match = _AT.match(at)
     if not match:
         return f"anchor {owner} {at}: not a path:line or path:start-end"
-    lines = _lines(root, match["path"])
+    lines = _lines(root, match["path"], rev)
     if lines is None:
         return f"anchor {owner} {at}: no such file"
     start, end = int(match["start"]), int(match["end"] or match["start"])
@@ -64,8 +71,8 @@ def anchor_problem(root: Path, owner: str, anchor: Anchor) -> Optional[str]:
     return f"anchor {owner} {at}: {expect!r} not found; {where} {found[:120]!r}"
 
 
-def anchor_problems(plan: ActionPlan, root: Path) -> List[str]:
-    return [p for owner, a in anchors_of(plan) if (p := anchor_problem(root, owner, a))]
+def anchor_problems(plan: ActionPlan, root: Path, rev: Optional[str] = None) -> List[str]:
+    return [p for owner, a in anchors_of(plan) if (p := anchor_problem(root, owner, a, rev))]
 
 
 # --- commands ---------------------------------------------------------------------------------------------
@@ -232,22 +239,29 @@ def lint_problems(plan: ActionPlan, root: Path, plans_dir: Path) -> List[str]:
 
 # --- sweeps -----------------------------------------------------------------------------------------------
 
-def sweep_hits(root: Path, pattern: str, skip_prefix: str) -> Tuple[Set[str], Optional[str]]:
-    """Files (tracked or untracked, not ignored) matching ``pattern``, minus ``skip_prefix``; or an error."""
-    done = subprocess.run(["git", "grep", "-z", "-l", "-I", "-E", "--untracked", "-e", pattern], cwd=root,
+def sweep_hits(root: Path, pattern: str, skip_prefix: str,
+               rev: Optional[str] = None) -> Tuple[Set[str], Optional[str]]:
+    """Files matching ``pattern``, minus ``skip_prefix``; or an error.
+
+    Without ``rev`` the working tree is searched (tracked or untracked, not ignored); with it, the commit.
+    """
+    where = ["--untracked"] if rev is None else []
+    done = subprocess.run(["git", "grep", "-z", "-l", "-I", "-E", *where, "-e", pattern,
+                           *([] if rev is None else [rev])], cwd=root,
                           capture_output=True, text=True, encoding="utf-8", errors="replace")
     if done.returncode not in (0, 1):
         return set(), done.stderr.strip() or f"exit {done.returncode}"
-    prefix = skip_prefix.rstrip("/") + "/"
-    return {p for p in done.stdout.split("\0") if p and not p.startswith(prefix)}, None
+    prefix, at = skip_prefix.rstrip("/") + "/", "" if rev is None else f"{rev}:"
+    paths = (p[len(at):] if p.startswith(at) else p for p in done.stdout.split("\0") if p)
+    return {p for p in paths if not p.startswith(prefix)}, None
 
 
-def sweep_problems(plan: ActionPlan, root: Path, plans_prefix: str) -> List[str]:
-    """Hits the sweep does not classify, and classified files without a hit."""
+def sweep_problems(plan: ActionPlan, root: Path, plans_prefix: str, rev: Optional[str] = None) -> List[str]:
+    """Hits the sweep does not classify, and classified files without a hit (in the tree, or at ``rev``)."""
     out: List[str] = []
     for sweep in plan.sweeps:
         sid, classified = sweep.id, set(sweep.hits)
-        hits, error = sweep_hits(root, sweep.pattern, plans_prefix)
+        hits, error = sweep_hits(root, sweep.pattern, plans_prefix, rev)
         if error:
             out.append(f"sweep {sid}: git grep failed: {error}")
             continue

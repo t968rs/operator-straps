@@ -19,7 +19,7 @@ TODO_FILES = ["docs/TODO/RepoToDo.json", "docs/TODO/Snapshots/TODO_Snapshot_2026
 REVIEW_FILES = [
     "docs/PR_REVIEWS/0089_1071_sync_gh_issues.json",
     "docs/PR_SUMMARIES/0089_Feat_todo_sync.md",
-    "docs/_harness/pr_review_agent_usage.jsonl",
+    "docs/_harness/agent_usage.jsonl",
     "docs/_harness/pr_review_invocation_test_matrix.jsonl",
 ]
 
@@ -72,7 +72,7 @@ def test_the_review_artifact_set_has_a_message() -> None:
     "src/0001_migration.json",
     "docs/other/0089_notes.json",
     "docs/PR_REVIEWS_old/0089_x.json",
-    "notes/pr_review_agent_usage.json",
+    "notes/agent_usage.json",
 ])
 def test_a_lookalike_outside_the_artifact_paths_has_no_message(path: str) -> None:
     assert get_canned_message([path]) is None

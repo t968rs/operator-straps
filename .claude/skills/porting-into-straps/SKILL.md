@@ -31,7 +31,7 @@ Then list what the source depends on: imports, by-path loads, skills it invokes,
 | Hook | `plugins/harness/hooks/<name>.py`; helper modules `_<name>.py` | shell form through `hpy` in `hooks/hooks.json`; JSON on stdout, exit 0. The block field depends on the event: `PreToolUse` sets `hookSpecificOutput.permissionDecision`, `Stop` sets top-level `decision: "block"` plus `reason`. Keep the source hook's event and field |
 | Library | `plugins/harness/lib/harness_lib/` | imported; reads `active()` inside functions |
 | Test | `tests/<area>/test_<name>.py`, **one level deep** (CI collects `tests/*/test_*.py`) | `make_project` fixture |
-| TS mod | `plugins/<mod>/`: manifest, `tsconfig.json`, `types/`, `.gitignore` from `git-status`; `config.ts` / `root.ts` patterns from `pr-review-watch` | `claude plugin test` |
+| TS mod | `plugins/<mod>/`: manifest, `tsconfig.json`, `types/`, `.gitignore` from `git-status`; `hooks/core/config.ts` / `hooks/core/root.ts` patterns from `agent-watcher` | `claude plugin test` |
 
 Split a coupled file. Checks of live repo data, settings-shape asserts and domain rules stay in the source repo. Values become config keys. Fixture data is vendored into `tests/fixtures/`.
 

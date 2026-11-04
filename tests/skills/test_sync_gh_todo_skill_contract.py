@@ -65,7 +65,8 @@ def test_skill_dispatches_the_todo_editor_on_opus() -> None:
     body = _text(_SKILL)
     assert "harness:todo-editor" in body and "opus" in body
     prompt = _fenced_after(body, "with this prompt")
-    assert [line.split(":", 1)[0] for line in prompt] == ["Operation", "Issues", "Project root", "Guidance"]
+    keys = [line.split(":", 1)[0] for line in prompt]
+    assert keys == ["SKILL", "Operation", "Issues", "Project root", "Guidance"]
 
 
 def test_skill_stops_when_nothing_is_untracked() -> None:

@@ -1,7 +1,7 @@
 # operator-straps
 
 Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) plus eight TypeScript mods
-(`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`,
+(`agent-watcher`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`,
 `parallel2-lanes`). Layout and install: `README.md`.
 
 ## Rules for changes
@@ -15,7 +15,9 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 - **A new config key** touches four places together: `plugins/harness/config/defaults.json`,
   `config/harness.schema.json`, the dataclass and builder in `lib/harness_lib/config.py`, and the README key
   table. When a mod reads the key, also mirror its default in that mod's `hooks/config.ts`
-  (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `pr-review-watch`, `todo-watch` and `bubble-stamp` have one).
+  (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `agent-watcher`, `todo-watch` and `bubble-stamp` have one).
+  `agent-watcher` splits it: core keys in `hooks/core/config.ts`, pr-review keys in
+  `hooks/layers/pr-review/config.ts`.
   `session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead, checked by
   `tests/mods/test_session_bookmark_notes_contract.py`.
   The four places are not a cost to weigh against the key. A setting a driver can read and act on belongs in a
@@ -26,7 +28,7 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   `activate(load_config(project_root(...)))` once; library modules read `active()` inside functions, never at
   import time. Hooks resolve the project from the payload `cwd`.
 - **Phase 5 sentinels are per repository**: `sentinel_dir_under` anchors them at the main checkout. The Stop hook,
-  `phase4_branch_safety.py`, the schema hook and `pr-review-watch` all use that rule; change it in all four or
+  `phase4_branch_safety.py`, the schema hook and `agent-watcher` all use that rule; change it in all four or
   none.
 - **Skills and agents** invoke code as `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/..."`,
   skill-local files as `${CLAUDE_SKILL_DIR}/...`, and dispatch agents as `harness:<name>`.

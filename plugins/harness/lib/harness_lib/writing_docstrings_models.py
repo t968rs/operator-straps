@@ -109,9 +109,10 @@ class DispatchRow(BaseModel):
     probe: bool = False
 
     def text(self) -> str:
-        """The header line ``agent=<AGENT> model=<model>``, then the prompt lines, ``Probe: yes`` last on a
-        probe row."""
-        lines = [f"agent={AGENT} model={self.model}", f"Project root: {self.project_root}",
+        """The header line ``agent=<AGENT> model=<model>``, ``SKILL: writing-docstrings``, then the prompt
+        lines, ``Probe: yes`` last on a probe row."""
+        lines = [f"agent={AGENT} model={self.model}", "SKILL: writing-docstrings",
+                 f"Project root: {self.project_root}",
                  f"New docstrings: {'yes' if self.new_docstrings else 'no'}",
                  *(scope.line() for scope in self.scopes)]
         return "\n".join(lines + (["Probe: yes"] if self.probe else []))
