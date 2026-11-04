@@ -8,10 +8,10 @@ import { bandText } from './runs'
  * the hooks beneath drew, so another mod's band (band-line's oStraps banner) stays on screen with it.
  */
 
-const runsAtom = atom({ plugin: 'pr-review-watch', key: 'runs' } as const, {})
-const activeAtom = atom({ plugin: 'pr-review-watch', key: 'active' } as const, null)
-const phase5Atom = atom({ plugin: 'pr-review-watch', key: 'phase5' } as const, [])
-const missingAtom = atom({ plugin: 'pr-review-watch', key: 'missing' } as const, [])
+const runsAtom = atom({ plugin: 'agent-watcher', key: 'runs' } as const, {})
+const activeAtom = atom({ plugin: 'agent-watcher', key: 'active' } as const, null)
+const phase5Atom = atom({ plugin: 'agent-watcher', key: 'phase5' } as const, [])
+const missingAtom = atom({ plugin: 'agent-watcher', key: 'missing' } as const, [])
 
 export const registerBand = (on: On): void => {
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {

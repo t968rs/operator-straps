@@ -1,4 +1,7 @@
-# pr-review-watch
+# agent-watcher
+
+Renamed from `pr-review-watch` (0.6.0): enable `agent-watcher@operator-straps` and drop the old key. The usage
+log default is now `docs/_harness/agent_usage.jsonl` (`git mv` the old log, or set `agent_usage_path`).
 
 Run tracking for the harness plugin's `pr-review` and `pr-team` skills, written as a CLI plugin of function
 hooks. It turns review rules that depended on the model remembering prose, or on a keyword heuristic, into
@@ -30,7 +33,7 @@ value keeps the default):
 | `artifacts.scratch` | `docs/_scratch/pr_review` | pr-review run folders |
 | `base_branch` | `null` | `dev_commit`'s merge base; null resolves `origin/HEAD`, else `main` |
 
-`tests/mods/test_pr_review_watch_config_mirror.py` fails when `defaults.json` changes one of these values
+`tests/mods/test_agent_watcher_config_mirror.py` fails when `defaults.json` changes one of these values
 without `config.ts` following.
 
 ## Rules it enforces
@@ -41,7 +44,7 @@ without `config.ts` following.
 | R2 | Matrix rows carry real `tokens` / `tool_uses` / `duration_s` | One row per reviewer, from engine-measured usage. |
 | R3 | Rows validate against `pr_review_invocation_test_matrix.schema.json` before append | Validated in-process; an invalid row is not appended, is kept in `failures` and raised as a toast. |
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
-| R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (pr-review-watch auto)`. |
+| R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (agent-watcher auto)`. |
 | R6 | Bubbled issues are dispositioned in the review JSON before stopping | Two triggers, each blocking once (`stop_hook_active` lets the stop through). **State** (pr-team runs): every tracked bubbled id must appear in the run's review JSON `bubbles[]`, `bubble_up[]` or `post_review_resolutions[]` (the `id_handling.disposition_ids` rule). **Keyword** (any active review): when the last assistant message contains "bubble" (any case or inflection), the active review JSON's `bubbles[]` must be populated unless every issue is already dispositioned. |
 | R7 | Every returned dispatch of a defined agent gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per dispatch of any other agent the marketplace defines (`skill: standalone`, `role: other`). Written when the agent returns and validated against `agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
 
@@ -135,7 +138,7 @@ but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never r
   earlier review of the same PR) is never taken for its verdict; a `RUN_ID` without a valid stamp is not
   recovered.
 - **pr-review.** Each tracked reviewer's `Agent` result (`AGENT_ROLE: reviewer`) carries
-  `[pr-review-watch] Matrix rows for this run are recorded by the pr-review-watch mod; ...`, and pr-review
+  `[agent-watcher] Matrix rows for this run are recorded by the agent-watcher mod; ...`, and pr-review
   Phase 3 Step 4 skips when that note was seen. The note is added only when the run was recorded in
   state with a PR; otherwise the skill's own append runs. Fixer results (`AGENT_ROLE: fixer`) never carry
   the note, even though their dispatch rows include the `PR:` header.
@@ -166,7 +169,7 @@ well before the matrix does; past it every row fails as unreadable. Move or arch
 
 ## State
 
-`$.state['pr-review-watch']` (contract: `types/index.d.ts`):
+`$.state['agent-watcher']` (contract: `types/index.d.ts`):
 
 | Key | Meaning |
 |-----|---------|
@@ -201,14 +204,14 @@ claude plugin test <mod folder>
 tsc -p <tsconfig>   # the tsconfig in the header of the engine's claude-code.d.ts, kept outside this folder
 ```
 
-`tests/mods/test_pr_review_watch_matrix_contract.py` pins `MATRIX_REQUIRED`, `MATRIX_OPTIONAL`,
+`tests/mods/test_agent_watcher_matrix_contract.py` pins `MATRIX_REQUIRED`, `MATRIX_OPTIONAL`,
 `DISPATCH_SHAPES`, `DEV_COMMIT_PATTERN` and `MODEL_FAMILIES` to the harness plugin's
-`schemas/pr_review_invocation_test_matrix.schema.json`; `tests/mods/test_pr_review_watch_usage_contract.py`
+`schemas/pr_review_invocation_test_matrix.schema.json`; `tests/mods/test_agent_watcher_usage_contract.py`
 pins `USAGE_REQUIRED`, `USAGE_COUNT_FIELDS`, `USAGE_ROLES`, `USAGE_COUNTED_ROLES`, `USAGE_SKILLS`,
 `USAGE_MODEL_FAMILIES` and `LOGGED_AT_PATTERN` to `schemas/agent_usage.schema.json`, and
 `DEFINED_AGENTS` to the agent files under `plugins/*/agents/` (a new agent file fails the test until the list
 follows);
-`tests/mods/test_pr_review_watch_config_mirror.py` pins the mirrored defaults. The plugin test sandbox
+`tests/mods/test_agent_watcher_config_mirror.py` pins the mirrored defaults. The plugin test sandbox
 cannot read repository files.
 
 ## Loading
@@ -217,7 +220,7 @@ Install from the `operator-straps` marketplace:
 
 ```
 claude plugin marketplace add t968rs/operator-straps
-claude plugin install pr-review-watch@operator-straps
+claude plugin install agent-watcher@operator-straps
 ```
 
 For development, a `CLAUDE_CODE_PLUGIN_DIRS` entry in the user-level `~/.claude/settings.json` `env`
@@ -229,7 +232,7 @@ from the process environment or the user settings `env` block, never from a proj
 ```json
 {
   "env": {
-    "CLAUDE_CODE_PLUGIN_DIRS": "C:\\path\\to\\operator-straps\\plugins\\pr-review-watch;C:\\path\\to\\operator-straps\\plugins\\git-status;C:\\path\\to\\operator-straps\\plugins\\session-bookmark"
+    "CLAUDE_CODE_PLUGIN_DIRS": "C:\\path\\to\\operator-straps\\plugins\\agent-watcher;C:\\path\\to\\operator-straps\\plugins\\git-status;C:\\path\\to\\operator-straps\\plugins\\session-bookmark"
   }
 }
 ```

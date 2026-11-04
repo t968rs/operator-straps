@@ -4,7 +4,7 @@ import { MODEL_FAMILIES, modelFamily } from './contract'
 /**
  * Rows for the project's invocation matrix (harness `matrix_path`), validated against the rules of the
  * harness plugin's `schemas/pr_review_invocation_test_matrix.schema.json`. The constants below are pinned
- * to that schema by `tests/mods/test_pr_review_watch_matrix_contract.py`. Pure: no `$`.
+ * to that schema by `tests/mods/test_agent_watcher_matrix_contract.py`. Pure: no `$`.
  */
 
 export const MATRIX_REQUIRED = [
@@ -47,7 +47,7 @@ const ALLOWED = new Set<string>([...MATRIX_REQUIRED, ...MATRIX_OPTIONAL])
 const DEV_COMMIT = new RegExp(DEV_COMMIT_PATTERN)
 
 const notesFor = (a: AgentRec): string => {
-  const base = `pr-review-watch auto row; ${a.role} ${a.signal ?? 'pending'}`
+  const base = `agent-watcher auto row; ${a.role} ${a.signal ?? 'pending'}`
   return a.isMeasured ? base : `${base}; usage not measured (session restarted mid-run)`
 }
 

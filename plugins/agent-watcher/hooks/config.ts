@@ -1,7 +1,7 @@
 /**
  * The harness keys the watch reads from `<project>/.claude/harness.json`, merged over copies of the harness
  * plugin's `config/defaults.json` values: an installed mod sits in its own plugin cache folder and cannot
- * read that file. `tests/mods/test_pr_review_watch_config_mirror.py` pins the copies. Pure: no `$`.
+ * read that file. `tests/mods/test_agent_watcher_config_mirror.py` pins the copies. Pure: no `$`.
  */
 
 export const DEFAULT_STATE_DIR = '.claude/state/harness'

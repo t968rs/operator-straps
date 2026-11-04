@@ -26,7 +26,7 @@ import {
 import { resolveWatch, type Watch } from './watch'
 
 /**
- * Engine glue for pr-review-watch: tracks pr-team / pr-review `Agent` dispatches and the standalone dispatches
+ * Engine glue for agent-watcher: tracks pr-team / pr-review `Agent` dispatches and the standalone dispatches
  * of every other defined agent, folds subagent usage, appends invocation-matrix rows (reviewers) and agent
  * usage rows (every tracked agent), and guards Stop on undispositioned bubbled
  * ids. Active only in a project holding `.claude/harness.json` (./watch); its paths and base branch
@@ -57,12 +57,12 @@ type Usage = {
 }
 type TurnEnd = { answer: string; durationMs: number; usage?: Usage }
 
-const runsAtom = atom({ plugin: 'pr-review-watch', key: 'runs' } as const, {})
-const activeAtom = atom({ plugin: 'pr-review-watch', key: 'active' } as const, null)
-const loopsAtom = atom({ plugin: 'pr-review-watch', key: 'loops' } as const, {})
-const failuresAtom = atom({ plugin: 'pr-review-watch', key: 'failures' } as const, [])
-const phase5Atom = atom({ plugin: 'pr-review-watch', key: 'phase5' } as const, [])
-const missingAtom = atom({ plugin: 'pr-review-watch', key: 'missing' } as const, [])
+const runsAtom = atom({ plugin: 'agent-watcher', key: 'runs' } as const, {})
+const activeAtom = atom({ plugin: 'agent-watcher', key: 'active' } as const, null)
+const loopsAtom = atom({ plugin: 'agent-watcher', key: 'loops' } as const, {})
+const failuresAtom = atom({ plugin: 'agent-watcher', key: 'failures' } as const, [])
+const phase5Atom = atom({ plugin: 'agent-watcher', key: 'phase5' } as const, [])
+const missingAtom = atom({ plugin: 'agent-watcher', key: 'missing' } as const, [])
 
 /** A shell command that drives pr-review's script; its result can move a run's phase or bubbles. */
 const PR_REVIEW_SCRIPT = /pr_review\.py/
@@ -70,7 +70,7 @@ const MARKER = '.matrix_owner'
 const GIT_TIMEOUT_MS = 10_000
 const MAX_FAILURES = 20
 export const OWNER_NOTE =
-  '[pr-review-watch] Matrix rows for this run are recorded by the pr-review-watch mod; ' +
+  '[agent-watcher] Matrix rows for this run are recorded by the agent-watcher mod; ' +
   'skip the manual JSONL append (pr-review Phase 3 Step 4).'
 
 const noop = (): undefined => undefined
@@ -104,11 +104,11 @@ const baseBranchFor = async ($: Dollar, w: Watch): Promise<string> => {
   return head !== undefined && slash > 0 ? head.slice(slash + 1) : 'main'
 }
 
-/** `<merge-base> -- <branch> (pr-review-watch auto)`; empty (which fails validation) when git fails. */
+/** `<merge-base> -- <branch> (agent-watcher auto)`; empty (which fails validation) when git fails. */
 const devCommitFor = async ($: Dollar, w: Watch): Promise<string> => {
   const sha = await gitLine($, w.root, ['merge-base', 'HEAD', await baseBranchFor($, w)])
   const branch = (await gitLine($, w.root, ['rev-parse', '--abbrev-ref', 'HEAD'])) ?? '?'
-  return sha === undefined ? '' : `${sha} -- ${branch} (pr-review-watch auto)`
+  return sha === undefined ? '' : `${sha} -- ${branch} (agent-watcher auto)`
 }
 
 // ---------------------------------------------------------------------------
@@ -260,7 +260,7 @@ const recordFailures = async ($: Dollar, failures: readonly LogFailure[], noun: 
   if (failures.length === 0) return
   await update($, failuresAtom, prev => [...prev, ...failures].slice(-MAX_FAILURES)).catch(noop)
   const first = failures[0]
-  const text = `pr-review-watch: ${failures.length} ${noun} row(s) not appended (${first?.cell}: ${first?.reason})`
+  const text = `agent-watcher: ${failures.length} ${noun} row(s) not appended (${first?.cell}: ${first?.reason})`
   await Promise.resolve($.ui.toast(text)).catch(noop)
 }
 

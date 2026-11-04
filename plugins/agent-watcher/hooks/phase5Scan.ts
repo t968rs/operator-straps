@@ -19,7 +19,7 @@ type Dollar = EngineInterface
  */
 export type HotSentinel = { pr: string; owner: string | null }
 
-const phase5Atom = atom({ plugin: 'pr-review-watch', key: 'phase5' } as const, [])
+const phase5Atom = atom({ plugin: 'agent-watcher', key: 'phase5' } as const, [])
 
 const noop = (): undefined => undefined
 const byName = (a: FsEntry, b: FsEntry): number => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0)

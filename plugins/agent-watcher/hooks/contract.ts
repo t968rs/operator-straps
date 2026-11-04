@@ -117,7 +117,7 @@ const slotDispatch = (h: Header, runId: string, runtimeBase: string): Dispatch |
 
 /**
  * Every agent the marketplace defines, as Claude Code names the type: `<plugin>:<file stem>` for each file in a
- * plugin's `agents` folder. `tests/mods/test_pr_review_watch_usage_contract.py` pins the list to those files.
+ * plugin's `agents` folder. `tests/mods/test_agent_watcher_usage_contract.py` pins the list to those files.
  */
 export const DEFINED_AGENTS = [
   'harness:bubble-memo-investigator', 'harness:bubble-memo-reviewer', 'harness:docstring-writer',

@@ -4,7 +4,7 @@ import { modelFamily, type ReturnBlock } from './contract'
 /**
  * Rows for the project's agent usage log (harness `agent_usage_path`), validated against the rules of the
  * harness plugin's `schemas/agent_usage.schema.json`. The constants below are pinned to that
- * schema by `tests/mods/test_pr_review_watch_usage_contract.py`. Pure: no `$`.
+ * schema by `tests/mods/test_agent_watcher_usage_contract.py`. Pure: no `$`.
  */
 
 export const USAGE_REQUIRED = [
@@ -65,7 +65,7 @@ const isCountedRole = (role: unknown): boolean => (USAGE_COUNTED_ROLES as readon
 const whole = (n: number): number => Math.max(0, Math.round(n))
 
 const notesFor = (role: string, signal: string, i: UsageInput): string => {
-  const base = `pr-review-watch auto row; ${role} ${signal}`
+  const base = `agent-watcher auto row; ${role} ${signal}`
   if (i.ending === 'errored') return `${base}; usage not measured; agent errored`
   return i.isMeasured ? base : `${base}; usage not measured`
 }

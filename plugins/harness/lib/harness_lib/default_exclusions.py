@@ -1,7 +1,7 @@
 """The default exclusions file (``.claude/review_exclusions.json``) seeded into a consuming project.
 
 The harness writes review JSONs, PR summaries, run scratch, commit message drafts, bubble memos, runtime
-state and the pr-review-watch rows under the project; the clean-tree check and the review capture treat
+state and the agent-watcher rows under the project; the clean-tree check and the review capture treat
 them as machine-generated. A project whose ``exclusions`` value is the default path (in any equivalent
 spelling) gets the file written on first use, with patterns derived from its configured artifact folders
 and rows files. Any other path, or null, is never touched.
@@ -33,7 +33,7 @@ def _entries(cfg: HarnessConfig) -> List[dict]:
         (f"{_normalized(cfg.artifacts.scratch)}/*", "pr-review run scratch"),
         (f"{_normalized(cfg.artifacts.commit_messages)}/*", "commit message drafts"),
         (f"{_normalized(cfg.state_dir)}/*", "harness runtime state"),
-        (_normalized(cfg.matrix_path), "pr-review-watch invocation matrix rows"),
+        (_normalized(cfg.matrix_path), "agent-watcher invocation matrix rows"),
         (_normalized(cfg.agent_usage_path), "agent usage rows"),
         ("*_Bubbles.md", "bubble memos (point-in-time snapshots)"),
         (DEFAULT_EXCLUSIONS, "this file, seeded by the harness"),

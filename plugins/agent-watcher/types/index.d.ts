@@ -75,7 +75,7 @@ export type LogFailure = { cell: string; reason: string; at: number }
 
 declare module 'claude-code' {
   interface PluginState {
-    'pr-review-watch': {
+    'agent-watcher': {
       runs: Record<string, Run>
       /** RUN_ID of the run dispatched most recently. */
       active: string | null
