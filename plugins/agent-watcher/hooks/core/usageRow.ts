@@ -12,7 +12,8 @@ export const USAGE_REQUIRED = [
   'tokens', 'tool_uses', 'duration_s', 'signal', 'notes',
 ] as const
 export const USAGE_COUNT_FIELDS = ['issues_assigned', 'issues_fixed', 'issues_bubbled', 'files_touched'] as const
-export const USAGE_OPTIONAL = ['fields'] as const
+/** `context_tokens` is optional in the schema only because rows before it lack it; every new row carries it. */
+export const USAGE_OPTIONAL = ['fields', 'context_tokens'] as const
 export const USAGE_COUNTED_ROLES = ['fixer', 'closer'] as const
 export const USAGE_MODEL_FAMILIES = ['haiku', 'sonnet', 'opus', 'unknown'] as const
 export const LOGGED_AT_PATTERN = '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]+)?Z$'
@@ -68,6 +69,7 @@ export type UsageRow = {
   model_family: string
   effort: string
   tokens: number
+  context_tokens: number | null
   tool_uses: number
   duration_s: number
   signal: string
@@ -163,7 +165,8 @@ export const buildUsageRow = (i: UsageInput): UsageRow => {
   const row: UsageRow = {
     logged_at: new Date(i.loggedAt).toISOString(), run_id: i.runId, pr: i.pr, skill: i.skill, role: a.role,
     agent_id: a.id, subagent_type: a.subagentType, model: a.model, model_family: modelFamily(a.model) ?? 'unknown',
-    effort: a.effort ?? 'default', tokens: whole(a.tokens), tool_uses: whole(a.toolUses),
+    effort: a.effort ?? 'default', tokens: whole(a.tokens),
+    context_tokens: a.contextTokens === undefined ? null : whole(a.contextTokens), tool_uses: whole(a.toolUses),
     duration_s: whole(a.durationMs) / 1000, signal, notes: notesFor(a.role, signal, i),
   }
   const fields = i.fields === undefined ? undefined : logFields(i.fields)
@@ -229,6 +232,8 @@ const valueProblems = (row: Row): string[] => [
 const numberProblems = (row: Row): string[] => {
   const out = (['tokens', 'tool_uses'] as const).filter(k => k in row && !isCount(row[k]))
     .map(k => `${k}: not a non-negative integer`)
+  const ctx = row.context_tokens
+  if ('context_tokens' in row && ctx !== null && !isCount(ctx)) out.push('context_tokens: not a non-negative integer or null')
   const pr = row.pr
   const isPr = Number.isInteger(pr) && (pr as number) >= 1
   if ('pr' in row && pr !== null && !isPr) out.push('pr: not a positive integer or null')

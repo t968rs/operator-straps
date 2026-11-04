@@ -56,6 +56,28 @@ const loopsAtom = atom({ plugin: 'agent-watcher', key: 'loops' } as const, {})
 const noop = (): undefined => undefined
 /** Tool calls per subagent loop id, counted for background launches. */
 const toolUses = new Map<string, number>()
+/** One subagent loop's model requests so far: their tokens summed, and the last request's alone. */
+type StepTally = { sum: number; last: number }
+/** Per subagent loop id, heard on `turn.step`; taken when the loop's agent completes. */
+const stepTallies = new Map<string, StepTally>()
+
+const usageTokens = (u: Usage | null | undefined): number =>
+  u == null ? 0 : u.input_tokens + u.output_tokens + u.cache_read_input_tokens + u.cache_creation_input_tokens
+
+/** Adds one request's usage to its loop's tally; a request with no usage adds nothing. */
+const tallyStep = (loopId: string, u: Usage | null | undefined): void => {
+  if (u == null) return
+  const n = usageTokens(u)
+  stepTallies.set(loopId, { sum: (stepTallies.get(loopId)?.sum ?? 0) + n, last: n })
+}
+
+/** The loop's tally, removed so a later agent under the same loop id starts from zero. */
+const takeTally = (loopId: string | undefined): StepTally | undefined => {
+  if (loopId === undefined) return undefined
+  const tally = stepTallies.get(loopId)
+  stepTallies.delete(loopId)
+  return tally
+}
 /** Numbers the unclaimed runs of this process, so same-second dispatches never share a run id. */
 let standaloneSeq = 0
 
@@ -210,7 +232,11 @@ async function registerLoop($: Dollar, loopId: string, key: Key, model: string |
   }))
 }
 
-/** Folds an Agent tool result: usage now when synchronous, a loop registration when backgrounded. */
+/**
+ * Folds an Agent tool result: usage now when synchronous, a loop registration when backgrounded. A synchronous
+ * agent's tokens are its loop's requests summed (`turn.step`); its context size is the result's `totalTokens`,
+ * the last request's count. With no request heard, its tokens are 0 and not measured.
+ */
 async function recordResult(
   $: Dollar,
   w: Watch,
@@ -222,31 +248,35 @@ async function recordResult(
   if (res?.status === 'async_launched' && res.agentId !== undefined) {
     return registerLoop($, res.agentId, key, res.resolvedModel ?? null)
   }
+  const tally = takeTally(res?.agentId)
   const isDone = res?.status === 'completed'
   await complete($, w, layers, key, {
-    tokens: isDone ? (res.totalTokens ?? 0) : 0,
+    tokens: isDone ? (tally?.sum ?? 0) : 0,
+    ...(isDone && res.totalTokens !== undefined ? { contextTokens: res.totalTokens } : {}),
     toolUses: isDone ? (res.totalToolUseCount ?? 0) : 0,
     durationMs: isDone ? (res.totalDurationMs ?? 0) : 0,
     model: res?.resolvedModel ?? null,
     block: isDone ? parseReturnBlock(r.text ?? textOf(res)) : undefined,
-    isMeasured: isDone,
+    isMeasured: isDone && tally !== undefined,
     ending: r.deny !== undefined ? 'denied' : isDone ? 'ok' : 'errored',
   })
 }
 
-const usageTokens = (u: Usage | undefined): number =>
-  u === undefined ? 0 : u.input_tokens + u.output_tokens + u.cache_read_input_tokens + u.cache_creation_input_tokens
-
-/** A background subagent's turn ended: its usage, tool count and report complete the agent. */
+/**
+ * A background subagent's turn ended: its usage (the turn's requests summed), its last request's size, tool
+ * count and report complete the agent. A synchronous agent's loop ends here too and is left to its result.
+ */
 async function recordLoopEnd($: Dollar, layers: readonly Layer[], loopId: string, e: TurnEnd): Promise<void> {
   const used = toolUses.get(loopId) ?? 0
   toolUses.delete(loopId)
   const hit = (await read($, loopsAtom))[loopId]
   if (hit === undefined) return
+  const last = takeTally(loopId)?.last
   await update($, loopsAtom, loops => Object.fromEntries(Object.entries(loops).filter(([k]) => k !== loopId)))
   await complete($, await resolveWatch($), layers, { runId: hit[0], agentId: hit[1] }, {
-    tokens: usageTokens(e.usage), toolUses: used, durationMs: e.durationMs, model: e.usage?.model ?? null,
-    block: parseReturnBlock(e.answer), isMeasured: e.usage !== undefined, ending: 'ok',
+    tokens: usageTokens(e.usage), ...(last === undefined ? {} : { contextTokens: last }), toolUses: used,
+    durationMs: e.durationMs, model: e.usage?.model ?? null, block: parseReturnBlock(e.answer),
+    isMeasured: e.usage !== undefined, ending: 'ok',
   })
 }
 
@@ -380,8 +410,15 @@ const registerToolHooks = (on: On, layers: readonly Layer[]): void => {
   })
 }
 
-/** Turn and Stop hooks: loop usage, refreshes and the Stop guard. */
+/** Turn and Stop hooks: per-request and loop usage, refreshes and the Stop guard. */
 const registerLifecycleHooks = (on: On, layers: readonly Layer[]): void => {
+  // Reads each subagent request's usage after the stream beneath ends; every chunk and the result pass as is.
+  on('turn.step', async function* (_$, e, next) {
+    const r = yield* next(e)
+    if (e.agentId !== undefined) tallyStep(e.agentId, r.usage)
+    return r
+  })
+
   on('turn.complete', async ($, e, next) => {
     const r = await next(e)
     if (e.agentId !== undefined) await recordLoopEnd($, layers, e.agentId, e).catch(noop)

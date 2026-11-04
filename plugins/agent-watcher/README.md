@@ -166,10 +166,22 @@ Stop text name it `local review local-<label>` where a PR run reads `PR #N` (`lo
 guard work as for a PR run; a usage row logs `pr: null` (its `run_id` carries the key). **No matrix rows** are
 written and reviewer results carry no ownership note: the matrix schema keys rows by PR number.
 
-Usage comes from the `Agent` result when it ran in the foreground (`totalTokens`, `totalToolUseCount`,
-`totalDurationMs`, `resolvedModel`). For a background launch, the mod counts the subagent loop's tool calls
-and takes tokens (input + output + cache read + cache write), duration and the report from that loop's
-`turn.complete`.
+Two token figures, each input + output + cache read + cache write. **`tokens`** is summed over every model
+request the agent made, what the run billed; **`context_tokens`** is the last request alone, the agent's
+context size at the end and the figure its completion notification shows. A long agent's `tokens` runs
+several times its `context_tokens`, since every request re-reads the cached context.
+
+- **Foreground:** `tokens` sums the requests the mod heard on `turn.step` for the result's loop id;
+  `context_tokens`, tool calls, duration and model come from the `Agent` result (`totalTokens`,
+  `totalToolUseCount`, `totalDurationMs`, `resolvedModel`). With no request heard, `tokens` is 0 and the row
+  says `usage not measured`.
+- **Background:** the mod counts the loop's tool calls, and takes `tokens` (the turn's requests summed),
+  duration and the report from its `turn.complete`; `context_tokens` is the last request heard on
+  `turn.step`, null when none was.
+
+Before 0.7.0 a foreground row's `tokens` held the result's `totalTokens` (the last request's count, now
+`context_tokens`), and a background row's the summed figure. Rows written before 0.7.0 keep that mixed
+meaning and carry no `context_tokens`.
 
 ## Hooks
 
@@ -177,6 +189,7 @@ and takes tokens (input + output + cache read + cache write), duration and the r
 |------|------|
 | `tool.call` on `Agent` | Records the dispatch, folds the result, refreshes, and for pr-review reviewers appends the ownership note to the result's context once the run is recorded with a PR. |
 | `tool.call` (any) | Counts tool calls per subagent loop id. |
+| `turn.step` | Once a subagent's model request has streamed through untouched, adds its usage to that loop's tally (summed, and the last request). The main loop's requests are skipped. |
 | `tool.call` on `Bash` / `PowerShell` | After a command that names `pr_review.py`, refreshes, so the band follows the script's phases within a turn. |
 | `turn.complete` | Completes a background subagent; on every turn end, refreshes and appends rows that became due. |
 | `session.start` | Recovers pr-team runs a previous session claimed but never logged, then refreshes. |
@@ -227,12 +240,12 @@ but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never r
 
 Each tracked dispatch that returns appends one row to `<agent_usage_path>`: who ran (`role`, `agent_id`,
 `subagent_type`, full `model` and its `model_family`, `unknown` when the id holds no family token), what it
-cost (`tokens`, `tool_uses`, `duration_s`) and its `signal`. An unclaimed dispatch writes the same fields,
+cost (`tokens`, `context_tokens`, `tool_uses`, `duration_s`) and its `signal`. An unclaimed dispatch writes the same fields,
 with `skill`, `role`, `run_id`, `agent_id` and `pr` from its header (with no header: `skill: standalone`,
 `role: other`, `pr: null`), no count fields, its header `fields`, and `signal: NO_BLOCK` for an agent that
 ends without a return block. A synchronous result is logged when it
 returns, a background agent when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
-second row. An errored result logs `signal: ERROR` with zero usage; a background turn with no usage logs
+second row. An errored result logs `signal: ERROR` with zero usage and `context_tokens: null`; a background turn with no usage logs
 `tokens: 0` (the tool calls the mod counted and the turn's duration still land) with `usage not measured` in
 `notes`; a denied dispatch never ran and logs nothing. A background loop that is interrupted or dies on an
 API error is not told apart from a normal return: it logs the signal of its return block, `NO_BLOCK` when

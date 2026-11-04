@@ -64,7 +64,7 @@
     },
     "tokens": {
       "type": "integer",
-      "description": "Total tokens consumed by the subagent invocation (input + output, as reported by the harness).",
+      "description": "Input + output + cache read + cache creation tokens summed over every model request of the subagent invocation. Rows the agent-watcher mod wrote before 0.7.0 hold, for a foreground dispatch, its last request's count instead.",
       "minimum": 0
     },
     "tool_uses": {

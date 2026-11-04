@@ -59,6 +59,17 @@ def test_null_pr_subagent_type_model_and_counts_validate(schema: dict) -> None:
     jsonschema.validate(row, schema)
 
 
+@pytest.mark.parametrize("value", [61234, 0, None])
+def test_context_tokens_takes_a_count_or_null(schema: dict, value) -> None:
+    jsonschema.validate(_row(context_tokens=value), schema)
+
+
+def test_row_without_context_tokens_validates(schema: dict) -> None:
+    """Rows written before the column existed carry no ``context_tokens``."""
+    assert "context_tokens" not in _row()
+    jsonschema.validate(_row(), schema)
+
+
 def test_pr_team_skill_validates(schema: dict) -> None:
     jsonschema.validate(_row("orchestrator", skill="pr-team", agent_id="orchestrator_plan"), schema)
 
@@ -74,6 +85,8 @@ def test_pr_team_skill_validates(schema: dict) -> None:
     pytest.param(_row("other", issues_fixed=1), id="count-field-on-an-other-row"),
     pytest.param(_row(model_family="fable"), id="unknown-family-token"),
     pytest.param(_row(tokens=-1), id="negative-tokens"),
+    pytest.param(_row(context_tokens=-1), id="negative-context-tokens"),
+    pytest.param(_row(context_tokens=1.5), id="fractional-context-tokens"),
     pytest.param(_row(cell="x"), id="unknown-key"),
     pytest.param(_row(logged_at="2026-10-20 21:00"), id="logged-at-not-utc-iso"),
     pytest.param(_row(signal="wrote E:/x/report.md"), id="path-in-signal"),
