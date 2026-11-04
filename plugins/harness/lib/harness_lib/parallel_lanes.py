@@ -62,7 +62,9 @@ class Lane:
     branch: Optional[str] = None
     worktree: Optional[str] = None
     base_sha: Optional[str] = None
+    head_sha: Optional[str] = None
     staged: List[str] = field(default_factory=list)
+    probed: bool = False
 
 
 @dataclass(frozen=True)
@@ -310,6 +312,22 @@ def probe_profiles(lanes: Sequence[Lane]) -> List[Profile]:
         Profile(f"P{number}", tools, tuple(i.id for i in members), members[0].model)
         for number, (tools, members) in enumerate(groups.items(), 1)
     ]
+
+
+def _folder(path: Optional[str]) -> str:
+    return path.rsplit("/", 1)[0] if path else ""
+
+
+def probed_cover(tools: Sequence[str], lanes: Sequence[Lane], worktree: str) -> List[str]:
+    """Ids of probed lanes whose tools together cover ``tools``; empty when they do not cover all of them.
+
+    Only lanes whose worktree sits in the same folder as ``worktree`` count: a permission rule anchored at
+    the worktree root proves nothing for a worktree elsewhere.
+    """
+    probed = [item for item in lanes if item.probed and _folder(item.worktree) == _folder(worktree)]
+    if not set(tools) <= {tool for item in probed for tool in item.tools}:
+        return []
+    return [item.id for item in probed if set(item.tools) & set(tools)]
 
 
 def _wave_line(wave: int, lanes: Sequence[Lane]) -> str:

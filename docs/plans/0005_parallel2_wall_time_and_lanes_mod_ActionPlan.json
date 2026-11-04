@@ -1,0 +1,572 @@
+{
+  "plan_id": "0005",
+  "plan_created": "2026-11-03",
+  "completed": "2026-11-03",
+  "source_document": "https://github.com/t968rs/operator-straps/issues/181#issuecomment-6618854195",
+  "documentation": "docs/plans/0005_parallel2_wall_time_and_lanes_mod_PIP.md",
+  "branch": null,
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "W1: cut a wave from an index snapshot when changes are staged",
+      "action": "In setup, when the index differs from HEAD, write the index as a tree and cut the lanes from `git commit-tree <tree> -p HEAD` (fixed parallel2 identity), so staged earlier-wave work is in the lanes' base without a commit on the target. Record `head_sha` (HEAD at setup) beside `base_sha`; `moved_note` compares HEAD with `head_sha` (falling back to `base_sha` for older state). Setup refuses only unstaged or untracked paths inside lane files; staged paths go into the snapshot, and the note counts unstaged or untracked paths and says to stage them. Print `note: lanes cut from an index snapshot <base7> of HEAD <head7> (<n> staged paths)`. At stage, a changed path is refused when it is unstaged or untracked in the checkout, or staged with index content that differs from the lane base.",
+      "files": [
+        "plugins/harness/scripts/parallel2.py",
+        "plugins/harness/lib/harness_lib/parallel_lanes.py",
+        "tests/scripts/test_parallel2.py"
+      ],
+      "dependencies": null,
+      "status": "COMPLETE",
+      "evidence": "commit 2c294d5: 5 test node(s) passed",
+      "verification_references": [
+        "2c294d5c381393d9414adcc33aadd47a313564ea",
+        "tree 0ab2690b2d80574e90f653b00a15ea822f2fcbb5",
+        "python -m pytest -q tests/scripts/test_parallel2.py::test_setup_notes_pending_paths_outside_the_lanes tests/scripts/test_parallel2.py::test_setup_cuts_lanes_from_an_index_snapshot_when_changes_are_staged tests/scripts/test_parallel2.py::test_setup_accepts_staged_changes_inside_lane_files tests/scripts/test_parallel2.py::test_a_later_wave_builds_on_the_staged_earlier_wave tests/scripts/test_parallel2.py::test_stage_refuses_a_path_restaged_since_the_snapshot"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/parallel2.py:278-283",
+          "expect": "pending = pending_paths(repo)"
+        },
+        {
+          "at": "plugins/harness/scripts/parallel2.py:282",
+          "expect": "base_sha = git_out(repo, \"rev-parse\", \"HEAD\").strip()"
+        },
+        {
+          "at": "plugins/harness/scripts/parallel2.py:348-353",
+          "expect": "if head == item.base_sha:"
+        },
+        {
+          "at": "plugins/harness/scripts/parallel2.py:373",
+          "expect": "pending = pl.pending_overlap(changed, pending_paths(repo))"
+        },
+        {
+          "at": "plugins/harness/scripts/parallel2.py:292-295",
+          "expect": "pending paths in the checkout are not in the lanes' base"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/parallel_lanes.py:64",
+          "expect": "base_sha: Optional[str] = None"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/scripts/test_parallel2.py::test_setup_notes_pending_paths_outside_the_lanes",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_parallel2.py::test_setup_cuts_lanes_from_an_index_snapshot_when_changes_are_staged",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_parallel2.py::test_setup_accepts_staged_changes_inside_lane_files",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_parallel2.py::test_a_later_wave_builds_on_the_staged_earlier_wave",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_parallel2.py::test_stage_refuses_a_path_restaged_since_the_snapshot",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "W2: record passed probes and skip covered profiles in later waves",
+      "action": "Add `Lane.probed: bool = False`. `probe --passed NAME ...` marks every lane of each named profile of the wave probed and prints `recorded <name> clean: <lane ids>`; an unknown name is `no probe profile <name> in wave <n>`. Without `--passed`, a profile whose tools all belong to probed lanes whose worktrees share the profile's worktree parent prints `probe=<name> skipped: its tools were probed clean (<lane ids>)` instead of a prompt.",
+      "files": [
+        "plugins/harness/scripts/parallel2.py",
+        "plugins/harness/lib/harness_lib/parallel_lanes.py",
+        "tests/scripts/test_parallel2.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 9c5a9e1: 3 test node(s) passed",
+      "verification_references": [
+        "9c5a9e1b4647e0ec8490d433c3417cb7b28bd3fb",
+        "tree adfe970a4034180e0efc93629bda302c251ce7e5",
+        "python -m pytest -q tests/scripts/test_parallel2.py::test_probe_passed_records_the_profile_lanes_clean tests/scripts/test_parallel2.py::test_probe_skips_a_later_profile_covered_by_a_passed_probe tests/scripts/test_parallel2.py::test_probe_passed_names_an_unknown_profile"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/parallel2.py:322-334",
+          "expect": "for profile in pl.probe_profiles(members):"
+        },
+        {
+          "at": "plugins/harness/scripts/parallel2.py:513-514",
+          "expect": "probe.add_argument(\"--wave\", type=int"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/parallel_lanes.py:304-312",
+          "expect": "def probe_profiles(lanes: Sequence[Lane]) -> List[Profile]:"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/scripts/test_parallel2.py::test_probe_passed_records_the_profile_lanes_clean",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_parallel2.py::test_probe_skips_a_later_profile_covered_by_a_passed_probe",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_parallel2.py::test_probe_passed_names_an_unknown_profile",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "W4: setup --probe prints the probe prompts after the dispatch rows",
+      "action": "Add `setup --probe`: after the dispatch rows, print the wave's probe output exactly as `probe --wave <n>` would, saving one driver call per wave.",
+      "files": [
+        "plugins/harness/scripts/parallel2.py",
+        "tests/scripts/test_parallel2.py"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit e041411: 1 test node(s) passed",
+      "verification_references": [
+        "e0414116772a60ecf28fd8ec88eb080a6e2c1477",
+        "tree 3c0ca944c95ad7e83d841b3ffdbb5a542281445f",
+        "python -m pytest -q tests/scripts/test_parallel2.py::test_setup_probe_prints_the_dispatch_rows_then_the_probe_prompts"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/parallel2.py:511-512",
+          "expect": "setup.add_argument(\"--wave\", type=int"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/scripts/test_parallel2.py::test_setup_probe_prints_the_dispatch_rows_then_the_probe_prompts",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "W5: cut the wave's worktrees concurrently",
+      "action": "In `create_worktrees`, pick each lane's path first, then run the `git worktree add` calls in a thread pool through the module-level `git`; when any fails, remove every worktree this call made and raise the first failure, as the serial loop does.",
+      "files": [
+        "plugins/harness/scripts/parallel2.py",
+        "tests/scripts/test_parallel2.py"
+      ],
+      "dependencies": [
+        "TASK-3"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 49bfa07: 1 test node(s) passed",
+      "verification_references": [
+        "49bfa077bd51b2f38816091303311ea30eb79830",
+        "tree 23f7fd444e6afe2c43cb259a4e11d51e15f686c7",
+        "python -m pytest -q tests/scripts/test_parallel2.py::test_setup_cuts_worktrees_concurrently_and_rolls_back_on_a_failure"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/parallel2.py:251-258",
+          "expect": "done = git(repo, \"worktree\", \"add\", \"-b\", item.branch, item.worktree, base_sha)"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/scripts/test_parallel2.py::test_setup_cuts_worktrees_concurrently_and_rolls_back_on_a_failure",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "W7: setup --with-setup runs the project's worktree setup in each lane",
+      "action": "Add `setup --with-setup`: after the worktrees are cut, load `skills/d-w/commands/new_worktree.py` by path and call its `prepare(cfg, path)` for each implement lane in turn, each preceded by a `lane <id>:` line on stderr. A failed step never fails setup, as in d-w.",
+      "files": [
+        "plugins/harness/scripts/parallel2.py",
+        "tests/scripts/test_parallel2.py"
+      ],
+      "dependencies": [
+        "TASK-4"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 10329ec: 1 test node(s) passed",
+      "verification_references": [
+        "10329ec6d0dc0aa9e08a89acb64e65b8b3867eba",
+        "tree ef77d424448fcc6401bf8e2ef13fa80e53ac64d1",
+        "python -m pytest -q tests/scripts/test_parallel2.py::test_setup_with_setup_runs_the_project_setup_in_each_lane"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/d-w/commands/new_worktree.py:202-208",
+          "expect": "def prepare(cfg: HarnessConfig, path: Path) -> None:"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/scripts/test_parallel2.py::test_setup_with_setup_runs_the_project_setup_in_each_lane",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "W3 + docs: skill and README describe the faster wave flow",
+      "action": "SKILL.md: step 3 uses `setup --probe`, dispatches every probe prompt in one message, and records clean probes with `probe --passed`; step 7 says a later wave is cut from an index snapshot, so staged earlier-wave work needs no commit; `--with-setup` is named; the `parallel2-lanes` mod is named as the optional brief inliner and lane band. README.md: lifecycle table and worked-example point 5 follow. Bump the harness plugin version.",
+      "files": [
+        "plugins/harness/skills/parallel2/SKILL.md",
+        "plugins/harness/skills/parallel2/README.md",
+        "plugins/harness/.claude-plugin/plugin.json"
+      ],
+      "dependencies": [
+        "TASK-5"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit c2c5a75: 1 test node(s) passed",
+      "verification_references": [
+        "c2c5a7548d1b2a92f76877b429a0457444364ce6",
+        "tree 2f1d432856372cd604d191553db4686da3505c5b",
+        "python -m pytest -q tests/contract/test_parallel2_lanes_registration.py::test_the_harness_skill_names_the_mod"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/parallel2/SKILL.md:54",
+          "expect": "**`P2 setup --wave N`**, then **`P2 probe --wave N`**"
+        },
+        {
+          "at": "plugins/harness/skills/parallel2/SKILL.md:74-75",
+          "expect": "ask the developer to commit the staged work before `setup`"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_the_harness_skill_names_the_mod",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-7",
+      "title": "M3: parallel2-lanes mod rewrites a lane's Agent spawn",
+      "action": "New mod `plugins/parallel2-lanes` (manifest, hooks.json, register.ts, tsconfig, .gitignore, types, README). An `agent.spawn` hook (forks, teammates and resumes pass through) reads a prompt whose first line is `Brief: <path>` with the path at `<folder>/parallel2/<slug>/<lane>.md`, reads the brief and the state `<folder>/parallel2/<slug>.json`, and for a recorded lane: puts the brief text first in the prompt (the Brief line kept below it), sets the planned model (toasting an override of a different model) and sets `cwd` to the lane's worktree for an implement lane. It records `agentId -> lane` in `$.state`. Anything unreadable passes the spawn through unchanged.",
+      "files": [
+        "plugins/parallel2-lanes/.claude-plugin/plugin.json",
+        "plugins/parallel2-lanes/hooks/hooks.json",
+        "plugins/parallel2-lanes/hooks/register.ts",
+        "plugins/parallel2-lanes/hooks/lanes.ts",
+        "plugins/parallel2-lanes/hooks/spawn.ts",
+        "plugins/parallel2-lanes/hooks/spawn.test.ts",
+        "plugins/parallel2-lanes/tsconfig.json",
+        "plugins/parallel2-lanes/.gitignore",
+        "plugins/parallel2-lanes/types/index.d.ts",
+        "plugins/parallel2-lanes/README.md"
+      ],
+      "dependencies": [
+        "TASK-6"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit a6eb6a5",
+      "verification_references": [
+        "a6eb6a545d1a1cab33a7fc20b7c5dd4ef5300df5",
+        "tree 2388ed32b2e9f87eae7f3c1a62d2dcfef595018e"
+      ],
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/band-line/hooks/band.tsx:21",
+          "expect": "const below = await next(e).catch(() => undefined)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/parallel2-lanes",
+          "expect": "no errors"
+        },
+        {
+          "run": "claude plugin test plugins/parallel2-lanes",
+          "expect": "0 fail"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "TASK-8",
+      "title": "M4: lane status band",
+      "action": "A `ui.render` `AbovePrompt` hook draws one line per run seen this session, above the band beneath: `parallel2 <target>: <lane> <status>[ (running|returned)] ...`. The runs come from the spawn records; each is reread after a lane spawn, a lane's `turn.complete` (marked returned) and a Bash or PowerShell call naming `parallel2.py`. A run whose state file is gone is dropped.",
+      "files": [
+        "plugins/parallel2-lanes/hooks/register.ts",
+        "plugins/parallel2-lanes/hooks/band.tsx",
+        "plugins/parallel2-lanes/hooks/band.test.tsx",
+        "plugins/parallel2-lanes/hooks/lanes.ts",
+        "plugins/parallel2-lanes/types/index.d.ts",
+        "plugins/parallel2-lanes/README.md"
+      ],
+      "dependencies": [
+        "TASK-7"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit c4c4daf",
+      "verification_references": [
+        "c4c4daf7d5f3dfb7c63cda12d070237da6b61830",
+        "tree 9dcb66b6377356953854f6e281329d2860475c60"
+      ],
+      "model": "opus",
+      "anchors": [],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/parallel2-lanes",
+          "expect": "no errors"
+        },
+        {
+          "run": "claude plugin test plugins/parallel2-lanes",
+          "expect": "0 fail"
+        }
+      ],
+      "tests": []
+    },
+    {
+      "id": "TASK-9",
+      "title": "Register the parallel2-lanes mod",
+      "action": "Marketplace entry, CI mod-test loop, CLAUDE.md mod list and count (eight), root README table row and install line; the bubble-stamp contract test counts eight mods.",
+      "files": [
+        ".claude-plugin/marketplace.json",
+        ".github/workflows/ci.yml",
+        "CLAUDE.md",
+        "README.md",
+        "tests/contract/test_bubble_stamp_registration.py",
+        "tests/contract/test_parallel2_lanes_registration.py"
+      ],
+      "dependencies": [
+        "TASK-8"
+      ],
+      "status": "COMPLETE",
+      "evidence": "commit 865248d: 10 test node(s) passed",
+      "verification_references": [
+        "865248db61166092bafab5917b2cf5a0a2cfac7a",
+        "tree b9b3813742d311a61ecd1f2fc4bb1b17e62c18ca",
+        "python -m pytest -q tests/contract/test_parallel2_lanes_registration.py::test_the_marketplace_lists_the_mod tests/contract/test_parallel2_lanes_registration.py::test_the_mod_manifest_and_hooks tests/contract/test_parallel2_lanes_registration.py::test_ci_runs_the_mod_tests tests/contract/test_parallel2_lanes_registration.py::test_the_readme_documents_and_installs_the_mod tests/contract/test_parallel2_lanes_registration.py::test_claude_md_names_the_mod tests/contract/test_parallel2_lanes_registration.py::test_the_mod_has_a_readme tests/contract/test_parallel2_lanes_registration.py::test_engine_scaffolding[tsconfig] tests/contract/test_parallel2_lanes_registration.py::test_engine_scaffolding[gitignore] tests/contract/test_parallel2_lanes_registration.py::test_engine_scaffolding[types] tests/contract/test_bubble_stamp_registration.py::test_claude_md_counts_eight_mods"
+      ],
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": ".github/workflows/ci.yml:126",
+          "expect": "plugins/bubble-stamp; do claude plugin test"
+        },
+        {
+          "at": "CLAUDE.md:3",
+          "expect": "seven TypeScript mods"
+        }
+      ],
+      "commands": [],
+      "tests": [
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_the_marketplace_lists_the_mod",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_the_mod_manifest_and_hooks",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_ci_runs_the_mod_tests",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_the_readme_documents_and_installs_the_mod",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_claude_md_names_the_mod",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_the_mod_has_a_readme",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_engine_scaffolding[tsconfig]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_engine_scaffolding[gitignore]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_parallel2_lanes_registration.py::test_engine_scaffolding[types]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/contract/test_bubble_stamp_registration.py::test_claude_md_counts_eight_mods",
+          "red": "AssertionError"
+        }
+      ]
+    }
+  ],
+  "base_commit": "10d0ad2dccd8d357f85d9633740ab284965284a5",
+  "frozen": {
+    "commit": "10d0ad2dccd8d357f85d9633740ab284965284a5",
+    "tree": "4fd284ca6b3dd78c922071a909400dd74593b1cf",
+    "date": "2026-11-03",
+    "digest": "ed52fe3ac5c6bbb59f1a5b4e5a58a0a736376cf7f3b58dfd573bde9055084ce0"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Base of a wave set up while earlier-wave work is staged",
+      "options": [
+        {
+          "id": "snapshot",
+          "summary": "commit-tree of the index with HEAD as parent; no ref moves"
+        },
+        {
+          "id": "require-commit",
+          "summary": "keep asking the developer to commit first"
+        }
+      ],
+      "chosen": "snapshot",
+      "rationale": "Developer approved W1 as the wanted skill behavior."
+    },
+    {
+      "id": "D2",
+      "question": "How the driver learns a probe came back clean",
+      "options": [
+        {
+          "id": "probe-passed",
+          "summary": "`probe --passed <names>` records the lanes probed"
+        },
+        {
+          "id": "no-skip",
+          "summary": "probe every wave"
+        }
+      ],
+      "chosen": "probe-passed",
+      "rationale": "Developer choice."
+    },
+    {
+      "id": "D3",
+      "question": "Runner for `setup --with-setup`",
+      "options": [
+        {
+          "id": "reuse-dw",
+          "summary": "load d-w new_worktree.py by path and call prepare()"
+        },
+        {
+          "id": "move-lib",
+          "summary": "move the step runner into harness_lib"
+        }
+      ],
+      "chosen": "reuse-dw",
+      "rationale": "Developer choice; no code moves, d-w tests untouched."
+    },
+    {
+      "id": "D4",
+      "question": "Model when the Agent call differs from the plan's lane model",
+      "options": [
+        {
+          "id": "plan-wins",
+          "summary": "rewrite to the lane model and toast the override"
+        },
+        {
+          "id": "call-wins",
+          "summary": "fill only a missing model"
+        }
+      ],
+      "chosen": "plan-wins",
+      "rationale": "Developer choice."
+    },
+    {
+      "id": "D5",
+      "question": "Name of the new mod",
+      "options": [
+        {
+          "id": "parallel2-lanes",
+          "summary": "plugins/parallel2-lanes"
+        },
+        {
+          "id": "lane-watch",
+          "summary": "plugins/lane-watch"
+        }
+      ],
+      "chosen": "parallel2-lanes",
+      "rationale": "Developer choice."
+    }
+  ],
+  "values": [
+    {
+      "name": "snapshot commit identity",
+      "value": "parallel2 <parallel2@localhost>",
+      "source": "D1",
+      "assumes": [
+        "snapshot"
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "name": "dispatch row Brief line",
+      "example": "Brief: C:/repo/.claude/state/harness/parallel2/feat-x/task1.md",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/parallel_lanes.py:434-437",
+        "expect": "return f\"{head}\\nBrief: {brief}\""
+      }
+    },
+    {
+      "name": "run state JSON",
+      "example": "{\"target\": \"feat-x\", \"lanes\": [{\"id\": \"task1\", \"status\": \"dispatched\"}]}",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/parallel_lanes.py:340-342",
+        "expect": "\"lanes\": [asdict(item) for item in lanes]}, indent=2)"
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "seven TypeScript mods",
+      "hits": {
+        "CLAUDE.md": "changed to eight by TASK-9",
+        "tests/contract/test_bubble_stamp_registration.py": "changed to eight by TASK-9",
+        "docs/PR_REVIEWS/0122_1095_bubble_memos.json": "historical review record, unchanged"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "pending paths in the checkout|commit them first if a lane",
+      "hits": {
+        "plugins/harness/scripts/parallel2.py": "note reworded by TASK-1",
+        "tests/scripts/test_parallel2.py": "note test updated by TASK-1"
+      }
+    },
+    {
+      "id": "S3",
+      "pattern": "commit the staged work",
+      "hits": {
+        "plugins/harness/skills/parallel2/SKILL.md": "step 7 rewritten by TASK-6"
+      }
+    }
+  ],
+  "deferred_to_future_plans": [
+    {
+      "topic": "M1: lane-scoped permission hook (tool.check by agentId)",
+      "rationale": "Developer does not want a mod granting permissions yet."
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 # operator-straps
 
-Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) plus seven TypeScript mods
-(`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`). Layout and install:
-`README.md`.
+Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) plus eight TypeScript mods
+(`pr-review-watch`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`,
+`parallel2-lanes`). Layout and install: `README.md`.
 
 ## Rules for changes
 

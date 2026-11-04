@@ -51,6 +51,11 @@
       "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION) into the bubble memo, PR_<N>_Bubbles.md"
     },
     {
+      "name": "parallel2-lanes",
+      "source": "./plugins/parallel2-lanes",
+      "description": "parallel2 lanes: a lane's Agent spawn starts with its brief inline, the plan's model and its worktree; a band lists each run's lane status"
+    },
+    {
       "name": "superpowers-lt",
       "source": {
         "source": "github",

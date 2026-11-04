@@ -47,9 +47,9 @@ def test_the_readme_documents_and_installs_the_mod(repo_root: Path) -> None:
     assert "bubble-memo" in readme
 
 
-def test_claude_md_counts_seven_mods(repo_root: Path) -> None:
+def test_claude_md_counts_eight_mods(repo_root: Path) -> None:
     text = _text(repo_root, "CLAUDE.md")
-    assert "seven TypeScript mods" in text and "`bubble-stamp`" in text and "`band-line`" in text
+    assert "eight TypeScript mods" in text and "`bubble-stamp`" in text and "`band-line`" in text
 
 
 def test_the_harness_version_moved_past_the_old_one(repo_root: Path) -> None:

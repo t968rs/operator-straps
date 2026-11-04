@@ -41,6 +41,7 @@ to track review progress, keep Git state visible, preserve context through compa
 | Branch Info             | Banner-Visible    | `git-status`       | Git state checked on each prompt, changed state added as `GIT_STATE` context, and a fallback Git status line.                                                                                        | • Prompt hooks recheck Git state and inject changed state.<br>• Git context is reinjected after clear, resume, or main-conversation compaction.<br>• The fallback line gives way to ccstatusline or `band-line`.                                                                                                                                          |
 | Enforce Python Test env | Automatic         | `pytest-scope`     | Rewrites bare `pytest` to your chosen interpreter and rejects runs with no explicit test file or node ID.                                                                                            | • Rewrites recognized pytest commands only when `python` is set.<br>• Rejects broad runs when `require_test_file=true`; `/pytest-broad-ok` allows one override.                                                                                                                                                                                           |
 | Post-Compaction Context | Automatic         | `session-bookmark` | Git state, recent prompts and your session notes, kept through compaction.                                                                                                                           | • Hooks capture git state, the last three prompts, stored notes and `/compact` instructions.<br>• The bookmark is appended to the compacted transcript and kept in session state.<br>• The session writes each note, resolving a reference such as "the current status" into the facts it stands for; a script stores it (20 notes, 300 characters each). |
+| Parallel Lane Status    | Banner-Visible    | `parallel2-lanes`  | A `parallel2` lane's `Agent` spawn starts with its brief in the prompt, the plan's model and its worktree as working directory; a band lists each run's lanes with their status and agent phase. | • Reads the run state `parallel2.py` writes; needs no config key.<br>• A call naming another model is rewritten to the plan's, with a toast; anything unreadable passes the spawn through unchanged.                                                                                                                                                                              |
 | Bubble Memo Stamps      | Automatic + Toast | `bubble-stamp`     | Stamps each decision in the review JSON (`RESOLVED`, `CLOSED_NO_ACTION`) into the memo's index and entry; a toast names the ids.                                                                     | • Active only in projects with `.claude/harness.json`.<br>• Runs on session start, `pr_review.py` and `review_edit.py` calls, review JSON edits and turn end; a rerun changes nothing, and every hook fails open.                                                                                                                                         |
 
 ## Agent process standardization
@@ -90,6 +91,7 @@ line only when ccstatusline is installed, and installing `banner-status` does no
 or run that command first. Until then `git-status` draws its fallback line.
 
 - `pr-review-watch` and `bubble-stamp` are active only in projects with `.claude/harness.json`.
+- `parallel2-lanes` acts only on `Agent` calls that open with a `parallel2` dispatch row's `Brief:` line.
 - `todo-watch` is active only when `.claude/harness.json` sets `todo.folder`.
 - `pytest-scope` takes effect only when one of its options is set.
 
@@ -113,6 +115,7 @@ claude plugin install session-bookmark@operator-straps
 claude plugin install pytest-scope@operator-straps --config python=C:/path/to/env/python.exe --config require_test_file=true
 claude plugin install todo-watch@operator-straps
 claude plugin install bubble-stamp@operator-straps
+claude plugin install parallel2-lanes@operator-straps
 ```
 
 After configuring your project below, open Claude Code in that repository and invoke a workflow, for example:

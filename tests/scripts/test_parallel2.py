@@ -8,6 +8,9 @@ from __future__ import annotations
 import importlib.util
 import io
 import json
+import subprocess
+import sys
+import threading
 from pathlib import Path
 from types import ModuleType
 from typing import Callable, Dict, List, Optional, Tuple
@@ -48,10 +51,18 @@ def project(make_project, tmp_path: Path) -> Path:
 def run(driver: ModuleType, project: Path, capsys: pytest.CaptureFixture) -> Callable[..., Result]:
     """``run(*args)`` -> (exit code, stdout, stderr) of ``parallel2.py --repo <project> *args``."""
     def _run(*args: str, repo: Optional[Path] = None) -> Result:
-        code = driver.main(["--repo", str(repo or project), *args])
+        code = call(driver, ["--repo", str(repo or project), *args])
         captured = capsys.readouterr()
         return code, captured.out, captured.err
     return _run
+
+
+def call(driver: ModuleType, argv: List[str]) -> int:
+    """``driver.main(argv)``; an argparse refusal (``SystemExit``) becomes its exit code."""
+    try:
+        return driver.main(argv)
+    except SystemExit as exc:
+        return int(exc.code or 0)
 
 
 def lane(lane_id: str, files: List[str], kind: str = "implement", **extra: object) -> Dict[str, object]:
@@ -273,8 +284,8 @@ def test_setup_notes_pending_paths_outside_the_lanes(plan, run, project: Path) -
     plan([lane("task1", ["src/a.py"])])
     code, out, _ = run("setup")
     assert code == 0
-    assert ("note: 1 pending paths in the checkout are not in the lanes' base; "
-            "commit them first if a lane reads them") in out.splitlines()
+    assert ("note: 1 unstaged or untracked paths in the checkout are not in the lanes' base; "
+            "stage them first if a lane reads them") in out.splitlines()
 
 
 def test_setup_does_not_count_its_own_state_files_as_pending(plan, run) -> None:
@@ -586,3 +597,157 @@ def test_cleanup_deletes_the_state_of_a_read_only_run(plan, run, project: Path) 
     assert not (folder / "feat-x").exists()
     code, _, err = plan([lane("task1", ["src/a.py"])])
     assert (code, err) == (0, "")
+
+
+# --- later waves from an index snapshot -------------------------------------------------------------------
+
+def stage_in(project: Path, files: Dict[str, str]) -> None:
+    """Write files in the checkout and stage them, as an earlier lane's ``stage`` leaves them."""
+    for rel, body in files.items():
+        (project / rel).write_text(body, encoding="utf-8")
+        git(project, "add", rel)
+
+
+def test_setup_cuts_lanes_from_an_index_snapshot_when_changes_are_staged(plan, run, project: Path) -> None:
+    head = git(project, "rev-parse", "HEAD")
+    stage_in(project, {"docs/guide.md": "staged guide\n"})
+    plan([lane("task1", ["src/a.py"])])
+    code, out, err = run("setup")
+    assert (code, err) == (0, "")
+    item = lane_state(project, "task1")
+    assert item.get("head_sha") == head and item["base_sha"] != head
+    assert git(project, "rev-parse", f"{item['base_sha']}^") == head
+    assert git(project, "rev-parse", "HEAD") == head
+    assert git(project, "branch", "--show-current") == "feat-x"
+    tree = lane_tree(project, "task1")
+    assert (tree / "docs" / "guide.md").read_text(encoding="utf-8") == "staged guide\n"
+    snapshot = item["base_sha"][:7]
+    note = f"note: lanes cut from an index snapshot {snapshot} of HEAD {head[:7]} (1 staged paths)"
+    assert note in out.splitlines()
+
+
+def test_setup_accepts_staged_changes_inside_lane_files(plan, run, project: Path) -> None:
+    stage_in(project, {"src/a.py": "a = 2\n"})
+    plan([lane("task1", ["src/a.py"])])
+    code, _, err = run("setup")
+    assert (code, err) == (0, "")
+    assert (lane_tree(project, "task1") / "src" / "a.py").read_text(encoding="utf-8") == "a = 2\n"
+
+
+def test_a_later_wave_builds_on_the_staged_earlier_wave(plan, run, project: Path) -> None:
+    head = git(project, "rev-parse", "HEAD")
+    plan([lane("task1", ["src/a.py"], wave=1), lane("task2", ["src/a.py"], wave=2)])
+    run("setup")
+    commit_in(lane_tree(project, "task1"), {"src/a.py": "a = 2\n"})
+    assert run("stage", "task1")[0] == 0
+    code, _, err = run("setup")
+    assert (code, err) == (0, "")
+    tree = lane_tree(project, "task2")
+    assert (tree / "src" / "a.py").read_text(encoding="utf-8") == "a = 2\n"
+    commit_in(tree, {"src/a.py": "a = 3\n"})
+    code, out, err = run("stage", "task2")
+    assert (code, err) == (0, "")
+    assert git(project, "show", ":src/a.py") == "a = 3"
+    assert git(project, "rev-parse", "HEAD") == head
+    assert not out.startswith("note: target moved")
+
+
+def test_stage_refuses_a_path_restaged_since_the_snapshot(plan, run, project: Path) -> None:
+    stage_in(project, {"src/a.py": "a = 5\n"})
+    plan([lane("task1", ["src/a.py"])])
+    assert run("setup")[0] == 0
+    stage_in(project, {"src/a.py": "a = 6\n"})
+    commit_in(lane_tree(project, "task1"), {"src/a.py": "a = 7\n"})
+    code, _, err = run("stage", "task1")
+    assert code == 1 and "would be overwritten: src/a.py" in err
+    assert git(project, "show", ":src/a.py") == "a = 6"
+
+
+# --- probe records ----------------------------------------------------------------------------------------
+
+def test_probe_passed_records_the_profile_lanes_clean(plan, run, project: Path) -> None:
+    plan([lane("task1", ["src/a.py"]), lane("task2", ["src/b.py"])])
+    run("setup")
+    code, out, err = run("probe", "--passed", "P1")
+    assert (code, err) == (0, "")
+    assert out.splitlines() == ["recorded P1 clean: task1, task2"]
+    assert lane_state(project, "task1").get("probed") is True
+    assert lane_state(project, "task2").get("probed") is True
+
+
+def test_probe_skips_a_later_profile_covered_by_a_passed_probe(plan, run, project: Path) -> None:
+    wider = ["Read", "Edit", "Write", "Bash(pytest *)"]
+    plan([lane("task1", ["src/a.py"], wave=1), lane("task2", ["src/b.py"], wave=2),
+          lane("task3", ["docs/guide.md"], wave=2, tools=wider)])
+    run("setup")
+    run("probe", "--passed", "P1")
+    run("setup")
+    code, out, err = run("probe", "--wave", "2")
+    assert (code, err) == (0, "")
+    assert "probe=P1 skipped: its tools were probed clean (task1)" in out.splitlines()
+    assert "probe=P2 model=haiku" in out.splitlines()
+    assert out.count("Working directory: ") == 1
+
+
+def test_probe_passed_names_an_unknown_profile(plan, run) -> None:
+    plan([lane("task1", ["src/a.py"])])
+    run("setup")
+    code, out, err = run("probe", "--passed", "P9")
+    assert (code, out) == (1, "")
+    assert err == "problem: no probe profile P9 in wave 1\n"
+
+
+# --- setup speed ------------------------------------------------------------------------------------------
+
+def test_setup_probe_prints_the_dispatch_rows_then_the_probe_prompts(plan, run) -> None:
+    plan([lane("task1", ["src/a.py"])])
+    code, out, err = run("setup", "--probe")
+    assert (code, err) == (0, "")
+    assert out.index("lane=task1") < out.index("probe=P1 model=haiku")
+    assert "For each action report SUCCESS or BLOCKED" in out
+
+
+def test_setup_cuts_worktrees_concurrently_and_rolls_back_on_a_failure(
+        driver, plan, run, project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    real = driver.git
+    barrier = threading.Barrier(2, timeout=2)
+    overlapped: List[bool] = []
+
+    def fake(repo: Path, *args: str) -> subprocess.CompletedProcess:
+        if args[:2] == ("worktree", "add"):
+            try:
+                barrier.wait()
+                overlapped.append(True)
+            except threading.BrokenBarrierError:
+                overlapped.append(False)
+            if "p2/task2" in args:
+                return subprocess.CompletedProcess(list(args), 128, "", "boom")
+        return real(repo, *args)
+
+    monkeypatch.setattr(driver, "git", fake)
+    plan([lane("task1", ["src/a.py"]), lane("task2", ["src/b.py"])])
+    code, _, err = run("setup")
+    assert overlapped == [True, True]
+    assert code == 1 and "task2" in err and "boom" in err
+    assert not (tmp_path / "trees" / "p2-task1").exists()
+    assert "p2/task1" not in branches(project)
+    assert lane_state(project, "task1")["status"] == "planned"
+
+
+def test_setup_with_setup_runs_the_project_setup_in_each_lane(
+        driver, make_project, tmp_path: Path, capsys: pytest.CaptureFixture) -> None:
+    command = [sys.executable, "-c", "open('setup_ran.txt', 'w').write('ok')"]
+    config = {"base_branch": "main", "worktree_root": (tmp_path / "trees").as_posix(),
+              "worktree_setup": [command]}
+    root = make_project(config, files=BASE_FILES)
+    git(root, "checkout", "-q", "-b", "feat-x")
+    plan_file = tmp_path / "plan.json"
+    body = {"target": "feat-x", "lanes": [lane("task1", ["src/a.py"])]}
+    plan_file.write_text(json.dumps(body), encoding="utf-8")
+    assert call(driver, ["--repo", str(root), "plan", str(plan_file)]) == 0
+    code = call(driver, ["--repo", str(root), "setup", "--with-setup"])
+    err = capsys.readouterr().err
+    assert code == 0, err
+    tree = Path(lane_state(root, "task1")["worktree"])
+    assert (tree / "setup_ran.txt").read_text(encoding="utf-8") == "ok"
+    assert "lane task1:" in err and "setup [ok]" in err
