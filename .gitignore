@@ -235,7 +235,7 @@ __marimo__/
 .claude/state/
 .superpowers/
 docs/plans/**/*.py
-!docs/plans/*/tests/**
+#!docs/plans/*/tests/**
 
 # Artifacts / Local Env
 settings.local.json
