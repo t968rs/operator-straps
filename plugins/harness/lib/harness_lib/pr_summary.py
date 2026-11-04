@@ -15,7 +15,7 @@ from pathlib import PurePosixPath
 from typing import Dict, List, Mapping, Optional, Tuple
 
 from harness_lib.branch_commits import Bucket, path_bucket
-from harness_lib.commit_txt import vendor_names
+from harness_lib.commit_txt import glyph_problems, vendor_names
 
 MONOSPACE_WIDTH = 120
 TABLE_CELL_WIDTH = 40
@@ -424,7 +424,7 @@ def _body_problems(name: str, section: PrSection) -> List[str]:
 
 
 def _prose(draft: PrDraft) -> str:
-    """Every drafted string, for the vendor-name check."""
+    """Every drafted string, for the vendor-name and glyph checks."""
     return "\n".join(text for _, text in _draft_fields(draft))
 
 
@@ -466,6 +466,7 @@ def draft_problems(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -
     problems += _description_problems(facts, draft)
     problems += _section_problems(draft, level)
     problems += [f"vendor name {name!r} in the draft" for name in vendor_names(_prose(draft))]
+    problems += glyph_problems(_prose(draft), "the draft")
     return problems + _control_problems(draft)
 
 

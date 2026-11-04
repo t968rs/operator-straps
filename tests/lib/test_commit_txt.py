@@ -12,6 +12,7 @@ from harness_lib.commit_txt import (
     document_to_txt,
     entry_from_message,
     filler_words,
+    glyph_problems,
     message_problems,
     parse_commit_txt,
     quote_problems,
@@ -225,3 +226,22 @@ class TestFillerWords:
     def test_words_outside_paths(self) -> None:
         text = "A robust fix; see docs/improve/notes.md and various tweaks"
         assert filler_words(text) == ["robust", "various"]
+
+
+class TestGlyphProblems:
+    def test_emoji_and_section_sign_each_named_once(self) -> None:
+        text = "Ships it \U0001F680 per § 4, again \U0001F680 and ✅"
+        assert glyph_problems(text, "message") == [
+            "emoji '\U0001F680' in message; remove it",
+            "section sign '§' in message; write 'Section N'",
+            "emoji '✅' in message; remove it",
+        ]
+
+    def test_backticked_text_and_diagram_arrows_pass(self) -> None:
+        assert glyph_problems("Replaces `§ 2` and `✅` with words; a ➜ b, c → d", "x") == []
+
+    def test_message_problems_flag_glyphs_per_commit(self) -> None:
+        document = _document()
+        message = "Docs(readme): drop the § sign\n\nWhy.\n  - README.md: edit"
+        document.commits[1] = entry_from_message(1, ["README.md"], message)
+        assert message_problems(document) == ["commit 1: section sign '§' in message; write 'Section N'"]

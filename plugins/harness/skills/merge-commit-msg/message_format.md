@@ -50,7 +50,8 @@ Includes N review fixes (Critical: N, Important: N, Minor: N).
 - **No vendor or tool names** in prose or bullets (verbatim paths and the verbatim title are exempt), and no
   filler words (enhance, improve, streamline, robust, reliable, maintainable, readable, seamless, comprehensive,
   leverage, various): name the change instead.
-- **No emojis, no marketing voice, no sign-offs or authoring credits** (`Co-authored-by:`, `Signed-off-by:`).
+- **No emojis, no section sign, no marketing voice, no sign-offs or authoring credits** (`Co-authored-by:`,
+  `Signed-off-by:`). Write "Section 2", not the sign; build rejects emojis and the sign outside backticks.
 - **No invented content.** No follow-up tracking, issue numbers or "also lands" scope the PR does not have.
 - **No forward PR references by number.** Write "next PR" or "follow-up PR".
 - **Plan step IDs match the plan** exactly (`FCC-1`), never "Phase 5" or "Step 3".

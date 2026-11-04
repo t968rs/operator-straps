@@ -316,6 +316,8 @@ class TestBuild:
             "fence line": ([*MESSAGE[:2], "```text", *MESSAGE[3:]], "markdown fence"),
             "vendor name": ([*MESSAGE[:2], "Written with Claude.", *MESSAGE[3:]], "vendor name '"),
             "filler": ([*MESSAGE[:2], "A robust fix.", *MESSAGE[3:]], "filler '"),
+            "emoji": ([*MESSAGE[:2], "Ships it \U0001F680.", *MESSAGE[3:]], "emoji '\U0001F680'"),
+            "section sign": ([*MESSAGE[:2], "Per § 2.", *MESSAGE[3:]], "section sign '§'"),
             "sha": ([*MESSAGE[:2], "Reverts 1a2b3c4d5e6.", *MESSAGE[3:]], "commit SHA '1a2b3c4d5e6'"),
             "sign-off": ([*MESSAGE, "Signed-off-by: x"], "sign-off line"),
             "wide line": ([*MESSAGE[:2], "x" * 111, *MESSAGE[3:]], "wider than 110"),
