@@ -99,6 +99,7 @@ Match the bullet verb to the file's `git diff --name-status` letter:
   generic terms: "review", "agent", "skill", "analysis". The ban does not apply inside verbatim strings (file
   paths, verbatim PR titles).
 - **No sign-offs or authoring credits**: omit `Co-authored-by:`, `Signed-off-by:`, and any author-attribution line.
+- **No emojis and no section sign**: write "Section 2", not the sign. Build rejects both outside backticks.
 
 ## File list (when the commit block is saved to a file)
 

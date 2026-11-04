@@ -94,7 +94,7 @@ a new layer needs no vocabulary change for them. A second layer today still touc
 | # | Rule | Behavior |
 |---|------|----------|
 | R1 | Phase 5 must close before the session stops | A band above the prompt shows `PR #N · <phase> · K bubbled` while a run is active or a `<state_dir>/pr-review/.phase5_pending_<PR>` sentinel is hot (younger than 24 h, the harness `check_phase5_sentinel.py` rule). A hot sentinel for the run's PR follows the phase rather than replacing it (`PR #N · fixers 2/5 · Phase 5 pending · K bubbled`). The phase comes from the latest dispatch; for pr-review, the `phase` in the current run's `plan.json` wins when it is a known value. K for pr-review counts the review JSON's `bubbles[]` plus ids bubbled in the run's `fixes/*.json` that no `RESOLVED` / `CLOSED_NO_ACTION` resolution closes. Each prompt also carries `PHASE5_PENDING=<ids>` while sentinels are hot. |
-| R2 | Matrix rows carry real `tokens` / `tool_uses` / `duration_s` | One row per reviewer, from engine-measured usage. |
+| R2 | Matrix rows carry real `tokens` / `tool_uses` / `duration_s` | One row per reviewer, from engine-measured usage; `tokens` is the summed figure of [Usage figures](#usage-figures) (before 0.7.0 a foreground reviewer's was its last request's count). |
 | R3 | Rows validate against `pr_review_invocation_test_matrix.schema.json` before append | Validated in-process; an invalid row is not appended, is kept in `failures` and raised as a toast. |
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
 | R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (agent-watcher auto)`. |
@@ -166,17 +166,13 @@ Stop text name it `local review local-<label>` where a PR run reads `PR #N` (`lo
 guard work as for a PR run; a usage row logs `pr: null` (its `run_id` carries the key). **No matrix rows** are
 written and reviewer results carry no ownership note: the matrix schema keys rows by PR number.
 
-Usage comes from the `Agent` result when it ran in the foreground (`totalTokens`, `totalToolUseCount`,
-`totalDurationMs`, `resolvedModel`). For a background launch, the mod counts the subagent loop's tool calls
-and takes tokens (input + output + cache read + cache write), duration and the report from that loop's
-`turn.complete`.
-
 ## Hooks
 
 | Hook | Does |
 |------|------|
 | `tool.call` on `Agent` | Records the dispatch, folds the result, refreshes, and for pr-review reviewers appends the ownership note to the result's context once the run is recorded with a PR. |
 | `tool.call` (any) | Counts tool calls per subagent loop id. |
+| `turn.step` | Once a subagent's model request has streamed through untouched, counts it in that loop's tally and adds its usage (summed, and the last request). The main loop's requests are skipped. |
 | `tool.call` on `Bash` / `PowerShell` | After a command that names `pr_review.py`, refreshes, so the band follows the script's phases within a turn. |
 | `turn.complete` | Completes a background subagent; on every turn end, refreshes and appends rows that became due. |
 | `session.start` | Recovers pr-team runs a previous session claimed but never logged, then refreshes. |
@@ -227,14 +223,16 @@ but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never r
 
 Each tracked dispatch that returns appends one row to `<agent_usage_path>`: who ran (`role`, `agent_id`,
 `subagent_type`, full `model` and its `model_family`, `unknown` when the id holds no family token), what it
-cost (`tokens`, `tool_uses`, `duration_s`) and its `signal`. An unclaimed dispatch writes the same fields,
+cost (`tokens`, `context_tokens`, `requests`, `tool_uses`, `duration_s`, defined under
+[Usage figures](#usage-figures)) and its `signal`. An unclaimed dispatch writes the same fields,
 with `skill`, `role`, `run_id`, `agent_id` and `pr` from its header (with no header: `skill: standalone`,
 `role: other`, `pr: null`), no count fields, its header `fields`, and `signal: NO_BLOCK` for an agent that
 ends without a return block. A synchronous result is logged when it
 returns, a background agent when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
-second row. An errored result logs `signal: ERROR` with zero usage; a background turn with no usage logs
-`tokens: 0` (the tool calls the mod counted and the turn's duration still land) with `usage not measured` in
-`notes`; a denied dispatch never ran and logs nothing. A background loop that is interrupted or dies on an
+second row. An errored result logs `signal: ERROR` with zero usage and `context_tokens` and `requests`
+null; a foreground result with no request heard, or a background turn with no usage, logs `tokens: 0` (the
+tool calls and duration still land) with `usage not measured` in `notes`; a denied dispatch never ran and
+logs nothing. A background loop that is interrupted or dies on an
 API error is not told apart from a normal return: it logs the signal of its return block, `NO_BLOCK` when
 it left none, never `ERROR`.
 
@@ -247,6 +245,37 @@ rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` 
 takes one row (about 450 bytes, more with `fields`) per `Agent` dispatch, so it reaches the 4 MiB read limit
 well before the matrix does; past it every row fails as unreadable. Move or archive the file when it nears
 4 MiB; the next row recreates it.
+
+### Usage figures
+
+Two token figures, each input + output + cache read + cache write. **`tokens`** is summed over every model
+request the agent made, what the run billed; **`context_tokens`** is the last request alone, the agent's
+context size at the end and the figure its completion notification shows. A long agent's `tokens` runs
+several times its `context_tokens`, since every request re-reads the cached context.
+
+- **Foreground:** `tokens` sums the requests the mod heard on `turn.step` for the result's loop id;
+  `context_tokens`, tool calls, duration and model come from the `Agent` result (`totalTokens`,
+  `totalToolUseCount`, `totalDurationMs`, `resolvedModel`). With no request heard, `tokens` is 0 and the row
+  says `usage not measured`.
+- **Background:** the mod counts the loop's tool calls, and takes `tokens` (the turn's requests summed),
+  duration and the report from its `turn.complete`; `context_tokens` is the last request heard on
+  `turn.step` that reported usage, null when none did. When `turn.complete` carries no usage, `tokens` falls
+  back to the requests heard on `turn.step` summed, and the row says `usage not measured` only when none of
+  them reported usage either.
+- **Loop tallies:** the per-loop request tally is dropped once the loop's result or registered loop end is
+  folded. A loop never folded (an errored dispatch whose result names no loop, an unregistered background
+  launch) stays in memory until evicted: the mod holds at most 256 loop tallies, dropping the least recently
+  stepped first.
+
+**`requests`** counts the model requests the loop made (every `turn.step` heard for it, with or without
+usage); null when none was heard. A request is one call to the model: the conversation so far goes out, one
+reply comes back. Tools run between requests, and one reply may ask for several, so `requests` is not
+`tool_uses`. `tokens` divided by `requests` is the mean request size when every request reported usage.
+
+Before 0.7.0 a foreground row's `tokens` held the result's `totalTokens` (the last request's count, now
+`context_tokens`), and a background row's the summed figure. Rows written before 0.7.0 keep that mixed
+meaning and carry neither `context_tokens` nor `requests`. Matrix rows follow the same change: a foreground
+reviewer's matrix `tokens` before 0.7.0 is its last request's count.
 
 ## State
 

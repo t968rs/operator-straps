@@ -253,6 +253,13 @@ class TestDraftProblems:
             "vendor name 'Claude' in the draft",
         ]
 
+    def test_emoji_and_section_sign(self) -> None:
+        draft = _draft(summary="Done ✅, see § 2.")
+        assert draft_problems(_facts(), draft, level=1) == [
+            "emoji '✅' in the draft; remove it",
+            "section sign '§' in the draft; write 'Section N'",
+        ]
+
 
 class TestControlCharacters:
     @pytest.mark.parametrize("overrides, problem", [

@@ -16,7 +16,12 @@ import type { Watch } from './watch'
 
 /** What one subagent turn (or a synchronous Agent result) contributes. */
 export type Completion = {
+  /** Tokens summed over every model request the turn made. */
   tokens: number
+  /** Tokens of the last model request alone; absent when unknown (an errored result, or a background loop with no request reporting usage). */
+  contextTokens?: number
+  /** Model requests the turn made; absent when none was heard. */
+  requests?: number
   toolUses: number
   durationMs: number
   model: string | null

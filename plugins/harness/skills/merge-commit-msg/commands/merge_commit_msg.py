@@ -39,7 +39,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
 from harness_lib.canned_messages import get_canned_message  # noqa: E402
 from harness_lib.commit_diff import cap_sections, clip_text  # noqa: E402
-from harness_lib.commit_txt import filler_words, read_commit_txt, vendor_names  # noqa: E402
+from harness_lib.commit_txt import filler_words, glyph_problems, read_commit_txt, vendor_names  # noqa: E402
 from harness_lib.config import ConfigError, active, activate, load_config  # noqa: E402
 from harness_lib.pr_capture import read_rank  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
@@ -280,10 +280,11 @@ def structure_problems(lines: Sequence[str], pr: int, title: str) -> List[str]:
 
 
 def content_problems(lines: Sequence[str]) -> List[str]:
-    """Vendor names, filler, commit SHAs and sign-offs in the body (the subject quotes the title verbatim)."""
+    """Vendor names, filler, emoji, section signs, SHAs and sign-offs in the body (not the quoted subject)."""
     body = "\n".join(lines[1:])
     problems = [f"vendor name {name!r} in the message" for name in vendor_names(body)]
     problems += [f"filler {word!r} - state what changed instead" for word in filler_words(body)]
+    problems += glyph_problems(body, "the message")
     problems += [f"commit SHA {m.group(0)!r}; the merge UI records SHAs" for m in _SHA.finditer(body)]
     problems += [f"sign-off line {line.strip()!r}" for line in lines if _SIGNOFF.match(line)]
     return problems

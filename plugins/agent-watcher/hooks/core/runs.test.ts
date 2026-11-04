@@ -48,6 +48,22 @@ describe('applyCompletion', () => {
     expect(run.agents.a?.counts?.critical).toBe(1)
   })
 
+  test('contextTokens follows the latest completion that reports one', async () => {
+    const first = applyCompletion(base(), 'a', { ...done, contextTokens: 50 })
+    expect(first.agents.a?.contextTokens).toBe(50)
+    const kept = applyCompletion(first, 'a', done)
+    expect(kept.agents.a?.contextTokens).toBe(50)
+    expect(applyCompletion(kept, 'a', { ...done, contextTokens: 70 }).agents.a?.contextTokens).toBe(70)
+    expect('contextTokens' in (applyCompletion(base(), 'a', done).agents.a ?? {})).toBe(false)
+  })
+
+  test('requests add up over completions that report them', async () => {
+    const one = applyCompletion(base(), 'a', { ...done, requests: 2 })
+    expect(applyCompletion(one, 'a', done).agents.a?.requests).toBe(2)
+    expect(applyCompletion(one, 'a', { ...done, requests: 3 }).agents.a?.requests).toBe(5)
+    expect('requests' in (applyCompletion(base(), 'a', done).agents.a ?? {})).toBe(false)
+  })
+
   test('an agent the run does not hold leaves the run as it is', async () => {
     const run = base()
     expect(applyCompletion(run, 'nope', done)).toBe(run)

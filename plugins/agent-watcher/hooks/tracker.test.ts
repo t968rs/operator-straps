@@ -7,7 +7,7 @@ import { DEFINED_AGENTS, parseReturnBlock, type Dispatch } from './core/contract
 import type { Io, Layer } from './core/layer'
 import { applyCompletion, applyDispatch, newAgent } from './core/runs'
 import {
-  completeLayer, contextFor, countsFor, foldInto, logUsage, settleLayers, stopReasonOf,
+  completeLayer, contextFor, countsFor, foldInto, logUsage, settleLayers, STEP_TALLY_CAP, stopReasonOf,
 } from './core/tracker'
 import { OWNER_NOTE, prReviewLayer } from './layers/pr-review/layer'
 
@@ -32,7 +32,11 @@ const ZERO = 'findings=0 critical=0 important=0 minor=0'
 
 type Files = Map<string, { text: string; mtimeMs: number }>
 /** `unreadable`: paths that exist but whose read is refused (a lock, an OS refusal, over 4 MiB). */
-type Seen = { files: Files; unreadable: Set<string>; toasts: string[]; agentCalls: number; git: string[][] }
+type Seen = {
+  files: Files; unreadable: Set<string>; toasts: string[]; agentCalls: number; git: string[][]
+  /** The usage a model request answers with, by `<turnId>/<index>`; none answers null. */
+  stepUsage: Map<string, Record<string, unknown>>
+}
 /** `config`: the `.claude/harness.json` text at ROOT (null: no file); `originHead`: symbolic-ref's answer. */
 type Opts = { config?: string | null; originHead?: string }
 
@@ -76,7 +80,7 @@ const gitAnswer = (argv: readonly string[], opts: Opts): ProcessRunResult => {
 
 /** Files, clock, env, git and the Agent tool beneath the plugin. */
 const world = (on: On, agentAnswer: (prompt: string) => unknown, opts: Opts = {}): Seen => {
-  const seen: Seen = { files: new Map(), unreadable: new Set(), toasts: [], agentCalls: 0, git: [] }
+  const seen: Seen = { files: new Map(), unreadable: new Set(), toasts: [], agentCalls: 0, git: [], stepUsage: new Map() }
   const config = opts.config === undefined ? '{}' : opts.config
   if (config !== null) seen.files.set(HARNESS, { text: config, mtimeMs: 1 })
   mock.env(on, { CLAUDE_PROJECT_DIR: ROOT })
@@ -105,6 +109,11 @@ const world = (on: On, agentAnswer: (prompt: string) => unknown, opts: Opts = {}
     return { value: undefined }
   })
   on('turn.complete', (_$, e) => ({ text: e.answer }))
+  on('turn.step', async function* (_$, e) {
+    yield { kind: 'text', index: 0, text: 'hi' } as never
+    const usage = seen.stepUsage.get(`${e.turnId}/${e.index}`) ?? null
+    return { turnId: e.turnId, index: e.index, answer: 'hi', toolUses: [], stopReason: 'end_turn', usage } as never
+  })
   on('tool.call', { tool: 'Agent' }, (_$, e) => {
     seen.agentCalls++
     return agentAnswer(e.prompt) as never
@@ -114,6 +123,36 @@ const world = (on: On, agentAnswer: (prompt: string) => unknown, opts: Opts = {}
 
 const dispatch = ($: Engine, prompt: string, subagentType = 'superpowers:code-reviewer') =>
   $.tool.call({ tool: 'Agent', description: 'r', prompt, subagent_type: subagentType, model: 'opus' })
+
+/** A usage whose four counts total `n`. */
+const usageOf = (n: number) => ({
+  input_tokens: n - 3, output_tokens: 1, cache_read_input_tokens: 1, cache_creation_input_tokens: 1, model: 'claude-opus-5-5',
+})
+
+/** A stream read to its end: its chunks and the value it returned. */
+const drain = async <C, R>(s: AsyncGenerator<C, R>): Promise<{ chunks: C[]; result: R }> => {
+  const chunks: C[] = []
+  for (;;) {
+    const r = await s.next()
+    if (r.done === true) return { chunks, result: r.value }
+    chunks.push(r.value)
+  }
+}
+
+/**
+ * Model requests in a loop (`agentId`; undefined is the main loop), one per total (null: a request that
+ * reported no usage), each stream read to its end.
+ */
+const steps = async ($: Engine, seen: Seen, agentId: string | undefined, ...totals: (number | null)[]): Promise<void> => {
+  for (const [index, n] of totals.entries()) {
+    const turnId = `s-${agentId ?? 'main'}`
+    if (n === null) seen.stepUsage.delete(`${turnId}/${index}`)
+    else seen.stepUsage.set(`${turnId}/${index}`, usageOf(n))
+    await drain($.turn.step({
+      turnId, index, model: 'claude-opus-5-5', messageCount: 1, ...(agentId === undefined ? {} : { agentId }),
+    }))
+  }
+}
 
 const mainTurnEnd = ($: Engine, turnId: string) =>
   $.turn.complete({ answer: 'done', durationMs: 1, isAborted: false, turnId, reason: 'answer' })
@@ -166,7 +205,9 @@ describe('Agent hook', () => {
 describe('matrix rows', () => {
   test('one measured row per reviewer once the review has a verdict; attempted once', async ($, on) => {
     const seen = world(on, p => completed(doneBlock(p.includes('r1') ? 'findings=2 critical=1 important=1 minor=0' : ZERO)))
+    await steps($, seen, 'loop-x', 1000)
     await dispatch($, reviewerPrompt('r1'))
+    await steps($, seen, 'loop-x', 1000)
     await dispatch($, reviewerPrompt('r2'))
     expect(seen.files.has(MATRIX)).toBe(false)
     writeReview(seen, { verdict: 'NOT READY TO MERGE: 1 critical', issues: { critical: [{ id: 'C1' }] } })
@@ -177,6 +218,7 @@ describe('matrix rows', () => {
       tokens: 1000, tool_uses: 7, duration_s: 2.5, model_family: 'opus', C_count: 1, verdict_prefix: 'NOT READY TO MERGE',
     })
     expect(rows[0]?.dev_commit).toBe(`${SHA} -- dev (agent-watcher auto)`)
+    expect(rows[1]).toMatchObject({ tokens: 1000 })
     await mainTurnEnd($, 't2')
     expect(matrixRows(seen)).toHaveLength(2)
   })
@@ -263,11 +305,13 @@ describe('agent usage rows', () => {
 
   test('a reviewer row is written on return, before any verdict', async ($, on) => {
     const seen = world(on, () => completed(doneBlock(ZERO)))
+    await steps($, seen, 'loop-x', 1000)
     await dispatch($, reviewerPrompt('r1', 'PR: 1526'), 'harness:pr-reviewer')
     expect(usageRows(seen)).toHaveLength(1)
     expect(usageRows(seen)[0]).toMatchObject({
       run_id: RUN, pr: 1526, skill: 'pr-review', role: 'reviewer', agent_id: 'r1', subagent_type: 'harness:pr-reviewer',
-      model: 'claude-opus-5-5', model_family: 'opus', tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
+      model: 'claude-opus-5-5', model_family: 'opus', tokens: 1000, context_tokens: 1000, requests: 1, tool_uses: 7, duration_s: 2.5,
+      signal: 'DONE',
     })
     expect(seen.files.has(MATRIX)).toBe(false)
   })
@@ -397,6 +441,103 @@ describe('agent usage rows', () => {
   })
 })
 
+describe('token figures: tokens summed over requests, context_tokens the last request', () => {
+  const launchedAs = (agentId: string) => ({
+    result: { status: 'async_launched', agentId, description: 'r', prompt: '', outputFile: 'f', resolvedModel: 'claude-sonnet-5-5' },
+    text: 'launched',
+  })
+  /** A loop turn's end; a null total carries no usage. */
+  const loopEnd = ($: Engine, agentId: string, total: number | null) =>
+    $.turn.complete({
+      answer: 'done', durationMs: 4000, isAborted: false, turnId: `t-${agentId}`, reason: 'answer', agentId,
+      ...(total === null ? {} : { usage: usageOf(total) }),
+    } as never)
+
+  test('foreground: tokens sum the loop\'s requests, context_tokens is the result\'s totalTokens', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await steps($, seen, undefined, 5000)
+    await steps($, seen, 'loop-x', 300, 400)
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 700, context_tokens: 1000, requests: 2, notes: 'agent-watcher auto row; other NO_BLOCK' })
+  })
+
+  test('foreground with no request heard: tokens 0 and not measured; context_tokens still logged', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 0, context_tokens: 1000, requests: null })
+    expect(String(usageRows(seen)[0]?.notes)).toMatch(/; usage not measured$/)
+  })
+
+  test('a loop\'s requests count once: the next dispatch of the same loop id starts from zero', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    await steps($, seen, 'loop-x', 400)
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    expect(usageRows(seen).map(r => r.tokens)).toEqual([400, 0])
+  })
+
+  test('background: tokens from the loop turn, context_tokens from its last request', async ($, on) => {
+    const seen = world(on, () => launchedAs('loop-1'))
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    await steps($, seen, 'loop-1', 40, 60)
+    await loopEnd($, 'loop-1', 100)
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: 60, requests: 2 })
+  })
+
+  test('a request with no usage counts as a request; the last usage stands', async ($, on) => {
+    const seen = world(on, () => launchedAs('loop-3'))
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    await steps($, seen, 'loop-3', 40, null)
+    await loopEnd($, 'loop-3', 40)
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 40, context_tokens: 40, requests: 2 })
+  })
+
+  test('background with no request heard: context_tokens null', async ($, on) => {
+    const seen = world(on, () => launchedAs('loop-2'))
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    await loopEnd($, 'loop-2', 100)
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: null, requests: null })
+  })
+
+  test('background loop turn with no usage: tokens fall back to the requests heard, measured', async ($, on) => {
+    const seen = world(on, () => launchedAs('loop-4'))
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    await steps($, seen, 'loop-4', 40, 60)
+    await loopEnd($, 'loop-4', null)
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: 60, requests: 2 })
+    expect(String(usageRows(seen)[0]?.notes)).not.toMatch(/usage not measured/)
+  })
+
+  test('an errored dispatch logs context_tokens null', async ($, on) => {
+    const seen = world(on, () => ({ result: 'boom', isError: true, text: 'boom' }))
+    await steps($, seen, 'loop-x', 500)
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    expect(usageRows(seen)[0]).toMatchObject({ signal: 'ERROR', tokens: 0, context_tokens: null, requests: null })
+  })
+
+  test('an errored result names no loop, so its tally stays until the cap evicts it', async ($, on) => {
+    let calls = 0
+    const seen = world(on, () => (calls++ === 0 ? { result: 'boom', isError: true, text: 'boom' } : completed('ok')))
+    await steps($, seen, 'loop-x', 500)
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    for (let i = 0; i < STEP_TALLY_CAP; i++) await steps($, seen, `loop-evict-${i}`, 1)
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    expect(usageRows(seen)[1]).toMatchObject({ signal: 'NO_BLOCK', tokens: 0, requests: null })
+  })
+
+  test('the step hook passes every chunk and the result through unchanged', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    seen.stepUsage.set('p/0', usageOf(10))
+    const { chunks, result } = await drain(
+      $.turn.step({ turnId: 'p', index: 0, model: 'claude-opus-5-5', messageCount: 1, agentId: 'loop-p' }),
+    )
+    expect(chunks).toEqual([{ kind: 'text', index: 0, text: 'hi' }])
+    expect(result).toEqual({
+      turnId: 'p', index: 0, answer: 'hi', toolUses: [], stopReason: 'end_turn', usage: usageOf(10),
+    })
+  })
+})
+
 describe('standalone agent usage rows', () => {
   const launchedAs = (agentId: string) => ({
     result: { status: 'async_launched', agentId, description: 'r', prompt: '', outputFile: 'f', resolvedModel: 'claude-sonnet-5-5' },
@@ -406,6 +547,7 @@ describe('standalone agent usage rows', () => {
 
   test('a defined agent dispatched without a run header logs one standalone row', async ($, on) => {
     const seen = world(on, () => completed('commit written'), { config: '{}' })
+    await steps($, seen, 'loop-x', 1000)
     await run($, 'harness:messenger')
     expect(usageRows(seen)).toHaveLength(1)
     expect(String(usageRows(seen)[0]?.run_id)).toMatch(/^standalone_20270115T080000Z_\d+$/)
@@ -560,11 +702,12 @@ describe('the header convention and row fields (issue #193)', () => {
 
   test('a pr-review slot dispatch logs exactly as before, with no fields key', async ($, on) => {
     const seen = world(on, () => completed(doneBlock(ZERO)))
+    await steps($, seen, 'loop-x', 1000)
     await dispatch($, reviewerPrompt('r1', 'PR: 1526\nLENS: docs'), 'harness:pr-reviewer')
     expect(usageRows(seen)).toEqual([{
       logged_at: new Date(NOW).toISOString(), run_id: RUN, pr: 1526, skill: 'pr-review', role: 'reviewer',
       agent_id: 'r1', subagent_type: 'harness:pr-reviewer', model: 'claude-opus-5-5', model_family: 'opus',
-      effort: 'default', tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
+      effort: 'default', tokens: 1000, context_tokens: 1000, requests: 1, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
       notes: 'agent-watcher auto row; reviewer DONE',
     }])
   })

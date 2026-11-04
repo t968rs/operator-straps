@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/agent_usage.schema.json",
   "title": "Agent Usage: every Agent dispatch",
-  "description": "One row per returned Agent dispatch, of any agent type: the marketplace's defined agents, built-ins (Explore, general-purpose, Plan) and other plugins' agents (completed or errored; a denied dispatch writes none), written by the agent-watcher mod when the agent returns. A pr-review or pr-team dispatch (reviewer, fixer, orchestrator, planner, closer) belongs to its run; any other dispatch is a generic row whose skill, role, run id, agent id and PR come from its prompt's leading header block (`SKILL:`, `AGENT_ROLE:`, `RUN_ID:`, `AGENT_ID:`, `PR:`), falling back to `standalone`, `other`, a generated run id, the type's name and null; the other header keys land in `fields`. Records who ran (role, subagent_type, model), its cost (tokens, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
+  "description": "One row per returned Agent dispatch, of any agent type: the marketplace's defined agents, built-ins (Explore, general-purpose, Plan) and other plugins' agents (completed or errored; a denied dispatch writes none), written by the agent-watcher mod when the agent returns. A pr-review or pr-team dispatch (reviewer, fixer, orchestrator, planner, closer) belongs to its run; any other dispatch is a generic row whose skill, role, run id, agent id and PR come from its prompt's leading header block (`SKILL:`, `AGENT_ROLE:`, `RUN_ID:`, `AGENT_ID:`, `PR:`), falling back to `standalone`, `other`, a generated run id, the type's name and null; the other header keys land in `fields`. Records who ran (role, subagent_type, model), its cost (tokens, context_tokens, requests, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -76,7 +76,17 @@
     "tokens": {
       "type": "integer",
       "minimum": 0,
-      "description": "Input + output + cache read + cache creation tokens, as the engine reports them; 0 when unmeasured."
+      "description": "Input + output + cache read + cache creation tokens summed over every model request the agent made, as the engine reports each: what the run billed. 0 when unmeasured. Rows written before agent-watcher 0.7.0 hold, for a foreground dispatch, the last request's count instead (what `context_tokens` now holds). A row without the `context_tokens` key predates 0.7.0."
+    },
+    "context_tokens": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "The same four counts for the agent's last model request that reported usage, alone: its context size at the end, the figure its completion notification shows. Null when unknown (an errored result, a foreground result without a total, or an agent none of whose requests reported usage). Every row from agent-watcher 0.7.0 on carries it; older rows lack it."
+    },
+    "requests": {
+      "type": ["integer", "null"],
+      "minimum": 1,
+      "description": "Model requests the agent's loop made, whether or not a response with usage came back. Tool calls happen between requests, and one request may ask for several, so this is not `tool_uses`. Null when no request was heard (an errored result, or an agent none of whose requests the watcher heard). Every row from agent-watcher 0.7.0 on carries it; older rows lack it."
     },
     "tool_uses": {
       "type": "integer",

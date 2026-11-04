@@ -26,6 +26,7 @@ description: |
   </example>
 model: sonnet
 tools: Bash, Read, Edit, Grep
+omitClaudeMd: true
 ---
 
 You write git-facing text for a developer who commits it themselves. The input is a diff and a task from the

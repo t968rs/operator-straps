@@ -25,10 +25,24 @@ describe('buildUsageRow', () => {
     expect(row).toEqual({
       logged_at: '2026-10-20T21:00:00.000Z', run_id: 'pr35_20261020T210000Z', pr: 35, skill: 'pr-review',
       role: 'reviewer', agent_id: 'runtime', subagent_type: 'harness:pr-reviewer', model: 'claude-opus-5-5',
-      model_family: 'opus', effort: 'default', tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
-      notes: 'agent-watcher auto row; reviewer DONE',
+      model_family: 'opus', effort: 'default', tokens: 1000, context_tokens: null, requests: null, tool_uses: 7,
+      duration_s: 2.5, signal: 'DONE', notes: 'agent-watcher auto row; reviewer DONE',
     })
     expect(validateUsageRow(row)).toEqual([])
+  })
+
+  test('requests logs the model requests heard; null when none was', async () => {
+    const row = buildUsageRow(input({ agent: agent({ requests: 3 }) }))
+    expect(row.requests).toBe(3)
+    expect(validateUsageRow(row)).toEqual([])
+    expect(buildUsageRow(input()).requests).toBeNull()
+  })
+
+  test('context_tokens logs the last request\'s size, rounded; null when unknown', async () => {
+    const row = buildUsageRow(input({ agent: agent({ contextTokens: 61234.4 }) }))
+    expect([row.tokens, row.context_tokens]).toEqual([1000, 61234])
+    expect(validateUsageRow(row)).toEqual([])
+    expect(buildUsageRow(input()).context_tokens).toBeNull()
   })
 
   test('fixer and closer rows carry the counts; other roles never do', async () => {
@@ -96,6 +110,14 @@ describe('validateUsageRow', () => {
     const problems = (over: Record<string, unknown>): string => validateUsageRow({ ...ok, ...over }).join('; ')
     expect(problems({ cell: 'x' })).toContain('cell')
     expect(problems({ tokens: -1 })).toContain('tokens')
+    expect(problems({ context_tokens: -1 })).toContain('context_tokens')
+    expect(problems({ context_tokens: 1.5 })).toContain('context_tokens')
+    expect(problems({ context_tokens: '5' })).toContain('context_tokens')
+    expect(problems({ context_tokens: null })).toBe('')
+    for (const bad of [0, -1, 1.5, '2']) expect(problems({ requests: bad })).toContain('requests')
+    expect(problems({ requests: null })).toBe('')
+    const { context_tokens: _c, requests: _r, ...older } = ok
+    expect(validateUsageRow(older)).toEqual([])
     expect(problems({ role: 'Roaster' })).toContain('role')
     expect(problems({ skill: 'Strap Skills' })).toContain('skill')
     expect(problems({ role: 'runner', skill: 'strap-skills' })).toBe('')

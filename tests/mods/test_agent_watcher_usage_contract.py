@@ -3,8 +3,9 @@
 The mod validates agent usage rows in TypeScript (``plugins/agent-watcher/hooks/core/usageRow.ts``), where
 the plugin test sandbox cannot read repository files. This test reads both sides and fails when
 ``plugins/harness/schemas/agent_usage.schema.json`` changes its required fields, count fields, optional
-``fields`` object and its key, length and no-path rules, the skill and role patterns, the model family enum,
-``logged_at`` pattern, nullable strings or non-empty strings without the mod following.
+``fields`` object and its key, length and no-path rules, the optional ``context_tokens`` and ``requests``
+counts, the skill and role patterns, the model family enum, ``logged_at`` pattern, nullable strings or
+non-empty strings without the mod following.
 """
 from __future__ import annotations
 
@@ -41,7 +42,25 @@ def test_count_fields_are_the_conditional_rest(schema: dict, usage_row_ts: str) 
     optional = ts_string_array(usage_row_ts, "USAGE_OPTIONAL")
     assert counts == schema["then"]["required"]
     assert set(schema["properties"]) - set(schema["required"]) == set(counts) | set(optional)
-    assert optional == ["fields"]
+    assert optional == ["fields", "context_tokens", "requests"]
+
+
+def test_context_tokens_rule_matches(schema: dict, usage_row_ts: str) -> None:
+    """A count or null, as ``numberProblems`` checks it; the mod writes it on every new row."""
+    column = schema["properties"]["context_tokens"]
+    assert column["type"] == ["integer", "null"]
+    assert column["minimum"] == 0
+    assert "context_tokens: not a non-negative integer or null" in usage_row_ts
+    assert "context_tokens: a.contextTokens === undefined ? null" in usage_row_ts
+
+
+def test_requests_rule_matches(schema: dict, usage_row_ts: str) -> None:
+    """A positive count or null, as ``numberProblems`` checks it; the mod writes it on every new row."""
+    column = schema["properties"]["requests"]
+    assert column["type"] == ["integer", "null"]
+    assert column["minimum"] == 1
+    assert "requests: not a positive integer or null" in usage_row_ts
+    assert "requests: a.requests === undefined ? null" in usage_row_ts
 
 
 def test_role_pattern_matches(schema: dict, usage_row_ts: str) -> None:

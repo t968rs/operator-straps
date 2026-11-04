@@ -46,9 +46,11 @@ const COUNT_FIELDS = [
 const ALLOWED = new Set<string>([...MATRIX_REQUIRED, ...MATRIX_OPTIONAL])
 const DEV_COMMIT = new RegExp(DEV_COMMIT_PATTERN)
 
+const UNMEASURED = 'usage not measured (no model request heard, or session restarted mid-run)'
+
 const notesFor = (a: AgentRec): string => {
   const base = `agent-watcher auto row; ${a.role} ${a.signal ?? 'pending'}`
-  return a.isMeasured ? base : `${base}; usage not measured (session restarted mid-run)`
+  return a.isMeasured ? base : `${base}; ${UNMEASURED}`
 }
 
 const whole = (n: number): number => Math.max(0, Math.round(n))

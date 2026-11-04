@@ -56,6 +56,13 @@ _FILLER = re.compile(
     re.IGNORECASE,
 )
 
+# Emoji (pictographs, misc symbols, dingbats, stars) and the section sign; the dingbat arrows (U+2794,
+# U+2798-27AF, U+27B1-27BE) stay allowed because diagram blocks use them.
+_GLYPH = re.compile(
+    "[\U0001F000-\U0001FAFF☀-➓➕-➗➰➿⬛⬜⭐⭕§]"
+)
+_CODE_SPAN = re.compile(r"`[^`\n]*`")
+
 
 def _strip_backticks(value: str) -> str:
     """Remove a single wrapping pair of backticks, if present."""
@@ -234,6 +241,16 @@ def filler_words(text: str) -> List[str]:
     return [match.group(1) for match in _FILLER.finditer(text)]
 
 
+def glyph_problems(text: str, where: str) -> List[str]:
+    """A problem per distinct emoji or section sign in ``text`` outside backticks, in order of appearance."""
+    found = dict.fromkeys(_GLYPH.findall(_CODE_SPAN.sub("", text)))
+    return [
+        f"section sign '{glyph}' in {where}; write 'Section N'" if glyph == "§"
+        else f"emoji '{glyph}' in {where}; remove it"
+        for glyph in found
+    ]
+
+
 def double_quote_lines(text: str) -> List[int]:
     """1-based numbers of the lines of ``text`` that hold a double quote."""
     return [number for number, line in enumerate(text.splitlines(), 1) if '"' in line]
@@ -261,7 +278,7 @@ def quote_problems(document: BranchCommitDocument) -> List[str]:
 
 
 def _commit_message_problems(key: int, commit: CommitEntry) -> List[str]:
-    """Problems for one commit: subject rule, vendor names, filler prose, double quotes."""
+    """Problems for one commit: subject rule, vendor names, filler prose, emoji and section signs, quotes."""
     header = commit.header or ""
     text = commit.message or header
     problems: List[str] = []
@@ -271,12 +288,13 @@ def _commit_message_problems(key: int, commit: CommitEntry) -> List[str]:
         )
     problems += [f"commit {key}: vendor name {name!r} in message" for name in vendor_names(text)]
     problems += [f"commit {key}: filler {word!r} - state what changed instead" for word in filler_words(text)]
+    problems += [f"commit {key}: {problem}" for problem in glyph_problems(text, "message")]
     if any(line.strip() == GROUP_SEP for line in text.splitlines()):
         problems.append(f"commit {key}: a message line of '{GROUP_SEP}' would split the TXT block; reword it")
     return problems + _commit_quote_problems(key, commit)
 
 
 def message_problems(document: BranchCommitDocument) -> List[str]:
-    """Return a problem per subject-rule break, vendor name, filler word or double quote in the messages."""
+    """A problem per subject-rule break, vendor name, filler word, emoji, section sign or double quote."""
     return [problem for key in sorted(document.commits)
             for problem in _commit_message_problems(key, document.commits[key])]

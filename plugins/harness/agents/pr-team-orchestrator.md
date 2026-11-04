@@ -388,7 +388,8 @@ else `${CLAUDE_PLUGIN_ROOT}/schemas/pr_review_invocation_test_matrix.schema.json
 - `dispatch_shape` = `"parallel"` if plan's `dispatch_parallel: true`, else `"inline"`
 - `tokens`, `tool_uses`, `duration_s` — derive from the per-reviewer output file's
   metadata block (each reviewer output file SHOULD include these; if absent, use 0
-  and add a `notes` mention)
+  and add a `notes` mention). This `tokens` is the reviewer's self-reported figure,
+  not the sum over every model request that the mod's rows carry.
 - `findings_count`, `C_count`, `I_count`, `M_count`, `other_count` (strengths count)
 - `verdict_prefix`, `notes`
 - `phase4_script: null` (per-reviewer rows)

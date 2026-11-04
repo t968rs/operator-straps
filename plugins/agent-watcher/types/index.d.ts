@@ -28,7 +28,15 @@ export type AgentRec = {
   /** Model as requested or resolved; null when neither is known. */
   model: string | null
   effort: string | null
+  /** Input + output + cache read + cache creation tokens summed over every model request the agent made. */
   tokens: number
+  /**
+   * The same four counts for the agent's last model request alone (its context size at the end, the figure its
+   * completion notification shows); absent while unknown.
+   */
+  contextTokens?: number
+  /** Model requests the agent's loop made (one per `turn.step`), with or without usage; absent while unknown. */
+  requests?: number
   toolUses: number
   durationMs: number
   /** True once engine-measured usage was folded in. */

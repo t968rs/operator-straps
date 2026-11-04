@@ -21,6 +21,7 @@ description: |
   </example>
 model: sonnet
 tools: Read, Grep, Glob, Bash
+omitClaudeMd: true
 ---
 
 You grade recorded replies against the judged items of their scenarios. The prompt carries header lines:

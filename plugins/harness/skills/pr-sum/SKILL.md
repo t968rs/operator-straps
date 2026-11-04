@@ -242,8 +242,9 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py"
 ```
 
 `build` checks: `title` and `summary` non-empty, `title` on one line, a description for every listed
-non-artifact path and none for paths outside the PR, no AI vendor names, no control characters (tab and line
-breaks excepted) in any drafted string, the section rules of the skeleton's level (including the
+non-artifact path and none for paths outside the PR, no AI vendor names, no emojis and no section sign (write
+"Section 2"; backticked text is exempt), no control characters (tab and line breaks excepted) in any drafted
+string, the section rules of the skeleton's level (including the
 `Behavior:` labels, the one unlabeled fence of a `New Behavior:` section, and connector alignment in every
 flow), and with `--min-viz` the diagram-block count. A shortfall prints one `problem:` line with the count
 found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated files.
@@ -259,6 +260,7 @@ Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit
 | Writing or patching the summary markdown by hand          | Edit `draft`; rerun `build`. The markdown is script output.     |
 | Writing the artifact `***Note:***` into `summary`         | Delete it; the script adds it                                   |
 | An AI vendor or product name anywhere in `draft`          | Remove it; `build` rejects it                                   |
+| An emoji or a section sign in `draft`                     | Remove it, or write "Section 2"; `build` rejects both           |
 | Running `gh pr diff` / `gh api` for files or commits      | `capture` and `diff` already have them                          |
 | Descriptions guessed from filenames                       | Read the diff; state the change                                 |
 | Review language (verdicts, strengths, issues, next steps) | This is a summary, not a review — delete it                     |
