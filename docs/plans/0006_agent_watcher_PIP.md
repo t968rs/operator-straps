@@ -146,7 +146,7 @@ TARGET: x
 
 ### TASK-3: Split agent-watcher into a generic core and a pr-review layer, behavior unchanged
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-2
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-2
 **Files:** `plugins/agent-watcher/hooks/register.ts`, `plugins/agent-watcher/hooks/core/layer.ts`, `plugins/agent-watcher/hooks/core/tracker.ts`, `plugins/agent-watcher/hooks/core/contract.ts`, `plugins/agent-watcher/hooks/core/usageRow.ts`, `plugins/agent-watcher/hooks/core/config.ts`, `plugins/agent-watcher/hooks/core/jsonl.ts`, `plugins/agent-watcher/hooks/core/watch.ts`, `plugins/agent-watcher/hooks/core/root.ts`, `plugins/agent-watcher/hooks/layers/index.ts`, `plugins/agent-watcher/hooks/layers/pr-review/layer.ts`, `plugins/agent-watcher/hooks/layers/pr-review/identify.ts`, `plugins/agent-watcher/hooks/layers/pr-review/runKey.ts`, `plugins/agent-watcher/hooks/layers/pr-review/sentinels.ts`, `plugins/agent-watcher/hooks/layers/pr-review/phase5Scan.ts`, `plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts`, `plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts`, `plugins/agent-watcher/hooks/layers/pr-review/runs.ts`, `plugins/agent-watcher/hooks/layers/pr-review/band.tsx`, `plugins/agent-watcher/hooks/layers/pr-review/config.ts`, `plugins/agent-watcher/types/index.d.ts`, `plugins/agent-watcher/README.md`, `tests/mods/test_agent_watcher_config_mirror.py`, `tests/mods/test_agent_watcher_matrix_contract.py`, `tests/mods/test_agent_watcher_usage_contract.py`, `tests/mods/test_local_run_key_mirror.py`, `tests/skills/test_bubble_memo_agents_contract.py`, `tests/mods/test_agent_watcher_layers.py`, `plugins/agent-watcher/hooks/root.ts`, `plugins/agent-watcher/hooks/watch.ts`, `plugins/agent-watcher/hooks/config.ts`, `plugins/agent-watcher/hooks/contract.ts`, `plugins/agent-watcher/hooks/usageRow.ts`, `plugins/agent-watcher/hooks/matrixRow.ts`, `plugins/agent-watcher/hooks/tracker.ts`, `plugins/agent-watcher/hooks/runs.ts`, `plugins/agent-watcher/hooks/runKey.ts`, `plugins/agent-watcher/hooks/bubbles.ts`, `plugins/agent-watcher/hooks/sentinels.ts`, `plugins/agent-watcher/hooks/phase5Scan.ts`, `plugins/agent-watcher/hooks/band.tsx`, `plugins/agent-watcher/hooks/bubbles.test.ts`, `plugins/agent-watcher/hooks/config.test.ts`, `plugins/agent-watcher/hooks/contract.test.ts`, `plugins/agent-watcher/hooks/matrixRow.test.ts`, `plugins/agent-watcher/hooks/phase5Scan.test.ts`, `plugins/agent-watcher/hooks/runKey.test.ts`, `plugins/agent-watcher/hooks/runs.test.ts`, `plugins/agent-watcher/hooks/sentinels.test.ts`, `plugins/agent-watcher/hooks/usageRow.test.ts`, `plugins/agent-watcher/hooks/core/contract.test.ts`, `plugins/agent-watcher/hooks/core/usageRow.test.ts`, `plugins/agent-watcher/hooks/core/config.test.ts`, `plugins/agent-watcher/hooks/layers/pr-review/config.test.ts`, `plugins/agent-watcher/hooks/layers/pr-review/bubbles.test.ts`, `plugins/agent-watcher/hooks/layers/pr-review/matrixRow.test.ts`, `plugins/agent-watcher/hooks/layers/pr-review/phase5Scan.test.ts`, `plugins/agent-watcher/hooks/layers/pr-review/runKey.test.ts`, `plugins/agent-watcher/hooks/layers/pr-review/runs.test.ts`, `plugins/agent-watcher/hooks/layers/pr-review/sentinels.test.ts`, `plugins/bubble-stamp/hooks/review.ts`, `.claude/skills/porting-into-straps/SKILL.md`, `CLAUDE.md`, `plugins/agent-watcher/hooks/core/runs.test.ts`, `plugins/agent-watcher/hooks/core/runs.ts`, `plugins/agent-watcher/hooks/tracker.test.ts`
 
 **Anchors:**
@@ -169,18 +169,22 @@ Rules: no file under `hooks/core/` imports from `hooks/layers/`. Keep today's or
 Tests: each `*.test.ts` moves beside its file; the end-to-end `tracker.test.ts` and `band.test.tsx` stay at `hooks/`. No test is dropped or weakened: the total stays at least 164. `config.test.ts` splits with `config.ts`: each case goes with the key it covers (`core/config.test.ts`, `layers/pr-review/config.test.ts`); the mirror test reads both config files. Update the path constants in `tests/mods/test_agent_watcher_*.py`, `test_local_run_key_mirror.py` and `tests/skills/test_bubble_memo_agents_contract.py`. Outside references to moved files: `plugins/bubble-stamp/hooks/review.ts:3` (bubbles.ts), `.claude/skills/porting-into-straps/SKILL.md` (the mod's config.ts / root.ts patterns) and `CLAUDE.md` (the mirror rule names agent-watcher's `hooks/core/config.ts` and `hooks/layers/pr-review/config.ts`). README: a Layout section (core, the Layer and Io contract, adding a layer). Copy the planned `tests/mods/test_agent_watcher_layers.py`.
 As built (review 0208 I1 and the lane review): `contract.ts` splits like `config.ts`; `keyOfRunId`, `startedAtOfRunId` and the `RunKey` type live in `layers/pr-review/runKey.ts`, the identify cases move to `layers/pr-review/runs.test.ts` and the run-id cases to `runKey.test.ts`, and `hooks/tracker.test.ts` keeps its place with re-pointed imports. The pure run transitions (`newAgent`, `applyDispatch`, `applyCompletion`, `usageToLog`, `markUsageLogged`) live in `core/runs.ts` with `core/runs.test.ts`. The `Layer` interface gains `foldRun?(run, agentId, completion): Run` (pure, applied inside core's completion fold; pr-review's is the closer close) and `onComplete?(io, run, agentId, completion)` (side effects only: the `.matrix_owner` marker). `claimOf` returns the claiming layer, recorded as `Run.claimedBy`; `foldRun`, `onComplete`, `rowFields` and `resultContext` go only to that layer, `onSettle` and `stopReason` to every layer, each call isolated so one layer's throw never cancels another's, and the standalone drop runs in a `finally`. `Io` carries one closure per state key (D12). A two-layer test in `hooks/tracker.test.ts` drives the functions that take the layer list with a stub layer.
 
-- [ ] Test `tests/mods/test_agent_watcher_layers.py::test_core_never_imports_a_layer` fails with AssertionError, then passes
-- [ ] Test `tests/mods/test_agent_watcher_layers.py::test_register_wires_core_and_the_pr_review_layer` fails with AssertionError, then passes
-- [ ] Test `tests/mods/test_agent_watcher_layers.py::test_the_layer_contract_never_takes_the_engine` fails with AssertionError, then passes
-- [ ] Run `claude plugin test plugins/agent-watcher`: 0 fail, and at least 164 pass
-- [ ] Run `claude plugin validate plugins/agent-watcher`: Validation passed
-- [ ] Record the commit: `plan.py record 0006 TASK-3 --sha <sha>`
+- [x] Test `tests/mods/test_agent_watcher_layers.py::test_core_never_imports_a_layer` fails with AssertionError, then passes
+- [x] Test `tests/mods/test_agent_watcher_layers.py::test_register_wires_core_and_the_pr_review_layer` fails with AssertionError, then passes
+- [x] Test `tests/mods/test_agent_watcher_layers.py::test_the_layer_contract_never_takes_the_engine` fails with AssertionError, then passes
+- [x] Run `claude plugin test plugins/agent-watcher`: 0 fail, and at least 164 pass
+- [x] Run `claude plugin validate plugins/agent-watcher`: Validation passed
+- [x] Record the commit: `plan.py record 0006 TASK-3 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit d3d031b: 3 test node(s) passed
+
+- `d3d031b6eb460ddadba3d646e6180f00cb708158`
+- `tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e`
+- `python -m pytest -q tests/mods/test_agent_watcher_layers.py::test_core_never_imports_a_layer tests/mods/test_agent_watcher_layers.py::test_register_wires_core_and_the_pr_review_layer tests/mods/test_agent_watcher_layers.py::test_the_layer_contract_never_takes_the_engine`
 
 ### TASK-4: Generic tracking: every dispatch, the header convention and open row fields (issue #193)
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-3
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-3
 **Files:** `plugins/agent-watcher/hooks/core/tracker.ts`, `plugins/agent-watcher/hooks/core/contract.ts`, `plugins/agent-watcher/hooks/core/usageRow.ts`, `plugins/agent-watcher/hooks/core/contract.test.ts`, `plugins/agent-watcher/hooks/core/usageRow.test.ts`, `plugins/agent-watcher/hooks/tracker.test.ts`, `plugins/agent-watcher/types/index.d.ts`, `plugins/agent-watcher/README.md`, `plugins/harness/schemas/agent_usage.schema.json`, `tests/mods/test_agent_watcher_usage_contract.py`, `tests/schemas/test_agent_usage_schema.py`, `tests/schemas/test_agent_usage_open_rows.py`, `README.md`, `plugins/agent-watcher/hooks/core/layer.ts`, `plugins/agent-watcher/hooks/layers/pr-review/identify.ts`, `plugins/agent-watcher/hooks/layers/pr-review/identify.test.ts`
 
 **Anchors:**
@@ -202,22 +206,26 @@ As built (review 0208 I1 and the lane review): `contract.ts` splits like `config
 6. TS tests: a built-in dispatch logs a row; a header with the skill key, RUN_ID and extra keys logs skill, run_id and fields; a prompt whose header block ends before a body `SIGNAL:` line keeps that line out of fields; a pr-review slot dispatch logs exactly as before, with no `fields` key; a value over 200 characters is cut; a strap runner header (TREE, INIT) and a bubble-memo FILES line log no `/` or `\` anywhere in the row's `fields`. Review 0208 cases: a header with `SKILL: bubble-memo`, RUN_ID, AGENT_ID and `AGENT_ROLE: reviewer` logs skill `bubble-memo` as a generic row with no matrix row, no band change and no pr-team run; `SKILL: harness:strap-skills` logs skill `strap-skills`; `SKILL: Strap Skills` logs `standalone` with `fields.SKILL`; an unclaimed `AGENT_ROLE: fixer` logs role `other`; `AGENT_ID: docs/x` and `RUN_ID: a/b` fall back to the type name and the generated id; `PR: 208` fills `pr`; a `SKILL: strap-skills` dispatch leaves the band's active run unchanged and its run is gone from state after its usage row; two concurrent dispatches under one RUN_ID log two rows.
 7. Root `README.md` (lines 40 and 429 describe the defined-agent gate): every Agent dispatch is logged. Mod README: the header convention, `fields`, and that every dispatch is logged. `tests/schemas/test_agent_usage_schema.py`: drop the `unknown-skill` and `unknown-role` rejection cases (now valid). Copy the planned `tests/schemas/test_agent_usage_open_rows.py`.
 
-- [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_any_skill_name_validates` fails with AssertionError, then passes
-- [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_any_role_name_validates` fails with AssertionError, then passes
-- [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_a_fields_object_validates` fails with AssertionError, then passes
-- [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_fields_hold_uppercase_keys_and_string_values` fails with AssertionError, then passes
-- [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_signal_reads_without_standalone_framing` fails with AssertionError, then passes
-- [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_field_values_are_capped` fails with AssertionError, then passes
-- [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_field_values_hold_no_paths` fails with AssertionError, then passes
-- [ ] Run `claude plugin test plugins/agent-watcher`: 0 fail, and more pass than after TASK-3
-- [ ] Run `claude plugin validate plugins/agent-watcher`: Validation passed
-- [ ] Record the commit: `plan.py record 0006 TASK-4 --sha <sha>`
+- [x] Test `tests/schemas/test_agent_usage_open_rows.py::test_any_skill_name_validates` fails with AssertionError, then passes
+- [x] Test `tests/schemas/test_agent_usage_open_rows.py::test_any_role_name_validates` fails with AssertionError, then passes
+- [x] Test `tests/schemas/test_agent_usage_open_rows.py::test_a_fields_object_validates` fails with AssertionError, then passes
+- [x] Test `tests/schemas/test_agent_usage_open_rows.py::test_fields_hold_uppercase_keys_and_string_values` fails with AssertionError, then passes
+- [x] Test `tests/schemas/test_agent_usage_open_rows.py::test_signal_reads_without_standalone_framing` fails with AssertionError, then passes
+- [x] Test `tests/schemas/test_agent_usage_open_rows.py::test_field_values_are_capped` fails with AssertionError, then passes
+- [x] Test `tests/schemas/test_agent_usage_open_rows.py::test_field_values_hold_no_paths` fails with AssertionError, then passes
+- [x] Run `claude plugin test plugins/agent-watcher`: 0 fail, and more pass than after TASK-3
+- [x] Run `claude plugin validate plugins/agent-watcher`: Validation passed
+- [x] Record the commit: `plan.py record 0006 TASK-4 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit d3d031b: 7 test node(s) passed
+
+- `d3d031b6eb460ddadba3d646e6180f00cb708158`
+- `tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e`
+- `python -m pytest -q tests/schemas/test_agent_usage_open_rows.py::test_any_skill_name_validates tests/schemas/test_agent_usage_open_rows.py::test_any_role_name_validates tests/schemas/test_agent_usage_open_rows.py::test_a_fields_object_validates tests/schemas/test_agent_usage_open_rows.py::test_fields_hold_uppercase_keys_and_string_values tests/schemas/test_agent_usage_open_rows.py::test_signal_reads_without_standalone_framing tests/schemas/test_agent_usage_open_rows.py::test_field_values_are_capped tests/schemas/test_agent_usage_open_rows.py::test_field_values_hold_no_paths`
 
 ### TASK-5: Drivers and skill prompts open with SKILL:, strap's target becomes TARGET:, strap agents end with a --- block
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** TASK-4
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** TASK-4
 **Files:** `plugins/harness/scripts/strap.py`, `plugins/harness/scripts/bubble_memo.py`, `plugins/harness/lib/harness_lib/writing_docstrings_models.py`, `plugins/harness/skills/todo-edit/SKILL.md`, `plugins/harness/skills/sync-gh-todo/SKILL.md`, `plugins/harness/skills/check-runlogs/SKILL.md`, `plugins/harness/agents/strap-judge.md`, `plugins/harness/agents/strap-scenario-runner.md`, `tests/scripts/test_strap_driver.py`, `tests/scripts/test_strap_gate.py`, `tests/scripts/test_bubble_memo_driver.py`, `tests/skills/test_docstring_dispatch_command.py`, `tests/lib/test_writing_docstrings_dispatch_api.py`, `plugins/harness/skills/strap-skills/SKILL.md`, `tests/contract/test_dispatch_skill_headers.py`, `tests/skills/test_sync_gh_todo_skill_contract.py`
 
 **Anchors:**
@@ -248,14 +256,18 @@ D2 skill-key, D4 leave, D6 dash-fence. The skill line is the first prompt line, 
 6. Update the tests that pin these rows: `tests/scripts/test_strap_driver.py:315` (row order: SKILL: strap-skills, TARGET, RUN, TREE) and `:404` (the dashed block), `tests/scripts/test_strap_gate.py` judge-row (597-601), `tests/scripts/test_bubble_memo_driver.py` row tests, `tests/skills/test_docstring_dispatch_command.py:50`, `tests/lib/test_writing_docstrings_dispatch_api.py:245` (the skill line shifts each prompt line by one).
 7. Copy the planned `tests/contract/test_dispatch_skill_headers.py`. Verify: its nodes and `python -m pytest tests/scripts/test_strap_driver.py tests/scripts/test_strap_gate.py tests/scripts/test_bubble_memo_driver.py tests/skills/test_docstring_dispatch_command.py tests/lib/test_writing_docstrings_dispatch_api.py tests/skills/test_strap_skills_skill_contract.py -q`.
 
-- [ ] Test `tests/contract/test_dispatch_skill_headers.py::test_strap_runner_row_names_strap_skills_then_the_target` fails with AttributeError, then passes
-- [ ] Test `tests/contract/test_dispatch_skill_headers.py::test_strap_judge_row_names_strap_skills_then_the_target` fails with AttributeError, then passes
-- [ ] Test `tests/contract/test_dispatch_skill_headers.py::test_strap_record_run_prints_a_dash_fenced_block` fails with AttributeError, then passes
-- [ ] Test `tests/contract/test_dispatch_skill_headers.py::test_bubble_memo_rows_name_bubble_memo_first` fails with AttributeError, then passes
-- [ ] Test `tests/contract/test_dispatch_skill_headers.py::test_docstring_rows_name_writing_docstrings_first` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_dispatch_skill_headers.py::test_skill_prose_prompts_name_their_skill_first` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_dispatch_skill_headers.py::test_strap_agents_read_the_target_line` fails with AssertionError, then passes
-- [ ] Test `tests/contract/test_dispatch_skill_headers.py::test_the_judge_reply_ends_in_a_dash_fenced_block` fails with AssertionError, then passes
-- [ ] Record the commit: `plan.py record 0006 TASK-5 --sha <sha>`
+- [x] Test `tests/contract/test_dispatch_skill_headers.py::test_strap_runner_row_names_strap_skills_then_the_target` fails with AttributeError, then passes
+- [x] Test `tests/contract/test_dispatch_skill_headers.py::test_strap_judge_row_names_strap_skills_then_the_target` fails with AttributeError, then passes
+- [x] Test `tests/contract/test_dispatch_skill_headers.py::test_strap_record_run_prints_a_dash_fenced_block` fails with AttributeError, then passes
+- [x] Test `tests/contract/test_dispatch_skill_headers.py::test_bubble_memo_rows_name_bubble_memo_first` fails with AttributeError, then passes
+- [x] Test `tests/contract/test_dispatch_skill_headers.py::test_docstring_rows_name_writing_docstrings_first` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_dispatch_skill_headers.py::test_skill_prose_prompts_name_their_skill_first` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_dispatch_skill_headers.py::test_strap_agents_read_the_target_line` fails with AssertionError, then passes
+- [x] Test `tests/contract/test_dispatch_skill_headers.py::test_the_judge_reply_ends_in_a_dash_fenced_block` fails with AssertionError, then passes
+- [x] Record the commit: `plan.py record 0006 TASK-5 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit d3d031b: 8 test node(s) passed
+
+- `d3d031b6eb460ddadba3d646e6180f00cb708158`
+- `tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e`
+- `python -m pytest -q tests/contract/test_dispatch_skill_headers.py::test_strap_runner_row_names_strap_skills_then_the_target tests/contract/test_dispatch_skill_headers.py::test_strap_judge_row_names_strap_skills_then_the_target tests/contract/test_dispatch_skill_headers.py::test_strap_record_run_prints_a_dash_fenced_block tests/contract/test_dispatch_skill_headers.py::test_bubble_memo_rows_name_bubble_memo_first tests/contract/test_dispatch_skill_headers.py::test_docstring_rows_name_writing_docstrings_first tests/contract/test_dispatch_skill_headers.py::test_skill_prose_prompts_name_their_skill_first tests/contract/test_dispatch_skill_headers.py::test_strap_agents_read_the_target_line tests/contract/test_dispatch_skill_headers.py::test_the_judge_reply_ends_in_a_dash_fenced_block`

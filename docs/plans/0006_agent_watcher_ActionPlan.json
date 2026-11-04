@@ -1,6 +1,7 @@
 {
   "plan_id": "0006",
   "plan_created": "2026-11-04",
+  "completed": "2026-11-04",
   "source_document": "GitHub issues #195, #192, #193 and the 2026-11-03 design conversation",
   "documentation": "docs/plans/0006_agent_watcher_PIP.md",
   "branch": "1123-agent-watcher",
@@ -391,8 +392,13 @@
       "dependencies": [
         "TASK-2"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit d3d031b: 3 test node(s) passed",
+      "verification_references": [
+        "d3d031b6eb460ddadba3d646e6180f00cb708158",
+        "tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e",
+        "python -m pytest -q tests/mods/test_agent_watcher_layers.py::test_core_never_imports_a_layer tests/mods/test_agent_watcher_layers.py::test_register_wires_core_and_the_pr_review_layer tests/mods/test_agent_watcher_layers.py::test_the_layer_contract_never_takes_the_engine"
+      ],
       "model": "opus",
       "anchors": [
         {
@@ -482,8 +488,13 @@
       "dependencies": [
         "TASK-3"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit d3d031b: 7 test node(s) passed",
+      "verification_references": [
+        "d3d031b6eb460ddadba3d646e6180f00cb708158",
+        "tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e",
+        "python -m pytest -q tests/schemas/test_agent_usage_open_rows.py::test_any_skill_name_validates tests/schemas/test_agent_usage_open_rows.py::test_any_role_name_validates tests/schemas/test_agent_usage_open_rows.py::test_a_fields_object_validates tests/schemas/test_agent_usage_open_rows.py::test_fields_hold_uppercase_keys_and_string_values tests/schemas/test_agent_usage_open_rows.py::test_signal_reads_without_standalone_framing tests/schemas/test_agent_usage_open_rows.py::test_field_values_are_capped tests/schemas/test_agent_usage_open_rows.py::test_field_values_hold_no_paths"
+      ],
       "model": "opus",
       "anchors": [
         {
@@ -589,8 +600,13 @@
       "dependencies": [
         "TASK-4"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit d3d031b: 8 test node(s) passed",
+      "verification_references": [
+        "d3d031b6eb460ddadba3d646e6180f00cb708158",
+        "tree b259b07ca9dbf4d08ef6cfff3a78b795921a4c2e",
+        "python -m pytest -q tests/contract/test_dispatch_skill_headers.py::test_strap_runner_row_names_strap_skills_then_the_target tests/contract/test_dispatch_skill_headers.py::test_strap_judge_row_names_strap_skills_then_the_target tests/contract/test_dispatch_skill_headers.py::test_strap_record_run_prints_a_dash_fenced_block tests/contract/test_dispatch_skill_headers.py::test_bubble_memo_rows_name_bubble_memo_first tests/contract/test_dispatch_skill_headers.py::test_docstring_rows_name_writing_docstrings_first tests/contract/test_dispatch_skill_headers.py::test_skill_prose_prompts_name_their_skill_first tests/contract/test_dispatch_skill_headers.py::test_strap_agents_read_the_target_line tests/contract/test_dispatch_skill_headers.py::test_the_judge_reply_ends_in_a_dash_fenced_block"
+      ],
       "model": "sonnet",
       "anchors": [
         {
