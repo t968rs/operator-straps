@@ -208,18 +208,30 @@ def completion_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     return out
 
 
+def claims_rev(plan: pm.ActionPlan) -> Optional[str]:
+    """The base commit once an item is done, else None (the working tree).
+
+    Anchors and sweeps describe the code before the work; once a done item has changed that code, they hold
+    only at the base, so a refreeze in mid-plan checks them there.
+    """
+    return (plan.base_commit or None) if any(i.status in DONE for i in plan.items) else None
+
+
 def all_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     """Every check of a plan that loaded: loading already validated its shape."""
-    return (pc.lint_problems(plan, repo, plans_dir()) + pc.anchor_problems(plan, repo)
-            + pc.sweep_problems(plan, repo, active().artifacts.plans) + digest_problems(plan)
+    rev = claims_rev(plan)
+    return (pc.lint_problems(plan, repo, plans_dir()) + pc.anchor_problems(plan, repo, rev)
+            + pc.sweep_problems(plan, repo, active().artifacts.plans, rev) + digest_problems(plan)
             + completion_problems(repo, plan))
 
 
 def check_summary(plan: pm.ActionPlan) -> str:
     anchors = sum(1 for _ in pc.anchors_of(plan))
     opened = pc.open_decisions(plan)
+    rev = claims_rev(plan)
+    where = "" if rev is None else f" | anchors and sweeps at base {rev[:7]}"
     return (f"check [ok] | plan {plan.plan_id} | {len(plan.items)} items, {anchors} anchors, "
-            f"{len(plan.sweeps)} sweeps | open decisions: {len(opened)}")
+            f"{len(plan.sweeps)} sweeps | open decisions: {len(opened)}{where}")
 
 
 def cmd_check(repo: Path, args: argparse.Namespace) -> int:
