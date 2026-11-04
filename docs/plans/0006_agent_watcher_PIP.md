@@ -6,7 +6,7 @@
 **Spec:** `GitHub issues #195, #192, #193 and the 2026-11-03 design conversation`
 **Branch:** 1123-agent-watcher -> main
 **Base commit:** `3e2b448`
-**Frozen:** 2026-11-04 at `be865ca`
+**Frozen:** 2026-11-04 at `e76e90f`
 **Execution model:** serial
 
 ## Decisions
@@ -18,7 +18,7 @@
 - **D5** Which `Agent` dispatches does agent-watcher log? Chosen: `all-dispatches` (Every Agent call: defined agents, built-ins (Explore, general-purpose, Plan) and other plugins' agents). Rejected: `defined-only` (Only agents the marketplace defines (today's DEFINED_AGENTS rule)). Developer, 2026-11-03: agent-watcher "monitors and logs ALL agent dispatches".
 - **D6** Which return-block form does the watcher read? Chosen: `dash-fence` (One form: the column-1 `---` fenced block with a SIGNAL line; strap runner and judge adopt it). Rejected: `accept-text-fence` (Also accept a ```text fence), `keep-no-block` (Leave strap rows at NO_BLOCK). Developer, 2026-11-03: "using the same form makes sense".
 - **D7** How do layer hooks (band, Stop, prompt line, shell refresh, session-start recovery) register? Chosen: `direct-register` (register.ts calls each layer's `registerXLayer(on)` function directly). Rejected: `registry-loop` (register.ts loops over LAYERS and calls `layer.register(on)`). Spike on 2026-11-04: `layer.register?.(on)` is refused with "on is used other than as a call or an argument to a function of the module's own"; a direct `registerProbeHooks(on)` validates.
-- **D8** How are `fields` values stored in the tracked usage log? Chosen: `as-written-capped` (As written, cut to 200 characters; values such as strap's TREE and INIT paths enter the log). Rejected: `drop-path-keys` (Core drops keys known to hold local paths (TREE, INIT)). Generic core cannot know which keys hold paths; a skill that wants a key kept out leaves it out of its header. The cap bounds row size (local review 1123, I4).
+- **D8** How are `fields` values stored in the tracked usage log, given that headers carry paths (strap TREE, INIT, SPEC; bubble-memo FILES)? Chosen: `drop-path-values` (Core drops any value holding a path separator (`/` or `\`), key included; other values cut to 200 characters). Rejected: `as-written-capped` (As written, cut to 200 characters; paths enter the log), `drop-path-keys` (Core drops keys known to hold paths (TREE, INIT)). Developer, 2026-11-04: "We do not want any local OR absolute paths" in the log. A generic rule on the value catches every key, known or not; the schema rejects a separator so a row that slips one through fails validation. The cap bounds row size (local review 1123, I4).
 
 ## Values
 
@@ -38,7 +38,7 @@ RUN: R-1
 TARGET: retry-policy
 ---`, copied from `plugins/pr-review-watch/hooks/contract.ts:174-175`
 - **header line**: `RUN_ID: pr205_20261104T060000Z`, copied from `plugins/pr-review-watch/hooks/contract.ts:42`
-- **usage row fields (TASK-4 adds the key to the allowed set at this line)**: `"fields": {"RUN": "R-3", "TREE": "/w/t"}`, copied from `plugins/pr-review-watch/hooks/usageRow.ts:90`
+- **usage row fields (TASK-4 adds the key to the allowed set at this line)**: `"fields": {"RUN": "R-3", "TARGET": "retry-policy"}`, copied from `plugins/pr-review-watch/hooks/usageRow.ts:90`
 - **strap record-run block (TASK-5 prints it in place of the ```text fence at this line)**: `---
 SIGNAL: recorded
 RUN: R-1
@@ -181,10 +181,10 @@ Tests: each `*.test.ts` moves beside its file; the end-to-end `tracker.test.ts` 
 
 1. Core tracks every Agent call (D5): drop the `isDefinedAgent` gate in `trackedDispatch`; a call no layer claims is a generic run of one. `DEFINED_AGENTS` stays as data (its contract test stays); built-ins and other plugins' agents log with `subagent_type` as given and `agent_id` the type's name after any plugin prefix (`general-purpose` when the call names none).
 2. Header convention: parse the leading block (D3) of uppercase `KEY: value` / `KEY=value` lines. Core reads the D2 skill key, `RUN_ID`, `AGENT_ROLE`, `AGENT_ID` (`AGENT_ROLE` is the key the pr-review and pr-team headers and return blocks already use): skill from the key (else `standalone`), run_id from RUN_ID (else the generated `standalone_<UTC>_<seq>`), role from AGENT_ROLE (else `other`), agent_id from AGENT_ID (else the type name). Layers still claim first (pr-review and pr-team headers unchanged).
-3. Rows of an unclaimed dispatch gain an optional `fields` object: every leading-block key core did not consume, value as written (trimmed), cut to 200 characters (197 and `...`, D8). Absent when empty. A layer-claimed row carries no `fields`, so pr-review and pr-team rows stay exactly as they are. pr and the fixer counts stay top-level.
-4. Schema `agent_usage.schema.json`: `skill` becomes a string with pattern `^[a-z][a-z0-9-]*$` (pr-review, pr-team, standalone still valid); `role` a string with pattern `^[a-z][a-z_-]*$` (the six current roles still valid); add `fields` (object, propertyNames `^[A-Z][A-Z_]*$`, string values with maxLength 200); `signal` description: `NO_BLOCK` when the agent returned without a return block, no standalone framing; title and description name every Agent dispatch. Old rows still validate.
+3. Rows of an unclaimed dispatch gain an optional `fields` object: every leading-block key core did not consume, value as written (trimmed). D8: a value holding a path separator (`/` or `\`) is dropped with its key, so no local or absolute path reaches the log; any other value is cut to 200 characters (197 and `...`). Absent when empty. A layer-claimed row carries no `fields`, so pr-review and pr-team rows stay exactly as they are. pr and the fixer counts stay top-level.
+4. Schema `agent_usage.schema.json`: `skill` becomes a string with pattern `^[a-z][a-z0-9-]*$` (pr-review, pr-team, standalone still valid); `role` a string with pattern `^[a-z][a-z_-]*$` (the six current roles still valid); add `fields` (object, propertyNames `^[A-Z][A-Z_]*$`, string values with maxLength 200 and pattern `^[^/\\]*$`, no path separator); `signal` description: `NO_BLOCK` when the agent returned without a return block, no standalone framing; title and description name every Agent dispatch. Old rows still validate.
 5. TS validator `core/usageRow.ts` follows the schema: drop the USAGE_SKILLS and USAGE_ROLES enums for the two patterns (export them as SKILL_PATTERN and ROLE_PATTERN), allow and check `fields`. Update `tests/mods/test_agent_watcher_usage_contract.py` to pin the patterns and the `fields` rule instead of the enums.
-6. TS tests: a built-in dispatch logs a row; a header with the skill key, RUN_ID and extra keys logs skill, run_id and fields; a prompt whose header block ends before a body `SIGNAL:` line keeps that line out of fields; a pr-review slot dispatch logs exactly as before, with no `fields` key; a value over 200 characters is cut.
+6. TS tests: a built-in dispatch logs a row; a header with the skill key, RUN_ID and extra keys logs skill, run_id and fields; a prompt whose header block ends before a body `SIGNAL:` line keeps that line out of fields; a pr-review slot dispatch logs exactly as before, with no `fields` key; a value over 200 characters is cut; a strap runner header (TREE, INIT) and a bubble-memo FILES line log no `/` or `\` anywhere in the row's `fields`.
 7. Root `README.md` (lines 40 and 429 describe the defined-agent gate): every Agent dispatch is logged. Mod README: the header convention, `fields`, and that every dispatch is logged. `tests/schemas/test_agent_usage_schema.py`: drop the `unknown-skill` and `unknown-role` rejection cases (now valid). Copy the planned `tests/schemas/test_agent_usage_open_rows.py`.
 
 - [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_any_skill_name_validates` fails with AssertionError, then passes
@@ -193,6 +193,7 @@ Tests: each `*.test.ts` moves beside its file; the end-to-end `tracker.test.ts` 
 - [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_fields_hold_uppercase_keys_and_string_values` fails with AssertionError, then passes
 - [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_signal_reads_without_standalone_framing` fails with AssertionError, then passes
 - [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_field_values_are_capped` fails with AssertionError, then passes
+- [ ] Test `tests/schemas/test_agent_usage_open_rows.py::test_field_values_hold_no_paths` fails with AssertionError, then passes
 - [ ] Run `claude plugin test plugins/agent-watcher`: 0 fail, and more pass than after TASK-3
 - [ ] Run `claude plugin validate plugins/agent-watcher`: Validation passed
 - [ ] Record the commit: `plan.py record 0006 TASK-4 --sha <sha>`
