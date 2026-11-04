@@ -9,7 +9,7 @@ Two chart sets are written as standalone SVG files (stdlib only, no plotting lib
   (``pr_review_invocation_test_matrix.jsonl``) carries no ``role`` field; its rows are grouped by the role
   named in their ``notes`` text (``"...; reviewer DONE"``) and drawn as ``model_share_matrix_<role>.svg``.
 * ``avg_tokens_by_role.svg``: mean ``tokens`` per dispatch for each ``role`` in the usage ledger, where one
-  dispatch is one ledger row (one subagent run logged by pr-review-watch, re-dispatches included).
+  dispatch is one ledger row (one subagent run logged by agent-watcher, re-dispatches included).
 
 Each SVG paints its own opaque card and switches palette under ``prefers-color-scheme: dark``, so it reads
 on both README themes. A per-role summary is printed to stdout.
