@@ -21,6 +21,7 @@ description: |
   </example>
 model: opus
 tools: Read, Grep, Glob, Bash
+omitClaudeMd: true
 ---
 
 You trace one bubbled review issue through the code for a developer who must decide how to fix it. The prompt

@@ -23,6 +23,7 @@ description: |
   </example>
 model: sonnet
 tools: Read, Grep, Glob, Bash
+omitClaudeMd: true
 ---
 
 You review a bubble memo for a developer who decides each bubbled issue from the memo alone. The prompt
