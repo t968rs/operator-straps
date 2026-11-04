@@ -4,7 +4,7 @@ Usage: harness_usage_charts.py [--data-dir DIR] [--out-dir DIR]
 
 Two chart sets are written as standalone SVG files (stdlib only, no plotting library):
 
-* ``model_share_<role>.svg``: one pie per ``role`` in ``pr_review_agent_usage.jsonl``, slices by model
+* ``model_share_<role>.svg``: one pie per ``role`` in ``agent_usage.jsonl``, slices by model
   family (the model id collapsed to haiku / sonnet / opus, version ignored). The invocation test matrix
   (``pr_review_invocation_test_matrix.jsonl``) carries no ``role`` field; its rows are grouped by the role
   named in their ``notes`` text (``"...; reviewer DONE"``) and drawn as ``model_share_matrix_<role>.svg``.
@@ -26,7 +26,7 @@ from typing import Callable, Dict, Iterator, List, Optional, Sequence, Tuple
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[1]
-USAGE_FILE = "pr_review_agent_usage.jsonl"
+USAGE_FILE = "agent_usage.jsonl"
 MATRIX_FILE = "pr_review_invocation_test_matrix.jsonl"
 FAMILIES = ("opus", "sonnet", "haiku")
 FAMILY_RE = re.compile(r"(haiku|sonnet|opus)", re.IGNORECASE)
