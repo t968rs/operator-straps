@@ -1,0 +1,53 @@
+name: Pylint
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The project targets 3.11 (pyproject.toml, ci.yml); lint against the same grammar and stdlib.
+        python-version: ["3.11"]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install uv
+      id: setup-uv
+      uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+      with:
+        version: "0.11.15"
+        enable-cache: true
+        cache-dependency-glob: requirements-dev.txt
+
+    - name: Report uv cache status
+      run: |
+        echo "uv cache hit: ${{ steps.setup-uv.outputs.cache-hit }}"
+        echo "uv cache key: ${{ steps.setup-uv.outputs.cache-key }}"
+
+    # The CI dependency set, so third-party imports resolve (E0401) without a separate list to keep.
+    - name: Install dependencies
+      run: |
+        uv pip install --system pylint -r requirements-dev.txt
+
+    # PYTHONPATH mirrors pytest's pythonpath (pyproject.toml): harness_lib and the test helpers are
+    # found through sys.path edits at runtime, which pylint cannot follow.
+    - name: Analysing the code with pylint
+      env:
+        PYTHONPATH: plugins/harness/lib:tests
+      run: |
+        pylint $(git ls-files '*.py' ':!:tests/*')
+    # Test functions need no docstring (C0116), pytest fixtures are passed in by the name they are
+    # defined under (W0621), and tests reach into private helpers on purpose (W0212).
+    - name: Analysing the tests with pylint
+      if: ${{ !cancelled() }}
+      env:
+        PYTHONPATH: plugins/harness/lib:tests
+      run: |
+        pylint --disable=C0116,W0621,W0212 $(git ls-files 'tests/*.py')
