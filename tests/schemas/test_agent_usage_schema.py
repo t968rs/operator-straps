@@ -1,4 +1,4 @@
-"""Schema discipline for the agent usage log (``pr_review_agent_usage.schema.json``).
+"""Schema discipline for the agent usage log (``agent_usage.schema.json``).
 
 Pins the row contract the pr-review-watch mod writes: every role validates, nullable fields accept null,
 the four fixer count fields are required on fixer and closer rows and rejected on every other role, and
@@ -16,7 +16,7 @@ import pytest
 
 from conftest import PLUGIN_ROOT
 
-_SCHEMA_FILE = PLUGIN_ROOT / "schemas" / "pr_review_agent_usage.schema.json"
+_SCHEMA_FILE = PLUGIN_ROOT / "schemas" / "agent_usage.schema.json"
 
 
 @pytest.fixture(scope="module")

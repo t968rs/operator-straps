@@ -46,7 +46,7 @@ def test_defaults_without_harness_json(make_project) -> None:
 
 
 def test_agent_usage_path_default_and_override(make_project) -> None:
-    assert load_config(make_project()).agent_usage_path == "docs/_harness/pr_review_agent_usage.jsonl"
+    assert load_config(make_project()).agent_usage_path == "docs/_harness/agent_usage.jsonl"
     assert load_config(make_project({"agent_usage_path": "meta/u.jsonl"})).agent_usage_path == "meta/u.jsonl"
 
 
