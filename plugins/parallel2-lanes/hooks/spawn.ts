@@ -18,14 +18,21 @@ const noop = (): undefined => undefined
 /** True for a spawn the mod never rewrites. */
 const isOutOfScope = (e: AgentSpawnInput): boolean => Boolean(e.fork || e.isTeammate || e.resume || e.workflow)
 
-/** The lane a spawn prompt names, its brief read; undefined when anything is missing. Never throws. */
+/** An implement lane with no live worktree (planned, or cleaned): it has no directory to run in. */
+const hasNoDirectory = (lane: LaneState): boolean => lane.kind === 'implement' && laneCwd(lane) === undefined
+
+/**
+ * The lane a spawn prompt names, its brief read; undefined when anything is missing or the lane has no
+ * directory to run in, so the spawn passes through. Never throws.
+ */
 export async function laneOfPrompt($: EngineInterface, prompt: string): Promise<LaneHit | undefined> {
   const path = briefPath(prompt)
   const ref = path === undefined ? undefined : laneRef(path)
   if (path === undefined || ref === undefined) return undefined
   const [brief, state] = [await readText($, path), await readState($, ref.stateFile)]
   const lane = state?.lanes.find(item => item.id === ref.laneId)
-  return brief === undefined || lane === undefined ? undefined : { ref, lane, brief }
+  if (brief === undefined || lane === undefined || hasNoDirectory(lane)) return undefined
+  return { ref, lane, brief }
 }
 
 /** The spawn input for a lane: brief inline, the lane's model, the lane's worktree when it has one. */

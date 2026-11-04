@@ -139,14 +139,43 @@ describe('a lane spawn', () => {
 
   test('a missing brief, a missing state or an unknown lane passes through', async ($, on) => {
     const w = world(on, { [STATE]: stateText() })
+    const ghost = `${FOLDER}/feat-x/ghost.md`
+    w.files.set(ghost, 'ghost brief')
     await $.agent.spawn(dispatch(`Brief: ${BRIEF}`, 'sonnet'))
-    await $.agent.spawn(dispatch(`Brief: ${FOLDER}/feat-x/ghost.md`, 'sonnet'))
+    await $.agent.spawn(dispatch(`Brief: ${ghost}`, 'sonnet'))
     w.files.set(BRIEF, BRIEF_TEXT)
     w.files.delete(STATE)
     await $.agent.spawn(dispatch(`Brief: ${BRIEF}`, 'sonnet'))
     expect(w.spawned.map(e => [e.prompt.startsWith('Brief:'), e.model])).toEqual([
       [true, 'sonnet'], [true, 'sonnet'], [true, 'sonnet'],
     ])
+    expect(w.spawned[1]!.prompt).toBe(`Brief: ${ghost}`)
+  })
+
+  test('a planned or cleaned implement lane passes through, with no directory to run in', async ($, on) => {
+    const w = world(on, { [BRIEF]: BRIEF_TEXT, [STATE]: stateText([lane('task1', { status: 'cleaned' })]) })
+    await $.agent.spawn(dispatch(`Brief: ${BRIEF}`, 'sonnet'))
+    w.files.set(STATE, stateText([lane('task1', { status: 'planned', worktree: null })]))
+    await $.agent.spawn(dispatch(`Brief: ${BRIEF}`, 'sonnet'))
+    expect(w.spawned.map(e => [e.prompt, e.model, e.cwd])).toEqual([
+      [`Brief: ${BRIEF}`, 'sonnet', undefined],
+      [`Brief: ${BRIEF}`, 'sonnet', undefined],
+    ])
+    expect(w.toasts).toEqual([])
+  })
+
+  test('a fork, a teammate or a workflow agent keeps its prompt, model and directory', async ($, on) => {
+    const w = world(on)
+    const call = dispatch(`Brief: ${BRIEF}\nStart now.`, 'sonnet')
+    await $.agent.spawn({ ...call, fork: true })
+    await $.agent.spawn({ ...call, isTeammate: true })
+    await $.agent.spawn({ ...call, workflow: true })
+    expect(w.spawned.map(e => [e.prompt, e.model, e.cwd])).toEqual([
+      [call.prompt, 'sonnet', undefined],
+      [call.prompt, 'sonnet', undefined],
+      [call.prompt, 'sonnet', undefined],
+    ])
+    expect(w.toasts).toEqual([])
   })
 
   test('a broken file system never blocks the spawn', async ($, on) => {

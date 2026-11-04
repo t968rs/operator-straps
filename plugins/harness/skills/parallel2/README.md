@@ -25,7 +25,8 @@ The prongs are separate checks: `setup` cuts the worktrees first, then `probe` e
 worktrees before any lane of the wave is dispatched.
 
 **Why worktrees.** Subagents sharing one working tree overwrite each other's edits and break each other's test
-runs. Each implement lane gets its own branch and directory, cut from the target branch's HEAD.
+runs. Each implement lane gets its own branch and directory, cut from the target branch's HEAD, or from a
+snapshot of the index on HEAD when changes are staged.
 
 **Why a probe instead of reading `settings.json`.** Reading the allow lists does not prove a tool will not
 prompt: a glob that looks right may not match the argument shape used, worktree paths fall outside globs
@@ -37,7 +38,8 @@ the target's copy. If the developer committed to one of those files after the wo
 checkout silently reverts that commit, and files the lane deleted or renamed are never staged at all. `stage`
 applies the lane's own diff (from the commit the worktree was cut at) three-way onto the target's index:
 target commits made since setup are merged, deletions and renames land, and a real conflict leaves markers
-and is named. It refuses when a lane path has uncommitted edits in the target checkout.
+and is named. It refuses when a lane path is unstaged, untracked or restaged since setup in the target
+checkout.
 
 ## Lifecycle
 
@@ -104,7 +106,7 @@ Reading the example:
 
 `parallel2-lanes` (installed separately) reads the run state the driver writes. A lane's `Agent` call that
 opens with `Brief: <path>` starts with the brief text in its prompt, the plan's model and the lane worktree
-as its working directory; a band above the prompt lists each run's lanes with their status.
+as its working directory for an implement lane; a band above the prompt lists each run's lanes with their status.
 
 ## Related
 

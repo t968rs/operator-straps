@@ -21,7 +21,7 @@ const stateText = (lanes: unknown[]) => JSON.stringify({ target: 'feat-x', lanes
 
 type World = { files: Map<string, string>; reads: number }
 
-/** File reads from memory, the engine's spawn, turn end, Bash tool and band beneath the plugin. */
+/** File reads from memory, the engine's spawn, turn end, Bash and PowerShell tools and band beneath the plugin. */
 const world = (on: On): World => {
   const w: World = {
     files: new Map([
@@ -40,6 +40,7 @@ const world = (on: On): World => {
   on('agent.spawn', (_$, e) => ({ model: e.model ?? 'inherit', agentId: `agent-${(spawns += 1)}` }))
   on('turn.complete', (_$, e) => ({ text: e.answer }))
   on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
+  on('tool.call', { tool: 'PowerShell' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }))
   on('ui.toast', () => ({ value: undefined }))
   on('ui.render', ($, e) => {
     const { Box } = $.ui.resolve(e)
@@ -107,6 +108,16 @@ describe('the lane band', () => {
     await spawnLane($, 'task1')
     w.files.set(STATE, stateText([lane('task1', { status: 'staged' }), lane('task2')]))
     await $.tool.call({ tool: 'Bash', command: 'sh hpy scripts/parallel2.py stage task1' })
+    await clock.settle()
+    expect(await bandLines($)).toEqual(['parallel2 feat-x: w1 task1 staged (running), task2 dispatched'])
+  })
+
+  test('a driver call through PowerShell rereads the run as well', async ($, on) => {
+    const clock = mock.clock(on, { now: NOW_MS })
+    const w = world(on)
+    await spawnLane($, 'task1')
+    w.files.set(STATE, stateText([lane('task1', { status: 'staged' }), lane('task2')]))
+    await $.tool.call({ tool: 'PowerShell', command: 'sh hpy scripts/parallel2.py stage task1' })
     await clock.settle()
     expect(await bandLines($)).toEqual(['parallel2 feat-x: w1 task1 staged (running), task2 dispatched'])
   })

@@ -162,7 +162,7 @@
     {
       "id": "TASK-4",
       "title": "W5: cut the wave's worktrees concurrently",
-      "action": "In `create_worktrees`, pick each lane's path first, then run the `git worktree add` calls in a thread pool through the module-level `git`; when any fails, remove every worktree this call made and raise the first failure, as the serial loop does.",
+      "action": "In `create_worktrees`, pick each lane's path first, then run the `git worktree add` calls in a thread pool through the module-level `git`; when any fails, remove every worktree this call made and raise one CaptureError listing every failed lane's problem (the serial loop raised only the first).",
       "files": [
         "plugins/harness/scripts/parallel2.py",
         "tests/scripts/test_parallel2.py"

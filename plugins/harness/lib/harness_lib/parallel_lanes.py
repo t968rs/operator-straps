@@ -13,7 +13,7 @@ import json
 import re
 from dataclasses import asdict, dataclass, field, fields
 from fnmatch import fnmatchcase
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Set, Tuple
 
 from harness_lib.commit_grouping import CapturedPath
 
@@ -318,16 +318,22 @@ def _folder(path: Optional[str]) -> str:
     return path.rsplit("/", 1)[0] if path else ""
 
 
+def _exercised(tools: Sequence[str]) -> Set[str]:
+    """Tools a probe of ``tools`` runs: without Write, Edit is reported SKIPPED (see ``_probe_step``)."""
+    found = set(tools)
+    return found if "Write" in found else found - {"Edit"}
+
+
 def probed_cover(tools: Sequence[str], lanes: Sequence[Lane], worktree: str) -> List[str]:
-    """Ids of probed lanes whose tools together cover ``tools``; empty when they do not cover all of them.
+    """Ids of probed lanes whose exercised tools together cover ``tools``; empty when they do not cover all.
 
     Only lanes whose worktree sits in the same folder as ``worktree`` count: a permission rule anchored at
     the worktree root proves nothing for a worktree elsewhere.
     """
     probed = [item for item in lanes if item.probed and _folder(item.worktree) == _folder(worktree)]
-    if not set(tools) <= {tool for item in probed for tool in item.tools}:
+    if not set(tools) <= {tool for item in probed for tool in _exercised(item.tools)}:
         return []
-    return [item.id for item in probed if set(item.tools) & set(tools)]
+    return [item.id for item in probed if _exercised(item.tools) & set(tools)]
 
 
 def _wave_line(wave: int, lanes: Sequence[Lane]) -> str:

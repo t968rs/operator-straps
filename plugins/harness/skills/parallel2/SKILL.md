@@ -56,7 +56,8 @@ Below, `P2` stands for `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_
    dependency install) before their tests run. Dispatch every printed probe prompt in one message, each as
    its own agent with the printed model. Any `BLOCKED`: fix the rule with the `update-config` skill (a
    worktree path outside the project glob is the usual gap), re-probe with `P2 probe --wave N`, and dispatch
-   nothing until every probe is clean. Then record them: **`P2 probe --wave N --passed P1 P2 ...`**. A later
+   nothing until every probe is clean. Then record them: **`P2 probe --wave N --passed <profile> ...`**, with the names from the printed
+   `probe=<name>` lines (`P1`, ...). A later
    wave's profile that lanes already probed clean cover prints `probe=<name> skipped` and needs no agent.
    Each Bash step runs a harmless command under its rule's own prefix (`git add -h`,
    `python -m pytest --help`). An `UNTESTED` rule (a script path, or a rule with no wildcard) has no safe
@@ -68,11 +69,14 @@ Below, `P2` stands for `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_
 4. **Dispatch the wave in one message**: one `Agent` call per dispatch row, with the row's `model` and a
    prompt that opens with `Brief: <path>` from the row. Announce any skipped prong ("Prong 1 skipped:
    review-only wave"). With the `parallel2-lanes` mod installed, each lane starts with its brief already in
-   its prompt, the plan's model and its worktree as its working directory, and a band above the prompt
+   its prompt, the plan's model and, for an implement lane, its worktree as its working directory, and a
+   band above the prompt
    shows every lane's status.
 5. **Review each returned implement lane** before staging: a spec-compliance reviewer and a code-quality
-   reviewer, in parallel, read-only, over `git -C "<worktree>" diff <target>...HEAD` (`P2 status` shows the
-   lane's worktree path; the three-dot range starts at the lane's base commit). Findings go back to the same lane's worktree; the lane re-commits.
+   reviewer, in parallel, read-only, over `git -C "<worktree>" diff <base>..HEAD`. `P2 status` shows the
+   lane's worktree path and, in its last column, `<base>`: the commit the lane was cut from (HEAD, or the
+   index snapshot for a later wave). A range from `<target>` would also show earlier waves' staged work.
+   Findings go back to the same lane's worktree; the lane re-commits.
 6. **`P2 stage <lane>`** as soon as a lane passes, not at the end of the wave. The driver applies the lane's
    diff from its base with a three-way merge into the target's index, deletions and renames included, and
    never commits. A conflict leaves markers in the named files: resolve them, `git add` them, and tell the

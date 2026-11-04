@@ -349,17 +349,20 @@ def cut_base(repo: Path, target: str, wave: int) -> Tuple[str, str, int]:
 def dw_commands() -> ModuleType:
     """d-w's ``new_worktree.py``, whose ``prepare`` runs the project's worktree setup and baseline steps."""
     path = Path(__file__).resolve().parents[1] / "skills" / "d-w" / "commands" / "new_worktree.py"
+    problem = f"cannot load the d-w worktree setup runner at {path.as_posix()}"
     spec = importlib.util.spec_from_file_location("harness_dw_new_worktree", path)
     if spec is None or spec.loader is None:
-        raise CaptureError([f"cannot load the d-w worktree setup runner at {path.as_posix()}"])
+        raise CaptureError([problem])
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, OSError, SyntaxError) as exc:
+        raise CaptureError([f"{problem}: {exc}"]) from exc
     return module
 
 
-def prepare_lanes(batch: Sequence[pl.Lane]) -> None:
+def prepare_lanes(batch: Sequence[pl.Lane], prepare: Callable[..., object]) -> None:
     """Run ``worktree_setup``, then ``worktree_baseline``, in each implement lane; stderr names each lane."""
-    prepare = dw_commands().prepare
     for item in (i for i in batch if i.kind == pl.IMPLEMENT):
         print(f"lane {item.id}:", file=sys.stderr, flush=True)
         prepare(active(), Path(str(item.worktree)))
@@ -375,14 +378,15 @@ def cmd_setup(repo: Path, args: argparse.Namespace) -> int:
     problems = branch_problems(repo, batch) + overlap_problems(batch, dirty)
     if problems:
         raise CaptureError(problems)
+    prepare = dw_commands().prepare if args.with_setup else None
     base_sha, head_sha, staged = cut_base(repo, target, wave)
     create_worktrees(repo, batch, base_sha)
     briefs = write_briefs(repo, target, batch)
     for item in batch:
         item.status, item.base_sha, item.head_sha = pl.DISPATCHED, base_sha, head_sha
     save_lanes(repo, target, lanes)
-    if args.with_setup:
-        prepare_lanes(batch)
+    if prepare is not None:
+        prepare_lanes(batch, prepare)
     print_notes(base_sha, head_sha, staged, dirty)
     print_dispatch(batch, briefs)
     if args.probe:

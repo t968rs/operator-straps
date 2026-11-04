@@ -61,9 +61,12 @@ export const parseState = (text: string): RunState | undefined => {
 /** The brief text first, then the prompt as the session wrote it (its `Brief:` line included). */
 export const inlinePrompt = (brief: string, prompt: string): string => `${brief.trimEnd()}\n\n${prompt}`
 
-/** The directory a lane agent runs in: an implement lane's worktree; undefined for any other lane. */
+/**
+ * The directory a lane agent runs in: a live implement lane's worktree; undefined for any other lane and for
+ * a cleaned lane, whose recorded worktree is gone (the driver's `has_live_worktree` rule).
+ */
 export const laneCwd = (lane: LaneState): string | undefined =>
-  lane.kind === 'implement' && lane.worktree ? lane.worktree : undefined
+  lane.kind === 'implement' && lane.status !== 'cleaned' && lane.worktree ? lane.worktree : undefined
 
 /** The band's view of a run: every lane with its agent phase from this session, if any. */
 export const viewOf = (stateFile: string, state: RunState, agents: Record<string, AgentPhase>): RunView => ({

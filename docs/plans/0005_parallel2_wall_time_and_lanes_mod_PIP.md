@@ -114,7 +114,7 @@ Add `setup --probe`: after the dispatch rows, print the wave's probe output exac
 **Anchors:**
 - `plugins/harness/scripts/parallel2.py:251-258` holds `done = git(repo, "worktree", "add", "-b", item.branch, item.worktree, base_sha)`
 
-In `create_worktrees`, pick each lane's path first, then run the `git worktree add` calls in a thread pool through the module-level `git`; when any fails, remove every worktree this call made and raise the first failure, as the serial loop does.
+In `create_worktrees`, pick each lane's path first, then run the `git worktree add` calls in a thread pool through the module-level `git`; when any fails, remove every worktree this call made and raise one CaptureError listing every failed lane's problem (the serial loop raised only the first).
 
 - [x] Test `tests/scripts/test_parallel2.py::test_setup_cuts_worktrees_concurrently_and_rolls_back_on_a_failure` fails with AssertionError, then passes
 - [x] Record the commit: `plan.py record 0005 TASK-4 --sha <sha>`

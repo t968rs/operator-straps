@@ -1,8 +1,9 @@
 # parallel2-lanes
 
 Companion mod for the harness `parallel2` skill. It reads the run state the `parallel2.py` driver writes
-(`<state_dir>/parallel2/<target>.json`, briefs in `<state_dir>/parallel2/<target>/<lane>.md`) and never writes
-it.
+(`<main checkout>/<state_dir>/parallel2/<target-slug>.json`, briefs in
+`<main checkout>/<state_dir>/parallel2/<target-slug>/<lane>.md`) and never writes it. The target slug is the
+target branch with every character outside `[A-Za-z0-9._-]` replaced by `-`, so `feat/x` writes `feat-x.json`.
 
 ## Lane spawns
 
