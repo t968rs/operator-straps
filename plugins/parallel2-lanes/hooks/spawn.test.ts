@@ -3,7 +3,8 @@ import { describe, expect, test } from 'claude-code/testing'
 
 import { briefPath, formatRun, inlinePrompt, laneRef, parseState, viewOf } from './lanes'
 
-const FOLDER = 'C:/repo/.claude/state/harness/parallel2'
+// A POSIX root: the engine resolves a read path to an absolute one, and on Linux `C:/...` is relative.
+const FOLDER = '/repo/.claude/state/harness/parallel2'
 const STATE = `${FOLDER}/feat-x.json`
 const BRIEF = `${FOLDER}/feat-x/task1.md`
 const TREE = 'C:/trees/p2-task1'
@@ -32,8 +33,8 @@ const world = (on: On, files: Record<string, string> = { [BRIEF]: BRIEF_TEXT, [S
   const w: World = { files: new Map(Object.entries(files)), spawned: [], toasts: [], isDiskBroken: false }
   on('fs.read', (_$, e) => {
     if (w.isDiskBroken) throw new Error('disk gone')
-    // the engine hands the hook an OS-native path (backslashes on Windows)
-    const text = w.files.get(e.path.replace(/\\/g, '/'))
+    // the engine hands the hook an OS-absolute path (a drive and backslashes on Windows)
+    const text = w.files.get(e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:/, ''))
     return text === undefined ? { deny: 'ENOENT' } : { value: text }
   })
   on('agent.spawn', (_$, e) => {
@@ -61,7 +62,7 @@ describe('briefPath and laneRef', () => {
   test('a brief path under parallel2/<slug>/ names its state file and lane', async () => {
     expect(laneRef(BRIEF)).toEqual({ stateFile: STATE, laneId: 'task1' })
     expect(laneRef('C:\\repo\\.claude\\state\\harness\\parallel2\\feat-x\\task-2.md'))
-      .toEqual({ stateFile: STATE, laneId: 'task-2' })
+      .toEqual({ stateFile: `C:${STATE}`, laneId: 'task-2' })
   })
 
   test('any other path names no lane', async () => {

@@ -704,9 +704,11 @@ def test_probe_passed_records_the_profile_lanes_clean(plan, run, project: Path) 
 
 
 def test_probe_skips_a_later_profile_covered_by_a_passed_probe(plan, run, project: Path) -> None:
-    wider = ["Read", "Edit", "Write", "Bash(pytest *)"]
-    plan([lane("task1", ["src/a.py"], wave=1), lane("task2", ["src/b.py"], wave=2),
-          lane("task3", ["docs/guide.md"], wave=2, tools=wider)])
+    # Write in task1's probe exercises Edit; a probe without Write reports Edit SKIPPED, which covers nothing.
+    probed = ["Read", "Edit", "Write", "Bash(pytest *)"]
+    other = ["Read", "Edit", "Write", "Bash(git *)"]
+    plan([lane("task1", ["src/a.py"], wave=1, tools=probed), lane("task2", ["src/b.py"], wave=2),
+          lane("task3", ["docs/guide.md"], wave=2, tools=other)])
     run("setup")
     run("probe", "--passed", "P1")
     run("setup")
@@ -731,7 +733,9 @@ def test_probe_prompts_a_profile_only_partly_covered_by_a_passed_probe(plan, run
 
 
 def test_probe_ignores_a_lane_probed_in_another_folder(plan, run, project: Path, tmp_path: Path) -> None:
-    plan([lane("task1", ["src/a.py"], wave=1), lane("task2", ["src/b.py"], wave=2)])
+    # task1's tools cover task2's, so only the folder rule keeps P1 from being skipped.
+    probed = ["Read", "Edit", "Write", "Bash(pytest *)"]
+    plan([lane("task1", ["src/a.py"], wave=1, tools=probed), lane("task2", ["src/b.py"], wave=2)])
     run("setup")
     run("probe", "--passed", "P1")
     run("setup")

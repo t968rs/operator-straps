@@ -5,7 +5,8 @@ import type { Engine } from 'claude-code/testing'
 
 import { namesDriver } from './band'
 
-const FOLDER = 'C:/repo/.claude/state/harness/parallel2'
+// A POSIX root: the engine resolves a read path to an absolute one, and on Linux `C:/...` is relative.
+const FOLDER = '/repo/.claude/state/harness/parallel2'
 const STATE = `${FOLDER}/feat-x.json`
 const brief = (id: string) => `${FOLDER}/feat-x/${id}.md`
 const NOW_MS = 1_800_000_000_000
@@ -32,8 +33,8 @@ const world = (on: On): World => {
   }
   on('fs.read', (_$, e) => {
     w.reads += 1
-    // the engine hands the hook an OS-native path (backslashes on Windows)
-    const text = w.files.get(e.path.replace(/\\/g, '/'))
+    // the engine hands the hook an OS-absolute path (a drive and backslashes on Windows)
+    const text = w.files.get(e.path.replace(/\\/g, '/').replace(/^[A-Za-z]:/, ''))
     return text === undefined ? { deny: 'ENOENT' } : { value: text }
   })
   let spawns = 0
