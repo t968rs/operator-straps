@@ -13,7 +13,7 @@
     {
       "name": "agent-watcher",
       "source": "./plugins/agent-watcher",
-      "description": "pr-review / pr-team run tracking: Phase 5 band, engine-measured matrix and agent usage rows, bubble Stop guard"
+      "description": "Logs every agent dispatch with engine-measured usage rows; tracks pr-review / pr-team runs: Phase 5 band, matrix rows, bubble Stop guard"
     },
     {
       "name": "session-bookmark",
