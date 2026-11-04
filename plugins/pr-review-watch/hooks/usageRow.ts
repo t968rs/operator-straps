@@ -3,7 +3,7 @@ import { modelFamily, type ReturnBlock } from './contract'
 
 /**
  * Rows for the project's agent usage log (harness `agent_usage_path`), validated against the rules of the
- * harness plugin's `schemas/pr_review_agent_usage.schema.json`. The constants below are pinned to that
+ * harness plugin's `schemas/agent_usage.schema.json`. The constants below are pinned to that
  * schema by `tests/mods/test_pr_review_watch_usage_contract.py`. Pure: no `$`.
  */
 

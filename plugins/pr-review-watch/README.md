@@ -25,7 +25,7 @@ value keeps the default):
 |-----|---------|----------|
 | `state_dir` | `.claude/state/harness` | Phase 5 sentinels in `<state_dir>/pr-review/`, pr-team runs in `<state_dir>/pr-team/_runtime/` |
 | `matrix_path` | `docs/_harness/pr_review_invocation_test_matrix.jsonl` | the invocation matrix rows are appended to |
-| `agent_usage_path` | `docs/_harness/pr_review_agent_usage.jsonl` | the agent usage rows are appended to |
+| `agent_usage_path` | `docs/_harness/agent_usage.jsonl` | the agent usage rows are appended to |
 | `artifacts.reviews` | `docs/PR_REVIEWS` | consolidated review JSON |
 | `artifacts.scratch` | `docs/_scratch/pr_review` | pr-review run folders |
 | `base_branch` | `null` | `dev_commit`'s merge base; null resolves `origin/HEAD`, else `main` |
@@ -43,7 +43,7 @@ without `config.ts` following.
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
 | R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (pr-review-watch auto)`. |
 | R6 | Bubbled issues are dispositioned in the review JSON before stopping | Two triggers, each blocking once (`stop_hook_active` lets the stop through). **State** (pr-team runs): every tracked bubbled id must appear in the run's review JSON `bubbles[]`, `bubble_up[]` or `post_review_resolutions[]` (the `id_handling.disposition_ids` rule). **Keyword** (any active review): when the last assistant message contains "bubble" (any case or inflection), the active review JSON's `bubbles[]` must be populated unless every issue is already dispositioned. |
-| R7 | Every returned dispatch of a defined agent gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per dispatch of any other agent the marketplace defines (`skill: standalone`, `role: other`). Written when the agent returns and validated against `pr_review_agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
+| R7 | Every returned dispatch of a defined agent gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per dispatch of any other agent the marketplace defines (`skill: standalone`, `role: other`). Written when the agent returns and validated against `agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
 
 The keyword trigger checks the **active** review: the tracked run's PR (its review JSON no older than the
 run), or, with no tracked run, the PR of the first hot Phase 5 sentinel that blocks the stopping session.
@@ -205,7 +205,7 @@ tsc -p <tsconfig>   # the tsconfig in the header of the engine's claude-code.d.t
 `DISPATCH_SHAPES`, `DEV_COMMIT_PATTERN` and `MODEL_FAMILIES` to the harness plugin's
 `schemas/pr_review_invocation_test_matrix.schema.json`; `tests/mods/test_pr_review_watch_usage_contract.py`
 pins `USAGE_REQUIRED`, `USAGE_COUNT_FIELDS`, `USAGE_ROLES`, `USAGE_COUNTED_ROLES`, `USAGE_SKILLS`,
-`USAGE_MODEL_FAMILIES` and `LOGGED_AT_PATTERN` to `schemas/pr_review_agent_usage.schema.json`, and
+`USAGE_MODEL_FAMILIES` and `LOGGED_AT_PATTERN` to `schemas/agent_usage.schema.json`, and
 `DEFINED_AGENTS` to the agent files under `plugins/*/agents/` (a new agent file fails the test until the list
 follows);
 `tests/mods/test_pr_review_watch_config_mirror.py` pins the mirrored defaults. The plugin test sandbox

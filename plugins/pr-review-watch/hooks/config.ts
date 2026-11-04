@@ -6,7 +6,7 @@
 
 export const DEFAULT_STATE_DIR = '.claude/state/harness'
 export const DEFAULT_MATRIX_PATH = 'docs/_harness/pr_review_invocation_test_matrix.jsonl'
-export const DEFAULT_AGENT_USAGE_PATH = 'docs/_harness/pr_review_agent_usage.jsonl'
+export const DEFAULT_AGENT_USAGE_PATH = 'docs/_harness/agent_usage.jsonl'
 export const DEFAULT_REVIEWS = 'docs/PR_REVIEWS'
 export const DEFAULT_SCRATCH = 'docs/_scratch/pr_review'
 export const DEFAULT_BASE_BRANCH: string | null = null
