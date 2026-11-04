@@ -16,6 +16,8 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
   `config/harness.schema.json`, the dataclass and builder in `lib/harness_lib/config.py`, and the README key
   table. When a mod reads the key, also mirror its default in that mod's `hooks/config.ts`
   (`tests/mods/test_<mod>_config_mirror.py` checks the mirror; `agent-watcher`, `todo-watch` and `bubble-stamp` have one).
+  `agent-watcher` splits it: core keys in `hooks/core/config.ts`, pr-review keys in
+  `hooks/layers/pr-review/config.ts`.
   `session-bookmark` mirrors `state_dir` in `hooks/notes.ts` instead, checked by
   `tests/mods/test_session_bookmark_notes_contract.py`.
   The four places are not a cost to weigh against the key. A setting a driver can read and act on belongs in a
