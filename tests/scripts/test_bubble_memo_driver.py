@@ -173,7 +173,7 @@ def test_a_failing_check_prints_no_reviewer_row_even_on_request(run: Callable[..
                                                                 project: Path) -> None:
     run("scaffold", "--pr", "1514")
     code, out, err = run("check", "--pr", "1514", "--reviewer-row")
-    assert code == 1 and "I2: " in err and "agent=" not in out
+    assert code == 1 and "I2: " in err and "agent=" not in out and "Memo:" not in out
 
 
 def test_init_prints_the_brief_and_saves_it(run: Callable[..., Result], project: Path) -> None:
@@ -272,7 +272,7 @@ def test_entry_level_flag_drives_the_reviewer_model_and_brief(
     _fill_all(root)
     _, out, _ = run("check", "--pr", "1514", "--reviewer-row")
     assert "agent=harness:bubble-memo-reviewer model=sonnet" in out
-    chain ="- **Chain:** step one\n  ```\n  a -> b\n  ```\n"
+    chain = "- **Chain:** step one\n  ```\n  a -> b\n  ```\n"
     text = _memo(root).replace("`src/a.py:10-12`", "`src/a.py:10-12`, `src/b.py:1`")
     text = text.replace("- **Expected behavior per fix:**", chain + "- **Expected behavior per fix:**")
     (root / MEMO_PATH).write_text(text, encoding="utf-8")

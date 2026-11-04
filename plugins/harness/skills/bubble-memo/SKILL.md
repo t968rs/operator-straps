@@ -26,8 +26,10 @@ is a `problem:` line and exit 1, and `note:` lines never fail a run.
 
 - **The memo is a point-in-time snapshot** (the snapshot rule). It reads the review JSON as it stands now,
   keeps an entry after its issue is resolved, and is never regenerated over existing text. A later change of
-  the review or the code does not rewrite it. The one change after hand-off is a decision stamp (next rule),
-  which marks a resolved bubble as decided so the developer stops reading it as open.
+  the review or the code does not rewrite it. The only changes after hand-off are a decision stamp (rule
+  "Decision stamping is not this skill's job" below), which marks a resolved bubble as decided so the
+  developer stops reading it as open, and the corrections from a review the developer asks for (section
+  "On request").
 - **One pass, no review cycle.** The first clean `check` ends the work. No reviewer is dispatched and no
   second round runs unless the developer asks (section "On request").
 - **References are checked against the working tree**, uncommitted fix-wave edits included. The header records
@@ -115,7 +117,8 @@ is a `problem:` line and exit 1, and `note:` lines never fail a run.
    entry without a chain or flow block, a reference off disk or outside the file, an expected-behavior count
    that differs from the fix count. Fix each in the memo and run it again. A `note:` line (an id that is no
    longer bubbled, renamed or merged) does not fail the run; mention it to the developer in the hand-off. When
-   it is clean it prints `check [ok]`, and the work is done.
+   it is clean it prints `check [ok]`. When the invocation asked for a review, run section "On request" before
+   the hand-off; otherwise the work is done.
 
 6. **Hand off.** Give the developer the memo path, the count of entries and how many are flagged, any `note:`
    lines and any chain the session wrote. The memo is final for this run: the developer decides from it, and
@@ -124,7 +127,9 @@ is a `problem:` line and exit 1, and `note:` lines never fail a run.
 ## On request
 
 Only when the developer asks for the memo to be reviewed. A review costs a full agent run (tens of thousands of
-tokens), so it is never a default step.
+tokens), so it is never a default step. When the invocation's guidance asks for a review, it runs between
+steps 5 and 6 and the findings left unapplied join the step 6 hand-off; when the developer asks after the
+hand-off, it runs then and those findings go in a short follow-up.
 
 ```
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/bubble_memo.py" check --pr <N> --reviewer-row
@@ -135,9 +140,10 @@ After `check [ok]` it prints one reviewer row. Dispatch it as in step 2, with on
 the guidance line when the invocation carried guidance. It reads the memo for accuracy and for clarity and
 simplicity, edits nothing and returns findings as `{id, kind, what, suggested}`; read them at the reply's
 `OUTPUT:` path. Open each finding's location in the memo and correct it after checking the claim against the
-code: a finding is evidence to weigh, not an order. Run `check` again until it is clean. One round is the
-whole review; a further round runs only when the developer asks for it. Report the findings left unapplied,
-with the reason, in the hand-off.
+code: a finding is evidence to weigh, not an order. Run `check` again without `--reviewer-row` (the step 5
+command) until it is clean. One round is the whole review; a further round runs only when the developer asks
+for it. Report the findings left unapplied, with the reason, to the developer (in the hand-off when the review
+ran in the same invocation).
 
 ## Related
 

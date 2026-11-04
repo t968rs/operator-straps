@@ -7,7 +7,7 @@ description: |
   the whole brief and ends in a single `record` call that writes the findings. It carries only Read, Grep,
   Glob and Bash. The dispatcher passes the model the printed row names (sonnet by default, opus when an
   entry is flagged); the frontmatter model is only a fallback.
-  The prompt is the header lines the `bubble_memo.py check` driver prints for the row.
+  The prompt is the header lines `bubble_memo.py check --reviewer-row` prints for the row.
   Examples:
   <example>
     Context: The developer asked for a review of the PR 1560 memo; `bubble_memo.py check --reviewer-row` printed `check [ok]` and one reviewer row.
