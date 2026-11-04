@@ -1,6 +1,6 @@
 """Schema discipline for the agent usage log (``agent_usage.schema.json``).
 
-Pins the row contract the pr-review-watch mod writes: every role validates, nullable fields accept null,
+Pins the row contract the agent-watcher mod writes: every role validates, nullable fields accept null,
 the four fixer count fields are required on fixer and closer rows and rejected on every other role, and
 unknown keys, roles, families and malformed timestamps are rejected.
 
@@ -30,7 +30,7 @@ def _row(role: str = "reviewer", **extra) -> dict:
         "skill": "pr-review", "role": role, "agent_id": "runtime", "subagent_type": "harness:pr-reviewer",
         "model": "claude-opus-5-5", "model_family": "opus", "effort": "default", "tokens": 1000,
         "tool_uses": 7, "duration_s": 2.5, "signal": "DONE",
-        "notes": "pr-review-watch auto row; reviewer DONE",
+        "notes": "agent-watcher auto row; reviewer DONE",
     }
     if role in ("fixer", "closer"):
         row.update(issues_assigned=2, issues_fixed=1, issues_bubbled=1, files_touched=3)
@@ -47,7 +47,7 @@ def test_standalone_dispatch_validates(schema: dict) -> None:
     row = _row(
         "other", pr=None, skill="standalone", run_id="standalone_20261022T155329Z_1", agent_id="messenger",
         subagent_type="harness:messenger", signal="NO_BLOCK",
-        notes="pr-review-watch auto row; other NO_BLOCK",
+        notes="agent-watcher auto row; other NO_BLOCK",
     )
     jsonschema.validate(row, schema)
 

@@ -48,7 +48,7 @@ describe('band', () => {
   test('quiet with no run and no sentinel', async ($, on) => {
     world(on)
     for (const surface of ['terminal', 'desktop'] as const) {
-      const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface, ...BAND })
+      const ui = await $.ui.mount({ plugin: 'agent-watcher', surface, ...BAND })
       expect(await ui.find({ type: 'Text', text: /^PR #/ })).toBeUndefined()
       await ui.unmount()
     }
@@ -60,7 +60,7 @@ describe('band', () => {
       tool: 'Agent', description: 'r', subagent_type: 'x', prompt: `AGENT_ID: r1\nAGENT_ROLE: reviewer\nRUN_ID: ${RUN}`,
     })
     for (const surface of ['terminal', 'desktop'] as const) {
-      const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface, ...BAND })
+      const ui = await $.ui.mount({ plugin: 'agent-watcher', surface, ...BAND })
       const band = await ui.find({ type: 'Text', text: /^PR #/ })
       expect(band?.text).toBe('PR #1526 · reviewers 0/1 | PR #1400 · Phase 5 pending')
       await ui.unmount()
@@ -79,7 +79,7 @@ describe('band', () => {
       const prompt = `AGENT_ID: ${id}\nAGENT_ROLE: fixer\nRUN_ID: ${RUN}\nPR: 1526`
       await $.tool.call({ tool: 'Agent', description: 'f', subagent_type: 'pr-fixer', prompt })
     }
-    const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface: 'terminal', ...BAND })
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', ...BAND })
     const band = await ui.find({ type: 'Text', text: /^PR #/ })
     expect(band?.text).toBe('PR #1526 · fixers 0/2 · Phase 5 pending · 1 bubbled')
     await ui.unmount()
@@ -95,7 +95,7 @@ describe('band', () => {
     await $.tool.call({
       tool: 'Agent', description: 'r', subagent_type: 'x', prompt: `AGENT_ID: r1\nAGENT_ROLE: reviewer\nRUN_ID: ${RUN}`,
     })
-    const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface: 'terminal', ...BAND })
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', ...BAND })
     expect((await ui.findAll({ type: 'Text' })).map(t => t.text)).toEqual([
       'PR #1526 · reviewers 0/1 | PR #1400 · Phase 5 pending', 'oStraps: ⎇ dev · clean',
     ])
@@ -110,7 +110,7 @@ describe('band', () => {
     })
     const prompt = `AGENT_ID: r1\nAGENT_ROLE: reviewer\nRUN_ID: ${RUN}\nPR: 1526`
     await $.tool.call({ tool: 'Agent', description: 'r', subagent_type: 'pr-reviewer', prompt })
-    const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface: 'terminal', ...BAND })
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', ...BAND })
     expect((await ui.find({ type: 'Text', text: /^PR #/ }))?.text).toBe('PR #1526 · consolidating')
     await ui.unmount()
   })

@@ -26,7 +26,7 @@ describe('buildUsageRow', () => {
       logged_at: '2026-10-20T21:00:00.000Z', run_id: 'pr35_20261020T210000Z', pr: 35, skill: 'pr-review',
       role: 'reviewer', agent_id: 'runtime', subagent_type: 'harness:pr-reviewer', model: 'claude-opus-5-5',
       model_family: 'opus', effort: 'default', tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
-      notes: 'pr-review-watch auto row; reviewer DONE',
+      notes: 'agent-watcher auto row; reviewer DONE',
     })
     expect(validateUsageRow(row)).toEqual([])
   })
@@ -44,11 +44,11 @@ describe('buildUsageRow', () => {
 
   test('unmeasured and errored notes', async () => {
     expect(buildUsageRow(input({ isMeasured: false })).notes).toBe(
-      'pr-review-watch auto row; reviewer DONE; usage not measured',
+      'agent-watcher auto row; reviewer DONE; usage not measured',
     )
     const errored = buildUsageRow(input({ agent: agent({ role: 'fixer', signal: 'NO_BLOCK' }), ending: 'errored', isMeasured: false }))
     expect(errored.signal).toBe('ERROR')
-    expect(errored.notes).toBe('pr-review-watch auto row; fixer ERROR; usage not measured; agent errored')
+    expect(errored.notes).toBe('agent-watcher auto row; fixer ERROR; usage not measured; agent errored')
   })
 
   test('no family token logs unknown with the full id', async () => {

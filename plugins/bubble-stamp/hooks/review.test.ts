@@ -72,7 +72,7 @@ describe('closedResolutions (the closedOf rule)', () => {
   })
 })
 
-describe('reviewFileFor (the pr-review-watch rule)', () => {
+describe('reviewFileFor (the agent-watcher rule)', () => {
   const file = (name: string, mtimeMs: number): Listed => ({ name, mtimeMs, kind: 'file' })
 
   test('the newest <NNNN>_*.json of the PR', async () => {

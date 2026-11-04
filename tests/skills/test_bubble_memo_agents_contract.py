@@ -12,7 +12,7 @@ from mods._mods_helpers import ts_string_array
 _AGENTS = ("bubble-memo-investigator", "bubble-memo-reviewer")
 # The file names are spelled out so tools/select_tests.py selects this test when an agent file changes.
 _AGENT_FILES = ("bubble-memo-investigator.md", "bubble-memo-reviewer.md")
-_CONTRACT_REL = "plugins/pr-review-watch/hooks/contract.ts"
+_CONTRACT_REL = "plugins/agent-watcher/hooks/contract.ts"
 
 
 def _agent(repo_root: Path, name: str) -> Path:

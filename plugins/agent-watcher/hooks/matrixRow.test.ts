@@ -13,7 +13,7 @@ const agent = (over: Partial<AgentRec> = {}): AgentRec => ({
 const row = (over: Partial<AgentRec> = {}) =>
   buildRow({
     pr: 1526, agent: agent(over), verdictPrefix: 'NOT READY TO MERGE',
-    devCommit: `${SHA} -- dev (pr-review-watch auto)`,
+    devCommit: `${SHA} -- dev (agent-watcher auto)`,
   })
 
 describe('buildRow', () => {
@@ -24,7 +24,7 @@ describe('buildRow', () => {
       tokens: 144385, tool_uses: 33, duration_s: 321.294, phase4_script: null,
       findings_count: 3, C_count: 0, I_count: 1, M_count: 2, other_count: 0, verdict_prefix: 'NOT READY TO MERGE',
     })
-    expect(r.notes).toContain('pr-review-watch')
+    expect(r.notes).toContain('agent-watcher')
     expect(validateRow(r)).toEqual([])
     expect(Object.keys(r).filter(k => !k.startsWith('phase4')).sort()).toEqual([...MATRIX_REQUIRED].sort())
   })

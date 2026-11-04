@@ -55,8 +55,8 @@ def test_the_harness_version_moved_past_the_old_one(repo_root: Path) -> None:
     assert _version(_text(repo_root, "plugins/harness/.claude-plugin/plugin.json")) > (0, 39, 1)
 
 
-def test_pr_review_watch_moved_past_its_old_version(repo_root: Path) -> None:
-    assert _version(_text(repo_root, "plugins/pr-review-watch/.claude-plugin/plugin.json")) > (0, 4, 1)
+def test_agent_watcher_moved_past_its_old_version(repo_root: Path) -> None:
+    assert _version(_text(repo_root, "plugins/agent-watcher/.claude-plugin/plugin.json")) > (0, 4, 1)
 
 
 def test_the_mod_has_a_readme(repo_root: Path) -> None:

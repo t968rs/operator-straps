@@ -1,7 +1,7 @@
 """Pin the mods' review-local run key rule to the harness library.
 
 A review run is keyed by a PR number or by a local key ``local-<label>``. An installed mod cannot import the
-harness library, so ``plugins/pr-review-watch/hooks/runKey.ts`` and ``plugins/bubble-stamp/hooks/review.ts``
+harness library, so ``plugins/agent-watcher/hooks/runKey.ts`` and ``plugins/bubble-stamp/hooks/review.ts``
 copy the key constants of ``harness_lib.review_local_models``, and ``runKey.ts`` copies the run-id rule of
 ``harness_lib.review_models.RUN_ID`` as a pattern string. This test fails when either side changes without
 the other: the constants must be equal, and the TypeScript run-id pattern must accept exactly the run ids the
@@ -20,9 +20,9 @@ from harness_lib.review_models import RUN_ID
 from harness_lib.validation.artifact_names import SENTINEL_PREFIX
 from mods._mods_helpers import ts_number, ts_string
 
-_RUN_KEY_TS_REL = "plugins/pr-review-watch/hooks/runKey.ts"
+_RUN_KEY_TS_REL = "plugins/agent-watcher/hooks/runKey.ts"
 _REVIEW_TS_REL = "plugins/bubble-stamp/hooks/review.ts"
-_SENTINELS_TS_REL = "plugins/pr-review-watch/hooks/sentinels.ts"
+_SENTINELS_TS_REL = "plugins/agent-watcher/hooks/sentinels.ts"
 _MIRRORS = (_RUN_KEY_TS_REL, _REVIEW_TS_REL)
 _PREFIX_BUILDER = "`${REVIEW_PREFIX}${key.slice(LOCAL_PREFIX.length)}_`"
 _STAMP = "20261102T080910Z"

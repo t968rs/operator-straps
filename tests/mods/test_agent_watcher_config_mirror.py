@@ -1,7 +1,7 @@
-"""Pin the pr-review-watch mod's mirrored harness defaults to ``plugins/harness/config/defaults.json``.
+"""Pin the agent-watcher mod's mirrored harness defaults to ``plugins/harness/config/defaults.json``.
 
 An installed mod lives in its own plugin cache directory and cannot read the harness plugin's defaults,
-so ``plugins/pr-review-watch/hooks/config.ts`` copies the values of the keys it reads. This test fails
+so ``plugins/agent-watcher/hooks/config.ts`` copies the values of the keys it reads. This test fails
 when ``defaults.json`` changes one of those values without the mod following, and checks the copies
 against the merged configuration the harness library builds for a project with no overrides.
 """
@@ -16,7 +16,7 @@ import pytest
 from harness_lib.config import activate, load_config
 from mods._mods_helpers import ts_optional_string
 
-_CONFIG_TS_REL = "plugins/pr-review-watch/hooks/config.ts"
+_CONFIG_TS_REL = "plugins/agent-watcher/hooks/config.ts"
 _DEFAULTS_REL = "plugins/harness/config/defaults.json"
 
 #: defaults.json key path -> exported constant in config.ts

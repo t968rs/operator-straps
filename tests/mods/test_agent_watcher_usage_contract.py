@@ -1,6 +1,6 @@
-"""Pin the pr-review-watch mod's usage-row validator to the harness agent usage JSON schema.
+"""Pin the agent-watcher mod's usage-row validator to the harness agent usage JSON schema.
 
-The mod validates agent usage rows in TypeScript (``plugins/pr-review-watch/hooks/usageRow.ts``), where the
+The mod validates agent usage rows in TypeScript (``plugins/agent-watcher/hooks/usageRow.ts``), where the
 plugin test sandbox cannot read repository files. This test reads both sides and fails when
 ``plugins/harness/schemas/agent_usage.schema.json`` changes its required fields, count fields,
 enums, ``logged_at`` pattern, nullable strings or non-empty strings without the mod following.
@@ -17,8 +17,8 @@ from mods._mods_helpers import ts_string, ts_string_array
 
 WALK_ROOTS = ("plugins/",)
 _SCHEMA_REL = "plugins/harness/schemas/agent_usage.schema.json"
-_USAGE_ROW_REL = "plugins/pr-review-watch/hooks/usageRow.ts"
-_CONTRACT_REL = "plugins/pr-review-watch/hooks/contract.ts"
+_USAGE_ROW_REL = "plugins/agent-watcher/hooks/usageRow.ts"
+_CONTRACT_REL = "plugins/agent-watcher/hooks/contract.ts"
 
 
 @pytest.fixture(scope="module")

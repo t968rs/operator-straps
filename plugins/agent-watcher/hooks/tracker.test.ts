@@ -146,7 +146,7 @@ describe('Agent hook', () => {
   test('no ownership note when the run could not be recorded', async ($, on) => {
     world(on, () => completed(doneBlock(ZERO)))
     on('state.set', (_$, e, next) =>
-      e.plugin === 'pr-review-watch' && e.key === 'runs' ? { deny: 'state store full' } : next(e),
+      e.plugin === 'agent-watcher' && e.key === 'runs' ? { deny: 'state store full' } : next(e),
     )
     const r = await dispatch($, reviewerPrompt('runtime', 'PR: 1526'))
     expect(r.context ?? []).not.toContain(OWNER_NOTE)
@@ -166,7 +166,7 @@ describe('matrix rows', () => {
     expect(rows[0]).toMatchObject({
       tokens: 1000, tool_uses: 7, duration_s: 2.5, model_family: 'opus', C_count: 1, verdict_prefix: 'NOT READY TO MERGE',
     })
-    expect(rows[0]?.dev_commit).toBe(`${SHA} -- dev (pr-review-watch auto)`)
+    expect(rows[0]?.dev_commit).toBe(`${SHA} -- dev (agent-watcher auto)`)
     await mainTurnEnd($, 't2')
     expect(matrixRows(seen)).toHaveLength(2)
   })
@@ -403,7 +403,7 @@ describe('standalone agent usage rows', () => {
       pr: null, skill: 'standalone', role: 'other', agent_id: 'messenger',
       subagent_type: 'harness:messenger', model: 'claude-opus-5-5', model_family: 'opus', effort: 'default',
       tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'NO_BLOCK',
-      notes: 'pr-review-watch auto row; other NO_BLOCK',
+      notes: 'agent-watcher auto row; other NO_BLOCK',
     })
     expect(Object.keys(usageRows(seen)[0] ?? {})).not.toContain('issues_fixed')
     expect(seen.files.has(MATRIX)).toBe(false)
@@ -478,8 +478,8 @@ describe('standalone agent usage rows', () => {
     const seen = world(on, () => completed('ok'))
     const written: { runs: unknown[]; active: unknown[] } = { runs: [], active: [] }
     on('state.set', (_$, e, next) => {
-      if (e.plugin === 'pr-review-watch' && e.key === 'runs') written.runs.push(e.value)
-      if (e.plugin === 'pr-review-watch' && e.key === 'active') written.active.push(e.value)
+      if (e.plugin === 'agent-watcher' && e.key === 'runs') written.runs.push(e.value)
+      if (e.plugin === 'agent-watcher' && e.key === 'active') written.active.push(e.value)
       return next(e)
     })
     await run($, 'harness:messenger')
@@ -554,7 +554,7 @@ describe('pr-review run directory', () => {
     const props = {
       hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
     }
-    const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface: 'terminal', component: 'AbovePrompt', props })
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
     const text = (await ui.find({ type: 'Text', text: /^PR #/ }))?.text
     await ui.unmount()
     return text
@@ -631,7 +631,7 @@ describe('review-local runs (a local-<label> key)', () => {
     const props = {
       hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 80, scroll: { offset: 0, bodyRows: 10 }, view: {},
     }
-    const ui = await $.ui.mount({ plugin: 'pr-review-watch', surface: 'terminal', component: 'AbovePrompt', props })
+    const ui = await $.ui.mount({ plugin: 'agent-watcher', surface: 'terminal', component: 'AbovePrompt', props })
     const text = (await ui.find({ type: 'Text', text: /^(local review|PR #)/ }))?.text
     await ui.unmount()
     return text
