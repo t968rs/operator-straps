@@ -56,19 +56,22 @@ const loopsAtom = atom({ plugin: 'agent-watcher', key: 'loops' } as const, {})
 const noop = (): undefined => undefined
 /** Tool calls per subagent loop id, counted for background launches. */
 const toolUses = new Map<string, number>()
-/** One subagent loop's model requests so far: their tokens summed, and the last request's alone. */
-type StepTally = { sum: number; last: number }
+/**
+ * One subagent loop's model requests so far: how many, their tokens summed, and the last reported request's
+ * tokens alone (absent until one reports usage).
+ */
+type StepTally = { count: number; sum: number; last?: number }
 /** Per subagent loop id, heard on `turn.step`; taken when the loop's agent completes. */
 const stepTallies = new Map<string, StepTally>()
 
 const usageTokens = (u: Usage | null | undefined): number =>
   u == null ? 0 : u.input_tokens + u.output_tokens + u.cache_read_input_tokens + u.cache_creation_input_tokens
 
-/** Adds one request's usage to its loop's tally; a request with no usage adds nothing. */
+/** Counts one request in its loop's tally and adds its usage; a request with no usage adds no tokens. */
 const tallyStep = (loopId: string, u: Usage | null | undefined): void => {
-  if (u == null) return
-  const n = usageTokens(u)
-  stepTallies.set(loopId, { sum: (stepTallies.get(loopId)?.sum ?? 0) + n, last: n })
+  const prev = stepTallies.get(loopId) ?? { count: 0, sum: 0 }
+  const counted = { ...prev, count: prev.count + 1 }
+  stepTallies.set(loopId, u == null ? counted : { ...counted, sum: prev.sum + usageTokens(u), last: usageTokens(u) })
 }
 
 /** The loop's tally, removed so a later agent under the same loop id starts from zero. */
@@ -253,6 +256,7 @@ async function recordResult(
   await complete($, w, layers, key, {
     tokens: isDone ? (tally?.sum ?? 0) : 0,
     ...(isDone && res.totalTokens !== undefined ? { contextTokens: res.totalTokens } : {}),
+    ...(isDone && tally !== undefined ? { requests: tally.count } : {}),
     toolUses: isDone ? (res.totalToolUseCount ?? 0) : 0,
     durationMs: isDone ? (res.totalDurationMs ?? 0) : 0,
     model: res?.resolvedModel ?? null,
@@ -271,10 +275,11 @@ async function recordLoopEnd($: Dollar, layers: readonly Layer[], loopId: string
   toolUses.delete(loopId)
   const hit = (await read($, loopsAtom))[loopId]
   if (hit === undefined) return
-  const last = takeTally(loopId)?.last
+  const tally = takeTally(loopId)
   await update($, loopsAtom, loops => Object.fromEntries(Object.entries(loops).filter(([k]) => k !== loopId)))
   await complete($, await resolveWatch($), layers, { runId: hit[0], agentId: hit[1] }, {
-    tokens: usageTokens(e.usage), ...(last === undefined ? {} : { contextTokens: last }), toolUses: used,
+    tokens: usageTokens(e.usage), ...(tally?.last === undefined ? {} : { contextTokens: tally.last }),
+    ...(tally === undefined ? {} : { requests: tally.count }), toolUses: used,
     durationMs: e.durationMs, model: e.usage?.model ?? null, block: parseReturnBlock(e.answer),
     isMeasured: e.usage !== undefined, ending: 'ok',
   })

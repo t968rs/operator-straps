@@ -35,6 +35,8 @@ export type AgentRec = {
    * completion notification shows); absent while unknown.
    */
   contextTokens?: number
+  /** Model requests the agent's loop made (one per `turn.step`), with or without usage; absent while unknown. */
+  requests?: number
   toolUses: number
   durationMs: number
   /** True once engine-measured usage was folded in. */

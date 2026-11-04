@@ -20,6 +20,8 @@ export type Completion = {
   tokens: number
   /** Tokens of the last model request alone; absent when no request was heard. */
   contextTokens?: number
+  /** Model requests the turn made; absent when none was heard. */
+  requests?: number
   toolUses: number
   durationMs: number
   model: string | null

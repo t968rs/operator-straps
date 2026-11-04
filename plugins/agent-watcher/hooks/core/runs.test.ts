@@ -57,6 +57,13 @@ describe('applyCompletion', () => {
     expect('contextTokens' in (applyCompletion(base(), 'a', done).agents.a ?? {})).toBe(false)
   })
 
+  test('requests add up over completions that report them', async () => {
+    const one = applyCompletion(base(), 'a', { ...done, requests: 2 })
+    expect(applyCompletion(one, 'a', done).agents.a?.requests).toBe(2)
+    expect(applyCompletion(one, 'a', { ...done, requests: 3 }).agents.a?.requests).toBe(5)
+    expect('requests' in (applyCompletion(base(), 'a', done).agents.a ?? {})).toBe(false)
+  })
+
   test('an agent the run does not hold leaves the run as it is', async () => {
     const run = base()
     expect(applyCompletion(run, 'nope', done)).toBe(run)

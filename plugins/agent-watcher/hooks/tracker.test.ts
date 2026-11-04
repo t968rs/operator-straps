@@ -139,11 +139,15 @@ const drain = async <C, R>(s: AsyncGenerator<C, R>): Promise<{ chunks: C[]; resu
   }
 }
 
-/** Model requests in a loop (`agentId`; undefined is the main loop), one per total, each stream read to its end. */
-const steps = async ($: Engine, seen: Seen, agentId: string | undefined, ...totals: number[]): Promise<void> => {
+/**
+ * Model requests in a loop (`agentId`; undefined is the main loop), one per total (null: a request that
+ * reported no usage), each stream read to its end.
+ */
+const steps = async ($: Engine, seen: Seen, agentId: string | undefined, ...totals: (number | null)[]): Promise<void> => {
   for (const [index, n] of totals.entries()) {
     const turnId = `s-${agentId ?? 'main'}`
-    seen.stepUsage.set(`${turnId}/${index}`, usageOf(n))
+    if (n === null) seen.stepUsage.delete(`${turnId}/${index}`)
+    else seen.stepUsage.set(`${turnId}/${index}`, usageOf(n))
     await drain($.turn.step({
       turnId, index, model: 'claude-opus-5-5', messageCount: 1, ...(agentId === undefined ? {} : { agentId }),
     }))
@@ -304,7 +308,7 @@ describe('agent usage rows', () => {
     expect(usageRows(seen)).toHaveLength(1)
     expect(usageRows(seen)[0]).toMatchObject({
       run_id: RUN, pr: 1526, skill: 'pr-review', role: 'reviewer', agent_id: 'r1', subagent_type: 'harness:pr-reviewer',
-      model: 'claude-opus-5-5', model_family: 'opus', tokens: 1000, context_tokens: 1000, tool_uses: 7, duration_s: 2.5,
+      model: 'claude-opus-5-5', model_family: 'opus', tokens: 1000, context_tokens: 1000, requests: 1, tool_uses: 7, duration_s: 2.5,
       signal: 'DONE',
     })
     expect(seen.files.has(MATRIX)).toBe(false)
@@ -451,13 +455,13 @@ describe('token figures: tokens summed over requests, context_tokens the last re
     await steps($, seen, undefined, 5000)
     await steps($, seen, 'loop-x', 300, 1000)
     await dispatch($, 'SKILL: c-msg', 'harness:messenger')
-    expect(usageRows(seen)[0]).toMatchObject({ tokens: 1300, context_tokens: 1000, notes: 'agent-watcher auto row; other NO_BLOCK' })
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 1300, context_tokens: 1000, requests: 2, notes: 'agent-watcher auto row; other NO_BLOCK' })
   })
 
   test('foreground with no request heard: tokens 0 and not measured; context_tokens still logged', async ($, on) => {
     const seen = world(on, () => completed('ok'))
     await dispatch($, 'SKILL: c-msg', 'harness:messenger')
-    expect(usageRows(seen)[0]).toMatchObject({ tokens: 0, context_tokens: 1000 })
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 0, context_tokens: 1000, requests: null })
     expect(String(usageRows(seen)[0]?.notes)).toMatch(/; usage not measured$/)
   })
 
@@ -474,21 +478,29 @@ describe('token figures: tokens summed over requests, context_tokens the last re
     await dispatch($, 'SKILL: c-msg', 'harness:messenger')
     await steps($, seen, 'loop-1', 40, 60)
     await loopEnd($, 'loop-1', 100)
-    expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: 60 })
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: 60, requests: 2 })
+  })
+
+  test('a request with no usage counts as a request and adds no tokens; the last usage stands', async ($, on) => {
+    const seen = world(on, () => launchedAs('loop-3'))
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    await steps($, seen, 'loop-3', 40, null)
+    await loopEnd($, 'loop-3', 40)
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 40, context_tokens: 40, requests: 2 })
   })
 
   test('background with no request heard: context_tokens null', async ($, on) => {
     const seen = world(on, () => launchedAs('loop-2'))
     await dispatch($, 'SKILL: c-msg', 'harness:messenger')
     await loopEnd($, 'loop-2', 100)
-    expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: null })
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: null, requests: null })
   })
 
   test('an errored dispatch logs context_tokens null', async ($, on) => {
     const seen = world(on, () => ({ result: 'boom', isError: true, text: 'boom' }))
     await steps($, seen, 'loop-x', 500)
     await dispatch($, 'SKILL: c-msg', 'harness:messenger')
-    expect(usageRows(seen)[0]).toMatchObject({ signal: 'ERROR', tokens: 0, context_tokens: null })
+    expect(usageRows(seen)[0]).toMatchObject({ signal: 'ERROR', tokens: 0, context_tokens: null, requests: null })
   })
 
   test('the step hook passes every chunk and the result through unchanged', async ($, on) => {
@@ -673,7 +685,7 @@ describe('the header convention and row fields (issue #193)', () => {
     expect(usageRows(seen)).toEqual([{
       logged_at: new Date(NOW).toISOString(), run_id: RUN, pr: 1526, skill: 'pr-review', role: 'reviewer',
       agent_id: 'r1', subagent_type: 'harness:pr-reviewer', model: 'claude-opus-5-5', model_family: 'opus',
-      effort: 'default', tokens: 1000, context_tokens: 1000, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
+      effort: 'default', tokens: 1000, context_tokens: 1000, requests: 1, tool_uses: 7, duration_s: 2.5, signal: 'DONE',
       notes: 'agent-watcher auto row; reviewer DONE',
     }])
   })

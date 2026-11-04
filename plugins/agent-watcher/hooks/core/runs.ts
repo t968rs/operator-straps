@@ -39,6 +39,7 @@ export const applyDispatch = (
 const foldAgent = (a: AgentRec, c: Completion): AgentRec => ({
   ...a,
   ...(c.contextTokens === undefined ? {} : { contextTokens: c.contextTokens }),
+  ...(c.requests === undefined ? {} : { requests: (a.requests ?? 0) + c.requests }),
   tokens: a.tokens + c.tokens,
   toolUses: a.toolUses + c.toolUses,
   durationMs: a.durationMs + c.durationMs,
@@ -49,7 +50,7 @@ const foldAgent = (a: AgentRec, c: Completion): AgentRec => ({
 })
 
 /**
- * Folds a completion into its agent: usage adds up, the context size follows the latest completion that
+ * Folds a completion into its agent: usage and requests add up, the context size follows the latest completion that
  * reports one, the signal and counts follow the latest block.
  */
 export const applyCompletion = (run: Run, agentId: string, c: Completion): Run => {

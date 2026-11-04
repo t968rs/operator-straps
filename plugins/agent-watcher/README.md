@@ -179,9 +179,14 @@ several times its `context_tokens`, since every request re-reads the cached cont
   duration and the report from its `turn.complete`; `context_tokens` is the last request heard on
   `turn.step`, null when none was.
 
+**`requests`** counts the model requests the loop made (every `turn.step` heard for it, with or without
+usage); null when none was heard. A request is one call to the model: the conversation so far goes out, one
+reply comes back. Tools run between requests, and one reply may ask for several, so `requests` is not
+`tool_uses`. `tokens` divided by `requests` is the mean request size.
+
 Before 0.7.0 a foreground row's `tokens` held the result's `totalTokens` (the last request's count, now
 `context_tokens`), and a background row's the summed figure. Rows written before 0.7.0 keep that mixed
-meaning and carry no `context_tokens`.
+meaning and carry neither `context_tokens` nor `requests`.
 
 ## Hooks
 
@@ -189,7 +194,7 @@ meaning and carry no `context_tokens`.
 |------|------|
 | `tool.call` on `Agent` | Records the dispatch, folds the result, refreshes, and for pr-review reviewers appends the ownership note to the result's context once the run is recorded with a PR. |
 | `tool.call` (any) | Counts tool calls per subagent loop id. |
-| `turn.step` | Once a subagent's model request has streamed through untouched, adds its usage to that loop's tally (summed, and the last request). The main loop's requests are skipped. |
+| `turn.step` | Once a subagent's model request has streamed through untouched, counts it in that loop's tally and adds its usage (summed, and the last request). The main loop's requests are skipped. |
 | `tool.call` on `Bash` / `PowerShell` | After a command that names `pr_review.py`, refreshes, so the band follows the script's phases within a turn. |
 | `turn.complete` | Completes a background subagent; on every turn end, refreshes and appends rows that became due. |
 | `session.start` | Recovers pr-team runs a previous session claimed but never logged, then refreshes. |
@@ -240,12 +245,12 @@ but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never r
 
 Each tracked dispatch that returns appends one row to `<agent_usage_path>`: who ran (`role`, `agent_id`,
 `subagent_type`, full `model` and its `model_family`, `unknown` when the id holds no family token), what it
-cost (`tokens`, `context_tokens`, `tool_uses`, `duration_s`) and its `signal`. An unclaimed dispatch writes the same fields,
+cost (`tokens`, `context_tokens`, `requests`, `tool_uses`, `duration_s`) and its `signal`. An unclaimed dispatch writes the same fields,
 with `skill`, `role`, `run_id`, `agent_id` and `pr` from its header (with no header: `skill: standalone`,
 `role: other`, `pr: null`), no count fields, its header `fields`, and `signal: NO_BLOCK` for an agent that
 ends without a return block. A synchronous result is logged when it
 returns, a background agent when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
-second row. An errored result logs `signal: ERROR` with zero usage and `context_tokens: null`; a background turn with no usage logs
+second row. An errored result logs `signal: ERROR` with zero usage and `context_tokens` and `requests` null; a background turn with no usage logs
 `tokens: 0` (the tool calls the mod counted and the turn's duration still land) with `usage not measured` in
 `notes`; a denied dispatch never ran and logs nothing. A background loop that is interrupted or dies on an
 API error is not told apart from a normal return: it logs the signal of its return block, `NO_BLOCK` when
