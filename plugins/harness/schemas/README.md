@@ -110,6 +110,26 @@ This is a worked specimen (originally produced for Issue #747's CICD-Decompose-c
 
 **Driver-owned markers:** top-level properties the driver writes (`strap_models.DRIVER_OWNED_TOP`) carry `driver_owned: true`; an author never sets them.
 
+### 9. `agent_usage.schema.json`
+
+**Applies to:** each line of the project's `agent_usage_path` (default `docs/_harness/agent_usage.jsonl`), JSONL: one row per returned Agent dispatch of any agent type (completed or errored; a denied dispatch writes none). Draft-07.
+
+**Writer:** the `agent-watcher` mod, when the agent returns. A pr-review or pr-team dispatch belongs to its run; any other dispatch is a generic row whose `skill`, `role`, `run_id`, `agent_id` and `pr` come from the prompt's leading header block, with the remaining header keys in `fields`.
+
+**Key fields:** `logged_at`, `run_id`, `pr`, `skill`, `role`, `agent_id`, `subagent_type`, `model`, `model_family`, `effort`, `tool_uses`, `duration_s`, `signal`, `notes`; cost columns `tokens` (input + output + cache read + cache creation, summed over every model request: what the run billed), `context_tokens` (the same four counts for the last request that reported usage; null when unknown) and `requests` (model requests the agent's loop made; null when none was heard). Fixer and closer rows also carry `issues_assigned`, `issues_fixed`, `issues_bubbled`, `files_touched`; other roles carry none of them.
+
+**History:** rows written before agent-watcher 0.7.0 lack `context_tokens` and `requests`, and their `tokens` holds, for a foreground dispatch, the last request's count (what `context_tokens` now holds).
+
+### 10. `pr_review_invocation_test_matrix.schema.json`
+
+**Applies to:** each line of the project's `matrix_path` (default `docs/_harness/pr_review_invocation_test_matrix.jsonl`), JSONL: one row per reviewer subagent invocation or per end-to-end pr-review skill test cell. Draft-07.
+
+**Writers:** the `agent-watcher` mod (`notes` starting `agent-watcher auto row`) and the pr-team orchestrator without the mod (its Step 5).
+
+**Key fields:** `cell`, `pr`, `model_family` (`haiku` / `sonnet` / `opus`), `effort`, `dev_commit` (40-char merge-base SHA, optionally ` -- <suffix>`; freetext only on `legacy: true` rows), `dispatch_shape` (`parallel` / `inline`), `tokens`, `tool_uses`, `duration_s`, `findings_count`, `C_count` / `I_count` / `M_count` / `other_count`, `verdict_prefix`, `notes`.
+
+**`tokens`:** input + output + cache read + cache creation. Watcher rows sum them over every model request of the invocation; watcher rows from before agent-watcher 0.7.0 hold, for a foreground dispatch, the last request's count, and nothing in the row dates them. Orchestrator rows carry the reviewer's self-reported figure, or 0.
+
 ---
 
 ## Catalog Schemas (`catalogs/`)

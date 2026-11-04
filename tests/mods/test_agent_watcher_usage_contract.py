@@ -4,9 +4,8 @@ The mod validates agent usage rows in TypeScript (``plugins/agent-watcher/hooks/
 the plugin test sandbox cannot read repository files. This test reads both sides and fails when
 ``plugins/harness/schemas/agent_usage.schema.json`` changes its required fields, count fields, optional
 ``fields`` object and its key, length and no-path rules, the optional ``context_tokens`` and ``requests``
-counts, the skill and
-role patterns, the model family enum,
-``logged_at`` pattern, nullable strings or non-empty strings without the mod following.
+counts, the skill and role patterns, the model family enum, ``logged_at`` pattern, nullable strings or
+non-empty strings without the mod following.
 """
 from __future__ import annotations
 

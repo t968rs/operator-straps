@@ -64,7 +64,7 @@
     },
     "tokens": {
       "type": "integer",
-      "description": "Input + output + cache read + cache creation tokens summed over every model request of the subagent invocation. Rows the agent-watcher mod wrote before 0.7.0 hold, for a foreground dispatch, its last request's count instead.",
+      "description": "Input + output + cache read + cache creation tokens. Rows the agent-watcher mod writes (`notes` starting `agent-watcher auto row`) sum them over every model request of the subagent invocation; rows it wrote before 0.7.0 hold, for a foreground dispatch, its last request's count instead, and nothing in the row dates it. Rows the pr-team orchestrator writes without the mod (its Step 5) carry the reviewer's self-reported figure, or 0.",
       "minimum": 0
     },
     "tool_uses": {

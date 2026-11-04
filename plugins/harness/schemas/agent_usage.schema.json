@@ -76,12 +76,12 @@
     "tokens": {
       "type": "integer",
       "minimum": 0,
-      "description": "Input + output + cache read + cache creation tokens summed over every model request the agent made, as the engine reports each: what the run billed. 0 when unmeasured. Rows written before agent-watcher 0.7.0 hold, for a foreground dispatch, the last request's count instead (what `context_tokens` now holds)."
+      "description": "Input + output + cache read + cache creation tokens summed over every model request the agent made, as the engine reports each: what the run billed. 0 when unmeasured. Rows written before agent-watcher 0.7.0 hold, for a foreground dispatch, the last request's count instead (what `context_tokens` now holds). A row without the `context_tokens` key predates 0.7.0."
     },
     "context_tokens": {
       "type": ["integer", "null"],
       "minimum": 0,
-      "description": "The same four counts for the agent's last model request alone: its context size at the end, the figure its completion notification shows. Null when unknown (an errored result, or a background agent none of whose requests the watcher heard). Every row from agent-watcher 0.7.0 on carries it; older rows lack it."
+      "description": "The same four counts for the agent's last model request that reported usage, alone: its context size at the end, the figure its completion notification shows. Null when unknown (an errored result, a foreground result without a total, or an agent none of whose requests reported usage). Every row from agent-watcher 0.7.0 on carries it; older rows lack it."
     },
     "requests": {
       "type": ["integer", "null"],

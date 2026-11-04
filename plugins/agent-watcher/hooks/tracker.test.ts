@@ -7,7 +7,7 @@ import { DEFINED_AGENTS, parseReturnBlock, type Dispatch } from './core/contract
 import type { Io, Layer } from './core/layer'
 import { applyCompletion, applyDispatch, newAgent } from './core/runs'
 import {
-  completeLayer, contextFor, countsFor, foldInto, logUsage, settleLayers, stopReasonOf,
+  completeLayer, contextFor, countsFor, foldInto, logUsage, settleLayers, STEP_TALLY_CAP, stopReasonOf,
 } from './core/tracker'
 import { OWNER_NOTE, prReviewLayer } from './layers/pr-review/layer'
 
@@ -207,6 +207,7 @@ describe('matrix rows', () => {
     const seen = world(on, p => completed(doneBlock(p.includes('r1') ? 'findings=2 critical=1 important=1 minor=0' : ZERO)))
     await steps($, seen, 'loop-x', 1000)
     await dispatch($, reviewerPrompt('r1'))
+    await steps($, seen, 'loop-x', 1000)
     await dispatch($, reviewerPrompt('r2'))
     expect(seen.files.has(MATRIX)).toBe(false)
     writeReview(seen, { verdict: 'NOT READY TO MERGE: 1 critical', issues: { critical: [{ id: 'C1' }] } })
@@ -217,6 +218,7 @@ describe('matrix rows', () => {
       tokens: 1000, tool_uses: 7, duration_s: 2.5, model_family: 'opus', C_count: 1, verdict_prefix: 'NOT READY TO MERGE',
     })
     expect(rows[0]?.dev_commit).toBe(`${SHA} -- dev (agent-watcher auto)`)
+    expect(rows[1]).toMatchObject({ tokens: 1000 })
     await mainTurnEnd($, 't2')
     expect(matrixRows(seen)).toHaveLength(2)
   })
@@ -444,18 +446,19 @@ describe('token figures: tokens summed over requests, context_tokens the last re
     result: { status: 'async_launched', agentId, description: 'r', prompt: '', outputFile: 'f', resolvedModel: 'claude-sonnet-5-5' },
     text: 'launched',
   })
-  const loopEnd = ($: Engine, agentId: string, total: number) =>
+  /** A loop turn's end; a null total carries no usage. */
+  const loopEnd = ($: Engine, agentId: string, total: number | null) =>
     $.turn.complete({
       answer: 'done', durationMs: 4000, isAborted: false, turnId: `t-${agentId}`, reason: 'answer', agentId,
-      usage: usageOf(total),
+      ...(total === null ? {} : { usage: usageOf(total) }),
     } as never)
 
   test('foreground: tokens sum the loop\'s requests, context_tokens is the result\'s totalTokens', async ($, on) => {
     const seen = world(on, () => completed('ok'))
     await steps($, seen, undefined, 5000)
-    await steps($, seen, 'loop-x', 300, 1000)
+    await steps($, seen, 'loop-x', 300, 400)
     await dispatch($, 'SKILL: c-msg', 'harness:messenger')
-    expect(usageRows(seen)[0]).toMatchObject({ tokens: 1300, context_tokens: 1000, requests: 2, notes: 'agent-watcher auto row; other NO_BLOCK' })
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 700, context_tokens: 1000, requests: 2, notes: 'agent-watcher auto row; other NO_BLOCK' })
   })
 
   test('foreground with no request heard: tokens 0 and not measured; context_tokens still logged', async ($, on) => {
@@ -481,7 +484,7 @@ describe('token figures: tokens summed over requests, context_tokens the last re
     expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: 60, requests: 2 })
   })
 
-  test('a request with no usage counts as a request and adds no tokens; the last usage stands', async ($, on) => {
+  test('a request with no usage counts as a request; the last usage stands', async ($, on) => {
     const seen = world(on, () => launchedAs('loop-3'))
     await dispatch($, 'SKILL: c-msg', 'harness:messenger')
     await steps($, seen, 'loop-3', 40, null)
@@ -496,11 +499,30 @@ describe('token figures: tokens summed over requests, context_tokens the last re
     expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: null, requests: null })
   })
 
+  test('background loop turn with no usage: tokens fall back to the requests heard, measured', async ($, on) => {
+    const seen = world(on, () => launchedAs('loop-4'))
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    await steps($, seen, 'loop-4', 40, 60)
+    await loopEnd($, 'loop-4', null)
+    expect(usageRows(seen)[0]).toMatchObject({ tokens: 100, context_tokens: 60, requests: 2 })
+    expect(String(usageRows(seen)[0]?.notes)).not.toMatch(/usage not measured/)
+  })
+
   test('an errored dispatch logs context_tokens null', async ($, on) => {
     const seen = world(on, () => ({ result: 'boom', isError: true, text: 'boom' }))
     await steps($, seen, 'loop-x', 500)
     await dispatch($, 'SKILL: c-msg', 'harness:messenger')
     expect(usageRows(seen)[0]).toMatchObject({ signal: 'ERROR', tokens: 0, context_tokens: null, requests: null })
+  })
+
+  test('an errored result names no loop, so its tally stays until the cap evicts it', async ($, on) => {
+    let calls = 0
+    const seen = world(on, () => (calls++ === 0 ? { result: 'boom', isError: true, text: 'boom' } : completed('ok')))
+    await steps($, seen, 'loop-x', 500)
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    for (let i = 0; i < STEP_TALLY_CAP; i++) await steps($, seen, `loop-evict-${i}`, 1)
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    expect(usageRows(seen)[1]).toMatchObject({ signal: 'NO_BLOCK', tokens: 0, requests: null })
   })
 
   test('the step hook passes every chunk and the result through unchanged', async ($, on) => {
