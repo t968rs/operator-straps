@@ -67,6 +67,38 @@ def test_agents_are_dispatched_by_the_printed_rows(parts: Tuple[dict, str]) -> N
         assert needle in body, needle
 
 
+def _split_steps(body: str) -> Tuple[str, str]:
+    """The text of the Steps section and the text of the On request section."""
+    assert "\n## Steps" in body, "Steps section missing"
+    steps = body.split("\n## Steps", 1)[1]
+    assert "\n## On request" in steps, "On request section missing after Steps"
+    steps, rest = steps.split("\n## On request", 1)
+    return steps, rest.split("\n## ", 1)[0]
+
+
+def test_the_default_flow_has_no_review_cycle(parts: Tuple[dict, str]) -> None:
+    _, body = parts
+    steps, _ = _split_steps(body)
+    for needle in ("bubble-memo-reviewer", "--reviewer-row", "reviewer row", "review round", "findings"):
+        assert needle not in steps, needle
+
+
+def test_the_reviewer_runs_only_when_the_developer_asks(parts: Tuple[dict, str]) -> None:
+    _, body = parts
+    _, on_request = _split_steps(body)
+    for needle in ("harness:bubble-memo-reviewer", "--reviewer-row", "asks"):
+        assert needle in on_request, needle
+
+
+def test_the_memo_stays_a_snapshot_apart_from_decision_stamps(parts: Tuple[dict, str]) -> None:
+    _, body = parts
+    head = "**The memo is a point-in-time snapshot**"
+    assert head in body, "snapshot rule missing"
+    rule = body.split(head, 1)[1].split("\n- **", 1)[0]
+    for needle in ("after hand-off", "decision stamp", "On request"):
+        assert needle in rule, needle
+
+
 def test_the_skill_keeps_prose_and_the_snapshot_rule(parts: Tuple[dict, str]) -> None:
     _, body = parts
     assert "Description" in body and "Recommendation" in body

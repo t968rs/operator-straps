@@ -22,9 +22,9 @@ read-only git. Every defect is one ``problem: ...`` line on stderr with exit 1.
     replaced by the verified ones only while the entry's other fact stubs remain, so a rerun keeps hand
     corrections. Only ids whose entry changed are listed as applied.
 
-``check --pr N``
-    Exit 1 with one problem line per defect; ``note:`` lines never fail. When clean, print ``check [ok]`` and
-    the reviewer dispatch row.
+``check --pr N [--reviewer-row]``
+    Exit 1 with one problem line per defect; ``note:`` lines never fail. When clean, print ``check [ok]``;
+    with ``--reviewer-row``, also the reviewer dispatch row, for a review the developer asked for.
 
 ``--repo`` (default: the working directory) names a directory inside the project. Usage::
 
@@ -34,7 +34,7 @@ read-only git. Every defect is one ``problem: ...`` line on stderr with exit 1.
     bubble_memo.py [--repo DIR] record --pr N --role investigator --id ID < facts.json
     bubble_memo.py [--repo DIR] record --pr N --role reviewer < findings.json
     bubble_memo.py [--repo DIR] apply --pr N
-    bubble_memo.py [--repo DIR] check --pr N
+    bubble_memo.py [--repo DIR] check --pr N [--reviewer-row]
 """
 import argparse
 import json
@@ -508,7 +508,8 @@ def cmd_check(args: argparse.Namespace) -> int:
         raise CaptureError(problems)
     print(f"check [ok] | PR {args.pr} | {len(review.bubbled)} entries "
           f"| memo: {memo_path(args.pr).as_posix()}")
-    print(reviewer_row(review))
+    if args.reviewer_row:
+        print(reviewer_row(review))
     return 0
 
 
@@ -521,6 +522,9 @@ def _parser() -> argparse.ArgumentParser:
     for name, text in (("scaffold", "Create or extend the memo."), ("check", "Check the memo is complete.")):
         cmd = sub.add_parser(name, help=text)
         cmd.add_argument("--pr", type=int, required=True)
+        if name == "check":
+            cmd.add_argument("--reviewer-row", action="store_true",
+                             help="After a clean check, print the memo reviewer dispatch row.")
     apply_cmd = sub.add_parser("apply", help="Write recorded facts into the memo.")
     apply_cmd.add_argument("--pr", type=int, required=True)
     for name, text in (("init", "Print and save an agent's brief."), ("record", "Record an agent's report.")):
