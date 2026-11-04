@@ -38,6 +38,7 @@ One `Agent` call: `subagent_type="harness:todo-editor"`, the model from the tabl
 TODO items"`. The prompt is this block with the placeholders filled:
 
 ```
+SKILL: todo-edit
 Operation: <retire | split | refresh>
 Ids: <TODO-NNN, ... or none>
 Delete retired: <yes | no>

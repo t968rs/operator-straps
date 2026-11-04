@@ -303,11 +303,26 @@ def started_items(plan: pm.ActionPlan) -> List[str]:
             "record sets the rest" for i in plan.items if i.status != ItemStatus.PENDING]
 
 
+def base_claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
+    """Anchors and sweeps that hold in the tree but not at the base, while no item is done.
+
+    Once an item is done, ``check`` reads them at the base (``claims_rev``), so a freeze before that point
+    makes sure they hold there too: a branch with commits from before ``new`` can move the anchored code.
+    """
+    base = plan.base_commit
+    if not base or claims_rev(plan) is not None:
+        return []
+    found = (pc.anchor_problems(plan, repo, base)
+             + pc.sweep_problems(plan, repo, active().artifacts.plans, base))
+    return [f"at base {base[:7]}: {p}" for p in found]
+
+
 def freeze_problems(repo: Path, plan: pm.ActionPlan, refreeze: bool) -> List[str]:
     frozen = plan.frozen
     if frozen is not None and not refreeze:
         return [f"plan {plan.plan_id} is already frozen ({frozen.date}); pass --refreeze"]
     problems = [p for p in all_problems(repo, plan) if not (refreeze and p.startswith("plan changed after"))]
+    problems += base_claim_problems(repo, plan)
     problems += [f"decision {d} is open: {q}" for d, q in (o.split(": ", 1) for o in pc.open_decisions(plan))]
     problems += started_items(plan) + unproven_items(plan)
     return problems + ([] if plan.items else ["the plan has no items"])

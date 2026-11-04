@@ -242,6 +242,7 @@ def test_row_text_is_the_header_then_the_prompt_lines(make_project) -> None:
     row = plan_rows(root, scopes, new_docstrings=False, parallel=False)[0]
     assert row.text() == "\n".join([
         f"agent={AGENT} model={WORK_MODEL}",
+        "SKILL: writing-docstrings",
         f"Project root: {_p(root)}",
         "New docstrings: no",
         f"Scope: {_p(root / 'src' / 'a.py')}: f",

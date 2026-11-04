@@ -47,7 +47,8 @@ def test_two_files_print_one_row(make_project) -> None:
     assert done.returncode == 0, done.stderr
     rows = _rows(done)
     assert len(rows) == 1
-    assert rows[0][:3] == [WORK, f"Project root: {_p(root)}", "New docstrings: no"]
+    assert rows[0][:4] == [WORK, "SKILL: writing-docstrings", f"Project root: {_p(root)}",
+                           "New docstrings: no"]
     assert [line for line in rows[0] if line.startswith("Scope: ")] == [
         f"Scope: {_p(root / 'src' / 'a.py')}: all",
         f"Scope: {_p(root / 'src' / 'b.py')}: all",
@@ -62,7 +63,7 @@ def test_project_root_is_the_first_path_s_checkout(make_project) -> None:
     from_outside = _run(root.parent, str(root / "src" / "a.py"))
     for done in (from_subfolder, from_outside):
         assert done.returncode == 0, done.stderr
-        assert _rows(done)[0][1] == f"Project root: {_p(root)}"
+        assert _rows(done)[0][2] == f"Project root: {_p(root)}"
 
 
 def test_parallel_prints_the_probe_row_then_one_row_per_file(make_project) -> None:
@@ -100,7 +101,7 @@ def test_flags_between_paths_are_accepted(make_project) -> None:
     done = _run(root, "src/a.py", "-p", "src/b.py", "-in")
     assert done.returncode == 0, done.stderr
     rows = _rows(done)
-    assert len(rows) == 3 and all(row[2] == "New docstrings: yes" for row in rows)
+    assert len(rows) == 3 and all(row[3] == "New docstrings: yes" for row in rows)
 
 
 def test_a_directory_and_a_file_in_it_give_one_row_per_file(make_project) -> None:
@@ -125,7 +126,7 @@ def test_include_new_flags_set_new_docstrings(make_project) -> None:
     for flag in ("-in", "--include-new"):
         done = _run(root, flag, "src/a.py")
         assert done.returncode == 0, done.stderr
-        assert _rows(done)[0][2] == "New docstrings: yes"
+        assert _rows(done)[0][3] == "New docstrings: yes"
 
 
 def test_a_problem_prints_nothing_on_stdout(make_project) -> None:
@@ -183,7 +184,7 @@ def test_repo_flag_names_the_project(make_project) -> None:
     root = _project(make_project)
     done = _run(root.parent, "--repo", str(root), str(root / "src" / "a.py"))
     assert done.returncode == 0, done.stderr
-    assert _rows(done)[0][1] == f"Project root: {_p(root)}"
+    assert _rows(done)[0][2] == f"Project root: {_p(root)}"
 
 
 def test_clear_probe_with_repo_clears_that_project(make_project) -> None:

@@ -47,6 +47,7 @@ One `Agent` call: `subagent_type="harness:todo-editor"`, `model="opus"`, `descri
 TODO items"`, with this prompt, the placeholders filled:
 
 ```
+SKILL: sync-gh-todo
 Operation: sync
 Issues: #<n>, #<n>
 Project root: <absolute project root>

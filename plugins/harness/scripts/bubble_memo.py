@@ -191,10 +191,15 @@ def _context(review: Review, item: bm.Bubbled) -> str:
     return text if len(text) <= CONTEXT_MAX else text[:CONTEXT_MAX - 3] + "..."
 
 
+def row_header(agent: str, model: str) -> List[str]:
+    """The first two lines of every dispatch row: the agent line, then the dispatching skill."""
+    return [f"agent={agent} model={model}", "SKILL: bubble-memo"]
+
+
 def investigator_row(review: Review, item: bm.Bubbled) -> str:
     issue = bm.find_issue(review.doc, item.id) or {}
     files = ", ".join(bm.issue_files(issue))
-    return "\n".join([f"agent={INVESTIGATOR_AGENT} model={INVESTIGATOR_MODEL}", f"PR: {review.pr}",
+    return "\n".join([*row_header(INVESTIGATOR_AGENT, INVESTIGATOR_MODEL), f"PR: {review.pr}",
                       f"ISSUE: {item.id}", f"FILES: {files}", f"CONTEXT: {_context(review, item)}"])
 
 
@@ -207,7 +212,7 @@ def reviewer_row(review: Review) -> str:
     blocks = bm.entry_blocks(read_memo(review.pr))
     flagged = [b.id for b in review.bubbled if entry_flagged(review.doc, b.id, blocks.get(b.id, ""))]
     model = bm.reviewer_model(flagged)
-    return "\n".join([f"agent={REVIEWER_AGENT} model={model}", f"PR: {review.pr}",
+    return "\n".join([*row_header(REVIEWER_AGENT, model), f"PR: {review.pr}",
                       f"Memo: {memo_path(review.pr).as_posix()}"])
 
 

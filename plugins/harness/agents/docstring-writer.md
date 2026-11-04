@@ -34,6 +34,7 @@ before a word of it is written. The convention is
 
 | Line | Means |
 |---|---|
+| `SKILL:` | always `writing-docstrings`, the dispatching skill; it asks for no action |
 | `Project root:` | the checkout every path sits in |
 | `New docstrings:` | `yes`: write docstrings for the undocumented functions in scope; `no`: list them instead |
 | `Scope:` | one file and its scope: `all` (every function and method) or the names listed |

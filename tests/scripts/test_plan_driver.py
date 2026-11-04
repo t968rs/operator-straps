@@ -266,6 +266,18 @@ def test_an_executed_plan_reads_its_anchors_and_sweeps_at_the_base(run: Run, fil
     assert f"anchors and sweeps at base {plan['base_commit'][:7]}" in out
 
 
+def test_a_first_freeze_needs_its_claims_to_hold_at_the_base(run: Run, filled: Fill, project: Path) -> None:
+    calc = project / "src" / "calc.py"
+    calc.write_text(calc.read_text(encoding="utf-8").replace("def add", "def plus"), encoding="utf-8")
+    git(project, "commit", "-q", "-am", "rename add on the branch before the plan")
+    filled(sub_item(anchors=[{"at": "src/calc.py:1", "expect": "def plus(a, b):"}]))
+    assert run("check", "1")[0] == 0
+    before = read_plan(project)
+    code, _, err = run("freeze", "1")
+    assert code == 1 and "problem: at base " in err and "'def plus(a, b):' not found" in err
+    assert read_plan(project) == before
+
+
 def test_a_plan_with_nothing_done_reads_its_anchors_in_the_tree(run: Run, filled: Fill,
                                                                project: Path) -> None:
     filled(sweeps=[{"id": "S1", "pattern": "def add", "hits": {"src/calc.py": "TASK-1 renames it"}}])

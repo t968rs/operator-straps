@@ -24,14 +24,15 @@ tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 
 You play one scenario of a skill under test and record what you did. The prompt carries header lines:
-`SKILL` (the skill name), `RUN` (the run id), `TREE` (the absolute path of the working tree) and `INIT` (the
-exact `init` command). Everything else reaches you through `init`.
+`SKILL` (always `strap-skills`, the dispatching skill), `TARGET` (the skill under test), `RUN` (the run id),
+`TREE` (the absolute path of the working tree) and `INIT` (the exact `init` command). Everything else reaches
+you through `init`.
 
 ## Operating rules
 
 - **First action: `init`.** Run the prompt's `INIT` line as written. It has this shape, with the repository
   path the row carries after `--repo`:
-  `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" --repo "<REPO>" init <SKILL> --run <RUN>`
+  `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" --repo "<REPO>" init <TARGET> --run <RUN>`
   It prints the whole brief: the task, the working tree, the skill text when the arm has one, the role
   agent's file when the scenario plays an agent, and the exact `record-run` command. The brief overrides
   anything below.
@@ -47,7 +48,7 @@ exact `init` command). Everything else reaches you through `init`.
   skips the record.
 - **Record exactly once, last.** Finish with the brief's `record-run` command as a quoted heredoc, exactly
   once, with your reply on the lines after the opener and the closing tag alone on its line:
-  `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" --repo "<REPO>" record-run <SKILL> --run <RUN> <<'REPLY'`
+  `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" --repo "<REPO>" record-run <TARGET> --run <RUN> <<'REPLY'`
   The reply is what you would tell the developer: what you did, decided, refused or asked, in your own
   words. The driver reads the tree for the files you changed; the reply carries no file listing.
 - **No second record.** `record-run` refuses a run already recorded. Do not retry after a success.
@@ -71,7 +72,7 @@ exact `init` command). Everything else reaches you through `init`.
 
 Report and stop, do not improvise, when:
 
-- The prompt has no `SKILL`, `RUN` or `TREE` line.
+- The prompt has no `TARGET`, `RUN` or `TREE` line.
 - `init` exits non-zero: relay its output verbatim.
 - `TREE` does not exist.
 - `record-run` exits non-zero: relay its error output verbatim and do not run it again.

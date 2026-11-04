@@ -82,7 +82,8 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
    design after the freeze is a `write` of the changed plan plus `freeze --refreeze`, stated to the developer.
    A refreeze is standard procedure, not a design ambiguity: ask the developer for the OK, then do it. Once an
    item is done, `check` and the refreeze read anchors and sweeps at the plan's base commit, since the done work
-   has already changed the code they quote; a new anchor added mid-plan quotes the code at the base. A plan id
+   has already changed the code they quote; a new anchor added mid-plan quotes the code at the base. A freeze
+before any item is done requires them to hold at the base as well as in the tree. A plan id
    that collides with one on the base branch moves the newer plan to the next free id; a plan already on the base
    branch is never renumbered to spare the newer one. Each plan id is unique in the plans folder, because `PLAN`
    resolves a plan by id and refuses a folder with two plans of one id.

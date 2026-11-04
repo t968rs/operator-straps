@@ -36,6 +36,7 @@ failed in this run, and why?` when it is empty. A log path in the question is pa
 to read, as the developer's request; Step 1 still lists the newest logs for the comparison.
 
 ```
+SKILL: check-runlogs
 Run log: <newest path>
 Previous run log: <second path, or none>
 Project root: <absolute project root>
