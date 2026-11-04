@@ -1,64 +1,19 @@
-import type { AgentRec, Counts, Phase, Run } from '../types'
+import type { AgentRec, Counts, Phase, Run } from '../../../types'
+import type { ReturnBlock } from '../../core/contract'
+import type { FixerCounts } from '../../core/usageRow'
 import { allDispositioned, type ReviewDoc } from './bubbles'
-import type { Dispatch, ReturnBlock } from './contract'
 import { runName } from './runKey'
 
-/** Pure state transitions over tracked runs, plus the band text. No `$`. */
-
-/** What one subagent turn (or a synchronous Agent result) contributes. */
-export type Completion = {
-  tokens: number
-  toolUses: number
-  durationMs: number
-  model: string | null
-  block: ReturnBlock | undefined
-  isMeasured: boolean
-  /** `ok`: a result the engine reported; `errored`: an error or unfinished Agent result; `denied`: never ran. */
-  ending: 'ok' | 'errored' | 'denied'
-}
+/**
+ * Pure pr-review / pr-team state over tracked runs (the closer, the bubbled set, the disk phase, the matrix
+ * bookkeeping, recovery and fixer report counts), plus the band text. No `$`. The generic dispatch and
+ * completion transitions are core's (`core/tracker.ts`).
+ */
 
 const PHASE_LABEL: Readonly<Record<Phase, string>> = {
   plan: 'planning', review: 'reviewers', consolidate: 'consolidating', 'fix-plan': 'fix planning',
   fix: 'fixers', closeout: 'closeout', done: 'done',
 }
-
-export const newAgent = (
-  d: Dispatch,
-  meta: { model?: string; effort?: string; subagentType?: string },
-): AgentRec => ({
-  id: d.agentId, role: d.role, model: meta.model ?? null, effort: meta.effort ?? null,
-  tokens: 0, toolUses: 0, durationMs: 0, isMeasured: false, signal: null, counts: null, loggedAt: null,
-  subagentType: meta.subagentType ?? null, usageLoggedAt: null, launchModel: null,
-})
-
-const newRun = (d: Dispatch, now: number): Run => ({
-  runId: d.runId, skill: d.skill, pr: d.pr, phase: d.phase, runtimeDir: d.runtimeDir,
-  agents: {}, bubbled: [], bubbledFrom: 'none', verdict: null, startedAt: now,
-})
-
-/** Records a dispatch: the run is created on first sight, the phase follows the dispatch. */
-export const applyDispatch = (
-  runs: Readonly<Record<string, Run>>,
-  d: Dispatch,
-  rec: AgentRec,
-  now: number,
-): Record<string, Run> => {
-  const run = runs[d.runId] ?? newRun(d, now)
-  const agents = { ...run.agents, [d.agentId]: rec }
-  const next: Run = { ...run, pr: run.pr ?? d.pr, runtimeDir: run.runtimeDir ?? d.runtimeDir, phase: d.phase, agents }
-  return { ...runs, [d.runId]: next }
-}
-
-const foldAgent = (a: AgentRec, c: Completion): AgentRec => ({
-  ...a,
-  tokens: a.tokens + c.tokens,
-  toolUses: a.toolUses + c.toolUses,
-  durationMs: a.durationMs + c.durationMs,
-  model: c.model ?? a.model,
-  isMeasured: a.isMeasured || c.isMeasured,
-  signal: c.block?.signal ?? 'NO_BLOCK',
-  counts: c.block?.counts ?? a.counts,
-})
 
 /** The closer's DONE ends the run; its BUBBLED list becomes the run's bubbled set. */
 const applyCloser = (run: Run, block: ReturnBlock): Run => {
@@ -66,12 +21,12 @@ const applyCloser = (run: Run, block: ReturnBlock): Run => {
   return block.bubbled === null ? closed : { ...closed, bubbled: block.bubbled, bubbledFrom: 'closer' }
 }
 
-export const applyCompletion = (run: Run, agentId: string, c: Completion): Run => {
-  const prev = run.agents[agentId]
-  if (prev === undefined) return run
-  const next: Run = { ...run, agents: { ...run.agents, [agentId]: foldAgent(prev, c) } }
-  return agentId === 'closer' && c.block !== undefined ? applyCloser(next, c.block) : next
-}
+/**
+ * The run after an agent's return block: the closer's block closes it; any other agent's, or an agent the run
+ * does not hold, leaves it.
+ */
+export const closeRun = (run: Run, agentId: string, block: ReturnBlock | undefined): Run =>
+  agentId === 'closer' && block !== undefined && run.agents[agentId] !== undefined ? applyCloser(run, block) : run
 
 const withBubbled = (run: Run, ids: string[], from: 'bubble_ups' | 'review_json'): Run =>
   run.bubbledFrom === 'closer' ? run : { ...run, bubbled: ids, bubbledFrom: from }
@@ -120,22 +75,12 @@ export const markLogged = (run: Run, ids: readonly string[], now: number): Run =
   ),
 })
 
-/** The agent when it has returned and its usage row is not yet attempted; else undefined. */
-export const usageToLog = (run: Run, agentId: string): AgentRec | undefined => {
-  const a = run.agents[agentId]
-  return a !== undefined && a.signal !== null && a.usageLoggedAt === null ? a : undefined
-}
-
-export const markUsageLogged = (run: Run, agentId: string, now: number): Run => {
-  const a = run.agents[agentId]
-  return a === undefined ? run : { ...run, agents: { ...run.agents, [agentId]: { ...a, usageLoggedAt: now } } }
-}
-
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
 const str = (v: unknown): string | null => (typeof v === 'string' ? v : null)
 
-const parseJson = (text: string): unknown => {
+const parseJson = (text: string | undefined): unknown => {
+  if (text === undefined) return undefined
   try {
     return JSON.parse(text)
   } catch {
@@ -197,6 +142,35 @@ export const fixerBubbledIds = (reportTexts: readonly string[]): string[] => {
     return bubbled.flatMap(b => (isRecord(b) && typeof b.id === 'string' ? [b.id] : []))
   })
   return [...new Set(ids)]
+}
+
+/** The length of a fixer's `issue_ids` in a pr-review `waves.json`; null when absent or malformed. */
+const assignedIn = (wavesText: string | undefined, agentId: string): number | null => {
+  const doc = parseJson(wavesText)
+  const waves = isRecord(doc) && Array.isArray(doc.waves) ? doc.waves : []
+  const fixer = waves.flatMap(w => (Array.isArray(w) ? w : [])).find(f => isRecord(f) && f.id === agentId)
+  return isRecord(fixer) && Array.isArray(fixer.issue_ids) ? fixer.issue_ids.length : null
+}
+
+/** Distinct `files` across a report's `fixed` entries. */
+const editedFiles = (fixed: readonly unknown[]): number =>
+  new Set(fixed.flatMap(e => (isRecord(e) && Array.isArray(e.files) ? e.files : []))).size
+
+/** Counts from a pr-review fixer's `waves.json` entry and its `fixes/<agentId>.json` report. */
+export const reportCounts = (
+  wavesText: string | undefined,
+  reportText: string | undefined,
+  agentId: string,
+): FixerCounts => {
+  const report = parseJson(reportText)
+  const fixed = isRecord(report) && Array.isArray(report.fixed) ? report.fixed : null
+  const bubbled = isRecord(report) && Array.isArray(report.bubbled) ? report.bubbled : null
+  return {
+    issues_assigned: assignedIn(wavesText, agentId),
+    issues_fixed: fixed?.length ?? null,
+    issues_bubbled: bubbled?.length ?? null,
+    files_touched: fixed === null ? null : editedFiles(fixed),
+  }
 }
 
 const progress = (run: Run, role: string): string => {

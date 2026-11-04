@@ -43,6 +43,19 @@ export const keyOfRunId = (runId: string): RunKey | null => {
   return m === null ? null : toPr(m[1]) ?? m[2] ?? null
 }
 
+/**
+ * Epoch ms of the UTC stamp a run id carries (`pr1122_20260518T060416Z`, `local-x_20260518T060416Z`), or null
+ * when absent or invalid.
+ */
+export const startedAtOfRunId = (runId: string): number | null => {
+  const m = runId.match(RUN_ID)
+  if (m === null) return null
+  const [y, mo, d, h, mi, s] = m.slice(3).map(Number) as [number, number, number, number, number, number]
+  const ms = Date.UTC(y, mo - 1, d, h, mi, s)
+  const back = new Date(ms)
+  return back.getUTCMonth() === mo - 1 && back.getUTCDate() === d && h < 24 && mi < 60 && s < 60 ? ms : null
+}
+
 /** The run directory name under `artifacts.scratch`: `<NNNN>` zero-padded, or the local key itself. */
 export const runDirName = (key: RunKey): string => (typeof key === 'number' ? String(key).padStart(4, '0') : key)
 

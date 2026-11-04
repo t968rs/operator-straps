@@ -1,5 +1,5 @@
-import type { AgentRec } from '../types'
-import { MODEL_FAMILIES, modelFamily } from './contract'
+import type { AgentRec } from '../../../types'
+import { MODEL_FAMILIES, modelFamily } from '../../core/contract'
 
 /**
  * Rows for the project's invocation matrix (harness `matrix_path`), validated against the rules of the
@@ -106,10 +106,3 @@ export const validateRow = (row: Readonly<Record<string, unknown>>): string[] =>
   ...COUNT_FIELDS.filter(k => k in row && !isCount(row[k])).map(k => `${k}: not a non-negative integer`),
   ...valueProblems(row),
 ]
-
-/** The JSONL text with rows appended, one compact object per line. */
-export const appendRows = (existing: string, rows: readonly object[]): string => {
-  if (rows.length === 0) return existing
-  const head = existing === '' || existing.endsWith('\n') ? existing : `${existing}\n`
-  return head + rows.map(r => `${JSON.stringify(r)}\n`).join('')
-}

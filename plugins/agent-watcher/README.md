@@ -3,8 +3,8 @@
 Renamed from `pr-review-watch` (0.6.0): enable `agent-watcher@operator-straps` and drop the old key. The usage
 log default is now `docs/_harness/agent_usage.jsonl` (`git mv` the old log, or set `agent_usage_path`).
 
-Run tracking for the harness plugin's `pr-review` and `pr-team` skills, written as a CLI plugin of function
-hooks. It turns review rules that depended on the model remembering prose, or on a keyword heuristic, into
+A usage row for every `Agent` dispatch, and run tracking for the harness plugin's `pr-review` and `pr-team`
+skills, written as a CLI plugin of function hooks. It turns review rules that depended on the model remembering prose, or on a keyword heuristic, into
 hooks over the structured state the skills already write.
 
 Every hook fails open: an unreadable file, a malformed return block, a missing project root or a refused
@@ -20,9 +20,9 @@ holds the file is the project root. Without the file every hook passes straight 
 are joined to that root unless absolute.
 
 An installed mod lives in its own plugin cache folder and cannot read the harness plugin's
-`config/defaults.json`, so `hooks/config.ts` carries copies of the values it needs and merges the
-project's `harness.json` over them (objects key by key, scalars replace; malformed JSON or a wrong-typed
-value keeps the default):
+`config/defaults.json`, so it carries copies of the values it needs (core keys in `hooks/core/config.ts`,
+pr-review keys in `hooks/layers/pr-review/config.ts`) and merges the project's `harness.json` over them
+(objects key by key, scalars replace; malformed JSON or a wrong-typed value keeps the default):
 
 | Key | Default | Used for |
 |-----|---------|----------|
@@ -34,7 +34,60 @@ value keeps the default):
 | `base_branch` | `null` | `dev_commit`'s merge base; null resolves `origin/HEAD`, else `main` |
 
 `tests/mods/test_agent_watcher_config_mirror.py` fails when `defaults.json` changes one of these values
-without `config.ts` following.
+without the matching `config.ts` following.
+
+## Layout
+
+The mod is a generic **core** and one **layer** per skill it knows. Core tracks dispatches and logs usage;
+a layer claims its skill's dispatches and adds what only it knows.
+
+| Path | Holds |
+|------|-------|
+| `hooks/register.ts` | The composition root, the one file that imports both sides: `registerCore(on, LAYERS)`, then `registerPrReviewLayer(on)`. |
+| `hooks/core/` | `layer.ts` (the `Layer` and `Io` contract), `tracker.ts` (`Agent` dispatches, loop ids, usage folding, the usage append, the per-run calls to the claiming layer, the refresh / Stop fan-out), `runs.ts` (pure dispatch and completion transitions), `contract.ts` (header, leading header block and return-block parsing, `DEFINED_AGENTS`, generated run ids, model family), `usageRow.ts` (rows, their validator, the unclaimed identity and the `fields` rule), `jsonl.ts` (validated appends, failures), `watch.ts` (project resolution and `ioOf`), `root.ts`, `config.ts`. |
+| `hooks/layers/index.ts` | `LAYERS`, in claim order. |
+| `hooks/layers/pr-review/` | `layer.ts` (`prReviewLayer`, `registerPrReviewLayer`), `identify.ts`, `runKey.ts`, `runs.ts`, `bubbles.ts`, `sentinels.ts`, `phase5Scan.ts`, `matrixRow.ts`, `band.tsx`, `config.ts`. |
+
+No file under `hooks/core/` imports from `hooks/layers/` (`tests/mods/test_agent_watcher_layers.py`).
+
+**The contract** (`hooks/core/layer.ts`). A `Layer` has a `name` and a pure `identify(subagentType, header,
+watch)`, called once per `Agent` call in a harness project, in `LAYERS` order, with every header line of the
+prompt and the resolved project. The first layer that returns a claim (run id, skill, agent id, role, run
+key, phase) owns the run, recorded as its `claimedBy`. A dispatch no layer claims is an unclaimed run with
+no claimer, which core logs from the header convention below; core tells the two apart by `claimedBy`
+alone, never by the skill name.
+
+Per-run members go only to the claiming layer, after core's own step: `foldRun(run, agentId, completion)`
+(pure) inside the same state update that folds the completion into the agent, whether or not a project
+resolves; `onComplete(io, run, agentId, completion)` for side effects once that fold is stored;
+`rowFields(io, run, agent, completion)` for a usage row's outcome counts; `resultContext(io, run, claim,
+result)` for lines appended to a successful `Agent` result's `context`. Every-layer members go to each layer
+in order: `onSettle(io, run)` with the active run on core's refreshes (after a claimed dispatch, on every turn
+end, before the Stop check) and `stopReason(io, stop)` after that refresh at Stop (the first reason blocks).
+A layer's own hooks may settle it alone: pr-review's shell and session-start refreshes call only its own
+`onSettle`. A member that throws counts as no answer; the next layer and core's own step still run.
+
+**`Io`, not the engine.** The engine refuses `$` handed to a method of an imported object, so layer members
+never receive it (a layer's own hooks get it from the engine and reach `Io` through `ioOf`). Core builds an
+`Io` in the function declaration `ioOf($, watch)` (`hooks/core/watch.ts`):
+closures for file reads, listings, writes, git, toasts, the clock, and one reader or writer per state key
+(the engine reads only atoms it can see in place, so state is named, not generic). Any function that takes
+`$` is a function declaration: the engine follows `$` past an import only into one.
+
+**Adding a layer.** Create `hooks/layers/<name>/layer.ts` exporting a `Layer` and, when it raises hooks of
+its own (a band, a prompt line, a shell refresh), a `register<Name>Layer(on)`; append the layer to `LAYERS`
+and call its register function in `hooks/register.ts`. The engine also refuses `on` passed through an object,
+so a registry loop over `LAYERS` cannot register hooks. Keys it reads from `harness.json` go in its own
+`config.ts`, read from the parsed file `Watch.harness`, with a mirror test.
+
+A run's `skill` and a row's `role` are open names (the usage schema's `SKILL_PATTERN` and `ROLE_PATTERN`), so
+a new layer needs no vocabulary change for them. A second layer today still touches:
+
+- the `Dispatch` fields `pr`, `runtimeDir` and `phase` (`hooks/core/contract.ts`), which every claim fills in
+  and the `Run` keeps, whether or not the layer has a use for them;
+- per-layer state: a key in `types/index.d.ts` and new members on `Io` built in `ioOf`, since the engine
+  refused a generic atom read through `Io` ("the state library's read takes a source the scan can read: a
+  reference whose plugin and key are string literals, or what atom, memberOf or derive ... made of one").
 
 ## Rules it enforces
 
@@ -46,7 +99,7 @@ without `config.ts` following.
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
 | R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (agent-watcher auto)`. |
 | R6 | Bubbled issues are dispositioned in the review JSON before stopping | Two triggers, each blocking once (`stop_hook_active` lets the stop through). **State** (pr-team runs): every tracked bubbled id must appear in the run's review JSON `bubbles[]`, `bubble_up[]` or `post_review_resolutions[]` (the `id_handling.disposition_ids` rule). **Keyword** (any active review): when the last assistant message contains "bubble" (any case or inflection), the active review JSON's `bubbles[]` must be populated unless every issue is already dispositioned. |
-| R7 | Every returned dispatch of a defined agent gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per dispatch of any other agent the marketplace defines (`skill: standalone`, `role: other`). Written when the agent returns and validated against `agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
+| R7 | Every returned `Agent` dispatch gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per any other dispatch, of any agent type: this marketplace's agents, built-ins (`Explore`, `general-purpose`, `Plan`) and other plugins' agents, its values read from the header convention below. Written when the agent returns and validated against `agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
 
 The keyword trigger checks the **active** review: the tracked run's PR (its review JSON no older than the
 run), or, with no tracked run, the PR of the first hot Phase 5 sentinel that blocks the stopping session.
@@ -63,21 +116,48 @@ keyword checks nothing. The band still lists every hot sentinel. The text comes 
 | pr-team orchestrator / fixer modes | `MODE=PLAN\|CONSOLIDATE\|CLOSEOUT`, `PR_NUMBER=`, `RUN_ID=`, `RUNTIME_DIR=` | `orchestrator_plan`, `orchestrator_consolidate`, `fixer_plan`, `closer` |
 | pr-team reviewers and fixers | `AGENT_ID:`, `AGENT_ROLE:`, `RUN_ID:` (`canonical_prompt_template.md`) | the plan's agent id |
 | pr-review reviewers and fixers | the same three lines plus `PR:` (rows printed by `pr_review.py capture` / `waves`); `PR:` holds the run key, a PR number or `local-<label>` | the `AGENT_ID` |
-| any other defined agent | none | a run of its own, `standalone_<UTC stamp>_<seq>`, agent id the type's name without its plugin prefix (`harness:messenger` is `messenger`) |
+| any other dispatch, of any agent type | the header convention below, or none | an unclaimed run of its own |
 
-An `Agent` call without `RUN_ID` is ignored unless its `subagent_type` is a defined agent (`DEFINED_AGENTS` in
-`hooks/contract.ts`: every file under a plugin's `agents/` folder, spelled `<plugin>:<name>`); a header that
-fails to identify a defined agent (an unknown role or `MODE`) also falls back to a standalone run. Built-in
-types (`Explore`, `general-purpose`, `Plan`) and other plugins' agents are never tracked. A standalone run
-feeds only the usage log: it has no PR, no phase, no band entry, no matrix row and no Stop check, and its
-state entry is dropped as soon as its usage row is attempted. A pr-team slot without `OUTPUT_FILE` is placed in
-`<state_dir>/pr-team/_runtime/<RUN_ID>`. Return blocks are parsed per the pr-team skill's
-`return_contract.md`: the last column-1 `---` fenced block that has a `SIGNAL:` line.
+The pr-review layer refuses a header whose `SKILL:` line is present and names neither `pr-review` nor
+`pr-team`: another skill may print `RUN_ID`, `AGENT_ID` and `AGENT_ROLE: reviewer` without its dispatch
+becoming a pr-team run. A header that fails to identify a layer's run (an unknown role or `MODE`) is an
+unclaimed run too. A pr-team slot without `OUTPUT_FILE` is placed in `<state_dir>/pr-team/_runtime/<RUN_ID>`.
+Return blocks are parsed per the pr-team skill's `return_contract.md`: the last column-1 `---` fenced block
+that has a `SIGNAL:` line.
+
+### The header convention
+
+Every `Agent` call is tracked: this marketplace's agents (`DEFINED_AGENTS` in `hooks/core/contract.ts`, kept
+as data), built-ins (`Explore`, `general-purpose`, `Plan`) and other plugins' agents. A dispatch no layer
+claims reads the prompt's **leading header block**: the run of uppercase `KEY: value` (or `KEY=value`) lines
+at its top, ending at the first line that is not one, so a `SIGNAL:`-style line in the prompt's body never
+counts. Core reads five keys from it; each value that fails its rule falls back instead of failing the row:
+
+| Key | Row column | Kept when | Else |
+|-----|------------|-----------|------|
+| `SKILL` | `skill` | after a leading `<plugin>:` is stripped (`harness:strap-skills` logs `strap-skills`), it matches `^[a-z][a-z0-9-]*$` | `standalone` |
+| `AGENT_ROLE` | `role` | it matches `^[a-z][a-z0-9_-]*$` and is not `fixer` or `closer` (their counts need a layer) | `other` |
+| `RUN_ID` | `run_id` | it holds no `/` or `\` | the generated `standalone_<UTC stamp>_<seq>` |
+| `AGENT_ID` | `agent_id` | it holds no `/` or `\` | the type's name without its plugin prefix (`harness:messenger` is `messenger`; `general-purpose` when the call names none) |
+| `PR` | `pr` | it is a positive integer | null |
+
+Every other key of the block, and each of the five whose value fell back, lands in the row's **`fields`**
+object, value as written (trimmed). No local or absolute path enters the log: a value holding `/` or `\` is
+dropped with its key, and any other value is cut to 200 characters (197 and `...`). `fields` is absent when
+empty, and a layer's rows never carry it, so pr-review and pr-team rows are unchanged. The same rule holds
+for the columns: a return block's SIGNAL holding a separator logs as `UNRECOGNIZED` (and so does `notes`,
+built from it), any other SIGNAL is cut to 200 characters, and the validator and the schema refuse a row
+whose `run_id`, `agent_id`, `signal` or `notes` holds a separator.
+
+An unclaimed run's state entry is keyed by its generated id whatever its header `RUN_ID`, so parallel
+dispatches under one `RUN_ID` keep separate entries and each logs its own row. It feeds only the usage log:
+no band entry, no active-run change, no layer refresh, no matrix row and no Stop check, and its state entry
+is dropped as soon as its usage row is attempted.
 
 ### Review-local runs
 
 A run of the harness `review-local` skill is keyed by `local-<label>` instead of a PR number (label:
-lower-case letters, digits and single hyphens, at most 48 characters; `hooks/runKey.ts` mirrors
+lower-case letters, digits and single hyphens, at most 48 characters; `hooks/layers/pr-review/runKey.ts` mirrors
 `harness_lib.review_local_models`, pinned by `tests/mods/test_local_run_key_mirror.py`). Its `RUN_ID` is
 `local-<label>_<UTC stamp>`, its run folder `<artifacts.scratch>/local-<label>/`, its review JSON
 `<artifacts.reviews>/LOCAL_<label>_*.json` and its sentinel `.phase5_pending_local-<label>`. The band and the
@@ -147,9 +227,10 @@ but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never r
 
 Each tracked dispatch that returns appends one row to `<agent_usage_path>`: who ran (`role`, `agent_id`,
 `subagent_type`, full `model` and its `model_family`, `unknown` when the id holds no family token), what it
-cost (`tokens`, `tool_uses`, `duration_s`) and its `signal`. A standalone dispatch writes the same fields:
-`skill: standalone`, `role: other`, `pr: null`, no count fields, and `signal: NO_BLOCK` for an agent that ends
-without a return block, as most do. A synchronous result is logged when it
+cost (`tokens`, `tool_uses`, `duration_s`) and its `signal`. An unclaimed dispatch writes the same fields,
+with `skill`, `role`, `run_id`, `agent_id` and `pr` from its header (with no header: `skill: standalone`,
+`role: other`, `pr: null`), no count fields, its header `fields`, and `signal: NO_BLOCK` for an agent that
+ends without a return block. A synchronous result is logged when it
 returns, a background agent when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
 second row. An errored result logs `signal: ERROR` with zero usage; a background turn with no usage logs
 `tokens: 0` (the tool calls the mod counted and the turn's duration still land) with `usage not measured` in
@@ -163,7 +244,7 @@ block's `FIXED` / `BUBBLED` / `EDITED`; pr-team fixers and the closer count from
 `issues_assigned` is null. Reviewers a restarted session rebuilds from disk write no usage row. The file
 follows the matrix's write rules: append-only, and a file that exists but cannot be read is never
 rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` and are toasted). The log
-takes one row (about 450 bytes) per defined-agent dispatch, so it reaches the 4 MiB read limit
+takes one row (about 450 bytes, more with `fields`) per `Agent` dispatch, so it reaches the 4 MiB read limit
 well before the matrix does; past it every row fails as unreadable. Move or archive the file when it nears
 4 MiB; the next row recreates it.
 
@@ -173,8 +254,8 @@ well before the matrix does; past it every row fails as unreadable. Move or arch
 
 | Key | Meaning |
 |-----|---------|
-| `runs` | Tracked runs by `RUN_ID` (a standalone run only while its agent is in flight): skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (subagent type, background launch model, usage, signal, counts, matrix and usage row attempt times), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict. |
-| `active` | The pr-review or pr-team run dispatched most recently; a standalone dispatch never becomes active. |
+| `runs` | Tracked runs by `RUN_ID`, or by the generated id of an unclaimed run (held only while its agent is in flight, with its logged `logRunId` and `fields`): skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (subagent type, background launch model, usage, signal, counts, matrix and usage row attempt times), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict, and the claiming layer's name (`claimedBy`; unset for an unclaimed run). |
+| `active` | The pr-review or pr-team run dispatched most recently; an unclaimed dispatch never becomes active. |
 | `loops` | Background subagent loop id to `[runId, agentId]`. |
 | `failures` | The last 20 rows that failed validation or could not be written. |
 | `phase5` | Run keys (PR numbers or `local-<label>`) of hot Phase 5 sentinels. |
@@ -185,8 +266,11 @@ well before the matrix does; past it every row fails as unreadable. Move or arch
 - A pr-review run, or a pr-team run whose consolidation already logged, loses its tracker state when the
   process restarts. The band then shows only hot sentinels until the next dispatch.
 - A background subagent's tool calls made before its launch result registered are not counted.
-- A standalone row never says which skill or command dispatched the agent; only `subagent_type` and the
-  time identify it.
+- A dispatch whose prompt opens with no `SKILL:` line logs `skill: standalone`; only `subagent_type`, the
+  time and its other header `fields` identify it.
+- Every `Agent` call resolves the project before passing on, since every call is tracked: a cached git top
+  level, and in a harness project one more, uncached `git rev-parse --git-common-dir` (the Phase 5 sentinel
+  root).
 - Workflow-run reviews are not tracked. Their agents raise `tool.call` and `turn.complete` with loop ids that
   no dispatch header names.
 - Appends are a read and a whole-file write, serialized within the session. Two sessions appending to the
@@ -207,8 +291,9 @@ tsc -p <tsconfig>   # the tsconfig in the header of the engine's claude-code.d.t
 `tests/mods/test_agent_watcher_matrix_contract.py` pins `MATRIX_REQUIRED`, `MATRIX_OPTIONAL`,
 `DISPATCH_SHAPES`, `DEV_COMMIT_PATTERN` and `MODEL_FAMILIES` to the harness plugin's
 `schemas/pr_review_invocation_test_matrix.schema.json`; `tests/mods/test_agent_watcher_usage_contract.py`
-pins `USAGE_REQUIRED`, `USAGE_COUNT_FIELDS`, `USAGE_ROLES`, `USAGE_COUNTED_ROLES`, `USAGE_SKILLS`,
-`USAGE_MODEL_FAMILIES` and `LOGGED_AT_PATTERN` to `schemas/agent_usage.schema.json`, and
+pins `USAGE_REQUIRED`, `USAGE_COUNT_FIELDS`, `USAGE_OPTIONAL`, `USAGE_COUNTED_ROLES`, `SKILL_PATTERN`,
+`ROLE_PATTERN`, `FIELD_KEY_PATTERN`, `FIELD_VALUE_PATTERN`, `FIELD_VALUE_MAX`, `USAGE_MODEL_FAMILIES` and
+`LOGGED_AT_PATTERN` to `schemas/agent_usage.schema.json`, and
 `DEFINED_AGENTS` to the agent files under `plugins/*/agents/` (a new agent file fails the test until the list
 follows);
 `tests/mods/test_agent_watcher_config_mirror.py` pins the mirrored defaults. The plugin test sandbox
