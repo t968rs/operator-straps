@@ -38,8 +38,13 @@
         "tests/lib/test_agent_usage_rename.py",
         ".claude/harness.json"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit 1a05a09: 4 test node(s) passed",
+      "verification_references": [
+        "1a05a09566ac407bbbda84e77e417f314a1043d7",
+        "tree d8a755fccc43471b4758605e861b40ff4cf07025",
+        "python -m pytest -q tests/lib/test_agent_usage_rename.py::test_default_usage_path_is_agent_usage tests/lib/test_agent_usage_rename.py::test_schema_file_is_agent_usage tests/lib/test_agent_usage_rename.py::test_canned_message_covers_the_new_log tests/lib/test_agent_usage_rename.py::test_the_usage_log_moved"
+      ],
       "model": "sonnet",
       "anchors": [
         {
@@ -113,7 +118,7 @@
     {
       "id": "TASK-2",
       "title": "Rename the pr-review-watch mod to agent-watcher, behavior unchanged",
-      "action": "1. `git mv plugins/pr-review-watch plugins/agent-watcher`. In plugin.json: name `agent-watcher`, version 0.6.0, description naming every agent dispatch.\n2. Rename the state key `'pr-review-watch'` to `'agent-watcher'` in `types/index.d.ts` and every `atom({ plugin: ... })` and `$.ui.mount({ plugin: ... })` in hooks and tests.\n3. Strings the mod writes: usage and matrix notes `agent-watcher auto row; ...` (usageRow.ts, matrixRow.ts and their tests), dev_commit suffix `(agent-watcher auto)` (tracker.ts, tests), toast prefix `agent-watcher:`, OWNER_NOTE `[agent-watcher] Matrix rows for this run are recorded by the agent-watcher mod; skip the manual JSONL append (pr-review Phase 3 Step 4).`\n4. Harness prose that names the mod or the note: `plugins/harness/skills/pr-review/SKILL.md` (lines 316, 402, 459, 567), `review-local/SKILL.md:36`, `agents/pr-team-orchestrator.md:376`, `config/harness.schema.json` (agent_usage_path description), `schemas/agent_usage.schema.json` (description, notes), `lib/harness_lib/default_exclusions.py` (docstring and matrix reason), `schemas/catalogs/CrossCuttingLensCatalog.json`.\n5. Repo wiring: `.claude-plugin/marketplace.json` entry name and source, `.claude/settings.json` enable key `agent-watcher@operator-straps`, `.github/workflows/ci.yml:126` loop, `.claude/pr_review_exclusions.json` reason, `CLAUDE.md` mod list and config-mirror line, `README.md`, `docs/PROVENANCE.md` (destination column only: the source path `.claude/mods/{pr-review-watch,...}` keeps its name), `.claude/skills/porting-into-straps/SKILL.md`, the comments in `plugins/band-line/README.md`, `plugins/band-line/hooks/band.tsx`, `plugins/bubble-stamp/hooks/review.ts`, `review.test.ts`, `plugins/todo-watch/README.md`, `plugins/session-bookmark/README.md`, `tools/harness_usage_charts.py`.\n6. Tests: `git mv` the three `tests/mods/test_pr_review_watch_*.py` to `tests/mods/test_agent_watcher_*.py`; update the `plugins/pr-review-watch/` path constants there and in `tests/mods/test_local_run_key_mirror.py`, `tests/skills/test_bubble_memo_agents_contract.py`, `tests/schemas/test_agent_usage_schema.py` (notes strings); `tests/contract/test_bubble_stamp_registration.py:58-59` becomes `test_agent_watcher_moved_past_its_old_version` on the new path.\n7. Leave alone: history (docs/PR_REVIEWS, docs/plans, docs/PR_SUMMARIES, docs/_harness rows) and the hyphenated-name example in `review_plan.py:159` and `tests/lib/test_review_plan.py:281` (sweep S1).\n8. Migration note, a line starting `Renamed from `pr-review-watch`` (0.6.0), in `plugins/agent-watcher/README.md` and in the root `README.md` install section: enable `agent-watcher@operator-straps` and drop the old key; the usage log default is now `docs/_harness/agent_usage.jsonl` (`git mv` the old log, or set `agent_usage_path`).\n9. Copy the planned `tests/contract/test_agent_watcher_name.py`. Verify with its nodes, the commands, and `python -m pytest tests/mods/test_agent_watcher_config_mirror.py tests/mods/test_agent_watcher_matrix_contract.py tests/mods/test_agent_watcher_usage_contract.py tests/mods/test_local_run_key_mirror.py tests/skills/test_bubble_memo_agents_contract.py tests/contract/test_bubble_stamp_registration.py tests/schemas/test_agent_usage_schema.py tests/scripts/test_select_tests.py -q`.",
+      "action": "1. `git mv plugins/pr-review-watch plugins/agent-watcher`. In plugin.json: name `agent-watcher`, version 0.6.0, description naming every agent dispatch.\n2. Rename the state key `'pr-review-watch'` to `'agent-watcher'` in `types/index.d.ts` and every `atom({ plugin: ... })` and `$.ui.mount({ plugin: ... })` in hooks and tests.\n3. Strings the mod writes: usage and matrix notes `agent-watcher auto row; ...` (usageRow.ts, matrixRow.ts and their tests), dev_commit suffix `(agent-watcher auto)` (tracker.ts, tests), toast prefix `agent-watcher:`, OWNER_NOTE `[agent-watcher] Matrix rows for this run are recorded by the agent-watcher mod; skip the manual JSONL append (pr-review Phase 3 Step 4).`\n4. Harness prose that names the mod or the note: `plugins/harness/skills/pr-review/SKILL.md` (lines 316, 402, 459, 567), `review-local/SKILL.md:36`, `agents/pr-team-orchestrator.md:376`, `config/harness.schema.json` (agent_usage_path description), `schemas/agent_usage.schema.json` (description, notes), `lib/harness_lib/default_exclusions.py` (docstring and matrix reason), `schemas/catalogs/CrossCuttingLensCatalog.json`.\n5. Repo wiring: `.claude-plugin/marketplace.json` entry name and source, `.claude/settings.json` enable key `agent-watcher@operator-straps`, `.github/workflows/ci.yml:126` loop, `.claude/pr_review_exclusions.json` reason, `CLAUDE.md` mod list and config-mirror line, `README.md`, `docs/PROVENANCE.md` (destination column only: the source path `.claude/mods/{pr-review-watch,...}` keeps its name), `.claude/skills/porting-into-straps/SKILL.md`, the comments in `plugins/band-line/README.md`, `plugins/band-line/hooks/band.tsx`, `plugins/bubble-stamp/hooks/review.ts`, `review.test.ts`, `plugins/todo-watch/README.md`, `plugins/session-bookmark/README.md`, `tools/harness_usage_charts.py`.\n6. Tests: `git mv` the three `tests/mods/test_pr_review_watch_*.py` to `tests/mods/test_agent_watcher_*.py`; update the `plugins/pr-review-watch/` path constants there and in `tests/mods/test_local_run_key_mirror.py`, `tests/skills/test_bubble_memo_agents_contract.py`, `tests/schemas/test_agent_usage_schema.py` (notes strings); `tests/contract/test_bubble_stamp_registration.py:58-59` becomes `test_agent_watcher_moved_past_its_old_version` on the new path.\n7. Leave alone: history (docs/PR_REVIEWS, docs/plans, docs/PR_SUMMARIES, docs/_harness rows) and the hyphenated-name example in `review_plan.py:159` and `tests/lib/test_review_plan.py:281` (sweep S1).\n8. Migration note, a line starting ``Renamed from `pr-review-watch` `` (0.6.0), in `plugins/agent-watcher/README.md` and in the root `README.md` install section: enable `agent-watcher@operator-straps` and drop the old key; the usage log default is now `docs/_harness/agent_usage.jsonl` (`git mv` the old log, or set `agent_usage_path`).\n9. Copy the planned `tests/contract/test_agent_watcher_name.py`. Verify with its nodes, the commands, and `python -m pytest tests/mods/test_agent_watcher_config_mirror.py tests/mods/test_agent_watcher_matrix_contract.py tests/mods/test_agent_watcher_usage_contract.py tests/mods/test_local_run_key_mirror.py tests/skills/test_bubble_memo_agents_contract.py tests/contract/test_bubble_stamp_registration.py tests/schemas/test_agent_usage_schema.py tests/scripts/test_select_tests.py -q`.",
       "files": [
         "plugins/agent-watcher/.claude-plugin/plugin.json",
         "plugins/agent-watcher/types/index.d.ts",
@@ -216,8 +221,13 @@
       "dependencies": [
         "TASK-1"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit 1a05a09: 6 test node(s) passed",
+      "verification_references": [
+        "1a05a09566ac407bbbda84e77e417f314a1043d7",
+        "tree d8a755fccc43471b4758605e861b40ff4cf07025",
+        "python -m pytest -q tests/contract/test_agent_watcher_name.py::test_the_manifest_names_agent_watcher tests/contract/test_agent_watcher_name.py::test_the_marketplace_lists_agent_watcher tests/contract/test_agent_watcher_name.py::test_the_project_enables_agent_watcher tests/contract/test_agent_watcher_name.py::test_ci_tests_agent_watcher tests/contract/test_agent_watcher_name.py::test_the_owner_note_names_agent_watcher tests/contract/test_agent_watcher_name.py::test_no_live_file_names_the_old_mod"
+      ],
       "model": "sonnet",
       "anchors": [
         {
@@ -447,7 +457,7 @@
     {
       "id": "TASK-4",
       "title": "Generic tracking: every dispatch, the header convention and open row fields (issue #193)",
-      "action": "1. Core tracks every Agent call (D5): drop the `isDefinedAgent` gate in `trackedDispatch`; a call no layer claims is a generic run of one. `DEFINED_AGENTS` stays as data (its contract test stays); built-ins and other plugins' agents log with `subagent_type` as given and `agent_id` the type's name after any plugin prefix (`general-purpose` when the call names none).\n2. Header convention: parse the leading block (D3) of uppercase `KEY: value` / `KEY=value` lines. Core reads the D2 skill key, `RUN_ID`, `AGENT_ROLE`, `AGENT_ID` (`AGENT_ROLE` is the key the pr-review and pr-team headers and return blocks already use): skill from the key (else `standalone`), run_id from RUN_ID (else the generated `standalone_<UTC>_<seq>`), role from AGENT_ROLE (else `other`), agent_id from AGENT_ID (else the type name). Layers still claim first (pr-review and pr-team headers unchanged).\n3. Rows of an unclaimed dispatch gain an optional `fields` object: every leading-block key core did not consume, value as written (trimmed). D8: a value holding a path separator (`/` or `\\`) is dropped with its key, so no local or absolute path reaches the log; any other value is cut to 200 characters (197 and `...`). Absent when empty. A layer-claimed row carries no `fields`, so pr-review and pr-team rows stay exactly as they are. pr and the fixer counts stay top-level.\n4. Schema `agent_usage.schema.json`: `skill` becomes a string with pattern `^[a-z][a-z0-9-]*$` (pr-review, pr-team, standalone still valid); `role` a string with pattern `^[a-z][a-z_-]*$` (the six current roles still valid); add `fields` (object, propertyNames `^[A-Z][A-Z_]*$`, string values with maxLength 200 and pattern `^[^/\\\\]*$`, no path separator); `signal` description: `NO_BLOCK` when the agent returned without a return block, no standalone framing; title and description name every Agent dispatch. Old rows still validate.\n5. TS validator `core/usageRow.ts` follows the schema: drop the USAGE_SKILLS and USAGE_ROLES enums for the two patterns (export them as SKILL_PATTERN and ROLE_PATTERN), allow and check `fields`. Update `tests/mods/test_agent_watcher_usage_contract.py` to pin the patterns and the `fields` rule instead of the enums.\n6. TS tests: a built-in dispatch logs a row; a header with the skill key, RUN_ID and extra keys logs skill, run_id and fields; a prompt whose header block ends before a body `SIGNAL:` line keeps that line out of fields; a pr-review slot dispatch logs exactly as before, with no `fields` key; a value over 200 characters is cut; a strap runner header (TREE, INIT) and a bubble-memo FILES line log no `/` or `\\` anywhere in the row's `fields`.\n7. Root `README.md` (lines 40 and 429 describe the defined-agent gate): every Agent dispatch is logged. Mod README: the header convention, `fields`, and that every dispatch is logged. `tests/schemas/test_agent_usage_schema.py`: drop the `unknown-skill` and `unknown-role` rejection cases (now valid). Copy the planned `tests/schemas/test_agent_usage_open_rows.py`.",
+      "action": "1. Core tracks every Agent call (D5): drop the `isDefinedAgent` gate in `trackedDispatch`; a call no layer claims is a generic run of one. `DEFINED_AGENTS` stays as data (its contract test stays); built-ins and other plugins' agents log with `subagent_type` as given and `agent_id` the type's name after any plugin prefix (`general-purpose` when the call names none).\n2. Header convention: parse the leading block (D3) of uppercase `KEY: value` / `KEY=value` lines. Core reads the D2 skill key, `RUN_ID`, `AGENT_ROLE`, `AGENT_ID` and `PR` (`AGENT_ROLE` is the key the pr-review and pr-team headers and return blocks already use). Layers still claim first (pr-review and pr-team headers unchanged), with one change (D9): the pr-review layer's `identify` refuses a header whose skill key is present and is neither `pr-review` nor `pr-team`, so a skill that prints `RUN_ID`, `AGENT_ID` and `AGENT_ROLE: reviewer` under its own `SKILL:` line is a generic row, never a pr-team run. For an unclaimed dispatch every consumed value falls back instead of failing the row (D11), so D5's \"every dispatch is logged\" holds: skill from the key with a leading `<plugin>:` stripped, kept only when it matches SKILL_PATTERN (else `standalone`); role from AGENT_ROLE when it matches ROLE_PATTERN and is not `fixer` or `closer` (else `other`; those two need the counts only a layer computes); run_id from RUN_ID and agent_id from AGENT_ID unless the value holds `/` or `\\` (D8 applied to the columns), else the generated `standalone_<UTC>_<seq>` and the type name; pr from PR when it is a positive integer (else null). A raw value that fell back stays in `fields` under its key, subject to D8. 2b. Claim marker (D10): `Run` records the layer that claimed it (`claimedBy?: string`, unset for a generic run). The band's `activeAtom` write, the post-dispatch layer refresh and the after-row drop test that flag instead of `skill === 'standalone'` (today `tracker.ts:184`, `:190`, `:569`, now in `core/tracker.ts`). An unclaimed dispatch's state entry is keyed by its generated `standalone_<UTC>_<seq>` id whatever its header RUN_ID, so parallel dispatches that share a RUN_ID keep separate entries and each logs its own row.\n3. Rows of an unclaimed dispatch gain an optional `fields` object: every leading-block key core did not consume, value as written (trimmed). D8: a value holding a path separator (`/` or `\\`) is dropped with its key, so no local or absolute path reaches the log; any other value is cut to 200 characters (197 and `...`). Absent when empty. A layer-claimed row carries no `fields`, so pr-review and pr-team rows stay exactly as they are. pr and the fixer counts stay top-level.\n4. Schema `agent_usage.schema.json`: `skill` becomes a string with pattern `^[a-z][a-z0-9-]*$` (pr-review, pr-team, standalone still valid); `role` a string with pattern `^[a-z][a-z0-9_-]*$` (the six current roles still valid); add `fields` (object, propertyNames `^[A-Z][A-Z_]*$`, string values with maxLength 200 and pattern `^[^/\\\\]*$`, no path separator); `signal` description: `NO_BLOCK` when the agent returned without a return block, no standalone framing; title and description name every Agent dispatch. Old rows still validate.\n5. TS validator `core/usageRow.ts` follows the schema: drop the USAGE_SKILLS and USAGE_ROLES enums for the two patterns (export them as SKILL_PATTERN and ROLE_PATTERN), allow and check `fields`. Update `tests/mods/test_agent_watcher_usage_contract.py` to pin the patterns and the `fields` rule instead of the enums.\n6. TS tests: a built-in dispatch logs a row; a header with the skill key, RUN_ID and extra keys logs skill, run_id and fields; a prompt whose header block ends before a body `SIGNAL:` line keeps that line out of fields; a pr-review slot dispatch logs exactly as before, with no `fields` key; a value over 200 characters is cut; a strap runner header (TREE, INIT) and a bubble-memo FILES line log no `/` or `\\` anywhere in the row's `fields`. Review 0208 cases: a header with `SKILL: bubble-memo`, RUN_ID, AGENT_ID and `AGENT_ROLE: reviewer` logs skill `bubble-memo` as a generic row with no matrix row, no band change and no pr-team run; `SKILL: harness:strap-skills` logs skill `strap-skills`; `SKILL: Strap Skills` logs `standalone` with `fields.SKILL`; an unclaimed `AGENT_ROLE: fixer` logs role `other`; `AGENT_ID: docs/x` and `RUN_ID: a/b` fall back to the type name and the generated id; `PR: 208` fills `pr`; a `SKILL: strap-skills` dispatch leaves the band's active run unchanged and its run is gone from state after its usage row; two concurrent dispatches under one RUN_ID log two rows.\n7. Root `README.md` (lines 40 and 429 describe the defined-agent gate): every Agent dispatch is logged. Mod README: the header convention, `fields`, and that every dispatch is logged. `tests/schemas/test_agent_usage_schema.py`: drop the `unknown-skill` and `unknown-role` rejection cases (now valid). Copy the planned `tests/schemas/test_agent_usage_open_rows.py`.",
       "files": [
         "plugins/agent-watcher/hooks/core/tracker.ts",
         "plugins/agent-watcher/hooks/core/contract.ts",
@@ -461,7 +471,10 @@
         "tests/mods/test_agent_watcher_usage_contract.py",
         "tests/schemas/test_agent_usage_schema.py",
         "tests/schemas/test_agent_usage_open_rows.py",
-        "README.md"
+        "README.md",
+        "plugins/agent-watcher/hooks/core/layer.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/identify.ts",
+        "plugins/agent-watcher/hooks/layers/pr-review/identify.test.ts"
       ],
       "dependencies": [
         "TASK-3"
@@ -497,6 +510,14 @@
         {
           "at": "plugins/pr-review-watch/hooks/contract.ts:109-110",
           "expect": "const { AGENT_ID: agentId, AGENT_ROLE: role } = h"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/contract.ts:108-110",
+          "expect": "if (!agentId || (role !== 'reviewer' && role !== 'fixer')) return undefined"
+        },
+        {
+          "at": "plugins/pr-review-watch/hooks/tracker.ts:184",
+          "expect": "if (d.skill !== 'standalone') await update($, activeAtom, () => d.runId)"
         }
       ],
       "commands": [
@@ -543,7 +564,7 @@
     {
       "id": "TASK-5",
       "title": "Drivers and skill prompts open with SKILL:, strap's target becomes TARGET:, strap agents end with a --- block",
-      "action": "D2 skill-key, D4 leave, D6 dash-fence. The skill line is the first prompt line, right after the `agent=` line, so it opens the leading header block (D3).\n1. `plugins/harness/scripts/strap.py`: add pure helpers and route the printing through them: `runner_lines(name, run_id, tree, init) -> List[str]` (`agent=...`, `SKILL: strap-skills`, `TARGET: <name>`, `RUN:`, `TREE:`, `INIT: <init>`), used by `runner_row` (550-551); `judge_lines(name, runs, spec_path) -> List[str]` (`agent=...`, `SKILL: strap-skills`, `TARGET: <name>`, `RUNS: <a,b>`, `SPEC:`), used by judge-row (720-721); `recorded_block(name, run_id) -> str`, the column-1 block `---`, `SIGNAL: recorded`, `RUN:`, `TARGET:`, `---`, printed by record-run (702) in place of the ```text fence.\n2. `agents/strap-scenario-runner.md`: the prompt lines are `SKILL` (always `strap-skills`), `TARGET` (the skill under test), `RUN`, `TREE`, `INIT`; the init and record-run commands read `<TARGET>` (`init <TARGET> --run <RUN>`, `record-run <TARGET> --run <RUN>`); stop condition `The prompt has no `TARGET`, `RUN` or `TREE` line.`; Reply still relays the printed block verbatim. `agents/strap-judge.md`: `TARGET` replaces `SKILL` as the skill under test (line 27, `api <TARGET>` at 47, stop condition at 73); Reply (81-82) keeps the graded lines, then ends with the block `---`, `SIGNAL: graded`, `RUNS: <run ids>`, `---`. `skills/strap-skills/SKILL.md:168`: the row's lines are `SKILL`, `TARGET`, `RUN`, ...\n3. `plugins/harness/scripts/bubble_memo.py`: `row_header(agent, model) -> List[str]` returning `agent=<agent> model=<model>` and `SKILL: bubble-memo`; investigator_row (197-198) and reviewer_row (210-211) start with it. `Memo:` and the other lines stay.\n4. `plugins/harness/lib/harness_lib/writing_docstrings_models.py` DispatchRow.text (114-115): `SKILL: writing-docstrings` after the `agent=` line; `Project root:` and the rest unchanged.\n5. Skill prose prompt blocks gain `SKILL: <skill>` as their first line: `skills/todo-edit/SKILL.md` (block at 40-46), `skills/sync-gh-todo/SKILL.md` (49-54), `skills/check-runlogs/SKILL.md` (38-43). Mixed-case lines stay (D4).\n6. Update the tests that pin these rows: `tests/scripts/test_strap_driver.py:315` (row order: SKILL: strap-skills, TARGET, RUN, TREE) and `:404` (the dashed block), `tests/scripts/test_strap_gate.py` judge-row (597-601), `tests/scripts/test_bubble_memo_driver.py` row tests, `tests/skills/test_docstring_dispatch_command.py:50`, `tests/lib/test_writing_docstrings_dispatch_api.py:245` (the skill line shifts each prompt line by one).\n7. Copy the planned `tests/contract/test_dispatch_skill_headers.py`. Verify: its nodes and `python -m pytest tests/scripts/test_strap_driver.py tests/scripts/test_strap_gate.py tests/scripts/test_bubble_memo_driver.py tests/skills/test_docstring_dispatch_command.py tests/lib/test_writing_docstrings_dispatch_api.py tests/skills/test_strap_skills_skill_contract.py -q`.",
+      "action": "D2 skill-key, D4 leave, D6 dash-fence. The skill line is the first prompt line, right after the `agent=` line, so it opens the leading header block (D3).\n1. `plugins/harness/scripts/strap.py`: add pure helpers and route the printing through them: `runner_lines(name, run_id, tree, init) -> List[str]` (`agent=...`, `SKILL: strap-skills`, `TARGET: <name>`, `RUN:`, `TREE:`, `INIT: <init>`), used by `runner_row` (550-551); `judge_lines(name, runs, spec_path) -> List[str]` (`agent=...`, `SKILL: strap-skills`, `TARGET: <name>`, `RUNS: <a,b>`, `SPEC:`), used by judge-row (720-721); `recorded_block(name, run_id) -> str`, the column-1 block `---`, `SIGNAL: recorded`, `RUN:`, `TARGET:`, `---`, printed by record-run (702) in place of the ```text fence.\n2. `agents/strap-scenario-runner.md`: the prompt lines are `SKILL` (always `strap-skills`), `TARGET` (the skill under test), `RUN`, `TREE`, `INIT`; the init and record-run commands read `<TARGET>` (`init <TARGET> --run <RUN>`, `record-run <TARGET> --run <RUN>`); stop condition ``The prompt has no `TARGET`, `RUN` or `TREE` line.``; Reply still relays the printed block verbatim. `agents/strap-judge.md`: `TARGET` replaces `SKILL` as the skill under test (line 27, `api <TARGET>` at 47, stop condition at 73); Reply (81-82) keeps the graded lines, then ends with the block `---`, `SIGNAL: graded`, `RUNS: <run ids>`, `---`. `skills/strap-skills/SKILL.md:168`: the row's lines are `SKILL`, `TARGET`, `RUN`, ...\n3. `plugins/harness/scripts/bubble_memo.py`: `row_header(agent, model) -> List[str]` returning `agent=<agent> model=<model>` and `SKILL: bubble-memo`; investigator_row (197-198) and reviewer_row (210-211) start with it. `Memo:` and the other lines stay.\n4. `plugins/harness/lib/harness_lib/writing_docstrings_models.py` DispatchRow.text (114-115): `SKILL: writing-docstrings` after the `agent=` line; `Project root:` and the rest unchanged.\n5. Skill prose prompt blocks gain `SKILL: <skill>` as their first line: `skills/todo-edit/SKILL.md` (block at 40-46), `skills/sync-gh-todo/SKILL.md` (49-54), `skills/check-runlogs/SKILL.md` (38-43). Mixed-case lines stay (D4).\n6. Update the tests that pin these rows: `tests/scripts/test_strap_driver.py:315` (row order: SKILL: strap-skills, TARGET, RUN, TREE) and `:404` (the dashed block), `tests/scripts/test_strap_gate.py` judge-row (597-601), `tests/scripts/test_bubble_memo_driver.py` row tests, `tests/skills/test_docstring_dispatch_command.py:50`, `tests/lib/test_writing_docstrings_dispatch_api.py:245` (the skill line shifts each prompt line by one).\n7. Copy the planned `tests/contract/test_dispatch_skill_headers.py`. Verify: its nodes and `python -m pytest tests/scripts/test_strap_driver.py tests/scripts/test_strap_gate.py tests/scripts/test_bubble_memo_driver.py tests/skills/test_docstring_dispatch_command.py tests/lib/test_writing_docstrings_dispatch_api.py tests/skills/test_strap_skills_skill_contract.py -q`.",
       "files": [
         "plugins/harness/scripts/strap.py",
         "plugins/harness/scripts/bubble_memo.py",
@@ -675,10 +696,10 @@
   ],
   "base_commit": "3e2b4483be2e256636395cc6f5e98b100bfae3c5",
   "frozen": {
-    "commit": "e76e90fb5d49bb62f8a0f44c2efba8c18c4abeae",
-    "tree": "c027208e7309d9a0ef68cf4451ff1adae9a70748",
+    "commit": "1a05a09566ac407bbbda84e77e417f314a1043d7",
+    "tree": "d8a755fccc43471b4758605e861b40ff4cf07025",
     "date": "2026-11-04",
-    "digest": "48898640d8a3f13ed644a6f75a547ed9f91f1caaee1290886547f5cd61530db5"
+    "digest": "e3867bf5e57bc227c3ec3f07b721d2b93bdc9c0605f7e6a0042714ec82f17280"
   },
   "decisions": [
     {
@@ -820,6 +841,58 @@
       ],
       "chosen": "drop-path-values",
       "rationale": "Developer, 2026-11-04: \"We do not want any local OR absolute paths\" in the log. A generic rule on the value catches every key, known or not; the schema rejects a separator so a row that slips one through fails validation. The cap bounds row size (local review 1123, I4)."
+    },
+    {
+      "id": "D9",
+      "question": "Which dispatches may the pr-review layer claim once any skill may print RUN_ID, AGENT_ID and AGENT_ROLE?",
+      "options": [
+        {
+          "id": "refuse-foreign-skill",
+          "summary": "identify refuses a header whose SKILL is present and not pr-review or pr-team"
+        },
+        {
+          "id": "reserve-roles",
+          "summary": "Reserve reviewer and fixer for the layer in the header convention; core logs a SKILL header before the layer claim"
+        }
+      ],
+      "chosen": "refuse-foreign-skill",
+      "rationale": "Review 0208 I2: today a RUN_ID + AGENT_ID + reviewer header with no PR line is claimed as pr-team. pr-review and pr-team headers carry no SKILL line, so refusing a foreign one changes nothing for them. Developer, 2026-11-04: amend and refreeze."
+    },
+    {
+      "id": "D10",
+      "question": "How does core tell a layer-claimed run from a generic one, and how are generic runs keyed?",
+      "options": [
+        {
+          "id": "claimed-by-flag",
+          "summary": "Run.claimedBy names the claiming layer; generic runs keyed by their generated id"
+        },
+        {
+          "id": "standalone-sentinel",
+          "summary": "Keep skill === 'standalone' as the marker"
+        }
+      ],
+      "chosen": "claimed-by-flag",
+      "rationale": "Review 0208 I2: once the skill comes from the SKILL header, the 'standalone' sentinel no longer marks unclaimed runs (band takeover, leaked runs, shared RUN_ID entries dropped early). Developer, 2026-11-04: amend and refreeze."
+    },
+    {
+      "id": "D11",
+      "question": "What does core do with a header value that fails its pattern or rule?",
+      "options": [
+        {
+          "id": "fallback-keep-raw",
+          "summary": "Fall back (standalone, other, generated id, type name, null pr); a `<plugin>:` skill prefix is stripped; the raw value stays in fields under D8"
+        },
+        {
+          "id": "widen-patterns",
+          "summary": "Widen the schema patterns to the values real headers carry"
+        },
+        {
+          "id": "drop-row",
+          "summary": "Reject the row (as first planned)"
+        }
+      ],
+      "chosen": "fallback-keep-raw",
+      "rationale": "Review 0208 I2: a rejected row breaks D5. Developer, 2026-11-04: strip the plugin prefix (`harness:strap-skills` logs `strap-skills`), schema skill pattern unchanged; PR fills the top-level pr; RUN_ID and AGENT_ID fall under the no-paths rule."
     }
   ],
   "values": [
@@ -940,8 +1013,7 @@
         "tests/mods/test_pr_review_watch_usage_contract.py": "TASK-2: git mv to test_agent_watcher_usage_contract.py and rename",
         "tests/schemas/test_pr_review_agent_usage_schema.py": "TASK-1 moves it to test_agent_usage_schema.py; TASK-2 renames the notes strings",
         "tests/skills/test_bubble_memo_agents_contract.py": "TASK-2: rename to agent-watcher",
-        "tools/harness_usage_charts.py": "TASK-2: rename to agent-watcher",
-        "docs/PR_REVIEWS/LOCAL_1123-agent-watcher_1123-agent-watcher.json": "history (the local review of this plan); unchanged"
+        "tools/harness_usage_charts.py": "TASK-2: rename to agent-watcher"
       }
     },
     {
@@ -1008,8 +1080,7 @@
         "docs/PR_REVIEWS/0197_1117_writing_docstrings.json": "history; unchanged",
         "docs/PR_REVIEWS/0199_Fixhooks_validate_only__ActionPlan.json_under_the_plans.json": "history; unchanged",
         "docs/PR_REVIEWS/0202_Featurebubble-memo_run_the_memo_reviewer_only_on_request.json": "history; unchanged",
-        "docs/PR_REVIEWS/LOCAL_1122-parallel2-perf_1122-parallel2-perf.json": "history; unchanged",
-        "docs/PR_REVIEWS/LOCAL_1123-agent-watcher_1123-agent-watcher.json": "history (the local review of this plan); unchanged"
+        "docs/PR_REVIEWS/LOCAL_1122-parallel2-perf_1122-parallel2-perf.json": "history; unchanged"
       }
     }
   ]
