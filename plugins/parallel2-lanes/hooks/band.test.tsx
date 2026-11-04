@@ -12,7 +12,7 @@ const brief = (id: string) => `${FOLDER}/feat-x/${id}.md`
 const NOW_MS = 1_800_000_000_000
 
 const lane = (id: string, over: Record<string, unknown> = {}) => ({
-  id, kind: 'implement', model: 'haiku', wave: 1, status: 'dispatched', worktree: `C:/trees/p2-${id}`, ...over,
+  id, kind: 'implement', model: 'haiku', wave: 1, status: 'dispatched', worktree: `/trees/p2-${id}`, ...over,
 })
 
 const stateText = (lanes: unknown[]) => JSON.stringify({ target: 'feat-x', lanes })

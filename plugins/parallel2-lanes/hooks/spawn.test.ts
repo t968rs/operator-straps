@@ -7,11 +7,12 @@ import { briefPath, formatRun, inlinePrompt, laneRef, parseState, viewOf } from 
 const FOLDER = '/repo/.claude/state/harness/parallel2'
 const STATE = `${FOLDER}/feat-x.json`
 const BRIEF = `${FOLDER}/feat-x/task1.md`
-const TREE = 'C:/trees/p2-task1'
-const BRIEF_TEXT = '## Pre-Authorized Tools\n- Read\n\nWorking directory: C:/trees/p2-task1\n'
+// The engine refuses a spawn cwd that is not absolute; `/trees/...` is absolute on both OSes.
+const TREE = '/trees/p2-task1'
+const BRIEF_TEXT = '## Pre-Authorized Tools\n- Read\n\nWorking directory: /trees/p2-task1\n'
 
 const lane = (id: string, over: Record<string, unknown> = {}) => ({
-  id, kind: 'implement', model: 'haiku', wave: 1, status: 'dispatched', worktree: `C:/trees/p2-${id}`, ...over,
+  id, kind: 'implement', model: 'haiku', wave: 1, status: 'dispatched', worktree: `/trees/p2-${id}`, ...over,
 })
 
 const stateText = (lanes: unknown[] = [lane('task1'), lane('rev', { kind: 'review', worktree: null })]) =>
