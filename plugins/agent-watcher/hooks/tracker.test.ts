@@ -688,6 +688,7 @@ describe('forked skill usage rows', () => {
     listing(on, [fork('loop-f')])
     bash(on)
     await steps($, seen, 'loop-f', 300, 500)
+    expect(seen.git.some(argv => argv.includes('--git-common-dir'))).toBe(true)
     await $.tool.call({ tool: 'Bash', command: 'git status', agentId: 'loop-f' } as never)
     expect(seen.files.has(USAGE)).toBe(false)
     await loopEnd($, 'loop-f')
@@ -744,6 +745,7 @@ describe('forked skill usage rows', () => {
     listing(on, [{ id: 'loop-n', type: 'general-purpose', description: 'Draft the commit message' }])
     await steps($, seen, 'loop-n', 100)
     expect(seen.git.some(argv => argv.includes('--git-common-dir'))).toBe(false)
+    // Clears the probe mark so later tests see a fresh loop id.
     await loopEnd($, 'loop-n')
   })
 
@@ -777,6 +779,7 @@ describe('forked skill usage rows', () => {
     const asked = listing(on, [{ id: 'loop-n', type: 'general-purpose', description: 'Draft the commit message' }])
     await steps($, seen, 'loop-n', 1, 2, 3)
     expect(asked.calls).toBe(1)
+    // Clears the probe mark so later tests see a fresh loop id.
     await loopEnd($, 'loop-n')
   })
 

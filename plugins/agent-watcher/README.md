@@ -3,9 +3,10 @@
 Renamed from `pr-review-watch` (0.6.0): enable `agent-watcher@operator-straps` and drop the old key. The usage
 log default is now `docs/_harness/agent_usage.jsonl` (`git mv` the old log, or set `agent_usage_path`).
 
-A usage row for every `Agent` dispatch and every forked skill (`context: fork`), and run tracking for the harness plugin's `pr-review` and `pr-team`
-skills, written as a CLI plugin of function hooks. It turns review rules that depended on the model remembering prose, or on a keyword heuristic, into
-hooks over the structured state the skills already write.
+A usage row for every `Agent` dispatch and every forked skill (`context: fork`), and run tracking for the
+harness plugin's `pr-review` and `pr-team` skills, written as a CLI plugin of function hooks. It turns review
+rules that depended on the model remembering prose, or on a keyword heuristic, into hooks over the structured
+state the skills already write.
 
 Every hook fails open: an unreadable file, a malformed return block, a missing project root or a refused
 host call degrades to "no run" or "no row". No hook blocks or fails a tool call, a turn or a stop on its own
@@ -162,14 +163,15 @@ names, such as `harness:messenger` for `c-msg`, `branch-commit-msg`, `merge-comm
 engine launches that loop without an `Agent` call, raises no `agent.spawn` for it, and a typed `/<skill>`
 raises no Skill tool call either; only the loop's own `turn.step`, `tool.call` and `turn.complete` reach the
 mod. On a loop's first model request the mod looks the loop up once in `$.agent.list()` (a lookup the list
-refuses is retried on the next request): an entry described as `/<skill>`, one token, is a forked skill unless
-an `Agent` call with that same `description` is still in flight, which makes it that call's loop. The loop becomes an unclaimed run with `skill` read as a `SKILL:`
-header line would be (`/harness:c-msg` logs `c-msg`; a name off the pattern logs `standalone` and lands in
-`fields`), `agent_id` and `subagent_type` from the entry's agent type, and it is registered as a background
-launch is, so its `turn.complete` writes the row with the background figures below. Whether the fork ran in
-the background or not makes no difference. A fork resumed after its loop ended is looked up again and logs a
-second row. The project is resolved only for a loop the list names as a fork, so outside a harness project
-a fork is looked up but never logged.
+refuses is retried on the next request, at most 3 lookups per loop): an entry described as `/<skill>`, one
+token, is a forked skill unless an `Agent` call with that same `description` is still in flight or its
+result not yet recorded, which makes it that call's loop. The loop
+becomes an unclaimed run with `skill` read as a `SKILL:` header line would be (`/harness:c-msg` logs `c-msg`;
+a name off the pattern logs `standalone` and lands in `fields`), `agent_id` and `subagent_type` from the
+entry's agent type, and it is registered as a background launch is, so its `turn.complete` writes the row
+with the background figures below. Whether the fork ran in the background or not makes no difference. A
+fork resumed after its loop ended is looked up again and logs a second row. The project is resolved only for
+a loop the list names as a fork, so outside a harness project a fork is looked up but never logged.
 
 ### Review-local runs
 
@@ -189,7 +191,7 @@ written and reviewer results carry no ownership note: the matrix schema keys row
 |------|------|
 | `tool.call` on `Agent` | Records the dispatch, folds the result, refreshes, and for pr-review reviewers appends the ownership note to the result's context once the run is recorded with a PR. |
 | `tool.call` (any) | Counts tool calls per subagent loop id. |
-| `turn.step` | Once a subagent's model request has streamed through untouched, counts it in that loop's tally and adds its usage (summed, and the last request). On a loop's first request, registers a forked skill's loop. The main loop's requests are skipped. |
+| `turn.step` | Once a subagent's model request has streamed through untouched, counts it in that loop's tally and adds its usage (summed, and the last request). On a loop's first request (the next request when the list refuses), registers a forked skill's loop. The main loop's requests are skipped. |
 | `tool.call` on `Bash` / `PowerShell` | After a command that names `pr_review.py`, refreshes, so the band follows the script's phases within a turn. |
 | `turn.complete` | Completes a background subagent or a forked skill; on every turn end, refreshes and appends rows that became due. |
 | `session.start` | Recovers pr-team runs a previous session claimed but never logged, then refreshes. |
@@ -244,14 +246,13 @@ cost (`tokens`, `context_tokens`, `requests`, `tool_uses`, `duration_s`, defined
 [Usage figures](#usage-figures)) and its `signal`. An unclaimed dispatch writes the same fields,
 with `skill`, `role`, `run_id`, `agent_id` and `pr` from its header (with no header: `skill: standalone`,
 `role: other`, `pr: null`), no count fields, its header `fields`, and `signal: NO_BLOCK` for an agent that
-ends without a return block. A synchronous result is logged when it
-returns, a background agent when its loop turn ends, and a forked skill when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
-second row. An errored result logs `signal: ERROR` with zero usage and `context_tokens` and `requests`
-null; a foreground result with no request heard, or a background turn with no usage, logs `tokens: 0` (the
-tool calls and duration still land) with `usage not measured` in `notes`; a denied dispatch never ran and
-logs nothing. A background loop that is interrupted or dies on an
-API error is not told apart from a normal return: it logs the signal of its return block, `NO_BLOCK` when
-it left none, never `ERROR`.
+ends without a return block. A synchronous result is logged when it returns, a background agent when its loop
+turn ends, and a forked skill when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
+second row. An errored result logs `signal: ERROR` with zero usage and `context_tokens` and `requests` null;
+a foreground result with no request heard, or a background turn with no usage, logs `tokens: 0` (the tool
+calls and duration still land) with `usage not measured` in `notes`; a denied dispatch never ran and logs
+nothing. A background loop that is interrupted or dies on an API error is not told apart from a normal
+return: it logs the signal of its return block, `NO_BLOCK` when it left none, never `ERROR`.
 
 Fixer and closer rows carry outcome counts. A pr-review fixer reads `issue_ids` in the run's `waves.json`
 and `fixed` / `bubbled` / the distinct edited `files` in `fixes/<agent_id>.json`, falling back to its return
@@ -259,9 +260,9 @@ block's `FIXED` / `BUBBLED` / `EDITED`; pr-team fixers and the closer count from
 `issues_assigned` is null. Reviewers a restarted session rebuilds from disk write no usage row. The file
 follows the matrix's write rules: append-only, and a file that exists but cannot be read is never
 rewritten (its rows go to `failures` as `usage log unreadable; not overwritten` and are toasted). The log
-takes one row (about 450 bytes, more with `fields`) per `Agent` dispatch, so it reaches the 4 MiB read limit
-well before the matrix does; past it every row fails as unreadable. Move or archive the file when it nears
-4 MiB; the next row recreates it.
+takes one row (about 450 bytes, more with `fields`) per `Agent` dispatch or forked skill run, so it reaches
+the 4 MiB read limit well before the matrix does; past it every row fails as unreadable. Move or archive the
+file when it nears 4 MiB; the next row recreates it.
 
 ### Usage figures
 
@@ -274,11 +275,11 @@ several times its `context_tokens`, since every request re-reads the cached cont
   `context_tokens`, tool calls, duration and model come from the `Agent` result (`totalTokens`,
   `totalToolUseCount`, `totalDurationMs`, `resolvedModel`). With no request heard, `tokens` is 0 and the row
   says `usage not measured`.
-- **Background** (a background `Agent` launch or a forked skill): the mod counts the loop's tool calls, and takes `tokens` (the turn's requests summed),
-  duration and the report from its `turn.complete`; `context_tokens` is the last request heard on
-  `turn.step` that reported usage, null when none did. When `turn.complete` carries no usage, `tokens` falls
-  back to the requests heard on `turn.step` summed, and the row says `usage not measured` only when none of
-  them reported usage either.
+- **Background** (a background `Agent` launch or a forked skill): the mod counts the loop's tool calls, and
+  takes `tokens` (the turn's requests summed), duration and the report from its `turn.complete`;
+  `context_tokens` is the last request heard on `turn.step` that reported usage, null when none did. When
+  `turn.complete` carries no usage, `tokens` falls back to the requests heard on `turn.step` summed, and the
+  row says `usage not measured` only when none of them reported usage either.
 - **Loop tallies:** the per-loop request tally is dropped once the loop's result or registered loop end is
   folded. A loop never folded (an errored dispatch whose result names no loop, an unregistered background
   launch) stays in memory until evicted: the mod holds at most 256 loop tallies, dropping the least recently
@@ -316,13 +317,14 @@ reviewer's matrix `tokens` before 0.7.0 is its last request's count.
   time and its other header `fields` identify it.
 - Every `Agent` call resolves the project before passing on, since every call is tracked: a cached git top
   level, and in a harness project one more, uncached `git rev-parse --git-common-dir` (the Phase 5 sentinel
-  root). Every other subagent loop costs one `$.agent.list()` lookup on its first request; only a forked
+  root). Every subagent loop not already registered as a background launch costs one `$.agent.list()`
+  lookup per run of turns (repeated while the list rejects, at most 3 lookups per loop); only a forked
   skill's loop resolves the project there too.
 - Forked skills are told apart by how the engine describes their loop in `$.agent.list()` (`/<skill>`, as
   observed on Claude Code 2.1.318). An `Agent` call whose own `description` is a single `/token` is not taken
-  for a fork while it is in flight (a background launch is registered once its launch result returns, and is
-  skipped after that); a forked skill that starts while an `Agent` call with its exact `/<skill>` description
-  runs logs no row. An engine that describes forks otherwise logs none. Before 0.8.0 forked skills logged no
+  for a fork while it is in flight or until its result is recorded (a background launch's loop is registered
+  by then, and is skipped after that); a forked skill that starts while an `Agent` call with its exact
+  `/<skill>` description runs logs no row. An engine that describes forks otherwise logs none. Before 0.8.0 forked skills logged no
   row at all.
 - Workflow-run reviews are not tracked. Their agents raise `tool.call` and `turn.complete` with loop ids that
   no dispatch header names.
