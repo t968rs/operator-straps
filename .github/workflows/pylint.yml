@@ -3,6 +3,9 @@ name: Pylint
 on:
   push:
     branches: [main]
+  # On request for any branch: the Actions tab's "Run workflow" branch picker, or
+  # `gh workflow run pylint.yml --ref <branch>`.
+  workflow_dispatch:
 
 jobs:
   build:
