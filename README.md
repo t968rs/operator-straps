@@ -1,7 +1,7 @@
 # `operator-straps`
 
 [![ci](https://github.com/t968rs/operator-straps/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/t968rs/operator-straps/actions/workflows/ci.yml)
-
+[![Pylint](https://github.com/t968rs/operator-straps/actions/workflows/pylint.yml/badge.svg?branch=main&event=push)](https://github.com/t968rs/operator-straps/actions/workflows/pylint.yml)
 **Give Claude Code a repeatable process for reviewing PRs, applying fixes, and preparing changes for handoff.**
 
 Install the workflows you need: review a PR with multiple agents, carry findings through fix waves and closeout,
