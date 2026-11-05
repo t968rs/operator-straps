@@ -4,7 +4,8 @@ agent-watcher reads ``SKILL:`` from the leading header block of an Agent prompt 
 row-printing drivers and the prompts written in skill prose put ``SKILL: <skill>`` first, right after the
 ``agent=`` line. strap names the skill under test ``TARGET:`` (its old ``SKILL:`` line), and both strap agents
 read ``TARGET``. strap's ``record-run`` and the judge's reply end in the column-1 ``---`` return block.
-Mixed-case prompt keys stay as they are (D4).
+Mixed-case prompt keys stay as they are (D4). roast-my-code's skill prose writes its Agent prompt too; the
+``context: fork`` skills (c-msg, pr-sum and the like) reach no Agent call, so no prompt line applies to them.
 """
 from __future__ import annotations
 
@@ -64,10 +65,10 @@ def test_docstring_rows_name_writing_docstrings_first() -> None:
     assert lines[2] == "Project root: /p"
 
 
-def _prompt_block(skill: str) -> list:
+def _prompt_block(skill: str, marker: str = "Project root:") -> list:
     text = _text(SKILLS / skill / "SKILL.md")
-    blocks = re.findall(r"```[^\n]*\n(.*?)\n```", text, re.DOTALL)
-    hits = [b.splitlines() for b in blocks if "Project root:" in b]
+    blocks = re.findall(r"```[^\n]*\n(.*?)\n[ \t]*```", text, re.DOTALL)
+    hits = [[line.strip() for line in b.splitlines()] for b in blocks if marker in b]
     assert hits, f"{skill}: no prompt block"
     return hits[0]
 
@@ -76,6 +77,12 @@ def test_skill_prose_prompts_name_their_skill_first() -> None:
     for skill in ("todo-edit", "sync-gh-todo", "check-runlogs"):
         assert _prompt_block(skill)[0] == f"SKILL: {skill}", skill
     assert _prompt_block("todo-edit")[1].startswith("Operation: ")
+
+
+def test_roast_dispatch_prompt_names_roast_my_code_first() -> None:
+    block = _prompt_block("roast-my-code", "Scope:")
+    assert block[0] == "SKILL: roast-my-code"
+    assert block[1].startswith("Scope: ")
 
 
 def test_strap_agents_read_the_target_line() -> None:
