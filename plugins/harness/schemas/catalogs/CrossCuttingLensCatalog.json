@@ -4,12 +4,13 @@
   "default_sub_lenses": [
     {
       "name": "linear docstring-vs-code pass",
-      "summary": "Default pass every bucket reviewer runs before specialized reasoning: linearly read each scoped file and compare docstring/prose contracts against implementation.",
+      "summary": "Default pass every reviewer slot except the roast slot runs before specialized reasoning: linearly read each scoped file and compare docstring/prose contracts against implementation.",
       "trigger": {
-        "description": "Always on for every bucket reviewer scope (docs/tests/runtime/config-or-registry/cicd).",
+        "description": "Always on for every reviewer slot except the roast slot (skip_lenses): the roast slot carries the OVERALL scope and every bucketed path already gets the pass from its bucket slot.",
         "always_on": true,
         "detection_command": null
       },
+      "skip_lenses": ["roast"],
       "scope_template": "For each in-scope file, perform one linear top-to-bottom read. For every module/class/function docstring or adjacent prose contract, verify implementation agreement. Record each contradiction as file:line with the claim and conflicting code behavior before running bucket-specific or cross-cutting analysis."
     }
   ],
@@ -47,7 +48,7 @@
   "policy": {
     "additivity": "Cross-cutting lenses are ADDED to the bucket-floor reviewer count, never substituted. A 3-bucket PR that triggers multi-artifact + overall = bucket count + 2 reviewer slots. One exception, pr-review only: the small-PR cut in policy.small_pr. pr-team keeps strict additivity.",
     "small_pr": "pr-review only. Below 20 reviewable files (after exclusions), overall-system-shape gets no slot of its own: its scope_template is appended to the OVERALL reviewer's brief. When the roast roll fires on such a PR, the roast slot replaces the OVERALL slot and its brief carries OVERALL's full scope plus system shape in the roast voice, so coverage is kept and only the duplicate slot is dropped. At or above 20 reviewable files, OVERALL, overall-system-shape and roast are separate slots. Applied by harness_lib.review_plan (SMALL_PR_FILES, slot_plan).",
-    "mechanical_triggers": "Scope-decision is mechanical, not judgment. Do not add a lens because it 'feels right'; do not skip a lens because the bucket-sort 'looks complete enough'. Each detection_command is the pr-team shell form (gh + grep). For pr-review, harness_lib.review_plan is authoritative and reads only scope_template and default_sub_lenses of these three lenses from this catalog; its triggers differ from the shell forms: per-skill-package matches the skill name as a whole word (pr-review does not match agent-watcher) and skips excluded files; coordinated-multi-artifact counts only status-A *.schema.json and schemas_dir paths; trigger_threshold is not read (the thresholds live in review_plan).",
+    "mechanical_triggers": "Scope-decision is mechanical, not judgment. Do not add a lens because it 'feels right'; do not skip a lens because the bucket-sort 'looks complete enough'. Each detection_command is the pr-team shell form (gh + grep). For pr-review, harness_lib.review_plan is authoritative and reads only scope_template and default_sub_lenses (with their skip_lenses) of these three lenses from this catalog; its triggers differ from the shell forms: per-skill-package matches any skills/<name>/ folder holding a SKILL.md at the PR head (the shell form reads $SKILLS_DIR), matches the skill name as a whole word (pr-review does not match agent-watcher) and skips excluded files; coordinated-multi-artifact counts only status-A *.schema.json and schemas_dir paths; trigger_threshold is not read (the thresholds live in review_plan).",
     "project_lenses": "A project's lens file (harness.json review.lenses, project-relative) holds {\"lenses\": [...], \"default_sub_lenses\": [...]}. A lens whose name matches one above replaces only its summary and scope_template (the trigger stays the code-driven one). Any other lens is a project lens: name is lowercase-hyphenated, must not collide with a bucket, overall, roast, system-shape, skill-package or multi-artifact slot id, and its trigger carries path_globs (fnmatch over reviewable paths) and optional min_files (default 1); when at least min_files reviewable paths match, one opus slot reviews the matching paths with the lens's scope_template. Project default_sub_lenses are appended after the plugin's.",
     "merging": "pr-team only. pr-review never merges slots by judgment; pr_review.py capture applies the only merges (review_plan.slot_plan and the policy.small_pr cut). In pr-team, cross-cutting lenses MAY merge with bucket reviewers if the file overlap is total (e.g., per-skill-package lens entirely subsumes a single-skill bucket reviewer). Merge requires a one-line rationale in the dispatch announcement, same rule as bucket-merging."
   }

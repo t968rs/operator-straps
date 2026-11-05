@@ -182,8 +182,20 @@ from harness_lib.branch_capture import CaptureError, git, git_out  # noqa: E402
 from harness_lib.config import HarnessConfig, activate, active, load_config  # noqa: E402
 from harness_lib.default_exclusions import ensure_default_exclusions  # noqa: E402
 from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, file_patches  # noqa: E402
-from harness_lib.pr_summary import PrFacts, PrFile  # noqa: E402
+from harness_lib.pr_summary import PrFacts  # noqa: E402
 from harness_lib.project import plugin_root, project_root  # noqa: E402
+from harness_lib.review_briefs import (  # noqa: E402
+    REMOVAL_DEFECTS,
+    TOO_LONG_RULE,
+    BriefContext,
+    draft_json,
+    header_lines,
+    hpy_command,
+    key_literal,
+    record_heredoc,
+    reviewer_brief,
+    target_label,
+)
 from harness_lib.review_bubbles import closed_ids, pending_bubbles  # noqa: E402
 from harness_lib import review_local_api as rla  # noqa: E402
 from harness_lib.review_local_models import (  # noqa: E402
@@ -198,7 +210,6 @@ from harness_lib.review_local_models import (  # noqa: E402
 
 REVIEWER_AGENT = "harness:pr-reviewer"
 FIXER_AGENT = "harness:pr-fixer"
-GREP_ROOTS = (".claude", "docs", ".github")
 PR_BLOCK_BUDGET = 1200
 PR_CHAR_BUDGET = 60_000
 GUARD_TAIL_LINES = 40
@@ -210,48 +221,6 @@ GH_PROJECTION = (
 )
 _GH_KEYS = ("number", "title", "headRefName", "baseRefName", "state", "headRefOid")
 
-TEST_DESIGN_CLAUSE = (
-    "Test-design principle: every test in scope must be either CLEARLY BEHAVIORAL (exercises real logic "
-    "with real or fake collaborators that do not stub the function under test) OR an integration test "
-    "against the real dependency. Mock-chain wiring tests — tests that stub the helpers and then assert the "
-    "stubs were called — are NEITHER. Flag each one as Critical, recommending removal or conversion to a "
-    "behavioral or integration test."
-)
-ROAST_VOICE = (
-    "Voice: a tired senior developer: dry, direct, honest, never cruel. Roast the code, never the author; "
-    "at most one line of editorial per finding; skip style nitpicks (naming taste, whitespace, line length "
-    "under the limit). The voice changes the wording only: scope, severities and the `record` call are "
-    "unchanged."
-)
-OVERALL_SCOPE = (
-    "OVERALL: review the PR as one change across every in-scope path: cross-file contracts, behavior callers "
-    "depend on, plan or spec alignment, and every path no bucket reviewer owns (unbucketed paths included)."
-)
-BUCKET_SCOPE = (
-    "Bucket `{bucket}`: review these paths for correctness, broken contracts and the conventions of this "
-    "kind of file."
-)
-REMOVAL_DEFECTS = (
-    "broken (wrong behavior or a failing test), unreachable or dead, a duplicate of code that exists "
-    "elsewhere, leftover (debug output, commented-out code, a stray temporary file), unsafe, or "
-    "contradicting a contract"
-)
-PROSE_GAP_RULE = (
-    "A change the commit messages or the PR description do not mention is a documentation gap, not a defect "
-    "in the code: that text is drafted after the code and lags it. Report the gap alone as a `minor` finding "
-    "whose fix updates that text. It never grounds an `important` or `critical` grade, and a revert is never "
-    "a fix option on that ground. When the code itself is wrong, the finding states that defect; the missing "
-    "mention is at most context. A revert or deletion of code the change added is a fix option only when the "
-    f"finding names one of these defects in that code: {REMOVAL_DEFECTS}."
-)
-SEVERITY_RULES = (
-    "Severity: `critical` blocks the merge (wrong behavior, data loss, broken contract, a test that cannot "
-    "fail); `important` should be fixed before merging; `minor` is polish.",
-    "fix_kind: `mechanical` when the fix is an exact edit a small model can apply; `judgment` otherwise.",
-    "Each finding names one primary `file` (repo-relative) with `lines` when known (`12`, `12-18,40`), and "
-    "`also` for other files it touches. `fix` lists one or more options, any of which resolves it.",
-    PROSE_GAP_RULE,
-)
 BUBBLE_QUESTIONS = (
     "Are there two or more reasonable resolutions, AND does picking one need domain knowledge this session "
     "does not have? (both yes: `architectural_ambiguity`)",
@@ -299,9 +268,6 @@ def hook_script() -> Path:
     return plugin_root() / "hooks" / "validate_pr_json_schema.py"
 
 
-def hpy_command() -> str:
-    """The ``sh "<plugin>/scripts/hpy"`` prefix agents run Python through (absolute plugin path)."""
-    return f'sh "{(plugin_root() / "scripts" / "hpy").as_posix()}"'
 
 
 def run_guards(repo: Path, suite: Sequence[str]) -> Tuple[int, str]:
@@ -396,11 +362,6 @@ def pr_number(value: object) -> int:
     return int(cast(Union[int, str], value))
 
 
-def catalog_rows(catalog: Mapping[str, object], key: str) -> List[Mapping[str, object]]:
-    """The lens catalog's list of row objects under ``key``."""
-    return cast(List[Mapping[str, object]], catalog[key])
-
-
 def pr_meta(data: Mapping[str, object]) -> PrMeta:
     """``PrMeta`` from the projected gh object."""
     merge = data.get("mergeCommit")
@@ -414,15 +375,18 @@ def split_reviewable(facts: PrFacts, patterns: Sequence[str]) -> Tuple[Tuple[str
     return tuple(f.path for f in facts.files if f.path not in excluded), excluded
 
 
-def grep_roots() -> Tuple[str, ...]:
-    """Top-level folders searched for skill cross-references: ``GREP_ROOTS`` plus the skills root."""
-    top = rp.skills_dir().split("/", 1)[0]
-    return tuple(dict.fromkeys((*GREP_ROOTS, top)))
+def skill_folders_at_head(repo: Path, head: str, reviewable: Sequence[str]) -> Tuple[str, ...]:
+    """The ``skills/<name>/`` folders ``reviewable`` touches that hold a ``SKILL.md`` at ``head``."""
+    candidates = rp.skill_candidates(reviewable)
+    if not candidates:
+        return ()
+    present = git_out(repo, "ls-tree", "-r", "--name-only", head, "--", *rp.skill_files(candidates))
+    return rp.skill_folders(candidates, present.splitlines())
 
 
-def grep_lines(repo: Path, head: str, name: str) -> List[str]:
-    """``<path>:<lineno>:<text>`` lines naming ``name`` under ``grep_roots()`` at ``head``."""
-    result = git(repo, "grep", "-I", "-n", "-F", name, head, "--", *grep_roots())
+def grep_lines(repo: Path, head: str, name: str, roots: Sequence[str]) -> List[str]:
+    """``<path>:<lineno>:<text>`` lines naming ``name`` under the top-level ``roots`` at ``head``."""
+    result = git(repo, "grep", "-I", "-n", "-F", name, head, "--", *roots)
     if result.returncode == 1:
         return []
     if result.returncode != 0:
@@ -434,16 +398,20 @@ def grep_lines(repo: Path, head: str, name: str) -> List[str]:
 def lens_paths(repo: Path, facts: PrFacts, reviewable: Sequence[str], patterns: Sequence[str],
                catalog: Mapping[str, object]) -> Tuple[Dict[str, Tuple[str, ...]], Tuple[str, ...]]:
     """Triggered path-carrying lenses (per-skill-package, multi-artifact, the catalog's project lenses) and
-    the triggered skill names."""
-    skills = tuple(s for s in rp.skills_touched(reviewable)
-                   if rp.skill_mentioned(s, grep_lines(repo, facts.head_sha, s), patterns))
-    folders = tuple(rp.skill_folder(s) for s in skills)
+    the triggered skill names. A skill is any ``skills/<name>/`` folder holding a ``SKILL.md`` at the head
+    whose name a file outside it mentions."""
+    head = facts.head_sha
+    folders = skill_folders_at_head(repo, head, reviewable)
+    roots = rp.skill_grep_roots(folders)
+    folders = tuple(f for f in folders
+                    if rp.skill_mentioned(f, grep_lines(repo, head, rp.skill_name(f), roots), patterns))
+    skills = tuple(dict.fromkeys(rp.skill_name(f) for f in folders))
     lenses: Dict[str, Tuple[str, ...]] = {}
     if folders:
-        lenses[rp.SKILL_PACKAGE] = tuple(p for p in reviewable if p.startswith(folders))
+        lenses[rp.Lens.SKILL_PACKAGE] = tuple(p for p in reviewable if p.startswith(folders))
     new = rp.multi_artifact([(f.status, f.path) for f in facts.files if f.path in reviewable])
     if new:
-        lenses[rp.MULTI_ARTIFACT] = new
+        lenses[rp.Lens.MULTI_ARTIFACT] = new
     lenses.update(rp.project_lens_paths(catalog, reviewable))
     return lenses, skills
 
@@ -520,16 +488,6 @@ def run_id_for(pr: RunKey) -> str:
     return rm.run_id_for(pr, f"{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}")
 
 
-def key_literal(pr: RunKey) -> str:
-    """The run key as a Python literal for a brief's record heredoc: ``1234`` or ``"local-x"``."""
-    return json.dumps(pr)
-
-
-def target_label(pr: RunKey) -> str:
-    """``PR #<N>``, or ``local review <key>``."""
-    return f"local review {pr}" if is_local_key(pr) else f"PR #{pr}"
-
-
 # --- capture: plan ------------------------------------------------------------------------------------------
 
 
@@ -575,7 +533,7 @@ def plan_document(run_id: str, data: Mapping[str, object], facts: PrFacts, scope
         "first_sha": data.get("first_sha"), "last_sha": data.get("last_sha"), "meta": review_meta(facts),
         "excluded": list(scope.excluded), "buckets": scope.buckets, "registry_notes": list(scope.notes),
         "lenses": scope.lenses, "skills": list(scope.skills), "guards": asdict(scope.guards), "roast": roast,
-        "slots": [asdict(s) for s in scope.slots], "dispatch_time": dict(dispatch_time),
+        "slots": [s.record() for s in scope.slots], "dispatch_time": dict(dispatch_time),
         "tree_at_head": at_head, "dispatch_epoch": _utc_now(), "build_head": None, "review_path": None,
         "folded": [], "phase": "review",
     }
@@ -586,26 +544,7 @@ def _utc_now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-# --- briefs -------------------------------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class BriefContext:
-    """Run-wide values every brief draws on."""
-
-    repo: str
-    lib: str
-    pr: RunKey
-    run_id: str
-    facts: PrFacts
-    at_head: bool
-    catalog: Mapping[str, object]
-    skills: Tuple[str, ...]
-    plan: Optional[str] = None
-
-    def file(self, path: str) -> Optional[PrFile]:
-        """The PR file at ``path``, if any."""
-        return next((f for f in self.facts.files if f.path == path), None)
+# --- briefs (composed in harness_lib.review_briefs) ---------------------------------------------------------
 
 
 def load_catalog() -> Dict[str, object]:
@@ -614,11 +553,6 @@ def load_catalog() -> Dict[str, object]:
         return rp.load_lens_catalog()
     except (OSError, ValueError) as exc:
         raise CaptureError([f"lens catalog: {exc}"]) from exc
-
-
-def header_lines(agent: str, role: str, run_id: str, pr: RunKey) -> List[str]:
-    """The four column-1 run header lines."""
-    return [f"AGENT_ID: {agent}", f"AGENT_ROLE: {role}", f"RUN_ID: {run_id}", f"PR: {pr}"]
 
 
 def dispatch_row(agent_type: str, model: str, agent: str, role: str, run_id: str, pr: RunKey,
@@ -647,168 +581,6 @@ def slot_diff(repo: Path, facts: PrFacts, slot: rp.Slot, patches: Optional[Mappi
     """Budgeted diff of the slot's paths that are not new files; ``patches`` holds already-read diffs."""
     files = [f for f in facts.files if f.path in slot.paths and f.status != "A"]
     return budgeted_diff(repo, facts, files, PR_BLOCK_BUDGET, PR_CHAR_BUDGET, patches) if files else ""
-
-
-def _role(slot: rp.Slot) -> str:
-    """One-line role description of a slot."""
-    if slot.roast:
-        return "roast reviewer covering the OVERALL scope" if slot.lens == "overall" else "roast reviewer"
-    if slot.lens == "overall":
-        return "OVERALL reviewer"
-    if slot.lens in rp.PATH_BUCKETS:
-        return f"`{slot.lens}` bucket reviewer"
-    return f"`{slot.lens}` cross-cutting lens reviewer"
-
-
-def brief_header(ctx: BriefContext, slot: rp.Slot) -> str:
-    """Title, run header values, role and the PR refs."""
-    f = ctx.facts
-    lines = [f"# Reviewer brief: {slot.id} - {target_label(ctx.pr)}", ""]
-    lines += [f"- {line}" for line in header_lines(slot.id, "reviewer", ctx.run_id, ctx.pr)]
-    lines += ["", f"Role: {_role(slot)}, model `{slot.model}`.",
-              f"PR \"{f.pr_title}\" (`{f.head}` -> `{f.base}`); merge base `{f.merge_base}`, "
-              f"head `{f.head_sha}`."]
-    return "\n".join(lines)
-
-
-def _read_method(ctx: BriefContext) -> str:
-    """How to read in-scope files: the working tree, or ``git show`` at the PR head."""
-    if ctx.at_head:
-        return (f"Read method: the working tree is the PR head and these paths are clean; Read them under "
-                f"`{ctx.repo}/`.")
-    return (f"Read method: the working tree is not the PR head (or has local edits); read each path not "
-            f"marked deleted with `git -C {ctx.repo} show {ctx.facts.head_sha}:<path>`. A deleted path has "
-            f"no PR-head version; read its merge-base version with "
-            f"`git -C {ctx.repo} show {ctx.facts.merge_base}:<path>` or its removal in the diff.")
-
-
-def _path_line(ctx: BriefContext, path: str) -> str:
-    """One scope line: status and counts, or the new-file / deleted-file note."""
-    f = ctx.file(path)
-    if f is None:
-        return f"- {path}"
-    if f.status == "A":
-        return f"- {path}: new file, {f.added} lines - read it"
-    if f.status == "D":
-        return f"- {path}: deleted in this PR (no PR-head version); the diff shows the removal"
-    moved = f" (renamed from {f.old_path})" if f.old_path else ""
-    return f"- {path} ({f.status}, +{f.added} -{f.deleted}){moved}"
-
-
-def scope_section(ctx: BriefContext, slot: rp.Slot, diff_path: Path, partial: Sequence[str]) -> str:
-    """Scope paths, the read method, the diff file and fetch commands for partially shown paths."""
-    lines = ["## Scope", "", _read_method(ctx),
-             f"Diff: `{diff_path.resolve().as_posix()}` (modified, renamed and deleted paths; new files are "
-             f"not in it).", ""]
-    lines += [_path_line(ctx, p) for p in slot.paths]
-    if partial:
-        lines += ["", "Summarized or omitted in the diff; read the full diff with:"]
-        lines += [f"- `git -C {ctx.repo} diff {ctx.facts.merge_base} {ctx.facts.head_sha} -- {p}`"
-                  for p in partial]
-    return "\n".join(lines)
-
-
-def _scope_text(slot: rp.Slot) -> str:
-    """The slot's own scope sentence (bucket, OVERALL / roast); empty for cross-cutting lenses."""
-    if slot.lens in rp.PATH_BUCKETS:
-        return BUCKET_SCOPE.format(bucket=slot.lens)
-    return OVERALL_SCOPE if slot.lens in ("overall", "roast") else ""
-
-
-def lens_section(ctx: BriefContext, slot: rp.Slot) -> str:
-    """Scope sentence, catalog lens templates, triggered skills and the default sub-lens templates."""
-    lenses = catalog_rows(ctx.catalog, "lenses")
-    templates = {str(lens["name"]): str(lens["scope_template"]) for lens in lenses}
-    lines = ["## Lens", ""] + ([_scope_text(slot), ""] if _scope_text(slot) else [])
-    for name in slot.templates:
-        lines += [f"### {name}", "", templates.get(name, f"(no catalog template named {name})"), ""]
-    if slot.lens == rp.SKILL_PACKAGE and ctx.skills:
-        lines += [f"Triggered skills (substitute each for `<name>`): {', '.join(ctx.skills)}", ""]
-    for sub in catalog_rows(ctx.catalog, "default_sub_lenses"):
-        lines += [f"### Default sub-lens: {sub['name']}", "", str(sub["scope_template"]), ""]
-    return "\n".join(lines).rstrip()
-
-
-def ownership_clause() -> str:
-    """The reviewer ownership rule naming the project's review directory."""
-    reviews = active().artifacts.reviews.rstrip("/")
-    return (f"Record findings only through the draft file and `record_draft` (or `record_add`); "
-            f"never write under `{reviews}/`; "
-            f"reply with the printed block only.")
-
-
-def _tests_in_scope(paths: Sequence[str]) -> bool:
-    """True when any path reviews as a test path or is a test file in any bucket (``cicd`` included)."""
-    tests = active().tests
-    return any(rp.review_bucket(p) == "tests" or tests.is_test_path(p) for p in paths)
-
-
-def domain_pointers(paths: Sequence[str]) -> List[str]:
-    """The configured ``review.domain_pointers`` texts whose prefix starts any of ``paths``."""
-    return [d.pointer for d in active().review.domain_pointers if any(p.startswith(d.prefix) for p in paths)]
-
-
-def rules_section(slot: rp.Slot, plan: Optional[str] = None) -> str:
-    """Ownership, severity and finding-shape rules, plus the conditional clauses and the plan pointer."""
-    rules = [ownership_clause(), *SEVERITY_RULES]
-    rules += [TEST_DESIGN_CLAUSE] if _tests_in_scope(slot.paths) else []
-    rules += domain_pointers(slot.paths)
-    rules += [f"Plan: {plan} (the plan or spec this change implements; check the change against it)"] \
-        if plan else []
-    rules += [ROAST_VOICE] if slot.roast else []
-    return "\n".join(["## Rules", ""] + [f"- {rule}" for rule in rules])
-
-
-TOO_LONG_RULE = ("A Bash error `unexpected EOF while looking for matching` at a line number past the end of "
-                 "the command means the command was too long for the shell tool, not misquoted: do not edit "
-                 "the quoting or bisect the content. Record through the draft file, or in smaller pieces.")
-
-
-def record_heredoc(ctx: BriefContext, call: str, lists: Sequence[Tuple[str, Sequence[str]]] = ()) -> str:
-    """A ``sh "<plugin>/scripts/hpy" - <<'EOF'`` heredoc runnable from any directory, ending with ``call``."""
-    name = call.split("(", 1)[0]
-    lines = [f"{hpy_command()} - <<'EOF'", "import sys", "from pathlib import Path",
-             f'sys.path.insert(0, r"{ctx.lib}")', f"from harness_lib.review_models import {name}", ""]
-    for name, examples in lists:
-        lines += [f"{name} = [", *(f"    # {e}" for e in examples), "]"]
-    return "\n".join(lines + [call, "EOF"])
-
-
-def _draft_json(ctx: BriefContext, agent: str, lists: Sequence[Tuple[str, Sequence[str]]]) -> List[str]:
-    """The Write-the-draft step: the draft's path and a JSON skeleton with one example per list."""
-    path = rm.draft_path(ctx.pr, agent, Path(ctx.repo), ctx.run_id).as_posix()
-    body = [f'  "{key.lower()}": [\n' + ",\n".join(f"    {e.rstrip(',')}" for e in examples) + "\n  ]"
-            for key, examples in lists]
-    return [f"Write the report with the Write tool to `{path}`: one JSON object holding these lists and "
-            "nothing else (the examples show each item's shape). It is the only file this brief lets you "
-            "write.", "", "```json", "{\n" + ",\n".join(body) + "\n}", "```"]
-
-
-def record_section(ctx: BriefContext, slot: rp.Slot) -> str:
-    """The draft file, the ``record_draft`` and ``record_add`` heredocs and the reply rule."""
-    tail = f'repo=Path(r"{ctx.repo}"), run_id="{ctx.run_id}")'
-    example = ('{"severity": "important", "name": "...", "summary": "...", "fix": ["..."],'
-               ' "file": "src/pkg/x.py", "lines": "12-18", "also": [], "fix_kind": "mechanical"},',)
-    lists = (("FINDINGS", example), ("STRENGTHS", ('"one line per strength",',)))
-    add = f'record_add({key_literal(ctx.pr)}, "{slot.id}", FINDINGS, STRENGTHS, {tail}'
-    return "\n".join(["## Record (once, after the analysis)", "", *_draft_json(ctx, slot.id, lists), "",
-                      "Then run this once from any directory; a rerun replaces the report. An error names "
-                      "the failing finding index.", "", "```bash",
-                      record_heredoc(ctx, f'record_draft({key_literal(ctx.pr)}, "{slot.id}", {tail}'),
-                      "```", "",
-                      "To record in pieces instead (no Write, or no draft), run this heredoc with a few "
-                      "findings filled into `FINDINGS` and `STRENGTHS` per call (the commented lines show "
-                      "each item's shape). Each call appends (an identical item is skipped); `record_draft` "
-                      "replaces everything.", "", "```bash", record_heredoc(ctx, add, lists), "```", "",
-                      TOO_LONG_RULE, "",
-                      "Reply with the block the last record call prints, verbatim, and nothing else."])
-
-
-def reviewer_brief(ctx: BriefContext, slot: rp.Slot, diff_path: Path, partial: Sequence[str]) -> str:
-    """The full reviewer brief for ``slot``."""
-    parts = [brief_header(ctx, slot), scope_section(ctx, slot, diff_path, partial), lens_section(ctx, slot),
-             rules_section(slot, ctx.plan), record_section(ctx, slot)]
-    return "\n\n".join(parts) + "\n"
 
 
 def write_briefs(repo: Path, run: Path, ctx: BriefContext, slots: Sequence[rp.Slot]) -> None:
@@ -1898,7 +1670,7 @@ def fixer_brief(ctx: BriefContext, fixer: Mapping[str, object], issues: Mapping[
     bubbled = '{"id": "I3", "classification": "architectural_ambiguity", "reason": "one line"},'
     lists = (("FIXED", (fixed,)), ("BUBBLED", (bubbled,)))
     lines += _tests_block(ctx, files, entries, deferred) + [""] + _fixer_rules()
-    lines += ["", "## Record (once)", "", *_draft_json(ctx, agent, lists), "", "Then run this once:", "",
+    lines += ["", "## Record (once)", "", *draft_json(ctx, agent, lists), "", "Then run this once:", "",
               "```bash", record_heredoc(ctx, call), "```", "", TOO_LONG_RULE]
     return "\n".join(lines) + "\n"
 

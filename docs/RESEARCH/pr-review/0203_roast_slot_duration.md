@@ -129,8 +129,14 @@ come from roast runs; the roast voice may label severity higher, not find more.
   third of the slot's time with no loss of substance measurable against opus run-to-run noise. Every bucketed file
   still gets the pass from its bucket slot; the unbucketed paths in this set are manifests with no
   docstrings. The catalog already scopes the pass to bucket reviewers
-  (`CrossCuttingLensCatalog.json`, `default_sub_lenses[0].summary`); `pr_review.py` `lens_section` and
+  (`CrossCuttingLensCatalog.json`, `default_sub_lenses[0].summary`); the reviewer briefs and
   `pr-review/SKILL.md` apply it to every slot.
 - **Keep the `opus` floor.** Sonnet halves the time but misses Important findings on two of five PRs.
 - **Limits.** n = 5, one run per arm, small PRs only. PRs at or above 20 files run OVERALL and roast
   as separate slots and were not tested.
+
+### Outcome
+
+The developer adopted the cut for the roast slot only; OVERALL keeps the pass. Plan 0007
+(`docs/plans/0007_review_lens_enums_and_brief_extraction_ActionPlan.json`) carries it as a catalog
+`skip_lenses` entry on the linear pass, with the lens enums and the reviewer-brief extraction.

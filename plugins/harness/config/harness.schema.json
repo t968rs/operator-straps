@@ -17,7 +17,7 @@
     "harness_version": {"type": ["string", "null"], "description": "Plugin VERSION the pinned schema copy was synced from."},
     "base_branch": {"type": ["string", "null"], "description": "PR base branch; null resolves origin/HEAD, else main."},
     "integration_branches": {"$ref": "#/$defs/strings", "description": "Branches d-w fetches from origin before cutting; empty means [base_branch, main]."},
-    "skills_dir": {"$ref": "#/$defs/relPath", "description": "Where this project keeps its own skills (review lens detection); read by strap-skills' project profile, which writes each skill to <skills_dir>/<name>/."},
+    "skills_dir": {"$ref": "#/$defs/relPath", "description": "Where this project keeps its own skills; read by pr-team's per-skill-package shell trigger and by strap-skills' project profile, which writes each skill to <skills_dir>/<name>/. pr-review's trigger finds any skills/<name>/ folder holding a SKILL.md instead."},
     "agents_dir": {"$ref": "#/$defs/relPath", "description": "Where this project keeps its own agents; read by strap-skills' project profile."},
     "strap": {
       "type": "object",

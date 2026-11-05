@@ -230,18 +230,20 @@ dispatches `harness:pr-reviewer` with the roast voice in the brief.
 
 **Default sub-lens (mandatory):** per-file linear code-read pass.
 
-Every reviewer, in every slot, runs a linear docstring-vs-code pass over each in-scope file before any bucket-specific
-or cross-cutting reasoning: one top-to-bottom read with no sampling or skip path, checking every module, class and
-function docstring or adjacent prose contract against the code, and recording each contradiction as `file:line` with
-the claim and the conflicting behavior. Targeted, claim-driven re-reads follow. The brief embeds the catalog's
-`default_sub_lenses[*].scope_template`; the pass is a sub-lens, not a slot.
+Every reviewer slot except roast runs a linear docstring-vs-code pass over each in-scope file before any
+bucket-specific or cross-cutting reasoning: one top-to-bottom read with no sampling or skip path, checking every
+module, class and function docstring or adjacent prose contract against the code, and recording each contradiction as
+`file:line` with the claim and the conflicting behavior. Targeted, claim-driven re-reads follow. The brief embeds the
+catalog's `default_sub_lenses[*].scope_template`; the pass is a sub-lens, not a slot. The roast slot carries the
+OVERALL scope and every bucketed path already gets the pass from its bucket slot, so the catalog row's `skip_lenses`
+names `roast`; a project's own default sub-lenses carry no skip and reach every slot.
 
 **Cross-cutting lenses** cover concept-shaped concerns that path buckets miss. Triggers are mechanical, evaluated in
 Python at the PR head; each triggered lens adds a slot on top of the bucket slots.
 
 | Lens | Trigger |
 |---|---|
-| per-skill-package | the PR touches `<skills_dir>/<name>/` AND `<name>` appears as a whole word (hyphens included) in a non-excluded file under `.claude`, `docs`, `.github` or the skills root outside that skill's folder; one slot covers every triggered skill |
+| per-skill-package | the PR touches any `skills/<name>/` folder holding a `SKILL.md` at the PR head (wherever it sits; `skills_dir` does not limit it) AND `<name>` appears as a whole word (hyphens included) in a non-excluded file under `.claude`, `docs`, `.github` or that skill root's top folder, outside the skill's own folder; one slot covers every triggered skill |
 | coordinated-multi-artifact | >= 2 NEW files (status `A`) matching `*.schema.json` or under `<schemas_dir>/` |
 | overall-system-shape | >= 3 non-empty path buckets (OVERALL and roast never count) |
 | project lenses | each lens of the project's lens file (`review.lenses`) whose `trigger.path_globs` match at least `min_files` reviewable paths; one slot per triggered lens over the matching paths |

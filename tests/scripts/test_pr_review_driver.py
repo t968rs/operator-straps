@@ -34,6 +34,7 @@ from typing import Dict, Iterator, List, Optional, Sequence, Tuple
 import pytest
 
 from conftest import copy_project, project_factory
+from harness_lib import review_briefs as rb
 from harness_lib import review_merge as rmg
 from harness_lib import review_models as rm
 from harness_lib.config import activate, load_config
@@ -507,7 +508,7 @@ class TestBriefs:
                      "never write under `docs/PR_REVIEWS/`; reply with the printed block only")
         for slot in ("runtime", "tests", "docs", "overall"):
             assert ownership in _brief(clone, slot)
-        clause = _normalized(script.TEST_DESIGN_CLAUSE)
+        clause = _normalized(rb.TEST_DESIGN_CLAUSE)
         assert clause in _normalized(_brief(clone, "tests"))
         assert clause in _normalized(_brief(clone, "overall"))
         assert clause not in _normalized(_brief(clone, "docs"))
@@ -520,7 +521,7 @@ class TestBriefs:
             if not line.startswith(">"):
                 break
             quoted.append(line[1:].strip())
-        assert _normalized(script.TEST_DESIGN_CLAUSE) == _normalized(" ".join(quoted))
+        assert _normalized(rb.TEST_DESIGN_CLAUSE) == _normalized(" ".join(quoted))
 
     def test_catalog_templates_and_pointers(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
                                             pr_repo: Tuple[Path, str], plugin_root: Path) -> None:
@@ -1515,11 +1516,11 @@ class TestPathsAndScope:
     ])
     def test_test_design_clause_for_any_test_file(self, script: ModuleType, path: str) -> None:
         slot = script.rp.Slot("cicd", "cicd", "sonnet", (path,), ())
-        assert _normalized(script.TEST_DESIGN_CLAUSE) in _normalized(script.rules_section(slot))
+        assert _normalized(rb.TEST_DESIGN_CLAUSE) in _normalized(rb.rules_section(slot))
 
     def test_no_test_design_clause_without_test_files(self, script: ModuleType) -> None:
         slot = script.rp.Slot("cicd", "cicd", "sonnet", (".github/workflows/ci.yml",), ())
-        assert _normalized(script.TEST_DESIGN_CLAUSE) not in _normalized(script.rules_section(slot))
+        assert _normalized(rb.TEST_DESIGN_CLAUSE) not in _normalized(rb.rules_section(slot))
 
     def test_fixer_rules_cover_failed_and_out_of_scope(self, script: ModuleType) -> None:
         rules = _normalized("\n".join(script._fixer_rules()))
@@ -1533,8 +1534,8 @@ class TestPathsAndScope:
     @pytest.mark.parametrize("path", ["src/pkg/a.py", "docs/a.md", ".github/workflows/ci.yml"])
     def test_reviewer_rules_grade_a_missing_mention_as_docs(self, script: ModuleType, path: str) -> None:
         slot = script.rp.Slot("overall", "overall", "opus", (path,), ())
-        rules = _normalized(script.rules_section(slot))
-        assert _normalized(script.PROSE_GAP_RULE) in rules
+        rules = _normalized(rb.rules_section(slot))
+        assert _normalized(rb.PROSE_GAP_RULE) in rules
         # The literals pin the constant's wording; the constant check alone is tautological.
         assert "documentation gap" in rules and "`minor`" in rules
         assert "never grounds an `important` or `critical` grade" in rules
@@ -1552,12 +1553,12 @@ class TestPathsAndScope:
                 "(`needs_follow_up`), or under the revert and commit-text rules below.") in rules
 
     def test_removal_defects_are_a_closed_list(self, script: ModuleType) -> None:
-        defects = _normalized(script.REMOVAL_DEFECTS)
+        defects = _normalized(rb.REMOVAL_DEFECTS)
         for word in ("broken", "unreachable or dead", "duplicate", "leftover", "debug output", "unsafe",
                      "contradicting a contract"):
             assert word in defects
         slot = script.rp.Slot("overall", "overall", "opus", ("src/pkg/a.py",), ())
-        assert defects in _normalized(script.rules_section(slot))
+        assert defects in _normalized(rb.rules_section(slot))
         assert defects in _normalized("\n".join(script._fixer_rules()))
 
     @pytest.mark.parametrize("doc", [
@@ -1567,7 +1568,7 @@ class TestPathsAndScope:
     def test_review_docs_spell_the_removal_defects(self, script: ModuleType, plugin_root: Path,
                                                    doc: str) -> None:
         text = (plugin_root / doc).read_text(encoding="utf-8")
-        assert _normalized(script.REMOVAL_DEFECTS) in _normalized(text)
+        assert _normalized(rb.REMOVAL_DEFECTS) in _normalized(text)
 
     def test_issue_block_prefers_repair(self, script: ModuleType) -> None:
         issue = {"id": "I1", "name": "n", "file": "src/pkg/a.py", "lines": "4", "summary": "s",
