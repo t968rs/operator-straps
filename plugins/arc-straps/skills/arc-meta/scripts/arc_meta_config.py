@@ -13,6 +13,7 @@ __all__ = ["ArcMetaPaths", "RepoLike", "paths"]
 
 PLUGIN = "arc-straps"
 _CONFIG = Path(__file__).resolve().parents[3] / "config"
+_KEYS = ("atbx", "tool_dir", "toolbox_source", "registry")
 _OPTIONAL = ("atbx", "toolbox_source", "registry")
 RepoLike = Optional[Union[str, Path]]
 
@@ -46,15 +47,21 @@ def paths(repo: RepoLike = None) -> ArcMetaPaths:
 
 
 def _meta(section: Dict[str, Any]) -> Dict[str, Any]:
-    """The ``arc_meta`` object with its path types checked, also on a load without ``jsonschema``."""
+    """The ``arc_meta`` object checked for keys, value types and empty paths, also without ``jsonschema``."""
     meta = section.get("arc_meta")
     if not isinstance(meta, dict):
         raise ConfigError(f"plugins.{PLUGIN}.arc_meta: must be an object")
+    unknown = sorted(set(meta) - set(_KEYS))
+    if unknown:
+        raise ConfigError(f"plugins.{PLUGIN}.arc_meta: unknown keys {unknown}")
     if not isinstance(meta.get("tool_dir"), str):
         raise ConfigError(f"plugins.{PLUGIN}.arc_meta.tool_dir: must be a string")
     for key in _OPTIONAL:
         if not isinstance(meta.get(key), (str, type(None))):
             raise ConfigError(f"plugins.{PLUGIN}.arc_meta.{key}: must be a string or null")
+    for key in ("tool_dir", *_OPTIONAL):
+        if meta.get(key) == "":
+            raise ConfigError(f"plugins.{PLUGIN}.arc_meta.{key}: must not be empty")
     return meta
 
 

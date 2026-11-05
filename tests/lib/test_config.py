@@ -78,8 +78,7 @@ def test_invalid_config_raises(make_project, bad: dict) -> None:
         load_config(make_project(bad))
 
 
-@pytest.mark.parametrize("bad", [{"unknown_key": 1}, {"tests": {"file_pattern": "("}},
-                                 {"plugins": {"Arc": {}}}, {"plugins": {"arc-straps": 3}}])
+@pytest.mark.parametrize("bad", [{"unknown_key": 1}, {"tests": {"file_pattern": "("}}])
 def test_minimal_validation_without_jsonschema(make_project, monkeypatch: pytest.MonkeyPatch,
                                                bad: dict) -> None:
     monkeypatch.setitem(sys.modules, "jsonschema", None)
@@ -430,8 +429,7 @@ BAD_PLUGINS = [{"plugins": {"Arc": {}}}, {"plugins": {"arc-straps": 3}}, {"plugi
 
 @pytest.mark.parametrize("bad", BAD_PLUGINS)
 def test_plugins_rejects_bad_sections(make_project, bad: dict) -> None:
-    # Today's message reads "<root>: Additional properties ... 'plugins' was unexpected"; the new one
-    # names the plugins path itself.
+    # The error names the plugins path itself, not the root.
     with pytest.raises(ConfigError, match=r": plugins(/|: )"):
         load_config(make_project(bad))
 

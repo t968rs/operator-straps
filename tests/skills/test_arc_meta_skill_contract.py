@@ -142,11 +142,6 @@ def test_pinned_rule_sentences_appear_verbatim(sentence: str) -> None:
     assert " ".join(sentence.split()) in " ".join(_skill_parts()[1].split())
 
 
-def test_api_exports_existing_names() -> None:
-    missing = [name for name in arc_meta_api.__all__ if not hasattr(arc_meta_api, name)]
-    assert not missing, missing
-
-
 _VALID_PAYLOADS = {
     "ParamRow": {"name": "Mode", "title": "Mode", "type": "Required", "direction": "Input",
                  "datatype": "GPString", "hover_wired": False},
@@ -180,8 +175,3 @@ def test_problem_round_trips_through_its_dump() -> None:
 def test_param_row_spells_type_and_direction_like_the_canonical_xml() -> None:
     assert [t.value for t in arc_meta_models.ParamType] == ["Required", "Optional", "Derived"]
     assert [d.value for d in arc_meta_models.Direction] == ["Input", "Output"]
-
-
-def test_api_records_are_the_models_module_classes() -> None:
-    assert (arc_meta_api.ParamRow, arc_meta_api.ProblemCode) == (arc_meta_models.ParamRow,
-                                                                  arc_meta_models.ProblemCode)

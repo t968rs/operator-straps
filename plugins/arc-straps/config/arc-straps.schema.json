@@ -16,7 +16,7 @@
       "properties": {
         "atbx": {"$ref": "#/$defs/optPath", "description": "Toolbox archive (.atbx); null means the one .atbx at the project root."},
         "tool_dir": {"$ref": "#/$defs/relPath", "description": "Folder of canonical per-tool help XML, <Tool>.xml."},
-        "toolbox_source": {"$ref": "#/$defs/optPath", "description": "Toolbox-level help XML; null means <parent of tool_dir>/<archive file name>.xml."},
+        "toolbox_source": {"$ref": "#/$defs/optPath", "description": "Toolbox-level help XML; null means <parent of tool_dir>/<archive file name, extension included>.xml (e.g. Tools.atbx.xml)."},
         "registry": {"$ref": "#/$defs/optPath", "description": "Optional tool registry JSON {\"tools\": [{\"tool_name\", \"py_path\"}]} for the stale-path check; null skips it."}
       }
     }

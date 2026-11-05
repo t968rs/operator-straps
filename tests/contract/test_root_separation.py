@@ -19,7 +19,6 @@ from conftest import GIT_ENV, PLUGIN_ROOT, REPO_ROOT, git
 
 sys.path.insert(0, str(REPO_ROOT / "tests" / "lib"))
 from _todo_helpers import config, todo_files  # noqa: E402
-from arc._arc_toolbox import ATBX, CANONICAL, RC, TOOL, toolbox_members, write_archive  # noqa: E402
 
 WALK_ROOTS = ("plugins/",)
 PLUGINS = REPO_ROOT / "plugins"
@@ -170,8 +169,14 @@ def _plan_api_args(root: Path, tmp: Path) -> List[str]:
 
 
 def _arc_rc_args(root: Path) -> Tuple[List[str], str]:
-    """apply_rc through the harness launcher on a stale demo toolbox written into ``root``."""
-    stale = toolbox_members(rc={"map": {**RC["map"], "description": "Old."}})
+    """apply_rc through the harness launcher on a stale demo toolbox written into ``root``.
+
+    The arc-straps import sits here, not at module level, so an import error in the arc-meta scripts fails
+    only the arc cases instead of the collection of the whole module.
+    """
+    from arc._arc_toolbox import ATBX, CANONICAL, RC, TOOL, toolbox_members, write_archive
+
+    stale =toolbox_members(rc={"map": {**RC["map"], "description": "Old."}})
     write_archive(root / ATBX, stale)
     (root / "tool_metadata" / "tools").mkdir(parents=True, exist_ok=True)
     (root / "tool_metadata" / "tools" / f"{TOOL}.xml").write_text(CANONICAL, encoding="utf-8")
@@ -270,6 +275,8 @@ def test_docstring_probe_lands_in_the_project(project: Path, tmp_path: Path) -> 
 
 
 def test_arc_meta_apply_lands_in_the_project(project: Path) -> None:
+    from arc._arc_toolbox import ATBX
+
     script, payload = _arc_rc_args(project)
     done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project, payload)
     assert done.returncode == 0, done.stderr

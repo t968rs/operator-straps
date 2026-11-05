@@ -81,7 +81,7 @@ def _project(make_project: Callable[..., Path], rc: bool = True, source: bool = 
     return root
 
 
-# --- ported --------------------------------------------------------------------------------------------
+# --- load_source / build_metadata / build_rc / run_toolbox ---------------------------------------------
 
 def test_load_source_reads_fields(source_path: Path) -> None:
     source = tbx.load_source(source_path)
@@ -145,7 +145,7 @@ def test_run_apply_invalid_metadata_keeps_archive(
     assert not atbx.with_name(atbx.name + ".bak").exists()
 
 
-# --- new -----------------------------------------------------------------------------------------------
+# --- report, rc encoding and formatting, refusals, apply_toolbox --------------------------------------
 
 def test_report_notes_the_removed_thumbnail(atbx: Path, source_path: Path) -> None:
     lines = tbx.run_toolbox(atbx, source_path).lines

@@ -10,9 +10,12 @@ The rc is plain JSON keyed by the lowercased parameter name: parameter ``Output_
 
 A text shows in Pro only when ``tool.content`` references its key: the top-level
 ``"description": "$rc:description"`` for the summary, and ``params.<name>.description =
-"$rc:<lowercased name>.descr"`` for a parameter. Non-empty canonical text whose reference is missing gets
-the reference added to ``tool.content`` and the key to the rc. A parameter with empty canonical text
-(hidden or internal) is never wired. Nothing else in ``tool.content`` changes and no key is removed.
+"$rc:<lowercased name>.descr"`` for a parameter. Non-empty canonical text with no ``description`` in
+``tool.content`` gets the reference added there and the key to the rc. A description that is present (a
+literal string or another ``$rc:`` key) is left alone, and a referenced key the rc lacks is reported, not
+added; ``check_applied`` keeps flagging both (``hover_unwired`` and ``hover_stale``) until a manual edit. A
+parameter with empty canonical text (hidden or internal) is never wired. Nothing else in ``tool.content``
+changes and no key is removed.
 
 Dry run by default: nothing is written until ``apply=True``. On apply, ``arc_meta_archive.rewrite``
 validates the new archive, keeps ``<atbx>.bak`` and swaps it in. Members are written as UTF-8 without a
@@ -191,7 +194,7 @@ def run_rc(tool: str, atbx: Path, tool_dir: Path, apply: bool = False) -> ApplyO
     replacements, changes, plan = _replacements(tool, atbx, Path(tool_dir))
     lines = _report(tool, changes, plan)
     changed = bool(replacements)
-    if not apply:
+    if changed and not apply:
         lines.append("DRY-RUN: nothing written. Re-run with apply=True to write.")
     elif changed:
         rewrite(atbx, replacements)

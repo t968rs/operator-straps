@@ -21,6 +21,7 @@ from __future__ import annotations
 import copy
 import json
 import zipfile
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -164,7 +165,7 @@ def _current(atbx: Path) -> Tuple[dict, Dict[str, bytes]]:
             rc = read_json(zin, RC_ENTRY, atbx.name)
             names = set(zin.namelist())
             old = {name: zin.read(name) for name in (RC_ENTRY, META_ENTRY) if name in names}
-    except zipfile.BadZipFile as exc:
+    except (zipfile.BadZipFile, zlib.error) as exc:
         raise ApiError(f"{atbx.name} is not a zip archive ({exc})") from exc
     if rc is None:
         raise ApiError(f"{RC_ENTRY} is missing from {atbx.name}")

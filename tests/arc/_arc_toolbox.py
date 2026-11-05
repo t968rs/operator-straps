@@ -116,9 +116,11 @@ def toolbox_members(canonical: str = CANONICAL, content: Optional[dict] = None, 
     """The ``Demo.tool/`` members: content, rc and ``tool.metadata.xml`` (``page``, default
     ``default_page(canonical)``), plus ``extra``."""
     shown = page if page is not None else default_page(canonical)
+    content = CONTENT if content is None else content
+    rc = RC if rc is None else rc
     members = {
-        f"{TOOL}.tool/tool.content": json.dumps(content or CONTENT, indent=4).encode("utf-8"),
-        f"{TOOL}.tool/tool.content.rc": json.dumps(rc or RC, indent=1).encode("utf-8"),
+        f"{TOOL}.tool/tool.content": json.dumps(content, indent=4).encode("utf-8"),
+        f"{TOOL}.tool/tool.content.rc": json.dumps(rc, indent=1).encode("utf-8"),
         f"{TOOL}.tool/tool.metadata.xml": shown.encode("utf-8"),
     }
     members.update(extra or {})

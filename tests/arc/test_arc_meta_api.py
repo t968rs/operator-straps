@@ -8,6 +8,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import zipfile
 from pathlib import Path
 from typing import Callable, List, Optional, Tuple
 from xml.etree import ElementTree as ET
@@ -281,6 +282,18 @@ def test_check_applied_without_a_page_skips_the_page_build(make_project) -> None
         ("hover_stale", None), ("page_stale", None, "no tool.metadata.xml")])
 
 
+@pytest.mark.parametrize("raw, fragment", [
+    (b"<metadata><tool>", "not readable XML"),
+    (b"<metadata>\xff</metadata>", "not readable XML"),
+    (b"<metadata/>", "no <tool> element"),
+])
+def test_check_applied_reads_an_unreadable_page_as_stale(make_project, raw: bytes, fragment: str) -> None:
+    members = toolbox_members()
+    members[PAGE] = raw
+    root = make_toolbox(make_project, members=members)
+    _assert_found(api.check_applied(TOOL, repo=root), [("page_stale", None, fragment)])
+
+
 def test_check_applied_raises_config_error_unwrapped(make_project) -> None:
     root = _toolbox(make_project)
     write_archive(root / "other_toolbox.atbx", toolbox_members())
@@ -317,6 +330,26 @@ def test_check_applied_flags_a_page_image_the_archive_no_longer_holds(make_proje
     _assert_found(api.check_applied(TOOL, repo=root), [("page_image_stale", None)])
 
 
+def _crc_corrupt_illustration(atbx: Path, members: dict) -> None:
+    """Rewrite ``atbx`` uncompressed from ``members`` with the illustration's last byte flipped (bad CRC)."""
+    with zipfile.ZipFile(atbx, "w", zipfile.ZIP_STORED) as zf:
+        for member, data in members.items():
+            zf.writestr(member, data)
+    raw, payload = atbx.read_bytes(), members[ILLUSTRATION_ENTRY]
+    assert raw.count(payload) == 1
+    end = raw.index(payload) + len(payload) - 1
+    atbx.write_bytes(raw[:end] + bytes([raw[end] ^ 0xFF]) + raw[end + 1:])
+
+
+def test_check_applied_refuses_a_corrupt_illustration_as_an_api_error(make_project) -> None:
+    members = toolbox_members(CANONICAL, page=_page(CANONICAL, illustration=PNG_A),
+                              extra={ILLUSTRATION_ENTRY: PNG_A})
+    root = make_toolbox(make_project, members=members)
+    _crc_corrupt_illustration(root / ATBX, members)
+    with pytest.raises(api.ApiError, match=f"{ILLUSTRATION_ENTRY} in {ATBX} is corrupt"):
+        api.check_applied(TOOL, repo=root)
+
+
 def test_check_applied_sends_unparseable_markup_to_check_canonical(make_project) -> None:
     canonical = CANONICAL.replace("<para>Polygons to process.</para>", f"<![CDATA[{UNPARSEABLE}]]>")
     root = _toolbox(make_project, canonical=canonical, page="<metadata/>")
@@ -336,8 +369,7 @@ def test_check_applied_keeps_a_plain_summary_hover_for_a_bold_summary(make_proje
     canonical = CANONICAL.replace("<p>Makes polygons.</p>", "<p><b>Makes</b> polygons.</p>")
     root = _toolbox(make_project, canonical=canonical, rc=_rc(description="Makes polygons."))
     problems = api.check_applied(TOOL, repo=root)
-    assert ("hover_style_stale", None) not in _codes(problems)
-    assert problems == []
+    assert problems == [], _codes(problems)
 
 
 # --- listing and printing -------------------------------------------------------------------------------

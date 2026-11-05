@@ -203,6 +203,10 @@ def _plugins(p: Dict[str, Any]) -> Tuple[Tuple[str, str], ...]:
 
 ### 4.2 Harness: `plugin_section` (lane A)
 
+As built: the shipped `plugins/harness/lib/harness_lib/plugin_config.py` is the reference. Its `_check`
+fallback (no `jsonschema`) rejects unknown keys only when the schema sets `"additionalProperties": false`;
+the block below rejects them unconditionally.
+
 `plugins/harness/lib/harness_lib/plugin_config.py`:
 
 ```python
@@ -255,6 +259,11 @@ def _check(data: Dict[str, Any], schema: Dict[str, Any], name: str) -> None:
 ```
 
 ### 4.3 arc-straps config (lane A)
+
+As built: the shipped `plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py` is the reference.
+`paths()` loads `load_config(project_root(Path(repo)))`, so `repo` may be any folder inside the project;
+`_meta` checks the `arc_meta` object and its path types (also without `jsonschema`); `_inside` raises
+ConfigError for any location that resolves outside the project root; `tool_dir` has no `rstrip("/")`.
 
 `plugins/arc-straps/config/defaults.json`:
 

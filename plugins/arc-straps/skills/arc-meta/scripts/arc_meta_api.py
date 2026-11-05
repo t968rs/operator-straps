@@ -25,7 +25,7 @@ from xml.etree import ElementTree as ET
 
 import arc_meta_canonical
 import arc_meta_format as mf
-from arc_meta_archive import read_json, read_text
+from arc_meta_archive import read_bytes, read_json, read_text
 from arc_meta_config import ArcMetaPaths, RepoLike, paths
 from arc_meta_models import ApiError, Direction, ParamRow, ParamType, Problem, ProblemCode, ToolSources
 from harness_lib.config import ConfigError
@@ -83,15 +83,6 @@ def _rc_map(rc: object) -> Dict[str, str]:
 
 def _tool_element(tree: ET.Element, tool: str) -> ET.Element:
     return arc_meta_canonical.tool_element(tree, f"{tool}.xml")
-
-
-def _xml(text: str, name: str) -> ET.Element:
-    """The root element of decoded archive text ``text``; ApiError, not ParseError, when it is not
-    well-formed. Parsed as ``str``, so the declared encoding of a UTF-16 member does not apply twice."""
-    try:
-        return ET.fromstring(text)
-    except ET.ParseError as exc:
-        raise ApiError(f"{name} is not well-formed XML ({exc})") from exc
 
 
 # --- tool_names / param_table ---------------------------------------------------------------------------
@@ -375,12 +366,30 @@ def _image_problems(tool: str, page_root: ET.Element, want_root: ET.Element) -> 
     return [_problem(ProblemCode.PAGE_IMAGE_STALE, tool, detail)]
 
 
-def _archive_page(p: ArcMetaPaths, tool: str) -> Tuple[Optional[str], Optional[bytes]]:
-    """The archive's ``tool.metadata.xml`` text and ``tool.illustration.png`` bytes, None when absent."""
+def _page_root(zf: zipfile.ZipFile, name: str, label: str) -> Tuple[Optional[ET.Element], str]:
+    """The parsed help page ``name``, or None and the ``page_stale`` detail saying why it cannot be compared.
+
+    A corrupt, undecodable or malformed page, or one without a ``<tool>`` element, reads as stale rather
+    than refused, as the page writer reads it, so the ``apply_page`` rewrite that repairs it shows as due.
+    Parsed as ``str``, so the declared encoding of a UTF-16 member does not apply twice.
+    """
+    if name not in zf.namelist():
+        return None, "the archive holds no tool.metadata.xml help page"
+    try:
+        root = ET.fromstring(read_text(zf, name, label) or "")
+    except (ApiError, ET.ParseError) as exc:
+        return None, f"the archive help page is not readable XML ({exc}); apply_page rewrites it"
+    if root.find("tool") is None:
+        return None, "the archive help page has no <tool> element; apply_page rewrites it"
+    return root, ""
+
+
+def _archive_page(p: ArcMetaPaths, tool: str) -> Tuple[Optional[ET.Element], str, Optional[bytes]]:
+    """The parsed ``tool.metadata.xml`` (or None and why it is stale) and the ``tool.illustration.png``
+    bytes, None when absent; a corrupt illustration is refused, as ``arc_meta_page`` refuses it."""
     with _archive(p) as zf:
-        page = read_text(zf, f"{tool}.tool/tool.metadata.xml", p.atbx.name)
-        image = mf.illustration_entry(tool)
-        return page, (zf.read(image) if image in zf.namelist() else None)
+        page_root, why = _page_root(zf, f"{tool}.tool/tool.metadata.xml", p.atbx.name)
+        return page_root, why, read_bytes(zf, mf.illustration_entry(tool), p.atbx.name)
 
 
 _TITLE = "dataIdInfo/idCitation/resTitle"
@@ -414,11 +423,10 @@ def _text_field_problems(tool: str, want_tool: ET.Element, page_tool: ET.Element
 
 
 def _page_problems(p: ArcMetaPaths, tool: str, tree: ET.Element) -> List[Problem]:
-    page, illustration = _archive_page(p, tool)
-    page_root = _xml(page, f"{tool}.tool/tool.metadata.xml in {p.atbx.name}") if page else None
+    page_root, why, illustration = _archive_page(p, tool)
     page_tool = page_root.find("tool") if page_root is not None else None
-    if page_tool is None:
-        return [_problem(ProblemCode.PAGE_STALE, tool, "the archive holds no tool.metadata.xml help page")]
+    if page_root is None or page_tool is None:
+        return [_problem(ProblemCode.PAGE_STALE, tool, why)]
     want_root = ET.fromstring(arc_meta_canonical.page(tree, illustration))
     want_tool = _tool_element(want_root, tool)
     problems = _attribute_problems(tool, ("displayname",), want_tool, page_tool)
@@ -467,7 +475,8 @@ def _registry_tools(path: Path) -> List[dict]:
 
 
 def _link_target(p: ArcMetaPaths, tool: str, link: Optional[str]) -> Optional[str]:
-    """The project-relative module a ``tool.script.execute.link`` names; the link resolves as if the archive
+    """The module a ``tool.script.execute.link`` names: project-relative, or absolute when the link resolves
+    outside the project (a registry ``py_path`` then never matches it). The link resolves as if the archive
     were a folder holding ``<Tool>.tool/``."""
     if not link or not link.strip():
         return None

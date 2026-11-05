@@ -1,6 +1,7 @@
 """tools/select_tests.py: which CI work a diff needs, decided from imports, mentions and path rules."""
 from __future__ import annotations
 
+import ast
 import importlib.util
 import json
 import os
@@ -499,8 +500,9 @@ def test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook(sel: ModuleTyp
     assert list(sel.DEFAULT_PYTHONPATH) == sel.pythonpath_roots(REPO_ROOT)
     data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     hook = data["tool"]["pylint"]["main"]["init-hook"]
-    missing = [entry for entry in sel.DEFAULT_PYTHONPATH if f"'{entry}'" not in hook]
-    assert missing == [], hook
+    _, marker, listed = hook.partition("sys.path[:0] = ")
+    assert marker, hook
+    assert ast.literal_eval(listed.strip()) == list(sel.DEFAULT_PYTHONPATH), hook
 
 
 def test_real_repo_has_no_unparsable_test(sel: ModuleType) -> None:

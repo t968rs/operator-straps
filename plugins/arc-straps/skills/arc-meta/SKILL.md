@@ -63,6 +63,8 @@ line and exit 1. The locations come from `plugins.arc-straps.arc_meta` in `.clau
   changed or removed in the archive, not from a generator change; it re-runs `apply_page` on its own, on the
   same terms as `page_style_stale`. A tool that also reports `page_stale` or `hover_stale` holds canonical
   text never published and never checked against code; leave it out and list it in the reply.
+  `check_applied` is per tool and never reads the toolbox page, so a change to `arc_meta_format.py` then
+  dry-runs `apply_toolbox` and applies it when it does not report `UNCHANGED`.
 - **Join keys come from `param_table`, never from memory.** A canonical `<param name>` that differs from the
   `tool.content` name by one character drops its text without an error; the Python field names of the params
   model are not the join keys.
@@ -87,7 +89,11 @@ line and exit 1. The locations come from `plugins.arc-straps.arc_meta` in `.clau
    would write ends "DRY-RUN: nothing written. Re-run with apply=True to write."; when there is nothing to
    write, `apply_page` reports "UP TO DATE: the archive page matches the canonical source; nothing to
    write.", `apply_toolbox` reports "UNCHANGED: the archive already matches the source; nothing written."
-   and `apply_rc` reports `<Tool>: no changes`, and that apply is skipped.
+   and `apply_rc` reports `<Tool>: no changes`, and that apply is skipped. For `apply_rc` the first line
+   decides: a `<Tool>: no changes` head means nothing to write, whatever the last line says. An `apply_rc` line
+   "tool.content references $rc:<key>, which the rc lacks; not added" is never cured by a rerun: that key
+   stays `hover_stale` in `check_applied`. A summary or parameter whose `tool.content` description is a
+   literal string or another `$rc:` key is left alone the same way and stays `hover_unwired`.
 
 ```bash
 harness-skill-api --repo "${CLAUDE_PROJECT_DIR}" --file "${CLAUDE_SKILL_DIR}/scripts/arc_meta_rc.py" <Tool> <<'PY'
@@ -105,7 +111,8 @@ PY
 ```
 
 `apply_rc` writes the hover text and wires a missing `$rc:` reference into `tool.content` for every parameter
-with non-empty canonical text; `apply_page` regenerates the "?" page. The toolbox page itself comes from
+with non-empty canonical text and no `description` at all; it never rewrites a description that is present,
+and never adds an rc key `tool.content` already references; `apply_page` regenerates the "?" page. The toolbox page itself comes from
 `apply_toolbox` (no tool argument), which writes the toolbox title, description and item page from the
 configured `toolbox_source`:
 
@@ -119,8 +126,10 @@ PY
 ```
 
 5. **Verify.** `check_applied` prints `clean` for every tool changed, or only `hover_unwired` for a tool
-   re-applied for style or image alone (see Rules and Judgment). Then the developer reopens the toolbox in
-   Pro, hovers a parameter and the tool itself, and clicks "?".
+   re-applied for style or image alone (see Rules and Judgment). A `hover_stale` on a key the `apply_rc` report
+   named as lacking, or a `hover_unwired` on a literal or mis-keyed description, is not reached by any apply
+   call: only a manual `tool.content` or rc edit clears it, and the reply names it. Then the developer
+   reopens the toolbox in Pro, hovers a parameter and the tool itself, and clicks "?".
 6. **Hand off** (Hand off section).
 
 ## Authoring
@@ -162,7 +171,8 @@ pretty-prints the page: a newline and indentation between every tag. Under `whit
 those renders as a blank line, and the stylesheet also pads every `p` and `li` by 1em. The generator answers
 both: `PRO_DIV_STYLE` puts `white-space:normal` and negative top and bottom margins on the outer DIV, list
 items carry no inner `<P>`, and the `PRO_*_STYLE` constants pad each block inline. Spacing that looks wrong
-is first a `check_applied` question (`page_style_stale` means the archive still holds older markup); padding
+is first a `check_applied` question (`page_style_stale` means the archive still holds older markup or a parameter order that differs from the
+canonical XML); padding
 changes alone never cure the blank lines.
 
 To see a real render: Pro writes it to `%TEMP%\ArcGISProTemp<pid>\<hash>.htm` and deletes it within about a
@@ -192,9 +202,9 @@ PY
 |---|---|
 | `paths()` | the resolved locations: project root, archive, `tool_dir`, `toolbox_source` and registry (None when none is configured) |
 | `param_table(tool)` | one row per `tool.content` parameter: join key, dialog title, type and direction as the canonical XML spells them, datatype, whether the hover is wired, symbology layer, value-list values, Pro default |
-| `entry_sources(tool)` | the entry module from `tool.script.execute.link`, the embedded validator, and the configured registry's `py_path` with a `registry_stale` flag |
+| `entry_sources(tool)` | the entry module from `tool.script.execute.link` with `entry_exists` (False when the link dangles), the embedded script as `embedded_script` (None when the archive holds none), the embedded validator, and the configured registry's `py_path` with a `registry_stale` flag |
 | `check_canonical(tool)` | join-key, type and direction mismatches, a numeric-prefixed displayname, non-ASCII text, thumbnails, unsupported tags, lists nested past one level, markup the generator refuses (`unparseable`) |
-| `check_applied(tool)` | each surface whose archive state differs from the canonical XML: `hover_unwired`, `hover_stale`, `hover_style_stale`, `page_stale` (text, a dropped or extra parameter, or a displayname, type, direction or datatype attribute), `page_style_stale`, `page_image_stale` (the page's illustration differs from the archive's `tool.illustration.png`, is missing, or is present when the archive has none); a summary or parameter whose canonical text is empty is not compared against the rc |
+| `check_applied(tool)` | each surface whose archive state differs from the canonical XML: `hover_unwired`, `hover_stale`, `hover_style_stale`, `page_stale` (a missing `tool.metadata.xml` page, text, the resTitle or keywords, a dropped or extra parameter, or a displayname, type, direction or datatype attribute), `page_style_stale` (older generator markup, or a parameter order that differs from the canonical XML), `page_image_stale` (the page's illustration differs from the archive's `tool.illustration.png`, is missing, or is present when the archive has none); a summary or parameter whose canonical text is empty is not compared against the rc |
 | `tool_names()` | every tool in the archive, for a sweep of `check_applied` |
 
 ## Judgment
@@ -208,6 +218,7 @@ PY
 | A generator change and a sweep shows many stale tools | Re-apply the style-only ones; list the `page_stale` / `hover_stale` ones as unpublished text, unapplied. |
 | `check_applied` reports `page_image_stale` (the archive illustration was added, changed or removed) | Re-run `apply_page` for that tool only, unless it also reports `page_stale` or `hover_stale`; then `check_applied`. |
 | `check_applied` reports `hover_unwired` for a tool not yet code-verified | Leave the hover unwired and say so: wiring publishes text nobody checked. |
+| `hover_stale` or `hover_unwired` survives an `apply_rc` rerun (a key the rc lacks, or a literal or mis-keyed description in `tool.content`) | Stop re-applying; the writer leaves both alone. Name the key and the manual `tool.content` or rc edit that clears it in the reply. |
 | Help and code disagree on a range or default | Document what the code accepts and report the mismatch. |
 
 ## Hand off

@@ -1,5 +1,8 @@
 """arc-meta generator ``arc_meta_format``: nested-list parsing and rendering, and the Pro help-page spacing.
 
+The second half tests ``arc_meta_canonical``, the readers and builders the checks and writers share:
+``rc_text``, ``fields``, ``load``, ``add_dialog_ref`` and ``page``.
+
 Pro wraps decoded summary/usage HTML in ``<pre class="wrap">``, whose stylesheet pads every ``p`` and
 ``li`` by 1em, so list items carry no inner ``<P>`` and every block carries an inline padding style.
 """

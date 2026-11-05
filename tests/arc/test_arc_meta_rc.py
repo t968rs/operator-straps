@@ -197,8 +197,16 @@ def test_run_apply_twice_is_idempotent(atbx: Path, tool_dir: Path) -> None:
     assert (second.changed, second.applied) == (False, False)
 
 
+def test_run_dry_run_with_nothing_to_write_has_no_dry_run_line(atbx: Path, tool_dir: Path) -> None:
+    rc.run_rc(TOOL, atbx, tool_dir, apply=True)
+    outcome = rc.run_rc(TOOL, atbx, tool_dir, apply=False)
+    assert (outcome.changed, outcome.applied) == (False, False)
+    assert outcome.lines[-1].startswith(f"{TOOL}: no changes")
+    assert not any(line.startswith("DRY-RUN") for line in outcome.lines)
+
+
 def test_run_reads_a_bom_rc_and_rewrites_it_as_utf8_without_bom(tmp_path: Path, tool_dir: Path) -> None:
-    """SRC wrote the rc as UTF-8 without a byte-order mark; a BOM source member comes back without one."""
+    """The rc is written as UTF-8 without a byte-order mark; a BOM source member comes back without one."""
     raw = b"\xef\xbb\xbf" + json.dumps(RC, indent=1).encode("utf-8")
     atbx = write_archive(tmp_path / "bom.atbx", _members(raw))
     rc.run_rc(TOOL, atbx, tool_dir, apply=True)
@@ -239,7 +247,7 @@ def _corrupt_member(atbx_path: Path, name: str) -> None:
 def test_run_refuses_a_member_whose_compressed_data_is_corrupt(tmp_path: Path, tool_dir: Path) -> None:
     atbx = _archive(tmp_path, RC)
     _corrupt_member(atbx, RC_NAME)
-    with pytest.raises(ApiError, match=r"case\.atbx cannot be read"):
+    with pytest.raises(ApiError, match=r"tool\.content\.rc in case\.atbx is corrupt"):
         rc.run_rc(TOOL, atbx, tool_dir)
 
 

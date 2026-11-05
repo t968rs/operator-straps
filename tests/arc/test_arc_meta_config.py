@@ -51,7 +51,8 @@ def test_defaults_validate_against_the_schema(repo_root) -> None:
     config = repo_root / "plugins" / "arc-straps" / "config"
     defaults = json.loads((config / "defaults.json").read_text(encoding="utf-8"))
     schema = json.loads((config / "arc-straps.schema.json").read_text(encoding="utf-8"))
-    assert jsonschema.Draft202012Validator(schema).is_valid(defaults)
+    jsonschema.Draft202012Validator.check_schema(schema)
+    jsonschema.Draft202012Validator(schema).validate(defaults)
 
 
 def test_a_subfolder_reads_the_project_config(make_project) -> None:

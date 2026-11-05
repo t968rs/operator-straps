@@ -170,7 +170,7 @@ def test_make_toolbox_commits_the_archive_and_the_canonical_source(make_project)
     assert list(toolbox_members(extra={"x": b""})) == [CONTENT_NAME, RC_NAME, PAGE_NAME, "x"]
 
 
-# --- rewrite: review fixes ------------------------------------------------------------------------------
+# --- rewrite: refusals, backups and duplicates ----------------------------------------------------------
 
 def test_rewrite_refuses_a_locked_archive_and_leaves_no_temp(tmp_path: Path,
                                                              monkeypatch: pytest.MonkeyPatch) -> None:

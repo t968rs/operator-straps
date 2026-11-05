@@ -1,8 +1,9 @@
 """arc-meta: read helpers for a toolbox archive (``.atbx``, a zip) and its one rewrite-validate-swap routine.
 
-Readers tolerate UTF-8, UTF-8 with a byte-order mark and UTF-16 members, and refuse anything else with an
-``ApiError`` naming the member and the archive. ``rewrite`` is the only writer: the check API reads, the
-three apply writers call it. Imports only the standard library and the sibling models module.
+Readers tolerate UTF-8, UTF-8 with a byte-order mark and UTF-16 members. They refuse any other encoding,
+and a member that fails its CRC or does not inflate, with an ``ApiError`` naming the member and the
+archive. ``rewrite`` is the only writer: the check API reads, the three apply writers call it. Imports only
+the standard library and the sibling models module.
 """
 from __future__ import annotations
 
@@ -10,13 +11,14 @@ import json
 import os
 import shutil
 import zipfile
+import zlib
 from pathlib import Path
 from typing import Dict, Optional
 from xml.etree import ElementTree as ET
 
 from arc_meta_models import ApiError
 
-__all__ = ["decode", "read_text", "read_json", "rewrite"]
+__all__ = ["decode", "read_bytes", "read_text", "read_json", "rewrite"]
 
 _JSON_MEMBERS = frozenset({"tool.content", "toolbox.content"})
 
@@ -28,15 +30,29 @@ def decode(raw: bytes) -> str:
     return raw.decode("utf-8-sig")
 
 
-def read_text(zf: zipfile.ZipFile, name: str, label: str) -> Optional[str]:
-    """The text of member ``name``, None when absent; refused when it is not UTF-8 or UTF-16.
+def read_bytes(zf: zipfile.ZipFile, name: str, label: str) -> Optional[bytes]:
+    """The raw bytes of member ``name``, None when absent; refused when it fails its CRC or does not inflate.
 
     ``label`` names the archive in the refusal (its file name).
     """
     if name not in zf.namelist():
         return None
     try:
-        return decode(zf.read(name))
+        return zf.read(name)
+    except (zipfile.BadZipFile, zlib.error) as exc:
+        raise ApiError(f"{name} in {label} is corrupt ({exc})") from exc
+
+
+def read_text(zf: zipfile.ZipFile, name: str, label: str) -> Optional[str]:
+    """The text of member ``name``, None when absent; refused when corrupt or not UTF-8 or UTF-16.
+
+    ``label`` names the archive in the refusal (its file name).
+    """
+    raw = read_bytes(zf, name, label)
+    if raw is None:
+        return None
+    try:
+        return decode(raw)
     except UnicodeDecodeError as exc:
         raise ApiError(f"{name} in {label} is not UTF-8 or UTF-16 text ({exc})") from exc
 

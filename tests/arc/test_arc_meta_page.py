@@ -47,7 +47,7 @@ def _crc_corrupt(path: Path, members: dict, name: str) -> Path:
     return path
 
 
-# --- build_page / read_illustration (SRC API tests 9-11) -------------------------------------------------
+# --- build_page / read_illustration ---------------------------------------------------------------------
 
 def test_built_page_embeds_the_illustration_as_a_data_uri(tmp_path: Path) -> None:
     root = ET.fromstring(page.build_page(TOOL, _tool_dir(tmp_path), PNG_A).encode("utf-8"))
