@@ -17,7 +17,7 @@ from conftest import git
 
 WALK_ROOTS = ()  # walks only the commit-message folder of a make_project repo
 TITLE = "[BUG] Worker pool crash on spawn"
-SUBJECT = f"Merge PR #7 — {TITLE}"
+SUBJECT = f"Merge PR #7 -- {TITLE}"
 MESSAGE = [
     SUBJECT,
     "",
@@ -205,6 +205,14 @@ class TestCapture:
         assert "problem: PR #7 is MERGED" in captured.err and not captured.out
         assert not (root / "docs").exists()
 
+    def test_a_slugged_branch_title_is_a_problem(self, module, make_project, monkeypatch, capsys) -> None:
+        root = _project(make_project)
+        view = {"title": "0028 CHANGELOG 3 17 2", "headRefName": "0028-CHANGELOG-3-17-2"}
+        monkeypatch.setattr(module, "gh", _gh(view))
+        assert _run(module, root, "capture", "7") == 1
+        captured = capsys.readouterr()
+        assert "problem:" in captured.err and "branch name" in captured.err and not captured.out
+
     def test_gh_failure_is_a_problem(self, module, make_project, monkeypatch, capsys) -> None:
         root = _project(make_project)
 
@@ -308,7 +316,8 @@ class TestBuild:
     def test_defective_messages_are_refused_and_write_nothing(self, module, make_project, monkeypatch,
                                                               capsys) -> None:
         defects = {
-            "wrong subject": (["Merge PR #7 — other", *MESSAGE[1:]], "subject must be exactly"),
+            "wrong subject": (["Merge PR #7 -- other", *MESSAGE[1:]], "subject must be exactly"),
+            "em dash separator": ([f"Merge PR #7 — {TITLE}", *MESSAGE[1:]], "subject must be exactly"),
             "placeholder prose": ([*MESSAGE[:2], "<Prose: fill me>", *MESSAGE[3:]], "unfilled placeholder"),
             "placeholder bullet": ([*MESSAGE[:5], "  - <file>: <change>", *MESSAGE[6:]],
                                    "unfilled placeholder"),
@@ -340,13 +349,47 @@ class TestBuild:
                                                          capsys) -> None:
         root = _project(make_project)
         assert _build(module, root, monkeypatch, MESSAGE, view={"title": "Renamed since capture"}) == 1
-        assert "subject must be exactly 'Merge PR #7 — Renamed since capture'" in capsys.readouterr().err
+        assert "subject must be exactly 'Merge PR #7 -- Renamed since capture'" in capsys.readouterr().err
 
     def test_a_vendor_name_in_the_title_is_not_flagged(self, module, make_project, monkeypatch) -> None:
         title = "Claude hook fix"
         root = _project(make_project)
-        message = [f"Merge PR #7 — {title}", *MESSAGE[1:]]
+        message = [f"Merge PR #7 -- {title}", *MESSAGE[1:]]
         assert _build(module, root, monkeypatch, message, view={"title": title}) == 0
+
+    def test_a_non_ascii_subject_is_refused(self, module, make_project, monkeypatch, capsys) -> None:
+        title = "Fix — worker crash"
+        root = _project(make_project)
+        message = [f"Merge PR #7 -- {title}", *MESSAGE[1:]]
+        assert _build(module, root, monkeypatch, message, view={"title": title}) == 1
+        err = capsys.readouterr().err
+        assert "non-ASCII" in err and "gh pr edit 7 --title" in err
+        assert not _txt(root).exists()
+
+    def test_a_version_title_keeps_its_dots(self, module, make_project, monkeypatch) -> None:
+        title = "Chore(release): 3.17.2 changelog"
+        root = _project(make_project)
+        message = [f"Merge PR #7 -- {title}", *MESSAGE[1:]]
+        view = {"title": title, "headRefName": "0028-CHANGELOG-3-17-2"}
+        assert _build(module, root, monkeypatch, message, view=view) == 0
+        assert _txt(root).read_text(encoding="utf-8").startswith(f"Merge PR #7 -- {title}\n")
+
+    @pytest.mark.parametrize("title", ["0028 CHANGELOG 3 17 2", "0028 changelog 3 17 2"])
+    def test_a_title_that_reads_as_the_branch_slug_is_refused(self, module, make_project, monkeypatch,
+                                                              capsys, title) -> None:
+        root = _project(make_project)
+        message = [f"Merge PR #7 -- {title}", *MESSAGE[1:]]
+        view = {"title": title, "headRefName": "0028-CHANGELOG-3-17-2"}
+        assert _build(module, root, monkeypatch, message, view=view) == 1
+        err = capsys.readouterr().err
+        assert "branch name" in err and "gh pr edit 7 --title" in err
+        assert not _txt(root).exists()
+
+    def test_a_one_word_branch_title_is_not_a_slug(self, module, make_project, monkeypatch) -> None:
+        root = _project(make_project)
+        message = ["Merge PR #7 -- hotfix", *MESSAGE[1:]]
+        view = {"title": "hotfix", "headRefName": "hotfix"}
+        assert _build(module, root, monkeypatch, message, view=view) == 0
 
     def test_a_failed_build_leaves_the_existing_txt(self, module, make_project, monkeypatch) -> None:
         root = _project(make_project)

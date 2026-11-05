@@ -52,6 +52,8 @@ _DIFF_START = re.compile(r"^(?=diff --git )", re.M)
 _DIFF_PATH = re.compile(r"^diff --git a/.* b/(.+)$")
 PLACEHOLDER = re.compile(r"^\s*(?:-\s+)?<.*>\s*$")
 _UNSAFE = re.compile(r'[\\/:*?"<>|]')
+SUBJECT_SEPARATOR = "--"
+_SLUG_SPLIT = re.compile(r"[-_/\s]+")
 _ARROWS = re.compile(r"\s*(?:-->|->)\s*")
 _SHA = re.compile(r"(?<![\w./-])(?=[0-9a-f]*\d)[0-9a-f]{7,40}(?![\w/-])")
 _SIGNOFF = re.compile(r"^\s*(co-authored-by|signed-off-by):", re.IGNORECASE)
@@ -91,12 +93,39 @@ def safe_stem(value: str) -> str:
     return _UNSAFE.sub("_", value)
 
 
+def subject_line(pr: int, title: str) -> str:
+    """The merge subject; the separator is ASCII because Windows shell wrappers garble a non-ASCII one."""
+    return f"Merge PR #{pr} {SUBJECT_SEPARATOR} {title}"
+
+
+def _tokens(text: str) -> List[str]:
+    return [t for t in _SLUG_SPLIT.split(text.casefold()) if t]
+
+
+def title_problem(pr: int, title: str, head: str) -> Optional[str]:
+    """Why ``title`` cannot head the merge subject, else None.
+
+    Two defects: a non-ASCII character, and a title that is only the branch name with its hyphens or
+    underscores turned into spaces (the default ``gh`` derives from a branch; it loses version dots).
+    """
+    fix = f"retitle it with gh pr edit {pr} --title"
+    if not title.isascii():
+        found = "".join(sorted({c for c in title if not c.isascii()}))
+        return f"PR #{pr} title holds non-ASCII characters {found!r}; {fix}"
+    if _SLUG_SPLIT.search(head) and _tokens(title) == _tokens(head):
+        return f"PR #{pr} title {title!r} reads as the branch name; {fix}"
+    return None
+
+
 def pr_view(repo: Path, pr: int) -> Dict[str, object]:
-    """The PR's shape from ``gh pr view``; only an open PR gets a merge message."""
+    """The PR's shape from ``gh pr view``; only an open PR with a usable title gets a merge message."""
     fields = "number,title,headRefName,baseRefName,additions,deletions,changedFiles,body,state"
     data = json.loads(gh(repo, "pr", "view", str(pr), "--json", fields))
     if data.get("state") != "OPEN":
         raise MergeMessageError(f"PR #{pr} is {data.get('state')}, not OPEN")
+    problem = title_problem(pr, str(data["title"]), str(data["headRefName"]))
+    if problem:
+        raise MergeMessageError(problem)
     return data
 
 
@@ -194,7 +223,7 @@ def message_template(pr: int, title: str, names: Sequence[str], canned: Optional
     """The prefilled message: subject, prose (canned or a placeholder), bullets, lineage, review lines."""
     prose = canned.strip().splitlines() if canned else [PROSE_HINT]
     lineage = " -> ".join(f"`{n}`" for n in names)
-    return [f"Merge PR #{pr} — {title}", "", *prose, "", BULLET_HINT, "", f"Branch lineage: {lineage}",
+    return [subject_line(pr, title), "", *prose, "", BULLET_HINT, "", f"Branch lineage: {lineage}",
             *([""] if review_json(pr) else []), *review_lines(pr)]
 
 
@@ -260,7 +289,7 @@ def layout_problems(lines: Sequence[str]) -> List[str]:
 
 def structure_problems(lines: Sequence[str], pr: int, title: str) -> List[str]:
     """Subject, placeholders, bullets and lineage-after-bullets of the message lines."""
-    subject = f"Merge PR #{pr} — {title}"
+    subject = subject_line(pr, title)
     problems: List[str] = []
     if not lines or lines[0] != subject:
         problems.append(f"subject must be exactly {subject!r}")
