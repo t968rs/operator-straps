@@ -61,11 +61,11 @@ def _activate(make_project, config: dict, files: Optional[Dict[str, object]] = N
     return root
 
 
-def _buckets(**named: Tuple[str, ...]) -> Dict[str, Tuple[str, ...]]:
+def _buckets(**named: Tuple[str, ...]) -> Dict[rp.PathBucket, Tuple[str, ...]]:
     """Builds a full bucket mapping (every key present) from keyword overrides; ``config`` names config."""
-    out: Dict[str, Tuple[str, ...]] = {key: () for key in rp.PATH_BUCKETS + ("unbucketed",)}
+    out: Dict[rp.PathBucket, Tuple[str, ...]] = {key: () for key in rp.PathBucket}
     for key, paths in named.items():
-        out["config-or-registry" if key == "config" else key] = paths
+        out[rp.PathBucket.CFG if key == "config" else rp.PathBucket(key)] = paths
     return out
 
 
@@ -75,11 +75,8 @@ def _files(prefix: str, count: int) -> Tuple[str, ...]:
 
 
 class TestCatalog:
-    """The plugin catalog carries exactly the code-triggered lenses and no project-specific paths."""
-
-    def test_lens_names_match_catalog(self) -> None:
-        catalog = json.loads((plugin_root() / "schemas" / "catalogs" / rp.CATALOG_NAME).read_text("utf-8"))
-        assert set(rp.LENS_NAMES) == {lens["name"] for lens in catalog["lenses"]}
+    """The plugin catalog carries no project-specific paths and loads unchanged without project lenses (its
+    lens order against the enum lives in ``test_review_plan_enums.py``)."""
 
     def test_catalog_names_no_project_paths(self) -> None:
         text = (plugin_root() / "schemas" / "catalogs" / rp.CATALOG_NAME).read_text("utf-8")
@@ -89,7 +86,8 @@ class TestCatalog:
 
     def test_without_project_lenses_is_the_plugin_catalog(self, project: Path) -> None:
         catalog = rp.load_lens_catalog()
-        assert [lens["name"] for lens in catalog["lenses"]] == list(rp.LENS_NAMES)
+        plugin = json.loads((plugin_root() / "schemas" / "catalogs" / rp.CATALOG_NAME).read_text("utf-8"))
+        assert catalog["lenses"] == plugin["lenses"]
         assert rp.extra_lens_names(catalog) == ()
 
 
@@ -120,10 +118,10 @@ class TestProjectLenses:
         assert rp.project_lens_paths(rp.load_lens_catalog(), ("src/geo/a.py",)) == {}
 
     def test_same_name_overrides_template_only(self, make_project) -> None:
-        override = {"name": rp.MULTI_ARTIFACT, "scope_template": "Project multi-artifact template."}
+        override = {"name": rp.Lens.MULTI_ARTIFACT, "scope_template": "Project multi-artifact template."}
         _activate(make_project, *_lens_config([override], [{"name": "extra", "scope_template": "x"}]))
         catalog = rp.load_lens_catalog()
-        lens = next(item for item in catalog["lenses"] if item["name"] == rp.MULTI_ARTIFACT)
+        lens = next(item for item in catalog["lenses"] if item["name"] == rp.Lens.MULTI_ARTIFACT)
         assert lens["scope_template"] == "Project multi-artifact template."
         assert "trigger" in lens and rp.extra_lens_names(catalog) == ()
         assert [sub["name"] for sub in catalog["default_sub_lenses"]][-1] == "extra"
@@ -190,7 +188,7 @@ class TestReviewBucket:
 
     def test_sort_buckets_has_every_key_in_input_order(self) -> None:
         out = rp.sort_buckets(["src/b.py", "README.md", "src/a.py", "x.lyrx"])
-        assert set(out) == set(rp.PATH_BUCKETS) | {"unbucketed"}
+        assert set(out) == set(rp.PathBucket)
         assert out["runtime"] == ("src/b.py", "src/a.py")
         assert out["docs"] == ("README.md",)
         assert out["unbucketed"] == ("x.lyrx",)
@@ -254,40 +252,21 @@ class TestMergeRegistryIntoTests:
         assert rp.merge_registry_into_tests(buckets) == (buckets, ())
 
 
-class TestSkillsTouched:
-    """Skill names come from ``<skills_dir>/<name>/`` paths only."""
-
-    def test_names_sorted_unique(self) -> None:
-        paths = ["agents/skills/pr-sum/SKILL.md", "agents/skills/pr-review/a.md",
-                 "agents/skills/pr-review/b/c.json", "agents/skills/README.md", "docs/a.md",
-                 ".claude/skills/other/SKILL.md"]
-        assert rp.skills_touched(paths) == ("pr-review", "pr-sum")
-
-    def test_skill_folder(self) -> None:
-        assert rp.skill_folder("pr-review") == "agents/skills/pr-review/"
-
-
 class TestSkillMentioned:
-    """Whole-name hits outside the skill folder fire; excluded paths never count."""
+    """Grep-line parsing: colons in the matched text are kept and a malformed line is ignored (the
+    inside-folder, longer-name and excluded-path cases live in ``test_review_plan_skill_lens.py``)."""
+
+    _REVIEW = "agents/skills/pr-review/"
+    _SUM = "agents/skills/pr-sum/"
 
     def test_hit_outside_folder_fires(self) -> None:
-        assert rp.skill_mentioned("pr-review", ["docs/a.md:3:run pr-review now"], _PATTERNS)
-
-    def test_hit_only_inside_folder_does_not(self) -> None:
-        lines = ["agents/skills/pr-review/SKILL.md:1:name: pr-review"]
-        assert not rp.skill_mentioned("pr-review", lines, _PATTERNS)
-
-    def test_longer_hyphenated_name_does_not(self) -> None:
-        assert not rp.skill_mentioned("pr-review", ["docs/a.md:3:see pr-review-watch"], _PATTERNS)
-
-    def test_excluded_path_does_not(self) -> None:
-        assert not rp.skill_mentioned("pr-review", ["docs/PR_REVIEWS/1558_x.json:9:pr-review"], _PATTERNS)
+        assert rp.skill_mentioned(self._REVIEW, ["docs/a.md:3:run pr-review now"], _PATTERNS)
 
     def test_text_colons_are_kept(self) -> None:
-        assert rp.skill_mentioned("pr-sum", ["CLAUDE.md:4:Skill: pr-sum: summaries"], _PATTERNS)
+        assert rp.skill_mentioned(self._SUM, ["CLAUDE.md:4:Skill: pr-sum: summaries"], _PATTERNS)
 
     def test_malformed_line_is_ignored(self) -> None:
-        assert not rp.skill_mentioned("pr-sum", ["pr-sum"], _PATTERNS)
+        assert not rp.skill_mentioned(self._SUM, ["pr-sum"], _PATTERNS)
 
 
 class TestMultiArtifact:
@@ -390,14 +369,6 @@ class TestSlotPlan:
         assert "system_shape" not in slots and "roast" not in slots
         assert "overall-system-shape" in slots["overall"].templates
         assert slots["overall"].paths == reviewable
-
-    def test_small_pr_roast_replaces_overall(self) -> None:
-        buckets, reviewable = self._small_three_bucket()
-        slots = self._by_id(rp.slot_plan(buckets, {}, True, reviewable))
-        assert "overall" not in slots and "system_shape" not in slots
-        roast = slots["roast"]
-        assert roast.roast and roast.lens == "overall" and roast.paths == reviewable
-        assert roast.templates == ("overall-system-shape",)
 
     def test_large_pr_roast_is_additive(self) -> None:
         buckets = _buckets(runtime=_files("src/", 10), tests=_files("tests/test_", 10), docs=("docs/a.md",))

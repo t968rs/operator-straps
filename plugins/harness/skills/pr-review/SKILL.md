@@ -230,18 +230,23 @@ dispatches `harness:pr-reviewer` with the roast voice in the brief.
 
 **Default sub-lens (mandatory):** per-file linear code-read pass.
 
-Every reviewer, in every slot, runs a linear docstring-vs-code pass over each in-scope file before any bucket-specific
-or cross-cutting reasoning: one top-to-bottom read with no sampling or skip path, checking every module, class and
-function docstring or adjacent prose contract against the code, and recording each contradiction as `file:line` with
-the claim and the conflicting behavior. Targeted, claim-driven re-reads follow. The brief embeds the catalog's
-`default_sub_lenses[*].scope_template`; the pass is a sub-lens, not a slot.
+Every reviewer slot except roast runs a linear docstring-vs-code pass over each in-scope file before any
+bucket-specific or cross-cutting reasoning: one top-to-bottom read with no sampling or skip path, checking every
+module, class and function docstring or adjacent prose contract against the code, and recording each contradiction as
+`file:line` with the claim and the conflicting behavior. Targeted, claim-driven re-reads follow. The brief embeds the
+catalog's `default_sub_lenses[*].scope_template`; the pass is a sub-lens, not a slot. The roast slot carries the
+OVERALL scope and every bucketed path already gets the pass from its bucket slot, so the catalog row's `skip_lenses`
+names `roast`. Unbucketed paths have no bucket slot: when roast replaces OVERALL on a small PR (below), no slot
+runs the pass over them, a wider cut than the measured arm C of `docs/RESEARCH/pr-review/0203_roast_slot_duration.md`.
+A project's own default sub-lenses reach every slot unless their row names `skip_lenses`; each entry must name a
+bucket, lens or scope member (value or member name) or a catalog lens, else the lens file is rejected.
 
 **Cross-cutting lenses** cover concept-shaped concerns that path buckets miss. Triggers are mechanical, evaluated in
 Python at the PR head; each triggered lens adds a slot on top of the bucket slots.
 
 | Lens | Trigger |
 |---|---|
-| per-skill-package | the PR touches `<skills_dir>/<name>/` AND `<name>` appears as a whole word (hyphens included) in a non-excluded file under `.claude`, `docs`, `.github` or the skills root outside that skill's folder; one slot covers every triggered skill |
+| per-skill-package | the PR touches any `skills/<name>/` folder holding a `SKILL.md` at the PR head (wherever it sits; `skills_dir` does not limit it) AND `<name>` appears as a whole word (hyphens included) in a non-excluded file under `.claude`, `docs`, `.github` or the top folder of any touched skill root, outside the skill's own folder; one slot covers every triggered skill |
 | coordinated-multi-artifact | >= 2 NEW files (status `A`) matching `*.schema.json` or under `<schemas_dir>/` |
 | overall-system-shape | >= 3 non-empty path buckets (OVERALL and roast never count) |
 | project lenses | each lens of the project's lens file (`review.lenses`) whose `trigger.path_globs` match at least `min_files` reviewable paths; one slot per triggered lens over the matching paths |
@@ -254,7 +259,9 @@ once. Do not invent lenses or reword templates ad hoc; edit the project's lens f
 
 - overall-system-shape gets no slot of its own; its scope template is appended to OVERALL's brief.
 - When the roast roll fires, the roast slot replaces the OVERALL slot. The roast brief carries OVERALL's full scope
-  plus system shape, in the roast voice, so coverage is kept and only the duplicate slot is dropped.
+  plus system shape, in the roast voice, so coverage is kept and only the duplicate slot is dropped, except the
+  linear docstring pass, which unbucketed paths do not get in a roast run (bucketed paths get it from their bucket
+  slot).
 
 At or above 20 reviewable files, OVERALL, overall-system-shape and roast are separate slots. This is the one exception
 to the catalog's `policy.additivity` (`policy.small_pr`); pr-team keeps strict additivity.

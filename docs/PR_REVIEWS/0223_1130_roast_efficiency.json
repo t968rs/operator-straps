@@ -1,0 +1,543 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 223,
+  "pr_title": "1130 roast efficiency",
+  "branch": "1130-roast-efficiency",
+  "base_branch": "main",
+  "base_sha": "389a50eef9af153bf11844c31bfc3479a461cf59",
+  "head_sha": "c94e0bb662fe11a5bf4b99b82dc955ff7f6c2eba",
+  "review_date": "2026-11-05",
+  "verdict": "READY TO MERGE - 17 of 17 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 3365,
+    "deletions": 576,
+    "files_changed": 22
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0223/pr223_20261105T205943Z/findings/config.json",
+    "docs/_scratch/pr_review/0223/pr223_20261105T205943Z/findings/tests.json",
+    "docs/_scratch/pr_review/0223/pr223_20261105T205943Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0223/pr223_20261105T205943Z/findings/docs.json",
+    "docs/_scratch/pr_review/0223/pr223_20261105T205943Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0223/pr223_20261105T205943Z/findings/overall.json",
+    "docs/_scratch/pr_review/0223/pr223_20261105T205943Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0223/pr223_20261105T205943Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The skills_dir description in harness.schema.json now matches the README key table (line 453), the pr-review SKILL.md trigger row and the CrossCuttingLensCatalog per-skill-package entry, so the schema, README and trigger docs agree on which reader uses the key.",
+    "The change is description-only: the type, the relPath ref and the default in defaults.json are untouched, so no mirror in config.py needs to move.",
+    "Every in-scope test is behavioral: real planner, real catalog and real git repos; no mock-chain wiring tests.",
+    "test_pr_review_skill_lens.py drives lens_paths against a committed repo with a SKILL.md-less `src/skills/fake/` folder that a doc mentions, proving the SKILL.md-at-head gate and that skills_dir no longer limits the trigger.",
+    "test_review_roast_sub_lens.py checks both the planner filter and the composed brief for small and large PRs, and pins that a project default sub-lens still reaches roast.",
+    "test_review_plan_enums.py covers lookup by value and name in any case, rejection of non-members across enums, reserved project-lens names via slot ids (`skill-package`), and plan.json's roast key round-trip.",
+    "Doc contract tests spell their target files (`pr-review`/SKILL.md, CrossCuttingLensCatalog.json, harness.schema.json) so select_tests picks them up.",
+    "PathBucket, Lens and ScopeLens replace the string constants and the _SLOT_IDS and _RESERVED_SLOT_IDS literals with one source of truth; _RESERVED_NAMES also blocks a project lens name that would resolve to a member.",
+    "Slot exposes roast, bucket, overall_scope and lists_skills predicates, so review_briefs reads the planner's decisions instead of re-deriving them from lens strings, and the old roast lens=\"overall\" special case is gone.",
+    "Slot.record() keeps the roast key in plan.json even though roast is now derived, so plan.json readers see the same shape as before.",
+    "Brief composition moved to harness_lib.review_briefs without changing behavior, and the module docstring lists exactly the helpers the fixer briefs import back; pr_review.py loses about 230 lines.",
+    "Skill discovery now works under any skills/ root: a SKILL.md must exist at the PR head, checked with a single ls-tree call, and skills_dir no longer feeds pr-review. The schema description is updated to match.",
+    "The research note's experiment arithmetic checks out from its own table: C is 9 to 45 percent faster per PR (per-PR median 23 percent), median 130 s to 88 s, B median 58 s, and the tool-use medians are 21/18/17.",
+    "The research note keeps its caveats honest: run-to-run noise between H and A is measured before C is compared, n = 5 is stated, and PRs of 20 or more files are called out as untested.",
+    "The SKILL.md roast exception names both the mechanism (catalog `skip_lenses`) and the reason, matching CrossCuttingLensCatalog.json:7-13 and `review_plan.sub_lenses_for`.",
+    "Plan 0007 records the rejected alternative and rationale for each decision (D1-D7), and the PIP renders consistently from the ActionPlan JSON.",
+    "The README and harness.schema.json `skills_dir` descriptions now say exactly who reads the key (pr-team's shell trigger, strap-skills) and that pr-review's trigger ignores it.",
+    "The TODO snapshot's top 10 matches RepoToDo.json ranks 1-10 (ids, kinds, GH refs), and the catalog has no duplicate ids or ranks.",
+    "The per-skill-package trigger row (SKILL.md 246) matches review_plan.py exactly: skill_candidates finds any skills/<name>/ folder, skill_folders requires SKILL.md at the head, skill_grep_roots adds each skill root's top folder, skill_mentioned skips the skill's own folder and excluded paths.",
+    "The roast skip is data (catalog skip_lenses resolved through resolve_lens) rather than a special case in the planner, so project rows can reuse the mechanism and the brief follows the planner.",
+    "README skills_dir row, harness.schema.json description and the catalog's mechanical_triggers policy were updated together, so no orphan 'review lens detection' wording for skills_dir remains in shipped plugin docs.",
+    "tests/skills/test_pr_review_lens_docs.py pins the SKILL.md lens prose against the code, guarding the docstring-vs-code agreement this lens checks.",
+    "The roast exception is data (skip_lenses on the catalog row) that the planner filters through sub_lenses_for. It is not a hard-coded branch in the brief, so project sub-lenses and future exceptions need no code change.",
+    "Slot.lens resolves to PathBucket / Lens / ScopeLens members in __post_init__. The roast flag is derived, which removes the old split between lens=\"overall\" + roast=True and lens=\"roast\". Slot.record keeps the plan.json shape stable.",
+    "_RESERVED_SLOT_IDS and _RESERVED_NAMES derive from the enum members, so a new bucket or lens cannot silently leave a project lens name colliding with it.",
+    "The reviewer-brief extraction is guarded behaviorally: test_review_briefs.py parses the driver's AST to prove that no moved name is redefined and that no slot lens is compared with a bucket or lens literal.",
+    "test_pr_review_skill_lens.py drives lens_paths against a real git repository, so the SKILL.md-at-head rule (D2) and the src/skills/fake exclusion are checked end to end rather than through stubs.",
+    "Docs, catalog policy, schema description and README key row were updated in lockstep with the trigger change, and test_pr_review_lens_docs.py pins each of them.",
+    "The skills_dir change lands in lockstep: harness.schema.json:20, the README key row, the catalog's mechanical_triggers and the SKILL.md trigger row all say pr-review finds any skills/<name>/ folder with a SKILL.md while pr-team's shell form keeps $SKILLS_DIR, and tests/skills/test_pr_review_lens_docs.py pins each wording.",
+    "PathBucket / Lens / ScopeLens give slot ids and reserved names one source; _RESERVED_SLOT_IDS and _RESERVED_NAMES derive from the members, so a new bucket or lens cannot drift out of the collision check.",
+    "Slot.roast became a property derived from lens, and Slot.record() keeps the plan.json 'roast' key, so on-disk consumers see the same shape (pinned by test_record_keeps_the_roast_key).",
+    "The roast exception is data (catalog skip_lenses), not a code branch, matching decision D6; the research note traces the measurement and experiment through to the adopted plan decision.",
+    "test_no_comparison_with_a_lens_literal parses the driver's AST to keep bucket and lens string comparisons out of the driver, which enforces the planner-owns-classification split.",
+    "PathBucket/Lens/ScopeLens replace the parallel tuples, and slot ids plus reserved project-lens names derive from the members, so the reserved set cannot drift from the planner again.",
+    "Roast is now a lens (ScopeLens.ROAST) with `Slot.roast` derived, which removes the old 'lens=overall plus roast flag' double encoding while `Slot.record()` keeps plan.json's `roast` key for existing readers.",
+    "Reviewer brief composition moved to harness_lib/review_briefs.py (the driver loses about 260 lines), and an AST test stops moved names or lens-literal comparisons from creeping back into the driver.",
+    "The roast exception is data on the catalog row (`skip_lenses`), not a special case in code, so project default sub-lenses keep reaching roast, and both small- and large-PR plans are tested through the composed brief.",
+    "The per-skill-package trigger checks SKILL.md at the head with one `git ls-tree` call, has a real-git integration test, and a domain folder named `skills/` cannot fire it.",
+    "The research note gives measured numbers, data caveats and a three-arm experiment, and is honest about run-to-run noise instead of claiming more than five samples show."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Roast skip drops the linear pass for unbucketed paths, unlike the tested arm",
+        "file": "plugins/harness/schemas/catalogs/CrossCuttingLensCatalog.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/CrossCuttingLensCatalog.json",
+          "plugins/harness/lib/harness_lib/review_plan.py",
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "docs/RESEARCH/pr-review/0203_roast_slot_duration.md",
+          "plugins/harness/agents/pr-team-orchestrator.md"
+        ],
+        "lines": "7,9,13,50",
+        "reviewer": "overall, roast, skill_package, system_shape, runtime",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The catalog row's skip_lenses [\"roast\"] removes the linear docstring-vs-code pass from the roast slot entirely. When the roast slot replaces OVERALL (below SMALL_PR_FILES), no slot runs the pass on unbucketed paths. The stated rationale only covers bucketed paths: \"every bucketed path already gets the pass from its bucket slot\". Unbucketed is not limited to manifests in a generic plugin. review_bucket treats any file whose suffix is not in _RUNTIME_SUFFIXES (.go, .rs, .java, .yaml, non-schema .json) as unbucketed, so such code gets no docstring pass at all on a small roast PR. The experiment in docs/RESEARCH/pr-review/0203_roast_slot_duration.md measured arm C, which kept the pass for unbucketed paths, not a full drop. SKILL.md:258-259 and the catalog's policy.small_pr still say the roast slot keeps OVERALL's coverage, and that is no longer true for these paths.\n\nAlso (roast): On a PR under 20 files where the roast roll fires, roast replaces OVERALL (review_plan.py:519-523), and `skip_lenses: [\"roast\"]` now strips the linear docstring-vs-code pass from it (review_plan.py:344-356). Bucketed paths still get the pass from their bucket slot, but unbucketed paths get it from nobody: no OVERALL slot exists and no bucket owns them. The research note's arm C, the only measured variant of this cut, limited the pass to unbucketed paths rather than removing it (0203_roast_slot_duration.md:83), so the shipped behavior is stricter than anything measured. The catalog's own `policy.small_pr` (line 50) still promises the roast slot keeps OVERALL's coverage and \"only the duplicate slot is dropped\". This PR is a live example: `CrossCuttingLensCatalog.json`, the most prose-contract-heavy file in it, is unbucketed. The data says \"saved a quarter\"; the contract says \"coverage kept\". Only one of those is still true.\n\nAlso (skill_package): The catalog row's summary and trigger description (CrossCuttingLensCatalog.json 7, 9) now read 'every reviewer slot except the roast slot' with no pr-review qualifier, but the catalog is shared with pr-team, whose orchestrator (agents/pr-team-orchestrator.md 224-228) writes 'the mandatory linear sub-lens instructions' into the prompt of EACH planned reviewer, its dice-gated harness:roast-my-code slot included. skip_lenses is read only by harness_lib.review_plan (pr-review), so the two skills now disagree about the same catalog row without either saying so.\n\nAlso (system_shape): policy.small_pr (CrossCuttingLensCatalog.json:50) says the roast slot replacing OVERALL on a small PR keeps 'OVERALL's full scope ... so coverage is kept'. With skip_lenses ['roast'] (catalog:13) that slot no longer runs the linear docstring-vs-code pass, and on a small PR it is the only slot that holds the unbucketed paths (review_plan.py:519-523, slot_plan docstring at 540-541). The stated rationale (catalog:9, SKILL.md:237-238: 'every bucketed path already gets the pass from its bucket slot') is true only for bucketed paths; the research note (0203_roast_slot_duration.md:130-131) accepted the gap because the measured unbucketed paths were manifests, but no published doc states it.\n\nAlso (runtime, roast): sub_lenses_for (review_plan.py:344-351) applies the catalog's new skip_lenses [\"roast\"], so the roast slot never gets the linear docstring-vs-code pass. The catalog's reason is that every bucketed path already gets the pass from its bucket slot. Unbucketed paths (plain .json, .yaml, .toml and similar) have no bucket slot, though, and on a small PR the roast slot replaces OVERALL as their only reviewer. Whether those paths get the pass now depends on the 50/50 roast roll. This contradicts policy.small_pr's statement that 'coverage is kept' when the roast replaces OVERALL.\n\nAlso (runtime): _skipped_lenses (review_plan.py:354-356) resolves each skip_lenses entry with resolve_lens, which keeps an unknown name as a plain string instead of rejecting it. A project default_sub_lenses row that names a slot id such as \"config\" (the config-or-registry slot id, which is neither a member value nor a member name), or a lens name with a typo, matches no slot and skips nothing, with no error. _merge_catalog validates project lenses but not the skip_lenses of project sub-lenses.\n\nAlso (roast): `_skipped_lenses` (review_plan.py:354-356) runs each entry through `resolve_lens`, which returns any unrecognized string unchanged. A project row with `skip_lenses: [\"roasts\"]` or a lens name that does not exist resolves to a plain string that matches no slot, so the row runs everywhere and nothing complains. `_merge_catalog` validates project lenses through `_check_project_lens` but never looks at default_sub_lenses rows. The enums were added to stop free-form strings drifting, and this new key is a free-form string.",
+        "fix": [
+          "Keep the linear pass in the roast slot for the slot's unbucketed paths only (arm C): sub_lenses_for or lens_section emits the linear template with a pointer limiting it to the paths review_bucket returns UNBUCKETED for, and drops it only when there are none.",
+          "Keep the full drop and say so: add to the catalog row's trigger.description, policy.small_pr and SKILL.md lines 233-239 / 258-259 that on a small roast PR unbucketed paths get no linear pass, and name in the research Outcome that the adopted cut is wider than arm C.",
+          "Match arm C: keep the linear pass in the roast slot but scope its template to the slot's unbucketed paths (for example `sub_lenses_for` returns the row with a path filter, and `lens_section` appends `Apply it only to: <unbucketed paths>` when the roast slot carries any).",
+          "Skip the pass for roast only when an OVERALL slot runs beside it (large PR), and keep it on the small-PR roast slot that replaces OVERALL.",
+          "If the gap is accepted, amend `policy.small_pr` and the SKILL.md 'Default sub-lens' paragraph to state that a roast-rolled small PR gives unbucketed paths no linear pass, and record that in the research note's Outcome.",
+          "Qualify the catalog row: 'pr-review: every reviewer slot except the roast slot (skip_lenses); pr-team: every reviewer' in the summary or trigger description.",
+          "Or make pr-team honor the row: amend pr-team-orchestrator.md 228 to skip the linear sub-lens for the harness:roast-my-code slot per the row's skip_lenses.",
+          "Add the exception to policy.small_pr and to the rationale at catalog:9 / SKILL.md:237-238: 'unbucketed paths get no linear pass when roast replaces OVERALL'.",
+          "Or keep the pass for unbucketed paths only in the roast slot (filter its sub-lens scope to PathBucket.UNBUCKETED paths) so the coverage claim holds.",
+          "Run the sub-lens in the roast slot when it replaces OVERALL (small PR): skip it only for the side-by-side roast slot, for example by planning the small-PR roast with a flag that sub_lenses_for checks, or by skipping only when the slot plan also holds an OVERALL slot.",
+          "Alternatively, restrict the skip to bucketed paths: keep the pass in the roast brief and limit it to the slot's unbucketed paths, and update the catalog trigger description to say so.",
+          "In _merge_catalog, check that each project default_sub_lenses row's skip_lenses entries resolve to a PathBucket, Lens or ScopeLens member or name a catalog project lens, and raise ValueError otherwise, as _check_project_lens does for lens names.",
+          "Alternatively, have _MissStrEnum._missing_ also match a member's slot_id so that \"config\" resolves to PathBucket.CFG, and still raise on names that resolve to nothing.",
+          "In `_merge_catalog`, check each project default_sub_lenses row: every `skip_lenses` entry must resolve to a `PathBucket`/`Lens`/`ScopeLens` member or name a lens in the merged catalog; otherwise raise `ValueError` naming the row (load_lens_catalog already turns that into a capture error)."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Research note states pre-change behavior in the present tense",
+        "file": "docs/RESEARCH/pr-review/0203_roast_slot_duration.md",
+        "lines": "43-44,62-63,131-133,140-142",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docs/RESEARCH/pr-review/0203_roast_slot_duration.md:43-44 says \"every slot runs the pass over its in-scope files\", and :131-133 says the reviewer briefs and pr-review/SKILL.md \"apply it to every slot\" while the catalog \"already scopes the pass to bucket reviewers\". At the PR head the catalog summary (CrossCuttingLensCatalog.json:7) and SKILL.md:233 both say every slot except roast, so the merged note contradicts the code it shipped with. Recommendation 1 (:62-63, \"Do not change the roast slot on its own\") is also left unreconciled with the Outcome (:140), which adopts exactly a roast-only cut. Its trade-off still holds: the long pole stays on the OVERALL slot in runs without roast.\n\nAlso (system_shape): docs/RESEARCH/pr-review/0203_roast_slot_duration.md:131-133 says 'The catalog already scopes the pass to bucket reviewers (CrossCuttingLensCatalog.json, default_sub_lenses[0].summary); the reviewer briefs and pr-review/SKILL.md apply it to every slot.' At the head, that summary (catalog:7) reads 'every reviewer slot except the roast slot' and SKILL.md:232 reads 'Every reviewer slot except roast', so the merged note contradicts the files it cites.",
+        "fix": [
+          "Put :43-44 and :131-133 in the past tense with a marker such as \"(before plan 0007)\", and add one sentence to Outcome: \"Recommendation 1's trade-off stands: runs without a roast keep the OVERALL slot as the long pole.\"",
+          "Put the sentence in the past tense with the pre-change state ('Before plan 0007 the catalog summary scoped the pass to bucket reviewers while the briefs and SKILL.md applied it to every slot'), or move it into the Outcome section with the current wording."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "TODO-019 (issue 203) stays OPEN with a pre-change summary after the PR that answers it",
+        "file": "docs/TODO/RepoToDo.json",
+        "files": [
+          "docs/TODO/RepoToDo.json",
+          "docs/RESEARCH/pr-review/0203_roast_slot_duration.md"
+        ],
+        "lines": "1148-1168",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/TODO/RepoToDo.json:1148 TODO-019 tracks #203, the issue this PR investigates and partly implements (research note plus plan 0007's roast skip). The refreshed catalog keeps it OPEN, and its summary (:1168) still cites line numbers that moved (`review_plan.py:372-381`, `pr_review.py:715`) and says \"Branch 1130-roast-efficiency exists with no commits beyond main\". No commit in the range closes or references #203 with a closing keyword. After the merge, the catalog lists the issue as untouched work.\n\nAlso (roast): This PR rewrites RepoToDo.json and implements the issue-203 work, but TODO-019 (RepoToDo.json:1147-1205) still has status OPEN. Its summary also still says \"Branch 1130-roast-efficiency exists with no commits beyond main\", which this very branch makes false. A future TODO sweep will rank work that has already landed.",
+        "fix": [
+          "Add \"Closes #203\" (or \"Refs #203\" if the OVERALL-slot experiments stay open) to the PR description, then refresh TODO-019 after the merge so it becomes a close candidate or narrows to the remaining experiments.",
+          "Update TODO-019's summary and proposed_change now to the remaining scope (Recommendation 3's sonnet and split-slot experiments) and drop the stale line references.",
+          "Point TODO-019 at plan 0007 and the research note, and drop the stale branch sentence, or let the post-merge TODO sweep close it once issue 203 closes."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Plan 0007 records the version bump from 0.56.0, but the base was 0.56.1",
+        "file": "docs/plans/0007_review_lens_enums_and_brief_extraction_ActionPlan.json",
+        "files": [
+          "docs/plans/0007_review_lens_enums_and_brief_extraction_ActionPlan.json",
+          "docs/plans/0007_review_lens_enums_and_brief_extraction_PIP.md"
+        ],
+        "lines": "473",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "PIP:213 anchors plugin.json:3 as holding '\"version\": \"0.56.0\",' and PIP:219 bumps '0.56.0 to 0.57.0' (ActionPlan.json:473 'expect' carries the same 0.56.0). The merge base held 0.56.1 (diff of plugins/harness/.claude-plugin/plugin.json), so the plan's anchor and step text are wrong about the version the change started from, while the task is marked COMPLETE.",
+        "fix": [
+          "Correct the TASK-5 anchor and step text to 0.56.1 -> 0.57.0 in the ActionPlan through the plan driver, then re-render the PIP."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "policy.project_lenses still states the old collision rule (slot ids only)",
+        "file": "plugins/harness/schemas/catalogs/CrossCuttingLensCatalog.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/CrossCuttingLensCatalog.json",
+          "plugins/harness/lib/harness_lib/review_plan.py"
+        ],
+        "lines": "52",
+        "reviewer": "system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "CrossCuttingLensCatalog.json:52 says a project lens name 'must not collide with a bucket, overall, roast, system-shape, skill-package or multi-artifact slot id'. _check_project_lens (review_plan.py:318-325) now also rejects any name in _RESERVED_NAMES (review_plan.py:113): every member value and lowercased member name. Names such as 'config-or-registry' (slot id config_or_registry, not reserved), 'unbucketed' and 'cfg' were accepted before and are rejected now, and the catalog text gives no hint why. The plan text is also narrower than the code: PIP:60 says 'rejects a name equal to any member value', while the code also rejects member names ('cfg').\n\nAlso (roast): `_RESERVED_NAMES` (review_plan.py:113) now also rejects every member value and lowercased member name: `cfg`, `unbucketed`, `config-or-registry`, alongside the slot ids. The catalog's `policy.project_lenses` (line 52) still lists only \"a bucket, overall, roast, system-shape, skill-package or multi-artifact slot id\". A project that names a lens `cfg` or `unbucketed` gets a capture error that the documented rule does not predict.",
+        "fix": [
+          "Extend policy.project_lenses (CrossCuttingLensCatalog.json:52): 'must not collide with a bucket, overall, roast, system-shape, skill-package or multi-artifact slot id, nor spell a bucket, lens or scope value or member name (unbucketed and config-or-registry included)'.",
+          "Extend the sentence in `policy.project_lenses` to: \"must not collide with a bucket, overall, roast, system-shape, skill-package or multi-artifact slot id, nor with any bucket, lens or scope member's value or name (cfg, unbucketed, config-or-registry included)\"."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Driver module docstring does not name review_briefs (plan TASK-2 step 4)",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "docs/plans/0007_review_lens_enums_and_brief_extraction_PIP.md",
+          "docs/plans/0007_review_lens_enums_and_brief_extraction_ActionPlan.json"
+        ],
+        "lines": "1-104",
+        "reviewer": "overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Plan 0007 TASK-2 step 4 requires \"Module docstring names review_briefs.\" The pr_review.py module docstring (lines 1-124) never mentions harness_lib.review_briefs. A reader of the driver's contract cannot tell that reviewer briefs are now composed elsewhere. Only the section comment at line 547 points there.\n\nAlso (system_shape): PIP TASK-2 step 4 (0007 PIP:113, marked COMPLETE) says 'Module docstring names review_briefs.' The pr_review.py module docstring (lines 1-104 and the usage block after it) never mentions harness_lib.review_briefs; only the section comment at pr_review.py:547 does. A reader of the driver's docstring still gets 'capture a PR into reviewer briefs' (line 1) with no pointer to where the brief text now lives.\n\nAlso (roast): Plan 0007 TASK-2 step 4 says \"Module docstring names review_briefs\". The pr_review.py module docstring (lines 1-107) still describes brief writing as the driver's job and never names `harness_lib.review_briefs`. The only pointer is a section comment at line 547. Anyone reading the docstring to find where the brief text lives will be looking in the wrong file.",
+        "fix": [
+          "Add a sentence to the pr_review.py module docstring, e.g. near the capture paragraph: reviewer briefs are composed by harness_lib.review_briefs (reviewer_brief) from a BriefContext and each planned Slot; the fixer briefs reuse its shared helpers.",
+          "Add one sentence to the pr_review.py module docstring, for example after line 104: 'Reviewer briefs and the helpers fixer briefs share are composed in harness_lib.review_briefs.'",
+          "Add one sentence to the 'Project and paths' paragraph (pr_review.py:98-104): \"Reviewer brief composition and the brief helpers the fixer briefs share live in ``harness_lib.review_briefs``.\""
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Leftover blank lines where hpy_command was removed",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "269-272",
+        "reviewer": "runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Removing hpy_command left four consecutive blank lines between hook_script and run_guards (pr_review.py:269-272). That is two more than the two-blank-line separator used everywhere else in the module. It is leftover from the move.\n\nAlso (overall): Removing hpy_command left four consecutive blank lines between hook_script and run_guards (pr_review.py:269-272), two more than the module uses between top-level definitions.\n\nAlso (system_shape): Removing hpy_command left four consecutive blank lines between hook_script and run_guards (pr_review.py:269-272). The project's ruff selection (E4, E7, E9, F, E501) does not include E303, so CI will not catch it.",
+        "fix": [
+          "Delete two of the four blank lines at pr_review.py:269-272.",
+          "Delete two of the blank lines at pr_review.py:270-271.",
+          "Delete two of the four blank lines at pr_review.py:269-272 so two remain between the functions."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "ls-tree output is matched unquoted, so non-ASCII skill paths are missed",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_plan.py"
+        ],
+        "lines": "383-384",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "skill_folders_at_head runs `git ls-tree -r --name-only` without -z (pr_review.py:383) and compares each output line exactly with `<folder>SKILL.md` (review_plan.py:235-238). With the default core.quotePath, git wraps paths that hold non-ASCII or special characters in quotes and escapes them. A skill folder with such a name therefore never matches, and its per-skill-package lens does not fire.",
+        "fix": [
+          "Pass -z to ls-tree and split the output on \"\\0\" instead of calling splitlines(): `git_out(repo, \"ls-tree\", \"-r\", \"-z\", \"--name-only\", head, \"--\", *files).split(\"\\0\")`."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Brief lists skill names only, though discovery now spans every skills/ root",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_briefs.py"
+        ],
+        "lines": "403-408",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "lens_paths now finds skills under any skills/<name>/ folder (for example plugins/harness/skills and plugins/arc-straps/skills), then dedupes the triggered list by bare name (pr_review.py:408). The brief prints only those names (review_briefs.py:220-221). When two roots hold a skill with the same name, both folders trigger the lens, since a same-name folder counts as a mention, but the brief shows one name. Nothing tells the reviewer which folder `<name>` refers to.",
+        "fix": [
+          "Carry the triggered folders, not only the names, into BriefContext.skills (or a parallel field), and print each as `name (folder)` on the 'Triggered skills' line.",
+          "Alternatively, keep one entry per folder when names collide, for example by dropping the dict.fromkeys name dedupe and printing the folder path."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Scope.buckets annotation still says str keys",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "lines": "500",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Scope.buckets is annotated Dict[str, Tuple[str, ...]] (pr_review.py:500), but plan_scope now fills it from merge_registry_into_tests, which returns Dict[PathBucket, Tuple[str, ...]]. Dict is invariant, so the annotation no longer matches what is stored, and a type checker reports the assignment.\n\nAlso (overall): Scope.buckets (pr_review.py:500) is annotated Dict[str, Tuple[str, ...]], but it now holds the PathBucket-keyed mapping from rp.merge_registry_into_tests. Scope.lenses holds Lens members from lens_paths. This works at runtime because the members are StrEnum, but the annotation no longer matches the planner's return types.",
+        "fix": [
+          "Annotate Scope.buckets as Dict[rp.PathBucket, Tuple[str, ...]].",
+          "Annotate Scope.buckets as Dict[rp.PathBucket, Tuple[str, ...]] and lens_paths' return and Scope.lenses as Dict[rp.SlotLens, Tuple[str, ...]] (or Dict[Union[rp.Lens, str], ...])."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Small-PR cut still claims \"coverage is kept\" now that roast skips the linear pass",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/schemas/catalogs/CrossCuttingLensCatalog.json"
+        ],
+        "lines": "223,258-259",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:223 says unbucketed paths are \"reviewed by OVERALL only\", and :258-259 says that when roast replaces OVERALL on a small PR \"coverage is kept\". With the catalog row's `skip_lenses: [\"roast\"]` (CrossCuttingLensCatalog.json:13), unbucketed paths get no linear docstring-vs-code pass at all in a small-PR roast run, since no bucket slot covers them. The reason given at :237-238 (\"every bucketed path already gets the pass\") deliberately leaves them out, but the cut paragraph still promises full coverage.",
+        "fix": [
+          "Append to the small-PR roast bullet: \"except the linear docstring pass, which unbucketed paths do not get in a roast run (bucketed paths get it from their bucket slot)\".",
+          "Change :223 to \"reviewed by OVERALL (or roast) only, without the linear pass when roast replaces OVERALL\"."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "\"project default sub-lenses carry no skip\" is a default, not a rule",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/lib/harness_lib/review_plan.py",
+          "plugins/harness/schemas/catalogs/CrossCuttingLensCatalog.json",
+          "tests/lib/test_review_roast_sub_lens.py"
+        ],
+        "lines": "231-239,258-259",
+        "reviewer": "docs, skill_package, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:239 says a project's own default sub-lenses \"carry no skip and reach every slot\". `_merge_catalog` (review_plan.py:313-314) copies project `default_sub_lenses` rows as they are, and `sub_lenses_for` (review_plan.py:344-351) applies `skip_lenses` to every row, project rows included. No lens-file check rejects the key. So a project row that sets `skip_lenses` is skipped in the slots it names. The sentence reads as a guarantee the code does not give.\n\nAlso (skill_package): SKILL.md 231-239 labels the linear docstring-vs-code pass mandatory with no skip path, then justifies the roast skip with 'every bucketed path already gets the pass from its bucket slot'. Unbucketed paths (SKILL.md 223: 'reviewed by OVERALL only', e.g. plugin.json manifests, .yaml, .toml) have no bucket slot. Under the small-PR cut (SKILL.md 258-259, review_plan.py 520-523) a roast roll replaces OVERALL with a ScopeLens.ROAST slot, and sub_lenses_for (review_plan.py 344-351) filters the linear row out of it, so on a sub-20-file PR with a roast roll no slot runs the pass over unbucketed paths. The SKILL.md claim 'coverage is kept' for that cut no longer holds for this sub-lens, and tests/lib/test_review_roast_sub_lens.py covers only runtime and tests paths.\n\nAlso (skill_package): SKILL.md 239 states 'a project's own default sub-lenses carry no skip and reach every slot'. _merge_catalog (review_plan.py 313-314) appends project default_sub_lenses unvalidated and sub_lenses_for / _skipped_lenses (review_plan.py 344-356) honor a skip_lenses key on any row, project rows included; the test module docstring (tests/lib/test_review_roast_sub_lens.py 6-7) says as much ('unless their rows say otherwise'). The catalog's policy.project_lenses text does not mention skip_lenses for project rows either, so a project author has no documented way to learn the key exists.\n\nAlso (overall): SKILL.md:239 says \"a project's own default sub-lenses carry no skip and reach every slot\". _merge_catalog appends project default_sub_lenses rows verbatim, and sub_lenses_for / _skipped_lenses (review_plan.py:344-356) honor skip_lenses on any row, so a project row that sets skip_lenses does not reach every slot. tests/lib/test_review_roast_sub_lens.py:6-7 describes the actual behavior: rows reach roast \"unless their rows say otherwise\". The plan wording (TASK-3 step 3) has the same overstatement.\n\nAlso (system_shape): pr-review SKILL.md:238 states 'a project's own default sub-lenses carry no skip and reach every slot', and PIP TASK-3 step 3 (0007 PIP:146) says 'project rows carry none'. The code disagrees: _merge_catalog (review_plan.py:313-314) appends project default_sub_lenses rows unchanged, and sub_lenses_for/_skipped_lenses (review_plan.py:344-356) read skip_lenses from every row, so a project row naming skip_lenses is filtered exactly like the plugin row. The new test module's own docstring (tests/lib/test_review_roast_sub_lens.py:6-7, 'unless their rows say otherwise') states the code's behavior, not the skill's. The catalog's policy.project_lenses (CrossCuttingLensCatalog.json:52), the only place the lens-file shape is documented, does not mention skip_lenses at all, so a project author cannot learn the key exists.\n\nAlso (roast): pr-review SKILL.md:238-239 says \"a project's own default sub-lenses carry no skip and reach every slot\". `sub_lenses_for` / `_skipped_lenses` (review_plan.py:344-356) apply `skip_lenses` to every row, project rows included, and `_merge_catalog` (review_plan.py:313-314) passes project rows through verbatim, so a project row with `skip_lenses` is skipped too. Plan D6 says the same as the code (\"unless their rows say otherwise\"). The catalog's `policy.project_lenses` (line 52) does not mention `skip_lenses` for project rows at all.",
+        "fix": [
+          "Reword to: \"a project's own default sub-lenses reach every slot unless their row names lenses in `skip_lenses`\".",
+          "If project rows must never skip, strip or reject `skip_lenses` on project rows in `_merge_catalog`, and add a test.",
+          "Keep the linear pass in the roast slot when it replaces OVERALL (small-PR cut): have sub_lenses_for skip roast only when an OVERALL slot also runs, and add a small-PR case with an unbucketed path to tests/lib/test_review_roast_sub_lens.py.",
+          "Scope the roast slot's linear pass to the unbucketed paths only when it replaces OVERALL, and state that in SKILL.md 237-239 and the catalog row description.",
+          "If the gap is accepted, reword SKILL.md 237-239 and CrossCuttingLensCatalog.json line 9 to say unbucketed paths get no linear pass on a small PR whose roast roll fires, and drop 'with no sampling or skip path' for that case.",
+          "Reword SKILL.md 239 to: 'a project's own default sub-lenses reach every slot unless their row names `skip_lenses`', and add one clause on skip_lenses to policy.project_lenses in CrossCuttingLensCatalog.json.",
+          "Reword SKILL.md:239 to: a project's own default sub-lenses reach every slot unless their row names a skip_lenses entry of its own.",
+          "Strip skip_lenses from project rows in _merge_catalog if project rows must never skip, and test it.",
+          "Reword SKILL.md:237-238 to 'a project's own default sub-lens reaches every slot unless its row names skip_lenses', and add one sentence to policy.project_lenses (CrossCuttingLensCatalog.json:52) that a default_sub_lenses row may carry skip_lenses (lens values or member names).",
+          "If project rows are meant to carry no skip, drop skip_lenses from project rows in _merge_catalog (review_plan.py:313-314) and correct the docstring at tests/lib/test_review_roast_sub_lens.py:6-7.",
+          "Reword SKILL.md:238-239 to: \"a project's own default sub-lenses reach every slot unless their row names `skip_lenses`\", and add one clause to `policy.project_lenses` saying project default_sub_lenses rows may carry `skip_lenses`."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "per-skill-package row narrows the grep roots the driver actually searches",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_plan.py"
+        ],
+        "lines": "246",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:246 says `<name>` must appear under `.claude`, `docs`, `.github` or \"that skill root's top folder\". The driver computes one root set for every skill: plugins/harness/scripts/pr_review.py:405 calls `rp.skill_grep_roots(folders)` over all touched skill folders, and review_plan.py:246-249 adds every folder's top segment. With skills under `.claude/skills/x/` and `plugins/h/skills/y/`, skill `x` is also searched under `plugins/`, so a mention there triggers the lens even though the table says it should not. The effect is an extra slot, never a missed one, but the table no longer describes the trigger exactly.",
+        "fix": [
+          "Reword the row to \"... under `.claude`, `docs`, `.github` or the top folder of any touched skill root, outside the skill's own folder\".",
+          "Search each folder's own roots instead: in `lens_paths` pass `rp.skill_grep_roots((f,))` per folder rather than one shared `roots`, which matches the current table text."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Lens-literal guard ignores the left operand",
+        "file": "tests/lib/test_review_briefs.py",
+        "lines": "23-26,119-125,127-137",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_no_comparison_with_a_lens_literal scans only node.comparators, so a reversed comparison such as `\"roast\" == slot.lens` or `\"docs\" != bucket` in pr_review.py passes the guard the class docstring promises (\"names a bucket or lens in a comparison\"). No such comparison exists at the head; the guard just would not catch one.\n\nAlso (tests): _MOVED lists `_draft_json`, `_role` and `_scope_text`, the driver's old private names; the library now exposes them as `draft_json`, `role` and `scope_text`, and line 125 skips every underscored name, so the test never confirms those three landed in review_briefs as `test_moved_names_live_in_the_library` claims.",
+        "fix": [
+          "Scan `[node.left, *node.comparators]` instead of `node.comparators` in the loop at line 133.",
+          "Keep `_MOVED` for the driver-absence check and add the library names (`draft_json`, `role`, `scope_text`) to the `hasattr(rb, ...)` assertion, e.g. via an old-to-new mapping."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Fixture docstring contradicts a candidate path",
+        "file": "tests/lib/test_review_plan_skill_lens.py",
+        "lines": "22,34",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The autouse fixture says skills_dir `agents/skills/` \"names a folder no path below uses\", but test_candidates_sorted_unique feeds `agents/skills/README.md` (a path inside that folder, deliberately a non-candidate).",
+        "fix": [
+          "Reword the fixture docstring, e.g. \"A project whose skills_dir (`agents/skills/`) holds no candidate skill folder below.\""
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Same assertions repeated across the new test files",
+        "file": "tests/lib/test_review_roast_sub_lens.py",
+        "files": [
+          "tests/lib/test_review_roast_sub_lens.py",
+          "tests/skills/test_pr_review_lens_docs.py",
+          "tests/lib/test_review_plan.py",
+          "tests/lib/test_review_plan_enums.py",
+          "tests/lib/test_review_plan_skill_lens.py",
+          "tests/lib/test_review_briefs.py"
+        ],
+        "lines": "35-50",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "Several checks appear twice: the catalog linear row's `skip_lenses == [\"roast\"]` (test_review_roast_sub_lens.py:48-50 and test_pr_review_lens_docs.py:42-44); skill_mentioned inside-folder, longer-name and excluded-path cases (test_review_plan.py TestSkillMentioned and test_review_plan_skill_lens.py TestMentioned, despite the docstring saying the other cases live in the new file); the small-PR roast slot lens (test_review_plan.py:387-391 and test_review_plan_enums.py:115-121); catalog lens order vs the enum (test_review_plan.py:90-92 and test_review_plan_enums.py:87-90). The identical `_ctx` helper is also copied between test_review_briefs.py and test_review_roast_sub_lens.py.",
+        "fix": [
+          "Keep each assertion in one file (the docs file for catalog wording, the skill-lens file for skill_mentioned cases, the enums file for roast lens and catalog order) and delete the copies; move `_ctx` into a shared `_`-prefixed test helper."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Unused script fixture after the constant move",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "1568-1571",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_review_docs_spell_the_removal_defects now reads `rb.REMOVAL_DEFECTS` and no longer touches `script`, yet still requests the fixture, importing the driver module for nothing.",
+        "fix": [
+          "Drop the `script: ModuleType` parameter from test_review_docs_spell_the_removal_defects."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 223 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"b03d3e8e80328ccd90269c41d541dabec43ad79c\",\"headRefName\":\"1130-roast-efficiency\",\"headRefOid\":\"c94e0bb662fe11a5bf4b99b82dc955ff7f6c2eba\",\"last_sha\":\"c94e0bb662fe11a5bf4b99b82dc955ff7f6c2eba\",\"mergeCommit\":null,\"number\":223,\"state\":\"OPEN\",\"title\":\"1130 roast efficiency\",\"url\":\"https://github.com/t968rs/operator-straps/pull/223\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1130-roast-efficiency",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1130-roast-efficiency",
+        "head_ref_name": "1130-roast-efficiency",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b03d3e8e80328ccd90269c41d541dabec43ad79c",
+        "head_sha": "c94e0bb662fe11a5bf4b99b82dc955ff7f6c2eba",
+        "base_ancestor_command": "git merge-base --is-ancestor b03d3e8e80328ccd90269c41d541dabec43ad79c HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor c94e0bb662fe11a5bf4b99b82dc955ff7f6c2eba HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - pr_review.py module docstring 'Project and paths' paragraph now names harness_lib.review_briefs as the home of reviewer_brief (BriefContext + each planned Slot) and the brief helpers fixer briefs share; no edit in this part: the cited plan step (PIP.md:113, TASK-2 step 4) stays as written since the plan is frozen; the module docstring fix is in plugins/harness/scripts/pr_review.py, owned by the other fixer; ActionPlan.json needs no edit: it records TASK-2 step 4 as the requirement; the docstring sentence naming harness_lib.review_briefs belongs in pr_review.py (other part)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - Removed the two extra blank lines between hook_script and run_guards, leaving the module's two-line separator"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - skill_folders_at_head runs git ls-tree with -z and splits on NUL, so quoted non-ASCII skill paths match SKILL.md exactly; no edit in this part: the unquoted ls-tree match is at plugins/harness/scripts/pr_review.py:383-384 (the other fixer adds -z and the NUL split); review_plan.skill_folders (review_plan.py:235-238) matches the names it is given and needs no change"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - New triggered_skill_folders(scope) passes the triggered skills/<name>/ folders (one per folder, no name dedupe) into BriefContext.skills; lens_section prints each as 'name (folder)'; plan.json skills and lens_paths names unchanged"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - Scope.buckets annotated Dict[rp.PathBucket, Tuple[str, ...]] to match merge_registry_into_tests"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - Reword route (SKILL.md row, owned by the SKILL.md part): pr_review.py keeps the shared skill_grep_roots(folders) call the reworded row describes, so no edit; no edit in this part: review_plan.skill_grep_roots (review_plan.py:246-249) already builds the shared root set; the row reword belongs to plugins/harness/skills/pr-review/SKILL.md:246 and the per-folder search, if chosen, to plugins/harness/scripts/pr_review.py:405, both owned by the other fixer; SKILL.md per-skill-package trigger row now says the top folder of any touched skill root, matching the shared root set the driver computes."
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - CrossCuttingLensCatalog.json policy.project_lenses now also names the bucket, lens and scope members' values and names (cfg, unbucketed, config-or-registry included), matching _RESERVED_NAMES in review_plan.py:113 and _check_project_lens at review_plan.py:318-325"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - policy.small_pr now says the linear docstring pass is not given to unbucketed paths in a roast run (bucketed paths get it from their bucket slot), so the coverage claim no longer overstates; SKILL.md small-PR roast bullet now states the exception: unbucketed paths get no linear docstring pass in a roast run, bucketed paths get it from their bucket slot."
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - lens-literal guard scans node.left plus comparators; moved-names check maps _draft_json/_role/_scope_text to the library's draft_json/role/scope_text via _RENAMED and asserts every moved name exists in review_briefs"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - fixture docstring now says skills_dir (agents/skills/) holds no candidate skill folder below"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - _ctx moved to shared helper tests/lib/_review_ctx.py (brief_ctx); skip_lenses check kept in roast_sub_lens (plan-named node) and dropped from the docs test, which keeps the wording check; skill_mentioned inside-folder/longer-name/excluded cases dropped from test_review_plan; small-PR roast test dropped from test_review_plan with its system_shape check moved to the enums test; catalog set/order copies dropped from test_review_plan, which now compares the loaded catalog to the plugin file"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - dropped the unused script fixture parameter from test_review_docs_spell_the_removal_defects"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - Research note: the linear-pass answer and the catalog/briefs sentence in Conclusion now read in the past tense marked 'before plan 0007'; Outcome adds that Recommendation 1's trade-off stands (runs without a roast keep OVERALL as the long pole)."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - TODO-019 summary and proposed_change rewritten to the remaining scope: points at the research note and plan 0007, drops the stale line references and the branch sentence, and narrows the work to Recommendation 3's OVERALL-slot experiments (status stays OPEN since those remain); research note: cited only, it already holds the remaining experiments in Recommendation 3."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - SKILL.md default sub-lens paragraph now says project default sub-lenses reach every slot unless their row names skip_lenses (validated entries); catalog policy.project_lenses documents skip_lenses for project rows; _merge_catalog validates project rows' skip_lenses via new _check_skip_lenses; tests cover an honored project skip and rejected unknown entries"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - Gap accepted and stated: catalog row summary/trigger qualify pr-review (skip roast) vs pr-team (every reviewer) and say unbucketed paths get no linear pass on a roast-rolled small PR; SKILL.md default sub-lens paragraph says the same (policy.small_pr and SKILL.md small-PR bullet already did); research Outcome names the cut as wider than arm C; _merge_catalog now raises ValueError on a project skip_lenses entry that resolves to no member or catalog lens (tested); pr-team-orchestrator.md: no edit, the catalog row now states pr-team runs the pass in every reviewer, matching its line 228"
+    },
+    {
+      "id": "M3",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-05",
+      "evidence": "c94e0bb (working-tree snapshot; developer commits) - closed, no action: Not a defect: plan 0007 anchors are checked at its own base e2b7dd7, where plugin.json held 0.56.0; the 0.56.1 bump reached main after the plan froze, and plan check passes at base."
+    }
+  ]
+}
