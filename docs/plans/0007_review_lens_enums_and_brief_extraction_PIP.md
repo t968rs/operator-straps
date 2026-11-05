@@ -79,10 +79,10 @@
 - [x] Test `tests/lib/test_review_plan_enums.py::TestSlotLens::test_sort_buckets_keys_are_members` fails with ImportError, then passes
 - [x] Record the commit: `plan.py record 0007 TASK-1 --sha <sha>`
 
-**Evidence:** commit e2b0836: 14 test node(s) passed
+**Evidence:** commit 4f340cc: 14 test node(s) passed
 
-- `e2b0836f4178dbd44e6ea7cdf1ae7bcf971ca7bf`
-- `tree 32af564156135c3f720f6ed7053b378f8714fb25`
+- `4f340cc1e8155f35d79f18391be9db79364dded2`
+- `tree b55fb70e21d22b6c8516a55055fc7cb246dea7f3`
 - `python -m pytest -q tests/lib/test_review_plan_enums.py::TestLookup::test_value_or_name_in_any_case tests/lib/test_review_plan_enums.py::TestLookup::test_unknown_value_raises tests/lib/test_review_plan_enums.py::TestLookup::test_members_are_their_strings tests/lib/test_review_plan_enums.py::TestSlotIds::test_bucket_slot_ids_in_precedence_order tests/lib/test_review_plan_enums.py::TestSlotIds::test_lens_and_scope_slot_ids tests/lib/test_review_plan_enums.py::TestSlotIds::test_catalog_lenses_are_the_enum tests/lib/test_review_plan_enums.py::TestSlotIds::test_project_lens_named_like_a_member_is_rejected tests/lib/test_review_plan_enums.py::TestConstantsRemoved::test_name_is_gone tests/lib/test_review_plan_enums.py::TestSlotLens::test_small_pr_roast_slot_is_roast tests/lib/test_review_plan_enums.py::TestSlotLens::test_large_pr_roast_slot_is_roast tests/lib/test_review_plan_enums.py::TestSlotLens::test_bucket_lens_and_project_slots tests/lib/test_review_plan_enums.py::TestSlotLens::test_string_lens_resolves_to_its_member tests/lib/test_review_plan_enums.py::TestSlotLens::test_record_keeps_the_roast_key tests/lib/test_review_plan_enums.py::TestSlotLens::test_sort_buckets_keys_are_members`
 
 ### TASK-2: Reviewer brief composition moves to review_briefs; planning predicates to review_plan
@@ -125,10 +125,10 @@
 - [x] Test `tests/lib/test_review_briefs.py::TestDriverSplit::test_no_comparison_with_a_lens_literal` fails with ImportError, then passes
 - [x] Record the commit: `plan.py record 0007 TASK-2 --sha <sha>`
 
-**Evidence:** commit 09c6f5e: 9 test node(s) passed
+**Evidence:** commit 4f340cc: 9 test node(s) passed
 
-- `09c6f5e86dc9d908ce94d5ad6e935b980ebcd4df`
-- `tree 8f0079f8209610521aba6e8dce8687ca99cef09a`
+- `4f340cc1e8155f35d79f18391be9db79364dded2`
+- `tree b55fb70e21d22b6c8516a55055fc7cb246dea7f3`
 - `python -m pytest -q tests/lib/test_review_briefs.py::TestRole::test_role_line tests/lib/test_review_briefs.py::TestPlannedKind::test_bucket_and_overall_scope tests/lib/test_review_briefs.py::TestPlannedKind::test_skill_list_only_for_the_skill_package_lens tests/lib/test_review_briefs.py::TestBrief::test_sections_in_order tests/lib/test_review_briefs.py::TestBrief::test_scope_sentences tests/lib/test_review_briefs.py::TestBrief::test_roast_voice_only_for_roast tests/lib/test_review_briefs.py::TestBrief::test_test_design_clause_follows_test_paths tests/lib/test_review_briefs.py::TestDriverSplit::test_moved_names_live_in_the_library tests/lib/test_review_briefs.py::TestDriverSplit::test_no_comparison_with_a_lens_literal`
 
 ### TASK-3: The roast slot drops the plugin's linear docstring pass
@@ -152,10 +152,10 @@
 - [x] Test `tests/lib/test_review_roast_sub_lens.py::test_roast_brief_drops_only_the_linear_pass` fails with ImportError, then passes
 - [x] Record the commit: `plan.py record 0007 TASK-3 --sha <sha>`
 
-**Evidence:** commit e9b5d24: 3 test node(s) passed
+**Evidence:** commit 4f340cc: 3 test node(s) passed
 
-- `e9b5d244b0fff625f240766cc3d40f4a829cc9c2`
-- `tree 36d4be665534f2d1109fbe00cab3832204ba1db3`
+- `4f340cc1e8155f35d79f18391be9db79364dded2`
+- `tree b55fb70e21d22b6c8516a55055fc7cb246dea7f3`
 - `python -m pytest -q tests/lib/test_review_roast_sub_lens.py::test_catalog_row_skips_roast tests/lib/test_review_roast_sub_lens.py::test_planner_filters_sub_lenses tests/lib/test_review_roast_sub_lens.py::test_roast_brief_drops_only_the_linear_pass`
 
 ### TASK-4: per-skill-package triggers on any skills/<name>/ folder holding SKILL.md
@@ -194,10 +194,10 @@
 - [x] Test `tests/scripts/test_pr_review_skill_lens.py::test_any_skills_folder_with_skill_md_triggers` fails with AssertionError, then passes
 - [x] Record the commit: `plan.py record 0007 TASK-4 --sha <sha>`
 
-**Evidence:** commit 9ed9224: 11 test node(s) passed
+**Evidence:** commit 4f340cc: 11 test node(s) passed
 
-- `9ed922468b19c152c59f7a6520757fc887c6d359`
-- `tree c156a52cc44a0c10d200b6325ebf3fc09be20141`
+- `4f340cc1e8155f35d79f18391be9db79364dded2`
+- `tree b55fb70e21d22b6c8516a55055fc7cb246dea7f3`
 - `python -m pytest -q tests/lib/test_review_plan_skill_lens.py::TestCandidates::test_candidates_sorted_unique tests/lib/test_review_plan_skill_lens.py::TestCandidates::test_skill_files_name_each_candidate_skill_md tests/lib/test_review_plan_skill_lens.py::TestCandidates::test_only_folders_holding_skill_md_count tests/lib/test_review_plan_skill_lens.py::TestCandidates::test_skill_name_is_the_folder_name tests/lib/test_review_plan_skill_lens.py::TestGrepRoots::test_roots tests/lib/test_review_plan_skill_lens.py::TestMentioned::test_hit_outside_folder_fires tests/lib/test_review_plan_skill_lens.py::TestMentioned::test_hit_in_another_root_counts tests/lib/test_review_plan_skill_lens.py::TestMentioned::test_hit_inside_own_folder_does_not tests/lib/test_review_plan_skill_lens.py::TestMentioned::test_longer_name_and_excluded_path_do_not tests/lib/test_review_plan_skill_lens.py::TestOldHelpersRemoved::test_name_is_gone tests/scripts/test_pr_review_skill_lens.py::test_any_skills_folder_with_skill_md_triggers`
 
 ### TASK-5: Docs state the roast sub-lens exception and the any-skills/ trigger; version bump
@@ -226,8 +226,8 @@
 - [x] Test `tests/skills/test_pr_review_lens_docs.py::test_skills_dir_no_longer_claims_pr_review_detection` fails with AssertionError, then passes
 - [x] Record the commit: `plan.py record 0007 TASK-5 --sha <sha>`
 
-**Evidence:** commit aa0ab6c: 5 test node(s) passed
+**Evidence:** commit 4f340cc: 5 test node(s) passed
 
-- `aa0ab6c9028790d1896bda7ab01ff3338222478d`
-- `tree e1b1f626858ffa8509c1c66169abb8966ad48494`
+- `4f340cc1e8155f35d79f18391be9db79364dded2`
+- `tree b55fb70e21d22b6c8516a55055fc7cb246dea7f3`
 - `python -m pytest -q tests/skills/test_pr_review_lens_docs.py::test_skill_states_the_roast_exception tests/skills/test_pr_review_lens_docs.py::test_skill_trigger_row_names_any_skills_folder tests/skills/test_pr_review_lens_docs.py::test_catalog_linear_pass_names_its_skip tests/skills/test_pr_review_lens_docs.py::test_catalog_policy_names_the_pr_review_skill_trigger tests/skills/test_pr_review_lens_docs.py::test_skills_dir_no_longer_claims_pr_review_detection`
