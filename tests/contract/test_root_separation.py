@@ -19,9 +19,11 @@ from conftest import GIT_ENV, PLUGIN_ROOT, REPO_ROOT, git
 
 sys.path.insert(0, str(REPO_ROOT / "tests" / "lib"))
 from _todo_helpers import config, todo_files  # noqa: E402
+from arc._arc_toolbox import ATBX, CANONICAL, RC, TOOL, toolbox_members, write_archive  # noqa: E402
 
 WALK_ROOTS = ("plugins/",)
 PLUGINS = REPO_ROOT / "plugins"
+ARC_SCRIPTS = REPO_ROOT / "plugins" / "arc-straps" / "skills" / "arc-meta" / "scripts"
 Snapshot = Dict[str, Tuple[int, int]]
 
 
@@ -45,7 +47,7 @@ def _diff(before: Snapshot, after: Snapshot) -> List[str]:
 def _run(argv: List[str], cwd: Path, payload: object = None) -> subprocess.CompletedProcess:
     env = {**os.environ, **GIT_ENV}
     env.pop("CLAUDE_PROJECT_DIR", None)
-    stdin = None if payload is None else json.dumps(payload)
+    stdin = payload if isinstance(payload, str) else (None if payload is None else json.dumps(payload))
     return subprocess.run([sys.executable, *argv], cwd=cwd, input=stdin, capture_output=True, text=True,
                           env=env, timeout=120)
 
@@ -167,6 +169,16 @@ def _plan_api_args(root: Path, tmp: Path) -> List[str]:
     return [str(script)]
 
 
+def _arc_rc_args(root: Path) -> Tuple[List[str], str]:
+    """apply_rc through the harness launcher on a stale demo toolbox written into ``root``."""
+    stale = toolbox_members(rc={"map": {**RC["map"], "description": "Old."}})
+    write_archive(root / ATBX, stale)
+    (root / "tool_metadata" / "tools").mkdir(parents=True, exist_ok=True)
+    (root / "tool_metadata" / "tools" / f"{TOOL}.xml").write_text(CANONICAL, encoding="utf-8")
+    argv = ["scripts/skill_api.py", "--repo", str(root), "--file", str(ARC_SCRIPTS / "arc_meta_rc.py"), TOOL]
+    return argv, "print(apply_rc(name, apply=True).applied)\n"
+
+
 CASES = {
     "plan new": lambda r, t: (["scripts/plan.py", "--repo", str(r), "new", "Root separation", "--no-fetch"],
                               None),
@@ -202,11 +214,12 @@ CASES = {
                                       str(r / "src" / "a.py")], None),
     "docstring-dispatch": lambda r, t: (["skills/writing-docstrings/commands/docstring_dispatch.py", "-p",
                                          str(r / "src" / "a.py"), str(r / "src" / "b.py")], None),
+    "arc-meta apply_rc": lambda r, t: _arc_rc_args(r),
 }
 
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
 MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers",
-                            "docstring-dispatch"})
+                            "docstring-dispatch", "arc-meta apply_rc"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
@@ -254,6 +267,14 @@ def test_docstring_probe_lands_in_the_project(project: Path, tmp_path: Path) -> 
     assert done.returncode == 0, done.stderr
     assert (project / "src" / "_docstring_probe.py").is_file()
     assert (project / ".claude/state/harness/writing-docstrings/probes.txt").is_file()
+
+
+def test_arc_meta_apply_lands_in_the_project(project: Path) -> None:
+    script, payload = _arc_rc_args(project)
+    done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project, payload)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == "True"
+    assert (project / f"{ATBX}.bak").is_file()
 
 
 TODO_OUTPUTS = {

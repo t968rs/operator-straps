@@ -2182,8 +2182,10 @@ def _cmd_block(repo: Path, args: argparse.Namespace) -> int:
 
 
 def config_data() -> Dict[str, object]:
-    """The activated harness configuration as JSON-ready data (paths become strings)."""
-    return json.loads(json.dumps(asdict(active()), default=str))
+    """The activated harness configuration as JSON-ready data (paths as strings, plugins as objects)."""
+    data = json.loads(json.dumps(asdict(active()), default=str))
+    data["plugins"] = {name: json.loads(text) for name, text in active().plugins}
+    return data
 
 
 def config_value(data: Mapping[str, object], key: str) -> str:
