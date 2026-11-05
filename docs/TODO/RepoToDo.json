@@ -56,30 +56,30 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 51,
+    "items": 49,
     "needs_decision": 29,
     "trackers": 0,
-    "close_candidates": 13,
+    "close_candidates": 14,
     "by_status": {
       "NEEDS_DECISION": 29,
-      "OPEN": 22
+      "OPEN": 20
     },
     "by_impact": {
       "dev_velocity": 22,
       "docs_tooling": 22,
       "maintainability": 2,
-      "runtime_failure": 4,
-      "data_correctness": 1
+      "runtime_failure": 3,
+      "data_correctness": 0
     },
     "by_loe": {
-      "XS": 5,
-      "S": 15,
+      "XS": 4,
+      "S": 14,
       "M": 22,
       "L": 8,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 51,
+      "gh_issue": 49,
       "impl_stub": 0,
       "research_folder": 0
     },
@@ -89,125 +89,6 @@
     {
       "id": "TODO-001",
       "rank": 1,
-      "title": "merge-commit-msg: subject separator is an em dash that renders as mojibake (ΓÇö)",
-      "kind": "bug",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#200",
-          "url": "https://github.com/t968rs/operator-straps/issues/200"
-        }
-      ],
-      "gh_issues": [
-        200
-      ],
-      "related_gh_issues": [
-        221
-      ],
-      "catalog_entry_ids": [],
-      "summary": "The issue shows `Merge PR #1710 ΓÇö 0010 overtopping tests behavioral`: the UTF-8 em dash read as cp437. Checked: plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:197 builds the subject as `Merge PR #{pr} — {title}` with U+2014, :263 `structure_problems` requires exactly that subject, and plugins/harness/skills/merge-commit-msg/SKILL.md:41 documents `Merge PR #N — <title>`; tests/skills/test_merge_commit_msg.py holds the em dash 4 times. Where the mojibake was introduced (PowerShell pipe, console code page or gh) is unverified.",
-      "proposed_change": "Switch the subject separator to ASCII `--` in merge_commit_msg.py:197 and :263, update SKILL.md:41 and the test expectations, and add a build check that rejects any non-ASCII character in the subject.",
-      "files": [
-        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
-        "plugins/harness/skills/merge-commit-msg/SKILL.md",
-        "tests/skills/test_merge_commit_msg.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "The merge-commit-msg subject only; build pins it, so one change point.",
-        "consumers": [
-          "plugins/harness/skills/merge-commit-msg/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "XS",
-        "reasoning": "Two string literals, one doc line and the test expectations."
-      },
-      "impact": "data_correctness",
-      "severity": 3,
-      "priority": {
-        "score": 4.2,
-        "components": {
-          "impact_weight": 1.4,
-          "value": 4.2,
-          "loe_points": 1,
-          "blast_factor": 1.0,
-          "cost": 1.0,
-          "base_score": 4.2,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 3 wrong merge subject on Windows shells, data_correctness impact, XS size."
-    },
-    {
-      "id": "TODO-002",
-      "rank": 2,
-      "title": "post-forcepush Step 6 hard-depends on superpowers-lt:verification-before-completion",
-      "kind": "skill",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#133",
-          "url": "https://github.com/t968rs/operator-straps/issues/133"
-        }
-      ],
-      "gh_issues": [
-        133
-      ],
-      "related_gh_issues": [
-        142
-      ],
-      "catalog_entry_ids": [],
-      "summary": "Checked: plugins/harness/skills/post-forcepush/SKILL.md:186-188 makes Step 6 invoke `superpowers-lt:verification-before-completion` through the Skill tool, :206 makes its VERIFIED result a report field, and :233 calls skipping it non-negotiable, so a project without superpowers-lt cannot finish the skill. Soft references: plugins/harness/skills/strap-debugging/SKILL.md:189 and plugins/harness/skills/parallel2/README.md:87. HARNESS_RULES.md \"Verification\" (:83) carries one sentence of the principle; the 5-step gate, the claim-to-evidence table, the red-green-revert check and the hedge-word stop list are lost on retirement.",
-      "proposed_change": "Port as harness:verification-before-completion (MIT, as strap-debugging was) with the evidence-per-claim table and hedge-word stop list, or inline a checklist into post-forcepush Step 6; repoint post-forcepush :188, :206, :233, strap-debugging :189 and parallel2 README :87, and add LICENSE and a docs/PROVENANCE.md row if ported.",
-      "files": [
-        "plugins/harness/skills/post-forcepush/SKILL.md",
-        "plugins/harness/skills/strap-debugging/SKILL.md",
-        "plugins/harness/skills/parallel2/README.md",
-        "docs/PROVENANCE.md"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "post-forcepush plus two soft references.",
-        "consumers": [
-          "plugins/harness/skills/post-forcepush/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "A short skill port or an inline checklist, plus five reference edits."
-      },
-      "impact": "runtime_failure",
-      "severity": 3,
-      "priority": {
-        "score": 2.7577,
-        "components": {
-          "impact_weight": 1.3,
-          "value": 3.9,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 2.7577,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 3 block of post-forcepush in any project without superpowers-lt, runtime_failure impact, S size."
-    },
-    {
-      "id": "TODO-003",
-      "rank": 3,
       "title": "merge-commit-msg: generated subject rejected by gh pr merge (em dash, version dots lost)",
       "kind": "bug",
       "status": "OPEN",
@@ -265,8 +146,8 @@
       "why_ranked": "Severity 3 merge failure through a Windows shell wrapper, runtime_failure impact, S size."
     },
     {
-      "id": "TODO-004",
-      "rank": 4,
+      "id": "TODO-002",
+      "rank": 2,
       "title": "a-w: attach refuses whenever the target checkout has any tracked change",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -321,8 +202,8 @@
       "why_ranked": "Severity 3 refusal that blocks attaching onto a busy checkout, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-005",
-      "rank": 5,
+      "id": "TODO-003",
+      "rank": 3,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -375,8 +256,8 @@
       "why_ranked": "Severity 2 missing guard, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-006",
-      "rank": 6,
+      "id": "TODO-004",
+      "rank": 4,
       "title": "pr-review: let a trivial judgment fix run cheaper (amend regrades fix_kind, or lower fixer effort)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -432,8 +313,8 @@
       "why_ranked": "Severity 2 fixer cost on small judgment fixes, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-007",
-      "rank": 7,
+      "id": "TODO-005",
+      "rank": 5,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -492,8 +373,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (a repeated five-reviewer fan-out), dev_velocity impact, S size."
     },
     {
-      "id": "TODO-008",
-      "rank": 8,
+      "id": "TODO-006",
+      "rank": 6,
       "title": "todo-watch / session-bookmark: session.compact handler skipped when another mod runs first",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -549,8 +430,8 @@
       "why_ranked": "Severity 2 defect that needs another mod installed, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-009",
-      "rank": 9,
+      "id": "TODO-007",
+      "rank": 7,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "kind": "feature",
       "status": "OPEN",
@@ -610,8 +491,8 @@
       "why_ranked": "Severity 3 failure on a supported but uncommon input (release-sized PRs), runtime_failure impact, L size."
     },
     {
-      "id": "TODO-010",
-      "rank": 10,
+      "id": "TODO-008",
+      "rank": 8,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -670,8 +551,8 @@
       "why_ranked": "Severity 3 recurring stall of a supported workflow that only a user prompt resumes, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-011",
-      "rank": 11,
+      "id": "TODO-009",
+      "rank": 9,
       "title": "Stop hooks: cut launch cost (stdlib constants module, one dispatcher, optional schema skip)",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -732,8 +613,8 @@
       "why_ranked": "Severity 2 debt with a concrete per-turn cost (about 830 ms per Stop), dev_velocity impact, S size."
     },
     {
-      "id": "TODO-012",
-      "rank": 12,
+      "id": "TODO-010",
+      "rank": 10,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -791,8 +672,8 @@
       "why_ranked": "Severity 2 latent nested-worktree defect, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-013",
-      "rank": 13,
+      "id": "TODO-011",
+      "rank": 11,
       "title": "select-tests: generic basenames (README.md, SKILL.md) select unrelated tests",
       "kind": "cicd",
       "status": "NEEDS_DECISION",
@@ -848,8 +729,8 @@
       "why_ranked": "Severity 1 since the main fix landed in 008f051, dev_velocity impact, XS size."
     },
     {
-      "id": "TODO-014",
-      "rank": 14,
+      "id": "TODO-012",
+      "rank": 12,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -905,8 +786,8 @@
       "why_ranked": "Severity 2 missing capability with a concrete cost, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-015",
-      "rank": 15,
+      "id": "TODO-013",
+      "rank": 13,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -965,8 +846,8 @@
       "why_ranked": "Severity 2 missing workflow with a concrete cost, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-016",
-      "rank": 16,
+      "id": "TODO-014",
+      "rank": 14,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1024,8 +905,8 @@
       "why_ranked": "Severity 2 usage cost with no output change, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-017",
-      "rank": 17,
+      "id": "TODO-015",
+      "rank": 15,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "kind": "feature",
       "status": "OPEN",
@@ -1083,8 +964,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost (judgment behaviors past capture cannot be tested), dev_velocity impact, M size."
     },
     {
-      "id": "TODO-018",
-      "rank": 18,
+      "id": "TODO-016",
+      "rank": 16,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1145,8 +1026,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (a recapture and redraft each time the report regenerates), dev_velocity impact, M size."
     },
     {
-      "id": "TODO-019",
-      "rank": 19,
+      "id": "TODO-017",
+      "rank": 17,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "kind": "skill",
       "status": "OPEN",
@@ -1204,8 +1085,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (the roast slot sets each review's wall time), dev_velocity impact, M size."
     },
     {
-      "id": "TODO-020",
-      "rank": 20,
+      "id": "TODO-018",
+      "rank": 18,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1268,8 +1149,8 @@
       "why_ranked": "Severity 2 debt with a concrete token cost per reviewer request, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-021",
-      "rank": 21,
+      "id": "TODO-019",
+      "rank": 19,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "kind": "feature",
       "status": "OPEN",
@@ -1327,8 +1208,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (a full reviewer re-dispatch over unchanged source), dev_velocity impact, M size."
     },
     {
-      "id": "TODO-022",
-      "rank": 22,
+      "id": "TODO-020",
+      "rank": 20,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -1382,8 +1263,8 @@
       "why_ranked": "Severity 2 lost discipline plus a dangling reference, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-023",
-      "rank": 23,
+      "id": "TODO-021",
+      "rank": 21,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -1443,8 +1324,8 @@
       "why_ranked": "Severity 2 dangling REQUIRED step, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-024",
-      "rank": 24,
+      "id": "TODO-022",
+      "rank": 22,
       "title": "writing-docstrings: interpret intent in session, then dispatch a defined subagent",
       "kind": "skill",
       "status": "OPEN",
@@ -1501,8 +1382,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (docstring work held in the main session), docs_tooling impact, S size."
     },
     {
-      "id": "TODO-025",
-      "rank": 25,
+      "id": "TODO-023",
+      "rank": 23,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1576,8 +1457,8 @@
       "why_ranked": "Severity 3 hang of agents without Write on large payloads, runtime_failure impact, XL size."
     },
     {
-      "id": "TODO-026",
-      "rank": 26,
+      "id": "TODO-024",
+      "rank": 24,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1634,8 +1515,8 @@
       "why_ranked": "Severity 2 interop conflict while both plugins are installed, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-027",
-      "rank": 27,
+      "id": "TODO-025",
+      "rank": 25,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -1690,8 +1571,8 @@
       "why_ranked": "Severity 2 lost guarantee once superpowers-lt retires, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-028",
-      "rank": 28,
+      "id": "TODO-026",
+      "rank": 26,
       "title": "strap: add remove_part and a refreeze path; edit specs list absent models/api parts",
       "kind": "feature",
       "status": "OPEN",
@@ -1752,8 +1633,8 @@
       "why_ranked": "Severity 2 spec drift with no output change, maintainability impact, M size."
     },
     {
-      "id": "TODO-029",
-      "rank": 29,
+      "id": "TODO-027",
+      "rank": 27,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1815,8 +1696,8 @@
       "why_ranked": "Severity 2 missing review loop with a concrete cost, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-030",
-      "rank": 30,
+      "id": "TODO-028",
+      "rank": 28,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -1875,8 +1756,8 @@
       "why_ranked": "Severity 2 missing review path with a concrete cost, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-031",
-      "rank": 31,
+      "id": "TODO-029",
+      "rank": 29,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -1936,8 +1817,8 @@
       "why_ranked": "Severity 2 missing guard on plan completeness, dev_velocity impact, L size."
     },
     {
-      "id": "TODO-032",
-      "rank": 32,
+      "id": "TODO-030",
+      "rank": 30,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2003,8 +1884,8 @@
       "why_ranked": "Severity 2 missing capability with a concrete cost (discarded findings and repeated reviews), dev_velocity impact, L size."
     },
     {
-      "id": "TODO-033",
-      "rank": 33,
+      "id": "TODO-031",
+      "rank": 31,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -2065,8 +1946,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, M size."
     },
     {
-      "id": "TODO-034",
-      "rank": 34,
+      "id": "TODO-032",
+      "rank": 32,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2124,8 +2005,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (slow brainstorming sessions and extra truth sources), docs_tooling impact, M size."
     },
     {
-      "id": "TODO-035",
-      "rank": 35,
+      "id": "TODO-033",
+      "rank": 33,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2185,8 +2066,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost (no light replacement for brainstorming), docs_tooling impact, M size."
     },
     {
-      "id": "TODO-036",
-      "rank": 36,
+      "id": "TODO-034",
+      "rank": 34,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2243,8 +2124,8 @@
       "why_ranked": "Severity 2 missing guard on a new agent skill, docs_tooling impact, M size."
     },
     {
-      "id": "TODO-037",
-      "rank": 37,
+      "id": "TODO-035",
+      "rank": 35,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2301,8 +2182,8 @@
       "why_ranked": "Severity 2 missing route with a concrete cost (memos written by hand), docs_tooling impact, M size."
     },
     {
-      "id": "TODO-038",
-      "rank": 38,
+      "id": "TODO-036",
+      "rank": 36,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -2355,8 +2236,8 @@
       "why_ranked": "Severity 1 hygiene, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-039",
-      "rank": 39,
+      "id": "TODO-037",
+      "rank": 37,
       "title": "strap-scenario-runner: a dispatching scenario must still record its run",
       "kind": "skill",
       "status": "OPEN",
@@ -2410,8 +2291,8 @@
       "why_ranked": "Severity 1 since the wording fix likely landed in c857744, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-040",
-      "rank": 40,
+      "id": "TODO-038",
+      "rank": 38,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -2470,8 +2351,8 @@
       "why_ranked": "Severity 1 stale references with a working fallback, docs_tooling impact, XS size."
     },
     {
-      "id": "TODO-041",
-      "rank": 41,
+      "id": "TODO-039",
+      "rank": 39,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2525,8 +2406,8 @@
       "why_ranked": "Severity 1 test gap for working behavior, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-042",
-      "rank": 42,
+      "id": "TODO-040",
+      "rank": 40,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2582,8 +2463,8 @@
       "why_ranked": "Severity 2 gap with a concrete cost once superpowers-lt retires, docs_tooling impact, L size."
     },
     {
-      "id": "TODO-043",
-      "rank": 43,
+      "id": "TODO-041",
+      "rank": 41,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2635,8 +2516,8 @@
       "why_ranked": "Severity 1, nothing depends on the skill, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-044",
-      "rank": 44,
+      "id": "TODO-042",
+      "rank": 42,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2690,8 +2571,8 @@
       "why_ranked": "Severity 1 stale reference and development tooling, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-045",
-      "rank": 45,
+      "id": "TODO-043",
+      "rank": 43,
       "title": "Port writing-docstrings from floodplain_development",
       "kind": "skill",
       "status": "OPEN",
@@ -2748,8 +2629,8 @@
       "why_ranked": "Severity 1 hygiene port of an existing skill, docs_tooling impact, S size."
     },
     {
-      "id": "TODO-046",
-      "rank": 46,
+      "id": "TODO-044",
+      "rank": 44,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -2806,8 +2687,8 @@
       "why_ranked": "Severity 1 hygiene audit, maintainability impact, M size."
     },
     {
-      "id": "TODO-047",
-      "rank": 47,
+      "id": "TODO-045",
+      "rank": 45,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -2861,8 +2742,8 @@
       "why_ranked": "Severity 1 optional capability, docs_tooling impact, M size for the probing."
     },
     {
-      "id": "TODO-048",
-      "rank": 48,
+      "id": "TODO-046",
+      "rank": 46,
       "title": "merge-commit-msg: drop the PR<N>_merge.md working document and its fixtures",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2925,8 +2806,8 @@
       "why_ranked": "Severity 1 skill hygiene change, docs_tooling impact, M size."
     },
     {
-      "id": "TODO-049",
-      "rank": 49,
+      "id": "TODO-047",
+      "rank": 47,
       "title": "Create new plugin: arc-straps for ArcGIS and arcpy-specific mods and skills",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2984,8 +2865,8 @@
       "why_ranked": "Severity 1 new capability, docs_tooling impact, M size."
     },
     {
-      "id": "TODO-050",
-      "rank": 50,
+      "id": "TODO-048",
+      "rank": 48,
       "title": "arc-straps: port arc-meta from floodplain_development",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3040,8 +2921,8 @@
       "why_ranked": "Severity 1 port of working project tooling, docs_tooling impact, L size."
     },
     {
-      "id": "TODO-051",
-      "rank": 51,
+      "id": "TODO-049",
+      "rank": 49,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3219,6 +3100,15 @@
       "current_state": "LIKELY_RESOLVED",
       "evidence": "`gh pr view 183` reports MERGED at 2026-11-02T23:46:00Z (merge a8461ba, on main). Its commit 6d9ce2c (\"Feature(select_tests): select walking tests by WALK_ROOTS\") replaces the any-non-docs rule for tree-walking tests in tools/select_tests.py: the walk pattern is matched against code only (docstrings and comments blanked) and a test runs only when a changed path sits under its module-level WALK_ROOTS; c0ce516 declares WALK_ROOTS in the walking tests and 11f34c6 documents the rule. tests/scripts/test_select_tests.py:468 (test_every_walking_test_declares_existing_walk_roots) fails on a walking test without a valid marker. 008f051 (PR #185) follows up with anchored shared-name selection. tests/conftest.py stays a full trigger by design (tools/select_tests.py:60). No post-merge PR run timing was read, so the runtime drop is unmeasured. `gh issue view 151` reports OPEN.",
       "recommended_action": "Close as completed by PR #183 (commit 6d9ce2c), after a glance at the CI runtime of the next PR run confirms the drop.",
+      "related_todo_ids": []
+    },
+    {
+      "number": 200,
+      "title": "BUG: `merge-commit-msg` Output Contains non-utf characters",
+      "url": "https://github.com/t968rs/operator-straps/issues/200",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "`gh pr view 224` reports MERGED at 2026-11-05T20:46:55Z as merge commit 389a50e (\"Fix(merge-commit-msg): ASCII subject separator, refuse unusable PR titles\"), on main and origin/main (`git branch -a --contains 389a50e`); branch commit 6c4f64b. plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:96-98 now builds the subject through one subject_line() as `Merge PR #N {SUBJECT_SEPARATOR} <title>` with an ASCII `--`, and :105 title_problem() refuses a PR title with a non-ASCII character; SKILL.md, message_format.md and tests/skills/test_merge_commit_msg.py were updated in the same commit. The commit body says \"Closes Issue #200, #221\", which GitHub did not parse as a closing keyword: `gh issue view 200` still reports OPEN.",
+      "recommended_action": "Close as completed by PR #224 (commit 389a50e). #221 (the catalog's merge-commit-msg gh pr merge rejection item) was fixed by the same commit and is also still OPEN.",
       "related_todo_ids": []
     }
   ]
