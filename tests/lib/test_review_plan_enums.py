@@ -115,7 +115,7 @@ class TestSlotLens:
     def test_small_pr_roast_slot_is_roast(self) -> None:
         buckets, reviewable = _three_bucket(2)
         slots = {s.id: s for s in rp.slot_plan(buckets, {}, True, reviewable)}
-        assert "overall" not in slots
+        assert "overall" not in slots and "system_shape" not in slots
         roast = slots["roast"]
         assert roast.lens is ScopeLens.ROAST and roast.roast
         assert roast.paths == reviewable and roast.templates == (_SHAPE,)

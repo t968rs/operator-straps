@@ -282,7 +282,8 @@ def load_lens_catalog(cfg: Optional[HarnessConfig] = None) -> Dict[str, object]:
 
     A project lens named like a catalog lens replaces its ``summary`` / ``scope_template`` only; any other
     project lens is appended (validated by ``_check_project_lens``); project ``default_sub_lenses`` follow
-    the plugin's. A malformed lens file raises ``ValueError``.
+    the plugin's, their ``skip_lenses`` checked by ``_check_skip_lenses``. A malformed lens file raises
+    ``ValueError``.
     """
     from harness_lib.project import plugin_root
     cfg = cfg or _cfg()
@@ -310,9 +311,20 @@ def _merge_catalog(catalog: Dict[str, object], project: Mapping[str, object]) ->
         _check_project_lens(lens)
         lenses.append(copy.deepcopy(dict(lens)))
         by_name[name] = lenses[-1]
-    out["default_sub_lenses"] = [*out["default_sub_lenses"],  # type: ignore[misc]
-                                 *(project.get("default_sub_lenses") or [])]  # type: ignore[misc]
+    rows = project.get("default_sub_lenses") or []
+    for row in rows:  # type: ignore[union-attr]
+        _check_skip_lenses(row, frozenset(by_name))
+    out["default_sub_lenses"] = [*out["default_sub_lenses"], *rows]  # type: ignore[misc]
     return out
+
+
+def _check_skip_lenses(row: Mapping[str, object], lens_names: frozenset) -> None:
+    """Raise ``ValueError`` unless every ``skip_lenses`` entry of a project default sub-lens row resolves
+    to a bucket, lens or scope member or names a lens of the merged catalog (``lens_names``)."""
+    for name in row.get("skip_lenses") or ():  # type: ignore[union-attr]
+        if not isinstance(resolve_lens(str(name)), _ENUMS) and str(name) not in lens_names:
+            raise ValueError(f"default sub-lens {row.get('name')!r}: skip_lenses entry {name!r} names no "
+                             "bucket, lens or scope member nor a catalog lens")
 
 
 def _check_project_lens(lens: Mapping[str, object]) -> None:

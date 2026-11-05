@@ -75,11 +75,8 @@ def _files(prefix: str, count: int) -> Tuple[str, ...]:
 
 
 class TestCatalog:
-    """The plugin catalog carries exactly the code-triggered lenses and no project-specific paths."""
-
-    def test_lens_names_match_catalog(self) -> None:
-        catalog = json.loads((plugin_root() / "schemas" / "catalogs" / rp.CATALOG_NAME).read_text("utf-8"))
-        assert {lens.value for lens in rp.Lens} == {lens["name"] for lens in catalog["lenses"]}
+    """The plugin catalog carries no project-specific paths and loads unchanged without project lenses (its
+    lens order against the enum lives in ``test_review_plan_enums.py``)."""
 
     def test_catalog_names_no_project_paths(self) -> None:
         text = (plugin_root() / "schemas" / "catalogs" / rp.CATALOG_NAME).read_text("utf-8")
@@ -89,7 +86,8 @@ class TestCatalog:
 
     def test_without_project_lenses_is_the_plugin_catalog(self, project: Path) -> None:
         catalog = rp.load_lens_catalog()
-        assert [lens["name"] for lens in catalog["lenses"]] == [lens.value for lens in rp.Lens]
+        plugin = json.loads((plugin_root() / "schemas" / "catalogs" / rp.CATALOG_NAME).read_text("utf-8"))
+        assert catalog["lenses"] == plugin["lenses"]
         assert rp.extra_lens_names(catalog) == ()
 
 
@@ -255,24 +253,14 @@ class TestMergeRegistryIntoTests:
 
 
 class TestSkillMentioned:
-    """Whole-name hits outside the skill folder fire; excluded paths never count (the folder API's other
-    cases live in ``test_review_plan_skill_lens.py``)."""
+    """Grep-line parsing: colons in the matched text are kept and a malformed line is ignored (the
+    inside-folder, longer-name and excluded-path cases live in ``test_review_plan_skill_lens.py``)."""
 
     _REVIEW = "agents/skills/pr-review/"
     _SUM = "agents/skills/pr-sum/"
 
     def test_hit_outside_folder_fires(self) -> None:
         assert rp.skill_mentioned(self._REVIEW, ["docs/a.md:3:run pr-review now"], _PATTERNS)
-
-    def test_hit_only_inside_folder_does_not(self) -> None:
-        lines = ["agents/skills/pr-review/SKILL.md:1:name: pr-review"]
-        assert not rp.skill_mentioned(self._REVIEW, lines, _PATTERNS)
-
-    def test_longer_hyphenated_name_does_not(self) -> None:
-        assert not rp.skill_mentioned(self._REVIEW, ["docs/a.md:3:see pr-review-watch"], _PATTERNS)
-
-    def test_excluded_path_does_not(self) -> None:
-        assert not rp.skill_mentioned(self._REVIEW, ["docs/PR_REVIEWS/1558_x.json:9:pr-review"], _PATTERNS)
 
     def test_text_colons_are_kept(self) -> None:
         assert rp.skill_mentioned(self._SUM, ["CLAUDE.md:4:Skill: pr-sum: summaries"], _PATTERNS)
@@ -381,14 +369,6 @@ class TestSlotPlan:
         assert "system_shape" not in slots and "roast" not in slots
         assert "overall-system-shape" in slots["overall"].templates
         assert slots["overall"].paths == reviewable
-
-    def test_small_pr_roast_replaces_overall(self) -> None:
-        buckets, reviewable = self._small_three_bucket()
-        slots = self._by_id(rp.slot_plan(buckets, {}, True, reviewable))
-        assert "overall" not in slots and "system_shape" not in slots
-        roast = slots["roast"]
-        assert roast.roast and roast.lens == "roast" and roast.paths == reviewable
-        assert roast.templates == ("overall-system-shape",)
 
     def test_large_pr_roast_is_additive(self) -> None:
         buckets = _buckets(runtime=_files("src/", 10), tests=_files("tests/test_", 10), docs=("docs/a.md",))

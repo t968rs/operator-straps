@@ -19,7 +19,7 @@ _PATTERNS = ("docs/PR_REVIEWS/*_*.json",)
 
 @pytest.fixture(autouse=True)
 def project(make_project) -> Path:
-    """A project whose ``skills_dir`` names a folder no path below uses."""
+    """A project whose ``skills_dir`` (``agents/skills/``) holds no candidate skill folder below."""
     root = make_project(config={"exclusions": None, "skills_dir": "agents/skills/"})
     activate(load_config(root))
     return root

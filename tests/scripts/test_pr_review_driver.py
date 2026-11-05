@@ -1565,8 +1565,7 @@ class TestPathsAndScope:
         "agents/pr-fixer.md", "agents/pr-team-fixer.md", "agents/pr-reviewer.md",
         "agents/pr-team-orchestrator.md", "skills/pr-review/SKILL.md", "skills/pr-review/operating_rules.md",
     ])
-    def test_review_docs_spell_the_removal_defects(self, script: ModuleType, plugin_root: Path,
-                                                   doc: str) -> None:
+    def test_review_docs_spell_the_removal_defects(self, plugin_root: Path, doc: str) -> None:
         text = (plugin_root / doc).read_text(encoding="utf-8")
         assert _normalized(rb.REMOVAL_DEFECTS) in _normalized(text)
 

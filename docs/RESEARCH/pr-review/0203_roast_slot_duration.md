@@ -40,8 +40,8 @@ tests 1.14, docs 0.92, runtime 0.82. The OVERALL-scope slot is also the most pro
 ## Answers to the issue's questions
 
 - **Scope or voice?** Scope. Roast and overall match per file (18.6 s against 20.5 s) and per tool use.
-- **Linear docstring pass over every file?** Yes, by design: every slot runs the pass over its in-scope
-  files, and OVERALL's scope is every reviewable file. The extra tool uses (19 against 7 to 13 in PR 202)
+- **Linear docstring pass over every file?** Yes, by design (before plan 0007): every slot ran the pass
+  over its in-scope files, and OVERALL's scope is every reviewable file. The extra tool uses (19 against 7 to 13 in PR 202)
   are that scope, not re-reading by the roast voice. No log shows per-file re-read counts, so re-reads of
   files the bucket slots cover are untested.
 - **Is the `opus` floor needed on a small PR?** Not answerable from this data. No run has a `sonnet`
@@ -128,9 +128,9 @@ come from roast runs; the roast voice may label severity higher, not find more.
 - **Drop the linear pass from OVERALL-scope slots (overall and roast).** It saves about a quarter to a
   third of the slot's time with no loss of substance measurable against opus run-to-run noise. Every bucketed file
   still gets the pass from its bucket slot; the unbucketed paths in this set are manifests with no
-  docstrings. The catalog already scopes the pass to bucket reviewers
-  (`CrossCuttingLensCatalog.json`, `default_sub_lenses[0].summary`); the reviewer briefs and
-  `pr-review/SKILL.md` apply it to every slot.
+  docstrings. Before plan 0007 the catalog summary scoped the pass to bucket reviewers
+  (`CrossCuttingLensCatalog.json`, `default_sub_lenses[0].summary`) while the reviewer briefs and
+  `pr-review/SKILL.md` applied it to every slot.
 - **Keep the `opus` floor.** Sonnet halves the time but misses Important findings on two of five PRs.
 - **Limits.** n = 5, one run per arm, small PRs only. PRs at or above 20 files run OVERALL and roast
   as separate slots and were not tested.
@@ -140,3 +140,8 @@ come from roast runs; the roast voice may label severity higher, not find more.
 The developer adopted the cut for the roast slot only; OVERALL keeps the pass. Plan 0007
 (`docs/plans/0007_review_lens_enums_and_brief_extraction_ActionPlan.json`) carries it as a catalog
 `skip_lenses` entry on the linear pass, with the lens enums and the reviewer-brief extraction.
+The adopted cut is wider than arm C: the roast slot drops the pass outright instead of limiting it to
+unbucketed paths, so on a small PR whose roast roll fires (roast replaces OVERALL) unbucketed paths get
+no linear pass. In this set those paths were docstring-free manifests; elsewhere they may hold code
+whose suffix no bucket claims (`.go`, `.rs`, `.yaml`).
+Recommendation 1's trade-off stands: runs without a roast keep the OVERALL slot as the long pole.

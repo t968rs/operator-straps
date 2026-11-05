@@ -101,7 +101,9 @@ Project and paths: ``--repo`` names the project (default: the git top level of t
 ``tests.fixer_test_seconds`` and ``tests.defer_flags``), the structural guards from ``review.*``,
 brief pointers from ``review.domain_pointers`` and the lens catalog is the plugin's merged with
 ``review.lenses``. Plugin assets (the Phase 4 script, the schema hook, the catalog, the library) resolve from
-the plugin root; nothing is written under it.
+the plugin root; nothing is written under it. Reviewer brief composition (``reviewer_brief`` over a
+``BriefContext`` and each planned ``Slot``) and the brief helpers the fixer briefs share live in
+``harness_lib.review_briefs``.
 
 ``--pr`` takes a PR number ``N`` or a local key ``local-<label>`` (a ``capture --range`` run).
 
@@ -268,8 +270,6 @@ def hook_script() -> Path:
     return plugin_root() / "hooks" / "validate_pr_json_schema.py"
 
 
-
-
 def run_guards(repo: Path, suite: Sequence[str]) -> Tuple[int, str]:
     """Run the structural guard suite with this interpreter in ``repo``; return the exit code and output."""
     cmd = [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *suite]
@@ -380,8 +380,8 @@ def skill_folders_at_head(repo: Path, head: str, reviewable: Sequence[str]) -> T
     candidates = rp.skill_candidates(reviewable)
     if not candidates:
         return ()
-    present = git_out(repo, "ls-tree", "-r", "--name-only", head, "--", *rp.skill_files(candidates))
-    return rp.skill_folders(candidates, present.splitlines())
+    present = git_out(repo, "ls-tree", "-r", "-z", "--name-only", head, "--", *rp.skill_files(candidates))
+    return rp.skill_folders(candidates, present.split("\0"))
 
 
 def grep_lines(repo: Path, head: str, name: str, roots: Sequence[str]) -> List[str]:
@@ -497,7 +497,7 @@ class Scope:
 
     reviewable: Tuple[str, ...]
     excluded: Tuple[str, ...]
-    buckets: Dict[str, Tuple[str, ...]]
+    buckets: Dict[rp.PathBucket, Tuple[str, ...]]
     notes: Tuple[str, ...]
     lenses: Dict[str, Tuple[str, ...]]
     skills: Tuple[str, ...]
@@ -515,6 +515,12 @@ def plan_scope(repo: Path, facts: PrFacts, roast: bool, catalog: Mapping[str, ob
     decision = rp.guard_decision([f.path for f in facts.files], pinned_tests(repo, facts))
     slots = rp.slot_plan(buckets, lenses, roast, reviewable, extra_lenses=rp.extra_lens_names(catalog))
     return Scope(reviewable, excluded, buckets, notes, lenses, skills, decision, slots)
+
+
+def triggered_skill_folders(scope: Scope) -> Tuple[str, ...]:
+    """The triggered ``skills/<name>/`` folders, one per folder even when two roots share a name: those the
+    per-skill-package lens paths sit under."""
+    return rp.skill_candidates(scope.lenses.get(rp.Lens.SKILL_PACKAGE, ()))
 
 
 def review_meta(facts: PrFacts) -> Dict[str, object]:
@@ -664,7 +670,7 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
     plan["plan_pointer"] = pointer
     _write_text(run / "phase1_meta.txt", raw)
     ctx = BriefContext(repo.as_posix(), _LIB.as_posix(), key, run_id, facts, at_head, catalog,
-                       scope.skills, pointer)
+                       triggered_skill_folders(scope), pointer)
     write_briefs(repo, run, ctx, scope.slots)
     _write_json(run / "plan.json", plan)
     rows = [dispatch_row(REVIEWER_AGENT, s.model, s.id, "reviewer", run_id, key,

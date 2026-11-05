@@ -8,22 +8,27 @@ composition of its own and compares no slot lens against a hard-coded bucket or 
 from __future__ import annotations
 
 import ast
+import sys
 from pathlib import Path
 from typing import Set
 
 import pytest
 
-from harness_lib import review_briefs as rb
-from harness_lib import review_plan as rp
-from harness_lib.config import activate, load_config
-from harness_lib.pr_summary import PrFacts, PrFile
-from harness_lib.review_plan import Lens, PathBucket, ScopeLens
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _review_ctx import brief_ctx as _ctx  # noqa: E402
+from harness_lib import review_briefs as rb  # noqa: E402
+from harness_lib import review_plan as rp  # noqa: E402
+from harness_lib.config import activate, load_config  # noqa: E402
+from harness_lib.review_plan import Lens, PathBucket, ScopeLens  # noqa: E402
 
 _DRIVER = Path("scripts") / "pr_review.py"
 _MOVED = ("BriefContext", "header_lines", "record_heredoc", "_draft_json", "target_label", "key_literal",
           "brief_header", "scope_section", "lens_section", "rules_section", "record_section",
           "reviewer_brief", "TOO_LONG_RULE", "TEST_DESIGN_CLAUSE", "ROAST_VOICE", "OVERALL_SCOPE",
           "BUCKET_SCOPE", "SEVERITY_RULES", "PROSE_GAP_RULE", "REMOVAL_DEFECTS", "_role", "_scope_text")
+# The driver's private names that the library exposes without the underscore.
+_RENAMED = {"_draft_json": "draft_json", "_role": "role", "_scope_text": "scope_text"}
 
 
 @pytest.fixture(autouse=True)
@@ -32,14 +37,6 @@ def project(make_project) -> Path:
     root = make_project(config={"exclusions": None})
     activate(load_config(root))
     return root
-
-
-def _ctx(root: Path) -> rb.BriefContext:
-    """A brief context over a one-file PR at a fixed head."""
-    facts = PrFacts(1234, "demo", "1234-demo", "main", "a" * 40, "b" * 40, "", (),
-                    (PrFile("M", "src/a.py", None, 2, 1),))
-    return rb.BriefContext(root.as_posix(), (root / "lib").as_posix(), 1234, "pr1234_20990101T000000Z",
-                           facts, True, rp.load_lens_catalog(), ())
 
 
 def _slot(sid: str, lens: str, paths=("src/a.py",), templates=()) -> rp.Slot:
@@ -122,7 +119,7 @@ class TestDriverSplit:
         defined |= {t.id for node in tree.body if isinstance(node, ast.Assign) for t in node.targets
                     if isinstance(t, ast.Name)}
         assert not defined & set(_MOVED)
-        assert all(hasattr(rb, name) for name in _MOVED if not name.startswith("_"))
+        assert [name for name in _MOVED if not hasattr(rb, _RENAMED.get(name, name))] == []
 
     def test_no_comparison_with_a_lens_literal(self, plugin_root: Path) -> None:
         values = _member_values()
@@ -130,7 +127,7 @@ class TestDriverSplit:
         for node in ast.walk(_driver_tree(plugin_root)):
             if not isinstance(node, ast.Compare):
                 continue
-            for side in node.comparators:
+            for side in (node.left, *node.comparators):
                 items = side.elts if isinstance(side, (ast.Tuple, ast.List, ast.Set)) else [side]
                 hits += [f"line {node.lineno}: {item.value!r}" for item in items
                          if isinstance(item, ast.Constant) and item.value in values]

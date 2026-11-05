@@ -41,7 +41,6 @@ def test_skill_trigger_row_names_any_skills_folder(plugin_root: Path) -> None:
 
 def test_catalog_linear_pass_names_its_skip(plugin_root: Path) -> None:
     row = next(sub for sub in _catalog(plugin_root)["default_sub_lenses"] if sub["name"] == _LINEAR)
-    assert row.get("skip_lenses") == ["roast"]
     assert "except the roast slot" in row["trigger"]["description"]
 
 

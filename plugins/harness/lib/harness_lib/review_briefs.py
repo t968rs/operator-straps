@@ -84,7 +84,7 @@ class BriefContext:
     facts: PrFacts
     at_head: bool
     catalog: Mapping[str, object]
-    skills: Tuple[str, ...]
+    skills: Tuple[str, ...]  # triggered ``skills/<name>/`` folders, one per folder
     plan: Optional[str] = None
 
     def file(self, path: str) -> Optional[PrFile]:
@@ -218,7 +218,8 @@ def lens_section(ctx: BriefContext, slot: rp.Slot) -> str:
     for name in slot.templates:
         lines += [f"### {name}", "", templates.get(name, f"(no catalog template named {name})"), ""]
     if slot.lists_skills and ctx.skills:
-        lines += [f"Triggered skills (substitute each for `<name>`): {', '.join(ctx.skills)}", ""]
+        named = ", ".join(f"{rp.skill_name(f)} ({f})" for f in ctx.skills)
+        lines += [f"Triggered skills (substitute each name for `<name>`; its folder follows): {named}", ""]
     for sub in rp.sub_lenses_for(slot, ctx.catalog):
         lines += [f"### Default sub-lens: {sub['name']}", "", str(sub["scope_template"]), ""]
     return "\n".join(lines).rstrip()

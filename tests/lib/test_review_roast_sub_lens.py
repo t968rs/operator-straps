@@ -8,15 +8,18 @@ still reach the roast slot unless their rows say otherwise. The brief follows th
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from typing import List
 
 import pytest
 
-from harness_lib import review_briefs as rb
-from harness_lib import review_plan as rp
-from harness_lib.config import activate, load_config
-from harness_lib.pr_summary import PrFacts, PrFile
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from _review_ctx import brief_ctx as _ctx  # noqa: E402
+from harness_lib import review_briefs as rb  # noqa: E402
+from harness_lib import review_plan as rp  # noqa: E402
+from harness_lib.config import activate, load_config  # noqa: E402
 
 _LINEAR = "linear docstring-vs-code pass"
 _SUB_LENS_HEAD = "### Default sub-lens: "
@@ -30,14 +33,6 @@ def project(make_project) -> Path:
                         files={"lenses.json": {"lenses": [], "default_sub_lenses": [_EXTRA]}})
     activate(load_config(root))
     return root
-
-
-def _ctx(root: Path) -> rb.BriefContext:
-    """A brief context over a one-file PR at a fixed head."""
-    facts = PrFacts(1234, "demo", "1234-demo", "main", "a" * 40, "b" * 40, "", (),
-                    (PrFile("M", "src/a.py", None, 2, 1),))
-    return rb.BriefContext(root.as_posix(), (root / "lib").as_posix(), 1234, "pr1234_20990101T000000Z",
-                           facts, True, rp.load_lens_catalog(), ())
 
 
 def _names(slot: rp.Slot) -> List[str]:
@@ -59,6 +54,25 @@ def test_catalog_row_skips_roast() -> None:
 ])
 def test_planner_filters_sub_lenses(sid: str, lens: str, names: List[str]) -> None:
     assert _names(rp.Slot(sid, lens, "opus", ("src/a.py",), ())) == names
+
+
+@pytest.mark.parametrize("skip", [["runtime"], ["RUNTIME"]])
+def test_project_row_skip_lenses_is_honored(skip: List[str]) -> None:
+    row = {"name": "runtime-free pass", "scope_template": "t", "skip_lenses": skip}
+    catalog = rp._merge_catalog(rp.load_lens_catalog(), {"default_sub_lenses": [row]})
+
+    def names(sid: str) -> List[str]:
+        """Sub-lens names the merged catalog gives the ``sid`` bucket slot."""
+        return [str(s["name"]) for s in rp.sub_lenses_for(rp.Slot(sid, sid, "opus", ("a",), ()), catalog)]
+
+    assert row["name"] not in names("runtime") and row["name"] in names("docs")
+
+
+@pytest.mark.parametrize("entry", ["roasts", "config", "no-such-lens"])
+def test_project_row_unknown_skip_lens_raises(entry: str) -> None:
+    row = {"name": "typo pass", "scope_template": "t", "skip_lenses": [entry]}
+    with pytest.raises(ValueError, match="skip_lenses"):
+        rp._merge_catalog(rp.load_lens_catalog(), {"default_sub_lenses": [row]})
 
 
 @pytest.mark.parametrize("small", [True, False])
