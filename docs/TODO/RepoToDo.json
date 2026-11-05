@@ -57,25 +57,25 @@
   },
   "counts": {
     "items": 51,
-    "needs_decision": 29,
+    "needs_decision": 30,
     "trackers": 0,
-    "close_candidates": 13,
+    "close_candidates": 15,
     "by_status": {
-      "NEEDS_DECISION": 29,
-      "OPEN": 22
+      "NEEDS_DECISION": 30,
+      "OPEN": 21
     },
     "by_impact": {
-      "dev_velocity": 22,
+      "dev_velocity": 24,
       "docs_tooling": 22,
       "maintainability": 2,
-      "runtime_failure": 4,
-      "data_correctness": 1
+      "runtime_failure": 3,
+      "data_correctness": 0
     },
     "by_loe": {
-      "XS": 5,
-      "S": 15,
-      "M": 22,
-      "L": 8,
+      "XS": 4,
+      "S": 14,
+      "M": 23,
+      "L": 9,
       "XL": 1
     },
     "sources_absorbed": {
@@ -89,65 +89,6 @@
     {
       "id": "TODO-001",
       "rank": 1,
-      "title": "merge-commit-msg: subject separator is an em dash that renders as mojibake (ΓÇö)",
-      "kind": "bug",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#200",
-          "url": "https://github.com/t968rs/operator-straps/issues/200"
-        }
-      ],
-      "gh_issues": [
-        200
-      ],
-      "related_gh_issues": [
-        221
-      ],
-      "catalog_entry_ids": [],
-      "summary": "The issue shows `Merge PR #1710 ΓÇö 0010 overtopping tests behavioral`: the UTF-8 em dash read as cp437. Checked: plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:197 builds the subject as `Merge PR #{pr} — {title}` with U+2014, :263 `structure_problems` requires exactly that subject, and plugins/harness/skills/merge-commit-msg/SKILL.md:41 documents `Merge PR #N — <title>`; tests/skills/test_merge_commit_msg.py holds the em dash 4 times. Where the mojibake was introduced (PowerShell pipe, console code page or gh) is unverified.",
-      "proposed_change": "Switch the subject separator to ASCII `--` in merge_commit_msg.py:197 and :263, update SKILL.md:41 and the test expectations, and add a build check that rejects any non-ASCII character in the subject.",
-      "files": [
-        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
-        "plugins/harness/skills/merge-commit-msg/SKILL.md",
-        "tests/skills/test_merge_commit_msg.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "The merge-commit-msg subject only; build pins it, so one change point.",
-        "consumers": [
-          "plugins/harness/skills/merge-commit-msg/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "XS",
-        "reasoning": "Two string literals, one doc line and the test expectations."
-      },
-      "impact": "data_correctness",
-      "severity": 3,
-      "priority": {
-        "score": 4.2,
-        "components": {
-          "impact_weight": 1.4,
-          "value": 4.2,
-          "loe_points": 1,
-          "blast_factor": 1.0,
-          "cost": 1.0,
-          "base_score": 4.2,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 3 wrong merge subject on Windows shells, data_correctness impact, XS size."
-    },
-    {
-      "id": "TODO-002",
-      "rank": 2,
       "title": "post-forcepush Step 6 hard-depends on superpowers-lt:verification-before-completion",
       "kind": "skill",
       "status": "OPEN",
@@ -206,67 +147,8 @@
       "why_ranked": "Severity 3 block of post-forcepush in any project without superpowers-lt, runtime_failure impact, S size."
     },
     {
-      "id": "TODO-003",
-      "rank": 3,
-      "title": "merge-commit-msg: generated subject rejected by gh pr merge (em dash, version dots lost)",
-      "kind": "bug",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#221",
-          "url": "https://github.com/t968rs/operator-straps/issues/221"
-        }
-      ],
-      "gh_issues": [
-        221
-      ],
-      "related_gh_issues": [
-        200
-      ],
-      "catalog_entry_ids": [],
-      "summary": "The generated subject `Merge PR #1739 — 0028 changelog 3 17 2` failed `gh pr merge --subject` through a PowerShell wrapper; `Merge PR #1739 -- 0028 changelog 3.17.2` passed. Checked: plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:197 and :263 fix the separator as U+2014, and SKILL.md:41 calls the subject verbatim. The title part comes from `view[\"title\"]` (merge_commit_msg.py:208, the gh PR title), not from the branch slug, so the issue's claim that hyphens of 0028-CHANGELOG-3-17-2 were turned into spaces is unverified: the PR title at capture time may have been gh's branch-derived default rather than the later 'Chore(release): 3.17.2 changelog'. Which of the two defects made gh fail is unverified, since the wrapper did not capture gh's stderr.",
-      "proposed_change": "Use an ASCII `--` separator and reject non-ASCII in the subject at build (shared with #200); have capture refresh the PR title at build time and refuse a title that reads as a slugged branch name (digits split by spaces where the branch had hyphens), or prefer the PR title and keep version dots; add tests with the 0028-CHANGELOG-3-17-2 case.",
-      "files": [
-        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
-        "plugins/harness/skills/merge-commit-msg/SKILL.md",
-        "tests/skills/test_merge_commit_msg.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "The merge-commit-msg subject only.",
-        "consumers": [
-          "plugins/harness/skills/merge-commit-msg/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "The separator change plus a title-source check and tests."
-      },
-      "impact": "runtime_failure",
-      "severity": 3,
-      "priority": {
-        "score": 2.7577,
-        "components": {
-          "impact_weight": 1.3,
-          "value": 3.9,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 2.7577,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 3 merge failure through a Windows shell wrapper, runtime_failure impact, S size."
-    },
-    {
-      "id": "TODO-004",
-      "rank": 4,
+      "id": "TODO-002",
+      "rank": 2,
       "title": "a-w: attach refuses whenever the target checkout has any tracked change",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -321,8 +203,71 @@
       "why_ranked": "Severity 3 refusal that blocks attaching onto a busy checkout, dev_velocity impact, M size."
     },
     {
-      "id": "TODO-005",
-      "rank": 5,
+      "id": "TODO-003",
+      "rank": 3,
+      "title": "merge-commit-msg: add a squash mode (--squash, -s, or squash in slot 1)",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "In squash mode, must the PR title also parse as a Conventional-Commit subject (`Type(scope): summary`), and if so should commit_txt.py expose `_subject_parts`/`_SUBJECT` as a public validator rather than adding a second regex?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#226",
+          "url": "https://github.com/t968rs/operator-straps/issues/226"
+        }
+      ],
+      "gh_issues": [
+        226
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Checked: plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:96-98 (`subject_line`) always returns `Merge PR #N -- <title>`, and :290-295 (`structure_problems`) rejects any other line 1, so a squash-merge into `dev` gets a merge subject on an ordinary commit, which misreads in `git log` and breaks Conventional-Commit parsing; GitHub's squash form `<title> (#N)` cannot be built. The skill already advertises squash use: plugins/harness/skills/merge-commit-msg/SKILL.md:3 says \"prepare a PR squash-merge subject and body\" while :4 `argument-hint` offers no mode. `_parser` (:358-365) gives `capture`/`build` only a `pr` positional, `receipt` (:347-355) says \"merge message\", and `txt_path` (:88) writes `PR<N>_merge.txt`, which the issue keeps for both modes so plugins/harness/hooks/guard_commit_txt.py stays unchanged. plugins/harness/scripts/pr_sum.py:242 `Merge PR #N:` is a receipt label, not a subject, and is out of scope. A Conventional-Commit parser exists only as the private `_subject_parts` in plugins/harness/lib/harness_lib/commit_txt.py:139.",
+      "proposed_change": "Add `--squash`/`-s` and an optional `mode` positional (`choices=[\"squash\"]`) to both subparsers, normalized to `args.squash`, with an unknown second positional as a `problem:` line; `subject_line(pr, title, squash)` returns `f\"{title} (#{pr})\"` in squash mode; `message_template`/`render` (:222, :234) emit the mode's subject and a `Mode:` header line; `structure_problems` accepts the mode's subject and, with no flag in `build`, either exact subject, naming the flag on a cross-mode mismatch; `receipt` says squash or merge. No-mode output stays byte-identical. Update SKILL.md (argument-hint, triggers, Arguments, Steps, Common Mistakes), message_format.md (both subjects, a squash example), HARNESS_RULES.md, README.md, and add baselines/greens to docs/plans/strap/merge-commit-msg/SkillSpec.json with a refreeze; tests in tests/skills/test_merge_commit_msg.py and test_merge_commit_msg_skill_contract.py.",
+      "code_snippet": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:96\ndef subject_line(pr: int, title: str) -> str:\n    \"\"\"The merge subject; the separator is ASCII because Windows shell wrappers garble a non-ASCII one.\"\"\"\n    return f\"Merge PR #{pr} {SUBJECT_SEPARATOR} {title}\"",
+      "files": [
+        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "plugins/harness/skills/merge-commit-msg/message_format.md",
+        "plugins/harness/rules/HARNESS_RULES.md",
+        "README.md",
+        "docs/plans/strap/merge-commit-msg/SkillSpec.json",
+        "tests/skills/test_merge_commit_msg.py",
+        "tests/skills/test_merge_commit_msg_skill_contract.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Confined to the merge-commit-msg skill and its docs; the output filename and the commit TXT guard hook stay unchanged.",
+        "consumers": [
+          "plugins/harness/skills/merge-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Parser and subject changes are small, but capture/build mode handoff, cross-mode problem messages, byte-identity tests, skill and format docs, and a SkillSpec refreeze add up."
+      },
+      "impact": "dev_velocity",
+      "severity": 3,
+      "priority": {
+        "score": 1.5,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 3.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 1.5,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 because the squash-merge use the skill advertises yields a wrong subject on that less common path; dev_velocity impact as commit tooling only; M size for parser, validation, docs and a strap refreeze."
+    },
+    {
+      "id": "TODO-004",
+      "rank": 4,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -375,8 +320,8 @@
       "why_ranked": "Severity 2 missing guard, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-006",
-      "rank": 6,
+      "id": "TODO-005",
+      "rank": 5,
       "title": "pr-review: let a trivial judgment fix run cheaper (amend regrades fix_kind, or lower fixer effort)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -432,8 +377,8 @@
       "why_ranked": "Severity 2 fixer cost on small judgment fixes, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-007",
-      "rank": 7,
+      "id": "TODO-006",
+      "rank": 6,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -492,8 +437,8 @@
       "why_ranked": "Severity 2 debt with a concrete cost (a repeated five-reviewer fan-out), dev_velocity impact, S size."
     },
     {
-      "id": "TODO-008",
-      "rank": 8,
+      "id": "TODO-007",
+      "rank": 7,
       "title": "todo-watch / session-bookmark: session.compact handler skipped when another mod runs first",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -549,8 +494,8 @@
       "why_ranked": "Severity 2 defect that needs another mod installed, dev_velocity impact, S size."
     },
     {
-      "id": "TODO-009",
-      "rank": 9,
+      "id": "TODO-008",
+      "rank": 8,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "kind": "feature",
       "status": "OPEN",
@@ -610,8 +555,8 @@
       "why_ranked": "Severity 3 failure on a supported but uncommon input (release-sized PRs), runtime_failure impact, L size."
     },
     {
-      "id": "TODO-010",
-      "rank": 10,
+      "id": "TODO-009",
+      "rank": 9,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -668,6 +613,74 @@
       "depends_on": [],
       "unblocks": [],
       "why_ranked": "Severity 3 recurring stall of a supported workflow that only a user prompt resumes, dev_velocity impact, M size."
+    },
+    {
+      "id": "TODO-010",
+      "rank": 10,
+      "title": "plan: track item completion to a tree SHA, not a commit",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#225",
+          "url": "https://github.com/t968rs/operator-straps/issues/225"
+        }
+      ],
+      "gh_issues": [
+        225
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Checked: plugins/harness/scripts/plan.py:190-197 (`record_shape_problem`) fails a COMPLETE item unless verification_references[0] is a commit reachable from HEAD (`merge-base --is-ancestor`, :194-195), and :200-208 (`completion_problems`) turns that into a plan problem. plan.py:350-355 (`require_frozen`) runs `completion_problems`, and `cmd_record` calls it first (:456), so `record` refuses to re-record the items `check` reports; `resolve_commit` (:372-379) also demands a reachable commit, and `complete` (:419-432) stores `[sha, \"tree <tree>\", <pytest command>]`. plugins/harness/lib/harness_lib/plan_api.py:105-109 refuses execution-field changes on a frozen plan (\"only plan.py record sets it\"), and plan.py:211-217 (`claims_rev`) reads anchors at the working tree once no item is done, confirming the five-step dead end. So a-w staged attach (the default), squash, rebase and amend all orphan the recorded commits and leave a hand reset of the plan JSON as the only exit. Seen on plan 0007 (branch `1130-roast-efficiency`): unverified, taken from the issue.",
+      "proposed_change": "Make the tree the authoritative reference: `record` stores `rev^{tree}` (or `git write-tree` for the index) and keeps a commit SHA only as optional provenance; add `--tree`/`--staged` so a-w staged work records before the commit, running the tests on a throwaway worktree built from that tree (`tests_at`, plan.py:398). `check` accepts a COMPLETE item when `git ls-tree <tree> -- <files>` equals `git ls-tree HEAD -- <files>` for the item's paths (`item_paths`, plan.py:367), reports a mismatch as drift with a `record again` hint, and `require_frozen` lets `record` run over drifted items. Keep existing commit-based records readable. Update `ActionPlan.schema.json`/`plan_models.py` (regenerated, contract test), `plan_render.py`, `todo_sync/rules_plans.py`, schemas README, PLANS_PIP_Template.md and write-plan SKILL.md; add tests for staged attach, squash and amend in tests/scripts/test_plan_driver.py.",
+      "code_snippet": "plugins/harness/scripts/plan.py:190\ndef record_shape_problem(repo: Path, item: pm.ActionItem) -> Optional[str]:\n    refs = list(item.verification_references)\n    sha = refs[0] if refs else \"\"\n    if not SHA40.fullmatch(sha) or git(repo, \"merge-base\", \"--is-ancestor\", sha, \"HEAD\").returncode != 0:\n        return \"no commit reachable from HEAD\"",
+      "files": [
+        "plugins/harness/scripts/plan.py",
+        "plugins/harness/lib/harness_lib/plan_api.py",
+        "plugins/harness/lib/harness_lib/plan_models.py",
+        "plugins/harness/schemas/ActionPlan.schema.json",
+        "plugins/harness/schemas/README.md",
+        "plugins/harness/schemas/PLANS_PIP_Template.md",
+        "plugins/harness/lib/harness_lib/plan_render.py",
+        "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py",
+        "plugins/harness/skills/write-plan/SKILL.md",
+        "tests/scripts/test_plan_driver.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Changes the verification_references contract that plan.py, the ActionPlan schema and models, plan rendering and the todo_sync plan rules all read; existing frozen plans must stay valid.",
+        "consumers": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_render.py",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "New record modes with tree-built test worktrees, per-path blob comparison and drift reporting in check, a schema change with regeneration, skill text, and tests for staged attach, squash and amend."
+      },
+      "impact": "dev_velocity",
+      "severity": 4,
+      "priority": {
+        "score": 1.291,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 4.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 1.291,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 4 because the default a-w staged landing (and any squash or amend) blocks plan check and record with no tool-level repair; dev_velocity impact since only plan tooling is affected; L size for record, check, schema and tests."
     },
     {
       "id": "TODO-011",
@@ -3219,6 +3232,24 @@
       "current_state": "LIKELY_RESOLVED",
       "evidence": "`gh pr view 183` reports MERGED at 2026-11-02T23:46:00Z (merge a8461ba, on main). Its commit 6d9ce2c (\"Feature(select_tests): select walking tests by WALK_ROOTS\") replaces the any-non-docs rule for tree-walking tests in tools/select_tests.py: the walk pattern is matched against code only (docstrings and comments blanked) and a test runs only when a changed path sits under its module-level WALK_ROOTS; c0ce516 declares WALK_ROOTS in the walking tests and 11f34c6 documents the rule. tests/scripts/test_select_tests.py:468 (test_every_walking_test_declares_existing_walk_roots) fails on a walking test without a valid marker. 008f051 (PR #185) follows up with anchored shared-name selection. tests/conftest.py stays a full trigger by design (tools/select_tests.py:60). No post-merge PR run timing was read, so the runtime drop is unmeasured. `gh issue view 151` reports OPEN.",
       "recommended_action": "Close as completed by PR #183 (commit 6d9ce2c), after a glance at the CI runtime of the next PR run confirms the drop.",
+      "related_todo_ids": []
+    },
+    {
+      "number": 200,
+      "title": "BUG: `merge-commit-msg` Output Contains non-utf characters",
+      "url": "https://github.com/t968rs/operator-straps/issues/200",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "`gh pr view 224` reports MERGED at 2026-11-05T20:46:55Z as merge commit 389a50e (\"Fix(merge-commit-msg): ASCII subject separator, refuse unusable PR titles\"), on main and origin/main (`git branch -a --contains 389a50e`); branch commit 6c4f64b. plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:96-98 now builds the subject through one subject_line() as `Merge PR #N {SUBJECT_SEPARATOR} <title>` with an ASCII `--`, and :105 title_problem() refuses a PR title with a non-ASCII character; SKILL.md, message_format.md and tests/skills/test_merge_commit_msg.py were updated in the same commit. The commit body says \"Closes Issue #200, #221\", which GitHub did not parse as a closing keyword: `gh issue view 200` still reports OPEN.",
+      "recommended_action": "Close as completed by PR #224 (commit 389a50e). #221 (the merge-commit-msg gh pr merge rejection) was fixed by the same commit and is also still OPEN; see its own close candidate.",
+      "related_todo_ids": []
+    },
+    {
+      "number": 221,
+      "title": "`merge-commit-msg` produced invalid merge commit header",
+      "url": "https://github.com/t968rs/operator-straps/issues/221",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "`gh pr view 224` reports MERGED at 2026-11-05T20:46:55Z as merge commit 389a50e (\"Fix(merge-commit-msg): ASCII subject separator, refuse unusable PR titles\"), on main and origin/main (`git branch -a --contains 389a50e`); branch commit 6c4f64b. Both defects the issue named are addressed in plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py: :96-98 subject_line() builds `Merge PR #N -- <title>` with an ASCII separator, and :105-117 title_problem() refuses a non-ASCII title and a title that is only the branch name with hyphens turned into spaces (the 0028-CHANGELOG-3-17-2 case that lost its version dots), called from pr_view at :126 so capture and build fail with a `gh pr edit N --title` fix. tests/skills/test_merge_commit_msg.py:360, :378 and :388 cover the non-ASCII, slug-title and one-word cases; `python -m pytest tests/skills/test_merge_commit_msg.py -q` passed 36 tests in this run. The commit body says \"Closes Issue #200, #221\", which GitHub did not parse as a closing keyword: `gh issue view 221` still reports OPEN. The catalog item for #221 was retired in this run.",
+      "recommended_action": "Close as completed by PR #224 (commit 389a50e), together with #200.",
       "related_todo_ids": []
     }
   ]
