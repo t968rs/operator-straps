@@ -266,7 +266,7 @@ merge UI or `gh pr merge`.
 ```
 
 - `capture <PR>` prints the PR's facts, changed files, size-capped diffs, commits and a message skeleton, and
-  writes nothing. The subject (`Merge PR #N — <title>`), `Branch lineage:` and, when a review JSON exists, the
+  writes nothing. The subject (`Merge PR #N -- <title>`), `Branch lineage:` and, when a review JSON exists, the
   review-artifact and review-fix lines come filled.
 - The agent replaces the prose and bullet placeholders (format: `plugins/harness/skills/merge-commit-msg/message_format.md`)
   and passes the whole message to `build <PR>` on stdin.
