@@ -1,8 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/agent_usage.schema.json",
-  "title": "Agent Usage: every Agent dispatch",
-  "description": "One row per returned Agent dispatch, of any agent type: the marketplace's defined agents, built-ins (Explore, general-purpose, Plan) and other plugins' agents (completed or errored; a denied dispatch writes none), written by the agent-watcher mod when the agent returns. A pr-review or pr-team dispatch (reviewer, fixer, orchestrator, planner, closer) belongs to its run; any other dispatch is a generic row whose skill, role, run id, agent id and PR come from its prompt's leading header block (`SKILL:`, `AGENT_ROLE:`, `RUN_ID:`, `AGENT_ID:`, `PR:`), falling back to `standalone`, `other`, a generated run id, the type's name and null; the other header keys land in `fields`. Records who ran (role, subagent_type, model), its cost (tokens, context_tokens, requests, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
+  "title": "Agent Usage: every Agent dispatch and forked skill",
+  "description": "One row per returned Agent dispatch, of any agent type: the marketplace's defined agents, built-ins (Explore, general-purpose, Plan) and other plugins' agents (completed or errored; a denied dispatch writes none), written by the agent-watcher mod when the agent returns. A forked skill (`context: fork`) loop, which no Agent call dispatches, also writes a generic row, with its skill read from the loop and every other header-derived field at its fallback. A pr-review or pr-team dispatch (reviewer, fixer, orchestrator, planner, closer) belongs to its run; any other dispatch is a generic row whose skill, role, run id, agent id and PR come from its prompt's leading header block (`SKILL:`, `AGENT_ROLE:`, `RUN_ID:`, `AGENT_ID:`, `PR:`), falling back to `standalone`, `other`, a generated run id, the type's name and null; the other header keys land in `fields`. Records who ran (role, subagent_type, model), its cost (tokens, context_tokens, requests, tool_uses, duration_s) and, for fixer and closer rows, outcome counts. Loaded line-by-line as JSONL/NDJSON: each line of the data file is one complete object matching this schema.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -57,7 +57,7 @@
     },
     "subagent_type": {
       "type": ["string", "null"],
-      "description": "The Agent call's `subagent_type`; null when the call named none."
+      "description": "The Agent call's `subagent_type` (a forked skill's loop: its agent type from the agent list); null when the call named none."
     },
     "model": {
       "type": ["string", "null"],

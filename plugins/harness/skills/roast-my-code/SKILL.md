@@ -42,7 +42,8 @@ unburdened.
 
    - `SKILL: roast-my-code` stays the first line: the agent-watcher mod reads it as the dispatching
      skill for the usage row.
-   - Pasted code follows the block after one blank line, verbatim.
+   - Pasted code goes after the `Intensity:` line, separated by one blank line, verbatim. With pasted code, the
+     `Developer guidance:` line, when present, moves below the code and stays the prompt's last line.
    - The agent reads its own tone rules from its definition; do not restate them here.
    - Do **not** pre-summarize, pre-grade, or pre-filter findings. The
      agent reads the code; the dispatcher does not.

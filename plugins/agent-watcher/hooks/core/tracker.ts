@@ -19,11 +19,11 @@ import { ioOf, resolveWatch, type Watch } from './watch'
 /**
  * The generic core of agent-watcher: tracks every `Agent` dispatch (Decision D5), the ones a layer claims and
  * the unclaimed ones, read from the prompt's leading header block (./usageRow `unclaimedDispatch`), and every
- * forked skill's loop as an unclaimed run under its skill (`noticeFork`); folds
- * subagent usage, appends one agent usage row per returned dispatch, and hands each claimed run to its layer
- * and the refresh and Stop check to every layer (./layer). Active only in a project holding
- * `.claude/harness.json` (./watch). Every host failure, and every layer member that throws, degrades to doing
- * nothing; no hook throws into a tool call, a turn or a stop.
+ * forked skill's loop as an unclaimed run under its skill (`noticeFork`); folds subagent usage, appends one
+ * agent usage row per returned dispatch, and hands each claimed run to its layer and the refresh and Stop check
+ * to every layer (./layer). Records and registers only in a project holding `.claude/harness.json` (./watch);
+ * elsewhere a new subagent loop still costs its agent-list lookup (`noticeFork`). Every host failure, and every
+ * layer member that throws, degrades to doing nothing; no hook throws into a tool call, a turn or a stop.
  */
 
 type Dollar = EngineInterface
@@ -267,21 +267,64 @@ async function registerLoop($: Dollar, loopId: string, key: Key, model: string |
 // Forked skills
 
 /**
- * Loops already looked up in the agent list, so a loop is asked about once per run of turns. Cleared at the
- * loop's end, so a resumed fork is looked up again; at most `STEP_TALLY_CAP` held, the oldest dropped first.
+ * Loops the agent list already answered for, so a loop is asked about once per run of turns; a lookup that
+ * rejects is retried on the next request, up to `LIST_TRIES` lookups, after which the loop is marked anyway.
+ * Cleared at the loop's end, so a resumed fork is looked up again; at most `STEP_TALLY_CAP` held, the oldest
+ * dropped first.
  */
 const probedLoops = new Set<string>()
 
-/** How the agent list describes a forked skill's loop: `/<skill>`, one token. */
+/** Most agent-list lookups one loop pays when every one rejects (an engine that refuses the call). */
+export const LIST_TRIES = 3
+
+/** Rejected agent-list lookups per loop not yet marked probed; cleared with the mark, same cap. */
+const listRefusals = new Map<string, number>()
+
+/**
+ * How the agent list describes a forked skill's loop: `/<skill>`, one token. An `Agent` call's own free-text
+ * `description` can take the same form, so a loop whose description matches an in-flight `Agent` call
+ * (`dispatching`) is taken for that call's loop, never a fork. A genuine fork of the same text whose loop
+ * first asks while such a call is in flight is therefore attributed to the call and logs no row of its own.
+ */
 const FORK_DESCRIPTION = /^\/(\S+)$/
 
-/** Marks the loop as looked up; false when it already was. */
-const firstProbe = (loopId: string): boolean => {
-  if (probedLoops.has(loopId)) return false
+/**
+ * The `description` of each `Agent` call between its dispatch and its recorded result (a background launch's
+ * loop registered), with its count of calls.
+ */
+const dispatching = new Map<string, number>()
+
+/**
+ * Runs an `Agent` call's `next` and its result recording with its description counted in `dispatching` until
+ * the result is recorded.
+ */
+async function whileDispatching<T>(description: string, run: () => Promise<T>): Promise<T> {
+  dispatching.set(description, (dispatching.get(description) ?? 0) + 1)
+  try {
+    return await run()
+  } finally {
+    const left = (dispatching.get(description) ?? 1) - 1
+    if (left > 0) dispatching.set(description, left)
+    else dispatching.delete(description)
+  }
+}
+
+/** Marks the loop as looked up. */
+const markProbed = (loopId: string): void => {
+  listRefusals.delete(loopId)
   probedLoops.add(loopId)
   const oldest = probedLoops.size > STEP_TALLY_CAP ? probedLoops.values().next().value : undefined
   if (oldest !== undefined) probedLoops.delete(oldest)
-  return true
+}
+
+/** Counts a rejected lookup for the loop; the `LIST_TRIES`th marks it probed, so no further lookup runs. */
+const noteRefusal = (loopId: string): void => {
+  if (probedLoops.has(loopId)) return
+  const n = (listRefusals.get(loopId) ?? 0) + 1
+  if (n >= LIST_TRIES) return markProbed(loopId)
+  listRefusals.set(loopId, n)
+  const oldest = listRefusals.size > STEP_TALLY_CAP ? listRefusals.keys().next().value : undefined
+  if (oldest !== undefined) listRefusals.delete(oldest)
 }
 
 /** A forked skill's name and agent type from its loop's agent-list entry; undefined for any other loop. */
@@ -294,19 +337,47 @@ export const forkOf = (
 
 /**
  * A forked skill (`context: fork`) runs in a loop no Agent call dispatches, launched by the Skill tool and by a
- * typed `/<skill>` alike, which the agent list describes as `/<skill>`. On the loop's first request it becomes
- * an unclaimed run under that skill, registered as a background launch is, so its loop end writes the row.
+ * typed `/<skill>` alike, which the agent list describes as `/<skill>`. On the loop's first request the agent
+ * list answers for (the next one when the lookup rejects, at most `LIST_TRIES` lookups) it becomes an
+ * unclaimed run under that skill, registered as a background launch is, so its loop end writes the row. The
+ * project is resolved only for a fork, so any other subagent loop pays the list lookup alone, in any project.
+ * A request on the same loop that overlaps a pending lookup finds the probe mark after its own lookup returns
+ * and stops there; a loop registered while the lookup was pending (a background launch) is left to its launch.
  */
 async function noticeFork($: Dollar, loopId: string): Promise<void> {
-  if (!firstProbe(loopId) || (await read($, loopsAtom))[loopId] !== undefined) return
+  if (probedLoops.has(loopId) || (await read($, loopsAtom))[loopId] !== undefined) return
+  const listed = await $.agent.list().catch(() => undefined)
+  if (listed === undefined) return noteRefusal(loopId)
+  const info = listed.find(a => a.id === loopId)
+  if (probedLoops.has(loopId)) return
+  markProbed(loopId)
+  const fork = info === undefined || dispatching.has(info.description) ? undefined : forkOf(info)
+  if (fork === undefined || (await read($, loopsAtom))[loopId] !== undefined) return
   const w = await resolveWatch($).catch(noop)
-  if (w === undefined) return
-  const fork = forkOf((await $.agent.list()).find(a => a.id === loopId))
-  if (fork === undefined) return
+  if (w !== undefined) await registerFork($, w, loopId, fork)
+}
+
+/**
+ * Records the fork's unclaimed run and registers its loop; when either step throws, the run and any loop
+ * mapping already written are dropped.
+ */
+async function registerFork(
+  $: Dollar,
+  w: Watch,
+  loopId: string,
+  fork: { skill: string; type: string },
+): Promise<void> {
   const runId = standaloneRunId(await $.clock.now(), ++standaloneSeq)
   const d = unclaimedDispatch(fork.type, { SKILL: fork.skill }, runId)
-  await recordDispatch($, { d, w, layer: undefined }, { subagentType: fork.type })
-  await registerLoop($, loopId, { runId, agentId: d.agentId }, null)
+  try {
+    await recordDispatch($, { d, w, layer: undefined }, { subagentType: fork.type })
+    await registerLoop($, loopId, { runId, agentId: d.agentId }, null)
+  } catch (err) {
+    await dropUnclaimed($, runId).catch(noop)
+    await update($, loopsAtom, loops => Object.fromEntries(Object.entries(loops).filter(([k]) => k !== loopId)))
+      .catch(noop)
+    throw err
+  }
 }
 
 /**
@@ -342,14 +413,17 @@ async function recordResult(
 }
 
 /**
- * A background subagent's turn ended: its usage (the turn's requests summed), its last request's size, tool
- * count and report complete the agent. A turn with no usage falls back to the requests heard on `turn.step`
- * summed, measured when one reported usage. A synchronous agent's loop ends here too and is left to its result.
+ * A registered loop's turn ended, a background subagent's or a forked skill's (`noticeFork`): its usage (the
+ * turn's requests summed), its last request's size, tool count and report complete the agent. A turn with no
+ * usage falls back to the requests heard on `turn.step` summed, measured when one reported usage. A synchronous
+ * agent's loop ends here too and is left to its result. Every loop's probe mark is cleared, so a resumed fork
+ * is looked up again.
  */
 async function recordLoopEnd($: Dollar, layers: readonly Layer[], loopId: string, e: TurnEnd): Promise<void> {
   const used = toolUses.get(loopId) ?? 0
   toolUses.delete(loopId)
   probedLoops.delete(loopId)
+  listRefusals.delete(loopId)
   const hit = (await read($, loopsAtom))[loopId]
   if (hit === undefined) return
   const tally = takeTally(loopId)
@@ -482,8 +556,11 @@ const registerToolHooks = (on: On, layers: readonly Layer[]): void => {
     const { d, w } = t
     const io = ioOf($, w)
     await recordDispatch($, t, { model: e.model, effort: e.effort, subagentType: e.subagent_type }).catch(noop)
-    const r = await next(e)
-    await recordResult($, w, layers, { runId: d.runId, agentId: d.agentId }, r).catch(noop)
+    const r = await whileDispatching(e.description, async () => {
+      const answer = await next(e)
+      await recordResult($, w, layers, { runId: d.runId, agentId: d.agentId }, answer).catch(noop)
+      return answer
+    })
     if (t.layer !== undefined) await settleLayers(io, layers).catch(noop)
     // Refusals inline (not a helper) so the checker narrows `r` to a result that takes context.
     if (r.deny !== undefined || r.isError === true) return r
@@ -500,7 +577,7 @@ const registerToolHooks = (on: On, layers: readonly Layer[]): void => {
 /** Turn and Stop hooks: per-request and loop usage, refreshes and the Stop guard. */
 const registerLifecycleHooks = (on: On, layers: readonly Layer[]): void => {
   // Reads each subagent request's usage after the stream beneath ends; every chunk and the result pass as is.
-  // A loop's first request also tells a forked skill's loop apart (noticeFork).
+  // A loop's first request (the next one when the agent list rejects) also tells a forked skill's loop apart.
   on('turn.step', async function* ($, e, next) {
     const r = yield* next(e)
     if (e.agentId === undefined) return r
