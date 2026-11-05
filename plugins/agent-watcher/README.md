@@ -117,6 +117,7 @@ keyword checks nothing. The band still lists every hot sentinel. The text comes 
 | pr-team reviewers and fixers | `AGENT_ID:`, `AGENT_ROLE:`, `RUN_ID:` (`canonical_prompt_template.md`) | the plan's agent id |
 | pr-review reviewers and fixers | the same three lines plus `PR:` (rows printed by `pr_review.py capture` / `waves`); `PR:` holds the run key, a PR number or `local-<label>` | the `AGENT_ID` |
 | any other dispatch, of any agent type | the header convention below, or none | an unclaimed run of its own |
+| a forked skill (`context: fork`), by the Skill tool or a typed `/<skill>` | none: no `Agent` call is made | an unclaimed run under its skill ([Forked skills](#forked-skills)) |
 
 The pr-review layer refuses a header whose `SKILL:` line is present and names neither `pr-review` nor
 `pr-team`: another skill may print `RUN_ID`, `AGENT_ID` and `AGENT_ROLE: reviewer` without its dispatch
@@ -154,6 +155,20 @@ dispatches under one `RUN_ID` keep separate entries and each logs its own row. I
 no band entry, no active-run change, no layer refresh, no matrix row and no Stop check, and its state entry
 is dropped as soon as its usage row is attempted.
 
+### Forked skills
+
+A skill whose frontmatter sets `context: fork` runs in a subagent loop of its own (the type its `agent:` key
+names, such as `harness:messenger` for `c-msg`, `branch-commit-msg`, `merge-commit-msg` and `pr-sum`). The
+engine launches that loop without an `Agent` call, raises no `agent.spawn` for it, and a typed `/<skill>`
+raises no Skill tool call either; only the loop's own `turn.step`, `tool.call` and `turn.complete` reach the
+mod. On a loop's first model request the mod looks the loop up once in `$.agent.list()`: an entry described as
+`/<skill>`, one token, is a forked skill. The loop becomes an unclaimed run with `skill` read as a `SKILL:`
+header line would be (`/harness:c-msg` logs `c-msg`; a name off the pattern logs `standalone` and lands in
+`fields`), `agent_id` and `subagent_type` from the entry's agent type, and it is registered as a background
+launch is, so its `turn.complete` writes the row with the background figures below. Whether the fork ran in
+the background or not makes no difference. A fork resumed after its loop ended is looked up again and logs a
+second row. Outside a harness project the list is never asked.
+
 ### Review-local runs
 
 A run of the harness `review-local` skill is keyed by `local-<label>` instead of a PR number (label:
@@ -172,9 +187,9 @@ written and reviewer results carry no ownership note: the matrix schema keys row
 |------|------|
 | `tool.call` on `Agent` | Records the dispatch, folds the result, refreshes, and for pr-review reviewers appends the ownership note to the result's context once the run is recorded with a PR. |
 | `tool.call` (any) | Counts tool calls per subagent loop id. |
-| `turn.step` | Once a subagent's model request has streamed through untouched, counts it in that loop's tally and adds its usage (summed, and the last request). The main loop's requests are skipped. |
+| `turn.step` | Once a subagent's model request has streamed through untouched, counts it in that loop's tally and adds its usage (summed, and the last request). On a loop's first request, registers a forked skill's loop. The main loop's requests are skipped. |
 | `tool.call` on `Bash` / `PowerShell` | After a command that names `pr_review.py`, refreshes, so the band follows the script's phases within a turn. |
-| `turn.complete` | Completes a background subagent; on every turn end, refreshes and appends rows that became due. |
+| `turn.complete` | Completes a background subagent or a forked skill; on every turn end, refreshes and appends rows that became due. |
 | `session.start` | Recovers pr-team runs a previous session claimed but never logged, then refreshes. |
 | `prompt.submit` | Scans the sentinels and attaches `PHASE5_PENDING=<ids>` when the hot set changed since the line last attached. |
 | `session.end`, `session.compact` | After `/clear`, a resume or a main compaction, the next prompt gets the `PHASE5_PENDING=` line again. |
@@ -257,7 +272,7 @@ several times its `context_tokens`, since every request re-reads the cached cont
   `context_tokens`, tool calls, duration and model come from the `Agent` result (`totalTokens`,
   `totalToolUseCount`, `totalDurationMs`, `resolvedModel`). With no request heard, `tokens` is 0 and the row
   says `usage not measured`.
-- **Background:** the mod counts the loop's tool calls, and takes `tokens` (the turn's requests summed),
+- **Background** (a background `Agent` launch or a forked skill): the mod counts the loop's tool calls, and takes `tokens` (the turn's requests summed),
   duration and the report from its `turn.complete`; `context_tokens` is the last request heard on
   `turn.step` that reported usage, null when none did. When `turn.complete` carries no usage, `tokens` falls
   back to the requests heard on `turn.step` summed, and the row says `usage not measured` only when none of
@@ -285,7 +300,7 @@ reviewer's matrix `tokens` before 0.7.0 is its last request's count.
 |-----|---------|
 | `runs` | Tracked runs by `RUN_ID`, or by the generated id of an unclaimed run (held only while its agent is in flight, with its logged `logRunId` and `fields`): skill, PR, phase (dispatch-derived; for pr-review refined by the current run's `plan.json`), agents (subagent type, background launch model, usage, signal, counts, matrix and usage row attempt times), bubbled set and its source (`closer`, `bubble_ups`, or `review_json`: for pr-review the review JSON plus open fixer bubbles), verdict, and the claiming layer's name (`claimedBy`; unset for an unclaimed run). |
 | `active` | The pr-review or pr-team run dispatched most recently; an unclaimed dispatch never becomes active. |
-| `loops` | Background subagent loop id to `[runId, agentId]`. |
+| `loops` | Background subagent or forked skill loop id to `[runId, agentId]`. |
 | `failures` | The last 20 rows that failed validation or could not be written. |
 | `phase5` | Run keys (PR numbers or `local-<label>`) of hot Phase 5 sentinels. |
 | `missing` | Tracked bubbled ids the active run's review JSON does not disposition. |
@@ -300,6 +315,10 @@ reviewer's matrix `tokens` before 0.7.0 is its last request's count.
 - Every `Agent` call resolves the project before passing on, since every call is tracked: a cached git top
   level, and in a harness project one more, uncached `git rev-parse --git-common-dir` (the Phase 5 sentinel
   root).
+- Forked skills are told apart by how the engine describes their loop in `$.agent.list()` (`/<skill>`, as
+  observed on Claude Code 2.1.318). An `Agent` call whose own `description` is a single `/token` would be
+  taken for a fork as well and log a second row; an engine that describes forks otherwise logs none. Before
+  0.8.0 forked skills logged no row at all.
 - Workflow-run reviews are not tracked. Their agents raise `tool.call` and `turn.complete` with loop ids that
   no dispatch header names.
 - Appends are a read and a whole-file write, serialized within the session. Two sessions appending to the

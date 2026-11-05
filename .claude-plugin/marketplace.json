@@ -13,7 +13,7 @@
     {
       "name": "agent-watcher",
       "source": "./plugins/agent-watcher",
-      "description": "Logs every agent dispatch with engine-measured usage rows; tracks pr-review / pr-team runs: Phase 5 band, matrix rows, bubble Stop guard"
+      "description": "Logs every agent dispatch and forked skill with engine-measured usage rows; tracks pr-review / pr-team runs: Phase 5 band, matrix rows, bubble Stop guard"
     },
     {
       "name": "session-bookmark",

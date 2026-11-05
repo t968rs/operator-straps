@@ -18,7 +18,8 @@ import { ioOf, resolveWatch, type Watch } from './watch'
 
 /**
  * The generic core of agent-watcher: tracks every `Agent` dispatch (Decision D5), the ones a layer claims and
- * the unclaimed ones, read from the prompt's leading header block (./usageRow `unclaimedDispatch`); folds
+ * the unclaimed ones, read from the prompt's leading header block (./usageRow `unclaimedDispatch`), and every
+ * forked skill's loop as an unclaimed run under its skill (`noticeFork`); folds
  * subagent usage, appends one agent usage row per returned dispatch, and hands each claimed run to its layer
  * and the refresh and Stop check to every layer (./layer). Active only in a project holding
  * `.claude/harness.json` (./watch). Every host failure, and every layer member that throws, degrades to doing
@@ -262,6 +263,52 @@ async function registerLoop($: Dollar, loopId: string, key: Key, model: string |
   }))
 }
 
+// ---------------------------------------------------------------------------
+// Forked skills
+
+/**
+ * Loops already looked up in the agent list, so a loop is asked about once per run of turns. Cleared at the
+ * loop's end, so a resumed fork is looked up again; at most `STEP_TALLY_CAP` held, the oldest dropped first.
+ */
+const probedLoops = new Set<string>()
+
+/** How the agent list describes a forked skill's loop: `/<skill>`, one token. */
+const FORK_DESCRIPTION = /^\/(\S+)$/
+
+/** Marks the loop as looked up; false when it already was. */
+const firstProbe = (loopId: string): boolean => {
+  if (probedLoops.has(loopId)) return false
+  probedLoops.add(loopId)
+  const oldest = probedLoops.size > STEP_TALLY_CAP ? probedLoops.values().next().value : undefined
+  if (oldest !== undefined) probedLoops.delete(oldest)
+  return true
+}
+
+/** A forked skill's name and agent type from its loop's agent-list entry; undefined for any other loop. */
+export const forkOf = (
+  info: { type: string; description: string } | undefined,
+): { skill: string; type: string } | undefined => {
+  const skill = info?.description.match(FORK_DESCRIPTION)?.[1]
+  return info === undefined || skill === undefined ? undefined : { skill, type: info.type }
+}
+
+/**
+ * A forked skill (`context: fork`) runs in a loop no Agent call dispatches, launched by the Skill tool and by a
+ * typed `/<skill>` alike, which the agent list describes as `/<skill>`. On the loop's first request it becomes
+ * an unclaimed run under that skill, registered as a background launch is, so its loop end writes the row.
+ */
+async function noticeFork($: Dollar, loopId: string): Promise<void> {
+  if (!firstProbe(loopId) || (await read($, loopsAtom))[loopId] !== undefined) return
+  const w = await resolveWatch($).catch(noop)
+  if (w === undefined) return
+  const fork = forkOf((await $.agent.list()).find(a => a.id === loopId))
+  if (fork === undefined) return
+  const runId = standaloneRunId(await $.clock.now(), ++standaloneSeq)
+  const d = unclaimedDispatch(fork.type, { SKILL: fork.skill }, runId)
+  await recordDispatch($, { d, w, layer: undefined }, { subagentType: fork.type })
+  await registerLoop($, loopId, { runId, agentId: d.agentId }, null)
+}
+
 /**
  * Folds an Agent tool result: usage now when synchronous, a loop registration when backgrounded. A synchronous
  * agent's tokens are its loop's requests summed (`turn.step`); its context size is the result's `totalTokens`,
@@ -302,6 +349,7 @@ async function recordResult(
 async function recordLoopEnd($: Dollar, layers: readonly Layer[], loopId: string, e: TurnEnd): Promise<void> {
   const used = toolUses.get(loopId) ?? 0
   toolUses.delete(loopId)
+  probedLoops.delete(loopId)
   const hit = (await read($, loopsAtom))[loopId]
   if (hit === undefined) return
   const tally = takeTally(loopId)
@@ -452,9 +500,12 @@ const registerToolHooks = (on: On, layers: readonly Layer[]): void => {
 /** Turn and Stop hooks: per-request and loop usage, refreshes and the Stop guard. */
 const registerLifecycleHooks = (on: On, layers: readonly Layer[]): void => {
   // Reads each subagent request's usage after the stream beneath ends; every chunk and the result pass as is.
-  on('turn.step', async function* (_$, e, next) {
+  // A loop's first request also tells a forked skill's loop apart (noticeFork).
+  on('turn.step', async function* ($, e, next) {
     const r = yield* next(e)
-    if (e.agentId !== undefined) tallyStep(e.agentId, r.usage)
+    if (e.agentId === undefined) return r
+    tallyStep(e.agentId, r.usage)
+    await noticeFork($, e.agentId).catch(noop)
     return r
   })
 

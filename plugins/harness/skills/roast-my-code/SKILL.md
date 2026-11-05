@@ -31,12 +31,20 @@ unburdened.
    - `<commit>..<commit>` or `HEAD~N..HEAD`
    - Pasted code in the user's message
 2. **Dispatch the agent.** Call `Agent(subagent_type="harness:roast-my-code", ...)`
-   with a prompt that:
-   - Names the resolved scope verbatim (path, PR number, or pasted snippet).
-   - Includes any user-provided intensity hint (`brutal`, `gentle`, default
-     unspecified). The agent reads its own tone rules from its definition;
-     do not restate them here.
-   - Does **not** pre-summarize, pre-grade, or pre-filter findings. The
+   with this prompt, the placeholders filled:
+
+   ```
+   SKILL: roast-my-code
+   Scope: <the resolved scope verbatim: path, PR #<n>, or commit range; "pasted code below" for a snippet>
+   Intensity: <brutal | gentle | unspecified>
+   Developer guidance: <the text after the -- token; omit the line when there is none>
+   ```
+
+   - `SKILL: roast-my-code` stays the first line: the agent-watcher mod reads it as the dispatching
+     skill for the usage row.
+   - Pasted code follows the block after one blank line, verbatim.
+   - The agent reads its own tone rules from its definition; do not restate them here.
+   - Do **not** pre-summarize, pre-grade, or pre-filter findings. The
      agent reads the code; the dispatcher does not.
 3. **Return the agent's response verbatim.** Do not editorialize. Do not
    soften. Do not add a preamble like "the agent says…" — the user asked for
