@@ -726,6 +726,41 @@ describe('forked skill usage rows', () => {
     expect(usageRows(seen)[0]).toMatchObject({ skill: 'c-msg', tokens: 1000 })
   })
 
+  test('an Agent call described as one /token is not taken for a fork while it runs: one row', async ($, on) => {
+    // The loop's requests and turn end land while the call is in flight, as a synchronous dispatch's do.
+    const seen: Seen = world(on, async () => {
+      await steps($, seen, 'loop-x', 1000)
+      await loopEnd($, 'loop-x')
+      return completed('ok')
+    })
+    listing(on, [{ id: 'loop-x', type: 'harness:messenger', description: '/review' }])
+    await $.tool.call({ tool: 'Agent', description: '/review', prompt: 'SKILL: c-msg', subagent_type: 'harness:messenger' })
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'c-msg', tokens: 1000 })
+  })
+
+  test('a loop that is not a fork resolves no project', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    listing(on, [{ id: 'loop-n', type: 'general-purpose', description: 'Draft the commit message' }])
+    await steps($, seen, 'loop-n', 100)
+    expect(seen.git.some(argv => argv.includes('--git-common-dir'))).toBe(false)
+    await loopEnd($, 'loop-n')
+  })
+
+  test('a lookup the agent list refuses is retried on the next request', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    const asked = { calls: 0 }
+    on('agent.list', () => {
+      asked.calls++
+      return (asked.calls === 1 ? { deny: 'busy' } : { value: [{ ...fork('loop-f'), status: 'running' }] }) as never
+    })
+    await steps($, seen, 'loop-f', 100, 200)
+    await loopEnd($, 'loop-f')
+    expect(asked.calls).toBe(2)
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'c-msg', requests: 2 })
+  })
+
   test('a loop the agent list does not name, or names off the /<skill> form, logs nothing', async ($, on) => {
     const seen = world(on, () => completed('ok'))
     listing(on, [{ id: 'loop-y', type: 'general-purpose', description: '/two words' }])
@@ -738,9 +773,28 @@ describe('forked skill usage rows', () => {
 
   test('the agent list is asked once per loop, not once per request', async ($, on) => {
     const seen = world(on, () => completed('ok'))
-    const asked = listing(on, [fork('loop-f')])
-    await steps($, seen, 'loop-f', 1, 2, 3)
+    // A loop that never registers, so only the probe mark keeps steps 2 and 3 from asking again.
+    const asked = listing(on, [{ id: 'loop-n', type: 'general-purpose', description: 'Draft the commit message' }])
+    await steps($, seen, 'loop-n', 1, 2, 3)
     expect(asked.calls).toBe(1)
+    await loopEnd($, 'loop-n')
+  })
+
+  test('a background Agent loop listed as a fork logs one row, under its header skill', async ($, on) => {
+    const seen = world(on, () => ({
+      result: {
+        status: 'async_launched', agentId: 'loop-b', description: 'r', prompt: '', outputFile: 'f',
+        resolvedModel: 'claude-sonnet-5-5',
+      },
+      text: 'launched',
+    }))
+    const asked = listing(on, [fork('loop-b')])
+    await dispatch($, 'SKILL: todo-edit', 'harness:messenger')
+    await steps($, seen, 'loop-b', 100)
+    await loopEnd($, 'loop-b')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'todo-edit' })
+    expect(asked.calls).toBe(0)
   })
 
   test('a resumed fork logs a second row for its second run of turns', async ($, on) => {
@@ -755,12 +809,12 @@ describe('forked skill usage rows', () => {
     expect(new Set(ids).size).toBe(2)
   })
 
-  test('outside a harness project a fork is neither looked up nor logged', async ($, on) => {
+  test('outside a harness project a fork is looked up but not logged', async ($, on) => {
     const seen = world(on, () => completed('ok'), { config: null })
     const asked = listing(on, [fork('loop-f')])
     await steps($, seen, 'loop-f', 100)
     await loopEnd($, 'loop-f')
-    expect(asked.calls).toBe(0)
+    expect(asked.calls).toBe(1)
     expect(seen.files.has(USAGE)).toBe(false)
   })
 })

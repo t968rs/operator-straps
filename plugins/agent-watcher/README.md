@@ -3,7 +3,7 @@
 Renamed from `pr-review-watch` (0.6.0): enable `agent-watcher@operator-straps` and drop the old key. The usage
 log default is now `docs/_harness/agent_usage.jsonl` (`git mv` the old log, or set `agent_usage_path`).
 
-A usage row for every `Agent` dispatch, and run tracking for the harness plugin's `pr-review` and `pr-team`
+A usage row for every `Agent` dispatch and every forked skill (`context: fork`), and run tracking for the harness plugin's `pr-review` and `pr-team`
 skills, written as a CLI plugin of function hooks. It turns review rules that depended on the model remembering prose, or on a keyword heuristic, into
 hooks over the structured state the skills already write.
 
@@ -99,7 +99,7 @@ a new layer needs no vocabulary change for them. A second layer today still touc
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
 | R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (agent-watcher auto)`. |
 | R6 | Bubbled issues are dispositioned in the review JSON before stopping | Two triggers, each blocking once (`stop_hook_active` lets the stop through). **State** (pr-team runs): every tracked bubbled id must appear in the run's review JSON `bubbles[]`, `bubble_up[]` or `post_review_resolutions[]` (the `id_handling.disposition_ids` rule). **Keyword** (any active review): when the last assistant message contains "bubble" (any case or inflection), the active review JSON's `bubbles[]` must be populated unless every issue is already dispositioned. |
-| R7 | Every returned `Agent` dispatch gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per any other dispatch, of any agent type: this marketplace's agents, built-ins (`Explore`, `general-purpose`, `Plan`) and other plugins' agents, its values read from the header convention below. Written when the agent returns and validated against `agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
+| R7 | Every returned `Agent` dispatch gets a usage row | One row per reviewer, fixer, orchestrator, planner and closer dispatch of a pr-review or pr-team run, and one per any other dispatch, of any agent type: this marketplace's agents, built-ins (`Explore`, `general-purpose`, `Plan`) and other plugins' agents, its values read from the header convention below, and one per forked skill run ([Forked skills](#forked-skills)). Written when the agent returns and validated against `agent_usage.schema.json` before append; fixer and closer rows add `issues_assigned`, `issues_fixed`, `issues_bubbled` and `files_touched` (null when unknown). A denied dispatch writes none. |
 
 The keyword trigger checks the **active** review: the tracked run's PR (its review JSON no older than the
 run), or, with no tracked run, the PR of the first hot Phase 5 sentinel that blocks the stopping session.
@@ -161,13 +161,15 @@ A skill whose frontmatter sets `context: fork` runs in a subagent loop of its ow
 names, such as `harness:messenger` for `c-msg`, `branch-commit-msg`, `merge-commit-msg` and `pr-sum`). The
 engine launches that loop without an `Agent` call, raises no `agent.spawn` for it, and a typed `/<skill>`
 raises no Skill tool call either; only the loop's own `turn.step`, `tool.call` and `turn.complete` reach the
-mod. On a loop's first model request the mod looks the loop up once in `$.agent.list()`: an entry described as
-`/<skill>`, one token, is a forked skill. The loop becomes an unclaimed run with `skill` read as a `SKILL:`
+mod. On a loop's first model request the mod looks the loop up once in `$.agent.list()` (a lookup the list
+refuses is retried on the next request): an entry described as `/<skill>`, one token, is a forked skill unless
+an `Agent` call with that same `description` is still in flight, which makes it that call's loop. The loop becomes an unclaimed run with `skill` read as a `SKILL:`
 header line would be (`/harness:c-msg` logs `c-msg`; a name off the pattern logs `standalone` and lands in
 `fields`), `agent_id` and `subagent_type` from the entry's agent type, and it is registered as a background
 launch is, so its `turn.complete` writes the row with the background figures below. Whether the fork ran in
 the background or not makes no difference. A fork resumed after its loop ended is looked up again and logs a
-second row. Outside a harness project the list is never asked.
+second row. The project is resolved only for a loop the list names as a fork, so outside a harness project
+a fork is looked up but never logged.
 
 ### Review-local runs
 
@@ -243,7 +245,7 @@ cost (`tokens`, `context_tokens`, `requests`, `tool_uses`, `duration_s`, defined
 with `skill`, `role`, `run_id`, `agent_id` and `pr` from its header (with no header: `skill: standalone`,
 `role: other`, `pr: null`), no count fields, its header `fields`, and `signal: NO_BLOCK` for an agent that
 ends without a return block. A synchronous result is logged when it
-returns, a background agent when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
+returns, a background agent when its loop turn ends, and a forked skill when its loop turn ends; nothing waits for the verdict. A retried dispatch is a
 second row. An errored result logs `signal: ERROR` with zero usage and `context_tokens` and `requests`
 null; a foreground result with no request heard, or a background turn with no usage, logs `tokens: 0` (the
 tool calls and duration still land) with `usage not measured` in `notes`; a denied dispatch never ran and
@@ -314,11 +316,14 @@ reviewer's matrix `tokens` before 0.7.0 is its last request's count.
   time and its other header `fields` identify it.
 - Every `Agent` call resolves the project before passing on, since every call is tracked: a cached git top
   level, and in a harness project one more, uncached `git rev-parse --git-common-dir` (the Phase 5 sentinel
-  root).
+  root). Every other subagent loop costs one `$.agent.list()` lookup on its first request; only a forked
+  skill's loop resolves the project there too.
 - Forked skills are told apart by how the engine describes their loop in `$.agent.list()` (`/<skill>`, as
-  observed on Claude Code 2.1.318). An `Agent` call whose own `description` is a single `/token` would be
-  taken for a fork as well and log a second row; an engine that describes forks otherwise logs none. Before
-  0.8.0 forked skills logged no row at all.
+  observed on Claude Code 2.1.318). An `Agent` call whose own `description` is a single `/token` is not taken
+  for a fork while it is in flight (a background launch is registered once its launch result returns, and is
+  skipped after that); a forked skill that starts while an `Agent` call with its exact `/<skill>` description
+  runs logs no row. An engine that describes forks otherwise logs none. Before 0.8.0 forked skills logged no
+  row at all.
 - Workflow-run reviews are not tracked. Their agents raise `tool.call` and `turn.complete` with loop ids that
   no dispatch header names.
 - Appends are a read and a whole-file write, serialized within the session. Two sessions appending to the
