@@ -42,7 +42,7 @@
     "skill": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
-      "description": "The skill that dispatched the run: `pr-review` or `pr-team` for their runs; for any other dispatch the header `SKILL:` value with a leading `<plugin>:` stripped, else `standalone` (no `SKILL:` line, or a value off the pattern)."
+      "description": "The skill that dispatched the run: `pr-review` or `pr-team` for their runs; for any other dispatch the header `SKILL:` value with a leading `<plugin>:` stripped, else `standalone` (no `SKILL:` line, or a value off the pattern); for a forked skill (`context: fork`, from agent-watcher 0.8.0 on) the skill's own name, read the same way."
     },
     "role": {
       "type": "string",

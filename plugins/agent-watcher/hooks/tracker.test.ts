@@ -661,6 +661,110 @@ describe('standalone agent usage rows', () => {
   })
 })
 
+describe('forked skill usage rows', () => {
+  /** The agent list the engine answers: one entry per loop id, as `$.agent.list()` gives it. */
+  type Listed = { id: string; type: string; description: string }
+  /** Answers `agent.list` from `agents`; returns how many times it was asked. */
+  const listing = (on: On, agents: Listed[]): { calls: number } => {
+    const asked = { calls: 0 }
+    on('agent.list', () => {
+      asked.calls++
+      return { value: agents.map(a => ({ ...a, status: 'running' })) } as never
+    })
+    return asked
+  }
+  const fork = (id: string, skill = 'harness:c-msg', type = 'harness:messenger'): Listed =>
+    ({ id, type, description: `/${skill}` })
+  const loopEnd = ($: Engine, agentId: string, answer = 'drafted') =>
+    $.turn.complete({
+      answer, durationMs: 4000, isAborted: false, turnId: `t-${agentId}`, reason: 'answer', agentId,
+      usage: { input_tokens: 10, output_tokens: 20, cache_read_input_tokens: 30, cache_creation_input_tokens: 40, model: 'claude-sonnet-5-5' },
+    } as never)
+  const bash = (on: On) =>
+    on('tool.call', { tool: 'Bash' }, () => ({ result: { stdout: '', stderr: '', interrupted: false } }) as never)
+
+  test('a forked skill loop logs one row under the skill it names', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    listing(on, [fork('loop-f')])
+    bash(on)
+    await steps($, seen, 'loop-f', 300, 500)
+    await $.tool.call({ tool: 'Bash', command: 'git status', agentId: 'loop-f' } as never)
+    expect(seen.files.has(USAGE)).toBe(false)
+    await loopEnd($, 'loop-f')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(String(usageRows(seen)[0]?.run_id)).toMatch(/^standalone_\d{8}T\d{6}Z_\d+$/)
+    expect(usageRows(seen)[0]).toMatchObject({
+      pr: null, skill: 'c-msg', role: 'other', agent_id: 'messenger', subagent_type: 'harness:messenger',
+      model: 'claude-sonnet-5-5', model_family: 'sonnet', tokens: 100, context_tokens: 500, requests: 2,
+      tool_uses: 1, duration_s: 4, signal: 'NO_BLOCK',
+    })
+  })
+
+  test('a forked skill that ends in a return block logs its signal', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    listing(on, [fork('loop-f', 'harness:pr-sum')])
+    await steps($, seen, 'loop-f', 100)
+    await loopEnd($, 'loop-f', 'summary\n---\nSIGNAL: DONE\n---')
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'pr-sum', signal: 'DONE' })
+  })
+
+  test('a skill without a plugin prefix keeps its name', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    listing(on, [fork('loop-f', 'retry-policy', 'general-purpose')])
+    await steps($, seen, 'loop-f', 100)
+    await loopEnd($, 'loop-f')
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'retry-policy', agent_id: 'general-purpose' })
+  })
+
+  test('an Agent dispatch loop is not taken for a fork: one row, from the Agent result', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    listing(on, [{ id: 'loop-x', type: 'harness:messenger', description: 'Draft the commit message' }])
+    await steps($, seen, 'loop-x', 1000)
+    await loopEnd($, 'loop-x')
+    await dispatch($, 'SKILL: c-msg', 'harness:messenger')
+    expect(usageRows(seen)).toHaveLength(1)
+    expect(usageRows(seen)[0]).toMatchObject({ skill: 'c-msg', tokens: 1000 })
+  })
+
+  test('a loop the agent list does not name, or names off the /<skill> form, logs nothing', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    listing(on, [{ id: 'loop-y', type: 'general-purpose', description: '/two words' }])
+    await steps($, seen, 'loop-compact', 100)
+    await loopEnd($, 'loop-compact')
+    await steps($, seen, 'loop-y', 100)
+    await loopEnd($, 'loop-y')
+    expect(seen.files.has(USAGE)).toBe(false)
+  })
+
+  test('the agent list is asked once per loop, not once per request', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    const asked = listing(on, [fork('loop-f')])
+    await steps($, seen, 'loop-f', 1, 2, 3)
+    expect(asked.calls).toBe(1)
+  })
+
+  test('a resumed fork logs a second row for its second run of turns', async ($, on) => {
+    const seen = world(on, () => completed('ok'))
+    listing(on, [fork('loop-f')])
+    await steps($, seen, 'loop-f', 100)
+    await loopEnd($, 'loop-f')
+    await steps($, seen, 'loop-f', 100)
+    await loopEnd($, 'loop-f')
+    const ids = usageRows(seen).map(r => r.run_id)
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+  })
+
+  test('outside a harness project a fork is neither looked up nor logged', async ($, on) => {
+    const seen = world(on, () => completed('ok'), { config: null })
+    const asked = listing(on, [fork('loop-f')])
+    await steps($, seen, 'loop-f', 100)
+    await loopEnd($, 'loop-f')
+    expect(asked.calls).toBe(0)
+    expect(seen.files.has(USAGE)).toBe(false)
+  })
+})
+
 describe('the header convention and row fields (issue #193)', () => {
   const launched = () => ({
     result: { status: 'async_launched', agentId: 'loop-1', description: 'r', prompt: '', outputFile: 'f' }, text: 'launched',
