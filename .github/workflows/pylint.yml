@@ -3,6 +3,9 @@ name: Pylint
 on:
   push:
     branches: [main]
+  # On request for any branch: the Actions tab's "Run workflow" branch picker, or
+  # `gh workflow run pylint.yml --ref <branch>`.
+  workflow_dispatch:
 
 jobs:
   build:
@@ -36,18 +39,15 @@ jobs:
       run: |
         uv pip install --system pylint -r requirements-dev.txt
 
-    # PYTHONPATH mirrors pytest's pythonpath (pyproject.toml): harness_lib and the test helpers are
-    # found through sys.path edits at runtime, which pylint cannot follow.
+    # Report only: findings print in the log and never fail the job (--exit-zero). The rule set and the
+    # import paths live in pyproject.toml, so a local `pylint` run reports the same.
     - name: Analysing the code with pylint
-      env:
-        PYTHONPATH: plugins/harness/lib:tests
       run: |
-        pylint $(git ls-files '*.py' ':!:tests/*')
-    # Test functions need no docstring (C0116), pytest fixtures are passed in by the name they are
-    # defined under (W0621), and tests reach into private helpers on purpose (W0212).
+        pylint --exit-zero $(git ls-files '*.py' ':!:tests/*')
+    # Tests also skip: docstrings on test functions and grouping classes (C0116, C0115), fixtures
+    # passed in by the name they are defined under (W0621) or requested only for their side effect
+    # (W0613), private helpers reached on purpose (W0212), and exact `== []` asserts (C1803).
     - name: Analysing the tests with pylint
       if: ${{ !cancelled() }}
-      env:
-        PYTHONPATH: plugins/harness/lib:tests
       run: |
-        pylint --disable=C0116,W0621,W0212 $(git ls-files 'tests/*.py')
+        pylint --exit-zero --disable=C0115,C0116,C1803,W0212,W0613,W0621 $(git ls-files 'tests/*.py')

@@ -21,5 +21,28 @@ target-version = "py311"
 # (UP006/UP045) contradict the Optional/Union house style.
 select = ["E4", "E7", "E9", "F", "E501"]
 
+[tool.pylint.main]
+# Mirrors pytest's pythonpath: scripts and tests reach harness_lib and the test helpers through
+# sys.path edits at runtime, which pylint cannot follow (E0401).
+init-hook = "import sys; sys.path[:0] = ['plugins/harness/lib', 'tests']"
+
 [tool.pylint.format]
 max-line-length = 110
+
+[tool.pylint."messages control"]
+# Checks that contradict house conventions:
+#   C0413, C0415  drivers import after their sys.path bootstrap, and imports stay lazy where a hook's
+#                 start-up cost or an optional dependency (pydantic) makes them so on purpose.
+#   R0902-R0917, C0302  size limits; the house limit is functions under 50 lines.
+disable = [
+    "wrong-import-position",
+    "import-outside-toplevel",
+    "too-many-instance-attributes",
+    "too-few-public-methods",
+    "too-many-public-methods",
+    "too-many-return-statements",
+    "too-many-arguments",
+    "too-many-locals",
+    "too-many-positional-arguments",
+    "too-many-lines",
+]
