@@ -73,10 +73,10 @@ def _review_payload(root: Path) -> dict:
 def _merge_build_args(root: Path, tmp: Path) -> List[str]:
     """A wrapper that runs ``merge_commit_msg.py build`` with ``gh`` faked and the message on stdin.
 
-    The stdin is a cp1252 text stream over UTF-8 bytes (the Windows console default), so the em dash of the
-    subject only survives when the driver switches stdin to UTF-8.
+    The stdin is a cp1252 text stream over UTF-8 bytes (the Windows console default), so the non-ASCII
+    character of the prose only survives when the driver switches stdin to UTF-8.
     """
-    message = ["Merge PR #7 — t", "", "Prose.", "", "  - a.py: change", "",
+    message = ["Merge PR #7 -- t", "", "Prose café.", "", "  - a.py: change", "",
                "Branch lineage: `main` -> `feature`"]
     view = {"number": 7, "title": "t", "headRefName": "feature", "baseRefName": "main", "additions": 1,
             "deletions": 0, "changedFiles": 1, "body": "", "state": "OPEN"}
@@ -255,7 +255,7 @@ def test_merge_build_lands_in_the_project(project: Path, tmp_path: Path) -> None
     written = project / "docs" / "_commit_messages" / "PR7_merge.txt"
     assert written.is_file()
     assert written.resolve().is_relative_to(project.resolve())
-    assert written.read_text(encoding="utf-8").startswith("Merge PR #7 — t\n")
+    assert written.read_text(encoding="utf-8").startswith("Merge PR #7 -- t\n\nProse café.\n")
 
 
 def test_parallel2_plan_lands_in_the_project(project: Path, tmp_path: Path) -> None:

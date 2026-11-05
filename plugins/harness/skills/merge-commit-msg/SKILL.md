@@ -32,14 +32,14 @@ Run every command below with the Bash tool from the project root, exactly as wri
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" capture <PR number>
 ```
 
-Exit 1 prints a `problem:` line (PR not open, `gh` failure, invalid config): report it and stop. Exit 0 prints
+Exit 1 prints a `problem:` line (PR not open, unusable PR title, `gh` failure, invalid config): report it and stop. Exit 0 prints
 the PR's Facts, Changed files, Diff, Commits and Branch commit subjects, then the message skeleton in a `text`
 fence under `## Message`. Nothing is written to disk. The printed output, diffs included, is the whole input:
 capture pulls the diffs itself (one section per file, size-capped, a file past the cap keeps its header), so the
 agent runs no `git diff` or `gh pr diff` and Reads no changed file.
 
-Capture fills what is mechanical in the skeleton: the subject (`Merge PR #N — <title>`, verbatim),
-`Branch lineage:`, the `Review artifacts:` and `Includes N review fixes (...)` lines when a review JSON exists,
+Capture fills what is mechanical in the skeleton: the subject (`Merge PR #N -- <title>`, ASCII
+separator, title verbatim), `Branch lineage:`, the `Review artifacts:` and `Includes N review fixes (...)` lines when a review JSON exists,
 and, for a PR made only of generated files whose message is fixed in advance (entries in
 `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), the canned message as the prose. Keep those lines
 as they stand.
@@ -63,8 +63,9 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commi
 MSG
 ```
 
-Exit 1 prints `problem:` lines. A line about the PR state, `gh` or the config (PR not open, `gh pr view failed`,
-invalid config): report it and stop; editing the text cannot fix it. Any other `problem:` line names a defect in
+Exit 1 prints `problem:` lines. A line about the PR state, title, `gh` or the config (PR not open, a PR title
+with non-ASCII characters or one that reads as the branch name, `gh pr view failed`, invalid config): report it
+and stop; editing the text cannot fix it, and the developer retitles the PR. Any other `problem:` line names a defect in
 the message (placeholder left, indented line, filler word, commit SHA, vendor name, subject changed, empty stdin):
 fix the text and run the same command again. Exit 0 writes `PR<N>_merge.txt`, keeps a replaced copy as
 `PR<N>_merge.txt.bak`, and prints the receipt. Output the receipt verbatim — nothing else.

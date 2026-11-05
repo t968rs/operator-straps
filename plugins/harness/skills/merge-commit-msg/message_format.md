@@ -8,7 +8,7 @@ layout with the script-filled lines in place.
 ## Layout
 
 ```
-Merge PR #NNN — <PR title verbatim>
+Merge PR #NNN -- <PR title verbatim>
 
 <"What + why" prose. Lead with the action; explain the underlying problem. Wrap lines at ~110 columns; split
 multi-sentence content into 2-3 short paragraphs.>
@@ -28,7 +28,7 @@ Includes N review fixes (Critical: N, Important: N, Minor: N).
 
 ## Section order (fixed)
 
-1. Subject line (`Merge PR #NNN — <title>`), script-filled.
+1. Subject line (`Merge PR #NNN -- <title>`), script-filled.
 2. Prose paragraph(s).
 3. Bullets: 4-7 representative files from Changed files, `  - filename: key change`. Curate to the changes that
    explain the PR; never enumerate every file.
@@ -43,8 +43,10 @@ Includes N review fixes (Critical: N, Important: N, Minor: N).
 
 ## Rules
 
-- **Verbatim title.** The subject is exactly `Merge PR #NNN — <title>`; build compares it with the title `gh`
-  returns for the PR.
+- **Verbatim title.** The subject is exactly `Merge PR #NNN -- <title>`; build compares it with the title `gh`
+  returns for the PR. The separator is ASCII `--`, and capture and build refuse a PR title that holds a
+  non-ASCII character or reads as the branch name with spaces for hyphens (`0028 changelog 3 17 2`): the
+  developer retitles the PR with `gh pr edit <N> --title`.
 - **No commit SHAs.** The merge UI records them. Build rejects a hex run of 7-40 characters holding a digit.
 - **No placeholders left.** Build rejects any line that is a bare `<...>` or `  - <...>`.
 - **No vendor or tool names** in prose or bullets (verbatim paths and the verbatim title are exempt), and no
@@ -60,7 +62,7 @@ Includes N review fixes (Critical: N, Important: N, Minor: N).
 ## Worked example (PR #887)
 
 ```
-Merge PR #887 — [BUG] Worker pool crash on spawn
+Merge PR #887 -- [BUG] Worker pool crash on spawn
 
 Diagnoses and fixes a BrokenProcessPool failure in the export ProcessPoolExecutor.
 Spawned children under pythonw.exe attach to invalid stdio handles; a defensive
@@ -87,6 +89,6 @@ Receipt (the only chat output):
 
 ```
 Saved: docs/_commit_messages/PR887_merge.txt - merge message for PR #887
-Subject: Merge PR #887 — [BUG] Worker pool crash on spawn
+Subject: Merge PR #887 -- [BUG] Worker pool crash on spawn
 Final as saved: ...
 ```
