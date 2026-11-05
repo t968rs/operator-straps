@@ -1,11 +1,13 @@
 """tools/select_tests.py: which CI work a diff needs, decided from imports, mentions and path rules."""
 from __future__ import annotations
 
+import ast
 import importlib.util
 import json
 import os
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from types import ModuleType
 from typing import Dict, Iterator, List, Optional
@@ -481,6 +483,26 @@ def test_every_walking_test_declares_existing_walk_roots(sel: ModuleType) -> Non
         absent.extend(f"{rel}: {r}" for r in roots if not (REPO_ROOT / r).is_dir())
     assert unmarked == [], "walking tests need a literal WALK_ROOTS tuple"
     assert absent == [], "WALK_ROOTS names a directory that does not exist"
+
+
+def test_arc_meta_scripts_folder_is_an_import_root(sel: ModuleType) -> None:
+    """A bare-stem skill module is reached through the pythonpath entry for its folder: the archive test
+    never names the generator, yet imports it through the shared builder."""
+    changed = "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py"
+    chosen, reasons = sel.affected_tests(REPO_ROOT, [changed])
+    assert "tests/arc/test_arc_meta_archive.py" in chosen, reasons
+    why = next(r for r in reasons if r.startswith("tests/arc/test_arc_meta_archive.py:"))
+    assert why.endswith(f"imports {changed}"), why
+
+
+def test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook(sel: ModuleType) -> None:
+    """The fallback roots, pytest's ``pythonpath`` and pylint's ``init-hook`` name the same folders."""
+    assert list(sel.DEFAULT_PYTHONPATH) == sel.pythonpath_roots(REPO_ROOT)
+    data = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    hook = data["tool"]["pylint"]["main"]["init-hook"]
+    _, marker, listed = hook.partition("sys.path[:0] = ")
+    assert marker, hook
+    assert ast.literal_eval(listed.strip()) == list(sel.DEFAULT_PYTHONPATH), hook
 
 
 def test_real_repo_has_no_unparsable_test(sel: ModuleType) -> None:

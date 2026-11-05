@@ -1,14 +1,22 @@
 # operator-straps
 
-Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) plus eight TypeScript mods
-(`agent-watcher`, `git-status`, `session-bookmark`, `pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`,
-`parallel2-lanes`). Layout and install: `README.md`.
+Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scripts) and the `arc-straps`
+plugin (ArcGIS Pro toolbox skills) plus eight TypeScript mods (`agent-watcher`, `git-status`, `session-bookmark`,
+`pytest-scope`, `todo-watch`, `bubble-stamp`, `band-line`, `parallel2-lanes`). Layout and install: `README.md`.
 
 ## Rules for changes
 
 - **Plugins stay generic.** Nothing under `plugins/` names a consuming project: no project paths, package names,
   interpreter variables or machine paths. A project-specific value becomes a key in `.claude/harness.json`.
   `tests/contract/test_no_repo_literals.py` enforces the ban list.
+- **ArcGIS material lives in `arc-straps`.** A skill that needs ArcGIS Pro, arcpy or the `.atbx` format goes under
+  `plugins/arc-straps/`; it reaches harness only through `harness-skill-api`, `harness_lib.config`,
+  `harness_lib.plugin_config` and `harness_lib.project` (`project_root`), and its project values live under `plugins.arc-straps` in
+  `.claude/harness.json`. The literal ban lifts only the arcpy pattern there (`ALLOWED_UNDER`). An
+  arc-straps key touches `plugins/arc-straps/config/defaults.json`, `config/arc-straps.schema.json`,
+  `ArcMetaPaths` and `paths()` in `arc_meta_config.py`, `_meta()` with its `_OPTIONAL` tuple (the type check
+  that runs without `jsonschema`; a nullable path joins `_OPTIONAL`), and the plugin README Configuration table; harness
+  files do not change.
 - **Data goes to the project, code stays in the plugin.** Drivers and hooks write only under the consuming project
   (`cfg.path(...)`, `state_dir`, `artifacts.*`). `plugin_root()` is read-only.
   `tests/contract/test_root_separation.py` enforces it.
@@ -30,8 +38,10 @@ Claude Code marketplace: the `harness` plugin (Python skills, agents, hooks, scr
 - **Phase 5 sentinels are per repository**: `sentinel_dir_under` anchors them at the main checkout. The Stop hook,
   `phase4_branch_safety.py`, the schema hook and `agent-watcher` all use that rule; change it in all four or
   none.
-- **Skills and agents** invoke code as `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/..."`,
-  skill-local files as `${CLAUDE_SKILL_DIR}/...`, and dispatch agents as `harness:<name>`.
+- **Skills and agents** invoke code as `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/..."` in
+  harness; arc-straps skills run their Python through `harness-skill-api --file "${CLAUDE_SKILL_DIR}/scripts/<module>.py"`,
+  since hpy sits under harness's plugin root. Skill-local files go as `${CLAUDE_SKILL_DIR}/...`, and agents
+  dispatch as `harness:<name>`.
 - **Hooks** register in `plugins/harness/hooks/hooks.json` in shell form through `hpy`. A file under `hooks/`
   without a leading underscore must be registered, or named under `COMPOSED` as decided inside a registered
   dispatcher (`bash_pretool.py` runs the three Bash hooks in one launch); both are checked by

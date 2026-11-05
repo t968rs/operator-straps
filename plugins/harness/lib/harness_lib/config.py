@@ -193,6 +193,11 @@ class HarnessConfig:
     docstrings: DocstringsConfig
     todo: TodoConfig
     strap: StrapConfig
+    plugins: Tuple[Tuple[str, str], ...]
+
+    def plugin(self, name: str) -> Dict[str, Any]:
+        """A fresh copy of the ``plugins.<name>`` section; empty when the project sets none."""
+        return json.loads(dict(self.plugins).get(name, "{}"))
 
     def path(self, rel: str) -> Path:
         """Absolute path of a project-relative POSIX path."""
@@ -316,6 +321,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         runlogs=_runlogs(m["runlogs"]), docstrings=_docstrings(m["docstrings"]),
         todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
         strap=_strap(m["strap"]),
+        plugins=_plugins(m["plugins"]),
     )
 
 
@@ -330,6 +336,19 @@ def _strap(s: Dict[str, Any]) -> StrapConfig:
     if target not in ("harness", "project"):
         raise ConfigError(f"strap/target: {target!r} is not 'harness' or 'project'")
     return StrapConfig(target)
+
+
+def _plugins(p: Dict[str, Any]) -> Tuple[Tuple[str, str], ...]:
+    """``plugins`` as sorted ``(name, JSON text)`` pairs, checked also on a load without ``jsonschema``."""
+    if not isinstance(p, dict):
+        raise ConfigError("plugins: must be an object")
+    names = sorted(n for n in p if not re.fullmatch(r"[a-z][a-z0-9-]*", n))
+    if names:
+        raise ConfigError(f"plugins: section names {names} must match ^[a-z][a-z0-9-]*$")
+    bad = sorted(name for name, section in p.items() if not isinstance(section, dict))
+    if bad:
+        raise ConfigError(f"plugins: sections {bad} must be objects")
+    return tuple((name, json.dumps(p[name], sort_keys=True)) for name in sorted(p))
 
 
 def _require_group(pattern: str, group: str, where: str) -> None:

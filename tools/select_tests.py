@@ -70,7 +70,7 @@ TREE_WALK = re.compile(r"\brglob\(|\.glob\(|\biglob\(|\biterdir\(|(?<!\bast)\.wa
                        r"|\bscandir\(|\blistdir\(")
 WALK_MARKER = "WALK_ROOTS"
 ROOT_NAME = re.compile(r"root|repo", re.IGNORECASE)
-DEFAULT_PYTHONPATH = ("plugins/harness/lib", "tests")
+DEFAULT_PYTHONPATH = ("plugins/harness/lib", "tests", "plugins/arc-straps/skills/arc-meta/scripts")
 CONFTEST = "tests/conftest.py"
 SKIP_DIRS = frozenset({"node_modules", "__pycache__", ".git", ".venv"})
 

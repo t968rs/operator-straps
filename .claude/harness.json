@@ -18,7 +18,7 @@
     {"bucket": "Cicd", "prefixes": [".github/workflows/"]},
     {"bucket": "Test", "prefixes": ["tests/"], "suffixes": [".test.ts", ".test.tsx"]},
     {"bucket": "Agent", "prefixes": ["plugins/harness/skills/", "plugins/harness/agents/", "plugins/harness/rules/",
-                                     "plugins/harness/reference/", ".claude/"]},
+                                     "plugins/arc-straps/skills/", "plugins/harness/reference/", ".claude/"]},
     {"bucket": "Runtime", "prefixes": ["plugins/"]},
     {"bucket": "Docs", "prefixes": ["docs/"]}
   ]

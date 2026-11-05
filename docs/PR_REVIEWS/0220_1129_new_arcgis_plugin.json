@@ -1,0 +1,713 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 220,
+  "pr_title": "1129 new arcgis plugin",
+  "branch": "1129-new-arcgis-plugin",
+  "base_branch": "main",
+  "base_sha": "fb349f73e3091f084a3e16243ddcac7e03b87546",
+  "head_sha": "3bb85a938ac1907b27a496edc74b2f406b9e2b88",
+  "review_date": "2026-11-05",
+  "verdict": "READY TO MERGE - 27 of 27 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 6018,
+    "deletions": 16,
+    "files_changed": 47
+  },
+  "reviewers": [
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "overall (opus)",
+    "system_shape (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0220/pr220_20261105T150931Z/findings/config.json",
+    "docs/_scratch/pr_review/0220/pr220_20261105T150931Z/findings/tests.json",
+    "docs/_scratch/pr_review/0220/pr220_20261105T150931Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0220/pr220_20261105T150931Z/findings/docs.json",
+    "docs/_scratch/pr_review/0220/pr220_20261105T150931Z/findings/overall.json",
+    "docs/_scratch/pr_review/0220/pr220_20261105T150931Z/findings/system_shape.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The harness schema's new `plugins` key matches its runtime twin: propertyNames ^[a-z][a-z0-9-]*$ and object-valued sections are rechecked by _plugins in config.py:341-351, so a load without jsonschema enforces the same contract.",
+    "The new key covers all four places the config-key rule requires: schema, defaults.json (`plugins: {}`), the HarnessConfig.plugins field and its builder, and the README key table row.",
+    "arc-straps.schema.json reuses harness's relPath pattern verbatim and closes both levels with additionalProperties false. It agrees key by key with plugins/arc-straps/config/defaults.json, and plugin_section validates the merged section, so 'every key optional' holds.",
+    "The pyproject pythonpath and pylint init-hook edits match each other, and tools/select_tests.py DEFAULT_PYTHONPATH mirrors the new arc-meta scripts entry, so the import-closure test selection follows the new root.",
+    "Every arc-meta test is behavioral: real zip archives built in tmp_path or committed make_project repos; the only monkeypatches inject faults (testzip, os.replace, build_metadata) and then assert the archive is left byte-identical.",
+    "The shared builder tests/arc/_arc_toolbox.py gives one demo toolbox (content, rc, canonical XML, a deliberately bad canonical) that every arc test reuses instead of copying fixtures.",
+    "test_arc_meta_roundtrip.py pins checker/writer agreement: applying apply_rc and apply_page must leave check_applied clean, for both plain and bold canonical text.",
+    "The archive rewrite tests cover the failure paths a real Pro user hits: a locked archive, a corrupt result, members that do not parse, duplicate-named members, kept compression types and an existing backup left untouched.",
+    "_assert_found in test_arc_meta_api.py compares the exact multiset of (code, param) pairs and then claims each detail fragment once, so two problems with the same code are told apart.",
+    "test_no_repo_literals.py adds the ALLOWED_UNDER exemption with tests of its own: the prefix boundary (arc-straps-x is not exempt), that only the named label is lifted, and that every exemption names a real BANNED label.",
+    "Root separation gains an arc-meta apply case in MUST_EXIT_ZERO, so a refusing or missing script cannot pass the plugins-snapshot check vacuously.",
+    "The skill contract test parses heredoc bodies with ast so each called name is checked against the module's __all__, and pins the dry-run-then-apply pair for every writer.",
+    "The checker and the writers share a single builder: check_applied compares against arc_meta_canonical.page and fields_of, the same functions apply_page and apply_rc write from, so page and hover text cannot drift between check and apply.",
+    "arc_meta_archive.rewrite writes a temp copy, validates it (testzip plus a parse of each replaced member), takes the .bak and then swaps it in, and maps PermissionError to a locked-toolbox ApiError, so a failed apply leaves the archive byte-identical.",
+    "HarnessConfig.plugins stores each section as sorted (name, JSON text) pairs, which keeps the frozen config hashable; plugin() returns a fresh copy each call, so a caller cannot change the shared config.",
+    "arc_meta_config.paths refuses any configured location that resolves outside the project root, and an ambiguous or missing default .atbx gets a ConfigError that names the key to set.",
+    "tools/select_tests.py DEFAULT_PYTHONPATH now matches the pyproject pytest pythonpath and the pylint init-hook, so the import closure follows the arc-meta scripts folder.",
+    "SKILL.md report strings (DRY-RUN, UP TO DATE, UNCHANGED, `<archive> is locked`) match the writers' literal output, so an agent can key on them.",
+    "The PROVENANCE path map records every split and rename (api helpers to archive/canonical, three apply scripts to rc/page/toolbox, API tests 1-8/12-21 vs 9-11), so a reviewer can diff each file against the source pin.",
+    "CLAUDE.md boundary rule names the exact ALLOWED_UNDER mechanism and its single lifted pattern, and test_no_repo_literals.py implements exactly that label.",
+    "The plugin README Configuration table matches defaults.json and arc_meta_config.paths() resolution, including the `<parent of tool_dir>/<archive>.xml` toolbox_source default and the single-archive discovery error.",
+    "The dependency floor (harness 0.56.0) is stated identically in the manifest, the repo README, the plugin README and the plan, with the reason (an older harness rejects the `plugins` key).",
+    "One shared builder (arc_meta_canonical.page and fields_of) feeds the check API, both tool writers and the test fixtures. test_arc_meta_roundtrip.py proves that writer output passes check_applied in both the plain and the bold case.",
+    "arc_meta_archive.rewrite writes a temp copy, validates it, takes .bak only after validation and then swaps. Tests cover a locked archive, a corrupt result, a member that fails to parse, an untouched earlier backup, duplicate-named members and per-member compression.",
+    "The harness plugins key is stored as sorted (name, JSON text) pairs, so HarnessConfig stays frozen and hashable. It is validated with and without jsonschema, and all four places of the config-key checklist are touched (defaults, schema, config.py, README).",
+    "arc_meta_config refuses ambiguous archive discovery and any configured location that resolves outside the project root. Its type checks hold without jsonschema too.",
+    "The literal-ban exemption is scoped to one label and one folder prefix, with a boundary test (plugins/arc-straps-x) and a guard that exemptions name existing labels.",
+    "test_root_separation gains an end-to-end harness-skill-api --file case that must exit 0 and lands its .bak in the consuming project.",
+    "test_select_tests pins DEFAULT_PYTHONPATH to both pyproject's pytest pythonpath and pylint's init-hook, so the three copies cannot drift.",
+    "The harness `plugins` key touches all four places CLAUDE.md requires: defaults.json, harness.schema.json, the config.py field plus _plugins builder with a jsonschema-free mirror, and the README key row. pr_review config_data dumps the section as objects, so `config --get plugins.<name>.<key>` works.",
+    "One canonical page builder and hover reader (arc_meta_canonical.page / fields_of) is shared by the check API, the writers and the test builder. test_arc_meta_roundtrip proves that apply leads to a clean check_applied for both plain and bold content.",
+    "arc_meta_archive.rewrite validates before taking the backup and swapping. Fault-injection tests cover a lock, a corrupt zip, members that fail to parse, and an existing backup that must survive.",
+    "The root-separation case runs apply_rc through the real skill_api launcher and asserts that the .bak lands in the project and nothing is written under plugins/.",
+    "ALLOWED_UNDER lifts exactly one ban label for one prefix. Its tests include the `arc-straps-x` prefix-collision case and check that every exemption names an existing label.",
+    "test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook ties DEFAULT_PYTHONPATH, pytest pythonpath and pylint init-hook together, so the three cannot drift.",
+    "test_arc_straps_registration pins the marketplace entry, the harness>=0.56.0 dependency, the README rows, the plugin README key table against the schema, and the PROVENANCE pin."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Documented harness boundary omits harness_lib.project, which arc-straps imports",
+        "file": "CLAUDE.md",
+        "files": [
+          "CLAUDE.md",
+          "plugins/arc-straps/README.md",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py"
+        ],
+        "lines": "12-18",
+        "reviewer": "system_shape, docs",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "CLAUDE.md:12-14 says arc-straps reaches harness only through harness-skill-api, harness_lib.config and harness_lib.plugin_config, and plugins/arc-straps/README.md:40-47 repeats the closed list. In the same PR, arc_meta_config.py:10 imports harness_lib.project.project_root and paths() calls it at line 37, so a subfolder repo resolves to its project (test_a_subfolder_reads_the_project_config depends on this). A harness change to project_root would break arc-straps while both boundary documents say it cannot.\n\nAlso (docs): CLAUDE.md:16-18 and plugins/arc-straps/README.md:82-84 say a new arc-straps key touches defaults.json, the schema, `ArcMetaPaths` and `paths()` in arc_meta_config.py, and the README table. The shipped module also type-checks keys in `_meta` with the `_OPTIONAL` tuple (arc_meta_config.py:16,48-58). Without jsonschema, that check is the only type validation. A key added by following the list gets no fallback type check, and `paths()` can fail with a raw TypeError on a non-string value instead of a ConfigError.\n\nAlso (system_shape): CLAUDE.md:15-17 and plugins/arc-straps/README.md:82-84 list the places a new arc-straps key touches: defaults.json, the schema, ArcMetaPaths and paths(), and the README table. The type checks that run without jsonschema live in a separate function, _meta() with its _OPTIONAL tuple (arc_meta_config.py:16,49-59). A key added only in the listed places gets no type check on a load without jsonschema.",
+        "fix": [
+          "Add `harness_lib.project` (`project_root`) to the boundary list in CLAUDE.md:12-14 and to the bullet list in plugins/arc-straps/README.md:45-47.",
+          "Alternatively, drop the import and have paths() resolve the root through an API the documents already name (for example a load_config path that walks up to the project), keeping test_a_subfolder_reads_the_project_config green.",
+          "Add '`_meta` (and `_OPTIONAL` for a nullable path)' to the touch list in both CLAUDE.md and the plugin README Configuration paragraph.",
+          "Name `_meta()` (and `_OPTIONAL`) beside `ArcMetaPaths` and `paths()` in CLAUDE.md:15-17 and plugins/arc-straps/README.md:82-84."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Plugin README says toolbox-level help is checked, but no check reads it",
+        "file": "plugins/arc-straps/README.md",
+        "files": [
+          "plugins/arc-straps/README.md",
+          "plugins/arc-straps/skills/arc-meta/SKILL.md",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+          "README.md",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_archive.py"
+        ],
+        "lines": "10-11,88-89,91-92",
+        "reviewer": "system_shape, docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plugins/arc-straps/README.md:10-11 lists the toolbox-level help among the surfaces checked against the canonical XML by check_canonical/check_applied/entry_sources. All three are per-tool: none reads toolbox.content.rc, toolbox.metadata.xml or the toolbox_source. The update guidance at README.md:91-92 ('sweep check_applied over tool_names() and apply the tools it flags') therefore misses the toolbox page. That page's idAbs and useLimit are rendered by the same generator (mf.to_pro_html, arc_meta_toolbox.py:137,143), so a generator update leaves it stale and nothing flags it. The SKILL.md generator-change scoping rule (:57-65) has the same blind spot.\n\nAlso (docs): plugins/arc-straps/README.md:88-89 says an apply rewrites the archive 'after copying it to <archive>.bak', then validates. `arc_meta_archive.rewrite` (arc_meta_archive.py:69-72) writes and validates the temp copy first and takes the backup only after validation passes. A failed apply therefore leaves any older .bak untouched, which is not what the README implies. The repo README row (README.md:40) has the same ordering.\n\nAlso (overall): plugins/arc-straps/README.md:10-11 says the read-only check compares 'the archive's hover text, \"?\" page and toolbox-level help against that XML (check_canonical, check_applied, entry_sources)'. arc_meta_api reads only per-tool members (<Tool>.tool/...). Nothing compares toolbox.content.rc or toolbox.metadata.xml with toolbox_source; only apply_toolbox's dry run reports toolbox drift.",
+        "fix": [
+          "Correct plugins/arc-straps/README.md:10-11 so toolbox-level help appears under Apply only. Extend README.md:91-92 and the SKILL.md generator-change rule with 'then dry-run apply_toolbox; apply it when it does not report UNCHANGED'.",
+          "Or add a read-only toolbox check to arc_meta_api (comparing the archive against build_rc/build_metadata of the configured toolbox_source) and keep the README claim.",
+          "Reword to: 'An apply writes a temp copy, validates it, then copies the original to `<archive>.bak` and swaps the copy in; a failed validation leaves the archive and any older `.bak` unchanged.' Apply the same order in README.md:40.",
+          "Drop 'and toolbox-level help' from the Check bullet, and add that toolbox-level drift shows in the apply_toolbox dry run (UNCHANGED vs DRY-RUN).",
+          "Add a check_toolbox call to arc_meta_api that compares the archive with build_rc/build_metadata, and list it in SKILL.md's API table."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "rc writer treats any description as wired; check_applied keeps reporting hover_unwired",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_rc.py",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_rc.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_models.py",
+          "plugins/arc-straps/skills/arc-meta/SKILL.md",
+          "plugins/arc-straps/README.md",
+          "README.md"
+        ],
+        "lines": "52-58,72-88,91-125,188-201",
+        "reviewer": "runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "check_applied (_hover_problem) and ParamRow.hover_wired count a surface as wired only when tool.content holds exactly \"$rc:<key>\". The rc writer's missing_refs wires a parameter only when \"description\" is absent from it, and the summary only when \"description\" is absent from tool.content. A tool.content whose description is a literal string or another $rc: key is never rewired: apply_rc reports \"no changes (already matches canonical XML)\", or _dangling says \"tool.content references $rc:<key>, which the rc lacks\", which is false, while check_applied reports hover_unwired on every run. The API docstring says the checker and the writers cannot drift, and here a writer cannot clear a defect the checker reports. The rc module docstring promises that a missing reference gets added, but a wrong reference is never fixed.\n\nAlso (overall): check_applied and apply_rc classify two rc states differently, so Step 5 of the skill ('check_applied prints clean for every tool changed') cannot be reached and no documented call fixes it. (1) Dangling reference: tool.content already holds \"$rc:<key>\" but the rc map lacks <key>. apply_rc deliberately leaves it out: _dangling only reports it, and _set adds a key only when it is in rc_map or in add_keys, which holds only missing_refs. check_applied then sees ref == $rc:key and actual None and reports hover_stale ('rc <key> differs from the canonical text'). The skill reads hover_stale as unpublished, unchecked text to leave out, which is the wrong diagnosis here. run_rc also returns changed=False although the archive differs from the canonical source, contradicting the ApplyOutcome.changed contract (arc_meta_models.py:110). (2) Literal description: a parameter or summary whose tool.content description is present but is not $rc:<key>. missing_refs skips it ('description' not in param is False), but _hover_problem reports hover_unwired. The skill says apply_rc 'wires every missing reference', yet every rerun leaves this hover_unwired. Both README claims that check_applied 'passes exactly when the archive holds what an apply writes' are false in these states.\n\nAlso (system_shape): SKILL.md:60-62 and :107 say apply_rc wires every missing $rc: reference for every parameter with non-empty canonical text, Step 5 (:121) expects check_applied to print clean afterwards, and README.md:15-16 says a passing check_applied means the archive holds exactly what an apply writes. Two cases break this. (1) missing_refs (arc_meta_rc.py:52-58) only wires a summary or parameter that has no `description` key at all. A literal or mis-keyed description is left alone, but _hover_problem (arc_meta_api.py:284-286) reports hover_unwired for any ref other than `$rc:<key>`. (2) When tool.content already references a key the rc lacks, _dangling/_apply_to_rc (arc_meta_rc.py:102-105, 115-125) leave the key out on purpose and report 'no changes'. check_applied then reports hover_stale (arc_meta_api.py:287-288, since rc.get(key) is None). test_run_names_a_reference_the_rc_lacks_and_leaves_it_out pins that writer behavior, and the round-trip test covers neither case. An agent following the skill re-applies and gets the same problem every time.",
+        "fix": [
+          "In missing_refs and _dangling, test param.get(\"description\") != f\"$rc:{key}\" (and content.get(SUMMARY_KEY) != \"$rc:description\" for the summary) instead of key presence. Make wire_content replace an existing summary value in place (add_summary drops its `SUMMARY_KEY not in content` guard and the loop overwrites out[SUMMARY_KEY]). Update the rc module docstring to say that a missing or wrong reference is rewired.",
+          "Or keep the writer as it is and make _hover_problem report a separate code (for example hover_foreign_ref) for a description that is present but not the expected $rc: reference, with the rc report naming it, so the two surfaces agree that the writer leaves it alone.",
+          "Make apply_rc converge: pass the _dangling keys to _apply_to_rc as addable (and count them in changed), and wire a param or summary whose description is not $rc:<key>. Then add a roundtrip case per state to tests/arc/test_arc_meta_roundtrip.py and update test_run_names_a_reference_the_rc_lacks_and_leaves_it_out.",
+          "Keep the writer as is, but give each state its own ProblemCode in check_applied (for example hover_dangling, hover_literal) with a detail that names the remedy. Document the codes in SKILL.md (Rules, Step 5, API table), correct ApplyOutcome.changed or run_rc's changed value, and qualify the 'exactly when' sentence in both READMEs.",
+          "Make the writer converge on the checker: missing_refs treats any description other than f\"$rc:{key}\" as unwired, and run_rc passes the dangling keys into _apply_to_rc's add_keys. Add both cases to tests/arc/test_arc_meta_roundtrip.py.",
+          "Or keep the writer as ported and document the gap: SKILL.md Steps 4-5 and Judgment say that a 'which the rc lacks; not added' line or a literal description leaves hover_stale or hover_unwired that only a manual tool.content or rc edit clears and that goes in the reply. Narrow the 'exactly what an apply writes' claims in plugins/arc-straps/README.md:15-16 and README.md:34 to match."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "CLAUDE.md skill-invocation rule still names only hpy",
+        "file": "CLAUDE.md",
+        "files": [
+          "CLAUDE.md",
+          "plugins/arc-straps/skills/arc-meta/SKILL.md"
+        ],
+        "lines": "40",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "CLAUDE.md:40 says skills and agents invoke code as `sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" ...`. Every arc-meta heredoc (SKILL.md:93-118, 182) instead runs `harness-skill-api --file \"${CLAUDE_SKILL_DIR}/scripts/...\"`, as D4 of the plan requires, since hpy is out of reach from another plugin's CLAUDE_PLUGIN_ROOT. The new bullet at :12-14 implies the exception but the general rule is not qualified.",
+        "fix": [
+          "Qualify CLAUDE.md:40: harness skills use hpy; arc-straps skills run their Python through `harness-skill-api --file \"${CLAUDE_SKILL_DIR}/scripts/<module>.py\"`."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Companion prose line not rewrapped",
+        "file": "README.md",
+        "lines": "90",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md:90 is about 150 characters, while the surrounding paragraph wraps near 115. The arc-straps sentence was inserted without rewrapping the line.",
+        "fix": [
+          "Rewrap README.md:88-93 to the paragraph's existing width."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Plan pinned interfaces drift from shipped modules",
+        "file": "docs/plans/2026-11-05-arc-straps-arc-meta.md",
+        "lines": "204-351",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The plan presents Sections 4.2 and 4.3 as pinned code, but the shipped modules differ. `_check` there rejects unknown keys unconditionally, while the shipped version rejects them only when the schema sets additionalProperties false (plugin_config.py:38-39). `paths()` there uses `load_config(Path(repo))` and `rstrip('/')`, while the shipped module resolves `project_root`, adds `_meta` type checks and an `_inside` outside-root refusal, and drops the rstrip. Every task checkbox is still `- [ ]`. A reader taking the plan as the reference for the config contract gets the wrong behavior.",
+        "fix": [
+          "Add a one-line 'as built' note under Section 4 headings 4.2/4.3 pointing at the shipped modules and naming the differences, or update the pinned blocks to the shipped code."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Plugin README misstates config validation without jsonschema",
+        "file": "plugins/arc-straps/README.md",
+        "files": [
+          "plugins/arc-straps/README.md",
+          "plugins/harness/lib/harness_lib/plugin_config.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py"
+        ],
+        "lines": "30-31,55-58",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plugins/arc-straps/README.md:56-58 says the schema refuses an absolute path only when jsonschema is importable and that without it `plugin_section` 'rejects unknown keys and nothing else'. The code does something else. `plugin_config._check` (plugins/harness/lib/harness_lib/plugin_config.py:38-41) rejects only top-level unknown keys, so a typo such as `arc_meta.atbxx` is silently ignored and the default is used. `arc_meta_config._meta` (arc_meta_config.py:48-58) type-checks every arc_meta key and `_inside` (:61-66) refuses any location outside the project root, `..` included, whether or not jsonschema is present. Neither check is documented. Line 30 also lists jsonschema as a requirement, which contradicts the optional behavior described at line 56.\n\nAlso (overall): plugins/arc-straps/README.md:56-58 says that without jsonschema 'plugin_section rejects unknown keys and nothing else'. plugin_config._check rejects only unknown top-level keys of the section, so arc_meta.nope passes unflagged. Meanwhile arc_meta_config._meta checks every path key's type and _inside refuses any path that resolves outside the project root (an absolute path included), so more than unknown keys is checked. The Requirements bullet (line 30-31) lists jsonschema as needed, which conflicts with the 'only when jsonschema is importable' fallback the same file describes.\n\nAlso (system_shape): plugins/arc-straps/README.md:56-58 says that without jsonschema, plugin_section rejects unknown keys and nothing else, and :30-31 lists jsonschema as required. In the code, plugin_config._check (plugin_config.py:38-42) rejects only unknown top-level keys, so a typo under arc_meta (for example `tooldir`) is silently ignored and the default is used. arc_meta_config._meta (:49-59) still checks the types, and _inside (:62-67) refuses any location that resolves outside the project root (including an absolute path elsewhere) whether or not jsonschema is installed. That refusal is not documented anywhere.",
+        "fix": [
+          "Rewrite README lines 55-58: paths are relative to the project root and any location resolving outside it (absolute or `..`) is a config error; key types are checked on every load; with jsonschema the schema also refuses unknown keys at every level; without it only unknown top-level section keys are refused, so a mistyped `arc_meta` key falls back to its default. In line 30, mark jsonschema as optional (needed for full validation).",
+          "Reword line 56-58: without jsonschema, plugin_section rejects unknown top-level keys of the section; arc_meta_config still checks each key's type and refuses a location outside the project root; nested unknown keys and the relative-path pattern are checked only with jsonschema. In line 30-31, say jsonschema is optional.",
+          "Rewrite README.md:56-58 to match the code. Without jsonschema, unknown keys directly under plugins.arc-straps are refused, but unknown keys inside arc_meta are not; types are always checked; every resolved location must lie inside the project root. Say jsonschema is optional at :30-31."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "toolbox_source default name is ambiguous about the .atbx suffix",
+        "file": "plugins/arc-straps/config/arc-straps.schema.json",
+        "files": [
+          "plugins/arc-straps/config/arc-straps.schema.json",
+          "plugins/arc-straps/README.md"
+        ],
+        "lines": "19",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The schema says null means '<parent of tool_dir>/<archive file name>.xml'. The code (arc_meta_config.py:42) builds tool_dir.parent / f\"{atbx.name}.xml\", where atbx.name keeps its extension, so the default is 'Tools.atbx.xml', not 'Tools.xml'. The text is technically right, but 'archive file name' can easily be read as the stem. A project that keeps 'Tools.xml' would get a missing-file error at the default and would have to read the code to see why.",
+        "fix": [
+          "Reword the toolbox_source description to '... null means <parent of tool_dir>/<archive file name, extension included>.xml (e.g. Tools.atbx.xml).' and make the same edit to the matching row in plugins/arc-straps/README.md:64."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "SKILL Step 4 implies DRY-RUN line means the rc would change",
+        "file": "plugins/arc-straps/skills/arc-meta/SKILL.md",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/SKILL.md",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_rc.py"
+        ],
+        "lines": "86-90",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:86-90 says a dry run that would write ends with 'DRY-RUN: nothing written...', and that apply_rc reports `<Tool>: no changes` when there is nothing to write, so that apply is skipped. `run_rc` (arc_meta_rc.py:192-195) appends the DRY-RUN line on every dry run, including after '<Tool>: no changes (already matches canonical XML)'. A rc dry run with nothing to write therefore also ends with DRY-RUN. `run_page` and `run_toolbox` do return UP TO DATE/UNCHANGED without that line. An agent keying on the last line runs a needless (no-op) apply.",
+        "fix": [
+          "Reword SKILL.md:86-90 so that for apply_rc the first line `<Tool>: no changes` decides, whatever the last line says.",
+          "Or make run_rc append the DRY-RUN line only when `replacements` is non-empty, matching the page and toolbox writers (add a test in tests/arc/test_arc_meta_rc.py)."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "check_applied row omits what page_stale and page_style_stale cover",
+        "file": "plugins/arc-straps/skills/arc-meta/SKILL.md",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/SKILL.md",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py"
+        ],
+        "lines": "165,195,197",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:197 lists page_stale as text, a dropped or extra parameter, or a displayname/type/direction/datatype attribute. SKILL.md:165 says page_style_stale means the archive holds older markup. `check_applied` also reports page_stale for a missing tool.metadata.xml page and for a resTitle or keyword mismatch (arc_meta_api.py:390-403,420-421). It reports page_style_stale when the page's parameter order differs from the canonical order (:342-346), which can come from a canonical XML edit rather than a generator change. The Rules re-apply scoping (SKILL.md:56-65) reads these codes, so the gaps matter.\n\nAlso (system_shape): SKILL.md:197 lists page_stale causes as text, a dropped or extra parameter, or the displayname/type/direction/datatype attributes. The code also reports page_stale for resTitle and keyword drift (arc_meta_api.py:390-403) and for a missing tool.metadata.xml (:420-421), and reports a parameter-order difference as page_style_stale (:342-346). The entry_sources row (:195) omits entry_exists and embedded_script, the two fields Step 2 (:76-79) branches on.",
+        "fix": [
+          "Extend the SKILL.md:197 row: page_stale also covers a missing page, the resTitle and the keywords; page_style_stale also covers parameter order. Adjust SKILL.md:165 to 'older markup or parameter order'.",
+          "Extend the check_applied row with the resTitle/keywords/missing-page page_stale causes and the parameter-order page_style_stale cause, and add entry_exists and embedded_script to the entry_sources row."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "A malformed archive help page aborts check_applied instead of reading as page_stale",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+        "lines": "88-94,416-421",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_page_problems runs _xml() on tool.metadata.xml, which raises ApiError when the page is not well-formed. The whole check_applied call then fails, and the hover results are lost too. The page writer treats the same unreadable page as changed so that the rewrite can repair it (_current_page docstring), and _shown_plain follows the same rule for archive-side text (\"so that surface reads as stale instead of blaming the canonical XML\"). Also, a page that parses but has no <tool> element is reported as \"the archive holds no tool.metadata.xml help page\", which is wrong because the member exists.",
+        "fix": [
+          "In _page_problems, catch the ApiError from _xml (and an undecodable page from read_text) and return a PAGE_STALE problem such as \"the archive help page is not well-formed XML; apply_page rewrites it\". Use a separate detail, \"the archive help page has no <tool> element\", when page_root parses but page_tool is None."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "check_applied leaks raw zip errors for a corrupt illustration",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_page.py"
+        ],
+        "lines": "378-383",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The arc_meta_api module docstring says refusals raise ApiError. _archive_page reads tool.illustration.png with a bare zf.read(image), so a CRC-bad or non-inflating member raises zipfile.BadZipFile or zlib.error. Neither is a ValueError, so check_applied's ValueError wrapper does not catch them. arc_meta_page.read_illustration refuses the same member as an ApiError, so the checker and the writer disagree on the same archive defect.",
+        "fix": [
+          "In _archive_page, catch (zipfile.BadZipFile, zlib.error) around zf.read(image) and raise ApiError(f\"{image} in {p.atbx.name} is corrupt ({exc})\"), or call arc_meta_page.read_illustration's logic through a shared helper in arc_meta_archive. Add a corrupt-illustration case to tests/arc/test_arc_meta_api.py."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "_link_target docstring promises a project-relative path but returns an absolute one outside the project",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+        "lines": "469-479",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The docstring says the function returns \"The project-relative module a tool.script.execute.link names\". When the resolved link falls outside p.root, the ValueError branch returns joined.as_posix(), an absolute path. ToolSources.entry then holds an absolute machine path, and registry_stale compares it against a project-relative registry py_path, which always reads as stale.",
+        "fix": [
+          "Make the docstring say it returns the project-relative path, or the absolute path when the link resolves outside the project. Alternatively, return None for an outside link (so registry_stale stays False) and document that choice."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Corrupt archive members escape the check API as raw zipfile/zlib errors",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_archive.py",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_archive.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_toolbox.py"
+        ],
+        "lines": "31-41",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "read_text calls zf.read(name) and catches only UnicodeDecodeError, so a member that fails its CRC (zipfile.BadZipFile) or does not inflate (zlib.error) propagates unchanged. Neither is a ValueError, so check_applied's ValueError wrapper does not catch them either. arc_meta_api._archive_page also reads tool.illustration.png with a bare zf.read. arc_meta_page.read_illustration refuses the same member with an ApiError, and arc_meta_rc._read_tool catches both errors. The API module docstring says refusals raise ApiError. arc_meta_toolbox._current catches BadZipFile but not zlib.error.",
+        "fix": [
+          "In arc_meta_archive.read_text, wrap zf.read(name) in `except (zipfile.BadZipFile, zlib.error) as exc: raise ApiError(f\"{name} in {label} is corrupt ({exc})\") from exc`. In arc_meta_api._archive_page, read the illustration through the same guarded path, for example by reusing arc_meta_page.read_illustration or a shared read_bytes helper in arc_meta_archive."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Without jsonschema, unknown or empty arc_meta keys are accepted silently",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py",
+          "plugins/harness/lib/harness_lib/plugin_config.py"
+        ],
+        "lines": "48-58",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "plugin_section's fallback when jsonschema is missing checks only top-level unknown keys of the section. _meta checks only the value types. A typo such as \"tooldir\" or \"atbx_path\" under arc_meta is ignored and the default is used without warning. tool_dir \"\" (schema minLength 1) resolves to the project root. harness_lib.config._plugins explicitly checks its shape on a load without jsonschema, and _meta's docstring makes the same claim for path types, but nested unknown keys are not checked.",
+        "fix": [
+          "In arc_meta_config._meta, refuse `set(meta) - {\"atbx\", \"tool_dir\", \"toolbox_source\", \"registry\"}` with a ConfigError naming the unknown keys, and refuse an empty string for tool_dir or any optional path."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "apply_rc dry run with nothing to write still ends in DRY-RUN",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_rc.py",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_rc.py",
+          "plugins/arc-straps/skills/arc-meta/SKILL.md",
+          "tests/arc/test_arc_meta_rc.py"
+        ],
+        "lines": "192-199",
+        "reviewer": "overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md Step 4 (lines 86-90) says a dry run that would write ends 'DRY-RUN: nothing written...'. When there is nothing to write, apply_rc reports '<Tool>: no changes' and the apply is skipped. run_rc appends the DRY-RUN line whenever apply is False, including when replacements is empty. So a no-change dry run also ends in DRY-RUN, which by the skill's own rule means 'would write'. apply_page (UP TO DATE) and apply_toolbox (UNCHANGED) both return early without the DRY-RUN line.\n\nAlso (system_shape): SKILL.md:86-90 says a dry run that would write ends with 'DRY-RUN: nothing written...', and that with nothing to write apply_rc reports '<Tool>: no changes' and the apply is skipped. run_rc (arc_meta_rc.py:194-195) appends the DRY-RUN line whenever apply is False, even with no changes. apply_page and apply_toolbox return or branch early instead. So the ending line is not a reliable 'would write' signal for the hover call alone.",
+        "fix": [
+          "In run_rc, append the DRY-RUN line only when `not apply and changed` (`if not apply and changed: ... elif apply and changed: rewrite(...)`). Add a test in tests/arc/test_arc_meta_rc.py asserting that a no-change dry run's last line is the 'no changes' head.",
+          "In run_rc, append the DRY-RUN line only when `changed` (for example `if changed and not apply: ... elif changed: rewrite(...)`), matching run_toolbox's branch order."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "toolbox_members treats an empty content or rc dict as 'use the default'",
+        "file": "tests/arc/_arc_toolbox.py",
+        "lines": "120-121",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`content or CONTENT` and `rc or RC` (lines 120-121) fall back to the demo values when a caller passes {}. A test that wants an empty rc or content object silently gets the full demo map, while the signature's Optional[...] = None suggests only None means default. Today callers pass empty members through `extra` instead, but the helper is a trap for the next test.",
+        "fix": [
+          "Use `CONTENT if content is None else content` and `RC if rc is None else rc`."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Redundant assertion before a stronger one",
+        "file": "tests/arc/test_arc_meta_api.py",
+        "lines": "338-340",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_check_applied_keeps_a_plain_summary_hover_for_a_bold_summary asserts that ('hover_style_stale', None) is not among the codes and then that problems == []. The second assertion implies the first.",
+        "fix": [
+          "Drop line 339, or keep it and make the final assertion carry the problems list as its message for diagnosis."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Defaults-vs-schema test reports no reason on failure",
+        "file": "tests/arc/test_arc_meta_config.py",
+        "lines": "49-54",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_defaults_validate_against_the_schema asserts `Draft202012Validator(schema).is_valid(defaults)` and never calls check_schema. The harness counterpart (tests/lib/test_config.py:405-410) checks the schema and calls validate, so a failure there names the offending path. Here a broken schema or a bad default fails as a bare 'assert False'.",
+        "fix": [
+          "Call `jsonschema.Draft202012Validator.check_schema(schema)` and `jsonschema.Draft202012Validator(schema).validate(defaults)` instead of asserting is_valid."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Format test module docstring omits its arc_meta_canonical half",
+        "file": "tests/arc/test_arc_meta_format.py",
+        "lines": "1-5,125",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring describes only the arc_meta_format generator (nested lists and Pro spacing). Lines 125-216 test arc_meta_canonical (rc_text, fields, load, add_dialog_ref, page), and a reader looking for canonical-builder tests would not expect them in this file.",
+        "fix": [
+          "Extend the first docstring line to name arc_meta_canonical's readers and builders, or move lines 125-216 into a tests/arc/test_arc_meta_canonical.py."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Process-history labels in test section headings and docstrings",
+        "file": "tests/arc/test_arc_meta_page.py",
+        "files": [
+          "tests/arc/test_arc_meta_page.py",
+          "tests/arc/test_arc_meta_toolbox.py",
+          "tests/arc/test_arc_meta_archive.py",
+          "tests/arc/test_arc_meta_rc.py"
+        ],
+        "lines": "50",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Section headings and docstrings refer to how the work was produced, not to the behavior under test: '(SRC API tests 9-11)' in test_arc_meta_page.py:50, '--- ported ---' and '--- new ---' in test_arc_meta_toolbox.py:84,148, '--- rewrite: review fixes ---' in test_arc_meta_archive.py:173, and 'SRC wrote the rc ...' in test_arc_meta_rc.py:201. After the merge these labels mean nothing to a reader of the merged tree.",
+        "fix": [
+          "Rename the headings after the behavior they group (e.g. '--- build_page / read_illustration ---', '--- run_toolbox: formatting and refusals ---', '--- rewrite: refusals and duplicates ---'), and reword the rc docstring as 'The rc is written as UTF-8 without a byte-order mark; ...'."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Roundtrip before-check cannot see the stale illustration its docstring claims",
+        "file": "tests/arc/test_arc_meta_roundtrip.py",
+        "lines": "3-6,26-30,41",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The module docstring says each case starts with 'an illustration the page does not show'. The stale page is '<metadata/>', which has no <tool>, and _page_problems (plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:420-421) returns a single page_stale before any image comparison. So the before-assertion at line 41 never sees page_image_stale. The final set() check still catches a writer that drops the image, but the stated starting condition goes unobserved.",
+        "fix": [
+          "In _stale_project, use a page that has a <tool> but no illustration (e.g. default_page(canonical)), and add ('page_image_stale', None) to the before-subset at line 41."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "Contract test imports the arc-meta generator at module load",
+        "file": "tests/contract/test_root_separation.py",
+        "lines": "22,112-119",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_root_separation.py imports arc._arc_toolbox at module level (line 22). That pulls in arc_meta_canonical and arc_meta_format at collection time. An import error in the arc-straps scripts then fails collection of the whole harness root-separation module, not just the 'arc-meta apply_rc' case and test_arc_meta_apply_lands_in_the_project.",
+        "fix": [
+          "Move the arc._arc_toolbox import inside _arc_rc_args so only the arc cases depend on the arc-straps scripts being importable. Keep the module name spelled in source so tools/select_tests.py still selects the test."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "No-jsonschema plugins cases duplicated in two parametrizations",
+        "file": "tests/lib/test_config.py",
+        "lines": "164-165",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The cases {\"plugins\": {\"Arc\": {}}} and {\"plugins\": {\"arc-straps\": 3}} were added to test_minimal_validation_without_jsonschema (lines 164-165). They also run in test_plugins_rejects_bad_sections_without_jsonschema through BAD_PLUGINS (lines 190, 201-206), which checks a tighter 'plugins: ' message. The same input is tested twice, and the older parametrization uses the looser match.",
+        "fix": [
+          "Revert the parametrize extension at lines 164-165 to the original two cases and leave the coverage to the BAD_PLUGINS test."
+        ]
+      },
+      {
+        "id": "M23",
+        "name": "Planning-time comment left in the plugins rejection test",
+        "file": "tests/lib/test_config.py",
+        "lines": "195-196",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The comment above test_plugins_rejects_bad_sections reads \"Today's message reads '<root>: Additional properties ... plugins was unexpected'; the new one names the plugins path itself.\" It describes the error before this change. Once the change merges, the 'today' message is the new one, so the comment points the wrong way.",
+        "fix": [
+          "Replace the two comment lines with one that states the contract, e.g. '# The error names the plugins path itself, not the root.'"
+        ]
+      },
+      {
+        "id": "M24",
+        "name": "Docstring says 'the same folders' but the test checks only a subset",
+        "file": "tests/scripts/test_select_tests.py",
+        "lines": "252-258",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The docstring of test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook says DEFAULT_PYTHONPATH, pytest's pythonpath and pylint's init-hook 'name the same folders'. The pyproject side is compared for equality, but the init-hook side only checks that each DEFAULT entry appears as a quoted substring. An extra folder in init-hook passes, so the test does not enforce the claim.",
+        "fix": [
+          "Parse the list literal out of the init-hook (e.g. ast.literal_eval of the text after 'sys.path[:0] = ') and assert it equals list(sel.DEFAULT_PYTHONPATH).",
+          "Or reword the docstring to say the init-hook names every fallback root."
+        ]
+      },
+      {
+        "id": "M25",
+        "name": "Duplicate tests across the arc-meta contract and API files",
+        "file": "tests/skills/test_arc_meta_skill_contract.py",
+        "files": [
+          "tests/skills/test_arc_meta_skill_contract.py",
+          "tests/arc/test_arc_meta_api.py"
+        ],
+        "lines": "145-147,185-187",
+        "reviewer": "tests, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_api_records_are_the_models_module_classes (lines 185-187) repeats tests/arc/test_arc_meta_api.py:411-413, which makes the same assertion and adds one more. test_api_exports_existing_names (lines 145-147) repeats the arc_meta_api case of the parametrized test_heredoc_module_exists_and_exports_its_names (lines 105-110). The duplicates add nothing but a second place to update.\n\nAlso (overall): test_api_records_are_the_models_module_classes exists in both tests/skills/test_arc_meta_skill_contract.py:185-187 and tests/arc/test_arc_meta_api.py:411-413 with the same ParamRow/ProblemCode identity assertion. test_api_exports_existing_names (contract :145-147) repeats the arc_meta_api case of the parametrized test_heredoc_module_exists_and_exports_its_names in the same file.\n\nAlso (system_shape): The docstring of tests/skills/test_arc_meta_skill_contract.py (:3-4) says module behavior is tested under tests/arc/ and never copied. Yet test_api_records_are_the_models_module_classes (:185-187) repeats tests/arc/test_arc_meta_api.py:411-413 nearly verbatim. test_api_exports_existing_names (:145-147) repeats the arc_meta_api case of test_heredoc_module_exists_and_exports_its_names (:105-110) in the same file.",
+        "fix": [
+          "Delete test_api_records_are_the_models_module_classes and test_api_exports_existing_names from tests/skills/test_arc_meta_skill_contract.py; the API file and the parametrized export test already cover both.",
+          "Delete test_api_records_are_the_models_module_classes and test_api_exports_existing_names from tests/skills/test_arc_meta_skill_contract.py; the api test file and the parametrized export test keep the coverage.",
+          "Delete test_api_exports_existing_names and test_api_records_are_the_models_module_classes from tests/skills/test_arc_meta_skill_contract.py; the parametrized export test and the tests/arc/test_arc_meta_api.py copy already cover both."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 220 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":2,\"first_sha\":\"c3b5caf073719a9ca6300e9fdfb88c86825091a9\",\"headRefName\":\"1129-new-arcgis-plugin\",\"headRefOid\":\"3bb85a938ac1907b27a496edc74b2f406b9e2b88\",\"last_sha\":\"3bb85a938ac1907b27a496edc74b2f406b9e2b88\",\"mergeCommit\":null,\"number\":220,\"state\":\"OPEN\",\"title\":\"1129 new arcgis plugin\",\"url\":\"https://github.com/t968rs/operator-straps/pull/220\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1129-new-arcgis-plugin",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1129-new-arcgis-plugin",
+        "head_ref_name": "1129-new-arcgis-plugin",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "c3b5caf073719a9ca6300e9fdfb88c86825091a9",
+        "head_sha": "3bb85a938ac1907b27a496edc74b2f406b9e2b88",
+        "base_ancestor_command": "git merge-base --is-ancestor c3b5caf073719a9ca6300e9fdfb88c86825091a9 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 3bb85a938ac1907b27a496edc74b2f406b9e2b88 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - arc_meta_archive gains read_bytes, which refuses a member failing its CRC or inflate (BadZipFile, zlib.error) with an ApiError; read_text reads through it; module docstring and __all__ updated. arc_meta_api._archive_page is the other fixer's part and can reuse read_bytes; _current catches zlib.error alongside zipfile.BadZipFile on the archive read and re-raises ApiError; added the zlib import; arc_meta_api part: _archive_page reads the illustration through the guarded read_bytes helper instead of a bare zf.read"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - run_rc appends the DRY-RUN line only when changed and not apply, so a no-change dry run ends on the 'no changes' head; added test_run_dry_run_with_nothing_to_write_has_no_dry_run_line: after an apply, a dry run ends at the 'no changes' head with no DRY-RUN line; the run_rc branch change is in the other part; SKILL.md Step 4: apply_rc's first line ('<Tool>: no changes') named as the nothing-to-write signal, so the skill no longer keys on the last line alone; run_rc change is the other part"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - _stale_project uses default_page(canonical) (a page with <tool> but no illustration) and the before-subset asserts ('page_image_stale', None) instead of page_stale; docstrings say the page lacks the illustration"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - plugin README boundary list adds harness_lib.project.project_root; the new-key touch list names _meta() type checks and _OPTIONAL for a nullable path; CLAUDE.md boundary list now includes harness_lib.project (project_root); touch list names _meta() with _OPTIONAL and the nullable-path rule. README bullets are in the other part."
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - plugin README Check bullet drops toolbox-level help and says toolbox drift shows only in the apply_toolbox dry run; update guidance and SKILL.md generator-change rule add the apply_toolbox dry run; plugin and repo README describe the temp-copy, validate, backup, swap order; arc_meta_api.py and arc_meta_archive.py: cited, behavior documented as is"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - writer kept as ported, gap documented: SKILL.md Step 4, the apply_rc paragraph, Step 5 and a Judgment row say a dangling key stays hover_stale and a literal or mis-keyed description stays hover_unwired until a manual edit; both READMEs narrow the 'exactly what an apply writes' claim; rc module docstring states the writer leaves both alone; arc_meta_api.py and arc_meta_models.py: cited, checker unchanged"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - Added an 'as built' note under Sections 4.2 and 4.3 pointing at the shipped plugin_config.py and arc_meta_config.py and naming the differences (_check closed-schema fallback; project_root, _meta, _inside, no rstrip)"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - Added test_check_applied_refuses_a_corrupt_illustration_as_an_api_error (CRC-corrupt tool.illustration.png) to tests/arc/test_arc_meta_api.py; arc_meta_page.py: read_illustration already refuses a corrupt member as ApiError (arc_meta_page.py:66-78), the _archive_page catch is the arc_meta_api.py part; _archive_page reads tool.illustration.png through arc_meta_archive.read_bytes, so a CRC-bad or non-inflating member is an ApiError naming member and archive; the corrupt-illustration test already exists in tests/arc/test_arc_meta_api.py"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - Dropped the redundant hover_style_stale assertion; the final problems == [] assertion now carries _codes(problems) as its message"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - Replaced the is_valid assert with Draft202012Validator.check_schema(schema) and Draft202012Validator(schema).validate(defaults)"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - Extended the module docstring to name the arc_meta_canonical readers and builders tested in the second half"
+    },
+    {
+      "id": "M25",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - tests/arc/test_arc_meta_api.py: keeps test_api_records_are_the_models_module_classes as the surviving copy; the deletions belong to the tests/skills/test_arc_meta_skill_contract.py part; Deleted the duplicate test_api_exports_existing_names and test_api_records_are_the_models_module_classes; the parametrized export test and tests/arc/test_arc_meta_api.py keep the coverage"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - CLAUDE.md skills-and-agents bullet now says harness skills use hpy and arc-straps skills run Python through harness-skill-api --file \"${CLAUDE_SKILL_DIR}/scripts/<module>.py\".; SKILL.md part: cited only, its harness-skill-api heredocs are the exception the CLAUDE.md:40 qualification (other part) names; no edit needed"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - toolbox_source description now reads '<archive file name, extension included>.xml (e.g. Tools.atbx.xml)'. README row is in the other part.; README toolbox_source row now reads <archive file name, extension included>.xml (e.g. Tools.atbx.xml), matching the schema description"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - _meta() refuses unknown arc_meta keys (new _KEYS tuple) and empty strings for tool_dir and optional paths, with ConfigError naming the key."
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - toolbox_members uses CONTENT if content is None else content and RC if rc is None else rc"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - reworded the rc test docstring to 'The rc is written as UTF-8 without a byte-order mark; ...' in place of the SRC label; Renamed process-history section headings after the behavior they group: page '(SRC API tests 9-11)' dropped, toolbox '--- ported ---'/'--- new ---' renamed to the functions and concerns they cover, archive '--- rewrite: review fixes ---' renamed to '--- rewrite: refusals, backups and duplicates ---'"
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - reverted the parametrize extension of test_minimal_validation_without_jsonschema to the original two cases; the BAD_PLUGINS test keeps the plugins cases"
+    },
+    {
+      "id": "M23",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - replaced the two-line 'Today's message' comment above test_plugins_rejects_bad_sections with '# The error names the plugins path itself, not the root.'"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - Moved the arc._arc_toolbox import from module level into _arc_rc_args and test_arc_meta_apply_lands_in_the_project, so an arc-straps import error fails only the arc cases; module name stays spelled in source"
+    },
+    {
+      "id": "M24",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - The init-hook list is parsed with ast.literal_eval after 'sys.path[:0] = ' and compared for equality with DEFAULT_PYTHONPATH, so the docstring's 'same folders' claim is enforced"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - documentation gap lives in SKILL.md (other part); arc_meta_api.py is cited as the source of the page_stale/page_style_stale causes and needs no edit; SKILL.md: check_applied row lists a missing page, resTitle and keywords as page_stale causes and parameter order as a page_style_stale cause; rendering section says 'older markup or a parameter order'; entry_sources row names entry_exists and embedded_script"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - new _page_root reads a corrupt, undecodable or malformed tool.metadata.xml as page_stale ('not readable XML; apply_page rewrites it') and a page without <tool> as its own page_stale detail; unused _xml removed; parametrized test added"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - _link_target docstring now says the path is project-relative, or absolute when the link resolves outside the project (a registry py_path then never matches)"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - SKILL.md Step 4: added that for apply_rc the first line decides, a '<Tool>: no changes' head means nothing to write whatever the last line says; arc_meta_rc.py: already present, run_rc:197 appends DRY-RUN only when changed"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - README Configuration text now matches the code: every resolved location must lie inside the project root, unknown section keys plus arc_meta key types, empty values and unknown arc_meta keys are checked on every load, only jsonschema refuses an absolute path inside the project; Requirements marks jsonschema optional. plugin_config.py and arc_meta_config.py: cited as the behavior documented, no edit needed"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-05",
+      "evidence": "3bb85a9 (working-tree snapshot; developer commits) - Rewrapped the companion-plugins paragraph (README.md lines 88-94) to the existing ~111-char width; the arc-straps sentence on the former line 90 (144 chars) now sits in wrapped lines; no content changed, inline code spans kept whole, CRLF endings kept"
+    }
+  ]
+}

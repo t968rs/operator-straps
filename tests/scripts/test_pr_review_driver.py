@@ -2088,6 +2088,12 @@ class TestConfigCommand:
         assert _run(script, wanted, "config", "--get", "state_dir") == 0
         assert capsys.readouterr().out.strip() == "wanted/state"
 
+    def test_get_reads_a_plugin_section_key(self, script: ModuleType, make_project,
+                                            capsys: pytest.CaptureFixture) -> None:
+        root = make_project(config={"state_dir": _STATE, "plugins": {"demo": {"x": 1}}})
+        assert _run(script, root, "config", "--get", "plugins.demo.x") == 0
+        assert capsys.readouterr().out.splitlines() == ["1"]
+
 
 class TestBuiltReviewRefusesDraftEdits:
     def test_merge_and_amend_refused_after_build(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,

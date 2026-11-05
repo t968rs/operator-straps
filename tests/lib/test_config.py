@@ -407,3 +407,36 @@ def test_defaults_file_validates_against_schema(plugin_root: Path) -> None:
     defaults = json.loads((plugin_root / "config" / "defaults.json").read_text(encoding="utf-8"))
     jsonschema.Draft202012Validator.check_schema(schema)
     jsonschema.Draft202012Validator(schema).validate(defaults)
+
+
+def test_plugins_default_is_empty(make_project) -> None:
+    cfg = load_config(make_project())
+    assert cfg.plugins == ()
+    assert cfg.plugin("arc-straps") == {}
+
+
+def test_plugins_sections_load_and_copy(make_project) -> None:
+    cfg = load_config(make_project({"plugins": {"arc-straps": {"arc_meta": {"atbx": "a.atbx"}}}}))
+    section = cfg.plugin("arc-straps")
+    assert section == {"arc_meta": {"atbx": "a.atbx"}}
+    section["arc_meta"]["atbx"] = "changed"
+    assert cfg.plugin("arc-straps")["arc_meta"]["atbx"] == "a.atbx"
+    assert hash(cfg) == hash(cfg)
+
+
+BAD_PLUGINS = [{"plugins": {"Arc": {}}}, {"plugins": {"arc-straps": 3}}, {"plugins": []}]
+
+
+@pytest.mark.parametrize("bad", BAD_PLUGINS)
+def test_plugins_rejects_bad_sections(make_project, bad: dict) -> None:
+    # The error names the plugins path itself, not the root.
+    with pytest.raises(ConfigError, match=r": plugins(/|: )"):
+        load_config(make_project(bad))
+
+
+@pytest.mark.parametrize("bad", BAD_PLUGINS)
+def test_plugins_rejects_bad_sections_without_jsonschema(make_project, monkeypatch: pytest.MonkeyPatch,
+                                                         bad: dict) -> None:
+    monkeypatch.setitem(sys.modules, "jsonschema", None)
+    with pytest.raises(ConfigError, match=r"plugins: "):
+        load_config(make_project(bad))

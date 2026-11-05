@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Iterator, List, Tuple
+from typing import Dict, Iterator, List, Optional, Tuple
 
 import pytest
 
@@ -32,6 +32,9 @@ BANNED: Tuple[Tuple[str, re.Pattern], ...] = (
     ("owner handle outside the repo URL", re.compile(r"t968rs(?!/operator-straps)")),
 )
 
+# A ban a plugin may lift for its own files: its domain library, never a consumer's names or paths.
+ALLOWED_UNDER: Dict[str, Tuple[str, ...]] = {"project domain library": ("plugins/arc-straps/",)}
+
 # Agents ship namespaced; a dispatch naming the bare id resolves to nothing once installed.
 BARE_AGENT = re.compile(
     r"subagent_type[\"'`]?\s*[:=]\s*[\"'`]?(?!harness:)(pr-reviewer|pr-fixer|pr-team-orchestrator|pr-team-fixer"
@@ -54,7 +57,18 @@ def _hits(pattern: re.Pattern, files: List[Path]) -> List[str]:
     return out
 
 
+def _allowed(label: str, path: Path) -> bool:
+    """True when ``path`` sits under a folder that lifts the ban ``label``."""
+    rel = path.relative_to(REPO_ROOT).as_posix()
+    return any(rel.startswith(prefix) for prefix in ALLOWED_UNDER.get(label, ()))
+
+
 FILES = sorted(_plugin_files())
+
+
+def _scanned(label: str, files: Optional[List[Path]] = None) -> List[Path]:
+    """The plugin files the ban ``label`` covers: ``files`` (default FILES) minus its exempt folders."""
+    return [p for p in (FILES if files is None else files) if not _allowed(label, p)]
 
 
 def test_scan_sees_the_plugins() -> None:
@@ -68,7 +82,7 @@ def test_templates_are_scanned() -> None:
 
 @pytest.mark.parametrize("label,pattern", BANNED, ids=[b[0] for b in BANNED])
 def test_no_consumer_literal(label: str, pattern: re.Pattern) -> None:
-    hits = _hits(pattern, FILES)
+    hits = _hits(pattern, _scanned(label))
     assert not hits, f"{label} in plugin files:\n" + "\n".join(hits)
 
 
@@ -95,3 +109,26 @@ def test_bare_strap_agent_ids() -> None:
     assert BARE_AGENT.search("subagent_type='strap-scenario-runner'")
     assert not BARE_AGENT.search('subagent_type: "harness:strap-judge"')
     assert not BARE_AGENT.search('subagent_type: "harness:strap-scenario-runner"')
+
+
+def test_arcpy_is_allowed_only_under_arc_straps() -> None:
+    pattern = dict(BANNED)["project domain library"]
+    inside = REPO_ROOT / "plugins" / "arc-straps" / "x.md"
+    outside = REPO_ROOT / "plugins" / "harness" / "x.md"
+    assert not _allowed("project name", inside)
+    assert _allowed("project domain library", inside)
+    assert not _allowed("project domain library", outside)
+    assert not _allowed("project domain library", REPO_ROOT / "plugins" / "arc-straps-x" / "x.md")
+    assert pattern.search("import arcpy")
+
+
+def test_scan_drops_only_exempt_paths() -> None:
+    inside = REPO_ROOT / "plugins" / "arc-straps" / "x.md"
+    outside = REPO_ROOT / "plugins" / "harness" / "x.md"
+    assert _scanned("project domain library", [inside, outside]) == [outside]
+    assert _scanned("project name", [inside, outside]) == [inside, outside]
+    assert _scanned("project name") == FILES
+
+
+def test_exemptions_name_existing_labels() -> None:
+    assert set(ALLOWED_UNDER) <= {label for label, _ in BANNED}
