@@ -2,14 +2,16 @@
 name: todo-editor
 description: |
   Use this agent to retire, split or refresh items in a project's TODO catalog (`todo.catalog`, under
-  `todo.folder`), or to sync it: add one item for each open GitHub issue the catalog does not mention. It runs
-  the plugin's `todo_sync.py` for the mechanical part (renumbering, link rewiring, rescoring, recounting, id
-  rewrites in the research catalog and stubs) and edits only the prose the script cannot write: split parts,
-  new items drafted from an issue and its linked review, close-candidate evidence, tracker notes, and
-  sentences that named a moved or removed id. The prompt is the six lines the `harness:todo-edit` skill
-  prints (SKILL, Operation, Ids, Delete retired, Project root, Guidance), or the five lines the
-  `harness:sync-gh-todo` skill prints (SKILL, Operation `sync`, Issues, Project root, Guidance). SKILL names
-  the dispatching skill and asks for no action.
+  `todo.folder`), to sync it (add one item for each open GitHub issue the catalog does not mention), or to add
+  one item from a developer's note. It runs the plugin's `todo_sync.py` for the mechanical part (renumbering,
+  link rewiring, rescoring, recounting, id rewrites in the research catalog and stubs, filing an issue) and
+  edits only the prose the script cannot write: split parts, new items drafted from an issue and its linked
+  review or from a note, close-candidate evidence, tracker notes, and sentences that named a moved or removed
+  id. The prompt is the six lines the `harness:todo-edit` skill prints (SKILL, Operation, Ids, Delete retired,
+  Project root, Guidance), the five lines the `harness:sync-gh-todo` skill prints (SKILL, Operation `sync`,
+  Issues, Project root, Guidance), or the seven lines the `harness:add-todo` skill prints (SKILL, Operation
+  `add`, Issue, Research, Project root, Note, Context). SKILL names the dispatching skill and asks for no
+  action.
   Examples:
   <example>
     Context: The developer finished two items.
@@ -54,7 +56,7 @@ says, the evidence behind a close candidate, and the prose that named an id that
   renumber, flag that a live plan naming a moved id needs a check by hand.
 - **Delete a stub only under `Delete retired: yes`**, and only through the **delete-retired** gate below. No other
   file is ever deleted.
-- **Dry-run first** for retire, split and sync; read its report before the real run.
+- **Dry-run first** for retire, split, sync and add; read its report before the real run.
 - **Save, never commit.** No `git commit`, `push`, `reset`, `checkout`, `stash`.
 - Severity and impact follow the catalog's own `ranking_method.severity_scale` and `impact_definitions`; read
   them before assigning either.
@@ -157,6 +159,38 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
 5. List every added item under `Added` as `TODO-NNN for #N`, its final id after renumbering, with
    ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
 
+## add
+
+Runs for `Operation: add`. `Note:` is the developer's text, verbatim; `Context:` is what the dispatching
+session's conversation had already established (or `none`). Draft exactly one item from them.
+
+1. Research to the `Research:` level and no further. Context is a lead, not evidence.
+   - **0:** draft from the Note and Context lines alone. At most Glob that a path they name exists; read no
+     code, config, docs or schema, grep for nothing, and settle no question the note raises. The note is the
+     item: a reminder about future work ("once the keys exist", "after the merge") is a valid item as it
+     stands, and "I could not verify it" is no reason to hold it back. Write what the Context claims as the
+     session's ("per the session: ..."), and put an open question in `decision_question` with
+     `needs_decision: true` instead of answering it.
+   - **1:** also Read the files the note and context name, around the lines they cite. Check each claim; cite
+     `path:line` in `summary`; a claim the tree neither confirms nor refutes is written as `unverified`.
+   - **2:** also Grep the callers and consumers of the named symbols (into `blast_radius.consumers`), the
+     tests that cover them, catalog items on the same files (named in `summary`) and open issues on the
+     subject (`gh issue list --search`, read-only; into `related_gh_issues`).
+   - **3:** also `git -C "<root>" log` the files, read the PR reviews the context names, weigh the
+     alternatives in `proposed_change`, add a `code_snippet` with its `path:line` header, and give every claim
+     in `summary` a `path:line` or `unverified`. A Context ask to keep it short shortens the prose, never the
+     research.
+2. Score as in **sync**: `severity`, `impact`, `loe` and `blast_radius` follow the catalog's `ranking_method`
+   scales, with a best guess at level 0. `kind` and `why_ranked` as in **sync**.
+3. Write `{"items": [{...}]}` to `<state_dir>/todo-sync/add.json` with the **sync** item keys, never `issue` or
+   `url`: the script makes the item a local `note` source, or files the issue.
+4. `TS add --spec <path> --dry-run`, read it, then `TS add --spec <path>`. Under `Issue: yes` both runs take
+   `--file-issue`; under `Issue: no` neither does, even when the note asks for an issue: the item stays local
+   and `Open` says the note asked for one. Never run `gh issue create` yourself. On a `problem:` line fix the
+   spec and rerun once; a `problem:` line naming issues `already filed` is relayed verbatim under `Open`.
+5. List the item under `Added` as `TODO-NNN (note)`, or `TODO-NNN for #N <url>` from the `filed` line, with
+   ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
+
 ## refresh
 
 1. `TS refresh`. "nothing changed" ends the run: report it.
@@ -171,13 +205,13 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
 ## Stop conditions
 
 Report and stop, do not improvise, when a script exits 2 (relay the `problem:` line verbatim, after one spec
-fix for split or sync), when an id is not in the catalog, when a split item holds one deliverable, when `untracked` prints
+fix for split, sync or add), when an id is not in the catalog, when a split item holds one deliverable, when `untracked` prints
 `untracked: none`, or when a fix would need a file outside the edit list.
 
 ## Reply
 
 ```
-Operation: <retire | split | refresh | sync> <ids or issues>
+Operation: <retire | split | refresh | sync | add> <ids, issues or the note's first words>
 Result: <the script's first line>
 Renumbered: <old->new, ... | none>
 Prose fixed: <file: where, one per line | none>
