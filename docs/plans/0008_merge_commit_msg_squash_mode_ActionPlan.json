@@ -1,6 +1,7 @@
 {
   "plan_id": "0008",
   "plan_created": "2026-11-05",
+  "completed": "2026-11-05",
   "source_document": "https://github.com/t968rs/operator-straps/issues/226",
   "documentation": "docs/plans/0008_merge_commit_msg_squash_mode_PIP.md",
   "branch": "1131-merge-msg-squash-mode",
@@ -10,13 +11,17 @@
     {
       "id": "TASK-1",
       "title": "Strap edit spec for the squash behaviors",
-      "action": "Wave 0, main session (spec writes are serial). The frozen spec (0466076841ae, stale since PR #224) is already archived to docs/plans/strap/_archive/merge-commit-msg-0466076841ae/ and `strap.py new merge-commit-msg --edit` opened a fresh spec from 035cc6a (D2). Through the strap api heredoc add mechanical behaviors: B1 mode parsing (three forms equal, unknown token a problem line, in capture and build); B2 squash capture (subject '<title> (#N)', '# PR #N squash message', '- Mode: squash' (and '- Mode: merge' without a token), non-Conventional title refused); B3 squash build (flag writes the squash subject and 'squash message' receipt, no flag accepts either exact subject, paraphrase rejected, cross-mode subject names --squash, squash subject without flag still checks the title); B4 docs (argument-hint, squash trigger, three forms, guidance rule, both subjects, Common Mistakes row, format card example, README and HARNESS_RULES); B5 commit_txt.subject_parts public. Each lists the matching plan 0008 nodes. Copy the plan's planned files to docs/plans/strap/merge-commit-msg/tests/<repo path>, then strap check and strap red until clean. Planned-test copies stay byte-identical to docs/plans/0008/tests/.",
+      "action": "Wave 0, main session (spec writes are serial). The frozen spec (0466076841ae, stale since PR #224) is already archived to docs/plans/strap/_archive/merge-commit-msg-0466076841ae/ and `strap.py new merge-commit-msg --edit` opened a fresh spec from 035cc6a (D2). Through the strap api heredoc add mechanical behaviors: B1 mode parsing (three forms equal, unknown token a problem line, in capture and build); B2 squash capture (subject '<title> (#N)', '# PR #N squash message', '- Mode: squash' (and '- Mode: merge' without a token), non-Conventional title refused); B3 squash build (flag writes the squash subject and 'squash message' receipt, no flag accepts either exact subject, paraphrase rejected, cross-mode subject names --squash, squash subject without flag still checks the title); B4 commit_txt.subject_parts public; B5 docs (argument-hint, squash trigger, three forms, guidance rule, both subjects, Common Mistakes row, format card example, README and HARNESS_RULES). Each lists the matching plan 0008 nodes. Copy the plan's planned files to docs/plans/strap/merge-commit-msg/tests/<repo path>, then strap check and strap red until clean. Planned-test copies stay byte-identical to docs/plans/0008/tests/.",
       "files": [
         "docs/plans/strap/merge-commit-msg/SkillSpec.json",
         "docs/plans/strap/_archive/merge-commit-msg-0466076841ae/SkillSpec.json"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit 9011a10",
+      "verification_references": [
+        "9011a100cdf1a69bacc4bd260f0ce43500955f05",
+        "tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f"
+      ],
       "model": "opus",
       "commands": [
         {
@@ -37,8 +42,13 @@
         "plugins/harness/lib/harness_lib/commit_txt.py",
         "tests/lib/test_commit_txt_subject_parts.py"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit 9011a10: 2 test node(s) passed",
+      "verification_references": [
+        "9011a100cdf1a69bacc4bd260f0ce43500955f05",
+        "tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f",
+        "python -m pytest -q tests/lib/test_commit_txt_subject_parts.py::test_subject_parts_splits_type_scope_summary tests/lib/test_commit_txt_subject_parts.py::test_private_name_is_the_same_function"
+      ],
       "model": "opus",
       "anchors": [
         {
@@ -78,8 +88,13 @@
       "dependencies": [
         "TASK-2"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit 9011a10: 12 test node(s) passed",
+      "verification_references": [
+        "9011a100cdf1a69bacc4bd260f0ce43500955f05",
+        "tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f",
+        "python -m pytest -q tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_subject_line tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_three_forms_capture_identically tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_states_the_mode tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_unknown_mode_token_is_a_problem tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_refuses_a_non_conventional_title tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_writes_the_squash_subject tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_build_without_a_flag_accepts_either_exact_subject tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_rejects_a_paraphrased_subject tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_names_the_flag_on_a_merge_subject tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_subject_without_a_flag_still_needs_a_conventional_title tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_unknown_mode_token_is_a_problem_in_build tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_default_capture_adds_only_the_merge_mode_line"
+      ],
       "model": "opus",
       "anchors": [
         {
@@ -191,8 +206,13 @@
         "README.md",
         "tests/skills/test_merge_commit_msg_skill_contract.py"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit 9011a10: 7 test node(s) passed",
+      "verification_references": [
+        "9011a100cdf1a69bacc4bd260f0ce43500955f05",
+        "tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f",
+        "python -m pytest -q tests/skills/test_merge_commit_msg_skill_contract.py::test_argument_hint_names_the_squash_forms tests/skills/test_merge_commit_msg_skill_contract.py::test_description_triggers_on_a_squash_message tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_names_the_three_forms_and_keeps_squash_after_the_split_as_guidance tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_states_both_subjects tests/skills/test_merge_commit_msg_skill_contract.py::test_common_mistakes_cover_a_mode_mismatch tests/skills/test_merge_commit_msg_skill_contract.py::test_format_card_states_both_subjects_and_a_squash_example tests/skills/test_merge_commit_msg_skill_contract.py::test_readme_and_rules_name_the_squash_mode"
+      ],
       "model": "opus",
       "anchors": [
         {
@@ -270,8 +290,12 @@
         "TASK-3",
         "TASK-4"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "commit 9011a10",
+      "verification_references": [
+        "9011a100cdf1a69bacc4bd260f0ce43500955f05",
+        "tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f"
+      ],
       "model": "opus",
       "commands": [
         {
@@ -291,10 +315,10 @@
   ],
   "base_commit": "854d1fe11ffc93ba5307ca94550103875624898d",
   "frozen": {
-    "commit": "035cc6a51a07cfd26669fe127b4ae36471a4bbca",
-    "tree": "f4db5ba78e1b66290d3cee58bd1989673770ba7b",
+    "commit": "9011a100cdf1a69bacc4bd260f0ce43500955f05",
+    "tree": "e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f",
     "date": "2026-11-05",
-    "digest": "606379fbeb3374d8cf0b1abb345f0893d2f3d57aa6f5f9187e0e043812c29641"
+    "digest": "88366b44a8a45d732077bb0df3422dea86be3c96da6b2bb1a9f50e95a9c90e9a"
   },
   "decisions": [
     {

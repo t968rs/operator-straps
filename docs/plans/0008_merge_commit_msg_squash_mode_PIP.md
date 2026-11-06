@@ -6,7 +6,7 @@
 **Spec:** `https://github.com/t968rs/operator-straps/issues/226`
 **Branch:** 1131-merge-msg-squash-mode -> main
 **Base commit:** `854d1fe`
-**Frozen:** 2026-11-05 at `035cc6a`
+**Frozen:** 2026-11-05 at `9011a10`
 **Execution model:** Wave 0 inline (TASK-1, TASK-2; staged). Wave 1 harness:parallel2: implement lanes task-3 and task-4 (opus, disjoint files, one worktree each, probe first), per-lane spec and quality review, P2 stage each. Wave 2 inline (TASK-5).
 
 ## Decisions
@@ -42,20 +42,23 @@
 
 ### TASK-1: Strap edit spec for the squash behaviors
 
-**Status:** PENDING | **Model:** opus | **Depends on:** none
+**Status:** COMPLETE | **Model:** opus | **Depends on:** none
 **Files:** `docs/plans/strap/merge-commit-msg/SkillSpec.json`, `docs/plans/strap/_archive/merge-commit-msg-0466076841ae/SkillSpec.json`
 
-Wave 0, main session (spec writes are serial). The frozen spec (0466076841ae, stale since PR #224) is already archived to docs/plans/strap/_archive/merge-commit-msg-0466076841ae/ and `strap.py new merge-commit-msg --edit` opened a fresh spec from 035cc6a (D2). Through the strap api heredoc add mechanical behaviors: B1 mode parsing (three forms equal, unknown token a problem line, in capture and build); B2 squash capture (subject '<title> (#N)', '# PR #N squash message', '- Mode: squash' (and '- Mode: merge' without a token), non-Conventional title refused); B3 squash build (flag writes the squash subject and 'squash message' receipt, no flag accepts either exact subject, paraphrase rejected, cross-mode subject names --squash, squash subject without flag still checks the title); B4 docs (argument-hint, squash trigger, three forms, guidance rule, both subjects, Common Mistakes row, format card example, README and HARNESS_RULES); B5 commit_txt.subject_parts public. Each lists the matching plan 0008 nodes. Copy the plan's planned files to docs/plans/strap/merge-commit-msg/tests/<repo path>, then strap check and strap red until clean. Planned-test copies stay byte-identical to docs/plans/0008/tests/.
+Wave 0, main session (spec writes are serial). The frozen spec (0466076841ae, stale since PR #224) is already archived to docs/plans/strap/_archive/merge-commit-msg-0466076841ae/ and `strap.py new merge-commit-msg --edit` opened a fresh spec from 035cc6a (D2). Through the strap api heredoc add mechanical behaviors: B1 mode parsing (three forms equal, unknown token a problem line, in capture and build); B2 squash capture (subject '<title> (#N)', '# PR #N squash message', '- Mode: squash' (and '- Mode: merge' without a token), non-Conventional title refused); B3 squash build (flag writes the squash subject and 'squash message' receipt, no flag accepts either exact subject, paraphrase rejected, cross-mode subject names --squash, squash subject without flag still checks the title); B4 commit_txt.subject_parts public; B5 docs (argument-hint, squash trigger, three forms, guidance rule, both subjects, Common Mistakes row, format card example, README and HARNESS_RULES). Each lists the matching plan 0008 nodes. Copy the plan's planned files to docs/plans/strap/merge-commit-msg/tests/<repo path>, then strap check and strap red until clean. Planned-test copies stay byte-identical to docs/plans/0008/tests/.
 
-- [ ] Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" check merge-commit-msg`: check [ok]
-- [ ] Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" red merge-commit-msg`: no problem: lines, exit 0
-- [ ] Record the commit: `plan.py record 0008 TASK-1 --sha <sha>`
+- [x] Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" check merge-commit-msg`: check [ok]
+- [x] Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" red merge-commit-msg`: no problem: lines, exit 0
+- [x] Record the commit: `plan.py record 0008 TASK-1 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 9011a10
+
+- `9011a100cdf1a69bacc4bd260f0ce43500955f05`
+- `tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f`
 
 ### TASK-2: commit_txt: public subject_parts
 
-**Status:** PENDING | **Model:** opus | **Depends on:** none
+**Status:** COMPLETE | **Model:** opus | **Depends on:** none
 **Files:** `plugins/harness/lib/harness_lib/commit_txt.py`, `tests/lib/test_commit_txt_subject_parts.py`
 
 **Anchors:**
@@ -64,16 +67,20 @@ Wave 0, main session (spec writes are serial). The frozen spec (0466076841ae, st
 
 Wave 0, main session (one function; inline beats a worktree). Rename _subject_parts to subject_parts in plugins/harness/lib/harness_lib/commit_txt.py, keep `_subject_parts = subject_parts` for the two internal callers, add it to __all__ if the module has one. Copy tests/lib/test_commit_txt_subject_parts.py from the plan. Stage both files (git add) so the wave 1 snapshot carries them.
 
-- [ ] Test `tests/lib/test_commit_txt_subject_parts.py::test_subject_parts_splits_type_scope_summary` fails with ImportError, then passes
-- [ ] Test `tests/lib/test_commit_txt_subject_parts.py::test_private_name_is_the_same_function` fails with ImportError, then passes
-- [ ] Run `python -m pytest tests/lib/test_commit_txt_subject_parts.py tests/lib/test_commit_txt.py -q`: all pass
-- [ ] Record the commit: `plan.py record 0008 TASK-2 --sha <sha>`
+- [x] Test `tests/lib/test_commit_txt_subject_parts.py::test_subject_parts_splits_type_scope_summary` fails with ImportError, then passes
+- [x] Test `tests/lib/test_commit_txt_subject_parts.py::test_private_name_is_the_same_function` fails with ImportError, then passes
+- [x] Run `python -m pytest tests/lib/test_commit_txt_subject_parts.py tests/lib/test_commit_txt.py -q`: all pass
+- [x] Record the commit: `plan.py record 0008 TASK-2 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 9011a10: 2 test node(s) passed
+
+- `9011a100cdf1a69bacc4bd260f0ce43500955f05`
+- `tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f`
+- `python -m pytest -q tests/lib/test_commit_txt_subject_parts.py::test_subject_parts_splits_type_scope_summary tests/lib/test_commit_txt_subject_parts.py::test_private_name_is_the_same_function`
 
 ### TASK-3: merge_commit_msg.py squash mode
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-2
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-2
 **Files:** `plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py`, `tests/skills/test_merge_commit_msg_squash.py`
 
 **Anchors:**
@@ -90,26 +97,30 @@ Wave 0, main session (one function; inline beats a worktree). Rename _subject_pa
 
 Wave 1, parallel2 implement lane task-3 (own worktree). Copy the planned files tests/skills/test_merge_commit_msg_squash.py first. In the driver: (a) _parser: capture and build take `--squash`/`-s` (store_true) and an optional positional `mode` (nargs='?', no choices); main normalizes args.squash = flag or mode == 'squash'; any other mode is `problem: unknown mode 'X'; the only mode is squash (--squash, -s)` with exit 1 (D5). (b) subject_line(pr, title, squash=False) returns f'{title} (#{pr})' in squash mode. (c) title_problem gains squash=False: in squash mode a title whose subject_parts type is None or summary empty is `PR #N title 'X' is not a Conventional-Commit subject (Type(scope): summary), which a squash commit needs; retitle it with gh pr edit N --title`. pr_view passes the flag. (d) message_template/render take squash: the subject follows the mode; the facts gain '- Mode: merge' or '- Mode: squash' after Title in both modes (D3); in squash mode only, the heading is '# PR #N squash message' and the instruction names `build --squash`. (e) build: with the flag, line 1 must equal the squash subject; a line 1 equal to the merge subject is `subject is the merge form; drop --squash to keep it, or use '<squash>'`. Without the flag, a line 1 equal to the squash subject switches to squash mode (title check included); otherwise the unchanged merge check and text (D4). (f) receipt says 'squash message' or 'merge message'. Module docstring: both modes, usage lines. No-mode capture output equals GOLDEN in the squash test file (base output plus '- Mode: merge'); the no-mode TXT and receipt stay identical (tests/skills/test_merge_commit_msg.py). Functions under 50 lines; Optional/Union typing.
 
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_subject_line` fails with TypeError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_three_forms_capture_identically` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_states_the_mode` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_unknown_mode_token_is_a_problem` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_refuses_a_non_conventional_title` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_writes_the_squash_subject` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_build_without_a_flag_accepts_either_exact_subject` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_rejects_a_paraphrased_subject` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_names_the_flag_on_a_merge_subject` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_subject_without_a_flag_still_needs_a_conventional_title` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_unknown_mode_token_is_a_problem_in_build` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_default_capture_adds_only_the_merge_mode_line` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/skills/test_merge_commit_msg_squash.py tests/skills/test_merge_commit_msg.py tests/contract/test_root_separation.py -q`: all pass
-- [ ] Record the commit: `plan.py record 0008 TASK-3 --sha <sha>`
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_subject_line` fails with TypeError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_three_forms_capture_identically` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_states_the_mode` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_unknown_mode_token_is_a_problem` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_refuses_a_non_conventional_title` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_writes_the_squash_subject` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_build_without_a_flag_accepts_either_exact_subject` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_rejects_a_paraphrased_subject` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_names_the_flag_on_a_merge_subject` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_subject_without_a_flag_still_needs_a_conventional_title` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_unknown_mode_token_is_a_problem_in_build` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_default_capture_adds_only_the_merge_mode_line` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/skills/test_merge_commit_msg_squash.py tests/skills/test_merge_commit_msg.py tests/contract/test_root_separation.py -q`: all pass
+- [x] Record the commit: `plan.py record 0008 TASK-3 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 9011a10: 12 test node(s) passed
+
+- `9011a100cdf1a69bacc4bd260f0ce43500955f05`
+- `tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f`
+- `python -m pytest -q tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_subject_line tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_three_forms_capture_identically tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_states_the_mode tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_unknown_mode_token_is_a_problem tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_refuses_a_non_conventional_title tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_writes_the_squash_subject tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_build_without_a_flag_accepts_either_exact_subject tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_rejects_a_paraphrased_subject tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_names_the_flag_on_a_merge_subject tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_subject_without_a_flag_still_needs_a_conventional_title tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_unknown_mode_token_is_a_problem_in_build tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_default_capture_adds_only_the_merge_mode_line`
 
 ### TASK-4: Squash mode in the skill docs
 
-**Status:** PENDING | **Model:** opus | **Depends on:** none
+**Status:** COMPLETE | **Model:** opus | **Depends on:** none
 **Files:** `plugins/harness/skills/merge-commit-msg/SKILL.md`, `plugins/harness/skills/merge-commit-msg/message_format.md`, `plugins/harness/rules/HARNESS_RULES.md`, `README.md`, `tests/skills/test_merge_commit_msg_skill_contract.py`
 
 **Anchors:**
@@ -122,28 +133,35 @@ Wave 1, parallel2 implement lane task-3 (own worktree). Copy the planned files t
 
 Wave 1, parallel2 implement lane task-4 (own worktree), file-disjoint from task-3; the interface is fixed by this plan. Copy tests/skills/test_merge_commit_msg_skill_contract.py from the plan first. SKILL.md: argument-hint '<PR number> [squash | --squash | -s] [-- <guidance>]'; description adds 'squash message' and 'squash-merge commit for PR N' triggers; Arguments: before `--` the PR number, then an optional mode token (`--squash`, `-s` or a bare `squash`), normalized to `--squash`; on every command `<PR number>` stands for the number plus ` --squash` in squash mode (D6); '`squash` after `--` is guidance'; any other token is a problem line. Step 1: subject `Merge PR #N -- <title>` or `<title> (#N)`, and squash needs a Conventional-Commit PR title (refusal reported, developer retitles). Step 2 and Changing a saved message: build with the same mode; a rebuild from the saved TXT needs no flag (build accepts either exact subject, D4). Common Mistakes: a row for running build with a different mode than capture (--squash). Keep the canned-message text (tests/skills/test_canned_message_skill_contract.py) and the stdin command form. message_format.md: both subjects in Layout, Section order 1 and Verbatim title ('Merge PR #NNN -- <title>' merge mode, '<title> (#NNN)' squash mode), and '## Worked example (squash, PR #NNN)' beside PR #887 with its receipt. README.md merge-commit-msg section: '/harness:merge-commit-msg 123 --squash' in the example block and the squash subject in the capture bullet. HARNESS_RULES.md line 36: the merge TXT rule covers squash mode (same file, same route), within RULES_LIMIT.
 
-- [ ] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_argument_hint_names_the_squash_forms` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_description_triggers_on_a_squash_message` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_names_the_three_forms_and_keeps_squash_after_the_split_as_guidance` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_states_both_subjects` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_common_mistakes_cover_a_mode_mismatch` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_format_card_states_both_subjects_and_a_squash_example` fails with AssertionError, then passes
-- [ ] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_readme_and_rules_name_the_squash_mode` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/skills/test_merge_commit_msg_skill_contract.py tests/skills/test_canned_message_skill_contract.py tests/hooks/test_session_rules.py -q`: all pass
-- [ ] Record the commit: `plan.py record 0008 TASK-4 --sha <sha>`
+- [x] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_argument_hint_names_the_squash_forms` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_description_triggers_on_a_squash_message` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_names_the_three_forms_and_keeps_squash_after_the_split_as_guidance` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_states_both_subjects` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_common_mistakes_cover_a_mode_mismatch` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_format_card_states_both_subjects_and_a_squash_example` fails with AssertionError, then passes
+- [x] Test `tests/skills/test_merge_commit_msg_skill_contract.py::test_readme_and_rules_name_the_squash_mode` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/skills/test_merge_commit_msg_skill_contract.py tests/skills/test_canned_message_skill_contract.py tests/hooks/test_session_rules.py -q`: all pass
+- [x] Record the commit: `plan.py record 0008 TASK-4 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 9011a10: 7 test node(s) passed
+
+- `9011a100cdf1a69bacc4bd260f0ce43500955f05`
+- `tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f`
+- `python -m pytest -q tests/skills/test_merge_commit_msg_skill_contract.py::test_argument_hint_names_the_squash_forms tests/skills/test_merge_commit_msg_skill_contract.py::test_description_triggers_on_a_squash_message tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_names_the_three_forms_and_keeps_squash_after_the_split_as_guidance tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_states_both_subjects tests/skills/test_merge_commit_msg_skill_contract.py::test_common_mistakes_cover_a_mode_mismatch tests/skills/test_merge_commit_msg_skill_contract.py::test_format_card_states_both_subjects_and_a_squash_example tests/skills/test_merge_commit_msg_skill_contract.py::test_readme_and_rules_name_the_squash_mode`
 
 ### TASK-5: Version bump, strap freeze and guard runs
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-1, TASK-3, TASK-4
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-1, TASK-3, TASK-4
 **Files:** `plugins/harness/.claude-plugin/plugin.json`, `docs/plans/strap/merge-commit-msg/SkillSpec.json`
 
 Wave 2, main session, after `P2 stage task-3`, `P2 stage task-4` and `P2 cleanup`. Bump plugins/harness plugin.json 0.57.0 -> 0.58.0. strap check, then `strap.py freeze merge-commit-msg` (mechanical only: every planned node passes on the staged content). ruff with --no-cache over the changed .py files. `python tools/select_tests.py --base main` and run each selected file by name. Hand off: changed-file list, frozen hash, merge recommendation; the developer commits, then plan.py record per item with that commit.
 
-- [ ] Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" freeze merge-commit-msg`: freeze [done] | merge-commit-msg
-- [ ] Run `python -m ruff check --no-cache plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py plugins/harness/lib/harness_lib/commit_txt.py tests/skills/test_merge_commit_msg_squash.py tests/lib/test_commit_txt_subject_parts.py tests/skills/test_merge_commit_msg_skill_contract.py`: All checks passed!
-- [ ] Run `python tools/select_tests.py --base main`: a list of test files, each then run by name
-- [ ] Record the commit: `plan.py record 0008 TASK-5 --sha <sha>`
+- [x] Run `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" freeze merge-commit-msg`: freeze [done] | merge-commit-msg
+- [x] Run `python -m ruff check --no-cache plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py plugins/harness/lib/harness_lib/commit_txt.py tests/skills/test_merge_commit_msg_squash.py tests/lib/test_commit_txt_subject_parts.py tests/skills/test_merge_commit_msg_skill_contract.py`: All checks passed!
+- [x] Run `python tools/select_tests.py --base main`: a list of test files, each then run by name
+- [x] Record the commit: `plan.py record 0008 TASK-5 --sha <sha>`
 
-**Evidence:** not started
+**Evidence:** commit 9011a10
+
+- `9011a100cdf1a69bacc4bd260f0ce43500955f05`
+- `tree e3fd5ddf8d7238d36490926608e6bd9aa2b50c8f`
