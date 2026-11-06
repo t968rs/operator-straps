@@ -36,9 +36,12 @@ refuses an invalid one with ``schema:`` lines.
     of ``harness_lib.plan_models``): the item status, evidence, verification references and record and the
     plan's completed, frozen and markdown sync fields. The scheme is ``sealed`` unless an item ``record``
     moved still carries the legacy shape, and a sealed plan stays sealed: a refreeze of a plan whose stored
-    scheme is sealed, or whose digest proves the scheme was deleted by hand, judges its items as sealed. A
+    scheme is sealed, whose digest proves the scheme was deleted by hand, or whose copy at HEAD stores the
+    sealed scheme (a hand edit that deletes the scheme and changes a digested field) judges its items as
+    sealed. Only a plan whose deleted scheme was never committed can be judged as legacy again. A
     refreeze tolerates a record whose seal no longer matches (an item whose files or tests changed) and
-    prints ``re-record after refreeze: <ITEM>`` for each; a non-PENDING item without a record still refuses.
+    prints ``re-record after refreeze: <ITEM>`` for each; on a sealed plan a non-PENDING item without a
+    record still refuses.
 
 ``lanes PLAN [--target BRANCH]``
     Print the ``parallel2`` plan JSON of a frozen plan's open items (waves from dependencies and file
@@ -60,7 +63,8 @@ refuses an invalid one with ``schema:`` lines.
     Run every COMPLETE item's test nodes on one throwaway detached worktree at HEAD (``--staged``: at a
     dangling commit of the index), one pytest run per item, and print ``<ITEM> pass`` or
     ``<ITEM> no tests`` for each. A failure names the item and the ``record`` call to make after the fix.
-    Writes nothing.
+    A COMPLETE item without a valid record (no sealed record, a broken seal, or a non-legacy shape on a
+    legacy plan) fails the run without a test run and names the ``record`` call. Writes nothing.
 
 ``PLAN`` is a plan id (``7`` or ``0007``) or a path to the plan file. ``--repo`` (default: the working
 directory) names a directory inside the project. Usage::
@@ -352,10 +356,34 @@ def new_frozen(repo: Path, plan: pm.ActionPlan, records: Optional[RecordScheme])
     return pm.Frozen.at(head, tree, today(), pd.frozen_digest(plan, records), records)
 
 
+def committed_scheme(repo: Path, plan_file: Path) -> Optional[str]:
+    """The record scheme the plan's copy at HEAD stores; None when HEAD holds no frozen copy of the plan."""
+    name = git(repo, "ls-files", "--full-name", "--", str(plan_file.resolve())).stdout.strip()
+    done = git(repo, "show", f"HEAD:{name}") if name else None
+    if done is None or done.returncode != 0:
+        return None
+    try:
+        frozen = json.loads(done.stdout).get("frozen")
+    except (ValueError, AttributeError):
+        return None
+    return frozen.get("records") if isinstance(frozen, dict) else None
+
+
+def stays_sealed(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> bool:
+    """The plan keeps the sealed scheme: it stores it, its digest proves it, or its copy at HEAD stores it.
+
+    The committed copy closes the path the digest cannot: a hand edit that deletes the scheme and changes
+    a digested field in one go, which a refreeze would otherwise judge as legacy.
+    """
+    if plan.frozen is None:
+        return False
+    return prc.keeps_sealed(plan) or committed_scheme(repo, plan_file) == RecordScheme.sealed
+
+
 def cmd_freeze(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
-    if plan.frozen is not None and prc.keeps_sealed(plan):
+    if stays_sealed(repo, plan_file, plan):
         # A sealed plan stays sealed: the record rules judge its items as sealed, and the scheme is kept.
         plan.frozen = plan.frozen.model_copy(update={"records": RecordScheme.sealed})
     problems, rerecord = freeze_problems(repo, plan, args.refreeze)
@@ -398,7 +426,8 @@ def dependency_problems(plan: pm.ActionPlan, item: pm.ActionItem) -> List[str]:
         done = upstream.status in DONE
         if done and prc.record_holds(plan, upstream):
             continue
-        fix = f" without a valid record; {prc.record_command(plan.plan_id, dep)}" if done else ""
+        command = prc.record_command(plan.plan_id, dep, upstream.status)
+        fix = f" without a valid record; {command}" if done else ""
         out.append(f"{item.id} depends on {dep}, which is {upstream.status}{fix}")
     return out
 
@@ -572,7 +601,7 @@ def unrun_result(plan: pm.ActionPlan, item: pm.ActionItem) -> Optional[prc.Verif
     """The result of a COMPLETE item verify does not run: no valid record, or a record without tests."""
     if not prc.record_holds(plan, item):
         return prc.VerifyResult(item=item.id, kind=VerifyKind.unrecorded,
-                                detail=prc.record_command(plan.plan_id, item.id))
+                                detail=prc.record_command(plan.plan_id, item.id, item.status))
     if not prc.recorded_nodes(item):
         return prc.VerifyResult(item=item.id, kind=VerifyKind.no_tests)
     return None
@@ -583,7 +612,8 @@ def run_result(plan: pm.ActionPlan, item: pm.ActionItem, tree: Path, where: str)
     done = pr.run_pytest(pytest_argv(prc.recorded_nodes(item)), tree)
     if done.returncode == 0:
         return prc.VerifyResult(item=item.id, kind=VerifyKind.pass_)
-    detail = f"{where}: {tail(done)}; fix the code, then {prc.record_command(plan.plan_id, item.id)} again"
+    command = prc.record_command(plan.plan_id, item.id, item.status, again=True)
+    detail = f"{where}: {tail(done)}; fix the code, then {command}"
     return prc.VerifyResult(item=item.id, kind=VerifyKind.fail, detail=detail)
 
 

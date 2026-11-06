@@ -3,6 +3,9 @@
 A capture compares a merge base with either the working tree (``head=None``: committed, staged, unstaged
 and untracked changes) or a commit (``head=<ref>``: committed changes only). Git failures raise
 ``CaptureError`` with one problem per line.
+
+``snapshot_commit`` writes a dangling commit of a tree under a fixed identity, for drivers that test or stage
+the index (plan.py, parallel2.py).
 """
 from __future__ import annotations
 

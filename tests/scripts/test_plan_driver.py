@@ -1,71 +1,28 @@
 """Behavioral tests of the plugin's ``scripts/plan.py`` against throwaway git repositories.
 
-Each test gets a project on branch ``feat-x`` cut from ``main``. The driver runs in-process through ``main``
-with ``--repo``; the plan JSON and PIP are read back from disk.
+Each test gets a project on branch ``feat-x`` cut from ``main`` (the layout of ``_plan_driver_helpers``). The
+driver runs in-process through ``main`` with ``--repo``; the plan JSON and PIP are read back from disk.
 """
 from __future__ import annotations
 
-import importlib.util
 import json
+import subprocess
+import sys
 from pathlib import Path
-from types import ModuleType
 from typing import Any, Callable, Dict, Optional, Tuple
 
 import pytest
 from conftest import git
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _plan_driver_helpers as helpers  # noqa: E402
+from _plan_driver_helpers import (PLANS, SUB_TEST, Run, plan_file, read_plan, trees, write_op,  # noqa: E402
+                                  write_plan)
+
+driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
 WALK_ROOTS = ()  # walks only a make_project repo and tmp_path/trees
-Result = Tuple[int, str, str]
-Run = Callable[..., Result]
 Fill = Callable[..., Dict[str, Any]]
-BASE_FILES = {
-    "src/calc.py": "def add(a, b):\n    return a + b\n",
-    "tests/test_calc.py": "from src.calc import add\n\n\ndef test_add():\n    assert add(1, 2) == 3\n",
-    "docs/spec.md": "# Spec\n\nAdd subtraction.\n",
-}
-PLANS = "docs/PLANS"
-
-
-@pytest.fixture(scope="module")
-def driver(plugin_root: Path) -> ModuleType:
-    """Import plan.py by absolute path."""
-    path = plugin_root / "scripts" / "plan.py"
-    spec = importlib.util.spec_from_file_location("plan_under_test", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-@pytest.fixture()
-def project(make_project, tmp_path: Path) -> Path:
-    """A project on ``feat-x``; red-run worktrees land in ``tmp_path/trees``."""
-    config = {"base_branch": "main", "worktree_root": (tmp_path / "trees").as_posix()}
-    root = make_project(config, files={**BASE_FILES, "src/__init__.py": ""})
-    git(root, "checkout", "-q", "-b", "feat-x")
-    return root
-
-
-@pytest.fixture()
-def run(driver: ModuleType, project: Path, capsys: pytest.CaptureFixture) -> Callable[..., Result]:
-    """``run(*args)`` -> (exit code, stdout, stderr) of ``plan.py --repo <project> *args``."""
-    def _run(*args: str) -> Result:
-        code = driver.main(["--repo", str(project), *args])
-        captured = capsys.readouterr()
-        return code, captured.out, captured.err
-    return _run
-
-
-def plan_file(project: Path) -> Path:
-    return next((project / PLANS).glob("*_ActionPlan.json"))
-
-
-def read_plan(project: Path) -> Dict[str, Any]:
-    return json.loads(plan_file(project).read_text(encoding="utf-8"))
-
-
-def write_plan(project: Path, plan: Dict[str, Any]) -> None:
-    plan_file(project).write_text(json.dumps(plan, indent=2), encoding="utf-8")
 
 
 def sub_item(**extra: Any) -> Dict[str, Any]:
@@ -90,8 +47,7 @@ def filled(run: Run, project: Path) -> Callable[..., Dict[str, Any]]:
         assert code == 0, err
         planned = project / PLANS / "0001" / "tests" / "tests" / "test_calc_sub.py"
         planned.parent.mkdir(parents=True, exist_ok=True)
-        planned.write_text("from src.calc import sub\n\n\ndef test_sub():\n    assert sub(3, 1) == 2\n",
-                           encoding="utf-8")
+        planned.write_text(SUB_TEST, encoding="utf-8")
         plan = read_plan(project)
         plan["items"] = [item or sub_item()]
         plan.update(top)
@@ -102,11 +58,7 @@ def filled(run: Run, project: Path) -> Callable[..., Dict[str, Any]]:
 
 def implement(project: Path) -> str:
     """Commit the planned test and the implementation; return the commit SHA."""
-    source = project / PLANS / "0001" / "tests" / "tests" / "test_calc_sub.py"
-    (project / "tests" / "test_calc_sub.py").write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-    calc = project / "src" / "calc.py"
-    body = calc.read_text(encoding="utf-8") + "\n\ndef sub(a, b):\n    return a - b\n"
-    calc.write_text(body, encoding="utf-8")
+    write_op(project, "sub")
     git(project, "add", "src/calc.py", "tests/test_calc_sub.py")
     git(project, "commit", "-q", "-m", "add sub")
     return git(project, "rev-parse", "HEAD")
@@ -367,20 +319,27 @@ def test_record_runs_the_tests_at_the_commit_not_the_working_tree(run: Run, fill
 @pytest.mark.cross_os
 def test_record_staged_needs_no_git_identity(run: Run, filled: Fill, project: Path, tmp_path: Path,
                                             monkeypatch: pytest.MonkeyPatch) -> None:
-    """The index snapshot is made under the driver's own identity, so an unset user identity is fine."""
+    """The index snapshot is made under the driver's own identity, so an unset user identity is fine.
+
+    ``user.useConfigOnly`` and no system config stop git from guessing an identity from the host name, so
+    only the driver's own environment can satisfy ``commit-tree``. The files are staged under that same
+    config, since dropping the system config also drops a system ``core.autocrlf``, and a file staged
+    under the other setting would read as changed in the working tree.
+    """
     filled()
     run("freeze", "1")
-    source = project / PLANS / "0001" / "tests" / "tests" / "test_calc_sub.py"
-    (project / "tests" / "test_calc_sub.py").write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
-    calc = project / "src" / "calc.py"
-    calc.write_text(calc.read_text(encoding="utf-8") + "\n\ndef sub(a, b):\n    return a - b\n",
-                    encoding="utf-8")
-    git(project, "add", "src/calc.py", "tests/test_calc_sub.py")
     for name in ("GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"):
         monkeypatch.delenv(name, raising=False)
-    empty = tmp_path / "empty.gitconfig"
-    empty.write_text("", encoding="utf-8")
-    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    no_identity = tmp_path / "no_identity.gitconfig"
+    no_identity.write_text("[user]\n\tuseConfigOnly = true\n", encoding="utf-8")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(no_identity))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    write_op(project, "sub")
+    git(project, "add", "src/calc.py", "tests/test_calc_sub.py")
+    tree = git(project, "write-tree")
+    bare = subprocess.run(["git", "-C", str(project), "commit-tree", "-m", "probe", tree],
+                          capture_output=True, text=True, check=False)
+    assert bare.returncode != 0, "git found an identity on its own; the test cannot see the driver's"
     code, out, err = run("record", "1", "TASK-1", "--staged")
     assert code == 0, err
     assert out.startswith("record [done] | TASK-1 COMPLETE")
@@ -480,11 +439,6 @@ def test_record_start_after_completion_drops_completed_from_the_file(run: Run, f
 
 
 # --- red --------------------------------------------------------------------------------------------------
-
-def trees(tmp_path: Path) -> list:
-    folder = tmp_path / "trees"
-    return list(folder.iterdir()) if folder.is_dir() else []
-
 
 @pytest.mark.cross_os
 def test_red_passes_when_each_planned_test_fails_as_declared(run: Run, filled: Fill, project: Path,

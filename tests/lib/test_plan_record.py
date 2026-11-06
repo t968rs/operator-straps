@@ -63,7 +63,7 @@ def test_a_hand_set_status_is_a_missing_record() -> None:
     [problem] = prc.record_problems(plan)
     assert problem.item == "TASK-1" and problem.kind == prc.RecordProblemKind.missing
     assert str(problem) == ("TASK-1 is COMPLETE without a sealed record; "
-                            "run plan.py record 0001 TASK-1")
+                            "run plan.py record 0001 TASK-1 (--sha SHA | --staged)")
 
 
 def test_a_hand_edit_after_the_stamp_is_a_seal_problem() -> None:
@@ -93,9 +93,7 @@ def test_a_record_left_on_a_pending_item_is_a_seal_problem() -> None:
 
 
 def test_legacy_shapes_pass_only_without_a_record_scheme() -> None:
-    complete, blocked = _item("TASK-1"), _item("TASK-2")
-    complete.status, complete.evidence, complete.verification_references = (
-        ItemStatus.COMPLETE, "commit aaaaaaa: 1 test node(s) passed", list(LEGACY_REFS))
+    complete, blocked = _legacy_complete("TASK-1"), _item("TASK-2")
     blocked.status, blocked.evidence = ItemStatus.BLOCKED, "waits on the operator module"
     assert prc.record_problems(_plan(complete, blocked, scheme=None)) == []
     sealed = _plan(complete.model_copy(deep=True), blocked.model_copy(deep=True))
@@ -109,19 +107,14 @@ def test_a_legacy_complete_item_needs_both_references() -> None:
 
 
 def test_an_unfrozen_plan_accepts_no_legacy_shape() -> None:
-    item = _item()
-    item.status, item.evidence, item.verification_references = (
-        ItemStatus.COMPLETE, "done", list(LEGACY_REFS))
+    item = _legacy_complete()
     plan = _plan(item)
     plan.frozen = None
     assert [p.item for p in prc.record_problems(plan)] == ["TASK-1"]
 
 
 def test_the_scheme_is_sealed_once_no_legacy_item_remains() -> None:
-    legacy = _item()
-    legacy.status, legacy.evidence, legacy.verification_references = (
-        ItemStatus.COMPLETE, "done", list(LEGACY_REFS))
-    plan = _plan(legacy, _item("TASK-2"), scheme=None)
+    plan = _plan(_legacy_complete(), _item("TASK-2"), scheme=None)
     assert prc.scheme_for(plan) is None
     prc.stamp(plan, plan.items[0], _completed(), DATE)
     assert prc.scheme_for(plan) == RecordScheme.sealed

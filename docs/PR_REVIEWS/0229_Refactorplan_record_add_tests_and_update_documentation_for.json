@@ -1,0 +1,570 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 229,
+  "pr_title": "Refactor(plan_record): add tests and update documentation for record …",
+  "branch": "1132-git-tree-plans",
+  "base_branch": "main",
+  "base_sha": "84cc5bc22de8967fda27f8280885b3953b81c73a",
+  "head_sha": "c965d14f3ac7e70c05ef59eadf2c3875a609e2e0",
+  "review_date": "2026-11-06",
+  "verdict": "READY TO MERGE - 19 of 19 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 3885,
+    "deletions": 199,
+    "files_changed": 34
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0229/pr229_20261106T151319Z/findings/config.json",
+    "docs/_scratch/pr_review/0229/pr229_20261106T151319Z/findings/tests.json",
+    "docs/_scratch/pr_review/0229/pr229_20261106T151319Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0229/pr229_20261106T151319Z/findings/docs.json",
+    "docs/_scratch/pr_review/0229/pr229_20261106T151319Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0229/pr229_20261106T151319Z/findings/overall.json",
+    "docs/_scratch/pr_review/0229/pr229_20261106T151319Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0229/pr229_20261106T151319Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The schema is generated output: every new definition (ItemRecord, Completed, Started, Blocked, Closed, Provenance, PassedTests, RecordScheme, RecordSource) matches plan_models.py and plan_enums.py field for field, including patterns, minLength, closed objects and the kind consts.",
+    "The Frozen.records and ActionItem.record fields default to null, so plans frozen before the sealed scheme still validate against the new schema.",
+    "The frozen description now names the record field and the folded records scheme, and matches the mutable-field list in plan_models and the wrapping in plan_doc.frozen_digest.",
+    "Drift is guarded twice: test_plan_schema_generated.py compares the committed file with schema_dict() and runs gen_plan_schema.py --check.",
+    "The removed `record` refusal of a commit unreachable from HEAD becomes a positive test (test_record_sha_accepts_a_commit_unreachable_from_head), and amend, squash and staged-attach scenarios pin that `check` never compares records with HEAD.",
+    "test_the_seal_breaks_when_a_covered_field_changes parametrizes one edit per sealed field (status, evidence, files, tests, id, record date, provenance tree), and test_the_seal_ignores_fields_outside_the_record pins the opposite case.",
+    "test_a_defaulted_field_added_later_keeps_the_seal subclasses SealedFields and PlannedTest to show that exclude_defaults keeps old seals valid across a schema extension. It tests the real digest, with nothing mocked.",
+    "test_record_staged_runs_the_tests_on_the_index uses an untracked helper module to show that `record --staged` tests the index rather than the working tree, and it also checks that no worktree or ref is left behind.",
+    "The todo-sync P2 tests use an all-digit '1234567' in the evidence, which the SHA regex's hex-letter lookahead rejects, so a pass really comes from the record branch and not from the evidence fallback.",
+    "test_deleting_the_record_scheme_by_hand_is_a_plan_change and the new test_plan_models forge test cover both digest-fold attack routes: deleting frozen.records, and adding a top-level `records` key.",
+    "Every test in scope is behavioral: real pydantic models, the real driver main() in-process against make_project git repos, and the real SKILL.md text. There are no mock-chain wiring tests.",
+    "frozen_digest wraps the hashed fields as {plan, records} only when a scheme is set, so legacy digests stay byte-identical and a top-level records key cannot forge a sealed digest (the plan level always carries plan_id).",
+    "SealedFields.digest hashes with exclude_defaults and Frozen.at / Completed.of omit unset optionals, so later defaulted fields and the exclude_unset dump keep existing seals and digests stable.",
+    "The git commit-tree snapshot moved into branch_capture.snapshot_commit and is shared by parallel2 and plan.py, gaining explicit utf-8 decoding; throwaway_tree replaces three hand-rolled try/finally worktree blocks.",
+    "Record rules in plan_record run no git, so amend, squash and rebase no longer invalidate a recorded plan, and the freeze/refreeze split (record_split) tolerates only seal breaks while still refusing missing records.",
+    "verify builds its throwaway worktree only when some item actually has nodes to run, and rules_plans probes the record shape without importing pydantic.",
+    "The legacy-versus-sealed split (frozen.records unset vs sealed) is stated the same way across SKILL.md, schemas/README.md, HARNESS_RULES.md and the root README row, and matches plan_record.legacy_allowed and record_holds.",
+    "SKILL.md:106-107 states the seal's limit plainly (keyless hash, a restored own record or recomputed hash is not caught), matching the plan_record.py module docstring.",
+    "Plan 0009 records departures from the frozen spec as decisions with rationale (D6 lanes gate, D5 no ancestry) instead of editing the spec, keeping spec and plan roles separate.",
+    "PLANS_PIP_Template.md documents the exact Recorded line formats (c7/t7 in backticks, command on its own line) that plan_render._recorded emits for commit and staged records.",
+    "The write-plan SkillSpec pins every new SKILL.md and driver claim to named mechanical test nodes (B1-B8), so the doc edits are guarded by test_write_plan_record_contract.py.",
+    "The new 'What a record proves' paragraph matches plan_record.py and ItemRecord.holds: tree and commit are never compared with HEAD, and the stated limit (a recomputed hash, or an item's own earlier record restored) is the same known limit the plan_record module docstring accepts.",
+    "The --sha and --staged rules in step 9 match commit_problems/worktree_problems/run_tests in plan.py, including dropping the old rule that the commit be reachable from HEAD (resolve_commit no longer checks ancestry).",
+    "The refreeze tolerance ('re-record after refreeze: <ITEM>', a non-PENDING item with no record still refused) matches record_split/freeze_problems and cmd_freeze output exactly.",
+    "Cross-references stay consistent across the package: the README write-plan row, HARNESS_RULES.md, schemas/README.md, PLANS_PIP_Template.md and the Mutable field list (status, evidence, verification_references, record) all describe the same sealed-record model as the skill.",
+    "tests/skills/test_write_plan_record_contract.py pins the new claims and checks that the removed ancestry and commit-wait phrases are gone, so a regression in the skill text fails a test.",
+    "The three jobs the old ancestry check mixed together are split cleanly: the seal (anti-forgery, decided from the plan alone in plan_record.py with no git), provenance (stored, never compared with HEAD), and verify (an on-demand rerun that writes nothing).",
+    "The seal is its own closed model (SealedFields) and binds plan_id and item id. Because exclude_defaults is used, a defaulted field added later does not move the seal, and test_a_defaulted_field_added_later_keeps_the_seal proves it.",
+    "frozen_digest folds the record scheme in only when it is set, so every existing digest (plans 0001-0008) stays valid, and a lone hand deletion of frozen.records counts as a plan change.",
+    "Splitting the gates (require_frozen with digest only for record, require_valid for lanes) avoids the refreeze/record deadlock and still keeps a hand-set status from unlocking lanes or dependents.",
+    "The driver tests are behavioral against real git repos: amend, squash, staged attach, an unreachable commit, staged index snapshots with no ref left behind, a refreeze that breaks only the changed item's seal, and verify that leaves the plan's bytes unchanged.",
+    "snapshot_commit is pulled into branch_capture and shared with parallel2 instead of duplicated, and throwaway_tree replaces two try/finally blocks.",
+    "Outcome is a discriminated union of one class per status, and each class carries its implied status and evidence text, so stamp() can't pair the wrong status with an outcome.",
+    "Places where the build departs from the frozen spec are written into plan 0009 rather than the spec: D6 (lanes uses require_valid, not the spec's digest-only gate), the 'record scheme in the digest' value (review S1, contradicting spec line 127) and the 'seal limit' value (review C2).",
+    "One PR updates the record contract in SKILL.md, schemas/README.md, PLANS_PIP_Template.md, HARNESS_RULES.md and the root README row together, and tests/skills/test_write_plan_record_contract.py pins the load-bearing SKILL.md phrases and the removed ancestry rule.",
+    "plan_record.py does what its docstring says: no git and no argparse, every record rule decided from the plan alone, and the known limit (a restored earlier record) stated in the module, the plan values and SKILL.md alike.",
+    "frozen_digest folds the record scheme in only when it is set. Every existing digest stays unchanged, and deleting the scheme by hand still counts as a plan change; tests in both test_plan_record.py and test_plan_record_driver.py prove each half.",
+    "The driver tests are behavioral against real make_project git repos (amend, squash, staged attach, unreachable commit, index snapshot with no refs and no leftover worktree). No mock chains.",
+    "The design splits the old ancestry check into three separate jobs (seal, provenance, verify), so check no longer depends on how history was rewritten. Driver tests prove this on real git repos for amend, squash, staged attach and an unreachable commit.",
+    "The seal is its own closed model (SealedFields) with exclude_defaults, and test_a_defaulted_field_added_later_keeps_the_seal pins its forward compatibility with a subclass. That beats hoping a later release does not move every seal.",
+    "Folding the record scheme into the freeze digest only when it is set keeps every existing digest unchanged. Wrapping it as {plan, records} means a hand-added top-level records key cannot forge it, and a test pins that.",
+    "Refreeze tolerates a broken seal and prints 're-record after refreeze', which removes the deadlock where a refreeze refuses the seal and record refuses the digest. The driver test walks the whole loop through to a green check.",
+    "snapshot_commit moved from parallel2 into branch_capture and throwaway_tree became a context manager, so record, verify and red share one implementation instead of three try/finally blocks.",
+    "todo_sync P2 still has no pydantic dependency: it checks the record's JSON shape and reuses the plan_enums values instead of spelling them again, and two guard tests prove that a non-complete or unsealed record still fails."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Plan 0009 merges with every item PENDING and a PIP rendered by the old driver",
+        "file": "docs/plans/0009_plan_item_records_sealed_tree_provenance_ActionPlan.json",
+        "files": [
+          "docs/plans/0009_plan_item_records_sealed_tree_provenance_ActionPlan.json",
+          "docs/plans/0009_plan_item_records_sealed_tree_provenance_PIP.md",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "18-19,48-49,262-263,479-480,529-530,568-569,654-655,684-689",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The PR lands all of plan 0009's work (models, plan_record.py, driver, render, todo_sync, docs, frozen strap spec), yet every item in the ActionPlan is still `\"status\": \"PENDING\", \"evidence\": \"not started\"` (JSON lines 18-19, 48-49, 262-263, 479-480, 529-530, 568-569, 654-655) and the PIP shows every box unchecked. TASK-7's own action requires the plan to be recorded for every item with this checkout's driver, and HARNESS_RULES.md:76-77 requires JSON status and PIP checkboxes updated after each task. The PIP was also rendered before TASK-4: its record boxes read `Record the commit: plan.py record 0009 TASK-n --sha <sha>` (PIP lines 52, 112, 173, 193, 210, 238, 255), while plan_render.py:110-111 at head renders `Record it: ... or --staged`, so `plan.py render 0009` no longer reproduces the committed file. A reader of the merged tree sees an unexecuted plan for shipped code.\n\nAlso (overall): docs/plans/0009_plan_item_records_sealed_tree_provenance_ActionPlan.json carries status PENDING and evidence 'not started' for TASK-1..TASK-7 (lines 18, 48, 262, 479, 529, 568, 654), no completed date, and a frozen block without a records key (lines 684-689), while the head ships every item's code: plan_record.py, the --staged and verify driver, the render, P2, the docs, the 0.59.0 bump and a frozen write-plan SkillSpec. TASK-7's action requires recording every item with this checkout's driver before hand-off. As merged, the JSON (the source of truth per PLANS_PIP_Template.md) says the work never started, the rendered PIP shows every box unchecked, and the plan that introduces the sealed scheme is still judged on the legacy rule because it was frozen by the 0.58 driver.\n\nAlso (system_shape): The PR carries the whole implementation of plan 0009, yet docs/plans/0009_plan_item_records_sealed_tree_provenance_ActionPlan.json still has all seven items at status PENDING with evidence 'not started' (lines 18-19, 48-49, 262-263, 479-480, 529-530, 568-569, 654-655), and `completed` is unset. TASK-7 (PIP line 250) says every item is recorded with this checkout's driver, by --staged before the commit or --sha after it, and that step never ran. The gap is more than bookkeeping. With no item DONE, `claims_rev` (plugins/harness/scripts/plan.py:216-222) returns None, so `plan.py check 0009` reads the plan's anchors and sweeps in the working tree. Those anchors quote base code this PR rewrote, e.g. TASK-3's `plan.py:183 holds if frozen is None or frozen.digest == pd.frozen_digest(plan):`, which now reads `pd.frozen_digest(plan, frozen.records)` at plan.py:209. S2's hit map also lacks the new `verification_references` users (plan_record.py, plan_models.py, the new tests). So the merged plan fails its own check. The rendered PIP is stale against the new renderer too: it still prints `Record the commit: ... --sha <sha>` (PIP lines 52, 112, 173, 193, 210, 238, 255), where plan_render.py:111 now emits `Record it: ... or `--staged``.\n\nAlso (roast): TASK-7's action ends 'Plan 0009 is recorded with this checkout's driver ... for every item'. Every other TASK-7 step has landed: the version is 0.59.0 and the write-plan SkillSpec is frozen. But all seven items in the plan JSON are still status PENDING with evidence 'not started' (lines 18-19 and the same pair in each item). The PIP still renders the old 'Record the commit' boxes, all unchecked (PIP lines 52-255). No item is DONE, so claims_rev returns None and `plan.py check 0009` reads the anchors in the working tree. Those anchors quote the code before this change, for example plan.py:183 'if frozen is None or frozen.digest == pd.frozen_digest(plan):' and plan_render.py:107. So check on the merged plan fails on every anchor this PR rewrote. The plan that introduces 'status is never a claim' merges claiming none of its own work happened.",
+        "fix": [
+          "With this checkout's driver (`sh plugins/harness/scripts/hpy plugins/harness/scripts/plan.py`), record each item at the PR head in dependency order: `record 0009 TASK-1 --sha c965d14`, TASK-2, TASK-6, then TASK-3, TASK-4, TASK-5, then TASK-7; run `render 0009` and `verify 0009`; commit the updated ActionPlan JSON and PIP in this PR.",
+          "If the plan is deliberately left for recording after the merge, state that in the PR description and record it in the follow-up before the branch closes, re-rendering the PIP with the head renderer.",
+          "Record each item with this checkout's driver before the merge, in dependency order with TASK-7 last: `sh plugins/harness/scripts/hpy plugins/harness/scripts/plan.py record 0009 TASK-<n> --sha c965d14f3ac7e70c05ef59eadf2c3875a609e2e0`, then `plan.py render 0009`, and commit the updated plan and PIP into this PR. A `freeze 0009 --refreeze` first would also store `records: sealed`, since no item lacks a record.",
+          "If recording is meant to happen after the squash merge (the feature now allows --sha on a commit unreachable from HEAD), say so in the PR description and open a follow-up so the plan does not stay open on main.",
+          "Record each item with the head driver in dependency order (TASK-1, TASK-2, TASK-4, TASK-5, TASK-6, then TASK-3, then TASK-7): `sh plugins/harness/scripts/hpy plugins/harness/scripts/plan.py record 0009 <ITEM> --sha c965d14f3ac7e70c05ef59eadf2c3875a609e2e0`. Then run `plan.py check 0009` (anchors move to the base once an item is DONE), let the record calls re-render the PIP, and commit the plan JSON and PIP in this PR.",
+          "If recording is deliberately deferred until after the merge, state that in the PR description and in TASK-7's action text, so the merged plan is not read as abandoned.",
+          "Before the merge, record each item with this checkout's driver (`sh plugins/harness/scripts/hpy plugins/harness/scripts/plan.py record 0009 TASK-n --staged`, or `--sha` of the commit), in dependency order (TASK-1, 2, 6, then 3, 4, 5, then 7). Then run `plan.py render 0009` and `plan.py check 0009`, and commit the updated plan JSON and PIP with the PR."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "A refreeze after a design edit silently downgrades a sealed plan to the legacy scheme",
+        "file": "plugins/harness/lib/harness_lib/plan_record.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_record.py",
+          "plugins/harness/scripts/plan.py",
+          "tests/scripts/test_plan_record_driver.py",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ],
+        "lines": "1-6,85-97",
+        "reviewer": "roast, runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "keeps_sealed keeps the sealed scheme only when frozen.records is still 'sealed' or when frozen.digest equals frozen_digest(plan, sealed). The second test only works if nothing else in the plan changed. A refreeze exists because something did change (SKILL.md step 8 calls it standard procedure after a design change). So the attack is easy: delete frozen.records, edit any frozen field (say an item's action), hand-set an item to COMPLETE and paste [<40-hex>, 'tree <40-hex>'] into verification_references, then run freeze --refreeze. keeps_sealed returns False, legacy_allowed is True, the pasted shape passes record_split, and scheme_for returns None because a non-PENDING item has no record. The new frozen block has no records key, and check passes with a forged COMPLETE. No hash had to be recomputed. This breaks what the plan.py docstring promises ('a sealed plan stays sealed', lines 37-39) and the spec's rule that pasted references never pass on a SEALED plan. test_deleting_the_record_scheme_by_hand_is_a_plan_change covers only a deletion with no other edit, so it never reaches this path. The seal holds firm until the one command it was meant to survive.\n\nAlso (runtime): keeps_sealed recognises a hand-deleted `frozen.records` only while the digest still matches under the sealed scheme. A refreeze normally follows a digest-covered edit, so deleting `records` in that same edit makes keeps_sealed False, legacy_allowed True, and a hand-set COMPLETE item with fabricated legacy references (any 40-hex string plus `tree <40-hex>`) passes; scheme_for then stores no scheme. The freeze docstring states the condition precisely, but plan_record's module docstring lists only the copy-back limit as known, so the downgrade path is undocumented.\n\nAlso (overall): keeps_sealed (plan_record.py:91-97) detects a hand-deleted scheme only when the stored digest still equals frozen_digest(plan, sealed). If the same hand edit also changes any digested field (the normal reason to refreeze), the digest no longer matches either way, keeps_sealed returns False, cmd_freeze (plan.py:358-367) judges the items with legacy_allowed True, a pasted legacy COMPLETE shape passes record_split, scheme_for returns None, and the new freeze stores no scheme. After that, check accepts pasted references on a plan that was sealed. The plan.py docstring (lines 37-39) does state the narrow condition, but SKILL.md and the plan_record docstring name only the keyless-hash and own-record-restore limits, so the plan reads as one that can never be downgraded. test_deleting_the_record_scheme_by_hand_is_a_plan_change covers only a deletion with no other edit.",
+        "fix": [
+          "In keeps_sealed (or cmd_freeze before it), also read the committed plan with `git show HEAD:<plan path>` and keep the sealed scheme when that copy has frozen.records == 'sealed'. Add a driver test: freeze sealed, commit, delete records, edit an item action, paste a legacy COMPLETE, refreeze. The refreeze must refuse with 'without a sealed record'.",
+          "Make the scheme only ever move up: refuse a refreeze that would write records=None when any item already carries a sealed ItemRecord and a non-PENDING item without a record has no legacy shape at the committed HEAD copy of the plan. Pin this with the same driver test.",
+          "Name this second limit in the plan_record module docstring's Known limit sentence and in the freeze paragraph of plan.py.",
+          "Or make the scheme sticky on evidence the plan cannot lose by a single edit, e.g. judge as sealed whenever any item already carries a sealed record whose outcome is not legacy, and refuse a refreeze that would store no scheme on such a plan.",
+          "Make the ratchet independent of the digest: on a refreeze, also keep the plan sealed when the committed copy of the plan (`git show HEAD:<plan path>`) has frozen.records == sealed, or when any item already carries a sealed record and no item was recorded under the legacy driver (for example, frozen.date is on or after the release that added the scheme). Add a driver test that deletes records, edits an item action, pastes a legacy shape and expects the refreeze to refuse.",
+          "Or accept it as a known limit: say so in the plan_record.py module docstring and in SKILL.md's 'What a record proves' paragraph next to the keyless-hash sentence."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "The no-identity staged test passes without the fix wherever git can work out an identity on its own",
+        "file": "tests/scripts/test_plan_driver.py",
+        "lines": "146-168",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_record_staged_needs_no_git_identity is meant to show that `record --staged` makes its index snapshot under SNAPSHOT_IDENTITY (plugins/harness/scripts/plan.py:121-124). The test only clears the GIT_AUTHOR_*/GIT_COMMITTER_* variables and points GIT_CONFIG_GLOBAL at an empty file. It leaves the system config in place (GIT_CONFIG_NOSYSTEM is not set) and does not turn off git's automatic identity (user.useConfigOnly). On a host whose hostname has a domain, such as the Ubuntu CI runners, git builds `user@host.domain` and commit-tree succeeds. There, the test still passes if the driver stops passing SNAPSHOT_IDENTITY, so it cannot catch the regression it was written for.",
+        "fix": [
+          "Write `[user]\\n\\tuseConfigOnly = true\\n` into the empty global config instead of an empty string, and add `monkeypatch.setenv(\"GIT_CONFIG_NOSYSTEM\", \"1\")`. Git then refuses any identity that is not configured, and only the driver's own env can satisfy commit-tree.",
+          "As a sanity check in the same test, assert that a plain `git commit-tree` under the stripped environment fails (subprocess.run with os.environ, check=False, returncode != 0) before `record --staged` runs."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "verify --staged test cannot tell the index from the working tree",
+        "file": "tests/scripts/test_plan_record_driver.py",
+        "lines": "405-415",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_verify_staged_runs_the_tests_on_the_index stages exactly what is in the working tree, so the index and the working tree are the same. A `verify --staged` that ran the nodes in the working tree, or in any tree holding the staged content, passes it as well. Apart from the 'at the index' label, the test only proves that the run did not happen at HEAD. Its sibling test_record_staged_runs_the_tests_on_the_index (lines 286-297) does separate the two, using an untracked src/helper.py that the index lacks. The verify test has no such step.",
+        "fix": [
+          "After `record --staged` succeeds, make the working tree differ from the index the same way the record test does. For example, leave calc.py's staged sub correct and write an unstaged edit that breaks it (`a - b` -> `a + b`). Then assert that `verify 1 --staged` still reports `TASK-1 pass`, and that plain `verify 1` (HEAD) does not pass."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "branch_capture module docstring no longer describes the module",
+        "file": "plugins/harness/lib/harness_lib/branch_capture.py",
+        "lines": "1-5,55-65",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "branch_capture.py:1-5 calls the module 'Git capture shared by the commit-message and PR-summary drivers' and describes only diff capture. This PR adds snapshot_commit (lines 55-65), which writes a commit object with git commit-tree and is used by plan.py (record/verify --staged) and parallel2.py.",
+        "fix": [
+          "Add a sentence to the module docstring: 'snapshot_commit writes a dangling commit of a tree under a fixed identity, for drivers that test or stage the index (plan.py, parallel2.py).'"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Repair instruction names a record call argparse rejects",
+        "file": "plugins/harness/lib/harness_lib/plan_record.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_record.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "23-25,38-43",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "record_command returns `run plan.py record <plan> <item>` with no mode flag, but the record parser's mode group is required (plan.py:623), so the command as printed exits 2 with a usage error. It is the repair text of every RecordProblem line (missing and seal), of dependency_problems, and of verify's fail and unrecorded results. The PIP renderer goes out of its way to print commands that run as written (base expansion), so these repair lines are the odd ones out.",
+        "fix": [
+          "Make record_command take the outcome hint and print a runnable form, e.g. `run plan.py record <plan> <item> --sha <sha>` (or `--staged`) for a COMPLETE item and the matching --start/--blocked/--closed flag for the other statuses.",
+          "Or append the flag set to the instruction: `run plan.py record <plan> <item> (--sha SHA | --staged | --start | --blocked REASON | --closed RATIONALE)`."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "plan_red module docstring left with a broken line wrap",
+        "file": "plugins/harness/lib/harness_lib/plan_red.py",
+        "lines": "3-6",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "plan_red.py:3-6: the inserted 'or the ``throwaway_tree`` context' leaves a short orphan line ('context, ``overlay``; the ``plan.py``') in the middle of the paragraph.",
+        "fix": [
+          "Reflow lines 3-6 of the paragraph to the 110-column width."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "P2 record probe accepts uppercase hex the models reject",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py",
+        "lines": "82-83",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_hex_text matches with re.IGNORECASE, so _complete_record accepts an uppercase seal or tree, while ItemRecord.seal (_SHA64) and Provenance.tree (_SHA40) only accept lowercase hex. The probe is documented as the shape of a sealed COMPLETE record; it should not pass a record that plan.py refuses to load.",
+        "fix": [
+          "Drop re.IGNORECASE from _hex_text so the probe matches the model patterns."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Schema leaves the Provenance commit/source coupling and the status/outcome coupling to the models",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py"
+        ],
+        "lines": "713-746",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "plan_models.Provenance rejects a source=commit record with no commit and a source=staged record that carries one, and ItemRecord.holds ties item.status to the outcome kind. The generated Provenance definition (ActionPlan.schema.json:713-746) only has source, tree and an optional nullable commit, so the schema accepts both rejected shapes. The schema hook (validate_pr_json_schema.py) validates plan files with jsonschema alone, so a hand-edited sealed record with a commit-less commit provenance passes the hook and fails only in plan.py. The models docstring says models and schema accept the same documents; that no longer holds for these rules. Pydantic cannot emit this coupling, so the gap is inherent to the generator.",
+        "fix": [
+          "Say in the Provenance model docstring (and the schemas README ActionPlan section) that the commit/source rule and the status/outcome agreement are enforced by plan.py check, not by the JSON schema.",
+          "Add a json_schema_extra to Provenance with if/then branches (source const commit requires a string commit; source const staged forbids commit) so the generated schema carries the rule, then regenerate with tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "PIP template misstates two render rules",
+        "file": "plugins/harness/schemas/PLANS_PIP_Template.md",
+        "files": [
+          "plugins/harness/schemas/PLANS_PIP_Template.md",
+          "plugins/harness/lib/harness_lib/plan_render.py"
+        ],
+        "lines": "108-120,237",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "PLANS_PIP_Template.md:113-114 lists `complete` among the kinds of the bare `**Recorded:** <date>, <kind>` line, but plan_render.py:118-119 uses that form only for non-Completed outcomes; a Completed record always renders the commit or staged form (plan_render.py:121-125). PLANS_PIP_Template.md:120 says the legacy verification references are \"rendered only on plans frozen before the record scheme\", but plan_render.py:142-145 renders them for any item without a record, with no look at `frozen.records`.\n\nAlso (overall): PLANS_PIP_Template.md:113-114 says the '**Recorded:** <date>, <kind>' form is used 'otherwise, where kind is `started`, `blocked`, `closed` or `complete`'. plan_render._recorded (plan_render.py:485-496) sends every Completed outcome to the commit or staged form, and Provenance always has one of those two sources, so `complete` never renders in that form.\n\nAlso (system_shape): plugins/harness/schemas/PLANS_PIP_Template.md:113-114 lists `complete` among the kinds of the `**Recorded:** <date>, <kind>` line. `_recorded` (plugins/harness/lib/harness_lib/plan_render.py:115-126) gives that form only to non-`Completed` outcomes, and a `Completed` outcome always renders the commit/staged-tree form, so `complete` never appears there. Line 120 says legacy references are 'rendered only on plans frozen before the record scheme'. `_item` (plan_render.py:138-145) renders `verification_references` for any item without a record and never consults `frozen.records`. The example command on line 109 (`pytest tests/test_file.py::test_name -q`) is also not the shape `PassedTests.of` writes (`python -m pytest -q -p no:cacheprovider --tb=auto <nodes>`, plan_models.py:239-241 with plan_red.py:40). Rule 12 at line 237 still names only the verification references section and says nothing of the record line.\n\nAlso (roast): PLANS_PIP_Template.md says the fallback line is '**Recorded:** <date>, <kind>' and that kind can be started, blocked, closed or complete. plan_render._recorded sends every Completed outcome to the commit/staged branch, so 'complete' never shows up there. The template's example command, '- `pytest tests/test_file.py::test_name -q`', also differs from what PassedTests.of actually stores ('python -m pytest -q -p no:cacheprovider --tb=auto <nodes>').",
+        "fix": [
+          "Drop `or complete` from the kind list (kind is `started`, `blocked` or `closed`), and reword line 120 to \"rendered only for an item without a record (a legacy item); `record` clears it\".",
+          "Drop '`complete`' from the kind list: 'where kind is `started`, `blocked` or `closed`'.",
+          "PLANS_PIP_Template.md:113-114: drop `complete` from the kind list ('where kind is `started`, `blocked` or `closed`'). Line 120: 'Legacy proof list: rendered for an item without a record; `record` no longer writes it.' Line 109: '- `python -m pytest -q -p no:cacheprovider --tb=auto tests/test_file.py::test_name`'. Line 237: add 'and the `**Recorded:**` line mirrors `items[].record`'.",
+          "On PLANS_PIP_Template.md lines 113-114, change \"where kind is `started`, `blocked`, `closed` or `complete`\" to \"where kind is `started`, `blocked` or `closed`\", and on line 109 change the example command to '- `python -m pytest -q -p no:cacheprovider --tb=auto tests/test_file.py::test_name`'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "schemas README scopes todo_sync P2's SHA acceptance to legacy plans; P2 has no such scope",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py"
+        ],
+        "lines": "54,255,257",
+        "reviewer": "docs, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "schemas/README.md:255 says todo_sync rule P2 accepts \"a sealed `Completed` record, or on such a plan a commit SHA in `evidence` or `verification_references`\" (such a plan = frozen before the record scheme). rules_plans.py:104-115 never reads `frozen.records`: `_names_sha` passes a hex SHA in evidence on any plan, sealed or not. It also only probes the record's shape (rules_plans.py:86-101) and does not recompute the seal, so \"sealed\" overstates what P2 verifies.\n\nAlso (overall): schemas/README.md:255 says 'todo_sync rule P2 accepts a sealed `Completed` record, or on such a plan a commit SHA in `evidence` or `verification_references`'. p2_evidence_sha (rules_plans.py:104-116) accepts a SHA in evidence on any plan, whatever the record scheme. _complete_record checks only the JSON shape (64-hex seal, date, provenance), never the seal itself, so P2 accepts 'a well-formed COMPLETE record', not 'a sealed one'. check is what proves the seal.\n\nAlso (system_shape): plugins/harness/schemas/README.md:255 says todo_sync rule P2 accepts 'a sealed `Completed` record, or on such a plan [frozen before the record scheme] a commit SHA in `evidence` or `verification_references`'. README.md:257 says `verification_references` 'is read only on plans frozen before the record scheme'. p2_evidence_sha (plugins/harness/lib/harness_lib/todo_sync/rules_plans.py:104-115) never reads `frozen.records`. It passes any COMPLETE item whose evidence or references name a 7-40 hex SHA (`_names_sha`, lines 74-79), sealed plan or not. A hand-set COMPLETE with evidence 'commit abc1234' on a sealed plan passes P2, which contradicts the README. `plan.py check` still catches that item, so the plan gate holds; the README describes a P2 that does not exist.\n\nAlso (roast): The checklist bullet says P2 accepts a sealed Completed record 'or on such a plan a commit SHA in evidence or verification_references'. rules_plans.p2_evidence_sha never reads frozen.records: it accepts a SHA in the evidence on any plan, sealed ones included. Line 54 still lists the frozen block as 'commit, tree, date and digest' and leaves out the new optional records scheme that freeze now writes.",
+        "fix": [
+          "Reword to: \"todo_sync rule P2 accepts a commit SHA in `evidence` or `verification_references`, or a record shaped as a COMPLETE record (64-hex seal, provenance tree); it does not recompute the seal, which `plan.py check` does\".",
+          "Reword as: 'todo_sync rule P2 accepts a COMPLETE record of the sealed shape (the seal itself is checked by `plan.py check`) or a commit SHA in `evidence` or `verification_references`'.",
+          "Reword schemas/README.md:255 and :257: P2 accepts a sealed `Completed` record or a commit SHA in `evidence`/`verification_references` on any plan, and the scheme-aware rule is `plan.py check`'s.",
+          "Or make P2 scheme-aware: skip the `_names_sha` fallback when `pair` plan's `frozen.records == \"sealed\"` (a dict probe, no pydantic), and add a P2 test for a hand-set SHA on a sealed plan.",
+          "Rewrite the P2 clause as 'todo_sync rule P2 accepts a sealed `Completed` record or a commit SHA in `evidence` or `verification_references` on any plan; the scheme is enforced by `plan.py check`'. Change line 54 to '`frozen` (commit, tree, date, digest and the `records` scheme set by `plan.py freeze`)'."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "schemas README's frozen field list omits the new records scheme",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/plan_models.py"
+        ],
+        "lines": "54",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/schemas/README.md:54 still describes `frozen` as '(commit, tree, date and digest set by `plan.py freeze`)'. This PR adds `Frozen.records` (plugins/harness/lib/harness_lib/plan_models.py:183), which `freeze` stores, the digest folds in (plan_doc.py:78-91), and lines 255-256 of the same README rely on (`frozen.records`). The field inventory lags the status rules written below it.",
+        "fix": [
+          "schemas/README.md:54: '`frozen` (commit, tree, date, digest and the `records` scheme set by `plan.py freeze`; `\"sealed\"` unless a legacy item remains)'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "verify docstring omits the unrecorded failure",
+        "file": "plugins/harness/scripts/plan.py",
+        "lines": "47-63",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring for `verify` says it prints `<ITEM> pass` or `<ITEM> no tests` for each COMPLETE item and that a failure names the record call after the fix. The code also fails the run, without running anything, for a COMPLETE item whose record does not hold (unrun_result -> VerifyKind.unrecorded, plan.py:571-578), and VerifyKind's docstring says so. The command docstring is the user-facing contract and does not mention this exit-1 path.\n\nAlso (roast): The only commit, c965d14, is titled 'Refactor(plan_record): add tests and update documentation for record handling'. The change adds a persisted ItemRecord schema, a records key in the freeze block, `record --staged`, a new `plan.py verify` subcommand, drops the ancestry rule for --sha, changes check's problem lines, and bumps harness to 0.59.0. Someone reading only the history will not find any of that.",
+        "fix": [
+          "Add to the verify paragraph: a COMPLETE item without a valid record (no sealed record, a broken seal, or a non-legacy shape on a legacy plan) fails the run without a test run and names the record call.",
+          "Retitle the squash commit and PR as a Feature (for example 'Feature(write-plan): sealed item records, record --staged, plan.py verify (#229)'), and list the schema, CLI and check-message changes in the body."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Step 8 and step 9 prose left unwrapped after the edit",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "90,92,113,119",
+        "reviewer": "skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The rest of the file wraps at about 110 columns. SKILL.md:113 runs to about 140 columns. SKILL.md:92 ('...quotes the code at the base. A freeze') and SKILL.md:119 ('...needs the item's') break short, left over from inserting new sentences into the old lines.\n\nAlso (system_shape): SKILL.md:90 states flatly 'A refreeze still refuses a non-PENDING item with no record'. The plan.py module docstring (plugins/harness/scripts/plan.py:40-41) repeats it: 'a non-PENDING item without a record still refuses'. `record_split` goes through `prc.record_problems` → `record_holds` (plugins/harness/lib/harness_lib/plan_record.py:78-82), which on a plan frozen without a scheme lets a record-less legacy shape through. The PR's own test tests/scripts/test_plan_record_driver.py:466-471 (`test_a_refreeze_seals_the_scheme_once_no_legacy_item_remains`) expects `freeze --refreeze` to exit 0 with a hand-set legacy COMPLETE item and no record. The statement holds only on a sealed plan.",
+        "fix": [
+          "Rewrap the step 8 paragraph (lines 88-96) and the step 9 paragraph (lines 109-125) to the file's ~110 column width without changing wording; the contract test normalizes whitespace, so it is unaffected.",
+          "SKILL.md:90: 'On a sealed plan, a refreeze still refuses a non-PENDING item with no record; a plan frozen before the record scheme still accepts the legacy shapes.' plan.py:41: '...; on a sealed plan a non-PENDING item without a record still refuses.'"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "SKILL.md says record refuses only three things, contradicting its own step 9",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "98-106",
+        "reviewer": "docs, skill_package, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:105-106 says `record` \"refuses only an unfrozen plan, a broken freeze digest and a dependency without a valid record\". At head, plan.py:497-506 also refuses a COMPLETE whose recorded tree changes none of the item's files, whose item files differ in the working tree (worktree_problems, plan.py:443-456), whose tests fail (plan.py:492-493), and empty flag values (plan.py:509-511); step 9 (SKILL.md:119-124) lists those same requirements. The sentence means the gate around seal problems, but as written it is a false absolute an agent may act on.\n\nAlso (skill_package): SKILL.md:104-106 says `record` 'refuses only an unfrozen plan, a broken freeze digest and a dependency without a valid record'. The driver refuses more than that. `complete()` in plan.py:497-506 also refuses a dependency that is not done, an item whose files did not change between the base and the recorded tree, item files in the working tree that differ from the commit or index (`worktree_problems`, plan.py:443-456), and failing test nodes (`run_tests`, plan.py:485-494). Step 9 of the same skill (SKILL.md:119-124) lists those rules itself. The dependency check also runs only for `--sha`/`--staged`: `--start`, `--blocked` and `--closed` never check dependencies (plan.py:519-525). So the word 'only' is wrong both ways.\n\nAlso (skill_package): SKILL.md:104 says 'A broken seal or a failed `verify` is fixed by `record` on that item again'. For a failed verify, that `record` call would fail too: `run_tests` raises when the nodes fail (plan.py:492-493). The driver docstring gets the order right ('A failure names the item and the `record` call to make after the fix', plan.py:62). An agent following the skill could re-record without touching the code and hit a refusal it does not expect.\n\nAlso (skill_package): The skill tells the agent to record parallel2's uncommitted, staged lane work with `--staged` (SKILL.md:116-118), and it names `PLAN verify <id>` only as a HEAD run (SKILL.md:102-103). The driver has `verify PLAN [--staged]` (plan.py:59-63, 651-653), which runs at a dangling snapshot of the index. Before the developer commits, a HEAD verify tests code without the lane work, and every staged item fails. Nothing in the skill points to the flag that matches the workflow it describes.\n\nAlso (overall): SKILL.md:105-106 says `record` 'refuses only an unfrozen plan, a broken freeze digest and a dependency without a valid record', but the same step (lines 116-122) and plan.py complete()/commit_problems() also refuse a COMPLETE whose tree changed none of the item's files, whose item files differ in the working tree or index, or whose tests fail, plus an empty flag value. The sentence is meant to cover check-type refusals, but read literally it contradicts the driver. Line 98-99 lists what the seal covers (id, status, evidence, files, tests, record) and leaves out the plan id that SealedFields includes, which is why a record copied from another plan also fails.\n\nAlso (roast): The 'What a record proves' paragraph says record 'refuses only an unfrozen plan, a broken freeze digest and a dependency without a valid record'. cmd_record also refuses an item whose files did not change since the base, a working tree that differs from the commit or index, failing test nodes, an empty flag value and a name that is no commit. Step 9 of the same file lists several of these, so the skill contradicts itself. The same paragraph lists the seal's inputs without the plan id, which the seal does bind (SealedFields.plan_id, test_the_seal_binds_the_plan_id).",
+        "fix": [
+          "Reword SKILL.md:105-106 to scope the claim, e.g. \"its gate refuses only an unfrozen plan and a broken freeze digest, and `--sha`/`--staged` add the dependency, file and test rules of step 9\".",
+          "Narrow the sentence to the gate, e.g.: 'its gate refuses only an unfrozen plan and a broken freeze digest; `--sha` and `--staged` then apply the rules of step 9 (dependencies done with valid records, a changed file, a matching working tree, passing nodes)'.",
+          "Split the sentence: 'A broken seal is fixed by `record` on that item again; a failed `verify` is fixed in the code first, then by `record` on that item at the fixing commit or index'.",
+          "After the `PLAN verify <id>` sentence, add: '`--staged` runs them on a snapshot of the index instead, for work recorded with `record --staged` and not yet committed'.",
+          "Reword line 105-106 as: '...fails `check`: of the plan-state checks it refuses only an unfrozen plan, a broken freeze digest and a dependency without a valid record (the code rules below still apply)'. In line 98-99, add 'the plan id' to the list of covered fields.",
+          "Rewrite the sentence as 'its gate refuses only an unfrozen plan, a broken freeze digest and a dependency without a valid record; the --sha and --staged rules in step 9 still apply', and change 'a sha256 over the item's id' to 'a sha256 over the plan id, the item's id'."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Seal description leaves out the plan id and the record date",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_models.py"
+        ],
+        "lines": "98-100",
+        "reviewer": "skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:98-99 says the seal is 'a sha256 over the item's id, status, evidence, files, tests and the record without its seal'. `SealedFields` (plan_models.py:295-313) also covers `plan_id`. The ItemRecord field description (plan_models.py:329-330) and the README name the plan id too. The skill's list should match the model, which is the one definition the skill points readers to.\n\nAlso (system_shape): SKILL.md:98-100 says the seal is 'a sha256 over the item's id, status, evidence, files, tests and the record without its seal'. SealedFields (plugins/harness/lib/harness_lib/plan_models.py:318-336) also hashes `plan_id`, and the schema description of `ItemRecord.seal` (plan_models.py:352-353) says so ('the plan id, the item's id, ...'). tests/lib/test_plan_record_models.py:133-135 (`test_the_seal_binds_the_plan_id`) pins that behavior. The skill text therefore understates what a copy catches: a record copied into another plan fails too.",
+        "fix": [
+          "Change to 'a sha256 over the plan id, the item's id, status, evidence, files and tests, and the record (outcome and date) without its seal'.",
+          "SKILL.md:98-100: 'a sha256 over the plan id, the item's id, status, evidence, files, tests and the record without its seal, so `check` refuses ... a record copied from another item or another plan.'"
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Legacy COMPLETE shape built inline despite the _legacy_complete helper",
+        "file": "tests/lib/test_plan_record.py",
+        "lines": "95-127",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_plan_record.py defines _legacy_complete (lines 41-45), but four tests write the same status/evidence/verification_references triple by hand (lines 97-98, 107, 113-114, 122-123). Only some of them vary it on purpose: line 107 drops the tree ref. The copies at 97-98, 113-114 and 122-123 repeat the helper exactly, apart from the evidence text.",
+        "fix": [
+          "Use `_legacy_complete(...)` at lines 97-98, 113-114 and 122-123. Keep the inline form only where the test changes the shape (line 107)."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Driver test scaffolding copied from test_plan_driver",
+        "file": "tests/scripts/test_plan_record_driver.py",
+        "files": [
+          "tests/scripts/test_plan_record_driver.py",
+          "tests/scripts/test_plan_driver.py"
+        ],
+        "lines": "39-126",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_plan_record_driver.py copies the module-loading `driver` fixture, the `project`/`run` fixtures and the plan_file/read_plan/write_plan/trees helpers from tests/scripts/test_plan_driver.py; its docstring calls it 'the same layout'. test_plan_driver.py:154-158 also inlines the sub implementation that `write_op` (test_plan_record_driver.py:107-114) already provides. A change to the layout, such as the worktree_root config or the branch name, now has to be made in two places.",
+        "fix": [
+          "Move the shared fixtures and helpers into an underscore helper under tests/scripts/ (e.g. `_plan_driver_helpers.py`, picked up by the select_tests import closure) and import them from both files."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Test name promises 'without git' but nothing checks it",
+        "file": "tests/scripts/test_plan_record_driver.py",
+        "lines": "438-443",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_a_legacy_plan_passes_check_without_git only asserts that `check 1` exits 0 on a legacy plan. Nothing stops `check` from shelling out to git: the project is a real repo, so a `check` that ran git for record rules would still pass. The 'no git runs here' contract of harness_lib.plan_record is not enforced by this test.",
+        "fix": [
+          "Monkeypatch `subprocess.run` in the loaded driver/plan_record module with a guard that fails on any `git` argv, then run `check`.",
+          "Rename the test to test_a_legacy_plan_passes_check, so the name claims only what is asserted."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 229 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"c965d14f3ac7e70c05ef59eadf2c3875a609e2e0\",\"headRefName\":\"1132-git-tree-plans\",\"headRefOid\":\"c965d14f3ac7e70c05ef59eadf2c3875a609e2e0\",\"last_sha\":\"c965d14f3ac7e70c05ef59eadf2c3875a609e2e0\",\"mergeCommit\":null,\"number\":229,\"state\":\"OPEN\",\"title\":\"Refactor(plan_record): add tests and update documentation for record …\",\"url\":\"https://github.com/t968rs/operator-straps/pull/229\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1132-git-tree-plans",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1132-git-tree-plans",
+        "head_ref_name": "1132-git-tree-plans",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "c965d14f3ac7e70c05ef59eadf2c3875a609e2e0",
+        "head_sha": "c965d14f3ac7e70c05ef59eadf2c3875a609e2e0",
+        "base_ancestor_command": "git merge-base --is-ancestor c965d14f3ac7e70c05ef59eadf2c3875a609e2e0 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor c965d14f3ac7e70c05ef59eadf2c3875a609e2e0 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - record_command takes the item status and an again flag and appends the required mode group, narrowed by status ((--sha SHA | --staged) for COMPLETE, --start, --blocked REASON, --closed RATIONALE, every mode otherwise); RecordProblem, dependency_problems, unrun_result and run_result pass the status; the missing-record test expects the new line"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - verify docstring now states that a COMPLETE item without a valid record (no sealed record, a broken seal, or a non-legacy shape on a legacy plan) fails the run without a test run and names the record call; commit retitle is commit text, not a file edit"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - plan.py freeze docstring scoped: on a sealed plan a non-PENDING item without a record still refuses; the SKILL.md rewrap and wording belong to the other part; write-plan SKILL.md: step 8 and step 9 paragraphs rewrapped to the file width; the step 8 refreeze sentence now says 'On a sealed plan' and notes legacy shapes on a plan frozen before the record scheme. The plan.py docstring (other part) is not edited"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - plan.py part: the record and verify docstrings already describe the gate, the --sha/--staged rules and verify --staged correctly; the false absolute and missing plan id live in SKILL.md (other part); write-plan SKILL.md 'What a record proves': the gate sentence now scopes the refusals to an unfrozen plan and a broken freeze digest, with --sha and --staged applying the step 9 rules; the 'record never refuses because another item fails check' sentence is kept; added a --staged note after the PLAN verify sentence and a failed verify is fixed in the code first, then recorded at the fixing commit or index. plan.py (other part) not edited"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - test_legacy_shapes_pass_only_without_a_record_scheme, test_an_unfrozen_plan_accepts_no_legacy_shape and test_the_scheme_is_sealed_once_no_legacy_item_remains use _legacy_complete; the one-reference shape at test_a_legacy_complete_item_needs_both_references stays inline"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - no edit in this part; plan_render.py: cited only, its _recorded (lines 115-126) and _item (lines 138-145) are the behavior the template text is corrected to match; PLANS_PIP_Template.md: example test command (line 109) now the PassedTests shape; Recorded kind list drops complete (started, blocked, closed); legacy references line says rendered for an item without a record; rule 12 adds that the Recorded line mirrors items[].record. plan_render.py (other part) not edited"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - moved the driver/project/run fixtures and the PLANS, SUB_TEST, MUL_TEST, BASE_FILES, plan_file, read_plan, write_plan, write_op and trees helpers into tests/scripts/_plan_driver_helpers.py; both driver test files import them, and test_plan_driver's implement, filled and staged-identity test use write_op/SUB_TEST instead of inlining sub"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - test_a_legacy_plan_passes_check_without_git now wraps driver.prc.record_lines so subprocess.run refuses any git argv while the record rules run, and asserts the rules ran once; name kept because plan 0009 and the write-plan SkillSpec name the node"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - test_record_staged_needs_no_git_identity writes [user] useConfigOnly = true into the global config, sets GIT_CONFIG_NOSYSTEM=1, and asserts a bare git commit-tree fails under that environment before record --staged runs"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - test_verify_staged_runs_the_tests_on_the_index breaks sub in the working tree after record --staged (a - b -> a + b, unstaged), then asserts verify --staged still reports TASK-1 pass and plain verify (HEAD) fails"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - Dropped re.IGNORECASE from _hex_text so the P2 record probe accepts only lowercase hex, matching _SHA64/_SHA40 in the models."
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - Provenance and ItemRecord docstrings (and the module docstring) now say the commit/source rule is enforced on plan.py load and the status/outcome agreement by plan.py check, not by the JSON schema; regenerated ActionPlan.schema.json with tools/gen_plan_schema.py (descriptions only); added the same rule to the schemas README ActionPlan status rules."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - schemas README checklist: P2 accepts a commit SHA in evidence/verification_references on any plan, or a record shaped as COMPLETE (64-hex seal, provenance tree), without recomputing the seal or reading frozen.records, which plan.py check does; verification_references line scoped to plan.py check. rules_plans.py: cited only, its behavior is what the README now describes."
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - schemas README line 54 lists frozen as commit, tree, date, digest and the records scheme set by plan.py freeze (sealed unless a legacy item remains). plan_models.py: cited only, Frozen.records already defined."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - plan_models.py: cited only, SealedFields docstring and ItemRecord.seal description already name the plan id and the record; the SKILL.md wording is the other fixer's part.; write-plan SKILL.md seal description now lists the plan id and the record (outcome and date), and says a record copied from another plan also fails. plan_models.py (other part) not edited"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - branch_capture.py module docstring gains a paragraph naming snapshot_commit (dangling commit under a fixed identity, for plan.py and parallel2.py)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - plan_red.py docstring lines 3-6 reflowed to 110 columns; orphan 'context,' line and short 'driver' line joined"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - freeze now also keeps the sealed scheme when the plan's copy at HEAD stores frozen.records == sealed (plan.py committed_scheme/stays_sealed, used by cmd_freeze); freeze docstring, plan_record module docstring and SKILL.md 'What a record proves' name the remaining never-committed limit; new driver test deletes records, edits an item action, pastes a legacy COMPLETE on a committed sealed plan and expects the refreeze to refuse 'without a sealed record'"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "c965d14 (working-tree snapshot; developer commits) - plan.py record 9 TASK-1..7 --staged in dependency order on the index holding the review fixes; check 9 passes with anchors at base 84cc5bc and the PIP re-rendered by the head renderer (outside fixer waves)"
+    }
+  ]
+}

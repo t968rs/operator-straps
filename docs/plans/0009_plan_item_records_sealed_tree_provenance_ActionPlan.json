@@ -1,6 +1,7 @@
 {
   "plan_id": "0009",
   "plan_created": "2026-11-05",
+  "completed": "2026-11-06",
   "source_document": "docs/superpowers/specs/2026-11-05-plan-record-seal-design.md",
   "documentation": "docs/plans/0009_plan_item_records_sealed_tree_provenance_PIP.md",
   "branch": "1132-git-tree-plans",
@@ -15,8 +16,20 @@
         "docs/plans/strap/write-plan/SkillSpec.json",
         "docs/plans/strap/write-plan/tests/"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 4bd130d",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4bd130d66b4e1fa7bc5d2e0b86dcea31bca7caf1"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "56860a3202719cc00e1e5919ebe12407d37992b7a34f4ccbf2c6c5e16b5314df"
+      },
       "markdown_section": "TASK-1",
       "model": "opus",
       "commands": [
@@ -45,8 +58,60 @@
         "tests/lib/test_plan_record_models.py",
         "tests/lib/test_plan_record.py"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 4bd130d: 35 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4bd130d66b4e1fa7bc5d2e0b86dcea31bca7caf1"
+          },
+          "tests": {
+            "nodes": [
+              "tests/lib/test_plan_record_models.py::test_a_commit_provenance_needs_its_commit",
+              "tests/lib/test_plan_record_models.py::test_a_staged_provenance_carries_no_commit",
+              "tests/lib/test_plan_record_models.py::test_provenance_rejects_a_short_tree",
+              "tests/lib/test_plan_record_models.py::test_each_outcome_names_the_status_it_implies",
+              "tests/lib/test_plan_record_models.py::test_the_kind_selects_the_outcome_class",
+              "tests/lib/test_plan_record_models.py::test_a_blocked_or_closed_outcome_needs_its_text",
+              "tests/lib/test_plan_record_models.py::test_passed_tests_need_a_node",
+              "tests/lib/test_plan_record_models.py::test_evidence_names_the_commit_or_the_staged_tree",
+              "tests/lib/test_plan_record_models.py::test_a_sealed_record_holds_for_its_item",
+              "tests/lib/test_plan_record_models.py::test_every_outcome_seals",
+              "tests/lib/test_plan_record_models.py::test_the_seal_breaks_when_a_covered_field_changes",
+              "tests/lib/test_plan_record_models.py::test_the_seal_binds_the_plan_id",
+              "tests/lib/test_plan_record_models.py::test_the_seal_ignores_fields_outside_the_record",
+              "tests/lib/test_plan_record_models.py::test_the_sealed_fields_are_a_model_whose_digest_is_the_seal",
+              "tests/lib/test_plan_record_models.py::test_a_record_reseals_after_a_round_trip_through_the_plan_file",
+              "tests/lib/test_plan_record_models.py::test_a_defaulted_field_added_later_keeps_the_seal",
+              "tests/lib/test_plan_record_models.py::test_record_is_a_mutable_item_field",
+              "tests/lib/test_plan_record_models.py::test_frozen_carries_the_record_scheme",
+              "tests/lib/test_plan_record_models.py::test_the_record_models_are_closed",
+              "tests/lib/test_plan_record_models.py::test_the_generated_schema_names_the_record_models",
+              "tests/lib/test_plan_record.py::test_a_stamped_item_has_no_record_problem",
+              "tests/lib/test_plan_record.py::test_a_pending_plan_has_no_record_problem",
+              "tests/lib/test_plan_record.py::test_a_hand_set_status_is_a_missing_record",
+              "tests/lib/test_plan_record.py::test_a_hand_edit_after_the_stamp_is_a_seal_problem",
+              "tests/lib/test_plan_record.py::test_a_record_copied_to_another_item_is_a_seal_problem",
+              "tests/lib/test_plan_record.py::test_a_record_left_on_a_pending_item_is_a_seal_problem",
+              "tests/lib/test_plan_record.py::test_legacy_shapes_pass_only_without_a_record_scheme",
+              "tests/lib/test_plan_record.py::test_a_legacy_complete_item_needs_both_references",
+              "tests/lib/test_plan_record.py::test_an_unfrozen_plan_accepts_no_legacy_shape",
+              "tests/lib/test_plan_record.py::test_the_scheme_is_sealed_once_no_legacy_item_remains",
+              "tests/lib/test_plan_record.py::test_stamp_clears_the_legacy_references",
+              "tests/lib/test_plan_record.py::test_a_dependency_counts_only_with_a_valid_record",
+              "tests/lib/test_plan_record.py::test_a_legacy_dependency_counts_only_on_a_legacy_plan",
+              "tests/lib/test_plan_record.py::test_on_a_legacy_plan_an_item_with_a_record_is_judged_by_its_seal",
+              "tests/lib/test_plan_record.py::test_the_freeze_digest_folds_in_only_a_set_record_scheme"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_plan_record_models.py::test_a_commit_provenance_needs_its_commit tests/lib/test_plan_record_models.py::test_a_staged_provenance_carries_no_commit tests/lib/test_plan_record_models.py::test_provenance_rejects_a_short_tree tests/lib/test_plan_record_models.py::test_each_outcome_names_the_status_it_implies tests/lib/test_plan_record_models.py::test_the_kind_selects_the_outcome_class tests/lib/test_plan_record_models.py::test_a_blocked_or_closed_outcome_needs_its_text tests/lib/test_plan_record_models.py::test_passed_tests_need_a_node tests/lib/test_plan_record_models.py::test_evidence_names_the_commit_or_the_staged_tree tests/lib/test_plan_record_models.py::test_a_sealed_record_holds_for_its_item tests/lib/test_plan_record_models.py::test_every_outcome_seals tests/lib/test_plan_record_models.py::test_the_seal_breaks_when_a_covered_field_changes tests/lib/test_plan_record_models.py::test_the_seal_binds_the_plan_id tests/lib/test_plan_record_models.py::test_the_seal_ignores_fields_outside_the_record tests/lib/test_plan_record_models.py::test_the_sealed_fields_are_a_model_whose_digest_is_the_seal tests/lib/test_plan_record_models.py::test_a_record_reseals_after_a_round_trip_through_the_plan_file tests/lib/test_plan_record_models.py::test_a_defaulted_field_added_later_keeps_the_seal tests/lib/test_plan_record_models.py::test_record_is_a_mutable_item_field tests/lib/test_plan_record_models.py::test_frozen_carries_the_record_scheme tests/lib/test_plan_record_models.py::test_the_record_models_are_closed tests/lib/test_plan_record_models.py::test_the_generated_schema_names_the_record_models tests/lib/test_plan_record.py::test_a_stamped_item_has_no_record_problem tests/lib/test_plan_record.py::test_a_pending_plan_has_no_record_problem tests/lib/test_plan_record.py::test_a_hand_set_status_is_a_missing_record tests/lib/test_plan_record.py::test_a_hand_edit_after_the_stamp_is_a_seal_problem tests/lib/test_plan_record.py::test_a_record_copied_to_another_item_is_a_seal_problem tests/lib/test_plan_record.py::test_a_record_left_on_a_pending_item_is_a_seal_problem tests/lib/test_plan_record.py::test_legacy_shapes_pass_only_without_a_record_scheme tests/lib/test_plan_record.py::test_a_legacy_complete_item_needs_both_references tests/lib/test_plan_record.py::test_an_unfrozen_plan_accepts_no_legacy_shape tests/lib/test_plan_record.py::test_the_scheme_is_sealed_once_no_legacy_item_remains tests/lib/test_plan_record.py::test_stamp_clears_the_legacy_references tests/lib/test_plan_record.py::test_a_dependency_counts_only_with_a_valid_record tests/lib/test_plan_record.py::test_a_legacy_dependency_counts_only_on_a_legacy_plan tests/lib/test_plan_record.py::test_on_a_legacy_plan_an_item_with_a_record_is_judged_by_its_seal tests/lib/test_plan_record.py::test_the_freeze_digest_folds_in_only_a_set_record_scheme"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "35fe2a553de5957d540435c50efd66baee069be050260213202b0231b79f11c0"
+      },
       "markdown_section": "TASK-2",
       "model": "opus",
       "anchors": [
@@ -259,8 +324,50 @@
       "dependencies": [
         "TASK-2"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 4bd130d: 25 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4bd130d66b4e1fa7bc5d2e0b86dcea31bca7caf1"
+          },
+          "tests": {
+            "nodes": [
+              "tests/scripts/test_plan_record_driver.py::test_record_sha_writes_a_sealed_record_with_tree_and_commit",
+              "tests/scripts/test_plan_record_driver.py::test_check_flags_a_hand_set_status",
+              "tests/scripts/test_plan_record_driver.py::test_check_flags_a_hand_edit_of_the_evidence",
+              "tests/scripts/test_plan_record_driver.py::test_lanes_refuses_a_hand_set_status",
+              "tests/scripts/test_plan_record_driver.py::test_an_amend_of_the_recorded_commit_keeps_check_green",
+              "tests/scripts/test_plan_record_driver.py::test_a_squash_of_two_recorded_commits_keeps_check_green",
+              "tests/scripts/test_plan_record_driver.py::test_a_record_made_in_a_worktree_survives_a_staged_attach",
+              "tests/scripts/test_plan_record_driver.py::test_record_sha_accepts_a_commit_unreachable_from_head",
+              "tests/scripts/test_plan_record_driver.py::test_record_staged_records_the_index_and_survives_the_commit",
+              "tests/scripts/test_plan_record_driver.py::test_record_staged_refuses_unstaged_item_files",
+              "tests/scripts/test_plan_record_driver.py::test_record_staged_runs_the_tests_on_the_index",
+              "tests/scripts/test_plan_record_driver.py::test_record_refuses_both_a_sha_and_staged",
+              "tests/scripts/test_plan_record_driver.py::test_a_complete_item_records_again",
+              "tests/scripts/test_plan_record_driver.py::test_record_runs_while_another_item_has_a_broken_seal",
+              "tests/scripts/test_plan_record_driver.py::test_a_hand_set_complete_dependency_unlocks_nothing",
+              "tests/scripts/test_plan_record_driver.py::test_a_legacy_dependency_unlocks_its_dependent_on_a_legacy_plan",
+              "tests/scripts/test_plan_record_driver.py::test_a_refreeze_that_changes_an_item_breaks_only_its_seal",
+              "tests/scripts/test_plan_record_driver.py::test_a_refreeze_refuses_a_status_without_a_record",
+              "tests/scripts/test_plan_record_driver.py::test_verify_passes_and_writes_nothing",
+              "tests/scripts/test_plan_record_driver.py::test_verify_staged_runs_the_tests_on_the_index",
+              "tests/scripts/test_plan_record_driver.py::test_verify_reports_every_item_and_check_stays_green",
+              "tests/scripts/test_plan_record_driver.py::test_a_legacy_plan_passes_check_without_git",
+              "tests/scripts/test_plan_record_driver.py::test_a_sealed_plan_refuses_a_pasted_legacy_shape",
+              "tests/scripts/test_plan_record_driver.py::test_deleting_the_record_scheme_by_hand_is_a_plan_change",
+              "tests/scripts/test_plan_record_driver.py::test_a_refreeze_seals_the_scheme_once_no_legacy_item_remains"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_plan_record_driver.py::test_record_sha_writes_a_sealed_record_with_tree_and_commit tests/scripts/test_plan_record_driver.py::test_check_flags_a_hand_set_status tests/scripts/test_plan_record_driver.py::test_check_flags_a_hand_edit_of_the_evidence tests/scripts/test_plan_record_driver.py::test_lanes_refuses_a_hand_set_status tests/scripts/test_plan_record_driver.py::test_an_amend_of_the_recorded_commit_keeps_check_green tests/scripts/test_plan_record_driver.py::test_a_squash_of_two_recorded_commits_keeps_check_green tests/scripts/test_plan_record_driver.py::test_a_record_made_in_a_worktree_survives_a_staged_attach tests/scripts/test_plan_record_driver.py::test_record_sha_accepts_a_commit_unreachable_from_head tests/scripts/test_plan_record_driver.py::test_record_staged_records_the_index_and_survives_the_commit tests/scripts/test_plan_record_driver.py::test_record_staged_refuses_unstaged_item_files tests/scripts/test_plan_record_driver.py::test_record_staged_runs_the_tests_on_the_index tests/scripts/test_plan_record_driver.py::test_record_refuses_both_a_sha_and_staged tests/scripts/test_plan_record_driver.py::test_a_complete_item_records_again tests/scripts/test_plan_record_driver.py::test_record_runs_while_another_item_has_a_broken_seal tests/scripts/test_plan_record_driver.py::test_a_hand_set_complete_dependency_unlocks_nothing tests/scripts/test_plan_record_driver.py::test_a_legacy_dependency_unlocks_its_dependent_on_a_legacy_plan tests/scripts/test_plan_record_driver.py::test_a_refreeze_that_changes_an_item_breaks_only_its_seal tests/scripts/test_plan_record_driver.py::test_a_refreeze_refuses_a_status_without_a_record tests/scripts/test_plan_record_driver.py::test_verify_passes_and_writes_nothing tests/scripts/test_plan_record_driver.py::test_verify_staged_runs_the_tests_on_the_index tests/scripts/test_plan_record_driver.py::test_verify_reports_every_item_and_check_stays_green tests/scripts/test_plan_record_driver.py::test_a_legacy_plan_passes_check_without_git tests/scripts/test_plan_record_driver.py::test_a_sealed_plan_refuses_a_pasted_legacy_shape tests/scripts/test_plan_record_driver.py::test_deleting_the_record_scheme_by_hand_is_a_plan_change tests/scripts/test_plan_record_driver.py::test_a_refreeze_seals_the_scheme_once_no_legacy_item_remains"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "5fe3efb6cef17adf73afbc70ec6b11627900791089d04eacba9a899defbdf0ea"
+      },
       "markdown_section": "TASK-3",
       "model": "opus",
       "anchors": [
@@ -476,8 +583,29 @@
       "dependencies": [
         "TASK-2"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 4bd130d: 4 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4bd130d66b4e1fa7bc5d2e0b86dcea31bca7caf1"
+          },
+          "tests": {
+            "nodes": [
+              "tests/lib/test_plan_render_record.py::test_a_commit_record_renders_its_commit_tree_and_command",
+              "tests/lib/test_plan_render_record.py::test_a_staged_record_renders_the_index_tree",
+              "tests/lib/test_plan_render_record.py::test_the_record_box_names_both_ways_to_record",
+              "tests/lib/test_plan_render_record.py::test_legacy_references_still_render"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_plan_render_record.py::test_a_commit_record_renders_its_commit_tree_and_command tests/lib/test_plan_render_record.py::test_a_staged_record_renders_the_index_tree tests/lib/test_plan_render_record.py::test_the_record_box_names_both_ways_to_record tests/lib/test_plan_render_record.py::test_legacy_references_still_render"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "da3256b4c18f5129db31b8483d8b97c2c92afdfc4df21adb35e8e77ec1f14c57"
+      },
       "markdown_section": "TASK-4",
       "model": "sonnet",
       "anchors": [
@@ -526,8 +654,26 @@
       "dependencies": [
         "TASK-2"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 4bd130d: 1 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4bd130d66b4e1fa7bc5d2e0b86dcea31bca7caf1"
+          },
+          "tests": {
+            "nodes": [
+              "tests/lib/test_todo_sync_rules_plans_record.py::test_p2_accepts_a_complete_record_without_a_sha_in_the_evidence"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_todo_sync_rules_plans_record.py::test_p2_accepts_a_complete_record_without_a_sha_in_the_evidence"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "74d553bb4017407a4734c2def5d63e7a3464f1f0e20f566f39509e9d57eaac42"
+      },
       "markdown_section": "TASK-5",
       "model": "sonnet",
       "anchors": [
@@ -565,8 +711,30 @@
         "README.md",
         "tests/skills/test_write_plan_record_contract.py"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 4bd130d: 5 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4bd130d66b4e1fa7bc5d2e0b86dcea31bca7caf1"
+          },
+          "tests": {
+            "nodes": [
+              "tests/skills/test_write_plan_record_contract.py::test_the_skill_says_what_a_record_proves",
+              "tests/skills/test_write_plan_record_contract.py::test_the_skill_names_verify_for_the_work_still_being_there",
+              "tests/skills/test_write_plan_record_contract.py::test_the_skill_records_staged_lane_work",
+              "tests/skills/test_write_plan_record_contract.py::test_a_broken_seal_is_repaired_by_record",
+              "tests/skills/test_write_plan_record_contract.py::test_the_commit_ancestry_rule_is_gone"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_write_plan_record_contract.py::test_the_skill_says_what_a_record_proves tests/skills/test_write_plan_record_contract.py::test_the_skill_names_verify_for_the_work_still_being_there tests/skills/test_write_plan_record_contract.py::test_the_skill_records_staged_lane_work tests/skills/test_write_plan_record_contract.py::test_a_broken_seal_is_repaired_by_record tests/skills/test_write_plan_record_contract.py::test_the_commit_ancestry_rule_is_gone"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "a34ccf52dc2255e9eeafeaeb4f7a5868d5bce74851f34bd7f11c80358a629c35"
+      },
       "markdown_section": "TASK-6",
       "model": "opus",
       "anchors": [
@@ -651,8 +819,20 @@
         "TASK-5",
         "TASK-6"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 4bd130d",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4bd130d66b4e1fa7bc5d2e0b86dcea31bca7caf1"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "4934c58093e9ddffb270c8cd719bafacd30b80a24b1926ec941c3bab859401e1"
+      },
       "markdown_section": "TASK-7",
       "model": "opus",
       "anchors": [
@@ -682,10 +862,11 @@
   ],
   "base_commit": "84cc5bc22de8967fda27f8280885b3953b81c73a",
   "frozen": {
-    "commit": "84cc5bc22de8967fda27f8280885b3953b81c73a",
-    "tree": "477b0b04186b055192d3daf0ecadfd11286f5e65",
+    "commit": "c965d14f3ac7e70c05ef59eadf2c3875a609e2e0",
+    "tree": "8043479f13e73390f143c8bf63ad4dbe27b8aaad",
     "date": "2026-11-06",
-    "digest": "6c348f07ed7aef87b7a834691eca0a7bc6575e975759f6e84cc23195dc5b1b50"
+    "digest": "e800738535468aac3aa6485a69369764720236b5e06e139a3b0187cbde6d25a6",
+    "records": "sealed"
   },
   "decisions": [
     {

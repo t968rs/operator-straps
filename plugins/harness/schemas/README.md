@@ -51,7 +51,7 @@ Execution tracking:
 - `pr_attributes[]` — zero or more PR references (the `PrAttributes` model per element). Project-scoped plans (research, refactor, incident) may omit this entirely.
 - `items[]` — one entry per action item, with `id`, `priority`, `title`, `action` (exact remediation steps), `files[]`, `status`, `evidence`; optional add-ons are `record` (the sealed record `plan.py record` writes), `verification_references[]` (legacy) + `markdown_section`
 - Optional markdown sync metadata: `markdown_sync_status` + `markdown_last_updated`
-- Plan-level fields written by `plan.py`: `base_commit` (merge base, `{base}` stands in for it in commands), `frozen` (commit, tree, date and digest set by `plan.py freeze`), `completed`
+- Plan-level fields written by `plan.py`: `base_commit` (merge base, `{base}` stands in for it in commands), `frozen` (commit, tree, date, digest and the `records` scheme set by `plan.py freeze`; `"sealed"` unless a legacy item remains), `completed`
 - Design fields: `decisions[]` (open until `chosen` is set, which blocks freeze), `values[]` (thresholds with the options they assume), `formats[]` (literal layouts copied from a producer or parser), `sweeps[]` (searches `plan.py check` runs)
 - Per-item fields: `model` (agent model for dispatch), `anchors[]` (line ranges checked against code), `commands[]` (commands with the output that means pass), `tests[]` (pytest node ids with the failure that precedes the fix)
 
@@ -61,6 +61,7 @@ The write-plan skill (`plugins/harness/skills/write-plan/SKILL.md`) and `plugins
 - `COMPLETE` requires a sealed `record` of the tested tree — never a claim (legacy, on plans frozen before the record scheme: the `[<40-hex commit>, "tree <40-hex>"]` shape in `verification_references`)
 - `CLOSED_NO_ACTION` requires written rationale
 - `IN_PROGRESS` / `PENDING` are transient; every item must terminate in COMPLETE or CLOSED_NO_ACTION
+- Two record rules sit in the models only, since the generated schema cannot express them: a `commit` provenance names its commit and a `staged` one names none (checked when `plan.py` loads the plan), and an item's `status` agrees with its record's outcome (checked by `plan.py check`). The schema hook validates with `jsonschema` alone, so it passes a plan that breaks either rule
 
 ### 3. PR attributes (a model, no schema file)
 
@@ -252,9 +253,9 @@ Catalogs are spec/plan-time artifacts — they inform the ActionPlan but don't r
 - Linked to valid plan-level source docs (`source_document` and `documentation`) and PR linkage docs (`pr_attributes[].review_doc` / `pr_attributes[].pip_document`)
 - Every issue from the review has a corresponding item
 - JSON is the source of truth for TODO and progress state; if execution deviates, JSON must be updated before completion claims
-- `status: COMPLETE` always carries a sealed `record` (`items[].record`: the tested tree, the commit when there was one, the test run when the item has tests, and the seal). On a plan frozen before the record scheme (`frozen.records` unset), `plan.py check` instead accepts `verification_references` of the shape `[<40-hex commit>, "tree <40-hex>", ...]`; todo_sync rule P2 accepts a sealed `Completed` record, or on such a plan a commit SHA in `evidence` or `verification_references`
+- `status: COMPLETE` always carries a sealed `record` (`items[].record`: the tested tree, the commit when there was one, the test run when the item has tests, and the seal). On a plan frozen before the record scheme (`frozen.records` unset), `plan.py check` instead accepts `verification_references` of the shape `[<40-hex commit>, "tree <40-hex>", ...]`; todo_sync rule P2, on any plan, accepts a commit SHA in `evidence` or `verification_references`, or a record shaped as a COMPLETE record (64-hex seal, provenance tree); it does not recompute the seal or read `frozen.records`, which `plan.py check` does
 - `status: CLOSED_NO_ACTION` always carries rationale, sealed in its `record` on a plan whose `frozen.records` is `"sealed"`
-- `verification_references[]` is the legacy proof list: `record` no longer writes it, and it is read only on plans frozen before the record scheme
+- `verification_references[]` is the legacy proof list: `record` no longer writes it, and `plan.py check` reads it only on plans frozen before the record scheme (todo_sync rule P2 still reads it on any plan)
 - `markdown_section` should point to the Markdown section that expands the JSON item's evidence/details
 - `files[]` matches the actual changes in the recorded tree
 - Every item terminates in `COMPLETE` or `CLOSED_NO_ACTION` before the plan closes

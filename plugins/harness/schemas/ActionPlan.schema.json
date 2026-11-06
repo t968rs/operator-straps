@@ -478,7 +478,7 @@
     },
     "ItemRecord": {
       "additionalProperties": false,
-      "description": "What `plan.py record` wrote for one item, and the seal that proves it wrote it.",
+      "description": "What `plan.py record` wrote for one item, and the seal that proves it wrote it.\n\nThe item's status must be the one the outcome implies; `plan.py check` enforces that agreement, the JSON\nschema does not.",
       "properties": {
         "outcome": {
           "discriminator": {
@@ -712,7 +712,7 @@
     },
     "Provenance": {
       "additionalProperties": false,
-      "description": "Where the recorded code came from: always a tree, a commit only when one existed.",
+      "description": "Where the recorded code came from: always a tree, a commit only when one existed.\n\nA commit source needs its commit and a staged source carries none; plan.py enforces that rule when it\nloads the plan, the JSON schema does not.",
       "properties": {
         "source": {
           "$ref": "#/$defs/RecordSource"

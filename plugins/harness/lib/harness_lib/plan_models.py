@@ -14,6 +14,10 @@ why several choices look odd:
 
 A field marked ``Mutable`` is an execution field: ``plan.py record`` changes it after the freeze, so the
 freeze digest leaves it out (``mutable_top`` and ``mutable_item``).
+
+Two record rules live only in the models, since the generated schema cannot express them: a provenance's
+commit agrees with its source (checked when ``plan.py`` loads the plan), and an item's status agrees with its
+record's outcome (checked by ``plan.py check``). A plan breaking either one passes ``jsonschema`` alone.
 """
 from __future__ import annotations
 
@@ -172,7 +176,11 @@ class PrAttributes(BaseModel):
 
 
 class Provenance(BaseModel):
-    """Where the recorded code came from: always a tree, a commit only when one existed."""
+    """Where the recorded code came from: always a tree, a commit only when one existed.
+
+    A commit source needs its commit and a staged source carries none; plan.py enforces that rule when it
+    loads the plan, the JSON schema does not.
+    """
 
     model_config = _CLOSED
 
@@ -320,7 +328,11 @@ class SealedFields(BaseModel):
 
 
 class ItemRecord(BaseModel):
-    """What `plan.py record` wrote for one item, and the seal that proves it wrote it."""
+    """What `plan.py record` wrote for one item, and the seal that proves it wrote it.
+
+    The item's status must be the one the outcome implies; `plan.py check` enforces that agreement, the JSON
+    schema does not.
+    """
 
     model_config = _CLOSED
 

@@ -2,8 +2,11 @@
 
 No git runs here. A sealed record proves that ``plan.py record`` wrote it, so every rule is decided by the
 plan alone. An item that carries a record is judged by its seal; one without a record passes only as a legacy
-shape on a plan frozen without a record scheme. Known limit, accepted like a recomputed hash: copying an
-item's own earlier record back by hand passes the seal.
+shape on a plan frozen without a record scheme. Known limits, accepted like a recomputed hash: copying an
+item's own earlier record back by hand passes the seal, and ``keeps_sealed`` sees a hand-deleted scheme
+only while the digest still matches under it. A refreeze (``plan.py freeze``) also keeps the scheme the
+plan's copy at HEAD stores, so only a deleted scheme that was never committed lets a refreeze judge the
+plan as legacy.
 """
 from __future__ import annotations
 
@@ -18,11 +21,24 @@ from harness_lib.plan_models import ActionItem, ActionPlan, Completed, Outcome
 
 _COMMIT_REF = re.compile(r"[0-9a-f]{40}")
 _TREE_REF = re.compile(r"tree [0-9a-f]{40}")
+_ALL_FLAGS = "--sha SHA | --staged | --start | --blocked REASON | --closed RATIONALE"
+_STATUS_FLAGS = {
+    ItemStatus.COMPLETE: "--sha SHA | --staged",
+    ItemStatus.IN_PROGRESS: "--start",
+    ItemStatus.BLOCKED: "--blocked REASON",
+    ItemStatus.CLOSED_NO_ACTION: "--closed RATIONALE",
+}
 
 
-def record_command(plan_id: str, item_id: str) -> str:
-    """The instruction that repairs an item's record: ``run plan.py record <plan_id> <item_id>``."""
-    return f"run plan.py record {plan_id} {item_id}"
+def record_command(plan_id: str, item_id: str, status: Optional[ItemStatus] = None,
+                   again: bool = False) -> str:
+    """The instruction that repairs an item's record, with the mode flags ``record`` requires.
+
+    ``status`` narrows the flags to the ones that record that status; PENDING or None lists every mode.
+    """
+    flags = _ALL_FLAGS if status is None else _STATUS_FLAGS.get(status, _ALL_FLAGS)
+    word = " again" if again else ""
+    return f"run plan.py record {plan_id} {item_id}{word} ({flags})"
 
 
 class RecordProblem(BaseModel):
@@ -36,11 +52,12 @@ class RecordProblem(BaseModel):
     kind: RecordProblemKind
 
     def __str__(self) -> str:
-        command = record_command(self.plan_id, self.item)
-        if self.kind == RecordProblemKind.missing:
+        again = self.kind != RecordProblemKind.missing
+        command = record_command(self.plan_id, self.item, self.status, again=again)
+        if not again:
             return f"{self.item} is {self.status} without a sealed record; {command}"
         return (f"{self.item} record does not match its seal (status, evidence, files, tests or the record "
-                f"changed by hand); {command} again")
+                f"changed by hand); {command}")
 
 
 def legacy_allowed(plan: ActionPlan) -> bool:

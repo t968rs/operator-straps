@@ -1,9 +1,8 @@
 """Run an action plan's planned tests red: overlaid on a commit, each must fail as planned.
 
-A planned test file lives beside the plan at ``<plans_dir>/<plan_id>/tests/<repo-relative path>``. The
-red run copies those files into a detached worktree at a commit (``make_tree`` or the ``throwaway_tree``
-context, ``overlay``; the ``plan.py``
-driver passes HEAD, so items already recorded are part of the tree),
+A planned test file lives beside the plan at ``<plans_dir>/<plan_id>/tests/<repo-relative path>``. The red
+run copies those files into a detached worktree at a commit (``make_tree`` or the ``throwaway_tree`` context,
+``overlay``; the ``plan.py`` driver passes HEAD, so items already recorded are part of the tree),
 runs every test node of each open item there, one pytest process per node (``run_red``), and compares the
 exception that failed the node with the item's planned ``red`` reason (``red_problems``).
 

@@ -1,6 +1,6 @@
 """``plan.py`` records sealed, tree-referenced item records and verifies them on demand.
 
-Each test gets a project on branch ``feat-x`` cut from ``main`` (the same layout as ``test_plan_driver``). A
+Each test gets a project on branch ``feat-x`` cut from ``main`` (the layout of ``_plan_driver_helpers``). A
 record names the tree that was tested and the commit when there was one; ``check`` never compares either with
 HEAD, so an amend, a squash, a staged attach or a commit unreachable from HEAD leaves the plan valid.
 ``verify`` reruns the COMPLETE items' tests at HEAD and writes nothing. ``harness_lib.plan_record`` decides
@@ -8,11 +8,11 @@ every record rule these tests drive.
 """
 from __future__ import annotations
 
-import importlib.util
-import json
+import subprocess
+import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import pytest
 from conftest import git
@@ -21,58 +21,15 @@ from harness_lib import plan_doc as pd
 from harness_lib.plan_enums import OutcomeKind, RecordSource
 from harness_lib.plan_models import ItemRecord
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import _plan_driver_helpers as helpers  # noqa: E402
+from _plan_driver_helpers import (MUL_TEST, PLANS, SUB_TEST, Run, plan_file, read_plan, trees,  # noqa: E402
+                                  write_op, write_plan)
+
+driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
 WALK_ROOTS = ()  # walks only a make_project repo and tmp_path/trees
-Result = Tuple[int, str, str]
-Run = Callable[..., Result]
-PLANS = "docs/PLANS"
-SUB_TEST = "from src.calc import sub\n\n\ndef test_sub():\n    assert sub(3, 1) == 2\n"
-MUL_TEST = "from src.calc import mul\n\n\ndef test_mul():\n    assert mul(2, 3) == 6\n"
 LEGACY_REFS = ["a" * 40, "tree " + "b" * 40]
-BASE_FILES = {
-    "src/__init__.py": "",
-    "src/calc.py": "def add(a, b):\n    return a + b\n",
-    "tests/test_calc.py": "from src.calc import add\n\n\ndef test_add():\n    assert add(1, 2) == 3\n",
-    "docs/spec.md": "# Spec\n\nAdd subtraction and multiplication.\n",
-}
-
-
-@pytest.fixture(scope="module")
-def driver(plugin_root: Path) -> ModuleType:
-    path = plugin_root / "scripts" / "plan.py"
-    spec = importlib.util.spec_from_file_location("plan_record_under_test", path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-@pytest.fixture()
-def project(make_project, tmp_path: Path) -> Path:
-    config = {"base_branch": "main", "worktree_root": (tmp_path / "trees").as_posix()}
-    root = make_project(config, files=BASE_FILES)
-    git(root, "checkout", "-q", "-b", "feat-x")
-    return root
-
-
-@pytest.fixture()
-def run(driver: ModuleType, project: Path, capsys: pytest.CaptureFixture) -> Run:
-    def _run(*args: str, repo: Path = project) -> Result:
-        code = driver.main(["--repo", str(repo), *args])
-        captured = capsys.readouterr()
-        return code, captured.out, captured.err
-    return _run
-
-
-def plan_file(root: Path) -> Path:
-    return next((root / PLANS).glob("*_ActionPlan.json"))
-
-
-def read_plan(root: Path) -> Dict[str, Any]:
-    return json.loads(plan_file(root).read_text(encoding="utf-8"))
-
-
-def write_plan(root: Path, plan: Dict[str, Any]) -> None:
-    plan_file(root).write_text(json.dumps(plan, indent=2), encoding="utf-8")
 
 
 def item_record(root: Path, index: int = 0) -> ItemRecord:
@@ -104,26 +61,11 @@ def fill(run: Run, project: Path, *, two: bool = False, chained: bool = False) -
     assert code == 0, err
 
 
-def write_op(root: Path, name: str) -> None:
-    """Write the ``name`` operator and its test into ``root`` (sub or mul)."""
-    body = {"sub": "a - b", "mul": "a * b"}[name]
-    test = {"sub": SUB_TEST, "mul": MUL_TEST}[name]
-    (root / "tests" / f"test_calc_{name}.py").write_text(test, encoding="utf-8")
-    calc = root / "src" / "calc.py"
-    calc.write_text(calc.read_text(encoding="utf-8") + f"\n\ndef {name}(a, b):\n    return {body}\n",
-                    encoding="utf-8")
-
-
 def commit_op(root: Path, name: str) -> str:
     write_op(root, name)
     git(root, "add", "src/calc.py", f"tests/test_calc_{name}.py")
     git(root, "commit", "-q", "-m", f"add {name}")
     return git(root, "rev-parse", "HEAD")
-
-
-def trees(tmp_path: Path) -> list:
-    root = tmp_path / "trees"
-    return sorted(p.name for p in root.iterdir()) if root.is_dir() else []
 
 
 def hand_set_legacy(project: Path, index: int = 0) -> None:
@@ -408,11 +350,15 @@ def test_verify_staged_runs_the_tests_on_the_index(run: Run, project: Path, tmp_
     write_op(project, "sub")
     git(project, "add", "src/calc.py", "tests/test_calc_sub.py")
     assert run("record", "1", "TASK-1", "--staged")[0] == 0
+    calc = project / "src" / "calc.py"
+    calc.write_text(calc.read_text(encoding="utf-8").replace("a - b", "a + b"), encoding="utf-8")
     refs = git(project, "for-each-ref")
     code, out, err = run("verify", "1", "--staged")
     assert code == 0, err
     assert "at the index" in out and "TASK-1 pass" in out
     assert git(project, "for-each-ref") == refs and trees(tmp_path) == []
+    code, _, err = run("verify", "1")
+    assert code == 1 and "problem: TASK-1 tests fail at" in err
 
 
 @pytest.mark.cross_os
@@ -435,12 +381,28 @@ def test_verify_reports_every_item_and_check_stays_green(run: Run, project: Path
 
 # --- legacy plans -----------------------------------------------------------------------------------------
 
-def test_a_legacy_plan_passes_check_without_git(run: Run, project: Path) -> None:
+def test_a_legacy_plan_passes_check_without_git(run: Run, project: Path, driver: ModuleType,
+                                                monkeypatch: pytest.MonkeyPatch) -> None:
+    """The record rules ``check`` applies run no git; the anchor checks at the base still may."""
     fill(run, project)
     old_driver_freeze(project)
     hand_set_legacy(project)
+    rules, real_run, calls = driver.prc.record_lines, subprocess.run, []
+
+    def no_git(argv: Any, *args: Any, **kwargs: Any) -> Any:
+        assert "git" not in Path(str(argv[0])).stem, f"the record rules ran {argv}"
+        return real_run(argv, *args, **kwargs)
+
+    def guarded(plan: Any) -> List[str]:
+        calls.append(plan.plan_id)
+        with monkeypatch.context() as patch:
+            patch.setattr(subprocess, "run", no_git)
+            return rules(plan)
+
+    monkeypatch.setattr(driver.prc, "record_lines", guarded)
     code, _, err = run("check", "1")
     assert code == 0, err
+    assert calls == ["0001"]
 
 
 def test_a_sealed_plan_refuses_a_pasted_legacy_shape(run: Run, project: Path) -> None:
@@ -460,6 +422,22 @@ def test_deleting_the_record_scheme_by_hand_is_a_plan_change(run: Run, project: 
     assert code == 1 and "problem: plan changed after freeze" in err
     code, _, err = run("freeze", "1", "--refreeze")
     assert code == 1 and "problem: TASK-1 is COMPLETE without a sealed record" in err
+
+
+def test_a_refreeze_keeps_the_scheme_the_committed_plan_stores(run: Run, project: Path) -> None:
+    """Deleting the scheme in an edit that changes a digested field cannot downgrade a committed seal."""
+    fill(run, project)
+    git(project, "add", "-A")
+    git(project, "commit", "-q", "-m", "plan 0001")
+    plan = read_plan(project)
+    plan["frozen"].pop("records")
+    plan["items"][0]["action"] = "Add sub beside add, with a changed design."
+    write_plan(project, plan)
+    hand_set_legacy(project)
+    before = plan_file(project).read_bytes()
+    code, _, err = run("freeze", "1", "--refreeze")
+    assert code == 1 and "problem: TASK-1 is COMPLETE without a sealed record" in err
+    assert plan_file(project).read_bytes() == before
 
 
 @pytest.mark.cross_os

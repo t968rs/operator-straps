@@ -106,18 +106,18 @@ Run: `pytest tests/test_file.py::test_name -v`
 Expected: `PASS` (N/N passed)
 
 **Recorded:** 2026-11-05, commit `abc1234`, tree `def5678`
-- `pytest tests/test_file.py::test_name -q`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/test_file.py::test_name`
 
 (Rendered from `items[].record`, the sealed record `plan.py record` writes, as one of three lines:
 `**Recorded:** <date>, commit <c7>, tree <t7>` for `--sha`, `**Recorded:** <date>, staged, tree <t7>` for
-`--staged`, or `**Recorded:** <date>, <kind>` otherwise, where kind is `started`, `blocked`, `closed` or
-`complete`; c7 and t7 are the commit and tree SHAs cut to seven characters, each in backticks. When the
-record carries passed tests, the test command follows on its own line as `` - `<command>` ``. The line is
-absent when the item has no record.)
+`--staged`, or `**Recorded:** <date>, <kind>` otherwise, where kind is `started`, `blocked` or `closed`;
+c7 and t7 are the commit and tree SHAs cut to seven characters, each in backticks. When the record carries
+passed tests, the test command follows on its own line as `` - `<command>` ``. The line is absent when the
+item has no record.)
 
 #### Verification references (mirror `items[].verification_references`)
 
-Legacy proof list: rendered only on plans frozen before the record scheme; `record` no longer writes it.
+Legacy proof list: rendered for an item without a record; `record` no longer writes it.
 
 - Commit: `abc1234`
 - Test: `pytest tests/...`
@@ -234,4 +234,4 @@ After all tasks complete and tests pass:
 9. **PR Attributes section** appears once, near the top; each associated PR gets one block with review, pip, and merge status. Project-scoped plans (no PRs) omit the section entirely.
 10. **Plan ID** is the 4-digit zero-padded sequence number; **both** the PIP and the ActionPlan filename carry it as prefix, and the ActionPlan JSON carries it in the `plan_id` field
 11. **Per-task section key** should mirror `items[].markdown_section` so each JSON item has one Markdown section for expansion
-12. **Verification references section** should expand the JSON `verification_references` list, not replace it
+12. **Verification references section** should expand the JSON `verification_references` list, not replace it, and the `**Recorded:**` line mirrors `items[].record`

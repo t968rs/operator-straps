@@ -80,7 +80,7 @@ def _names_sha(item: Dict[str, Any]) -> bool:
 
 
 def _hex_text(value: Any, size: int) -> bool:
-    return isinstance(value, str) and re.fullmatch(f"[0-9a-f]{{{size}}}", value, re.IGNORECASE) is not None
+    return isinstance(value, str) and re.fullmatch(f"[0-9a-f]{{{size}}}", value) is not None
 
 
 def _complete_record(item: Dict[str, Any]) -> bool:

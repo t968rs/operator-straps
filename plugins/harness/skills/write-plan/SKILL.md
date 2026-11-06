@@ -87,36 +87,43 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
 
    A refreeze that changes a recorded item's files or tests breaks that item's seal by design: the refreeze
    tolerates it and prints `re-record after refreeze: <ITEM>`, and `check` flags the item until `record` runs
-   on it again. A refreeze still refuses a non-PENDING item with no record. Once an item is done, `check` and
-   the refreeze read anchors and sweeps at the plan's base commit, since the done work has already changed the
-   code they quote; a new anchor added mid-plan quotes the code at the base. A freeze
-   before any item is done requires them to hold at the base as well as in the tree. A plan id
-   that collides with one on the base branch moves the newer plan to the next free id; a plan already on the base
-   branch is never renumbered to spare the newer one. Each plan id is unique in the plans folder, because `PLAN`
-   resolves a plan by id and refuses a folder with two plans of one id.
+   on it again. On a sealed plan, a refreeze still refuses a non-PENDING item with no record; a plan frozen
+   before the record scheme still accepts the legacy shapes. Once an item is done, `check` and the refreeze
+   read anchors and sweeps at the plan's base commit, since the done work has already changed the code they
+   quote; a new anchor added mid-plan quotes the code at the base. A freeze before any item is done requires
+   them to hold at the base as well as in the tree. A plan id that collides with one on the base branch moves
+   the newer plan to the next free id; a plan already on the base branch is never renumbered to spare the
+   newer one. Each plan id is unique in the plans folder, because `PLAN` resolves a plan by id and refuses a
+   folder with two plans of one id.
 
-   **What a record proves.** `record` seals each status it writes: a sha256 over the item's id, status,
-   evidence, files, tests and the record without its seal, so `check` refuses any status, evidence or record a
-   hand edit set, and a record copied from another item. The record keeps the tree that was tested and the
-   commit when there was one; neither is compared with HEAD, so staging with `harness:a-w`, a squash, a rebase
-   or an amend leaves the plan valid. Whether the work is still in the code is a separate question with a
-   separate command: `PLAN verify <id>` reruns the COMPLETE items' tests at HEAD, writes nothing, and belongs
-   before the merge. A broken seal or a failed `verify` is fixed by `record` on that item again; `record` never
-   refuses because another item, or the item itself, fails `check`; it refuses only an unfrozen plan, a broken
-   freeze digest and a dependency without a valid record. A hand edit that recomputes the hash, or restores an
-   item's own earlier record, is not caught: the seal is a keyless hash, not a signature.
+   **What a record proves.** `record` seals each status it writes: a sha256 over the plan id, the item's id,
+   status, evidence, files and tests, and the record (outcome and date) without its seal, so `check` refuses
+   any status, evidence or record a hand edit set, and a record copied from another item or another plan. The
+   record keeps the tree that was tested and the commit when there was one; neither is compared with HEAD, so
+   staging with `harness:a-w`, a squash, a rebase or an amend leaves the plan valid. Whether the work is still
+   in the code is a separate question with a separate command: `PLAN verify <id>` reruns the COMPLETE items'
+   tests at HEAD, writes nothing, and belongs before the merge. `--staged` runs them on a snapshot of the index
+   instead, for work recorded with `record --staged` and not yet committed. A broken seal is fixed by `record`
+   on that item again; a failed `verify` is fixed in the code first, then by `record` on that item at the
+   fixing commit or index. The gate of `record` refuses only an unfrozen plan and a broken freeze digest;
+   `--sha` and `--staged` then apply the rules of step 9 (dependencies done with valid records, a changed
+   file, a matching working tree, passing nodes). `record` never refuses because another item, or the item
+   itself, fails `check`. A hand edit that recomputes the hash, or restores an item's own earlier record, is
+   not caught: the seal is a keyless hash, not a signature. A refreeze keeps the sealed scheme when the plan
+   stores it, when the digest proves a hand deleted it, or when the plan's copy at HEAD stores it; a scheme
+   deleted by hand before the sealed plan was ever committed can still downgrade it to the legacy shapes.
 
 9. **Hand off** the PIP path for review and an execution method. For parallel execution,
    `PLAN lanes <id> | P2 plan -` (with `P2` as in `harness:parallel2`) turns the open items into lanes, waved
    by dependency and file overlap; `PLAN lanes <id>` refuses a plan with a broken freeze digest or a record
    problem, and `record` on the item it names repairs the record problem. A lane id is the item id in lower
-   case with dots as hyphens (`TASK-3.2` is `task-3-2`), and its task is the item title alone: append the item's PIP section (action, anchors,
-   tests, commands) to each lane prompt, with the instruction to copy each planned test file from
-   `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first. parallel2 stages each lane's
-   changes uncommitted in the target and deletes the `p2/<id>` lane branch, so staged lane work is recorded
-   with `PLAN record <id> <ITEM> --staged` once it is in the index, or with `--sha` after the developer
-   commits it. `--sha` may name any commit, a lane commit included, as long as the item's files in the working
-   tree match it. `PLAN record <id> <ITEM> --sha <commit>` needs the item's
+   case with dots as hyphens (`TASK-3.2` is `task-3-2`), and its task is the item title alone: append the
+   item's PIP section (action, anchors, tests, commands) to each lane prompt, with the instruction to copy
+   each planned test file from `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first.
+   parallel2 stages each lane's changes uncommitted in the target and deletes the `p2/<id>` lane branch, so
+   staged lane work is recorded with `PLAN record <id> <ITEM> --staged` once it is in the index, or with
+   `--sha` after the developer commits it. `--sha` may name any commit, a lane commit included, as long as
+   the item's files in the working tree match it. `PLAN record <id> <ITEM> --sha <commit>` needs the item's
    dependencies done with valid records, one of the item's files changed between the plan base and the
    commit, the item's files unchanged since that commit, and the item's test nodes passing on a throwaway
    worktree at that commit. `--staged` needs the same of the index tree: the dependencies done with valid
