@@ -235,6 +235,20 @@ class Scenario(BaseModel):
     checks: List[Check] = Field(default_factory=list)
     judged: List[JudgedItem] = Field(default_factory=list)
     role: str = "session"
+    #: Whether the run brief carries the SKILL.md. None follows the role: the session sees it, a role
+    #: agent does not (it sees only its own agent file, as in real use). True or False overrides that.
+    sees_skill: Optional[bool] = None
+
+    @model_validator(mode="after")
+    def _session_sees_the_skill(self) -> Scenario:
+        if self.role == "session" and self.sees_skill is False:
+            raise ValueError(f"{self.id}: the session always sees the skill; sees_skill false needs a role")
+        return self
+
+    @property
+    def skill_in_brief(self) -> bool:
+        """Whether the run brief carries the SKILL.md: ``sees_skill`` when set, else the session only."""
+        return self.role == "session" if self.sees_skill is None else self.sees_skill
 
     @model_validator(mode="after")
     def _needs_expectation_and_distinct_pressures(self) -> Scenario:
@@ -477,13 +491,18 @@ def driver_digest(spec: SkillSpec) -> str:
 
 
 def _dumped(spec: SkillSpec) -> Dict[str, Any]:
-    """JSON dump of ``spec``; an unsealed stamp drops ``authored`` and a harness spec drops ``target``, so
-    the text and digests of a spec written before either field existed stay byte for byte."""
+    """JSON dump of ``spec``; an unsealed stamp drops ``authored``, a harness spec drops ``target`` and a
+    scenario drops an unset ``sees_skill``, so the text and digests of a spec written before any of these
+    fields existed stay byte for byte."""
     dumped = spec.model_dump(mode="json")
     if dumped["frozen"] is not None and dumped["frozen"]["authored"] is None:
         del dumped["frozen"]["authored"]
     if dumped["target"] is None:
         del dumped["target"]
+    for behavior in dumped["behaviors"]:
+        for scenario in behavior["scenarios"]:
+            if scenario["sees_skill"] is None:
+                del scenario["sees_skill"]
     return dumped
 
 

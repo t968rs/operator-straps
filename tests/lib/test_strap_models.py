@@ -363,11 +363,14 @@ def test_seal_stamps_frozen_specs_and_detects_a_break() -> None:
 
 
 def test_dump_and_load_round_trip(tmp_path: Path) -> None:
-    """``dump_spec`` is the indented JSON model dump, minus a None ``target``, plus newline; ``load_spec``
-    reads it back equal."""
+    """``dump_spec`` is the indented JSON model dump, minus a None ``target`` and each None scenario
+    ``sees_skill``, plus newline; ``load_spec`` reads it back equal."""
     spec = sm.SkillSpec.model_validate(_spec(draws=[_draw()]))
     text = sm.dump_spec(spec)
     expected = {key: value for key, value in spec.model_dump(mode="json").items() if key != "target"}
+    for behavior in expected["behaviors"]:
+        for scenario in behavior["scenarios"]:
+            assert scenario.pop("sees_skill") is None
     assert text == json.dumps(expected, indent=2) + "\n"
     path = tmp_path / sm.SPEC_FILE
     path.write_text(text, encoding="utf-8")
