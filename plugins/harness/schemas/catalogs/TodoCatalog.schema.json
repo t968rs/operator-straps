@@ -470,6 +470,11 @@
               "type": "integer",
               "minimum": 0,
               "description": "Distinct research_folder source records absorbed."
+            },
+            "note": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Distinct note source records absorbed; absent until the first local-only item is added."
             }
           },
           "description": "Number of distinct source records absorbed into items, per source type; a source record split across two items counts once."
@@ -495,13 +500,14 @@
           "enum": [
             "gh_issue",
             "impl_stub",
-            "research_folder"
+            "research_folder",
+            "note"
           ],
-          "description": "Kind of source record."
+          "description": "Kind of source record; note marks a local-only item added from a developer's note, with no GitHub issue."
         },
         "ref": {
           "type": "string",
-          "description": "'#<number>' for gh_issue; the repo-relative stub path for impl_stub; the repo-relative research folder path for research_folder."
+          "description": "'#<number>' for gh_issue; the repo-relative stub path for impl_stub; the repo-relative research folder path for research_folder; the date the note was added (YYYY-MM-DD) for note."
         },
         "item": {
           "type": "string",
@@ -579,6 +585,30 @@
             "required": [
               "item"
             ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "note"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "properties": {
+              "ref": {
+                "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+              }
+            },
+            "not": {
+              "required": [
+                "url"
+              ]
+            }
           }
         }
       ]
