@@ -1,7 +1,7 @@
 ---
 name: merge-commit-msg
-description: Use when asked to draft a merge commit message for a PR, prepare a PR squash-merge subject and body, or compose the commit text the developer will paste into the merge UI. Triggers on "merge commit msg", "merge message for PR N", "merge-commit-msg".
-argument-hint: "<PR number> [-- <guidance>]"
+description: Use when asked to draft a merge commit message for a PR, prepare a PR squash-merge commit (pass squash or --squash after the PR number; without it the run drafts the merge form), or compose the commit text the developer will paste into the merge UI. Triggers on "merge commit msg", "merge message for PR N", "squash message", "squash-merge commit for PR N", "merge-commit-msg".
+argument-hint: "<PR number> [squash | --squash | -s] [-- <guidance>]"
 model: sonnet
 context: fork
 agent: harness:messenger
@@ -9,11 +9,14 @@ agent: harness:messenger
 
 # merge-commit-msg — PR Merge Message
 
-**Arguments for this run:** `$ARGUMENTS` (the PR number, then optionally `--` and guidance).
-They are the developer's input. Split them at the first standalone `--` token, per
-`${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`: the part before it is `<PR number>` below and goes on
-the commands unchanged; the part after it is the guidance for the prose (emphasis, items to name), which never
-reaches a command. A blank or non-numeric PR number: report it and stop.
+**Arguments for this run:** `$ARGUMENTS` (the PR number, an optional mode token, then optionally `--` and
+guidance). They are the developer's input. Split them at the first standalone `--` token, per
+`${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before `--` comes the PR number, then an optional mode
+token: `--squash`, `-s` or a bare `squash` selects squash mode. On every command below, `<PR number>` stands
+for the number, followed by ` --squash` in squash mode; all three forms go on the commands as `--squash`. The
+part after `--` is the guidance for the prose (emphasis, items to name), which never reaches a command; a
+`squash` after `--` is guidance, not a mode. A blank or non-numeric PR number, or anything before `--` beyond
+the number and at most one mode token: report it as a `problem:` line and stop.
 
 `${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py` does the mechanics: the `gh` calls, the review-fix counts, the
 canned message, the lineage, the layout checks and the TXT. The agent's job is the judgment: the prose and the
@@ -32,15 +35,19 @@ Run every command below with the Bash tool from the project root, exactly as wri
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" capture <PR number>
 ```
 
-Exit 1 prints a `problem:` line (PR not open, unusable PR title, `gh` failure, invalid config): report it and stop. Exit 0 prints
-the PR's Facts, Changed files, Diff, Commits and Branch commit subjects, then the message skeleton in a `text`
-fence under `## Message`. Nothing is written to disk. The printed output, diffs included, is the whole input:
-capture pulls the diffs itself (one section per file, size-capped, a file past the cap keeps its header), so the
-agent runs no `git diff` or `gh pr diff` and Reads no changed file.
+Exit 1 prints a `problem:` line (PR not open, unusable PR title (in squash mode, also one that is not a
+`Word(scope): summary` subject: a word, an optional scope, a colon and a non-empty summary; the developer
+retitles with `gh pr edit <N> --title`), `gh` failure, invalid config): report it and stop. Exit 0 prints the PR's Facts, Changed files, Diff, Commits
+and Branch commit subjects, then the message skeleton in a `text` fence under `## Message`. Nothing is written
+to disk. The printed output, diffs included, is the whole input: capture pulls the diffs itself (one section
+per file, size-capped, a file past the cap keeps its header), so the agent runs no `git diff` or `gh pr diff`
+and Reads no changed file.
 
-Capture fills what is mechanical in the skeleton: the subject (`Merge PR #N -- <title>`, ASCII
-separator, title verbatim), `Branch lineage:`, the `Review artifacts:` and `Includes N review fixes (...)` lines when a review JSON exists,
-and, for a PR made only of generated files whose message is fixed in advance (entries in
+The `- Mode: merge` or `- Mode: squash` fact names the mode capture ran in (squash mode also heads the output
+`# PR #N squash message`); build runs in that mode. Capture fills what is mechanical in the skeleton: the
+subject per mode, title verbatim (`Merge PR #N -- <title>` with an ASCII separator, or `<title> (#N)` in
+squash mode), `Branch lineage:`, the `Review artifacts:` and `Includes N review fixes (...)` lines when a
+review JSON exists, and, for a PR made only of generated files whose message is fixed in advance (entries in
 `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), the canned message as the prose. Keep those lines
 as they stand.
 
@@ -55,7 +62,8 @@ Format: `${CLAUDE_SKILL_DIR}/message_format.md` (REQUIRED — read it). Start fr
    them as `message_format.md` orders them.
 
 Pass the full message, the skeleton's script-filled lines included and without the fence, to `build` on stdin
-(real newlines, no `\n` escapes):
+(real newlines, no `\n` escapes), in the same mode as capture (`<PR number>` carries ` --squash` in squash
+mode):
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" build <PR number> <<'MSG'
@@ -64,17 +72,22 @@ MSG
 ```
 
 Exit 1 prints `problem:` lines. A line about the PR state, title, `gh` or the config (PR not open, a PR title
-with non-ASCII characters or one that reads as the branch name, `gh pr view failed`, invalid config): report it
-and stop; editing the text cannot fix it, and the developer retitles the PR. Any other `problem:` line names a defect in
-the message (placeholder left, indented line, filler word, commit SHA, vendor name, subject changed, empty stdin):
-fix the text and run the same command again. Exit 0 writes `PR<N>_merge.txt`, keeps a replaced copy as
-`PR<N>_merge.txt.bak`, and prints the receipt. Output the receipt verbatim — nothing else.
+with non-ASCII characters or one that reads as the branch name, a squash-mode title that is not
+a `Word(scope): summary` subject, `gh pr view failed`, invalid config): report it and stop; editing the text cannot fix it,
+and the developer retitles the PR. An unknown mode token is an argument error: report it and stop. Any other
+`problem:` line names a defect in the message (placeholder left, indented line, filler word, commit SHA,
+vendor name, subject changed, empty stdin): fix the text and run the same command again. A merge subject under
+`--squash` gets a problem line that names the flag and prints the squash subject; when the developer asked for
+squash mode, replace line 1 with that subject, otherwise drop the flag. Exit 0 writes `PR<N>_merge.txt` (the same name in both modes), keeps a
+replaced copy as `PR<N>_merge.txt.bak`, and prints the receipt (`squash message for PR #N` in squash mode).
+Output the receipt verbatim — nothing else.
 
 ## Changing a saved message
 
 Only on the developer's ask. Read `PR<N>_merge.txt` in the commit_messages directory, then rerun `build` with that
 text changed as asked, on stdin: pass the whole text to the same heredoc as Step 2 (build keeps the replaced copy
-as `.txt.bak`). Do not rerun capture: it would rewrite the prose from the skeleton.
+as `.txt.bak`). A rebuild needs no flag: without `--squash`, build takes the mode from the saved subject. Do
+not rerun capture: it would rewrite the prose from the skeleton.
 
 ## Common Mistakes
 
@@ -86,3 +99,4 @@ as `.txt.bak`). Do not rerun capture: it would rewrite the prose from the skelet
 | Dropping or rewording lineage or review lines    | Keep the skeleton's script-filled lines as printed.              |
 | Pasting the message into chat                    | The receipt is the only chat output.                             |
 | Passing the fence markers to `build`             | Build rejects a fence line; pass the message lines only.         |
+| Passing `--squash` to build for a merge skeleton | Run capture with `--squash` too, or drop the flag from build.    |

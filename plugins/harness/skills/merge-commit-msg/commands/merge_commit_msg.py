@@ -3,26 +3,34 @@
 Two subcommands bracket the one judgment step (the prose and the file bullets of the merge message). No file
 stands between them: ``build`` asks ``gh`` for the title again.
 
-``capture N``
+Two modes set the subject. The merge mode (the default) heads a merge commit, ``Merge PR #N -- <title>``.
+The squash mode (``--squash``, ``-s`` or a bare ``squash`` after the PR number) heads the one commit a
+squash-merge lands, GitHub's ``<title> (#N)``, so the title must parse as a ``Word(scope): summary``
+subject: a word of letters, an optional scope, a colon and a non-empty summary (the type is not checked
+against a type list). Any other mode token is refused. Both modes write ``PR<N>_merge.txt``.
+
+``capture N [squash]``
     Read PR N through ``gh`` (shape, commit headlines, changed files, one ``gh pr diff``), the branch's
     commit-message TXT when one exists, the PR's review JSON (``artifacts.reviews``) and the canned message
-    for the changed files (``harness_lib.canned_messages``). Print the facts and the PR's diff (one section
-    per file under ``DIFF_SECTION_CHARS`` characters, the whole under ``DIFF_CHAR_BUDGET``: a section past the
-    budget keeps its ``diff --git`` header), then a ``text`` fence holding the message skeleton with the
-    subject, lineage and review lines already filled in. Writes no file. Exits 1 when the PR is not open.
+    for the changed files (``harness_lib.canned_messages``). Print the facts (the mode among them) and the
+    PR's diff (one section per file under ``DIFF_SECTION_CHARS`` characters, the whole under
+    ``DIFF_CHAR_BUDGET``: a section past the budget keeps its ``diff --git`` header), then a ``text`` fence
+    holding the message skeleton with the subject of the mode, lineage and review lines already filled in.
+    Writes no file. Exits 1 when the PR is not open or its title cannot head the subject of the mode.
 
-``build N``
-    Take the message from stdin, validate it (verbatim subject from ``gh``, column-0 layout, bullets, no
-    placeholder left, no vendor names, filler words, commit SHAs or sign-offs), and write it to
+``build N [squash]``
+    Take the message from stdin, validate it (verbatim subject of the mode from ``gh``, column-0 layout,
+    bullets, no placeholder left, no vendor names, filler words, commit SHAs or sign-offs), and write it to
     ``PR<N>_merge.txt`` in the project's ``commit_messages`` directory (``artifacts.commit_messages``, default
     ``docs/_commit_messages``), keeping the replaced copy as ``.txt.bak``. Prints the chat receipt. Exit 1
     prints one ``problem:`` line per defect and leaves the TXT untouched. Reads the title from ``gh`` again,
-    so it exits 1 when the PR is not open or ``gh`` fails.
+    so it exits 1 when the PR is not open or ``gh`` fails. Without a squash flag or token, a first line equal
+    to the squash subject selects the squash mode, so a saved squash TXT rebuilds without the flag.
 
 Usage::
 
-    merge_commit_msg.py [--repo DIR] capture N
-    merge_commit_msg.py [--repo DIR] build N <<'MSG' ... MSG
+    merge_commit_msg.py [--repo DIR] capture N [--squash | -s | squash]
+    merge_commit_msg.py [--repo DIR] build N [--squash | -s | squash] <<'MSG' ... MSG
 """
 from __future__ import annotations
 
@@ -39,7 +47,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
 from harness_lib.canned_messages import get_canned_message  # noqa: E402
 from harness_lib.commit_diff import cap_sections, clip_text  # noqa: E402
-from harness_lib.commit_txt import filler_words, glyph_problems, read_commit_txt, vendor_names  # noqa: E402
+from harness_lib.commit_txt import (  # noqa: E402
+    filler_words,
+    glyph_problems,
+    read_commit_txt,
+    subject_parts,
+    vendor_names,
+)
 from harness_lib.config import ConfigError, active, activate, load_config  # noqa: E402
 from harness_lib.pr_capture import read_rank  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
@@ -93,8 +107,13 @@ def safe_stem(value: str) -> str:
     return _UNSAFE.sub("_", value)
 
 
-def subject_line(pr: int, title: str) -> str:
-    """The merge subject; the separator is ASCII because Windows shell wrappers garble a non-ASCII one."""
+def subject_line(pr: int, title: str, squash: bool = False) -> str:
+    """The subject of the mode: GitHub's squash form, or the merge form with an ASCII separator.
+
+    The separator is ASCII because Windows shell wrappers garble a non-ASCII one.
+    """
+    if squash:
+        return f"{title} (#{pr})"
     return f"Merge PR #{pr} {SUBJECT_SEPARATOR} {title}"
 
 
@@ -102,11 +121,13 @@ def _tokens(text: str) -> List[str]:
     return [t for t in _SLUG_SPLIT.split(text.casefold()) if t]
 
 
-def title_problem(pr: int, title: str, head: str) -> Optional[str]:
-    """Why ``title`` cannot head the merge subject, else None.
+def title_problem(pr: int, title: str, head: str, squash: bool = False) -> Optional[str]:
+    """Why ``title`` cannot head the subject of the mode, else None.
 
-    Two defects: a non-ASCII character, and a title that is only the branch name with its hyphens or
-    underscores turned into spaces (the default ``gh`` derives from a branch; it loses version dots).
+    Two defects in both modes: a non-ASCII character, and a title that is only the branch name with its
+    hyphens or underscores turned into spaces (the default ``gh`` derives from a branch; it loses version
+    dots). The squash mode also refuses a title that is not a ``Word(scope): summary`` subject (a word of
+    letters, an optional scope, a colon and a non-empty summary).
     """
     fix = f"retitle it with gh pr edit {pr} --title"
     if not title.isascii():
@@ -114,19 +135,29 @@ def title_problem(pr: int, title: str, head: str) -> Optional[str]:
         return f"PR #{pr} title holds non-ASCII characters {found!r}; {fix}"
     if _SLUG_SPLIT.search(head) and _tokens(title) == _tokens(head):
         return f"PR #{pr} title {title!r} reads as the branch name; {fix}"
+    if squash:
+        kind, _, summary = subject_parts(title)
+        if kind is None or not summary:
+            return (f"PR #{pr} title {title!r} is not a Word(scope): summary subject "
+                    "(Conventional-Commit shape: a word, an optional scope, a colon and a non-empty "
+                    f"summary), which a squash commit needs; {fix}")
     return None
 
 
-def pr_view(repo: Path, pr: int) -> Dict[str, object]:
-    """The PR's shape from ``gh pr view``; only an open PR with a usable title gets a merge message."""
+def fetch_view(repo: Path, pr: int) -> Dict[str, object]:
+    """The PR's shape from ``gh pr view``; a PR that is not open is refused."""
     fields = "number,title,headRefName,baseRefName,additions,deletions,changedFiles,body,state"
     data = json.loads(gh(repo, "pr", "view", str(pr), "--json", fields))
     if data.get("state") != "OPEN":
         raise MergeMessageError(f"PR #{pr} is {data.get('state')}, not OPEN")
-    problem = title_problem(pr, str(data["title"]), str(data["headRefName"]))
+    return data
+
+
+def check_title(view: Dict[str, object], pr: int, squash: bool = False) -> None:
+    """Raise ``MergeMessageError`` when the PR title cannot head the subject of the mode."""
+    problem = title_problem(pr, str(view["title"]), str(view["headRefName"]), squash)
     if problem:
         raise MergeMessageError(problem)
-    return data
 
 
 def pr_commits(repo: Path, pr: int) -> List[str]:
@@ -219,11 +250,12 @@ def branch_subjects(branch: str) -> List[str]:
     return []
 
 
-def message_template(pr: int, title: str, names: Sequence[str], canned: Optional[str]) -> List[str]:
-    """The prefilled message: subject, prose (canned or a placeholder), bullets, lineage, review lines."""
+def message_template(pr: int, title: str, names: Sequence[str], canned: Optional[str],
+                     squash: bool = False) -> List[str]:
+    """The prefilled message: mode subject, prose (canned or a placeholder), bullets, lineage, review."""
     prose = canned.strip().splitlines() if canned else [PROSE_HINT]
     lineage = " -> ".join(f"`{n}`" for n in names)
-    return [subject_line(pr, title), "", *prose, "", BULLET_HINT, "", f"Branch lineage: {lineage}",
+    return [subject_line(pr, title, squash), "", *prose, "", BULLET_HINT, "", f"Branch lineage: {lineage}",
             *([""] if review_json(pr) else []), *review_lines(pr)]
 
 
@@ -231,19 +263,25 @@ def _bullets(lines: Sequence[str]) -> List[str]:
     return [f"- {line}" for line in lines] or ["- none"]
 
 
+def mode_name(squash: bool) -> str:
+    return "squash" if squash else "merge"
+
+
 def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequence[str],
-           subjects: Sequence[str], diff: Sequence[str] = ()) -> str:
+           subjects: Sequence[str], diff: Sequence[str] = (), squash: bool = False) -> str:
     """The capture output: script-owned facts, then the ``text`` fence holding the message skeleton."""
     title, base, head = str(view["title"]), str(view["baseRefName"]), str(view["headRefName"])
     names = lineage_names(str(view.get("body") or ""), base, head)
     canned = get_canned_message(files)
-    message = message_template(pr, title, names, canned)
+    message = message_template(pr, title, names, canned, squash)
     size = f"+{view['additions']} -{view['deletions']} across {view['changedFiles']} files"
-    facts = [f"- Title: {title}", f"- Branch: `{head}` into `{base}`", f"- Size: {size}",
-             f"- Canned message: {'yes, prefilled as the prose' if canned else 'none'}"]
-    parts = [f"# PR #{pr} merge message", "",
+    facts = [f"- Title: {title}", f"- Mode: {mode_name(squash)}", f"- Branch: `{head}` into `{base}`",
+             f"- Size: {size}", f"- Canned message: {'yes, prefilled as the prose' if canned else 'none'}"]
+    command = "build --squash" if squash else "build"
+    parts = [f"# PR #{pr} {mode_name(squash)} message", "",
              "Facts and the diff are script-owned. Fill the placeholders of the skeleton under Message from "
-             "them, keep its subject, lineage and review lines, and pass the message to `build` on stdin.",
+             "them, keep its subject, lineage and review lines, and pass the message to "
+             f"`{command}` on stdin.",
              "",
              "## Facts", "", *facts, "", "## Changed files", "", *_bullets(files), "", "## Diff", "",
              *(diff or ["- none"]), "", "## Commits", "",
@@ -252,11 +290,12 @@ def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequ
     return "\n".join(parts)
 
 
-def run_capture(repo: Path, pr: int) -> str:
-    """The facts and the message skeleton of the open PR; nothing is written."""
-    view = pr_view(repo, pr)
+def run_capture(repo: Path, pr: int, squash: bool = False) -> str:
+    """The facts and the message skeleton of the open PR in the mode; nothing is written."""
+    view = fetch_view(repo, pr)
+    check_title(view, pr, squash)
     subjects = branch_subjects(str(view["headRefName"]))
-    return render(pr, view, pr_files(repo, pr), pr_commits(repo, pr), subjects, pr_diff(repo, pr))
+    return render(pr, view, pr_files(repo, pr), pr_commits(repo, pr), subjects, pr_diff(repo, pr), squash)
 
 
 def read_message(stream: TextIO) -> List[str]:
@@ -287,12 +326,21 @@ def layout_problems(lines: Sequence[str]) -> List[str]:
     return problems
 
 
-def structure_problems(lines: Sequence[str], pr: int, title: str) -> List[str]:
+def subject_problem(lines: Sequence[str], pr: int, title: str, squash: bool = False) -> Optional[str]:
+    """Why line 1 is not the subject of the mode, else None; in squash mode a merge subject names the flag."""
+    subject = subject_line(pr, title, squash)
+    if lines and lines[0] == subject:
+        return None
+    if squash and lines and lines[0] == subject_line(pr, title):
+        return (f"subject is the merge form; drop the squash mode (--squash, -s, squash) to keep it, "
+                f"or use {subject!r}")
+    return f"subject must be exactly {subject!r}"
+
+
+def structure_problems(lines: Sequence[str], pr: int, title: str, squash: bool = False) -> List[str]:
     """Subject, placeholders, bullets and lineage-after-bullets of the message lines."""
-    subject = subject_line(pr, title)
-    problems: List[str] = []
-    if not lines or lines[0] != subject:
-        problems.append(f"subject must be exactly {subject!r}")
+    problem = subject_problem(lines, pr, title, squash)
+    problems: List[str] = [problem] if problem else []
     if len(lines) > 1 and lines[1].strip():
         problems.append("line 2 must be blank")
     problems += [f"line {n}: unfilled placeholder" for n, line in enumerate(lines, 1)
@@ -319,8 +367,8 @@ def content_problems(lines: Sequence[str]) -> List[str]:
     return problems
 
 
-def message_problems(lines: Sequence[str], pr: int, title: str) -> List[str]:
-    return structure_problems(lines, pr, title) + layout_problems(lines) + content_problems(lines)
+def message_problems(lines: Sequence[str], pr: int, title: str, squash: bool = False) -> List[str]:
+    return structure_problems(lines, pr, title, squash) + layout_problems(lines) + content_problems(lines)
 
 
 def back_up_replaced(target: Path, text: str) -> None:
@@ -329,11 +377,21 @@ def back_up_replaced(target: Path, text: str) -> None:
         shutil.copyfile(target, target.with_name(target.name + ".bak"))
 
 
-def run_build(repo: Path, pr: int, stream: TextIO) -> Tuple[Path, str]:
-    """Validate the message on ``stream`` and write ``PR<pr>_merge.txt``; return its path and the subject."""
+def run_build(repo: Path, pr: int, stream: TextIO, squash: bool = False) -> Tuple[Path, str, bool]:
+    """Validate the message on ``stream`` and write ``PR<pr>_merge.txt``; return its path, subject and mode.
+
+    Without ``squash``, a first line equal to the squash subject selects the squash mode, title check
+    included. With ``squash``, a merge-form first line is refused before the title check, so the hint to
+    drop the squash mode is not masked by a title the squash mode refuses.
+    """
     lines = read_message(stream)
-    title = str(pr_view(repo, pr)["title"])
-    problems = message_problems(lines, pr, title)
+    view = fetch_view(repo, pr)
+    title = str(view["title"])
+    if squash and lines[0] == subject_line(pr, title):
+        raise MergeMessageError(f"problem: {subject_problem(lines, pr, title, squash)}")
+    squash = squash or lines[0] == subject_line(pr, title, squash=True)
+    check_title(view, pr, squash)
+    problems = message_problems(lines, pr, title, squash)
     if problems:
         raise MergeMessageError("\n".join(f"problem: {p}" for p in problems))
     text = "\n".join(lines).rstrip() + "\n"
@@ -341,18 +399,19 @@ def run_build(repo: Path, pr: int, stream: TextIO) -> Tuple[Path, str]:
     target.parent.mkdir(parents=True, exist_ok=True)
     back_up_replaced(target, text)
     target.write_text(text, encoding="utf-8", newline="\n")
-    return target, lines[0]
+    return target, lines[0], squash
 
 
-def receipt(repo: Path, target: Path, pr: int, subject: str) -> str:
-    """The chat receipt: saved path, subject and the final-as-saved line."""
+def receipt(repo: Path, target: Path, pr: int, subject: str, squash: bool = False) -> str:
+    """The chat receipt: saved path with the mode, subject and the final-as-saved line."""
     try:
         shown = target.resolve().relative_to(repo.resolve()).as_posix()
     except ValueError:
         shown = target.as_posix()
     final = ("Final as saved: relay this receipt unchanged. The message changes only on the developer's "
              f"ask: rerun build with PR{pr}_merge.txt, changed as asked, on stdin.")
-    return "\n".join([f"Saved: {shown} - merge message for PR #{pr}", f"Subject: {subject}", final])
+    saved = f"Saved: {shown} - {mode_name(squash)} message for PR #{pr}"
+    return "\n".join([saved, f"Subject: {subject}", final])
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -361,8 +420,18 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     for name, text in (("capture", "Print the facts and the message skeleton of an open PR."),
                        ("build", "Validate the message on stdin and write the TXT.")):
-        sub.add_parser(name, help=text).add_argument("pr", type=int, help="PR number")
+        command = sub.add_parser(name, help=text)
+        command.add_argument("pr", type=int, help="PR number")
+        command.add_argument("mode", nargs="?", help="'squash' for a squash-merge subject")
+        command.add_argument("--squash", "-s", action="store_true", help="squash subject '<title> (#N)'")
     return parser
+
+
+def squash_mode(args: argparse.Namespace) -> bool:
+    """Whether the parsed arguments select the squash mode; an unknown mode token is refused."""
+    if args.mode is not None and args.mode != "squash":
+        raise MergeMessageError(f"unknown mode {args.mode!r}; the only mode is squash (--squash, -s)")
+    return bool(args.squash or args.mode == "squash")
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:
@@ -371,12 +440,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             stream.reconfigure(encoding=encoding)
     args = _parser().parse_args(argv)
     try:
+        squash = squash_mode(args)
         repo = activate(load_config(project_root(args.repo))).project_root
         if args.command == "capture":
-            sys.stdout.write(run_capture(repo, args.pr))
+            sys.stdout.write(run_capture(repo, args.pr, squash))
         else:
-            target, subject = run_build(repo, args.pr, sys.stdin)
-            print(receipt(repo, target, args.pr, subject))
+            target, subject, squash = run_build(repo, args.pr, sys.stdin, squash)
+            print(receipt(repo, target, args.pr, subject, squash))
     except (MergeMessageError, ConfigError) as exc:
         text = str(exc)
         sys.stderr.write(text + "\n" if text.startswith("problem:") else f"problem: {text}\n")
