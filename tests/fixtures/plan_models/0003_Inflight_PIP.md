@@ -27,7 +27,7 @@
 Finished work.
 
 - [x] Run `git diff 0123456789abcdef0123456789abcdef01234567 --stat`: one file
-- [x] Record the commit: `plan.py record 0003 IN-1 --sha <sha>`
+- [x] Record it: `plan.py record 0003 IN-1 --sha <sha>` or `--staged`
 
 **Evidence:** commit 0123456
 
@@ -42,7 +42,7 @@ Finished work.
 Blocked work.
 
 - [ ] Test `tests/test_b.py::test_b` fails with AssertionError, then passes
-- [ ] Record the commit: `plan.py record 0003 IN-2 --sha <sha>`
+- [ ] Record it: `plan.py record 0003 IN-2 --sha <sha>` or `--staged`
 
 **Evidence:** needs the developer
 
@@ -53,6 +53,6 @@ Blocked work.
 
 Dropped work.
 
-- [x] Record the commit: `plan.py record 0003 IN-3 --sha <sha>`
+- [x] Record it: `plan.py record 0003 IN-3 --sha <sha>` or `--staged`
 
 **Evidence:** superseded

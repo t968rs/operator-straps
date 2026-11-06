@@ -3,8 +3,10 @@
 One ``### <ID>: <title>`` section per item. The plan rules (``todo_sync.rules_plans``) look a section up
 only through the item's ``markdown_section`` and skip an item without one; the heading starts with the item
 id, so a ``markdown_section`` equal to the id finds it. Each section holds one box per test node, one per
-command and one for recording the commit; the boxes are checked exactly when the item is COMPLETE or
-CLOSED_NO_ACTION, so the PIP always agrees with the JSON. A ``{base}`` in a command is printed as the
+command and one for recording it (by commit or from the staged index); the boxes are checked exactly when
+the item is COMPLETE or CLOSED_NO_ACTION, so the PIP always agrees with the JSON. An item with a sealed
+record shows a ``**Recorded:**`` line (date, provenance, passed-tests command) in place of its legacy
+verification references. A ``{base}`` in a command is printed as the
 plan's full ``base_commit``, so a copied command runs as written.
 """
 from __future__ import annotations
@@ -13,8 +15,9 @@ import re
 from typing import Iterable, List
 
 from harness_lib.plan_doc import PLAN_SUFFIX
-from harness_lib.plan_enums import DONE
-from harness_lib.plan_models import ActionItem, ActionPlan, Decision, DecisionOption
+from harness_lib.plan_enums import DONE, RecordSource
+from harness_lib.plan_models import (ActionItem, ActionPlan, Completed, Decision, DecisionOption,
+                                     ItemRecord)
 
 _NAME = re.compile(r"^\d{4}_(?P<title>.+)" + re.escape(PLAN_SUFFIX) + "$")
 
@@ -105,8 +108,22 @@ def _boxes(plan: ActionPlan, item: ActionItem) -> List[str]:
     steps = [f"Test {code(t.node)} fails with {t.red}, then passes" for t in item.tests]
     steps += [f"Run {code(_expand_base(plan, c.run))}: {c.expect}" for c in item.commands]
     record = f"plan.py record {plan.plan_id} {item.id} --sha <sha>"
-    steps.append(f"Record the commit: {code(record)}")
+    steps.append(f"Record it: {code(record)} or {code('--staged')}")
     return [f"- [{mark}] {step}" for step in steps]
+
+
+def _recorded(record: ItemRecord) -> List[str]:
+    """The ``**Recorded:**`` line of a sealed record, then the command of its passed tests, when any."""
+    outcome = record.outcome
+    if not isinstance(outcome, Completed):
+        return [f"**Recorded:** {record.date}, {outcome.kind.value}"]
+    prov = outcome.provenance
+    if prov.source == RecordSource.commit:
+        where = f"commit {code((prov.commit or '')[:7])}, tree {code(prov.tree[:7])}"
+    else:
+        where = f"staged, tree {code(prov.tree[:7])}"
+    lines = [f"**Recorded:** {record.date}, {where}"]
+    return lines + ([f"- {code(outcome.tests.command)}"] if outcome.tests is not None else [])
 
 
 def _item_meta(item: ActionItem) -> List[str]:
@@ -122,6 +139,8 @@ def _item(plan: ActionPlan, item: ActionItem) -> List[str]:
     out = [f"### {item.id}: {item.title}", "", *_item_meta(item), ""]
     out += [item.action, ""]
     out += [*_boxes(plan, item), "", f"**Evidence:** {item.evidence}", ""]
+    if item.record is not None:
+        return out + [*_recorded(item.record), ""]
     refs = item.verification_references
     return out + ([*(f"- {code(r)}" for r in refs), ""] if refs else [])
 

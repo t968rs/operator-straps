@@ -14,17 +14,23 @@ why several choices look odd:
 
 A field marked ``Mutable`` is an execution field: ``plan.py record`` changes it after the freeze, so the
 freeze digest leaves it out (``mutable_top`` and ``mutable_item``).
+
+Two record rules live only in the models, since the generated schema cannot express them: a provenance's
+commit agrees with its source (checked when ``plan.py`` loads the plan), and an item's status agrees with its
+record's outcome (checked by ``plan.py check``). A plan breaking either one passes ``jsonschema`` alone.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
-from typing import Annotated, Any, Dict, List, Optional, Tuple, Union
+from typing import Annotated, Any, ClassVar, Dict, List, Literal, Optional, Tuple, Union
 
 from pydantic import (BaseModel, ConfigDict, Field, PrivateAttr, StrictInt, StrictStr,
-                      ValidatorFunctionWrapHandler, WrapValidator)
+                      ValidatorFunctionWrapHandler, WrapValidator, model_validator)
 
-from harness_lib.plan_enums import ItemStatus, MarkdownSync, ModelName, Priority, RedException
+from harness_lib.plan_enums import (ItemStatus, MarkdownSync, ModelName, OutcomeKind, Priority, RecordScheme,
+                                    RecordSource, RedException)
 
 SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
 SCHEMA_ID = "https://github.com/t968rs/operator-straps/plugins/harness/schemas/ActionPlan.schema.json"
@@ -32,6 +38,7 @@ _OPEN = ConfigDict(extra="allow", regex_engine="python-re")
 _CLOSED = ConfigDict(extra="forbid", regex_engine="python-re")
 _DATE = {"format": "date"}
 _SHA40 = r"^[0-9a-f]{40}$"
+_SHA64 = r"^[0-9a-f]{64}$"
 
 
 class Mutable:
@@ -145,7 +152,14 @@ class Frozen(BaseModel):
     commit: str = Field(pattern=_SHA40)
     tree: str = Field(pattern=_SHA40)
     date: str = Field(json_schema_extra=_DATE)
-    digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    digest: str = Field(pattern=_SHA64)
+    records: Optional[RecordScheme] = None
+
+    @classmethod
+    def at(cls, commit: str, tree: str, date: str, digest: str, records: Optional[RecordScheme]) -> "Frozen":
+        """A freeze record; ``records`` is set only when given, so the dump writes no null key."""
+        scheme: Dict[str, Any] = {} if records is None else {"records": records}
+        return cls(commit=commit, tree=tree, date=date, digest=digest, **scheme)
 
 
 class PrAttributes(BaseModel):
@@ -159,6 +173,184 @@ class PrAttributes(BaseModel):
     base_branch: str
     pip_document: Optional[str] = Field(default=None, pattern=r"^docs/PLANS/.+_PIP\.md$")
     merged_at: Optional[str] = Field(default=None, json_schema_extra=_DATE)
+
+
+class Provenance(BaseModel):
+    """Where the recorded code came from: always a tree, a commit only when one existed.
+
+    A commit source needs its commit and a staged source carries none; plan.py enforces that rule when it
+    loads the plan, the JSON schema does not.
+    """
+
+    model_config = _CLOSED
+
+    source: RecordSource
+    tree: str = Field(pattern=_SHA40, description="The tree the tests ran on.")
+    commit: Optional[str] = Field(default=None, pattern=_SHA40)
+
+    @model_validator(mode="after")
+    def _commit_matches_source(self) -> "Provenance":
+        """A commit source names its commit; a staged source names none."""
+        if self.source == RecordSource.commit and self.commit is None:
+            raise ValueError("a commit provenance needs its commit")
+        if self.source == RecordSource.staged and self.commit is not None:
+            raise ValueError("a staged provenance carries no commit")
+        return self
+
+    @property
+    def label(self) -> str:
+        """``commit <c7>`` for a commit source, ``staged tree <t7>`` for a staged one."""
+        if self.source == RecordSource.commit:
+            return f"commit {(self.commit or '')[:7]}"
+        return f"staged tree {self.tree[:7]}"
+
+    @property
+    def where(self) -> str:
+        """How a message names the code: ``<c7>`` for a commit, ``the index (tree <t7>)`` for the index."""
+        if self.source == RecordSource.commit:
+            return (self.commit or "")[:7]
+        return f"the index (tree {self.tree[:7]})"
+
+
+class PassedTests(BaseModel):
+    """The planned nodes that passed on a throwaway worktree at the provenance tree."""
+
+    model_config = _CLOSED
+
+    nodes: List[NonEmpty] = Field(min_length=1)
+    command: NonEmpty = Field(description="The pytest command line as run.")
+
+    @classmethod
+    def of(cls, nodes: List[str], argv: List[str]) -> "PassedTests":
+        """The passed ``nodes`` and the command that ran them (``python``, then ``argv`` past argv[0])."""
+        return cls(nodes=list(nodes), command=" ".join(["python", *argv[1:]]))
+
+    @property
+    def summary(self) -> str:
+        """``: <n> test node(s) passed``, the suffix of a COMPLETE item's evidence."""
+        return f": {len(self.nodes)} test node(s) passed"
+
+
+class _Outcome(BaseModel):
+    """Shared shape of an outcome: closed, the status it implies, and the evidence it writes."""
+
+    model_config = _CLOSED
+    status: ClassVar[ItemStatus]
+
+    def evidence(self, date: str) -> str:
+        """The item evidence this outcome writes when recorded on ``date``."""
+        raise NotImplementedError
+
+
+class Completed(_Outcome):
+    """The item is done: its code and, when it plans tests, the nodes that passed on it."""
+
+    status: ClassVar[ItemStatus] = ItemStatus.COMPLETE
+
+    kind: Literal[OutcomeKind.complete]
+    provenance: Provenance
+    tests: Optional[PassedTests] = None
+
+    @classmethod
+    def of(cls, provenance: Provenance, tests: Optional[PassedTests]) -> "Completed":
+        """A completed outcome; ``tests`` is set only when given, so the dump writes no null key."""
+        passed: Dict[str, Any] = {} if tests is None else {"tests": tests}
+        return cls(kind=OutcomeKind.complete, provenance=provenance, **passed)
+
+    def evidence(self, date: str) -> str:
+        """The provenance label, then the passed node count when tests ran."""
+        return self.provenance.label + (self.tests.summary if self.tests is not None else "")
+
+
+class Started(_Outcome):
+    """Work on the item has begun."""
+
+    status: ClassVar[ItemStatus] = ItemStatus.IN_PROGRESS
+
+    kind: Literal[OutcomeKind.started]
+
+    def evidence(self, date: str) -> str:
+        return f"started {date}"
+
+
+class Blocked(_Outcome):
+    """The item waits on something outside it."""
+
+    status: ClassVar[ItemStatus] = ItemStatus.BLOCKED
+
+    kind: Literal[OutcomeKind.blocked]
+    reason: NonEmpty
+
+    def evidence(self, date: str) -> str:
+        return self.reason
+
+
+class Closed(_Outcome):
+    """The item is closed without action."""
+
+    status: ClassVar[ItemStatus] = ItemStatus.CLOSED_NO_ACTION
+
+    kind: Literal[OutcomeKind.closed]
+    rationale: NonEmpty
+
+    def evidence(self, date: str) -> str:
+        return self.rationale
+
+
+Outcome = Annotated[Union[Completed, Started, Blocked, Closed], Field(discriminator="kind")]
+
+
+class SealedFields(BaseModel):
+    """The payload an item seal covers: the plan id, the item fields the record vouches for, the record."""
+
+    model_config = _CLOSED
+
+    plan_id: str
+    id: str
+    status: ItemStatus
+    evidence: str
+    files: List[str]
+    tests: List[PlannedTest]
+    outcome: Outcome
+    date: str
+
+    @classmethod
+    def of(cls, plan_id: str, item: "ActionItem", outcome: Outcome, date: str) -> "SealedFields":
+        """The sealed payload of ``item`` in plan ``plan_id`` under ``outcome`` recorded on ``date``."""
+        return cls(plan_id=plan_id, id=item.id, status=item.status, evidence=item.evidence,
+                   files=list(item.files), tests=list(item.tests), outcome=outcome, date=date)
+
+    def digest(self) -> str:
+        """SHA-256 hex of the canonical JSON; defaulted fields are left out, so a later default keeps it."""
+        payload = self.model_dump(mode="json", exclude_defaults=True)
+        canonical = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+class ItemRecord(BaseModel):
+    """What `plan.py record` wrote for one item, and the seal that proves it wrote it.
+
+    The item's status must be the one the outcome implies; `plan.py check` enforces that agreement, the JSON
+    schema does not.
+    """
+
+    model_config = _CLOSED
+
+    outcome: Outcome
+    date: str = Field(json_schema_extra=_DATE)
+    seal: str = Field(pattern=_SHA64, description="SHA-256 of the plan id, the item's id, status, evidence, "
+                      "files and tests, and this record without the seal.")
+
+    @classmethod
+    def sealed(cls, plan_id: str, item: "ActionItem", outcome: Outcome, date: str) -> "ItemRecord":
+        """A record of ``outcome`` for ``item``, sealed over the item as it stands now."""
+        seal = SealedFields.of(plan_id, item, outcome, date).digest()
+        return cls(outcome=outcome, date=date, seal=seal)
+
+    def holds(self, plan_id: str, item: "ActionItem") -> bool:
+        """The seal matches the item as it stands, and the item's status is the one the outcome implies."""
+        expected = SealedFields.of(plan_id, item, self.outcome, self.date).digest()
+        return expected == self.seal and item.status == self.outcome.status
 
 
 class ActionItem(BaseModel):
@@ -176,6 +368,7 @@ class ActionItem(BaseModel):
     status: Annotated[ItemStatus, Mutable()]
     evidence: Annotated[str, Mutable()]
     verification_references: Annotated[List[str], Mutable()] = Field(default_factory=list)
+    record: Annotated[Optional[ItemRecord], Mutable()] = None
     markdown_section: Optional[str] = None
     notes: Optional[str] = None
     model: ModelName = Field(default=ModelName.sonnet, description="Model that implements the item.")
@@ -184,6 +377,13 @@ class ActionItem(BaseModel):
     tests: List[PlannedTest] = Field(default_factory=list, description=(
         "Pytest node ids that prove the item, each with the exception that fails it before the item is "
         "implemented. A planned test file lives at `<plans dir>/<plan_id>/tests/<repo-relative path>`."))
+
+    def stamp(self, plan_id: str, outcome: Outcome, date: str) -> None:
+        """Move the item to ``outcome``: status, evidence, cleared legacy references, the sealed record."""
+        self.status = outcome.status
+        self.evidence = outcome.evidence(date)
+        self.verification_references = []
+        self.record = ItemRecord.sealed(plan_id, self, outcome, date)
 
 
 def _no_default(schema: Dict[str, Any]) -> None:
@@ -218,9 +418,9 @@ class ActionPlan(BaseModel):
         "`plan.py new`. Commands name `{base}` instead of a SHA."))
     frozen: Annotated[Optional[Frozen], Mutable()] = Field(default=None, description=(
         "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field "
-        "except item status, evidence and verification_references, and the top-level completed, frozen, "
-        "markdown_sync_status and markdown_last_updated. `plan.py check` reports any later edit outside "
-        "those fields."))
+        "except item status, evidence, verification_references and record, and the top-level completed, "
+        "frozen, markdown_sync_status and markdown_last_updated; a set `records` scheme is folded into the "
+        "digest. `plan.py check` reports any later edit outside those fields."))
     decisions: List[Decision] = Field(default_factory=list, description=(
         "Design questions the plan settles. `chosen` null means open, which blocks `plan.py freeze`. "
         "Every option not chosen counts as rejected."))

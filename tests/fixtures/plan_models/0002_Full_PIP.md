@@ -42,7 +42,7 @@ Do the first thing.
 
 - [x] Test `tests/test_a.py::test_a` fails with ImportError, then passes
 - [x] Run `python gen.py --base 0123456789abcdef0123456789abcdef01234567`: wrote
-- [x] Record the commit: `plan.py record 0002 FX-1 --sha <sha>`
+- [x] Record it: `plan.py record 0002 FX-1 --sha <sha>` or `--staged`
 
 **Evidence:** commit 0123456: 1 test node(s) passed
 
@@ -57,6 +57,6 @@ Do the first thing.
 
 Do the second thing.
 
-- [ ] Record the commit: `plan.py record 0002 FX-2.1 --sha <sha>`
+- [ ] Record it: `plan.py record 0002 FX-2.1 --sha <sha>` or `--staged`
 
 **Evidence:** started 2026-10-30

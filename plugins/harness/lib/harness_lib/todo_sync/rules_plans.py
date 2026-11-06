@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional
 
-from harness_lib.plan_enums import DONE, RULES_OPEN, ItemStatus
+from harness_lib.plan_enums import DONE, RULES_OPEN, ItemStatus, OutcomeKind, RecordSource
 from harness_lib.todo_sync.pip_sections import find_section, section_key
 from harness_lib.todo_sync.report import Finding
 from harness_lib.todo_sync.sources import PlanPair, Sources, posix
@@ -79,15 +79,40 @@ def _names_sha(item: Dict[str, Any]) -> bool:
     return any(isinstance(t, str) and SHA.search(t) for t in texts)
 
 
+def _hex_text(value: Any, size: int) -> bool:
+    return isinstance(value, str) and re.fullmatch(f"[0-9a-f]{{{size}}}", value) is not None
+
+
+def _complete_record(item: Dict[str, Any]) -> bool:
+    """True when ``record`` is a whole sealed COMPLETE record: a 64-hex seal, a date string, a complete
+    outcome whose provenance names a ``RecordSource`` and a 40-hex tree.
+
+    The JSON shape is probed, not validated, so this module stays free of pydantic.
+    """
+    record = item.get("record")
+    if not isinstance(record, dict):
+        return False
+    outcome = record.get("outcome")
+    prov = outcome.get("provenance") if isinstance(outcome, dict) else None
+    if not isinstance(prov, dict) or outcome.get("kind") != OutcomeKind.complete:
+        return False
+    return (_hex_text(record.get("seal"), 64) and isinstance(record.get("date"), str)
+            and prov.get("source") in {s.value for s in RecordSource}
+            and _hex_text(prov.get("tree"), 40))
+
+
 def p2_evidence_sha(src: Sources) -> List[Finding]:
-    """P2: a ``COMPLETE`` item names a 7-40 hex commit SHA in ``evidence`` or ``verification_references``."""
+    """P2: a ``COMPLETE`` item names a 7-40 hex commit SHA in ``evidence`` or ``verification_references``,
+    or carries a sealed COMPLETE ``record``."""
     out: List[Finding] = []
     for pair in src.plan_pairs():
         for item in _plan_items(src, "P2", pair, out) or []:
-            if item.get("status") == ItemStatus.COMPLETE and not _names_sha(item):
+            if (item.get("status") == ItemStatus.COMPLETE and not _names_sha(item)
+                    and not _complete_record(item)):
                 out.append(Finding("P2", "error", pair.plan.rel, "COMPLETE item names no commit SHA",
                                    subject=str(item.get("id")),
-                                   fix="Add the commit SHA to evidence or verification_references."))
+                                   fix="Add the commit SHA to evidence or verification_references, "
+                                       "or record the item so it carries a sealed COMPLETE record."))
     return out
 
 

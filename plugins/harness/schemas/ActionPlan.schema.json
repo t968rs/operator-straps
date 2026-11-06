@@ -93,6 +93,17 @@
           "title": "Verification References",
           "type": "array"
         },
+        "record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ItemRecord"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "markdown_section": {
           "anyOf": [
             {
@@ -178,6 +189,50 @@
       "title": "Anchor",
       "type": "object"
     },
+    "Blocked": {
+      "additionalProperties": false,
+      "description": "The item waits on something outside it.",
+      "properties": {
+        "kind": {
+          "const": "blocked",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "reason"
+      ],
+      "title": "Blocked",
+      "type": "object"
+    },
+    "Closed": {
+      "additionalProperties": false,
+      "description": "The item is closed without action.",
+      "properties": {
+        "kind": {
+          "const": "closed",
+          "title": "Kind",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "rationale"
+      ],
+      "title": "Closed",
+      "type": "object"
+    },
     "Command": {
       "additionalProperties": false,
       "properties": {
@@ -206,6 +261,37 @@
         "expect"
       ],
       "title": "Command",
+      "type": "object"
+    },
+    "Completed": {
+      "additionalProperties": false,
+      "description": "The item is done: its code and, when it plans tests, the nodes that passed on it.",
+      "properties": {
+        "kind": {
+          "const": "complete",
+          "title": "Kind",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "tests": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PassedTests"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "kind",
+        "provenance"
+      ],
+      "title": "Completed",
       "type": "object"
     },
     "Context": {
@@ -368,6 +454,17 @@
           "pattern": "^[0-9a-f]{64}$",
           "title": "Digest",
           "type": "string"
+        },
+        "records": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RecordScheme"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -377,6 +474,56 @@
         "digest"
       ],
       "title": "Frozen",
+      "type": "object"
+    },
+    "ItemRecord": {
+      "additionalProperties": false,
+      "description": "What `plan.py record` wrote for one item, and the seal that proves it wrote it.\n\nThe item's status must be the one the outcome implies; `plan.py check` enforces that agreement, the JSON\nschema does not.",
+      "properties": {
+        "outcome": {
+          "discriminator": {
+            "mapping": {
+              "blocked": "#/$defs/Blocked",
+              "closed": "#/$defs/Closed",
+              "complete": "#/$defs/Completed",
+              "started": "#/$defs/Started"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/Completed"
+            },
+            {
+              "$ref": "#/$defs/Started"
+            },
+            {
+              "$ref": "#/$defs/Blocked"
+            },
+            {
+              "$ref": "#/$defs/Closed"
+            }
+          ],
+          "title": "Outcome"
+        },
+        "date": {
+          "format": "date",
+          "title": "Date",
+          "type": "string"
+        },
+        "seal": {
+          "description": "SHA-256 of the plan id, the item's id, status, evidence, files and tests, and this record without the seal.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Seal",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome",
+        "date",
+        "seal"
+      ],
+      "title": "ItemRecord",
       "type": "object"
     },
     "ItemStatus": {
@@ -409,6 +556,33 @@
       ],
       "title": "ModelName",
       "type": "string"
+    },
+    "PassedTests": {
+      "additionalProperties": false,
+      "description": "The planned nodes that passed on a throwaway worktree at the provenance tree.",
+      "properties": {
+        "nodes": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "command": {
+          "description": "The pytest command line as run.",
+          "minLength": 1,
+          "title": "Command",
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodes",
+        "command"
+      ],
+      "title": "PassedTests",
+      "type": "object"
     },
     "PlanFormat": {
       "additionalProperties": false,
@@ -536,6 +710,57 @@
       "title": "Priority",
       "type": "string"
     },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Where the recorded code came from: always a tree, a commit only when one existed.\n\nA commit source needs its commit and a staged source carries none; plan.py enforces that rule when it\nloads the plan, the JSON schema does not.",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/RecordSource"
+        },
+        "tree": {
+          "description": "The tree the tests ran on.",
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Tree",
+          "type": "string"
+        },
+        "commit": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit"
+        }
+      },
+      "required": [
+        "source",
+        "tree"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RecordScheme": {
+      "description": "How a frozen plan's items prove their status; unset means the legacy references still pass.",
+      "enum": [
+        "sealed"
+      ],
+      "title": "RecordScheme",
+      "type": "string"
+    },
+    "RecordSource": {
+      "description": "Where the code of a COMPLETE record came from: a commit, or the staged index.",
+      "enum": [
+        "commit",
+        "staged"
+      ],
+      "title": "RecordSource",
+      "type": "string"
+    },
     "RedException": {
       "description": "The exception that fails a planned test before its item is implemented.",
       "enum": [
@@ -547,6 +772,22 @@
       ],
       "title": "RedException",
       "type": "string"
+    },
+    "Started": {
+      "additionalProperties": false,
+      "description": "Work on the item has begun.",
+      "properties": {
+        "kind": {
+          "const": "started",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Started",
+      "type": "object"
     },
     "Sweep": {
       "additionalProperties": false,
@@ -753,7 +994,7 @@
         }
       ],
       "default": null,
-      "description": "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field except item status, evidence and verification_references, and the top-level completed, frozen, markdown_sync_status and markdown_last_updated. `plan.py check` reports any later edit outside those fields."
+      "description": "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field except item status, evidence, verification_references and record, and the top-level completed, frozen, markdown_sync_status and markdown_last_updated; a set `records` scheme is folded into the digest. `plan.py check` reports any later edit outside those fields."
     },
     "decisions": {
       "description": "Design questions the plan settles. `chosen` null means open, which blocks `plan.py freeze`. Every option not chosen counts as rejected.",

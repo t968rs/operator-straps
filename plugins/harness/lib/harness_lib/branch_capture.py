@@ -3,13 +3,17 @@
 A capture compares a merge base with either the working tree (``head=None``: committed, staged, unstaged
 and untracked changes) or a commit (``head=<ref>``: committed changes only). Git failures raise
 ``CaptureError`` with one problem per line.
+
+``snapshot_commit`` writes a dangling commit of a tree under a fixed identity, for drivers that test or stage
+the index (plan.py, parallel2.py).
 """
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Dict, FrozenSet, List, Optional, Sequence, Tuple
+from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Tuple
 
 from harness_lib.commit_diff import DiffStat, parse_numstat_z
 from harness_lib.commit_grouping import CapturedPath, merge_capture, parse_name_status_z
@@ -49,6 +53,19 @@ def git_out(repo: Path, *args: str) -> str:
     if result.returncode != 0:
         raise CaptureError([f"git {' '.join(args)} failed: {result.stderr.strip()}"])
     return result.stdout
+
+
+def snapshot_commit(repo: Path, tree: str, head: str, message: str, identity: Mapping[str, str]) -> str:
+    """A commit of ``tree`` on ``head`` under the fixed ``identity`` (git author and committer variables).
+
+    No ref is written, so the commit dangles until git collects it. Raise ``CaptureError`` on failure.
+    """
+    done = subprocess.run(["git", "commit-tree", tree, "-p", head, "-m", message], cwd=repo,
+                          capture_output=True, text=True, encoding="utf-8", errors="replace",
+                          env={**os.environ, **identity})
+    if done.returncode != 0:
+        raise CaptureError([f"git commit-tree of the index snapshot failed: {done.stderr.strip()}"])
+    return done.stdout.strip()
 
 
 def current_branch(repo: Path) -> str:
