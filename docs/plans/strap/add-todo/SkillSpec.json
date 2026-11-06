@@ -478,6 +478,50 @@
       "recorded": true,
       "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc",
       "start": "5184008cc79384738e642cdbd18251d35d522464"
+    },
+    {
+      "id": "R-6",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "5422c856e8fa9e4ddced0b271c27791aa38808ff9ab48e414964a6d8eefef573",
+      "reply": "I did not grep merge_commit_msg.py and pasted no line numbers. The skill keeps the session from researching a note before dispatch. Finding the spot is the todo-editor agent's job, at the level you chose (-r 3). Your ask to pin the TODO to a line goes into the Context line, so the agent does the grep and cites path:line for every claim. Level 3 is exactly what you passed. If you want session-side line numbers anyway, say so and I will take that as an override.\n\nRow from add_todo.py (flags: -r 3, no --issue): agent=harness:todo-editor model=opus. No --issue means the item stays local with a dated note source and no GitHub issue is filed.\n\nDispatch I would make:\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"opus\", description=\"Add a TODO item\", prompt=\"SKILL: add-todo\\nOperation: add\\nIssue: no\\nResearch: 3\\nProject root: E:/automation/operator-straps\\nNote: squash subjects get cut silently; should warn\\nContext: PR 228 just merged. Its review saw the squash subject built in plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py get cut at 72 characters without a word. The developer reports this; not checked. The developer wants every TODO pinned to a line: find the spot in that file yourself and cite path:line for every claim, since the lead wants each TODO pinned to a line. Related: PR 228 and its review.\")\n\nAfter the agent replies I will relay its Added line as is. The edit is saved, not committed, so you review the diff and commit. I will also name any item marked (needs decision).\n\nThe row command printed Project root as E:/automation/operator-straps rather than the working tree. Bash did not carry the tree directory across calls, so the root is whatever the shell started in.\n",
+      "reply_sha256": "0e2c08263c9b779ee395808651fbf87c7d7a52a561dbf1691ab768c92b6ddb07",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches harness:todo-editor: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Research: 3: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_matches Context:.*(228|merge_commit_msg): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-48eeff9",
+      "start": "48eeff956efc1fa8bee104000f437d9c0d05e27d"
+    },
+    {
+      "id": "R-7",
+      "behavior": "B6",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "5422c856e8fa9e4ddced0b271c27791aa38808ff9ab48e414964a6d8eefef573",
+      "reply": "Printed the dispatch row (`agent=harness:todo-editor model=haiku`, Issue no, Research 0) and handed the note to the agent without reading or researching anything in the session. The Context line is \"none\": the conversation established nothing about the note, so the \"Note:\" reminder is a plain reminder for the agent to write up at level 0.\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"haiku\", prompt=\"SKILL: add-todo\\nOperation: add\\nIssue: no\\nResearch: 0\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-48eeff9\\nNote: remember to add the todo.add keys to the README key table once they exist\\nContext: none\")\n\nThe item stays local (no `--issue`), as a dated `note` source. The edit will be saved, not committed; the developer reviews the diff and commits.\n",
+      "reply_sha256": "6fe4233a87cf0ce8ad83eff937fc009fe53bd91d64144b9902bf5b5b6d39c4ed",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-48eeff9",
+      "start": "3f95836beaa006e6d59fea1be561567b6d310551"
     }
   ],
   "grades": [
@@ -515,13 +559,27 @@
       "value": "absent",
       "quote": "No research done in the session and no catalog write",
       "grader": "session"
+    },
+    {
+      "run": "R-6",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not grep merge_commit_msg.py and pasted no line numbers",
+      "grader": "session"
+    },
+    {
+      "run": "R-7",
+      "item": 0,
+      "value": "absent",
+      "quote": "without reading or researching anything in the session",
+      "grader": "session"
     }
   ],
   "frozen": {
-    "skill_hash": "2932af0f275f439da6c1c21c8c870a8ee75d488993cf89e437b71b64c0614d75",
+    "skill_hash": "5422c856e8fa9e4ddced0b271c27791aa38808ff9ab48e414964a6d8eefef573",
     "grader": "session",
-    "at": "2026-11-06T07:53:44+00:00",
+    "at": "2026-11-06T20:35:31+00:00",
     "authored": "dbb539c1d894d028a3591ab9f1b1fdd833d68a9535dae9514607a23c21559ca6"
   },
-  "driver_digest": "9b918ffcc61c5e5aa169025fd4b2b3ba76e77c4c8dfcf2b38fca5b94b60ff51d"
+  "driver_digest": "b37fa9ed0cd4e125eea16452ac794c4310a8eab37e2d4e8a5659145002169653"
 }
