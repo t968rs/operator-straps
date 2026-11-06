@@ -306,7 +306,7 @@ def test_check_flags_a_hand_set_complete_item(run: Run, filled: Fill, project: P
     plan["items"][0]["status"] = "COMPLETE"
     write_plan(project, plan)
     code, _, err = run("check", "1")
-    assert code == 1 and "problem: TASK-1 is COMPLETE without the record of record --sha" in err
+    assert code == 1 and "problem: TASK-1 is COMPLETE without a sealed record" in err
 
 
 def test_freeze_refuses_an_item_that_is_not_pending(run: Run, filled: Fill, project: Path) -> None:
@@ -336,7 +336,7 @@ def test_record_runs_the_tests_and_completes_the_item(run: Run,
     code, out, err = run("record", "1", "TASK-1", "--sha", sha)
     assert code == 0, err
     item = read_plan(project)["items"][0]
-    assert item["status"] == "COMPLETE" and item["verification_references"][0] == sha
+    assert item["status"] == "COMPLETE" and item["record"]["outcome"]["provenance"]["commit"] == sha
     assert item["evidence"] == f"commit {sha[:7]}: 1 test node(s) passed"
     assert read_plan(project)["completed"] is not None
     pip = (project / PLANS / "0001_Add_subtraction_PIP.md").read_text(encoding="utf-8")
@@ -364,21 +364,34 @@ def test_record_runs_the_tests_at_the_commit_not_the_working_tree(run: Run, fill
     assert read_plan(project)["items"][0]["status"] == "PENDING" and trees(tmp_path) == []
 
 
+@pytest.mark.cross_os
+def test_record_staged_needs_no_git_identity(run: Run, filled: Fill, project: Path, tmp_path: Path,
+                                            monkeypatch: pytest.MonkeyPatch) -> None:
+    """The index snapshot is made under the driver's own identity, so an unset user identity is fine."""
+    filled()
+    run("freeze", "1")
+    source = project / PLANS / "0001" / "tests" / "tests" / "test_calc_sub.py"
+    (project / "tests" / "test_calc_sub.py").write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    calc = project / "src" / "calc.py"
+    calc.write_text(calc.read_text(encoding="utf-8") + "\n\ndef sub(a, b):\n    return a - b\n",
+                    encoding="utf-8")
+    git(project, "add", "src/calc.py", "tests/test_calc_sub.py")
+    for name in ("GIT_AUTHOR_NAME", "GIT_AUTHOR_EMAIL", "GIT_COMMITTER_NAME", "GIT_COMMITTER_EMAIL"):
+        monkeypatch.delenv(name, raising=False)
+    empty = tmp_path / "empty.gitconfig"
+    empty.write_text("", encoding="utf-8")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    code, out, err = run("record", "1", "TASK-1", "--staged")
+    assert code == 0, err
+    assert out.startswith("record [done] | TASK-1 COMPLETE")
+    assert read_plan(project)["items"][0]["record"]["outcome"]["provenance"]["source"] == "staged"
+
+
 def test_record_refuses_a_name_that_is_no_commit(run: Run, filled: Fill) -> None:
     filled()
     run("freeze", "1")
     code, _, err = run("record", "1", "TASK-1", "--sha", "deadbeef")
     assert code == 1 and "problem: deadbeef does not name a commit" in err
-
-
-def test_record_refuses_a_commit_unreachable_from_head(run: Run, filled: Fill, project: Path) -> None:
-    filled()
-    run("freeze", "1")
-    git(project, "checkout", "-q", "-b", "side")
-    sha = implement(project)
-    git(project, "checkout", "-q", "feat-x")
-    code, _, err = run("record", "1", "TASK-1", "--sha", sha)
-    assert code == 1 and f"problem: commit {sha[:7]} is not reachable from HEAD" in err
 
 
 def test_record_start_and_blocked_set_their_states(run: Run, filled: Fill, project: Path) -> None:

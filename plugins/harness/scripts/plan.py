@@ -12,9 +12,12 @@ refuses an invalid one with ``schema:`` lines.
 
 ``check PLAN``
     Lint (item ids, dependencies, decisions, values, commands, planned test files), open every anchor, run
-    every sweep, require each COMPLETE item to carry the commit (reachable from HEAD) and tree
-    ``record --sha`` writes and, on a frozen plan, compare the freeze digest. Open decisions are listed as
-    ``open:`` lines, not problems. Read-only.
+    every sweep, on a frozen plan compare the freeze digest, and apply the record rules of
+    ``harness_lib.plan_record``: every item ``record`` moved carries a sealed record that matches the item
+    (on a plan frozen without a record scheme, the legacy reference shape still passes). No git command
+    judges an item: the recorded tree and commit are never compared with HEAD, so an amend, a squash, a
+    rebase or a staged attach leaves the plan valid. Open decisions are listed as ``open:`` lines, not
+    problems. Read-only.
 
 ``render PLAN``
     Write the PIP from the plan JSON.
@@ -29,21 +32,35 @@ refuses an invalid one with ``schema:`` lines.
 ``freeze PLAN [--refreeze]``
     Refuse while ``check`` has a problem, a decision is open, an open item has neither a test nor a command,
     an item is not PENDING on a first freeze, or ``red`` has a problem; otherwise record HEAD, its tree, the
-    date and the digest of every field but the execution fields (the ``Mutable`` fields of
-    ``harness_lib.plan_models``): the item status, evidence and verification references and the plan's
-    completed, frozen and markdown sync fields.
+    date, the record scheme and the digest of every field but the execution fields (the ``Mutable`` fields
+    of ``harness_lib.plan_models``): the item status, evidence, verification references and record and the
+    plan's completed, frozen and markdown sync fields. The scheme is ``sealed`` unless an item ``record``
+    moved still carries the legacy shape, and a sealed plan stays sealed: a refreeze of a plan whose stored
+    scheme is sealed, or whose digest proves the scheme was deleted by hand, judges its items as sealed. A
+    refreeze tolerates a record whose seal no longer matches (an item whose files or tests changed) and
+    prints ``re-record after refreeze: <ITEM>`` for each; a non-PENDING item without a record still refuses.
 
 ``lanes PLAN [--target BRANCH]``
     Print the ``parallel2`` plan JSON of a frozen plan's open items (waves from dependencies and file
-    overlap), ready for ``parallel2.py plan -``.
+    overlap), ready for ``parallel2.py plan -``. Refuses a plan that fails the digest or the record rules.
 
-``record PLAN ITEM (--sha SHA | --start | --blocked REASON | --closed RATIONALE)``
-    On a frozen, unedited plan: ``--sha`` needs every dependency done, ``SHA`` reachable from HEAD and
-    changing one of the item's files since the base, the item's files unchanged since ``SHA``, and the
-    item's test nodes passing on a throwaway detached worktree at ``SHA``; it then marks the item COMPLETE
-    with the SHA, tree and test command as evidence. An item without test nodes is recorded on the commit
-    alone: its commands are not run. The other flags set IN_PROGRESS, BLOCKED or CLOSED_NO_ACTION, with no
-    commit. The PIP is rendered again.
+``record PLAN ITEM (--sha SHA | --staged | --start | --blocked REASON | --closed RATIONALE)``
+    On a frozen plan whose digest holds (a broken seal, on this item or another, never blocks: recording
+    again is the repair): ``--sha`` needs every dependency done with a valid record, ``SHA`` changing one of
+    the item's files since the base, the item's files unchanged since ``SHA`` and the item's test nodes
+    passing on a throwaway detached worktree at ``SHA``; ``SHA`` need not be reachable from HEAD.
+    ``--staged`` applies the same rules to the index: its tree (``git write-tree``) against the base, the
+    item's files without unstaged or untracked changes, and the tests on a throwaway worktree at a dangling
+    commit of that tree on HEAD, which no ref keeps. Either marks the item COMPLETE with a sealed record of
+    the tree, the commit when there was one, and the passed nodes. An item without test nodes is recorded on
+    the tree alone: its commands are not run. The other flags record IN_PROGRESS, BLOCKED or
+    CLOSED_NO_ACTION, sealed the same way. The PIP is rendered again.
+
+``verify PLAN [--staged]``
+    Run every COMPLETE item's test nodes on one throwaway detached worktree at HEAD (``--staged``: at a
+    dangling commit of the index), one pytest run per item, and print ``<ITEM> pass`` or
+    ``<ITEM> no tests`` for each. A failure names the item and the ``record`` call to make after the fix.
+    Writes nothing.
 
 ``PLAN`` is a plan id (``7`` or ``0007``) or a path to the plan file. ``--repo`` (default: the working
 directory) names a directory inside the project. Usage::
@@ -54,14 +71,15 @@ directory) names a directory inside the project. Usage::
     plan.py [--repo DIR] red PLAN
     plan.py [--repo DIR] freeze PLAN [--refreeze]
     plan.py [--repo DIR] lanes PLAN [--target BRANCH]
-    plan.py [--repo DIR] record PLAN ITEM (--sha SHA | --start | --blocked REASON | --closed RATIONALE)
+    plan.py [--repo DIR] record PLAN ITEM (--sha SHA | --staged | --start | --blocked REASON
+                                           | --closed RATIONALE)
+    plan.py [--repo DIR] verify PLAN [--staged]
 """
 from __future__ import annotations
 
 import argparse
 import datetime as dt
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -88,15 +106,22 @@ from harness_lib import plan_checks as pc  # noqa: E402
 from harness_lib import plan_doc as pd  # noqa: E402
 from harness_lib import plan_lanes as plx  # noqa: E402
 from harness_lib import plan_models as pm  # noqa: E402
+from harness_lib import plan_record as prc  # noqa: E402
 from harness_lib import plan_red as pr  # noqa: E402
-from harness_lib.branch_capture import CaptureError, current_branch, git, git_out, resolve_merge_base  # noqa: E402
+from harness_lib.branch_capture import (CaptureError, current_branch, git, git_out,  # noqa: E402
+                                        resolve_merge_base, snapshot_commit)
 from harness_lib.config import ConfigError, active, activate, load_config  # noqa: E402
-from harness_lib.plan_enums import DONE, ItemStatus  # noqa: E402
+from harness_lib.plan_enums import (DONE, ItemStatus, OutcomeKind, RecordProblemKind,  # noqa: E402
+                                    RecordScheme, RecordSource, VerifyKind)
 from harness_lib.plan_render import render_pip  # noqa: E402
 from harness_lib.project import plugin_root, project_root  # noqa: E402
 
 PROBLEMS = (pd.PlanError, pl.PlanError, CaptureError, ConfigError)
-SHA40 = re.compile(r"[0-9a-f]{40}")
+# The fixed identity of the dangling index snapshots ``record --staged`` and ``verify --staged`` test on.
+SNAPSHOT_IDENTITY = {
+    "GIT_AUTHOR_NAME": "plan-record", "GIT_AUTHOR_EMAIL": "plan-record@localhost",
+    "GIT_COMMITTER_NAME": "plan-record", "GIT_COMMITTER_EMAIL": "plan-record@localhost",
+}
 
 
 def today() -> str:
@@ -179,33 +204,13 @@ def cmd_new(repo: Path, args: argparse.Namespace) -> int:
 # --- check ------------------------------------------------------------------------------------------------
 
 def digest_problems(plan: pm.ActionPlan) -> List[str]:
+    """The freeze digest, under the plan's stored record scheme, no longer matches the plan."""
     frozen = plan.frozen
-    if frozen is None or frozen.digest == pd.frozen_digest(plan):
+    if frozen is None or frozen.digest == pd.frozen_digest(plan, frozen.records):
         return []
-    return ["plan changed after freeze (a field outside the item status, evidence and verification "
-            "references and the completed, frozen and markdown sync fields); "
+    return ["plan changed after freeze (a field outside the item status, evidence, verification "
+            "references and record and the completed, frozen and markdown sync fields); "
             "restore it, or rerun freeze --refreeze"]
-
-
-def record_shape_problem(repo: Path, item: pm.ActionItem) -> Optional[str]:
-    """Why a COMPLETE item lacks what ``record --sha`` writes: a commit reachable from HEAD, then its tree."""
-    refs = list(item.verification_references)
-    sha = refs[0] if refs else ""
-    if not SHA40.fullmatch(sha) or git(repo, "merge-base", "--is-ancestor", sha, "HEAD").returncode != 0:
-        return "no commit reachable from HEAD"
-    tree = git_out(repo, "rev-parse", f"{sha}^{{tree}}").strip()
-    return None if refs[1:2] == [f"tree {tree}"] else f"no tree entry of {sha[:7]}"
-
-
-def completion_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
-    """One line per COMPLETE item that ``record --sha`` did not mark (a hand-set status)."""
-    out = []
-    for item in plan.items:
-        why = record_shape_problem(repo, item) if item.status == ItemStatus.COMPLETE else None
-        if why:
-            out.append(f"{item.id} is COMPLETE without the record of record --sha ({why}); "
-                       "set it back and run record")
-    return out
 
 
 def claims_rev(plan: pm.ActionPlan) -> Optional[str]:
@@ -217,12 +222,16 @@ def claims_rev(plan: pm.ActionPlan) -> Optional[str]:
     return (plan.base_commit or None) if any(i.status in DONE for i in plan.items) else None
 
 
-def all_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
-    """Every check of a plan that loaded: loading already validated its shape."""
+def claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
+    """The lint, anchor and sweep checks of a plan that loaded: loading already validated its shape."""
     rev = claims_rev(plan)
     return (pc.lint_problems(plan, repo, plans_dir()) + pc.anchor_problems(plan, repo, rev)
-            + pc.sweep_problems(plan, repo, active().artifacts.plans, rev) + digest_problems(plan)
-            + completion_problems(repo, plan))
+            + pc.sweep_problems(plan, repo, active().artifacts.plans, rev))
+
+
+def all_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
+    """Every check of a plan that loaded: the claims, the freeze digest and the record rules."""
+    return claim_problems(repo, plan) + digest_problems(plan) + prc.record_lines(plan)
 
 
 def check_summary(plan: pm.ActionPlan) -> str:
@@ -261,12 +270,9 @@ def red_results(repo: Path, plan: pm.ActionPlan) -> List[pr.RedResult]:
     if not planned_nodes(plan):
         return []
     head = git_out(repo, "rev-parse", "HEAD").strip()
-    tree = pr.make_tree(repo, head, active().resolve_worktree_root())
-    try:
+    with pr.throwaway_tree(repo, head, active().resolve_worktree_root()) as tree:
         pr.overlay(pr.test_sources(plan, plans_dir()), tree)
         return pr.run_red(plan, tree, sys.executable)
-    finally:
-        pr.drop_tree(repo, tree)
 
 
 def red_problems(repo: Path, plan: pm.ActionPlan) -> Tuple[List[pr.RedResult], List[str]]:
@@ -317,119 +323,187 @@ def base_claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     return [f"at base {base[:7]}: {p}" for p in found]
 
 
-def freeze_problems(repo: Path, plan: pm.ActionPlan, refreeze: bool) -> List[str]:
+def record_split(plan: pm.ActionPlan, refreeze: bool) -> Tuple[List[str], List[str]]:
+    """The record problems a freeze refuses, and the items whose broken seal a refreeze tolerates."""
+    found = [(p, refreeze and p.kind == RecordProblemKind.seal) for p in prc.record_problems(plan)]
+    refused = [str(p) for p, tolerated in found if not tolerated]
+    return refused, [p.item for p, tolerated in found if tolerated]
+
+
+def freeze_problems(repo: Path, plan: pm.ActionPlan, refreeze: bool) -> Tuple[List[str], List[str]]:
+    """The problems that refuse a freeze, and the items a refreeze leaves to record again.
+
+    The freeze digest is not checked: a first freeze has none, and a refreeze replaces it.
+    """
     frozen = plan.frozen
     if frozen is not None and not refreeze:
-        return [f"plan {plan.plan_id} is already frozen ({frozen.date}); pass --refreeze"]
-    problems = [p for p in all_problems(repo, plan) if not (refreeze and p.startswith("plan changed after"))]
-    problems += base_claim_problems(repo, plan)
+        return [f"plan {plan.plan_id} is already frozen ({frozen.date}); pass --refreeze"], []
+    refused, rerecord = record_split(plan, refreeze)
+    problems = claim_problems(repo, plan) + refused + base_claim_problems(repo, plan)
     problems += [f"decision {d} is open: {q}" for d, q in (o.split(": ", 1) for o in pc.open_decisions(plan))]
     problems += started_items(plan) + unproven_items(plan)
-    return problems + ([] if plan.items else ["the plan has no items"])
+    return problems + ([] if plan.items else ["the plan has no items"]), rerecord
+
+
+def new_frozen(repo: Path, plan: pm.ActionPlan, records: Optional[RecordScheme]) -> pm.Frozen:
+    """The freeze record at HEAD under the record scheme ``records``."""
+    head = git_out(repo, "rev-parse", "HEAD").strip()
+    tree = git_out(repo, "rev-parse", "HEAD^{tree}").strip()
+    return pm.Frozen.at(head, tree, today(), pd.frozen_digest(plan, records), records)
 
 
 def cmd_freeze(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
-    problems = freeze_problems(repo, plan, args.refreeze)
+    if plan.frozen is not None and prc.keeps_sealed(plan):
+        # A sealed plan stays sealed: the record rules judge its items as sealed, and the scheme is kept.
+        plan.frozen = plan.frozen.model_copy(update={"records": RecordScheme.sealed})
+    problems, rerecord = freeze_problems(repo, plan, args.refreeze)
     if problems:
         raise pd.PlanError(problems)
     problems = red_problems(repo, plan)[1]
     if problems:
         raise pd.PlanError(problems)
-    head = git_out(repo, "rev-parse", "HEAD").strip()
-    tree = git_out(repo, "rev-parse", "HEAD^{tree}").strip()
-    plan.frozen = pm.Frozen(commit=head, tree=tree, date=today(), digest=pd.frozen_digest(plan))
+    plan.frozen = new_frozen(repo, plan, prc.scheme_for(plan))
     save(plan_file, plan)
-    print(f"freeze [done] | plan {plan.plan_id} | at {head[:7]} | {len(plan.items)} items")
+    print("\n".join([f"freeze [done] | plan {plan.plan_id} | at {plan.frozen.commit[:7]} | "
+                     f"{len(plan.items)} items", *(f"re-record after refreeze: {i}" for i in rerecord)]))
     return 0
 
 
 # --- record -----------------------------------------------------------------------------------------------
 
-def require_frozen(repo: Path, plan: pm.ActionPlan) -> None:
+def require_frozen(plan: pm.ActionPlan) -> None:
+    """The gate of ``record``: a frozen plan whose digest holds. A broken seal never blocks a record."""
     if plan.frozen is None:
         raise pd.PlanError([f"plan {plan.plan_id} is not frozen; run freeze first"])
-    problems = digest_problems(plan) + completion_problems(repo, plan)
+    problems = digest_problems(plan)
+    if problems:
+        raise pd.PlanError(problems)
+
+
+def require_valid(plan: pm.ActionPlan) -> None:
+    """The gate of ``lanes``: ``require_frozen`` and the record rules (``lanes`` writes nothing)."""
+    require_frozen(plan)
+    problems = prc.record_lines(plan)
     if problems:
         raise pd.PlanError(problems)
 
 
 def dependency_problems(plan: pm.ActionPlan, item: pm.ActionItem) -> List[str]:
+    """One line per dependency not done, or done without a record that proves it."""
     out = []
     for dep in item.dependencies or []:
-        status = pd.item_by_id(plan, dep).status
-        if status not in DONE:
-            out.append(f"{item.id} depends on {dep}, which is {status}")
+        upstream = pd.item_by_id(plan, dep)
+        done = upstream.status in DONE
+        if done and prc.record_holds(plan, upstream):
+            continue
+        fix = f" without a valid record; {prc.record_command(plan.plan_id, dep)}" if done else ""
+        out.append(f"{item.id} depends on {dep}, which is {upstream.status}{fix}")
     return out
 
 
 def item_paths(item: pm.ActionItem) -> List[str]:
-    nodes = [t.node.split("::")[0] for t in item.tests]
+    nodes = [plx.node_file(t.node) for t in item.tests]
     return list(dict.fromkeys([*item.files, *nodes]))
 
 
 def resolve_commit(repo: Path, sha: str) -> str:
+    """The full SHA of the commit ``sha`` names; it need not be reachable from HEAD."""
     done = git(repo, "rev-parse", "--verify", "--quiet", f"{sha}^{{commit}}")
     if done.returncode != 0:
         raise pd.PlanError([f"{sha} does not name a commit"])
-    full = done.stdout.strip()
-    if git(repo, "merge-base", "--is-ancestor", full, "HEAD").returncode != 0:
-        raise pd.PlanError([f"commit {full[:7]} is not reachable from HEAD"])
-    return full
+    return done.stdout.strip()
 
 
-def commit_problems(repo: Path, plan: pm.ActionPlan, item: pm.ActionItem, sha: str) -> List[str]:
-    """The commit changes one of the item's files since the base; the tree still matches it there."""
+def index_provenance(repo: Path) -> pm.Provenance:
+    """The staged index as recorded code: its tree (``git write-tree``), no commit."""
+    return pm.Provenance(source=RecordSource.staged, tree=git_out(repo, "write-tree").strip())
+
+
+def commit_provenance(repo: Path, sha: str) -> pm.Provenance:
+    """The commit ``sha`` (full) and its tree as recorded code."""
+    tree = git_out(repo, "rev-parse", f"{sha}^{{tree}}").strip()
+    return pm.Provenance(source=RecordSource.commit, tree=tree, commit=sha)
+
+
+def provenance_of(repo: Path, args: argparse.Namespace) -> pm.Provenance:
+    """The code a COMPLETE record names: the ``--sha`` commit and its tree, or the index tree."""
+    return index_provenance(repo) if args.staged else commit_provenance(repo, resolve_commit(repo, args.sha))
+
+
+def testable_commit(repo: Path, prov: pm.Provenance) -> str:
+    """The commit a throwaway worktree checks out for ``prov``: its own, or a dangling tree snapshot."""
+    if prov.source == RecordSource.commit and prov.commit:
+        return prov.commit
+    head = git_out(repo, "rev-parse", "HEAD").strip()
+    return snapshot_commit(repo, prov.tree, head, "plan.py index snapshot", SNAPSHOT_IDENTITY)
+
+
+def worktree_problems(repo: Path, item_id: str, paths: List[str], prov: pm.Provenance) -> List[str]:
+    """The item's paths in the working tree differ from the commit (``--sha``) or the index (``--staged``)."""
+    by_commit = prov.source == RecordSource.commit
+    against = [prov.tree] if by_commit else []
+    differ = git_out(repo, "diff", "--name-only", *against, "--", *paths).split()
+    differ += git_out(repo, "ls-files", "--others", "--exclude-standard", "--", *paths).split()
+    if not differ:
+        return []
+    listed = ", ".join(sorted(set(differ)))
+    if by_commit:
+        return [f"{item_id} files differ from {prov.where} in the working tree: {listed}; "
+                "commit them and record that commit"]
+    return [f"{item_id} files differ from the index in the working tree: {listed}; "
+            "stage them and record again"]
+
+
+def commit_problems(repo: Path, plan: pm.ActionPlan, item: pm.ActionItem, prov: pm.Provenance) -> List[str]:
+    """The recorded tree changes one of the item's files since the base; the working tree still matches it."""
     paths, item_id = item_paths(item), item.id
     if not paths:
         return []
-    changed = git_out(repo, "diff", "--name-only", plan.base_commit, sha, "--", *paths).split()
-    out = [] if changed else [f"{item_id}: no file of the item changed between the base and {sha[:7]}"]
-    differ = git_out(repo, "diff", "--name-only", sha, "--", *paths).split()
-    differ += git_out(repo, "ls-files", "--others", "--exclude-standard", "--", *paths).split()
-    if differ:
-        listed = ", ".join(sorted(set(differ)))
-        out.append(f"{item_id} files differ from {sha[:7]} in the working tree: {listed}; "
-                   "commit them and record that commit")
-    return out
+    changed = git_out(repo, "diff", "--name-only", plan.base_commit, prov.tree, "--", *paths).split()
+    out = [] if changed else [f"{item_id}: no file of the item changed between the base and {prov.where}"]
+    return out + worktree_problems(repo, item_id, paths, prov)
 
 
 def tests_at(repo: Path, sha: str, cmd: List[str]) -> "subprocess.CompletedProcess[str]":
     """Run ``cmd`` on a throwaway detached worktree at ``sha``, so the tests see that commit alone."""
-    tree = pr.make_tree(repo, sha, active().resolve_worktree_root())
-    try:
+    with pr.throwaway_tree(repo, sha, active().resolve_worktree_root()) as tree:
         return pr.run_pytest(cmd, tree)
-    finally:
-        pr.drop_tree(repo, tree)
 
 
-def run_tests(repo: Path, item: pm.ActionItem, sha: str) -> List[str]:
-    """The pytest command of the item's nodes after they passed at ``sha``; a problem when they fail."""
+def pytest_argv(nodes: List[str]) -> List[str]:
+    """The pytest command line of ``nodes`` under this interpreter, with the red run's pinned options."""
+    return [sys.executable, *pr.PYTEST_ARGS, *nodes]
+
+
+def tail(done: "subprocess.CompletedProcess[str]") -> str:
+    """The last three lines of a pytest run's output, joined on one line."""
+    return " | ".join(done.stdout.strip().splitlines()[-3:])
+
+
+def run_tests(repo: Path, item: pm.ActionItem, prov: pm.Provenance) -> Optional[pm.PassedTests]:
+    """The item's nodes after they passed on the recorded code; a problem when they fail."""
     nodes = [t.node for t in item.tests]
     if not nodes:
-        return []
-    done = tests_at(repo, sha, [sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider", *nodes])
+        return None
+    argv = pytest_argv(nodes)
+    done = tests_at(repo, testable_commit(repo, prov), argv)
     if done.returncode != 0:
-        tail = " | ".join(done.stdout.strip().splitlines()[-3:])
-        raise pd.PlanError([f"{item.id} tests failed at {sha[:7]}: {tail}"])
-    return ["python -m pytest -q " + " ".join(nodes)]
+        raise pd.PlanError([f"{item.id} tests failed at {prov.where}: {tail(done)}"])
+    return pm.PassedTests.of(nodes, argv)
 
 
-def complete(repo: Path, plan: pm.ActionPlan, item: pm.ActionItem, sha_ref: str) -> ItemStatus:
+def complete(repo: Path, plan: pm.ActionPlan, item: pm.ActionItem, args: argparse.Namespace) -> pm.Completed:
+    """The Completed outcome of ``--sha`` or ``--staged`` once every rule holds."""
     problems = dependency_problems(plan, item)
     if problems:
         raise pd.PlanError(problems)
-    sha = resolve_commit(repo, sha_ref)
-    problems = commit_problems(repo, plan, item, sha)
+    prov = provenance_of(repo, args)
+    problems = commit_problems(repo, plan, item, prov)
     if problems:
         raise pd.PlanError(problems)
-    command = run_tests(repo, item, sha)
-    tree = git_out(repo, "rev-parse", f"{sha}^{{tree}}").strip()
-    nodes = len(item.tests)
-    item.evidence = f"commit {sha[:7]}: {nodes} test node(s) passed" if nodes else f"commit {sha[:7]}"
-    item.verification_references = [sha, f"tree {tree}", *command]
-    return ItemStatus.COMPLETE
+    return pm.Completed.of(prov, run_tests(repo, item, prov))
 
 
 def reject_empty(flag: str, value: Optional[str]) -> None:
@@ -438,24 +512,25 @@ def reject_empty(flag: str, value: Optional[str]) -> None:
 
 
 def apply_record(repo: Path, plan: pm.ActionPlan, item: pm.ActionItem,
-                 args: argparse.Namespace) -> ItemStatus:
+                 args: argparse.Namespace) -> pm.Outcome:
+    """The outcome the flags ask for; ``--sha`` and ``--staged`` first prove it."""
     for flag, value in (("sha", args.sha), ("blocked", args.blocked), ("closed", args.closed)):
         reject_empty(flag, value)
-    if args.sha is not None:
-        return complete(repo, plan, item, args.sha)
-    status, evidence = ((ItemStatus.IN_PROGRESS, f"started {today()}") if args.start
-                        else (ItemStatus.BLOCKED, args.blocked) if args.blocked is not None
-                        else (ItemStatus.CLOSED_NO_ACTION, args.closed))
-    item.evidence = evidence
-    return status
+    if args.sha is not None or args.staged:
+        return complete(repo, plan, item, args)
+    if args.start:
+        return pm.Started(kind=OutcomeKind.started)
+    if args.blocked is not None:
+        return pm.Blocked(kind=OutcomeKind.blocked, reason=args.blocked)
+    return pm.Closed(kind=OutcomeKind.closed, rationale=args.closed)
 
 
 def cmd_record(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
-    require_frozen(repo, plan)
+    require_frozen(plan)
     item = pd.item_by_id(plan, args.item)
-    item.status = apply_record(repo, plan, item, args)
+    prc.stamp(plan, item, apply_record(repo, plan, item, args), today())
     if all(i.status in DONE for i in plan.items):
         plan.completed = today()
     else:
@@ -471,11 +546,71 @@ def cmd_record(repo: Path, args: argparse.Namespace) -> int:
 
 def cmd_lanes(repo: Path, args: argparse.Namespace) -> int:
     plan = pd.load_plan(locate(repo, args.plan))
-    require_frozen(repo, plan)
+    require_valid(plan)
     target = args.target or current_branch(repo)
     if not target:
         raise CaptureError(["detached HEAD: check out the target branch or pass --target"])
     print(json.dumps(plx.lanes_plan(plan, target), indent=2))
+    return 0
+
+
+# --- verify -----------------------------------------------------------------------------------------------
+
+def verify_target(repo: Path, staged: bool) -> pm.Provenance:
+    """The code ``verify`` runs on: the staged index, or HEAD and its tree."""
+    if staged:
+        return index_provenance(repo)
+    return commit_provenance(repo, git_out(repo, "rev-parse", "HEAD").strip())
+
+
+def verify_where(prov: pm.Provenance) -> str:
+    """How verify lines name the code: ``HEAD <h7>``, or the index and its short tree."""
+    return f"HEAD {prov.where}" if prov.source == RecordSource.commit else prov.where
+
+
+def unrun_result(plan: pm.ActionPlan, item: pm.ActionItem) -> Optional[prc.VerifyResult]:
+    """The result of a COMPLETE item verify does not run: no valid record, or a record without tests."""
+    if not prc.record_holds(plan, item):
+        return prc.VerifyResult(item=item.id, kind=VerifyKind.unrecorded,
+                                detail=prc.record_command(plan.plan_id, item.id))
+    if not prc.recorded_nodes(item):
+        return prc.VerifyResult(item=item.id, kind=VerifyKind.no_tests)
+    return None
+
+
+def run_result(plan: pm.ActionPlan, item: pm.ActionItem, tree: Path, where: str) -> prc.VerifyResult:
+    """Run the item's recorded nodes in ``tree``: pass, or fail with the tail and the repair."""
+    done = pr.run_pytest(pytest_argv(prc.recorded_nodes(item)), tree)
+    if done.returncode == 0:
+        return prc.VerifyResult(item=item.id, kind=VerifyKind.pass_)
+    detail = f"{where}: {tail(done)}; fix the code, then {prc.record_command(plan.plan_id, item.id)} again"
+    return prc.VerifyResult(item=item.id, kind=VerifyKind.fail, detail=detail)
+
+
+def verify_items(repo: Path, plan: pm.ActionPlan, prov: pm.Provenance) -> List[prc.VerifyResult]:
+    """One result per COMPLETE item, in plan order; the runs share one throwaway worktree, made on demand."""
+    items = [i for i in plan.items if i.status == ItemStatus.COMPLETE]
+    known = {i.id: unrun_result(plan, i) for i in items}
+    if all(result is not None for result in known.values()):
+        return [result for result in known.values() if result is not None]
+    where = verify_where(prov)
+    with pr.throwaway_tree(repo, testable_commit(repo, prov), active().resolve_worktree_root()) as tree:
+        return [run_result(plan, i, tree, where) if known[i.id] is None else known[i.id] for i in items]
+
+
+def cmd_verify(repo: Path, args: argparse.Namespace) -> int:
+    plan = pd.load_plan(locate(repo, args.plan))
+    prov = verify_target(repo, args.staged)
+    results = verify_items(repo, plan, prov)
+    lines = [str(r) for r in results if not r.failed]
+    failed = [str(r) for r in results if r.failed]
+    if failed:
+        if lines:
+            print("\n".join(lines))
+        raise pd.PlanError(failed)
+    passed = sum(1 for r in results if r.kind == VerifyKind.pass_)
+    head = f"verify [ok] | plan {plan.plan_id} | {passed} item(s) pass at {verify_where(prov)}"
+    print("\n".join([head, *lines]))
     return 0
 
 
@@ -487,6 +622,8 @@ def _record_parser(sub: Any) -> None:
     record.add_argument("item", help="Item id, such as TASK-1.")
     mode = record.add_mutually_exclusive_group(required=True)
     mode.add_argument("--sha", help="Commit that implements the item; marks it COMPLETE.")
+    mode.add_argument("--staged", action="store_true",
+                      help="Record the staged index (uncommitted) as the item's code; marks it COMPLETE.")
     mode.add_argument("--start", action="store_true", help="Mark the item IN_PROGRESS.")
     mode.add_argument("--blocked", metavar="REASON", help="Mark the item BLOCKED.")
     mode.add_argument("--closed", metavar="RATIONALE", help="Mark the item CLOSED_NO_ACTION.")
@@ -511,12 +648,15 @@ def _parser() -> argparse.ArgumentParser:
     lanes.add_argument("plan", help="Plan id or plan file.")
     lanes.add_argument("--target", help="Target branch of the lanes (default: the checked-out branch).")
     _record_parser(sub)
+    verify = sub.add_parser("verify", help="Rerun the COMPLETE items' tests at HEAD; writes nothing.")
+    verify.add_argument("plan", help="Plan id or plan file.")
+    verify.add_argument("--staged", action="store_true", help="Run them on the staged index instead.")
     return parser
 
 
 COMMANDS: Dict[str, Callable[[Path, argparse.Namespace], int]] = {
     "new": cmd_new, "check": cmd_check, "render": cmd_render, "red": cmd_red, "freeze": cmd_freeze,
-    "lanes": cmd_lanes, "record": cmd_record,
+    "lanes": cmd_lanes, "record": cmd_record, "verify": cmd_verify,
 }
 
 

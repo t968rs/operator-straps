@@ -15,9 +15,10 @@ guidance for writing the plan (scope, a constraint, files to read first); it nev
 A plan here is an ActionPlan JSON the driver checks, not prose. Every claim about existing code is an
 **anchor** the driver opens; every search the plan relies on is a **sweep** the driver reruns; every test is
 a **real file** the plan holds, and every item changes state only through `record`: an item with tests is
-marked COMPLETE only when they pass on a throwaway worktree at a commit that changed its files, a command-only
-item is recorded on the commit alone (its commands are not run), and `--closed` needs a rationale, no commit.
-The PIP markdown is rendered from the JSON and never edited by hand.
+marked COMPLETE only when they pass on a throwaway worktree at the recorded commit or index tree, a
+command-only item is recorded on the commit or tree alone (its commands are not run), and `--closed` needs a
+rationale, no commit. Every status `record` writes is sealed. The PIP markdown is rendered from the JSON and
+never edited by hand.
 
 `PLAN` below stands for `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/plan.py"`,
 run with the Bash tool from the project checkout. Every refusal is a `problem:` line and exit 1.
@@ -77,28 +78,50 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
 8. **`PLAN freeze <id>`**. It refuses any check problem, any open decision, any open item with neither a test
    nor a command, any red problem, and, on a first freeze, any item not `PENDING`. After the freeze only
    `record` changes the plan; `check` reports any edit outside the execution fields (the `Mutable` fields of
-   `plan_models`: item status, evidence and verification references; the plan's completed, frozen and
-   markdown sync fields), and any COMPLETE item without the commit and tree `record` writes. A change of
-   design after the freeze is a `write` of the changed plan plus `freeze --refreeze`, stated to the developer.
-   A refreeze is standard procedure, not a design ambiguity: ask the developer for the OK, then do it. Once an
-   item is done, `check` and the refreeze read anchors and sweeps at the plan's base commit, since the done work
-   has already changed the code they quote; a new anchor added mid-plan quotes the code at the base. A freeze
-before any item is done requires them to hold at the base as well as in the tree. A plan id
+   `plan_models`: item status, evidence, verification references and record; the plan's completed, frozen and
+   markdown sync fields), and, on a plan frozen with the record scheme, any status without a sealed record (a
+   hand-set status, a hand edit, a record copied from another item); a plan frozen before it still accepts the
+   old `record --sha` shapes. A change of design after the freeze is a `write` of the changed plan plus
+   `freeze --refreeze`, stated to the developer. A refreeze is standard procedure, not a design ambiguity: ask
+   the developer for the OK, then do it.
+
+   A refreeze that changes a recorded item's files or tests breaks that item's seal by design: the refreeze
+   tolerates it and prints `re-record after refreeze: <ITEM>`, and `check` flags the item until `record` runs
+   on it again. A refreeze still refuses a non-PENDING item with no record. Once an item is done, `check` and
+   the refreeze read anchors and sweeps at the plan's base commit, since the done work has already changed the
+   code they quote; a new anchor added mid-plan quotes the code at the base. A freeze
+   before any item is done requires them to hold at the base as well as in the tree. A plan id
    that collides with one on the base branch moves the newer plan to the next free id; a plan already on the base
    branch is never renumbered to spare the newer one. Each plan id is unique in the plans folder, because `PLAN`
    resolves a plan by id and refuses a folder with two plans of one id.
+
+   **What a record proves.** `record` seals each status it writes: a sha256 over the item's id, status,
+   evidence, files, tests and the record without its seal, so `check` refuses any status, evidence or record a
+   hand edit set, and a record copied from another item. The record keeps the tree that was tested and the
+   commit when there was one; neither is compared with HEAD, so staging with `harness:a-w`, a squash, a rebase
+   or an amend leaves the plan valid. Whether the work is still in the code is a separate question with a
+   separate command: `PLAN verify <id>` reruns the COMPLETE items' tests at HEAD, writes nothing, and belongs
+   before the merge. A broken seal or a failed `verify` is fixed by `record` on that item again; `record` never
+   refuses because another item, or the item itself, fails `check`; it refuses only an unfrozen plan, a broken
+   freeze digest and a dependency without a valid record. A hand edit that recomputes the hash, or restores an
+   item's own earlier record, is not caught: the seal is a keyless hash, not a signature.
+
 9. **Hand off** the PIP path for review and an execution method. For parallel execution,
    `PLAN lanes <id> | P2 plan -` (with `P2` as in `harness:parallel2`) turns the open items into lanes, waved
-   by dependency and file overlap. A lane id is the item id in lower case with dots as hyphens (`TASK-3.2`
-   is `task-3-2`), and its task is the item title alone: append the item's PIP section (action, anchors,
+   by dependency and file overlap; `PLAN lanes <id>` refuses a plan with a broken freeze digest or a record
+   problem, and `record` on the item it names repairs the record problem. A lane id is the item id in lower
+   case with dots as hyphens (`TASK-3.2` is `task-3-2`), and its task is the item title alone: append the item's PIP section (action, anchors,
    tests, commands) to each lane prompt, with the instruction to copy each planned test file from
    `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first. parallel2 stages each lane's
-   changes uncommitted in the target and deletes the `p2/<id>` lane branch, so `record` waits until the
-   developer commits the staged work, and `--sha` names that commit, never the lane commit. Each implemented
-   item is recorded with `PLAN record <id> <ITEM> --sha <commit>`: it needs the item's dependencies done, the
-   commit reachable from HEAD with one of the item's files changed between the plan base and it, the item's
-   files unchanged since that commit, and the item's test nodes passing on a throwaway worktree at that
-   commit. `--start`,
+   changes uncommitted in the target and deletes the `p2/<id>` lane branch, so staged lane work is recorded
+   with `PLAN record <id> <ITEM> --staged` once it is in the index, or with `--sha` after the developer
+   commits it. `--sha` may name any commit, a lane commit included, as long as the item's files in the working
+   tree match it. `PLAN record <id> <ITEM> --sha <commit>` needs the item's
+   dependencies done with valid records, one of the item's files changed between the plan base and the
+   commit, the item's files unchanged since that commit, and the item's test nodes passing on a throwaway
+   worktree at that commit. `--staged` needs the same of the index tree: the dependencies done with valid
+   records, one of the item's files changed between the base and the index, no unstaged or untracked change
+   to the item's files, and the nodes passing on a throwaway worktree at a snapshot of the index. `--start`,
    `--blocked "<reason>"` and `--closed "<rationale>"` set the other states.
 
 ## What an item must carry

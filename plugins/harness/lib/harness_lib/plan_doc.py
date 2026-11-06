@@ -13,11 +13,12 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Mapping
+from typing import Any, Dict, List, Mapping, Optional
 
 from pydantic import BaseModel, ValidationError
 
 from harness_lib import plan_models as pm
+from harness_lib.plan_enums import RecordScheme
 
 PLAN_SUFFIX = "_ActionPlan.json"
 PIP_SUFFIX = "_PIP.md"
@@ -156,11 +157,18 @@ def save_plan(path: Path, plan: pm.ActionPlan) -> None:
     path.write_text(dump_plan(plan), encoding="utf-8")
 
 
-def frozen_digest(plan: pm.ActionPlan) -> str:
-    """SHA-256 of the plan without MUTABLE_TOP at the top level and MUTABLE_ITEM in each item."""
-    fixed = {k: v for k, v in plan_dict(plan).items() if k not in MUTABLE_TOP}
+def frozen_digest(plan: pm.ActionPlan, records: Optional[RecordScheme] = None) -> str:
+    """SHA-256 of the plan without MUTABLE_TOP at the top level and MUTABLE_ITEM in each item.
+
+    A set ``records`` scheme wraps the hashed fields as ``{"plan": ..., "records": ...}``, so removing a
+    stored scheme by hand moves the digest, and a top-level ``records`` key added to the open plan cannot
+    forge it (a plan's top level always carries ``plan_id``). An unset scheme leaves earlier digests as they
+    were.
+    """
+    fixed: Dict[str, Any] = {k: v for k, v in plan_dict(plan).items() if k not in MUTABLE_TOP}
     fixed["items"] = [{k: v for k, v in item.items() if k not in MUTABLE_ITEM} for item in fixed["items"]]
-    canonical = json.dumps(fixed, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    hashed = fixed if records is None else {"plan": fixed, "records": records.value}
+    canonical = json.dumps(hashed, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 

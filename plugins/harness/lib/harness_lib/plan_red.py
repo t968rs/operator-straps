@@ -1,7 +1,8 @@
 """Run an action plan's planned tests red: overlaid on a commit, each must fail as planned.
 
 A planned test file lives beside the plan at ``<plans_dir>/<plan_id>/tests/<repo-relative path>``. The
-red run copies those files into a detached worktree at a commit (``make_tree``, ``overlay``; the ``plan.py``
+red run copies those files into a detached worktree at a commit (``make_tree`` or the ``throwaway_tree``
+context, ``overlay``; the ``plan.py``
 driver passes HEAD, so items already recorded are part of the tree),
 runs every test node of each open item there, one pytest process per node (``run_red``), and compares the
 exception that failed the node with the item's planned ``red`` reason (``red_problems``).
@@ -24,9 +25,10 @@ import os
 import re
 import shutil
 import subprocess
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Mapping, Optional, Sequence
+from typing import Dict, Iterator, List, Mapping, Optional, Sequence
 
 from harness_lib.branch_capture import CaptureError, git
 from harness_lib.plan_lanes import node_file, open_items
@@ -226,3 +228,13 @@ def drop_tree(repo: Path, tree: Path) -> None:
     done = git(repo, "worktree", "remove", "--force", tree.as_posix())
     if done.returncode != 0:
         raise CaptureError([f"git worktree remove {tree.as_posix()} failed: {done.stderr.strip()}"])
+
+
+@contextmanager
+def throwaway_tree(repo: Path, rev: str, root: Path) -> Iterator[Path]:
+    """A ``make_tree`` worktree at ``rev`` under ``root`` for the ``with`` block, dropped on the way out."""
+    tree = make_tree(repo, rev, root)
+    try:
+        yield tree
+    finally:
+        drop_tree(repo, tree)

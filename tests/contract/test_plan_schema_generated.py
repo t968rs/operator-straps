@@ -20,6 +20,7 @@ PLAN_MODULES = (
     "plugins/harness/lib/harness_lib/plan_lanes.py",
     "plugins/harness/lib/harness_lib/plan_red.py",
     "plugins/harness/lib/harness_lib/plan_api.py",
+    "plugins/harness/lib/harness_lib/plan_record.py",
     "plugins/harness/scripts/plan.py",
     "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py",
 )

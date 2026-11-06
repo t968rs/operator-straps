@@ -53,7 +53,8 @@ Example: "Resolve 10 code review findings (2 critical, 5 important, 3 minor) fro
 - ActionPlan JSON is the source of truth for:
   - TODO checklist content (`items[].action`)
   - implementation-progress state (`items[].status`, `items[].evidence`)
-  - verification references (`items[].verification_references`)
+  - the sealed record of each status (`items[].record`), and legacy verification references
+    (`items[].verification_references`)
 - PIP Markdown expands those JSON keys with visual flow, rationale, and evidence detail.
 - If implementation deviates from JSON, change the plan through `plan_api.write` (status and evidence only
   through `plan.py record`), then run `plan.py render` to regenerate this Markdown; neither file is edited by hand.
@@ -104,7 +105,19 @@ Run: `pytest tests/test_file.py::test_name -v`
 
 Expected: `PASS` (N/N passed)
 
+**Recorded:** 2026-11-05, commit `abc1234`, tree `def5678`
+- `pytest tests/test_file.py::test_name -q`
+
+(Rendered from `items[].record`, the sealed record `plan.py record` writes, as one of three lines:
+`**Recorded:** <date>, commit <c7>, tree <t7>` for `--sha`, `**Recorded:** <date>, staged, tree <t7>` for
+`--staged`, or `**Recorded:** <date>, <kind>` otherwise, where kind is `started`, `blocked`, `closed` or
+`complete`; c7 and t7 are the commit and tree SHAs cut to seven characters, each in backticks. When the
+record carries passed tests, the test command follows on its own line as `` - `<command>` ``. The line is
+absent when the item has no record.)
+
 #### Verification references (mirror `items[].verification_references`)
+
+Legacy proof list: rendered only on plans frozen before the record scheme; `record` no longer writes it.
 
 - Commit: `abc1234`
 - Test: `pytest tests/...`
@@ -196,7 +209,9 @@ After all tasks complete and tests pass:
 2. Push feature branch: `git push origin feature_branch`
 3. Open/update PR in GitHub
 4. Record each item in `<plans dir>/{PLAN_ID}_{Title}_ActionPlan.json` through `plan.py`, never by hand:
-   - `plan.py record {PLAN_ID} <ITEM> --sha <commit>` (COMPLETE) or `--closed "<rationale>"` (CLOSED_NO_ACTION)
+   - `plan.py record {PLAN_ID} <ITEM> --sha <commit>` or `--staged` (COMPLETE, sealed) or `--closed "<rationale>"`
+     (CLOSED_NO_ACTION)
+   - `plan.py verify {PLAN_ID}` before the merge: reruns the COMPLETE items' tests at HEAD, writes nothing
    - Add/update the relevant entry in `pr_attributes[]` through `plan_api.write`
    - `plan.py render {PLAN_ID}` to regenerate this PIP
 ```

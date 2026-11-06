@@ -53,6 +53,44 @@ class MarkdownSync(StrEnum):
     in_sync = "in_sync"
 
 
+class RecordSource(StrEnum):
+    """Where the code of a COMPLETE record came from: a commit, or the staged index."""
+
+    commit = "commit"
+    staged = "staged"
+
+
+class OutcomeKind(StrEnum):
+    """The discriminator of an item record's outcome; each kind implies one item status."""
+
+    complete = "complete"
+    started = "started"
+    blocked = "blocked"
+    closed = "closed"
+
+
+class RecordScheme(StrEnum):
+    """How a frozen plan's items prove their status; unset means the legacy references still pass."""
+
+    sealed = "sealed"
+
+
+class RecordProblemKind(StrEnum):
+    """Why an item fails the record rules: no sealed record, or a record whose seal does not match."""
+
+    missing = "missing"
+    seal = "seal"
+
+
+class VerifyKind(StrEnum):
+    """What ``plan.py verify`` found for one COMPLETE item; ``fail`` and ``unrecorded`` fail the run."""
+
+    pass_ = "pass"
+    no_tests = "no_tests"
+    fail = "fail"
+    unrecorded = "unrecorded"
+
+
 DONE: FrozenSet[ItemStatus] = frozenset({ItemStatus.COMPLETE, ItemStatus.CLOSED_NO_ACTION})
 # Items the lanes export still has to do.
 LANE_OPEN: FrozenSet[ItemStatus] = frozenset(

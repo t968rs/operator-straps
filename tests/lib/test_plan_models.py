@@ -10,7 +10,7 @@ from pydantic import BaseModel, ValidationError
 
 from harness_lib import plan_doc
 from harness_lib import plan_models as pm
-from harness_lib.plan_enums import ItemStatus, ModelName
+from harness_lib.plan_enums import ItemStatus, ModelName, RecordScheme
 from harness_lib.plan_render import render_pip
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "plan_models"
@@ -56,7 +56,7 @@ def test_a_field_the_old_schema_required_has_no_default() -> None:
 
 def test_mutable_fields_are_the_freeze_digest_exclusions() -> None:
     assert set(pm.mutable_top()) == {"completed", "frozen", "markdown_sync_status", "markdown_last_updated"}
-    assert set(pm.mutable_item()) == {"status", "evidence", "verification_references"}
+    assert set(pm.mutable_item()) == {"status", "evidence", "verification_references", "record"}
 
 
 def test_a_marker_never_reaches_the_generated_schema() -> None:
@@ -129,6 +129,14 @@ def test_the_digest_ignores_execution_fields_and_sees_every_other_field() -> Non
     assert plan_doc.frozen_digest(plan) == before
     plan.items[0].title = "changed"
     assert plan_doc.frozen_digest(plan) != before
+
+
+def test_a_hand_added_top_level_records_key_does_not_forge_the_folded_scheme() -> None:
+    raw = _raw("0001_Minimal_ActionPlan.json")
+    clean = plan_doc.validate_plan(raw)
+    forged = plan_doc.validate_plan({**raw, "records": RecordScheme.sealed.value})
+    assert forged.frozen is None or forged.frozen.records is None
+    assert plan_doc.frozen_digest(forged) != plan_doc.frozen_digest(clean, RecordScheme.sealed)
 
 
 def test_an_in_place_append_to_a_list_that_was_never_set_is_written() -> None:

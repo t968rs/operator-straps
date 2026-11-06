@@ -1,0 +1,429 @@
+{
+  "name": "write-plan",
+  "mode": "edit",
+  "base": "84cc5bc22de8967fda27f8280885b3953b81c73a",
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/write-plan/SKILL.md"
+    },
+    {
+      "kind": "driver",
+      "path": "plugins/harness/scripts/plan.py"
+    },
+    {
+      "kind": "models",
+      "path": "plugins/harness/lib/harness_lib/plan_models.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/plan_enums.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/plan_doc.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/plan_record.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/plan_render.py"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_write_plan_record_contract.py"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "record seals every status it writes, and check and lanes refuse a hand-set status, a hand edit, a copied record and a hand-deleted record scheme",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The seal and the record problems are file-state facts a pytest node computes",
+      "tests": [
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_a_commit_provenance_needs_its_commit",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_a_staged_provenance_carries_no_commit",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_provenance_rejects_a_short_tree",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_each_outcome_names_the_status_it_implies",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_the_kind_selects_the_outcome_class",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_a_blocked_or_closed_outcome_needs_its_text",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_passed_tests_need_a_node",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_evidence_names_the_commit_or_the_staged_tree",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_a_sealed_record_holds_for_its_item",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_every_outcome_seals",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_the_seal_breaks_when_a_covered_field_changes",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_the_seal_binds_the_plan_id",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_the_seal_ignores_fields_outside_the_record",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_the_sealed_fields_are_a_model_whose_digest_is_the_seal",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_a_record_reseals_after_a_round_trip_through_the_plan_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_a_defaulted_field_added_later_keeps_the_seal",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_record_is_a_mutable_item_field",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_frozen_carries_the_record_scheme",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_the_record_models_are_closed",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record_models.py::test_the_generated_schema_names_the_record_models",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_stamped_item_has_no_record_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_pending_plan_has_no_record_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_hand_set_status_is_a_missing_record",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_hand_edit_after_the_stamp_is_a_seal_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_record_copied_to_another_item_is_a_seal_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_record_left_on_a_pending_item_is_a_seal_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_stamp_clears_the_legacy_references",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_the_freeze_digest_folds_in_only_a_set_record_scheme",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_check_flags_a_hand_set_status",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_check_flags_a_hand_edit_of_the_evidence",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_lanes_refuses_a_hand_set_status",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_deleting_the_record_scheme_by_hand_is_a_plan_change",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "the record keeps the tested tree and the commit when there was one, and check compares neither with HEAD, so an amend, a squash, a staged attach or an unreachable commit leaves the plan valid; the PIP shows the record",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Exit codes and the record on disk after each git rewrite are facts a pytest node checks",
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_record_sha_writes_a_sealed_record_with_tree_and_commit",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_an_amend_of_the_recorded_commit_keeps_check_green",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_squash_of_two_recorded_commits_keeps_check_green",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_record_made_in_a_worktree_survives_a_staged_attach",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_record_sha_accepts_a_commit_unreachable_from_head",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_render_record.py::test_a_commit_record_renders_its_commit_tree_and_command",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_render_record.py::test_a_staged_record_renders_the_index_tree",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_render_record.py::test_the_record_box_names_both_ways_to_record",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_render_record.py::test_legacy_references_still_render",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B3",
+      "statement": "record --staged records the index tree, runs the tests on an index snapshot no ref keeps, and refuses unstaged item files and a --sha given with it",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The provenance, refs, worktrees and refusals are facts a pytest node checks",
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_record_staged_records_the_index_and_survives_the_commit",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_record_staged_refuses_unstaged_item_files",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_record_staged_runs_the_tests_on_the_index",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_record_refuses_both_a_sha_and_staged",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B4",
+      "statement": "record never refuses because of a broken seal, records a COMPLETE item again, and counts a dependency done only with a valid record (a sealed one, or a legacy shape on a legacy plan)",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Exit codes and problem lines decide each case",
+      "tests": [
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_dependency_counts_only_with_a_valid_record",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_legacy_dependency_counts_only_on_a_legacy_plan",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_complete_item_records_again",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_record_runs_while_another_item_has_a_broken_seal",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_hand_set_complete_dependency_unlocks_nothing",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_legacy_dependency_unlocks_its_dependent_on_a_legacy_plan",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B5",
+      "statement": "freeze --refreeze tolerates a broken seal on a recorded item and names it for a re-record, and still refuses a status without a record",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The refreeze output and exit code are facts a pytest node checks",
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_refreeze_that_changes_an_item_breaks_only_its_seal",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_refreeze_refuses_a_status_without_a_record",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B6",
+      "statement": "plan.py verify reruns the COMPLETE items' tests at HEAD or the index, reports every item, and writes nothing",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Output, exit code and the unchanged plan bytes are facts a pytest node checks",
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_verify_passes_and_writes_nothing",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_verify_staged_runs_the_tests_on_the_index",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_verify_reports_every_item_and_check_stays_green",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B7",
+      "statement": "legacy record shapes pass only on a plan frozen without a record scheme, an item with a record is judged by its seal alone, and a refreeze seals the scheme once no legacy item remains; todo_sync P2 reads a sealed COMPLETE record",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The record problems on legacy and sealed plans are facts a pytest node computes",
+      "tests": [
+        {
+          "node": "tests/lib/test_plan_record.py::test_legacy_shapes_pass_only_without_a_record_scheme",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_a_legacy_complete_item_needs_both_references",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_an_unfrozen_plan_accepts_no_legacy_shape",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_the_scheme_is_sealed_once_no_legacy_item_remains",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_plan_record.py::test_on_a_legacy_plan_an_item_with_a_record_is_judged_by_its_seal",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_legacy_plan_passes_check_without_git",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_sealed_plan_refuses_a_pasted_legacy_shape",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_plan_record_driver.py::test_a_refreeze_seals_the_scheme_once_no_legacy_item_remains",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_rules_plans_record.py::test_p2_accepts_a_complete_record_without_a_sha_in_the_evidence",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B8",
+      "statement": "SKILL.md states what a record proves (a seal, tree provenance never compared with HEAD, verify for the work still being there, record --staged for staged lane work) and drops the commit-ancestry rule",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Phrases in SKILL.md are facts a pytest node reads",
+      "tests": [
+        {
+          "node": "tests/skills/test_write_plan_record_contract.py::test_the_skill_says_what_a_record_proves",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_record_contract.py::test_the_skill_names_verify_for_the_work_still_being_there",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_record_contract.py::test_the_skill_records_staged_lane_work",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_record_contract.py::test_a_broken_seal_is_repaired_by_record",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_record_contract.py::test_the_commit_ancestry_rule_is_gone",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [],
+  "runs": [],
+  "grades": [],
+  "frozen": {
+    "skill_hash": "f377acbe207375988bdf1ef08f9bf551a36e07ec5ed03956bc904a4cb9feaf4f",
+    "grader": "session",
+    "at": "2026-11-06T08:26:35+00:00",
+    "authored": "5c16b6408d1df2ca064ecb26a3e60cd19d6cefd320eb747dc198340bdd6753c6"
+  },
+  "driver_digest": "f8c3c7f433b735dfc06c288e163393a323a925ae53d142fcfea1418fad125d38"
+}

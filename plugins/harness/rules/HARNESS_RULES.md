@@ -75,9 +75,11 @@ the configured `schemas_dir`. Work that is not tracked explicitly is work going 
   `<artifacts.plans>/{PR}_ActionPlan.json` **and**
   `<artifacts.plans>/{PR}_PIP.md`, updated as a pair: both written before work begins; after each task the JSON
   status and evidence update and the PIP steps are checked off atomically.
-- **Status is never a claim:** `COMPLETE` requires a commit SHA; `CLOSED_NO_ACTION` requires a rationale.
-- Anchor plan-state verification on the tree SHA (`git rev-parse HEAD^{tree}`), which survives rebase; fall back
-  to the commit SHA for older plans.
+- **Status is never a claim:** `COMPLETE` requires a commit SHA or a sealed record of the tested tree;
+  `CLOSED_NO_ACTION` requires a rationale.
+- For a plan `plan.py` does not record, anchor plan-state verification on the tree SHA
+  (`git rev-parse HEAD^{tree}`), which survives rebase; fall back to the commit SHA for older plans. A plan
+  `plan.py` records carries its own sealed record per item, never compared with HEAD.
 - **File touch list:** before changing code, list the files to touch with a rationale mapped to plan items.
 - **Refactoring preservation:** ordered structures stay ordered, validation stays validated, indices stay
   indexed. Audit what the original did beyond the obvious before simplifying.

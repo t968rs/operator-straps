@@ -18,6 +18,6 @@
 
 a
 
-- [ ] Record the commit: `plan.py record 0001 MN-1 --sha <sha>`
+- [ ] Record it: `plan.py record 0001 MN-1 --sha <sha>` or `--staged`
 
 **Evidence:** e

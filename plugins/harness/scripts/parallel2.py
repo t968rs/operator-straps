@@ -58,7 +58,6 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
-import os
 import shutil
 import subprocess
 import sys
@@ -69,6 +68,7 @@ from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
+from harness_lib import branch_capture as bc
 from harness_lib import parallel_lanes as pl
 from harness_lib.branch_capture import CaptureError, capture_paths, current_branch, git, git_out
 from harness_lib.commit_grouping import CapturedPath
@@ -326,11 +326,7 @@ def write_briefs(repo: Path, target: str, batch: Sequence[pl.Lane]) -> List[Path
 def snapshot_commit(repo: Path, head: str, message: str) -> str:
     """A commit of the index on ``head``, referenced by no branch, under the fixed snapshot identity."""
     tree = git_out(repo, "write-tree").strip()
-    done = subprocess.run(["git", "commit-tree", tree, "-p", head, "-m", message], cwd=repo,
-                          capture_output=True, text=True, env={**os.environ, **SNAPSHOT_IDENTITY})
-    if done.returncode != 0:
-        raise CaptureError([f"git commit-tree of the index snapshot failed: {done.stderr.strip()}"])
-    return done.stdout.strip()
+    return bc.snapshot_commit(repo, tree, head, message, SNAPSHOT_IDENTITY)
 
 
 def cut_base(repo: Path, target: str, wave: int) -> Tuple[str, str, int]:
