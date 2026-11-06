@@ -2,7 +2,8 @@
 
 ``merge_commit_msg.py capture`` prints the facts and ``build`` takes the message on stdin and writes only the
 TXT, so neither the skill, its format card, the hook docstring nor the README may route work through a
-``PR<N>_merge.md``.
+``PR<N>_merge.md``. The squash mode is selected by ``--squash``, ``-s`` or a bare ``squash`` right after the
+PR number; the docs name all three forms and both subjects.
 """
 from __future__ import annotations
 
@@ -13,10 +14,15 @@ from harness_lib.skill_parts import skill_parts
 
 NAME = "merge-commit-msg"
 SKILL_DIR = PLUGIN_ROOT / "skills" / NAME
+HINT = "<PR number> [squash | --squash | -s] [-- <guidance>]"
 
 
 def _text(path: Path) -> str:
     return path.read_text(encoding="utf-8")
+
+
+def _section(text: str, heading: str) -> str:
+    return text.split(heading, 1)[1].split("\n## ", 1)[0]
 
 
 def test_frontmatter_names_the_skill_folder() -> None:
@@ -66,3 +72,38 @@ def test_skill_names_the_change_route() -> None:
 def test_format_card_and_readme_name_the_stdin_route() -> None:
     for path in (SKILL_DIR / "message_format.md", REPO_ROOT / "README.md"):
         assert "stdin" in _text(path), path.name
+
+
+def test_argument_hint_names_the_squash_forms() -> None:
+    assert skill_parts(SKILL_DIR / "SKILL.md")[0].get("argument-hint", "").strip("\"'") == HINT
+
+
+def test_description_triggers_on_a_squash_message() -> None:
+    description = skill_parts(SKILL_DIR / "SKILL.md")[0].get("description", "")
+    assert "squash message" in description, description
+
+
+def test_skill_names_the_three_forms_and_keeps_squash_after_the_split_as_guidance() -> None:
+    text = _text(SKILL_DIR / "SKILL.md")
+    assert all(form in text for form in ("`--squash`", "`-s`", "`squash`"))
+    assert "`squash` after `--` is guidance" in text
+
+
+def test_skill_states_both_subjects() -> None:
+    text = _text(SKILL_DIR / "SKILL.md")
+    assert "`Merge PR #N -- <title>`" in text and "`<title> (#N)`" in text
+
+
+def test_common_mistakes_cover_a_mode_mismatch() -> None:
+    assert "--squash" in _section(_text(SKILL_DIR / "SKILL.md"), "## Common Mistakes")
+
+
+def test_format_card_states_both_subjects_and_a_squash_example() -> None:
+    text = _text(SKILL_DIR / "message_format.md")
+    assert "Merge PR #NNN -- <title>" in text and "<title> (#NNN)" in text
+    assert "## Worked example (squash" in text
+
+
+def test_readme_and_rules_name_the_squash_mode() -> None:
+    assert "/harness:merge-commit-msg 123 --squash" in _text(REPO_ROOT / "README.md")
+    assert "squash mode" in _text(PLUGIN_ROOT / "rules" / "HARNESS_RULES.md")

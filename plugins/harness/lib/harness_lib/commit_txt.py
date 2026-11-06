@@ -136,12 +136,18 @@ def strip_footer(message: str) -> str:
     return "\n".join(kept).strip()
 
 
-def _subject_parts(header: Optional[str]) -> Tuple[Optional[str], Optional[str], Optional[str]]:
-    """Return (type, scope, subject) from a subject line, or Nones when it does not parse."""
+def subject_parts(header: Optional[str]) -> Tuple[Optional[str], Optional[str], Optional[str]]:
+    """Return (type, scope, subject) from a ``Word(scope): summary`` subject, or Nones when it does not parse.
+
+    Any run of letters before the colon counts as the type; the commit-type list is not checked here.
+    """
     match = _SUBJECT.match(header) if header else None
     if match is None:
         return None, None, None
     return match.group(1), match.group(2), match.group(3).strip()
+
+
+_subject_parts = subject_parts
 
 
 def _parse_commit_block(block: str) -> Optional[CommitEntry]:
