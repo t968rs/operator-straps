@@ -6,13 +6,16 @@ or a child), a close candidate or a research catalog entry (``issues``) names it
 is untracked and gets an item of its own. The rows
 ``find_untracked`` returns carry what an agent needs to draft an item: the issue text, its comments and
 the text of the PR reviews it links.
+
+``file_issue`` runs the other direction for ``add --file-issue``: it files a new issue for an added item and
+returns its number and URL, which become the item's ``gh_issue`` source.
 """
 from __future__ import annotations
 
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from harness_lib.config import HarnessConfig
 from harness_lib.todo_sync import TodoSyncError, gh
@@ -136,3 +139,28 @@ def attach_reviews(cfg: HarnessConfig, row: Dict[str, Any]) -> None:
 def write_untracked(cfg: HarnessConfig, rows: List[Dict[str, Any]]) -> Path:
     """Write ``rows`` to ``untracked_path`` and return it."""
     return write_atomic(untracked_path(cfg), json.dumps(rows, indent=2, ensure_ascii=False) + "\n")
+
+
+#: The issue URL ``gh issue create`` prints as its last line, and the issue number inside it.
+_CREATED_URL = re.compile(r"(https://\S+/issues/(\d+))\s*$")
+
+
+def file_issue(cfg: HarnessConfig, title: str, body: str) -> Tuple[int, str]:
+    """File one issue (in ``todo.gh.repo``, else the repository ``gh`` resolves); returns number and URL."""
+    repo = ["--repo", cfg.todo.gh_repo] if cfg.todo.gh_repo else []
+    out = gh.run_gh(cfg.project_root, ["issue", "create", "--title", title, "--body-file", "-", *repo],
+                    stdin=body).strip()
+    match = _CREATED_URL.search(out)
+    if match is None:
+        raise TodoSyncError(f"gh issue create printed no issue URL: {out[:200]!r}; the issue may exist, "
+                            "so check gh issue list before a rerun")
+    return int(match.group(2)), match.group(1)
+
+
+def issue_body(spec: Dict[str, Any]) -> str:
+    """The issue text for an ``add`` spec item: its summary, proposed change and files."""
+    parts = [str(spec["summary"]).strip(), "## Proposed change", str(spec["proposed_change"]).strip()]
+    files = spec.get("files") or []
+    if files:
+        parts += ["## Files", "\n".join(f"- {path}" for path in files)]
+    return "\n\n".join(parts) + "\n"

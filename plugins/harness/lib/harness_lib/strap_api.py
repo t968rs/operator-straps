@@ -70,10 +70,16 @@ def new_test(node: str, red: Union[RedException, str]) -> PlannedTest:
 
 def new_scenario(task: str, tempts: str, pressures: Sequence[Union[Pressure, str]] = (),
                  checks: Sequence[Check] = (), judged: Sequence[JudgedItem] = (),
-                 fixture: Optional[str] = None, role: str = "session") -> Scenario:
-    """A validated scenario with the placeholder id ``SC-0``; ``add_scenario`` assigns the real one."""
+                 fixture: Optional[str] = None, role: str = "session",
+                 sees_skill: Optional[bool] = None) -> Scenario:
+    """A validated scenario with the placeholder id ``SC-0``; ``add_scenario`` assigns the real one.
+
+    ``sees_skill`` None follows the role (the session sees the SKILL.md, a role agent does not); True or
+    False overrides it, and False needs a role.
+    """
     return Scenario(id=f"{_SCENARIO_PREFIX}0", task=task, tempts=tempts, pressures=list(pressures),
-                    checks=list(checks), judged=list(judged), fixture=fixture, role=role)
+                    checks=list(checks), judged=list(judged), fixture=fixture, role=role,
+                    sees_skill=sees_skill)
 
 
 def new_check(kind: Union[CheckKind, str], target: str, baseline: bool, green: bool) -> Check:

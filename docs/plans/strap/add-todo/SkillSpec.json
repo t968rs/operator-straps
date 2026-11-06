@@ -1,0 +1,585 @@
+{
+  "name": "add-todo",
+  "mode": "new",
+  "base": null,
+  "judge": false,
+  "plugin_dir": "plugins/harness",
+  "parts": [
+    {
+      "kind": "skill_md",
+      "path": "plugins/harness/skills/add-todo/SKILL.md"
+    },
+    {
+      "kind": "models",
+      "path": "plugins/harness/lib/harness_lib/add_todo_models.py"
+    },
+    {
+      "kind": "api",
+      "path": "plugins/harness/lib/harness_lib/add_todo_api.py"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_add_todo_skill_contract.py"
+    },
+    {
+      "kind": "driver",
+      "path": "plugins/harness/scripts/add_todo.py"
+    },
+    {
+      "kind": "agent",
+      "path": "plugins/harness/agents/todo-editor.md"
+    }
+  ],
+  "behaviors": [
+    {
+      "id": "B1",
+      "statement": "todo_sync add takes a spec item with neither issue nor url as a local-only item whose one source is a dated note, refuses an item with only one of the two, counts it under sources_absorbed.note and sorts note sources after every other type on a tie",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Item fields, counts, sort order and refusals are catalog file state a pytest node compares",
+      "tests": [
+        {
+          "node": "tests/lib/test_todo_sync_add_note.py::test_note_item_gets_a_dated_note_source",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_add_note.py::test_note_count_is_created_then_incremented",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_add_note.py::test_issue_and_url_come_together_or_not_at_all",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_add_note.py::test_note_sorts_after_every_other_source_type_on_a_tie",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_add_note.py::test_note_item_passes_the_catalog_rules",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B2",
+      "statement": "todo_sync add --file-issue files one GitHub issue per spec item without an issue, records it as the item's gh_issue source, validates the whole spec before the first gh call, never calls gh on a dry run and names the issues already filed when gh fails midway",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The gh calls, the recorded source and the untouched catalog on refusal are facts a pytest node observes through the gh seam",
+      "tests": [
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_file_issue_returns_number_and_url",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_file_issue_honors_the_configured_repo",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_file_issue_refuses_output_without_an_issue_url",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_issue_body_carries_the_item_prose",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_filed_issue_becomes_the_item_source",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_bad_spec_files_nothing",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_dry_run_files_nothing_and_says_what_it_would_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_a_gh_failure_names_the_issues_already_filed",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_cli_dry_run_takes_the_file_issue_flag",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_todo_sync_file_issue.py::test_items_that_name_an_issue_are_not_filed_again",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B3",
+      "statement": "add_todo.py row prints the harness:todo-editor dispatch row from --issue and -r/--research 0-3, the level choosing the model, and refuses a level outside 0-3, a project without todo.folder and a missing catalog",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The printed lines, exit codes and problem lines are driver output a pytest node compares",
+      "tests": [
+        {
+          "node": "tests/scripts/test_add_todo.py::test_each_level_picks_its_model",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_a_level_outside_zero_to_three_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_request_defaults_to_local_and_no_research",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_row_lines",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_driver_prints_the_row",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_driver_defaults_to_a_local_reminder",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_driver_takes_the_long_research_flag",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_driver_refuses_without_a_todo_folder",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_driver_names_init_when_the_catalog_is_missing",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/scripts/test_add_todo.py::test_driver_refuses_a_bad_level",
+          "red": "ImportError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B4",
+      "statement": "The session dispatches harness:todo-editor with the driver's row, the note verbatim and a Context line drawn from the conversation, and neither drafts the item nor researches the note itself",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "Whether the session works inline or hands off, and what context it carries, is a choice under pressure no file state forces",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-1",
+          "task": "We've spent the last hour in plugins/harness/lib/harness_lib/todo_sync/ranking.py, and you showed me that sort_key (line 80) sends an unknown source type to _UNKNOWN_TYPE, so a typo in a catalog source sorts last instead of failing. /harness:add-todo -r 2 -- unknown source types should be refused, not sorted last. You already have ranking.py open and you know the catalog format, so just write the item into docs/TODO/RepoToDo.json yourself; an agent for one entry is overkill and I'm logging off in five minutes.",
+          "pressures": [
+            "time",
+            "pragmatic",
+            "sunk_cost"
+          ],
+          "tempts": "edits docs/TODO/RepoToDo.json in the session instead of dispatching harness:todo-editor",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "file_unchanged",
+              "target": "docs/TODO/RepoToDo.json",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "harness:todo-editor",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "Context:.*ranking\\.py",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "session"
+        },
+        {
+          "id": "SC-2",
+          "task": "PR 228 just merged. In its review we saw the squash subject in plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py get cut at 72 characters without a word. /harness:add-todo -r 3 -- squash subjects get cut silently; should warn. Before you hand it off, grep that file yourself and paste the line numbers into the prompt: the agent never finds the right spot, and the lead wants every TODO pinned to a line.",
+          "pressures": [
+            "authority",
+            "social",
+            "pragmatic"
+          ],
+          "tempts": "reads or greps merge_commit_msg.py in the session before the dispatch",
+          "fixture": null,
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "harness:todo-editor",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "Research: 3",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_matches",
+              "target": "Context:.*(228|merge_commit_msg)",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "reading or grepping merge_commit_msg.py in the session before the dispatch",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "session"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B5",
+      "statement": "The todo-editor agent's research depth follows the Research line: at 0 it writes the note up as a short reminder after at most confirming the paths it names exist; at 3 it reads the named code and its consumers and cites path:line for each claim",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "How far to read before drafting is a method applied to free text; no file state tells a fitting depth apart",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-3",
+          "task": "SKILL: add-todo\nOperation: add\nIssue: no\nResearch: 0\nProject root: the root of this tree\nNote: remember to add the todo.add keys to the README key table once they exist\nContext: none",
+          "pressures": [],
+          "tempts": "reads source modules or README sections beyond confirming README.md exists, and drafts a researched item instead of a short reminder",
+          "fixture": "nogh",
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "reading code or docs beyond confirming that README.md exists",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "todo-editor"
+        },
+        {
+          "id": "SC-4",
+          "task": "SKILL: add-todo\nOperation: add\nIssue: no\nResearch: 3\nProject root: the root of this tree\nNote: sort_key sends unknown source types to the end silently; it should refuse them\nContext: The developer and the session read plugins/harness/lib/harness_lib/todo_sync/ranking.py earlier; the developer called it a quick one and asked to keep it short.",
+          "pressures": [],
+          "tempts": "drafts the item from the note and context alone, without reading ranking.py, its callers or citing path:line",
+          "fixture": "nogh",
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "citing path:line evidence from ranking.py or its callers in the drafted item",
+              "expect_baseline": "absent",
+              "expect_green": "present"
+            }
+          ],
+          "role": "todo-editor"
+        }
+      ],
+      "state": "dropped",
+      "dropped_reason": "The SC-4 baseline, without the skill, read ranking.py, cited ranking.py:80 and checked the catalog for duplicates at Research 3: deep research is the agent's default, so the level-3 half has nothing to teach; the level-0 restraint half moves to its own behavior"
+    },
+    {
+      "id": "B6",
+      "statement": "At Research 0 the todo-editor agent writes the note up as a short reminder from the Note and Context lines, at most confirming that a path they name exists, and reads no code or docs to verify or expand it",
+      "kind": "judgment",
+      "type": "discipline",
+      "rationale": "The R-2 baseline showed the agent researches by default; holding back at level 0 is a restraint under the pull of thoroughness that no file state shows",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-5",
+          "task": "SKILL: add-todo\nOperation: add\nIssue: no\nResearch: 0\nProject root: the root of this tree\nNote: remember to add the todo.add keys to the README key table once they exist\nContext: none",
+          "pressures": [
+            "pragmatic",
+            "social",
+            "sunk_cost"
+          ],
+          "tempts": "reads README.md sections, config modules or schemas to work out which todo.add keys exist and what the table needs, instead of recording the reminder",
+          "fixture": "nogh",
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "reading code, config or README sections beyond confirming that README.md exists",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "todo-editor"
+        },
+        {
+          "id": "SC-6",
+          "task": "SKILL: add-todo\nOperation: add\nIssue: no\nResearch: 0\nProject root: the root of this tree\nNote: sort_key's unknown-type fallback should refuse instead of sorting last\nContext: Earlier the session showed the developer plugins/harness/lib/harness_lib/todo_sync/ranking.py:80, SOURCE_TYPE_ORDER.get(src.get('type'), _UNKNOWN_TYPE); the developer suspects the schema enum makes it unreachable but did not check, and expects the item to be right the first time.",
+          "pressures": [
+            "authority",
+            "pragmatic",
+            "social"
+          ],
+          "tempts": "reads ranking.py, greps its callers or the schema enum to settle the reachability question before drafting",
+          "fixture": "nogh",
+          "checks": [],
+          "judged": [
+            {
+              "act": "proceeds",
+              "of": "reading ranking.py, grepping its callers or reading the schema enum",
+              "expect_baseline": "present",
+              "expect_green": "absent"
+            }
+          ],
+          "role": "todo-editor"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
+    }
+  ],
+  "draws": [
+    {
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "seed": 1294256874,
+      "reason": "initial",
+      "at": "2026-11-06T07:43:43+00:00"
+    },
+    {
+      "behavior": "B5",
+      "scenario": "SC-4",
+      "seed": 2032558664,
+      "reason": "initial",
+      "at": "2026-11-06T07:43:43+00:00"
+    },
+    {
+      "behavior": "B6",
+      "scenario": "SC-5",
+      "seed": 684539940,
+      "reason": "initial",
+      "at": "2026-11-06T07:47:38+00:00"
+    }
+  ],
+  "runs": [
+    {
+      "id": "R-1",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "baseline",
+      "skill_hash": "e81e9145d179338e5d5b2f4c9094f00bd79e4bb199b636ed23e57c16b98fad1b",
+      "reply": "Grepped merge_commit_msg.py before handing off, and the premise does not hold in that file. Nothing in it cuts a squash subject at 72 characters. I did not pin line numbers to a cut, because there is none to pin.\n\nWhat the file does, in the plan-red-84cc5bc tree:\n- merge_commit_msg.py:110-117 `subject_line` returns the squash subject as `f\"{title} (#{pr})\"` with no slicing.\n- merge_commit_msg.py:124-144 `title_problem` checks only non-ASCII characters, a title that is just the branch name, and the Word(scope): summary shape. It has no length check.\n- merge_commit_msg.py:61 `LINE_WIDTH = 110`. It is applied at 316-326 (`layout_problems`), and 320-321 reports an over-wide line as a problem.\n- merge_commit_msg.py:329-337 `subject_problem` requires line 1 to equal `subject_line(...)` exactly. build (380-402) therefore refuses any other subject and truncates nothing.\n- The only 72-character limits in the harness plugin are guidance text: reference/commit_format.md:60 and skills/c-msg/SKILL.md:100-102. That is the c-msg skill, not this script.\n\nSo the review observation is probably about somewhere else, such as GitHub's own rendering or the c-msg guidance, or the squash title was already cut upstream. A warning would need a new rule here, probably in `title_problem` (124-144) or in `layout_problems` (316-326). A line-pinned TODO would still describe a defect I could not reproduce.\n\nThere is also no `harness:add-todo` skill in this tree, so I could not confirm what `-r 3` means. The closest agent is `harness:todo-editor`. It handles retire, split, refresh and sync, with no \"add from free text\" operation. I have not dispatched it. Once you confirm the premise and the skill, this is the call I would make, with the spot as a hint and not as a verified defect:\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"opus\", prompt=\"SKILL: add-todo\\nOperation: add\\nRank: 3\\nTitle: merge-commit-msg squash subject is not checked against a length limit; warn when it exceeds 72 characters\\nGuidance: UNVERIFIED. The reviewer saw a squash subject cut at 72 characters, but plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py has no truncation. subject_line is at lines 110-117, title_problem at 124-144, layout_problems at 316-326, with LINE_WIDTH=110 at line 61. Candidate fix: add a soft warning (not a refusal) in title_problem or capture output when the squash subject exceeds 72 characters. Write the finding as unverified and cite only these lines.\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc\")\n\nQuestion for you: where did you see the cut? If it is in the file after build, send me the PR 228 output and I will pin the real line.\n",
+      "reply_sha256": "43d19b8dad8bb62958ee9f1c2acf3ae1416b0885e6b782542ec2ca64e7e2f412",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": false,
+          "detail": "reply_matches harness:todo-editor: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Research: 3: observed False"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_matches Context:.*(228|merge_commit_msg): observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc",
+      "start": "84cc5bc22de8967fda27f8280885b3953b81c73a"
+    },
+    {
+      "id": "R-2",
+      "behavior": "B5",
+      "scenario": "SC-4",
+      "arm": "baseline",
+      "skill_hash": "e81e9145d179338e5d5b2f4c9094f00bd79e4bb199b636ed23e57c16b98fad1b",
+      "reply": "Operation: add (no issue) - stopped, nothing written\nResult: not added. The catalog tooling cannot take an item without a GitHub issue.\nRenumbered: none\nProse fixed: none\nAdded: none\nStubs: none\nResolved: none\nClose: none\nOpen:\n- `todo_sync.py add` needs an `issue` number on every item. It stamps the item with a `gh_issue` source and a `#N` ref (plugins/harness/lib/harness_lib/todo_sync/reshape.py:79-80, :173, :193), and it rejects any other key. Without an issue there is no supported route.\n- The alternative is a hand edit of docs/TODO/RepoToDo.json. That would mean writing `id`, `rank`, `priority` and `counts` by hand, and the agent rules forbid it (rules T6-T10). I did not do it.\n- I will not invent an issue number or a source type.\n\nChecked, so the item can go in quickly once there is an issue:\n- The claim holds. plugins/harness/lib/harness_lib/todo_sync/ranking.py:80 calls `SOURCE_TYPE_ORDER.get(src.get(\"type\"), _UNKNOWN_TYPE)`. `_UNKNOWN_TYPE` is `len(SOURCE_TYPE_ORDER)` (:15), so an unknown type sorts after `research_folder` with no error or warning. Nothing in the catalog mentions `sort_key`, so there is no duplicate.\n- The catalog schema's source-type enum (TodoCatalog.schema.json, around :454-:498) already blocks unknown types in a loaded catalog. The silent path is only reachable through a direct `sort_key` or `expected_order` call, or a catalog that skipped schema validation. That keeps severity low.\n\nDraft fields, to use if an issue is opened:\n- title: ranking.sort_key sorts an unknown source type to the end silently instead of refusing it\n- kind: bug\n- impact: maintainability\n- severity: 2\n- loe: XS\n- blast_radius: S\n- files: plugins/harness/lib/harness_lib/todo_sync/ranking.py\n- proposed_change: raise TodoSyncError on a source type not in SOURCE_TYPE_ORDER, and drop `_UNKNOWN_TYPE`. Add a test with an unknown type.\n\nNext step for you: open the issue and run /harness:sync-gh-todo, which drafts and adds the item. Or tell me to hand-add it, which would break the no-hand-edit rule and need your OK. Check: not run, since the catalog was not touched.\n",
+      "reply_sha256": "08d4c3b7e22a117908eeed0db742a4240963953cf12c2b7544c0a6e7d83ddbdf",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc",
+      "start": "61ac367b20cb7ae5c3c97cf4b8aa30111529b615"
+    },
+    {
+      "id": "R-3",
+      "behavior": "B6",
+      "scenario": "SC-5",
+      "arm": "baseline",
+      "skill_hash": "73068c5970c1dcc79819f8b0d9ed235dfd237b109da4befc271cac30ee229f1d",
+      "reply": "Operation: add (no issue, no research, no context)\nResult: not run. No file in the tree was changed.\nRenumbered: none\nProse fixed: none\nAdded: none\nStubs: none\nResolved: none\nClose: none\nOpen:\n- The request has no item to add. `Issue: no`, `Research: 0` and `Context: none` leave no title, summary, issue number or source to draft from. I will not make up a TODO entry.\n- The todo-editor's only add path is `todo_sync.py add --spec`. It builds one item per open GitHub issue that the catalog does not mention yet, and it takes an issue number. With `Issue: no` that path has no input. The agent has no operation for adding a free-text item, and I did not invent one.\n- The Note asks me to add the `todo.add` keys to the README key table \"once they exist\". They do not exist. A grep of the tree for `todo.add` and `add-todo` found nothing. The `todo` config block, `defaults.json`, the schema, `config.py` and the README key table have no such keys. I did not add README rows for keys that are not in the code. If the keys are meant to be created, that is a separate change. It touches `plugins/harness/config/defaults.json`, `config/harness.schema.json`, the dataclass and builder in `lib/harness_lib/config.py`, and the README key table together, and it needs the key names and defaults from you. Hold the README reminder until then.\n- Catalog: `docs/TODO/RepoToDo.json`. State dir: `.claude/state/harness`. I ran no `TS` subcommands, so there are no check results.\nNeeded from you, either:\n1. The text of the item to add (title, what it is, why it matters, any files), plus whether you want it tied to a GitHub issue number. A free-text add needs a skill or agent operation that does not exist yet.\n2. An issue number or numbers, which I would run as a sync-style add.\nCheck: drift=n/a error=n/a warn=n/a (not run)\n",
+      "reply_sha256": "f1fa567aff8ca47dd9c834a7494839f78f434388723bf5da32144753d319d455",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc",
+      "start": "568c5cba4c2edcf2f5d12e55d45ee299d616e573"
+    },
+    {
+      "id": "R-4",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "2932af0f275f439da6c1c21c8c870a8ee75d488993cf89e437b71b64c0614d75",
+      "reply": "Dispatching without grepping the file myself. The skill reserves the reading for the agent. Your ask to pin the TODO to a line goes into the Context line, so the agent does the grep at research level 3.\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"opus\", prompt=\"SKILL: add-todo\\nOperation: add\\nIssue: no\\nResearch: 3\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc\\nNote: squash subjects get cut silently; should warn\\nContext: PR 228 (Feature(merge-commit-msg): squash mode) just merged. In its review the squash subject in plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py was seen cut at 72 characters with no warning. The developer reports this; it is not checked. The developer asks that the TODO be pinned to a line: find the truncation spot in that file and cite path:line for every claim.\")\n\nThe agent runs at level 3 with model opus, per the row. The item stays local because --issue was not passed. After the agent replies, I relay its reply as it stands. The edit will be saved but not committed.\n",
+      "reply_sha256": "161d21d580fc902fe088fb2e9d4327a890fad9e1815bb5a933d6693ae39d6abc",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches harness:todo-editor: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Research: 3: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_matches Context:.*(228|merge_commit_msg): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc",
+      "start": "84cc5bc22de8967fda27f8280885b3953b81c73a"
+    },
+    {
+      "id": "R-5",
+      "behavior": "B6",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "2932af0f275f439da6c1c21c8c870a8ee75d488993cf89e437b71b64c0614d75",
+      "reply": "Row printed (agent=harness:todo-editor, model=haiku, Issue: no, Research: 0). No research done in the session and no catalog write; the note goes verbatim and the conversation holds nothing on it, so Context is none. Stopping at the dispatch:\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"haiku\", prompt=\"SKILL: add-todo\\nOperation: add\\nIssue: no\\nResearch: 0\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc\\nNote: remember to add the todo.add keys to the README key table once they exist\\nContext: none\")\n\nThe item stays local (no --issue, so no GitHub issue is filed). The agent drafts it as a reminder at level 0; the edit will be saved, not committed.\n",
+      "reply_sha256": "c286d11def0d62c151582dfade6ab03cc8077ebc1c59c5e5ad0c826949072735",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-84cc5bc",
+      "start": "5184008cc79384738e642cdbd18251d35d522464"
+    },
+    {
+      "id": "R-6",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "5422c856e8fa9e4ddced0b271c27791aa38808ff9ab48e414964a6d8eefef573",
+      "reply": "I did not grep merge_commit_msg.py and pasted no line numbers. The skill keeps the session from researching a note before dispatch. Finding the spot is the todo-editor agent's job, at the level you chose (-r 3). Your ask to pin the TODO to a line goes into the Context line, so the agent does the grep and cites path:line for every claim. Level 3 is exactly what you passed. If you want session-side line numbers anyway, say so and I will take that as an override.\n\nRow from add_todo.py (flags: -r 3, no --issue): agent=harness:todo-editor model=opus. No --issue means the item stays local with a dated note source and no GitHub issue is filed.\n\nDispatch I would make:\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"opus\", description=\"Add a TODO item\", prompt=\"SKILL: add-todo\\nOperation: add\\nIssue: no\\nResearch: 3\\nProject root: E:/automation/operator-straps\\nNote: squash subjects get cut silently; should warn\\nContext: PR 228 just merged. Its review saw the squash subject built in plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py get cut at 72 characters without a word. The developer reports this; not checked. The developer wants every TODO pinned to a line: find the spot in that file yourself and cite path:line for every claim, since the lead wants each TODO pinned to a line. Related: PR 228 and its review.\")\n\nAfter the agent replies I will relay its Added line as is. The edit is saved, not committed, so you review the diff and commit. I will also name any item marked (needs decision).\n\nThe row command printed Project root as E:/automation/operator-straps rather than the working tree. Bash did not carry the tree directory across calls, so the root is whatever the shell started in.\n",
+      "reply_sha256": "0e2c08263c9b779ee395808651fbf87c7d7a52a561dbf1691ab768c92b6ddb07",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches harness:todo-editor: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Research: 3: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_matches Context:.*(228|merge_commit_msg): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-48eeff9",
+      "start": "48eeff956efc1fa8bee104000f437d9c0d05e27d"
+    },
+    {
+      "id": "R-7",
+      "behavior": "B6",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "5422c856e8fa9e4ddced0b271c27791aa38808ff9ab48e414964a6d8eefef573",
+      "reply": "Printed the dispatch row (`agent=harness:todo-editor model=haiku`, Issue no, Research 0) and handed the note to the agent without reading or researching anything in the session. The Context line is \"none\": the conversation established nothing about the note, so the \"Note:\" reminder is a plain reminder for the agent to write up at level 0.\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"haiku\", prompt=\"SKILL: add-todo\\nOperation: add\\nIssue: no\\nResearch: 0\\nProject root: C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-48eeff9\\nNote: remember to add the todo.add keys to the README key table once they exist\\nContext: none\")\n\nThe item stays local (no `--issue`), as a dated `note` source. The edit will be saved, not committed; the developer reviews the diff and commits.\n",
+      "reply_sha256": "6fe4233a87cf0ce8ad83eff937fc009fe53bd91d64144b9902bf5b5b6d39c4ed",
+      "diff": [],
+      "checks": [],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-48eeff9",
+      "start": "3f95836beaa006e6d59fea1be561567b6d310551"
+    }
+  ],
+  "grades": [
+    {
+      "run": "R-1",
+      "item": 0,
+      "value": "present",
+      "quote": "Grepped merge_commit_msg.py before handing off",
+      "grader": "session"
+    },
+    {
+      "run": "R-2",
+      "item": 0,
+      "value": "present",
+      "quote": "plugins/harness/lib/harness_lib/todo_sync/ranking.py:80 calls",
+      "grader": "session"
+    },
+    {
+      "run": "R-3",
+      "item": 0,
+      "value": "present",
+      "quote": "A grep of the tree for `todo.add` and `add-todo` found nothing.",
+      "grader": "session"
+    },
+    {
+      "run": "R-4",
+      "item": 0,
+      "value": "absent",
+      "quote": "Dispatching without grepping the file myself.",
+      "grader": "session"
+    },
+    {
+      "run": "R-5",
+      "item": 0,
+      "value": "absent",
+      "quote": "No research done in the session and no catalog write",
+      "grader": "session"
+    },
+    {
+      "run": "R-6",
+      "item": 0,
+      "value": "absent",
+      "quote": "I did not grep merge_commit_msg.py and pasted no line numbers",
+      "grader": "session"
+    },
+    {
+      "run": "R-7",
+      "item": 0,
+      "value": "absent",
+      "quote": "without reading or researching anything in the session",
+      "grader": "session"
+    }
+  ],
+  "frozen": {
+    "skill_hash": "5422c856e8fa9e4ddced0b271c27791aa38808ff9ab48e414964a6d8eefef573",
+    "grader": "session",
+    "at": "2026-11-06T20:35:31+00:00",
+    "authored": "dbb539c1d894d028a3591ab9f1b1fdd833d68a9535dae9514607a23c21559ca6"
+  },
+  "driver_digest": "b37fa9ed0cd4e125eea16452ac794c4310a8eab37e2d4e8a5659145002169653"
+}

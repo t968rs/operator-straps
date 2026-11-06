@@ -21,7 +21,7 @@ import re
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Optional, Tuple
 
 import pytest
 from conftest import git
@@ -55,10 +55,11 @@ AGENT_MARKER = "HELPER-AGENT-BODY"
 AGENT_TEXT = f"---\nname: helper\ndescription: Helper agent.\n---\n\n{AGENT_MARKER}: work only in TREE.\n"
 
 
-def scenario_code(task: str, role: str = "session") -> str:
+def scenario_code(task: str, role: str = "session", sees_skill: Optional[bool] = None) -> str:
     """API code adding one scenario to B1: a reply check plus one judged item."""
     return (
         f'add_scenario(name, "B1", new_scenario(task={task!r}, tempts="edits the ledger", role={role!r},\n'
+        f'    sees_skill={sees_skill!r},\n'
         '    checks=[new_check("reply_matches", "LEDGER-KEPT", baseline=False, green=True)],\n'
         '    judged=[new_judged("refuses", "the ledger edit", baseline="absent", green="present")]))\n'
     )
@@ -146,14 +147,15 @@ def refused(result: Result) -> str:
 
 @pytest.fixture()
 def built(strap: Strap, piped: Callable[..., Result], project: Path) -> Callable[..., Dict[str, Any]]:
-    """``built(scenarios=2, role="session")``: ``new``, the ``skill_md`` part, then judgment behavior B1
-    with that many scenarios via ``api``."""
-    def _build(scenarios: int = 2, role: str = "session") -> Dict[str, Any]:
+    """``built(scenarios=2, role="session", sees_skill=None)``: ``new``, the ``skill_md`` part, then
+    judgment behavior B1 with that many scenarios via ``api``."""
+    def _build(scenarios: int = 2, role: str = "session",
+               sees_skill: Optional[bool] = None) -> Dict[str, Any]:
         ok(strap("new", NAME))
         ok(piped(PART, "api", NAME))
         ok(piped(BEHAVIOR, "api", NAME))
         for task in TASKS[:scenarios]:
-            ok(piped(scenario_code(task, role), "api", NAME))
+            ok(piped(scenario_code(task, role, sees_skill), "api", NAME))
         return read_spec(project)
     return _build
 
@@ -395,6 +397,33 @@ def test_init_includes_the_role_agent_body(built: Callable[..., Dict[str, Any]],
     ok(strap("run", NAME, "B1", "--arm", "baseline"))
     out = ok(strap("init", NAME, "--run", "R-1"))
     assert AGENT_MARKER in out, out
+
+
+def _role_green_brief(built: Callable[..., Dict[str, Any]], strap: Strap, piped: Callable[..., Result],
+                      project: Path, sees_skill: Optional[bool]) -> str:
+    """The green brief of a ``helper`` role scenario, after a recorded baseline."""
+    built(role="helper", sees_skill=sees_skill)
+    write_file(project, "plugins/harness/agents/helper.md", AGENT_TEXT, commit=True)
+    write_file(project, SKILL_REL, SKILL_TEXT)
+    ok(strap("draw", NAME))
+    ok(strap("run", NAME, "B1", "--arm", "baseline"))
+    ok(piped(BASELINE_REPLY, "record-run", NAME, "--run", "R-1"))
+    ok(strap("run", NAME, "B1", "--arm", "green"))
+    return ok(strap("init", NAME, "--run", "R-2"))
+
+
+@pytest.mark.cross_os
+def test_role_green_omits_the_skill_by_default(built: Callable[..., Dict[str, Any]], strap: Strap,
+                                               piped: Callable[..., Result], project: Path) -> None:
+    out = _role_green_brief(built, strap, piped, project, None)
+    assert AGENT_MARKER in out and SKILL_MARKER not in out, out
+
+
+@pytest.mark.cross_os
+def test_role_green_carries_the_skill_when_sees_skill(built: Callable[..., Dict[str, Any]], strap: Strap,
+                                                      piped: Callable[..., Result], project: Path) -> None:
+    out = _role_green_brief(built, strap, piped, project, True)
+    assert AGENT_MARKER in out and SKILL_MARKER in out, out
 
 
 @pytest.mark.cross_os

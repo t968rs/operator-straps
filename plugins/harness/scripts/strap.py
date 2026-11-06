@@ -639,7 +639,7 @@ def brief(spec: SkillSpec, run: Run, scenario: Scenario) -> str:
     lines = [f"# Scenario run {run.id} | {spec.name} | {run.behavior} {run.scenario} | {run.arm.value}", "",
              f"Working tree: {run.tree}", "Work only inside the working tree.", "", "## Task", "",
              scenario.task.rstrip(), ""]
-    skill = _skill_text(spec, run)
+    skill = _skill_text(spec, run) if scenario.skill_in_brief else None
     if skill is not None:
         lines += ["## Skill", "", skill.rstrip(), ""]
     agent = _agent_text(spec, run, scenario)

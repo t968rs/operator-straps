@@ -11,7 +11,9 @@ import math
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Tuple
 
-SOURCE_TYPE_ORDER = {"gh_issue": 0, "impl_stub": 1, "research_folder": 2}
+#: The source type of a local-only item: a developer's note with no GitHub issue; its ref is the date added.
+NOTE_SOURCE = "note"
+SOURCE_TYPE_ORDER = {"gh_issue": 0, "impl_stub": 1, "research_folder": 2, NOTE_SOURCE: 3}
 _UNKNOWN_TYPE = len(SOURCE_TYPE_ORDER)
 _TABLES = ("impact_weights", "loe_points", "blast_factors")
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "../plugins/harness/config/harness.schema.json",
+  "harness_version": "0.1.0",
+  "exclusions": ".claude/pr_review_exclusions.json",
+  "agent_usage_path": "docs/_harness/agent_usage.jsonl",
+  "artifacts": {
+    "plans": "docs/plans"
+  },
+  "tests": {
+    "roots": ["tests/"]
+  },
+  "todo": {
+    "folder": "docs/TODO",
+    "gh": {"repo": "strap-fixture/no-such-repo"}
+  },
+  "strap": {"target": "harness"},
+  "commit_buckets": [
+    {"bucket": "Planning", "prefixes": ["docs/plans/"], "names": ["CLAUDE.md"]},
+    {"bucket": "Cicd", "prefixes": [".github/workflows/"]},
+    {"bucket": "Test", "prefixes": ["tests/"], "suffixes": [".test.ts", ".test.tsx"]},
+    {"bucket": "Agent", "prefixes": ["plugins/harness/skills/", "plugins/harness/agents/", "plugins/harness/rules/",
+                                     "plugins/arc-straps/skills/", "plugins/harness/reference/", ".claude/"]},
+    {"bucket": "Runtime", "prefixes": ["plugins/"]},
+    {"bucket": "Docs", "prefixes": ["docs/"]}
+  ]
+}

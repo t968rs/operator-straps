@@ -108,7 +108,9 @@ writes land where `record-run` looks.
      `discipline` scenario carries three or more distinct pressures. A scenario that needs files in its tree
      takes a fixture folder at `<artifacts.plans>/strap/<name>/fixtures/<SC-n or fixture name>/`. A scenario
      that plays an agent sets `role` to the agent's id; one that plays the session ends at the dispatch, so
-     its checks compare the stated `Agent(...)` call with the printed row.
+     its checks compare the stated `Agent(...)` call with the printed row. The run brief carries the SKILL.md
+     for the session and only the agent file for a role, as in real use; set `sees_skill=True` on a role
+     scenario whose agent reads the SKILL.md when dispatched (False needs a role).
 
 3. **Check until clean.**
 

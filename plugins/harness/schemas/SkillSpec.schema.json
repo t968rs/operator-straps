@@ -560,6 +560,18 @@
           "default": "session",
           "title": "Role",
           "type": "string"
+        },
+        "sees_skill": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sees Skill"
         }
       },
       "required": [

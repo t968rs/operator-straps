@@ -1,0 +1,523 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.1.0",
+  "pr": 235,
+  "pr_title": "1133 add todo",
+  "branch": "1133-add-todo",
+  "base_branch": "main",
+  "base_sha": "0640b340c8ed7679d38e44759d99508447cf8004",
+  "head_sha": "6069816102c876dca738ff34a555a4676825d341",
+  "review_date": "2026-11-06",
+  "verdict": "READY TO MERGE - 16 of 16 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1428,
+    "deletions": 56,
+    "files_changed": 21
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0235/pr235_20261106T201051Z/findings/config.json",
+    "docs/_scratch/pr_review/0235/pr235_20261106T201051Z/findings/tests.json",
+    "docs/_scratch/pr_review/0235/pr235_20261106T201051Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0235/pr235_20261106T201051Z/findings/docs.json",
+    "docs/_scratch/pr_review/0235/pr235_20261106T201051Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0235/pr235_20261106T201051Z/findings/overall.json",
+    "docs/_scratch/pr_review/0235/pr235_20261106T201051Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0235/pr235_20261106T201051Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The note branch follows the pattern of the existing if/then arms: it constrains ref and forbids url with a 'not required' clause, keeping the gh_issue-only url rule symmetric.",
+    "counts.sources_absorbed.note is optional (not in required), so catalogs written before this change and the scaffold's three-key tally still validate; the description says when the key appears.",
+    "The source.type enum, ref description and type description were all updated together, and schemas/README.md already documents the note source.",
+    "The gh seam is replaced at `gh.run_gh`, the attribute issues.file_issue actually reads (`gh.run_gh(...)` at issues.py:151), so FakeGh is a real fake collaborator. The tests also assert the exact argv and parse the returned URL, which makes them behavioral, not mock-chain wiring.",
+    "test_a_gh_failure_names_the_issues_already_filed covers the partial-failure path end to end: the second filing fails, the error names #42 as already filed, and the catalog bytes are unchanged.",
+    "test_bad_spec_files_nothing uses an off-enum `kind` on item 2 to show the whole spec is validated before the first gh call, and that nothing is written.",
+    "The driver tests compare the subprocess output to `dispatch_row(...)` and pin the literal row once in test_row_lines, so the CLI and the API cannot drift apart unnoticed.",
+    "The contract test imports `api.AGENT` and `api.__all__` instead of copying literals, as its docstring promises, and checks that the agent frontmatter names the dispatching skill.",
+    "test_note_count_is_created_then_incremented covers both the first-use `setdefault` and the increment, and checks that the gh_issue tally is untouched.",
+    "apply_add validates the whole spec against the live catalog (add_items on a fresh load) before any gh issue create runs, so a bad spec never files an issue.",
+    "_file_pending turns a mid-run filing failure into a message that lists the issues already filed and how to add them, instead of leaving them silent.",
+    "The note source carries a schema conditional (date-pattern ref, no url) and _count_sources starts the note tally only on first use, which matches the schema's 'absent until the first local-only item' description.",
+    "_check_issue makes issue and url an all-or-nothing pair with a direct message, keeping a half-specified spec item from becoming either a note or a broken gh_issue source.",
+    "add_todo_models keeps the request free of harness_lib imports and the note text out of argv, as both module docstrings state; the code follows both claims.",
+    "The add operation's reply forms in todo-editor.md (`TODO-NNN (note)`, `TODO-NNN for #N <url>` from the `filed` line) match reshape.summary_lines and _head exactly.",
+    "README's todo_sync add paragraph and the schemas README note-source text agree with reshape._source and the schema's note if/then (YYYY-MM-DD ref, no url).",
+    "The research-level ladder is stated consistently across the SKILL table, the todo-editor add section and the README prose, and add_todo_models maps each level to a model as the README claims.",
+    "SKILL.md keeps the note off every command line, which matches reference/skill_arguments.md, and the add_todo.py docstring states the exit codes and problem lines the skill's Step 1 relies on.",
+    "SkillSpec.json records why B5 was dropped, citing the baseline evidence, and moves the restraint half to its own behavior (B6) instead of discarding it.",
+    "Every cross-link in Related (add_todo.py, agents/todo-editor.md, todo_sync.py with add --file-issue/render/check/init, reference/skill_arguments.md) resolves to an existing file and subcommand at the head.",
+    "The row contract agrees end to end: SKILL.md Step 1/3 (agent= line, then SKILL, Operation, Issue, Research, Project root, plus Note and Context) matches dispatch_row in add_todo_api.py:22-24 and the seven-line prompt the todo-editor frontmatter names.",
+    "The research-level table (SKILL.md:27-32) tracks the agent's add steps 0-3 (todo-editor.md:167-182) and the README summary at README.md:439-445 without drift.",
+    "The init branch in Step 1 matches the driver: _ready in add_todo.py:45-51 raises the only problem line that names todo_sync.py init, and only once todo.folder is set.",
+    "The no-flag-issue rule (SKILL.md:90-91) agrees with the agent's Issue: no handling, which records the note's request under Open (todo-editor.md:187-189, 222).",
+    "The Rules and Judgment tables back each other up (no research in session, doubtful premises dispatched as unverified, note verbatim), and nothing in them contradicts the Step 2 ban on Read/Grep/gh before the dispatch.",
+    "No orphaned references to an earlier name anywhere in the tree; the contract test checks the driver call, the subagent_type and the agent's add section.",
+    "apply_add validates the whole spec against the current catalog before the first gh call, a dry run never calls gh, and a gh failure partway through names the issues already filed; tests at the gh.run_gh seam pin all three.",
+    "The note text never reaches a command line: add_todo.py prints only the header lines and the session appends Note and Context, which keeps shell quoting and argv logging out of the path.",
+    "The schema if/then for a note source (date-shaped ref, no url) matches what _source builds, and test_note_item_passes_the_catalog_rules runs the real T1 and T6-T10 rules on the written catalog.",
+    "The today parameter on add_items and apply_add makes the dated note source deterministic in tests without patching the clock.",
+    "issue and url are enforced as a pair (_check_issue), so an item that names a half-specified issue is refused instead of quietly turning into a note.",
+    "The note source type was updated together in the schema enum, the if/then conditional (date-pattern ref, no url), sources_absorbed.note, ranking SOURCE_TYPE_ORDER, scaffold tie-breaker text, schemas/README per-item line and retire's recount, which already decrements any int tally.",
+    "apply_add validates the whole spec with add_items before the first gh call and never calls gh on a dry run. The tests check both through the gh.run_gh seam with a recording fake, a behavioral test rather than a mock chain.",
+    "The add --file-issue contract is described the same way in the todo_sync.py docstring, the reshape module docstring, the README prose and flow block, and the todo-editor add section.",
+    "The add_todo driver, api and models stay small and import-direction clean (add_todo_models imports no harness_lib module, as its docstring states), and the note never reaches a command line, matching reference/skill_arguments.md.",
+    "The whole spec is validated before the first gh call, a gh failure midway names the issues already filed, and tests drive this through a fake gh.run_gh seam rather than stubbing the function under test.",
+    "The schema's if/then for note sources pins the ref to YYYY-MM-DD and forbids a url, and the note-item test runs the real catalog check rules (T1, T6-T10) over the written file.",
+    "The nogh strap fixture points todo.gh.repo at a repo that does not exist, so a scenario run cannot file a real issue by accident.",
+    "The research level and its model live in one IntEnum; argparse choices and the test expectations read from it, so the driver and tests have no copied literal to drift.",
+    "The driver never sees the note: the row is header-only and the session appends Note/Context, which keeps free text out of the shell."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C2",
+        "name": "New add-todo skill is not classified, so the guidance-tail guard fails",
+        "file": "tests/skills/test_skill_guidance_tail_contract.py",
+        "files": [
+          "tests/skills/test_skill_guidance_tail_contract.py",
+          "plugins/harness/skills/add-todo/SKILL.md"
+        ],
+        "lines": "24-29,50-52",
+        "reviewer": "system_shape, roast, docs",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_every_skill_is_classified compares every plugins/harness/skills/*/SKILL.md folder on disk with _INVOCABLE + _KNOWLEDGE. The PR adds plugins/harness/skills/add-todo/SKILL.md but leaves the lists unchanged, so the test fails at the head. Its WALK_ROOTS = (\"plugins/harness/skills/\",) means tools/select_tests.py selects it for this diff, so the PR's CI run hits the failure. add-todo is user-invocable and already meets the other three checks in that file: its argument-hint ends in `-- <note>`, SKILL.md:18 cites reference/skill_arguments.md, and no fenced line carries $ARGUMENTS. Only the registration is missing.\n\nAlso (roast): tests/skills/test_skill_guidance_tail_contract.py::test_every_skill_is_classified compares every skills/*/SKILL.md folder on disk against _INVOCABLE + _KNOWLEDGE. The PR adds plugins/harness/skills/add-todo/SKILL.md but leaves both lists untouched (git grep for add-todo under tests/ at the head finds only the two new test files), so the test fails at the head. The file declares WALK_ROOTS = (\"plugins/harness/skills/\",), so select_tests.py picks it for this diff and CI goes red. The guard's assertion message says exactly this: a new skill must join _INVOCABLE or _KNOWLEDGE. The skill already meets the other invocable checks (its argument-hint holds '-- <' and its body cites reference/skill_arguments.md), so classifying it is the whole fix.\n\nAlso (docs): tests/skills/test_skill_guidance_tail_contract.py:50-52 (test_every_skill_is_classified) globs plugins/harness/skills/*/SKILL.md and asserts the set equals _INVOCABLE + _KNOWLEDGE. The PR adds plugins/harness/skills/add-todo/SKILL.md but leaves _INVOCABLE (lines 24-29) unchanged, so the test fails at the PR head. The test declares WALK_ROOTS = (\"plugins/harness/skills/\",), so tools/select_tests.py selects it for this diff and the PR's CI run fails. The skill itself meets the per-skill checks it would join: its argument-hint carries '-- <' (SKILL.md:4), its body cites ${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md (SKILL.md:18) and no fenced line carries $ARGUMENTS.",
+        "fix": [
+          "Add \"add-todo\" to _INVOCABLE in tests/skills/test_skill_guidance_tail_contract.py (alphabetically between \"a-w\" and \"add-bookmark\").",
+          "Add \"add-todo\" to _INVOCABLE in tests/skills/test_skill_guidance_tail_contract.py (alphabetically, after \"a-w\"/\"add-bookmark\"), which also runs the hint, pointer and no-$ARGUMENTS checks against the new skill.",
+          "Add \"add-todo\" to _INVOCABLE in tests/skills/test_skill_guidance_tail_contract.py, after \"add-bookmark\" in the sorted list."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Research level 0 forbids the ranking_method read that the agent's Rules require",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "docs/plans/strap/add-todo/fixtures/nogh/.claude/harness.json"
+        ],
+        "lines": "43,61-62,168-173,176-178,183-184",
+        "reviewer": "system_shape, docs",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The new add step 1 at level 0 (todo-editor.md:168-173) says to draft 'from the Note and Context lines alone' and to 'read no code, config, docs or schema'. The agent's Rules (todo-editor.md:61-62) still say severity and impact follow the catalog's ranking_method.severity_scale and impact_definitions: 'read them before assigning either'. Step 2 (183-184) also says scores follow the ranking_method scales, 'with a best guess at level 0'. At level 0 (haiku) the agent must therefore either break the level-0 restraint by reading the catalog's scales, or break the Rules line by guessing without them. The B6/SC-5 judged act ('reading code, config or README sections') can then grade the catalog read as a violation.\n\nAlso (docs): plugins/harness/agents/todo-editor.md:176-178 has the add operation search open issues with `gh issue list --search`, without `--repo`. The Environment config line (todo-editor.md:43) fetches only todo.catalog and state_dir. The search therefore hits the repository `gh` resolves for the checkout, while `add --file-issue` files into todo.gh.repo when it is set. On a project whose issues live in another repository, related_gh_issues comes from the wrong repository. The nogh fixture sets todo.gh.repo to a nonexistent repository so that no gh call reaches a real one, and this search bypasses that fixture.",
+        "fix": [
+          "Add an explicit carve-out to the level-0 bullet, for example: 'The catalog's ranking_method scales (Rules) are the one read allowed: Grep for severity_scale and impact_definitions and Read around the hit.'",
+          "Or limit the Rules line to levels 1-3 and say that level 0 scores from the scale names alone as a best guess.",
+          "Add `--get todo.gh.repo` to the config command at todo-editor.md:43, and change line 178 to `gh issue list --search <terms> [--repo <todo.gh.repo>]`, with --repo passed whenever that line is not empty."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Issues filed by add --file-issue go unreported when the catalog write fails",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py",
+          "plugins/harness/agents/todo-editor.md",
+          "tests/lib/test_todo_sync_file_issue.py",
+          "plugins/harness/scripts/todo_sync.py",
+          "README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/ranking.py"
+        ],
+        "lines": "426-458,512-514",
+        "reviewer": "runtime, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "apply_add files every pending issue through _file_pending and only then runs _apply, which reloads the catalog, rebuilds the items, computes companion edits and writes. _file_pending names the issues already filed when a filing fails (its docstring: 'a failed filing names the ones done'), but nothing names them when the step after filing fails: an OSError from write_edits (a file lock on Windows), a TodoSyncError from companion_edits, or a catalog edited between the validation load at line 437 and the reload in _apply. The run exits 2 with a problem line that does not mention the filed issues. A rerun with --file-issue then files the same issues a second time, leaving duplicates on GitHub.\n\nAlso (overall): apply_add files every pending issue in _file_pending (reshape.py:445-458), then calls _apply with the filed specs (reshape.py:441-442). Only a TodoSyncError raised inside the filing loop adds the 'already filed: #N url' list. If anything fails after the loop returns, the error carries no issue numbers: an OSError from write_edits (a Windows file lock on the catalog or a companion file), or a TodoSyncError from companion_edits or the second add_items. todo_sync.py main prints it as a bare 'problem:' line and exits 2. todo-editor.md:189-190 then tells the agent to 'fix the spec and rerun once' under --file-issue, which files the same issues on GitHub a second time. A related gap: when gh exits 0 but its output has no URL, file_issue (issues.py) raises 'printed no issue URL' even though the issue may exist, and the message does not say so.\n\nAlso (roast): apply_add validates with add_items only (reshape.py:438), then files every pending issue (442), then runs the real _apply (443), which still loads the catalog, computes companion_edits and calls write_edits. Any TodoSyncError or OSError raised there (an unreadable research catalog or stub in companion_edits, a write failure) leaves the issues created on GitHub with nothing in the catalog. _file_pending names the filed issues only when gh itself fails, so the problem: line todo_sync.py prints (todo_sync.py:229) does not list them. todo-editor.md:189-190 then tells the agent to fix the spec and rerun once on any problem: line not naming 'already filed', and that rerun takes --file-issue again, so every issue gets filed twice. README.md and the todo_sync.py docstring promise filing happens 'once the whole spec validates'; the companion and write half of that validation never runs before gh.\n\nAlso (runtime): With file_issues and dry_run, apply_add previews add_items(data, specs, day) on the unfiled specs, so each pending item is built with a note source (SOURCE_TYPE_ORDER 3) and the head line reads 'would add TODO-00N (note)'. The real run records a gh_issue source (order 0) instead. On a score, severity and LoE tie with an impl_stub, research_folder or note item, the source-type tie breaker puts the filed item ahead of items the preview put it behind. The dry run can then print a different rank and renumber list than the real run.\n\nAlso (overall): With --file-issue --dry-run, apply_add (reshape.py:437-439) runs add_items on specs that name no issue. The head line from _head then reads 'would add TODO-NNN (note)', but the real run records a gh_issue source for that item. The extra 'would file N issue(s)' line is correct, yet the head line misstates the source type the agent is asked to read before the real run (todo-editor.md:187).\n\nAlso (roast): Under --file-issue the dry run builds the pending items from the unfiled specs (reshape.py:439-441), so they get a note source: the head line reads 'would add TODO-NNN (note)' and the item sorts with SOURCE_TYPE_ORDER 3. The real run sorts the same item as gh_issue (order 0, then by issue number). When the score, severity and LoE tie with an existing impl_stub, research_folder or note item, the real rank comes out above the dry-run rank, and the renames list changes with it. The agent is told to read the dry run before the real run, and here the report is wrong in exactly that case.",
+        "fix": [
+          "Wrap the final _apply call at reshape.py:442 in try/except (TodoSyncError, OSError) and raise a TodoSyncError that adds 'filed: #N URL, ...' (add them with issue and url set), the same text _file_pending already builds; factor that text into a small helper both paths call.",
+          "Or have _file_pending return before any write and record the filed (number, url) pairs to a state file under state_dir before _apply runs, so a failed write leaves a record of the filed issues.",
+          "In apply_add, wrap the post-filing _apply call in try/except (TodoSyncError, OSError) and re-raise a TodoSyncError that adds '; already filed: #N url, ... (add them with issue and url set)' whenever filed is non-empty. Reuse the message _file_pending builds (factor it into a helper), and add a test that makes write_edits raise after a successful fake filing.",
+          "Also word the 'printed no issue URL' error so it says the issue may have been created and should be checked with gh issue list before a rerun.",
+          "Before _file_pending, run the full pipeline as a dry run (_apply(cfg, \"add\", ..., True)) instead of the bare add_items call, so companion_edits failures surface before any gh call; and wrap the final _apply in try/except (TodoSyncError, OSError) that re-raises with the same 'already filed: #N url (add them with issue and url set)' suffix _file_pending uses.",
+          "Add a test that monkeypatches write_edits (or companion_edits) to raise after a FakeGh filing and asserts the error names the filed issue.",
+          "For the dry run, build the preview from specs with placeholder gh_issue fields (an issue number above every catalog number and a placeholder url) so the tie breaker matches the real run, and label those items 'would file' in the head line.",
+          "Or state in the apply_add docstring and the todo_sync.py add help that a --file-issue dry run ranks pending items as notes, so tied ranks can differ from the real run.",
+          "Carry the pending indices into the dry-run ReshapeResult and print '(issue to file)' instead of '(note)' for those items in _head, or skip the per-item label on the head line when to_file is non-zero.",
+          "In the dry run, give each pending spec a placeholder issue above every known number (max(catalog_issue_numbers) + k, with a placeholder https URL), so it sorts as a gh_issue; print the head as '(issue to file)' instead of '(note)'.",
+          "Or keep the current behavior and state in summary_lines / the todo_sync.py docstring that the dry-run rank under --file-issue is approximate on ties."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README key table omits add --file-issue as a todo.gh.repo consumer",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py"
+        ],
+        "lines": "495",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:495 lists only `todo_sync.py untracked` under 'Used by' for `todo.gh.repo`. This PR's issues.file_issue (plugins/harness/lib/harness_lib/todo_sync/issues.py, file_issue) passes --repo from cfg.todo.gh_repo to `gh issue create`, and the todo_sync.py docstring says `--file-issue` files 'in todo.gh.repo when set'. The key table no longer names every reader.\n\nAlso (system_shape): issues.file_issue (issues.py:47-54) now reads cfg.todo.gh_repo for `todo_sync.py add --file-issue`, and the todo_sync.py docstring and the README prose (README.md:419-422) say so. The key table row for `todo.gh.repo` (README.md:495) still lists only `todo_sync.py untracked` under Used by.",
+        "fix": [
+          "Change the Used by cell at README.md:495 to `todo_sync.py untracked`, `todo_sync.py add --file-issue` (`add-todo --issue`).",
+          "Change the todo.gh.repo Used by cell to '`todo_sync.py untracked`, `todo_sync.py add --file-issue` (`add-todo --issue`)'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Commit message calls the fixture one with no GitHub settings, but it sets todo.gh.repo",
+        "file": "docs/plans/strap/add-todo/fixtures/nogh/.claude/harness.json",
+        "lines": "14",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The Docs(plans) commit body says fixtures/nogh/.claude/harness.json is 'a fixture project configuration with no GitHub settings'. The file sets todo.gh.repo to 'strap-fixture/no-such-repo' (line 14): a repository that does not exist, so gh calls fail, not one left unconfigured.",
+        "fix": [
+          "Reword the commit or PR text to say 'a fixture configuration whose todo.gh.repo names a nonexistent repository, so gh calls fail'."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "The add operation's 'already filed' clause cannot fire, and a filed issue lost on a failed write is never named",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+          "plugins/harness/skills/add-todo/SKILL.md",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py"
+        ],
+        "lines": "61-62,168-169,183-190",
+        "reviewer": "docs, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "todo-editor.md:189-190 says to fix the spec and rerun once on a problem: line, and to relay one naming issues `already filed`. reshape._file_pending adds 'already filed' only when a later gh call fails after an earlier one succeeded. The add operation drafts exactly one item (todo-editor.md:165), so that message cannot occur. The case that does lose an issue: apply_add files the issue and then runs _apply (companion_edits, write_edits). If that raises, the problem: line names no filed issue. The doc then tells the agent to rerun once under --file-issue, which files a second issue for the same note.\n\nAlso (docs): todo-editor.md:168-169 limits level 0 to the Note and Context lines: 'read no code, config, docs or schema'. Rules at todo-editor.md:61-62 require reading the catalog's ranking_method.severity_scale and impact_definitions before assigning severity or impact. Step 2 (todo-editor.md:183-184) asks for those scales 'with a best guess at level 0'. The catalog lives under todo.folder (docs/TODO in this repo), so a literal reading forbids the read the scoring rule demands. An agent following level 0 to the letter may then pick an impact value the schema's enum rejects on the dry run.\n\nAlso (system_shape): Add step 3 (todo-editor.md:185-186) forbids issue and url in the spec, so a note about an issue that is already open can only become a local note item. The issue can go in related_gh_issues at most. issues.py:3-6 says related_gh_issues 'still counts as untracked', so the next /harness:sync-gh-todo run drafts a second item for the same issue. The add operation has no path that marks an existing issue as covered. Neither the skill nor the agent mentions the gap.\n\nAlso (roast): The level-0 bullet says 'read no code, config, docs or schema'. The same agent must still run `pr_review.py config --get` to find state_dir (Environment), and must read the catalog's ranking_method.severity_scale and impact_definitions before scoring (Rules, lines 61-62; add step 2). The catalog lives under docs/. Level 0 dispatches on haiku, which is the model most likely to read the ban literally and either skip the scales or stall. The intent is clearly 'no research into the subject', and the text should say so.",
+        "fix": [
+          "In apply_add (plugins/harness/lib/harness_lib/todo_sync/reshape.py), catch a TodoSyncError/OSError from the post-filing _apply and re-raise it with the filed issues appended ('already filed: #N url (add them with issue and url set)'). Keep todo-editor.md:190 as written, and add that a rerun after such a line sets issue and url in the spec and drops --file-issue.",
+          "Doc-only: in todo-editor.md:189-190, under Issue: yes, forbid rerunning with --file-issue after the real run printed a problem: line; relay it under Open with a note to check for a just-filed issue.",
+          "Append to the level-0 bullet at todo-editor.md:168-169: 'Reading the catalog's ranking_method (severity_scale, impact_definitions) for scoring is allowed and expected; it is not research.'",
+          "Allow the add spec to carry issue and url when the Note or Context names an existing open issue (todo_sync add already accepts them), and keep the ban only on inventing an issue.",
+          "Or document in add-todo SKILL.md and the agent's add section that a note about an existing issue belongs to sync-gh-todo, and have the agent say so under Open.",
+          "Amend the level-0 bullet: 'read no code, config, docs or schema about the note's subject; the config lookup and the catalog's ranking_method scales are still read for scoring.'"
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Reply template's Added shape does not include the add operation's forms",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/skills/add-todo/SKILL.md"
+        ],
+        "lines": "191-192,218",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "Add step 5 (todo-editor.md:191-192) tells the agent to report `TODO-NNN (note)` or `TODO-NNN for #N <url>`. The Reply block it fills (todo-editor.md:218) still shows only `TODO-NNN for #N (needs decision), close_candidates ...`. A low-tier model filling the template may drop the `(note)` marker or the URL, which add-todo SKILL.md Step 4 relies on to name the filed issue.",
+        "fix": [
+          "Extend the Added placeholder at todo-editor.md:218 to `<TODO-NNN for #N [<url>] | TODO-NNN (note), each (needs decision) when set, close_candidates #N, tracker #N notes, ... | none>`."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "file_issue passes the whole issue body on the command line",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/issues.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py",
+          "plugins/harness/lib/harness_lib/todo_sync/gh.py"
+        ],
+        "lines": "148-155",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "file_issue sends the body as an argv value (--body body). The body holds the item's summary, proposed change and file list. On Windows the CreateProcess command line limit is 32767 characters, so a long drafted item (exhaustive research, a long file list) fails with an OSError that run_gh reports as 'gh could not run ... install gh or check PATH', which sends the developer the wrong way.\n\nAlso (roast): file_issue passes the whole drafted body as `--body <text>` (issues.py:151). A level-3 item, with path:line citations for every claim and the alternatives weighed in proposed_change, can get long, and on Windows the full command line is capped at about 32k characters, so a long body fails with an OSError-style launch error instead of filing. The add-todo skill keeps the note off command lines on purpose, and the drafted prose built from it lands on one here anyway. gh supports `--body-file -`, but gh.run_gh takes no stdin.",
+        "fix": [
+          "Pass the body on stdin: run gh with ['issue', 'create', '--title', title, '--body-file', '-', *repo] and give the body as subprocess input (add an optional input parameter to gh.run_gh).",
+          "Give gh.run_gh an optional input text (subprocess.run(..., input=text)) and call `gh issue create --title T --body-file -` with the body on stdin; keep the FakeGh seam signature compatible with a default."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "reshape module summary still says add takes open issues only",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "lines": "1-2",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The first line of the reshape.py module docstring reads 'add items for open issues'. After this change an add spec item can name no issue and become a local-only note item, as the docstring's own later paragraph (lines 9-14) says.",
+        "fix": [
+          "Change line 1 to 'Split one TODO item into parts, add items (for open issues or local notes), or refresh every item's score and rank; all'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Root description still lists only three source kinds",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "lines": "5",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The top-level description says the list is 'built from open GitHub issues, the open or partial remaining items of research implementation stubs and the open items of research folders'. The PR adds local-only note items with no issue, stub or folder behind them, so the root description no longer covers every item the schema accepts.",
+        "fix": [
+          "Append 'and local-only notes added by hand' to the source list in the root description."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "tie_breakers description omits the note source type",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/ranking.py",
+          "plugins/harness/lib/harness_lib/todo_sync/scaffold.py"
+        ],
+        "lines": "278",
+        "reviewer": "config, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "ranking_method.tie_breakers describes the primary-source order as 'gh_issue, impl_stub, research_folder'. ranking.py SOURCE_TYPE_ORDER now ranks note fourth (ranking.py:16) and scaffold.py:37 already writes 'research_folder, then note'. The schema prose therefore contradicts the code the PR changed, and a note's ref (a date) falls under 'else the path in code-point order' without saying so.\n\nAlso (overall): The ranking_method.tie_breakers description in TodoCatalog.schema.json:278 still gives the source-type order as 'gh_issue, impl_stub, research_folder' and the ref as 'issue number for gh_issue, else the path'. The code it describes now has a fourth type: SOURCE_TYPE_ORDER puts note last (ranking.py:16), and a note's ref is a date. The same PR updated the starter text in scaffold.py:37-39 and the source enum and ref descriptions in this schema, but missed this one.\n\nAlso (system_shape): The PR adds note to the sources[].type enum and to SOURCE_TYPE_ORDER, and updates the starter tie_breakers text in scaffold.py:36-39 ('..., then note'; ref 'a path, or a note's date'). The ranking_method.tie_breakers description in the schema was not updated. It still says 'type in the order gh_issue, impl_stub, research_folder; ref as issue number for gh_issue, else the path in code-point order', so it now disagrees with the code it describes and with the scaffold text.",
+        "fix": [
+          "Edit the tie_breakers description to read 'type in the order gh_issue, impl_stub, research_folder, note; ref as issue number for gh_issue, else the ref string (path or note date) in code-point order'.",
+          "Change the TodoCatalog.schema.json:278 description to read '(type in the order gh_issue, impl_stub, research_folder, note; ref as issue number for gh_issue, else the ref (a path, or a note's date) in code-point order; ...)'.",
+          "Change the description to 'type in the order gh_issue, impl_stub, research_folder, note; ref as issue number for gh_issue, else the ref (a path, or a note's date) in code-point order'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "note ref pattern accepts impossible dates",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "lines": "601-606",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "The note branch requires ref to match ^[0-9]{4}-[0-9]{2}-[0-9]{2}$, which accepts 2026-99-99. The root 'generated' field uses format: date for the same shape. Format assertion is off by default in most validators, so the pattern is the only check that always runs; tightening it costs little.",
+        "fix": [
+          "Tighten the pattern to ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$.",
+          "Leave as is: the writer generates the date, so only hand edits can break it."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Flags followed by a note with no `--` token are not covered",
+        "file": "plugins/harness/skills/add-todo/SKILL.md",
+        "lines": "18-20,34",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The Arguments section (SKILL.md:18-20) splits `$ARGUMENTS` at the first standalone `--` and says only that with no flags `-- <note>` and `<note>` are the same invocation; skill_arguments.md:19-20 likewise makes only a leading `--` optional. An invocation such as `/harness:add-todo --issue the parser drops BOMs` (flags, then text, no token) is left open: with no token the reference reads the whole string as the skill's own arguments, so the session must guess whether `the parser drops BOMs` is the note or an error, and line 34 lists only an empty note, an unknown flag or a bad level as refusals. The sibling skill todo-edit closes the same gap explicitly (todo-edit/SKILL.md:18, \"Free text after the ids with no `--` token is read as guidance too\").",
+        "fix": [
+          "Add one sentence after SKILL.md:20: \"With flags and no `--` token, the text after the last flag (and its level) is the note.\"",
+          "Or make it a refusal: add \"flags followed by text with no `--` token\" to the refusal list at SKILL.md:34 so the session prints the `argument-hint` line."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Catalog-rules check passes vacuously when the rules are skipped",
+        "file": "tests/lib/test_todo_sync_add_note.py",
+        "files": [
+          "tests/lib/test_todo_sync_add_note.py",
+          "tests/lib/_todo_helpers.py",
+          "plugins/harness/lib/harness_lib/todo_sync/ranking.py",
+          "docs/plans/strap/add-todo/SkillSpec.json"
+        ],
+        "lines": "71-72,75-83",
+        "reviewer": "tests, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_note_item_passes_the_catalog_rules asserts only `check(cfg, rules=CATALOG_RULES).findings == ()`. check() puts a gated rule (todo disabled, rules_disabled, a config gate, an input already claimed as unreadable) in rules_skipped with no finding, so a fixture or gate change that skips T1/T6-T10 still passes. The sibling helper `rule_findings` in tests/lib/_todo_helpers.py:103-107 guards against this with `assert rule in report.rules_run`; this test leaves that guard out.\n\nAlso (tests): test_note_sorts_after_every_other_source_type_on_a_tie claims a note item sorts after the other source types on a tie, but it only compares values in SOURCE_TYPE_ORDER. If sort_key (ranking.py:76-84) stopped using that table, or moved the source-type term after the ref/title tie-breakers, the test would still pass while the ordering it names changed.\n\nAlso (overall): test_note_sorts_after_every_other_source_type_on_a_tie only checks that SOURCE_TYPE_ORDER['note'] is larger than the other values. It never calls sort_key or expected_order. B1 in SkillSpec.json claims the item sorts after every other type on a tie, but a change that read the source type from somewhere else, or skipped the table for notes, would still pass this test.\n\nAlso (system_shape): SkillSpec B1 says todo_sync add 'sorts note sources after every other type on a tie'. Its test, test_note_sorts_after_every_other_source_type_on_a_tie (test_todo_sync_add_note.py:71-72), only checks that SOURCE_TYPE_ORDER['note'] is the largest value. It never runs expected_order or sort_key. If ranking.sort_key stopped consulting SOURCE_TYPE_ORDER for note, or keyed the ref differently, the test would still pass.\n\nAlso (roast): test_note_sorts_after_every_other_source_type_on_a_tie checks SOURCE_TYPE_ORDER[\"note\"] against the other values and never calls sort_key or expected_order. It stays green if sort_key stops consulting SOURCE_TYPE_ORDER, or if the note ref tie-break (code-point order of the date) regresses, which is the behavior B1 claims.",
+        "fix": [
+          "Bind the report and add `assert set(CATALOG_RULES) <= set(report.rules_run), report.rules_skipped` before the findings assertion.",
+          "Build two items with equal score, severity and loe, one with a `gh_issue` source and one with a `note` source, and assert `expected_order([...], method)` puts the gh_issue item first (or compare `sort_key` tuples directly).",
+          "Build two items with equal severity, impact, loe and blast, one with a research_folder source and one with a note source, and assert that expected_order(items, method_from(catalog)) lists the note item last. Delete the constant-only assertion or keep it beside the new check.",
+          "Build two items with equal severity, LoE and score, one with a gh_issue source and one with a note source. Assert that ranking.expected_order (or the renumber through add_items) puts the note item second.",
+          "Build two items with equal score, severity and LoE, one with a research_folder source and one with a note source, run expected_order with the MIN_CATALOG ranking method, and assert the note item comes last."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Already-sourced item test checks the call count only",
+        "file": "tests/lib/test_todo_sync_file_issue.py",
+        "lines": "109-115,134-143,146-152",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_items_that_name_an_issue_are_not_filed_again asserts `len(fake.calls) == 1`. A regression that filed an issue for the `Known` item and skipped the note would pass it. The test also leaves unchecked that the known item keeps `#9` and the other item records `#42`.\n\nAlso (tests): test_dry_run_files_nothing_and_says_what_it_would_file checks that no gh call happens, but it never checks that the catalog bytes are unchanged, which the name 'files nothing' implies. test_cli_dry_run_takes_the_file_issue_flag runs the real todo_sync.py in a subprocess with the parent environment (GH_REPO, GH_TOKEN and the real gh on PATH), and no seam replaces gh there. If a regression made the dry run file issues, the test could create a real issue instead of failing cleanly.",
+        "fix": [
+          "Also assert `fake.calls[0][3] == \"Parser skips a row\"`. Then read the written catalog and assert the `Known` item's sources are `[{\"type\": \"gh_issue\", \"ref\": \"#9\", \"url\": URL.format(n=9)}]`.",
+          "In both tests, read the catalog bytes before the call and assert they are unchanged after it.",
+          "In the CLI test, pop GH_REPO, GH_HOST and GH_TOKEN from env, and/or put a fake `gh` that exits 1 at the front of PATH, so a regression fails instead of filing an issue."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Module docstring claim that the note never passes through the driver is untested",
+        "file": "tests/scripts/test_add_todo.py",
+        "files": [
+          "tests/scripts/test_add_todo.py",
+          "plugins/harness/scripts/add_todo.py"
+        ],
+        "lines": "3-4",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says the note and the session's context never pass through the driver. No test pins it: nothing checks that `row` rejects positional text or a `--note` flag. If someone later adds a note argument, this suite stays green while the contract the skill and agent depend on is broken.",
+        "fix": [
+          "Add a test that runs `_run(root, \"some note text\")` and asserts `returncode == 2` (argparse rejects the extra argument)."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M2",
+      "classification": "out_of_scope",
+      "reason": "The only fix rewords committed commit text (Docs(plans) body) or the PR description; the fixture itself is correct as written, and commit text changes belong to the developer."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 235 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":7,\"first_sha\":\"48bc0f5fce73ec7276c5e066d2c12392df69db21\",\"headRefName\":\"1133-add-todo\",\"headRefOid\":\"6069816102c876dca738ff34a555a4676825d341\",\"last_sha\":\"6069816102c876dca738ff34a555a4676825d341\",\"mergeCommit\":null,\"number\":235,\"state\":\"OPEN\",\"title\":\"1133 add todo\",\"url\":\"https://github.com/t968rs/operator-straps/pull/235\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1133-add-todo",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1133-add-todo",
+        "head_ref_name": "1133-add-todo",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "48bc0f5fce73ec7276c5e066d2c12392df69db21",
+        "head_sha": "6069816102c876dca738ff34a555a4676825d341",
+        "base_ancestor_command": "git merge-base --is-ancestor 48bc0f5fce73ec7276c5e066d2c12392df69db21 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 6069816102c876dca738ff34a555a4676825d341 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - README todo.gh.repo Used by cell now lists `todo_sync.py add --file-issue` (`add-todo --issue`) next to `todo_sync.py untracked`; issues.py: cited reader, already reads cfg.todo.gh_repo, no edit for M1"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - reshape.py module summary now says add takes items for open issues or local notes"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - ranking.py part: SOURCE_TYPE_ORDER already ranks note fourth (ranking.py:16), the schema prose is the other fixer's part; no edit; tie_breakers description now lists note fourth and gives the ref as 'a path, or a note's date' in code-point order; scaffold.py: already present at scaffold.py:36-39 ('research_folder, then note'; ref 'a path, or a note's date')."
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - todo-editor.md: level-0 bullet allows the one ranking_method scales read (Grep severity_scale/impact_definitions); config command adds --get todo.gh.repo; level-2 search runs gh issue list --search <terms> [--repo <todo.gh.repo>]; No edit in this part. The fix sits in plugins/harness/agents/todo-editor.md (other part). This part's file already sets todo.gh.repo (line 14), the key the --repo search option reads."
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - apply_add runs the full pipeline as a dry run before any gh call, wraps the post-filing _apply so TodoSyncError/RankingError/OSError re-raise naming the filed issues (shared _with_filed helper used by _file_pending too); dry run ranks items to file under placeholder issues above every catalog number and labels them '(issue to file)' via ReshapeResult.pending; 'printed no issue URL' error says the issue may exist; todo_sync.py add docstring updated; two tests added (write failure after filing, dry-run label); todo-editor.md already relays 'already filed' lines, README and ranking.py need no edit"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - Template fix is at plugins/harness/agents/todo-editor.md:218 (Added placeholder), owned by the other part; SKILL.md Step 4 cited, no edit needed here; Reply template Added placeholder in todo-editor.md now shows 'TODO-NNN for #N [<url>] | TODO-NNN (note), each (needs decision) when set, ...'"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - SKILL.md Arguments section: added sentence after line 20 stating that with flags and no `--` token, the text after the last flag (and its level) is the note"
+    },
+    {
+      "id": "C2",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - Added \"add-todo\" to _INVOCABLE between \"add-bookmark\" and \"amend-commit-msg\" (list rewrapped to stay within line length)"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - Root description source list now ends with 'and local-only notes added by hand'."
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - Note ref pattern tightened to ^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$ so month and day ranges are checked."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - Added test_driver_rejects_a_note_argument in tests/scripts/test_add_todo.py: runs the driver with a positional note and with --note, asserts returncode 2 and 'unrecognized arguments' on stderr."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - todo-editor.md add: level-0 ban scoped to the note's subject with the config lookup and ranking_method scales named as allowed reads; a rerun after an 'already filed' problem line sets issue and url and drops --file-issue; a note about an already-open issue is routed to /harness:sync-gh-todo under Open. SKILL.md Judgment row for that case. reshape.py: already present (apply_add lines 446-449 wrap the post-filing _apply and append the filed issues via _with_filed); issues.py: cited for the related_gh_issues untracked rule, no edit needed"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - test_note_item_passes_the_catalog_rules binds the report and asserts every CATALOG_RULES id is in rules_run before the findings check; the tie test now runs expected_order (method_from MIN_CATALOG) on a note item against each other source type, note first in input and winning the title tie-break, and asserts the note lands last; _todo_helpers.py, ranking.py, SkillSpec.json: cited only, the guard and sort_key need no change and B1 already states the behavior now tested"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - test_items_that_name_an_issue_are_not_filed_again now asserts the filed title is 'Parser skips a row', that the Known item keeps source #9 and the other item records #42; test_dry_run_files_nothing_and_says_what_it_would_file asserts catalog bytes unchanged; test_cli_dry_run_takes_the_file_issue_flag pops GH_REPO, GH_HOST and GH_TOKEN from the subprocess env"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "6069816 (working-tree snapshot; developer commits) - file_issue sends the body on stdin (gh issue create --body-file -); gh.run_gh takes an optional stdin; test fakes accept it and a new test pins the input reaching subprocess.run (outside fixer waves)"
+    },
+    {
+      "id": "M2",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-06",
+      "evidence": "48eeff9 (working-tree snapshot; developer commits) - closed, no action: Developer: leave the Docs(plans) commit wording as is"
+    }
+  ]
+}

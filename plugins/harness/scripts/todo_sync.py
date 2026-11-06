@@ -47,11 +47,16 @@ catalog items.
     ``<state_dir>/todo-sync/untracked.json``. Prints ``untracked: none`` and writes nothing when every open
     issue is recorded. Refuses, exit 2, when ``gh`` fails, returns no JSON list, or the listing reaches the
     issue limit (the result may be cut off).
-``add --spec PATH [--dry-run]``
-    Add one item per entry of the spec file (``{"items": [{...}, {...}]}``; each names its ``issue`` and
-    ``url`` and the fields a person judges, and never ``id``, ``rank`` or ``priority``). The script builds the
-    ``gh_issue`` source, scores the item, re-sorts, renumbers, recounts and rewrites moved ids as ``split``
-    does. An issue the catalog already records is refused.
+``add --spec PATH [--dry-run] [--file-issue]``
+    Add one item per entry of the spec file (``{"items": [{...}, {...}]}``; each holds the fields a person
+    judges, never ``id``, ``rank`` or ``priority``, and names its ``issue`` and ``url`` or neither). The
+    script builds the source (``gh_issue``, or for an entry with neither a local-only ``note`` dated today),
+    scores the item, re-sorts, renumbers, recounts and rewrites moved ids as ``split`` does. An issue the
+    catalog already records is refused. ``--file-issue`` files a GitHub issue (``gh issue create``, in
+    ``todo.gh.repo`` when set) for each entry that names none, after the whole spec and its companion edits
+    pass a dry run, and records it as the ``gh_issue`` source; a failure after filing names the issues
+    filed. A dry run files nothing, labels each such item ``(issue to file)`` and prints
+    ``would file N issue(s)``.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
 ``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or any
@@ -126,9 +131,11 @@ def _parser() -> argparse.ArgumentParser:
     ref.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
     sub.add_parser("init", parents=[common], help="Create the TODO folder, an empty catalog and a snapshot.")
     sub.add_parser("untracked", parents=[common], help="List open issues no catalog record mentions.")
-    add = sub.add_parser("add", parents=[common], help="Add one item per open issue named in a spec.")
+    add = sub.add_parser("add", parents=[common], help="Add one item per spec entry: issue or local note.")
     add.add_argument("--spec", type=Path, required=True, help='JSON file: {"items": [{...}, {...}]}.')
     add.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
+    add.add_argument("--file-issue", action="store_true",
+                     help="File a GitHub issue for each item that names none, once the spec validates.")
     return parser
 
 
@@ -192,7 +199,8 @@ def _dispatch(cfg: HarnessConfig, args: argparse.Namespace) -> int:
     if args.command == "untracked":
         return _untracked(cfg)
     if args.command == "add":
-        print("\n".join(reshape_lines(apply_add(cfg, args.spec, args.dry_run), args.dry_run)))
+        result = apply_add(cfg, args.spec, args.dry_run, file_issues=args.file_issue)
+        print("\n".join(reshape_lines(result, args.dry_run)))
         return 0
     if args.command == "render":
         print(render_snapshot(cfg, args.date or dt.date.today()))

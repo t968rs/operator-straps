@@ -1,18 +1,22 @@
-"""Split one TODO item into parts, add items for open issues, or refresh every item's score and rank; all
-three end by renumbering.
+"""Split one TODO item into parts, add items (for open issues or local notes), or refresh every item's score
+and rank; all three end by renumbering.
 
 Rule T6 ties each id to its rank, so the operations finish the same way: rescore from ``ranking_method``,
 sort, renumber ``TODO-<rank>``, map the link lists (``depends_on``, ``unblocks``, tracker ``child_todo_ids``,
 close-candidate ``related_todo_ids``) id for id, and rewrite every other string in one pass. A split's parts
 start as copies of the original item with the spec's fields laid over them; they inherit its links, tracker
 and close candidates. Prose naming the original id is pointed at the first part and listed for a person to
-check, because only a person can say which part a sentence meant. An added item starts from a spec that names
-its issue and the fields a person judges (title, kind, summary, scoring inputs); the script supplies its
+check, because only a person can say which part a sentence meant. An added item starts from a spec that holds
+the fields a person judges (title, kind, summary, scoring inputs) and either names its issue (``issue`` and
+``url``) or names none, which makes it a local-only item with a dated ``note`` source; the script supplies its
 source, links and score, so the new item takes the rank its score earns and the items below it move down.
+``apply_add`` with ``file_issues`` first files an issue for each item that names none, once the whole spec
+has validated.
 """
 from __future__ import annotations
 
 import copy
+import datetime as dt
 import functools
 import json
 from dataclasses import dataclass, replace
@@ -22,8 +26,10 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple
 from harness_lib.config import HarnessConfig
 from harness_lib.project import plugin_root
 from harness_lib.todo_sync import TodoSyncError
+from harness_lib.todo_sync import issues
 from harness_lib.todo_sync.issues import catalog_issue_numbers
-from harness_lib.todo_sync.ranking import RankingError, RankingMethod, expected_order, method_from, score
+from harness_lib.todo_sync.ranking import (NOTE_SOURCE, RankingError, RankingMethod, expected_order,
+                                           method_from, score)
 from harness_lib.todo_sync.retire import (ID_RE, REFERENCE_CAP, companion_edits, dump_like, load_catalog,
                                           normalize_id, other_references, recount, remap_text, todo_id,
                                           walk_strings, write_edits)
@@ -45,7 +51,7 @@ class Reshape:
     rescored: Tuple[str, ...]
     flagged: Tuple[str, ...]
     split: Optional[str] = None
-    added: Tuple[Tuple[str, int], ...] = ()
+    added: Tuple[Tuple[str, Optional[int]], ...] = ()
 
 
 def split_item(catalog: Dict[str, Any], raw_id: str, parts: Sequence[Any]) -> Reshape:
@@ -76,28 +82,45 @@ def refresh_items(catalog: Dict[str, Any]) -> Reshape:
 
 
 #: Keys an ``add`` spec item must carry, and those it may carry; everything else is computed or refused.
-ADD_REQUIRED = ("issue", "url", "title", "kind", "summary", "proposed_change", "blast_radius", "loe",
-                "impact", "severity", "why_ranked")
-ADD_OPTIONAL = ("needs_decision", "decision_question", "status", "files", "related_gh_issues", "code_snippet")
+#: ``issue`` and ``url`` come together; an item with neither is a local-only note.
+ADD_REQUIRED = ("title", "kind", "summary", "proposed_change", "blast_radius", "loe", "impact", "severity",
+                "why_ranked")
+ADD_OPTIONAL = ("issue", "url", "needs_decision", "decision_question", "status", "files", "related_gh_issues",
+                "code_snippet")
+#: Spec keys that name the item's GitHub issue.
+ISSUE_KEYS = ("issue", "url")
 
 
-def add_items(catalog: Dict[str, Any], specs: Sequence[Any]) -> Reshape:
-    """Add one item per spec to a copy of ``catalog`` (its source is the spec's issue), then renumber."""
+def add_items(catalog: Dict[str, Any], specs: Sequence[Any], today: Optional[str] = None) -> Reshape:
+    """Add one item per spec to a copy of ``catalog`` (its source is the spec's issue, else a note dated
+    ``today``, default the current date), then renumber."""
     if not specs:
         raise TodoSyncError("add needs at least one item in the spec")
+    day = today or dt.date.today().isoformat()
     data = copy.deepcopy(catalog)
     known, listed = catalog_issue_numbers(data), set()
-    built = [_new_item(n, spec, known, listed) for n, spec in enumerate(specs, 1)]
+    built = [_new_item(n, spec, known, listed, day) for n, spec in enumerate(specs, 1)]
     data["items"] = [i for i in data.get("items") or [] if isinstance(i, dict)] + built
     out = _renumber(data, None, None)
     temps = [str(i["id"]) for i in built]
     new_ids = tuple(out.renames[t] for t in temps)
-    absorbed = out.catalog["counts"].get("sources_absorbed")
-    if isinstance(absorbed, dict) and isinstance(absorbed.get("gh_issue"), int):
-        absorbed["gh_issue"] += len(built)
+    _count_sources(out.catalog["counts"], built)
     return replace(out, renames={o: n for o, n in out.renames.items() if o not in temps},
                    rescored=tuple(r for r in out.rescored if r not in new_ids),
-                   added=tuple(zip(new_ids, (i["gh_issues"][0] for i in built))))
+                   added=tuple(zip(new_ids, ((i["gh_issues"] or [None])[0] for i in built))))
+
+
+def _count_sources(counts: Dict[str, Any], built: List[Dict[str, Any]]) -> None:
+    """Add the new items' sources to ``counts.sources_absorbed``; the ``note`` tally starts on first use."""
+    absorbed = counts.get("sources_absorbed")
+    if not isinstance(absorbed, dict):
+        return
+    for item in built:
+        kind = item["sources"][0]["type"]
+        if kind == NOTE_SOURCE:
+            absorbed.setdefault(NOTE_SOURCE, 0)
+        if isinstance(absorbed.get(kind), int):
+            absorbed[kind] += 1
 
 
 def _text(value: Any) -> bool:
@@ -159,7 +182,7 @@ def _check_item(n: int, item: Dict[str, Any]) -> None:
         raise TodoSyncError(f"item {n}: {where}: {errors[0].message[:200]}")
 
 
-def _new_item(n: int, spec: Any, known: Set[int], listed: Set[int]) -> Dict[str, Any]:
+def _new_item(n: int, spec: Any, known: Set[int], listed: Set[int], day: str) -> Dict[str, Any]:
     """The catalog item for spec item ``n``; id, rank and priority are placeholders the renumber fills."""
     if not isinstance(spec, dict):
         raise TodoSyncError(f"item {n} is not an object")
@@ -170,6 +193,17 @@ def _new_item(n: int, spec: Any, known: Set[int], listed: Set[int]) -> Dict[str,
     if missing:
         raise TodoSyncError(f"item {n} lacks {', '.join(missing)}")
     _check_types(n, spec)
+    if "issue" in spec or "url" in spec:
+        _check_issue(n, spec, known, listed)
+    item = _item_fields(n, spec, day)
+    _check_item(n, item)
+    return item
+
+
+def _check_issue(n: int, spec: Dict[str, Any], known: Set[int], listed: Set[int]) -> None:
+    """Refuse a spec item's issue unless it comes with its url, is a positive number and is new."""
+    if not all(key in spec for key in ISSUE_KEYS):
+        raise TodoSyncError(f"item {n}: issue and url come together; a local note sets neither")
     issue = spec["issue"]
     if isinstance(issue, bool) or not isinstance(issue, int) or issue < 1:
         raise TodoSyncError(f"item {n}: issue must be a positive integer")
@@ -178,19 +212,22 @@ def _new_item(n: int, spec: Any, known: Set[int], listed: Set[int]) -> Dict[str,
     if issue in known:
         raise TodoSyncError(f"issue #{issue} is already in the catalog (item {n})")
     listed.add(issue)
-    item = _item_fields(n, spec)
-    _check_item(n, item)
-    return item
 
 
-def _item_fields(n: int, spec: Dict[str, Any]) -> Dict[str, Any]:
+def _source(spec: Dict[str, Any], day: str) -> Dict[str, Any]:
+    """The item's one source: its GitHub issue, else a note dated ``day``."""
+    if "issue" in spec:
+        return {"type": "gh_issue", "ref": f"#{spec['issue']}", "url": spec["url"]}
+    return {"type": NOTE_SOURCE, "ref": day}
+
+
+def _item_fields(n: int, spec: Dict[str, Any], day: str) -> Dict[str, Any]:
     """The item's keys in schema order, with the spec's values and the defaults of the optional ones."""
-    issue = spec["issue"]
     item: Dict[str, Any] = {
         "id": f"add-new-{n}", "rank": 0, "title": spec["title"], "kind": spec["kind"],
         "status": spec.get("status", "OPEN"), "needs_decision": spec.get("needs_decision", False),
         "decision_question": spec.get("decision_question"), "tracker": None,
-        "sources": [{"type": "gh_issue", "ref": f"#{issue}", "url": spec["url"]}], "gh_issues": [issue],
+        "sources": [_source(spec, day)], "gh_issues": [spec["issue"]] if "issue" in spec else [],
         "related_gh_issues": list(spec.get("related_gh_issues") or []), "catalog_entry_ids": [],
         "summary": spec["summary"], "proposed_change": spec["proposed_change"]}
     if "code_snippet" in spec:
@@ -362,6 +399,11 @@ class ReshapeResult:
     rewritten: Tuple[str, ...]
     flagged: Tuple[str, ...]
     references: Tuple[str, ...]
+    #: Issues ``add --file-issue`` filed (number, URL), how many a dry run would file, and the ids of the
+    #: items it would file them for.
+    filed: Tuple[Tuple[int, str], ...] = ()
+    to_file: int = 0
+    pending: Tuple[str, ...] = ()
 
 
 def read_spec(path: Path, key: str = "parts") -> List[Any]:
@@ -383,11 +425,66 @@ def apply_split(cfg: HarnessConfig, raw_id: str, spec: Path, dry_run: bool = Fal
     return _apply(cfg, "split", lambda data: split_item(data, raw_id, parts), dry_run)
 
 
-def apply_add(cfg: HarnessConfig, spec: Path, dry_run: bool = False) -> ReshapeResult:
+def apply_add(cfg: HarnessConfig, spec: Path, dry_run: bool = False, file_issues: bool = False,
+              today: Optional[str] = None) -> ReshapeResult:
     """Add the items of the ``add`` spec file to the project's catalog and rewrite moved ids in its
-    companions."""
+    companions. With ``file_issues``, each item that names no issue gets one filed first, once the whole
+    spec and its companion edits pass a dry run; a dry run files nothing and ranks each item to file under a
+    placeholder issue above every catalog number, so ties sort as the real run's ``gh_issue`` source does.
+    A failure after filing names the issues filed."""
     specs = read_spec(spec, "items")
-    return _apply(cfg, "add", lambda data: add_items(data, specs), dry_run)
+    day = today or dt.date.today().isoformat()
+    pending = ([n for n, s in enumerate(specs) if isinstance(s, dict) and "issue" not in s]
+               if file_issues else [])
+    if not pending:
+        return _apply(cfg, "add", lambda data: add_items(data, specs, day), dry_run)
+    preview = _apply(cfg, "add", lambda data: _preview_add(data, specs, pending, day), True)
+    if dry_run:
+        ids = tuple(preview.reshape.added[n][0] for n in pending)
+        return replace(preview, to_file=len(pending), pending=ids)
+    filed_specs, filed = _file_pending(cfg, specs, pending)
+    try:
+        result = _apply(cfg, "add", lambda data: add_items(data, filed_specs, day), False)
+    except (TodoSyncError, RankingError, OSError) as exc:
+        raise TodoSyncError(_with_filed(str(exc), filed)) from exc
+    return replace(result, filed=filed)
+
+
+#: The URL a dry run gives an issue it would file; the ``.invalid`` host never resolves.
+PLACEHOLDER_URL = "https://placeholder.invalid/issues/{}"
+
+
+def _preview_add(data: Dict[str, Any], specs: Sequence[Any], pending: Sequence[int], day: str) -> Reshape:
+    """Validate ``specs`` as written, then add them with a placeholder issue for each index in ``pending``."""
+    add_items(data, specs, day)
+    named = {s["issue"] for s in specs if isinstance(s, dict) and isinstance(s.get("issue"), int)}
+    top = max(catalog_issue_numbers(data) | named, default=0)
+    out = list(specs)
+    for k, n in enumerate(pending, 1):
+        out[n] = {**out[n], "issue": top + k, "url": PLACEHOLDER_URL.format(top + k)}
+    return add_items(data, out, day)
+
+
+def _with_filed(message: str, filed: Sequence[Tuple[int, str]]) -> str:
+    """``message`` naming the issues already filed, so a rerun adds them instead of filing them again."""
+    if not filed:
+        return message
+    done = ", ".join(f"#{num} {link}" for num, link in filed)
+    return f"{message}; already filed: {done} (add them with issue and url set)"
+
+
+def _file_pending(cfg: HarnessConfig, specs: Sequence[Any], pending: Sequence[int]
+                  ) -> Tuple[List[Any], Tuple[Tuple[int, str], ...]]:
+    """``specs`` with an issue filed for each index in ``pending``; a failed filing names the ones done."""
+    out, filed = list(specs), []
+    for n in pending:
+        try:
+            number, url = issues.file_issue(cfg, out[n]["title"], issues.issue_body(out[n]))
+        except TodoSyncError as exc:
+            raise TodoSyncError(_with_filed(str(exc), filed)) from exc
+        out[n] = {**out[n], "issue": number, "url": url}
+        filed.append((number, url))
+    return out, tuple(filed)
 
 
 def apply_refresh(cfg: HarnessConfig, dry_run: bool = False) -> ReshapeResult:
@@ -415,7 +512,10 @@ def summary_lines(result: ReshapeResult, dry_run: bool) -> List[str]:
     out = result.reshape
     count = len(out.catalog["items"])
     changed = out.split is not None or bool(out.added)
-    lines = [_head(out, dry_run, count)]
+    lines = [_head(out, dry_run, count, result.pending)]
+    lines.extend(f"filed #{number} {url}" for number, url in result.filed)
+    if result.to_file:
+        lines.append(f"would file {result.to_file} issue(s)")
     if out.rescored:
         lines.append(f"rescored {len(out.rescored)} item(s): {', '.join(out.rescored)}")
     if out.renames:
@@ -433,12 +533,20 @@ def summary_lines(result: ReshapeResult, dry_run: bool) -> List[str]:
     return lines
 
 
-def _head(out: Reshape, dry_run: bool, count: int) -> str:
-    """The first report line: what a split, an add or a refresh did to the catalog."""
+def _head(out: Reshape, dry_run: bool, count: int, pending: Tuple[str, ...] = ()) -> str:
+    """The first report line: what a split, an add or a refresh did to the catalog; ``pending`` items are
+    the ones a dry run would file an issue for."""
     if out.split is not None:
         return f"{'would split' if dry_run else 'split'} {out.split} into {', '.join(out.parts)}; " \
                f"{count} item(s) now"
     if out.added:
-        added = ", ".join(f"{item} (#{issue})" for item, issue in out.added)
+        added = ", ".join(f"{item} ({_label(item, issue, pending)})" for item, issue in out.added)
         return f"{'would add' if dry_run else 'added'} {added}; {count} item(s) now"
     return f"{'would refresh' if dry_run else 'refreshed'} {count} item(s)"
+
+
+def _label(item: str, issue: Optional[int], pending: Tuple[str, ...]) -> str:
+    """An added item's source on the head line: an issue to file, its issue number, or ``note``."""
+    if item in pending:
+        return "issue to file"
+    return "note" if issue is None else f"#{issue}"

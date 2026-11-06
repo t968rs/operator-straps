@@ -34,8 +34,9 @@ STARTER_RANKING: Dict[str, Any] = {
         "higher severity",
         "lower LoE points",
         "primary source type, where the primary source is sources[0]: gh_issue, then impl_stub, then "
-        "research_folder",
-        "primary source ref: issue number ascending for gh_issue, otherwise the ref path in code-point order",
+        "research_folder, then note",
+        "primary source ref: issue number ascending for gh_issue, otherwise the ref (a path, or a note's "
+        "date) in code-point order",
         "primary source item text in code-point order (absent item sorts first)",
         "title in code-point order"],
     "impact_definitions": {
