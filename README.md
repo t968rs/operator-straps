@@ -261,22 +261,27 @@ that runs it knows what changed since the draft; the forked `branch-commit-msg` 
 
 ### merge-commit-msg
 
-`/harness:merge-commit-msg <PR>` drafts the squash-merge subject and body for an open PR, ready to paste into the
-merge UI or `gh pr merge`.
+`/harness:merge-commit-msg <PR>` drafts the merge subject and body for an open PR, ready to paste into the
+merge UI or `gh pr merge`. Squash mode (`--squash`, `-s` or a bare `squash` after the PR number) drafts the
+squash-merge commit instead.
 
 ```text
 /harness:merge-commit-msg 123
+/harness:merge-commit-msg 123 --squash
 /harness:merge-commit-msg 123 -- lead with the hook change
 ```
 
 - `capture <PR>` prints the PR's facts, changed files, size-capped diffs, commits and a message skeleton, and
-  writes nothing. The subject (`Merge PR #N -- <title>`), `Branch lineage:` and, when a review JSON exists, the
-  review-artifact and review-fix lines come filled.
+  writes nothing. The subject (`Merge PR #N -- <title>`, or `<title> (#N)` in squash mode), `Branch lineage:`
+  and, when a review JSON exists, the review-artifact and review-fix lines come filled. Squash mode needs a
+  `Word(scope): summary` PR title (a word, an optional scope, a colon and a non-empty summary; the word is
+  not checked against the commit types); any other title stops the run.
 - The agent replaces the prose and bullet placeholders (format: `plugins/harness/skills/merge-commit-msg/message_format.md`)
   and passes the whole message to `build <PR>` on stdin.
 - `build` reads the title from `gh` again and rejects a changed subject, a leftover placeholder, an indented line,
   filler words, commit SHAs and vendor names. Clean, it writes `PR<N>_merge.txt` and keeps a replaced copy as
-  `.txt.bak`. A PR that is no longer open, or a `gh` failure, stops the run.
+  `.txt.bak`. A PR that is no longer open, or a `gh` failure, stops the run. Without `--squash`, `build`
+  accepts either exact subject and applies that subject's mode, so a rebuild from a saved TXT needs no flag.
 - To change a saved message, rerun `build` with `PR<N>_merge.txt`, changed as asked, on stdin. A rerun of
   `capture` would replace the prose.
 
