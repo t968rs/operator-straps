@@ -1,0 +1,475 @@
+{
+  "plan_id": "0008",
+  "plan_created": "2026-11-05",
+  "source_document": "https://github.com/t968rs/operator-straps/issues/226",
+  "documentation": "docs/plans/0008_merge_commit_msg_squash_mode_PIP.md",
+  "branch": "1131-merge-msg-squash-mode",
+  "base_branch": "main",
+  "execution_model": "Wave 0 inline (TASK-1, TASK-2; staged). Wave 1 harness:parallel2: implement lanes task-3 and task-4 (opus, disjoint files, one worktree each, probe first), per-lane spec and quality review, P2 stage each. Wave 2 inline (TASK-5).",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "Strap edit spec for the squash behaviors",
+      "action": "Wave 0, main session (spec writes are serial). The frozen spec (0466076841ae, stale since PR #224) is already archived to docs/plans/strap/_archive/merge-commit-msg-0466076841ae/ and `strap.py new merge-commit-msg --edit` opened a fresh spec from 035cc6a (D2). Through the strap api heredoc add mechanical behaviors: B1 mode parsing (three forms equal, unknown token a problem line, in capture and build); B2 squash capture (subject '<title> (#N)', '# PR #N squash message', '- Mode: squash' (and '- Mode: merge' without a token), non-Conventional title refused); B3 squash build (flag writes the squash subject and 'squash message' receipt, no flag accepts either exact subject, paraphrase rejected, cross-mode subject names --squash, squash subject without flag still checks the title); B4 docs (argument-hint, squash trigger, three forms, guidance rule, both subjects, Common Mistakes row, format card example, README and HARNESS_RULES); B5 commit_txt.subject_parts public. Each lists the matching plan 0008 nodes. Copy the plan's planned files to docs/plans/strap/merge-commit-msg/tests/<repo path>, then strap check and strap red until clean. Planned-test copies stay byte-identical to docs/plans/0008/tests/.",
+      "files": [
+        "docs/plans/strap/merge-commit-msg/SkillSpec.json",
+        "docs/plans/strap/_archive/merge-commit-msg-0466076841ae/SkillSpec.json"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "commands": [
+        {
+          "run": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/scripts/strap.py\" check merge-commit-msg",
+          "expect": "check [ok]"
+        },
+        {
+          "run": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/scripts/strap.py\" red merge-commit-msg",
+          "expect": "no problem: lines, exit 0"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "commit_txt: public subject_parts",
+      "action": "Wave 0, main session (one function; inline beats a worktree). Rename _subject_parts to subject_parts in plugins/harness/lib/harness_lib/commit_txt.py, keep `_subject_parts = subject_parts` for the two internal callers, add it to __all__ if the module has one. Copy tests/lib/test_commit_txt_subject_parts.py from the plan. Stage both files (git add) so the wave 1 snapshot carries them.",
+      "files": [
+        "plugins/harness/lib/harness_lib/commit_txt.py",
+        "tests/lib/test_commit_txt_subject_parts.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/commit_txt.py:139-144",
+          "expect": "def _subject_parts(header: Optional[str])"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/commit_txt.py:40",
+          "expect": "_SUBJECT = re.compile(r\"^([A-Za-z]+)(?:\\(([^)]*)\\))?:\\s*(.*)$\")"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/lib/test_commit_txt_subject_parts.py tests/lib/test_commit_txt.py -q",
+          "expect": "all pass"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_commit_txt_subject_parts.py::test_subject_parts_splits_type_scope_summary",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_commit_txt_subject_parts.py::test_private_name_is_the_same_function",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "merge_commit_msg.py squash mode",
+      "action": "Wave 1, parallel2 implement lane task-3 (own worktree). Copy the planned files tests/skills/test_merge_commit_msg_squash.py first. In the driver: (a) _parser: capture and build take `--squash`/`-s` (store_true) and an optional positional `mode` (nargs='?', no choices); main normalizes args.squash = flag or mode == 'squash'; any other mode is `problem: unknown mode 'X'; the only mode is squash (--squash, -s)` with exit 1 (D5). (b) subject_line(pr, title, squash=False) returns f'{title} (#{pr})' in squash mode. (c) title_problem gains squash=False: in squash mode a title whose subject_parts type is None or summary empty is `PR #N title 'X' is not a Conventional-Commit subject (Type(scope): summary), which a squash commit needs; retitle it with gh pr edit N --title`. pr_view passes the flag. (d) message_template/render take squash: the subject follows the mode; the facts gain '- Mode: merge' or '- Mode: squash' after Title in both modes (D3); in squash mode only, the heading is '# PR #N squash message' and the instruction names `build --squash`. (e) build: with the flag, line 1 must equal the squash subject; a line 1 equal to the merge subject is `subject is the merge form; drop --squash to keep it, or use '<squash>'`. Without the flag, a line 1 equal to the squash subject switches to squash mode (title check included); otherwise the unchanged merge check and text (D4). (f) receipt says 'squash message' or 'merge message'. Module docstring: both modes, usage lines. No-mode capture output equals GOLDEN in the squash test file (base output plus '- Mode: merge'); the no-mode TXT and receipt stay identical (tests/skills/test_merge_commit_msg.py). Functions under 50 lines; Optional/Union typing.",
+      "files": [
+        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "tests/skills/test_merge_commit_msg_squash.py"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:96-98",
+          "expect": "return f\"Merge PR #{pr} {SUBJECT_SEPARATOR} {title}\""
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:105",
+          "expect": "def title_problem(pr: int, title: str, head: str) -> Optional[str]:"
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:126",
+          "expect": "problem = title_problem(pr, str(data[\"title\"]), str(data[\"headRefName\"]))"
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:226",
+          "expect": "return [subject_line(pr, title)"
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:244",
+          "expect": "parts = [f\"# PR #{pr} merge message\""
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:292-295",
+          "expect": "subject = subject_line(pr, title)"
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:335",
+          "expect": "title = str(pr_view(repo, pr)[\"title\"])"
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:355",
+          "expect": "f\"Saved: {shown} - merge message for PR #{pr}\""
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:362-364",
+          "expect": "sub.add_parser(name, help=text).add_argument(\"pr\", type=int, help=\"PR number\")"
+        },
+        {
+          "at": "tests/skills/test_merge_commit_msg.py:234",
+          "expect": "\"Saved: docs/_commit_messages/PR7_merge.txt - merge message for PR #7\""
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_merge_commit_msg_squash.py tests/skills/test_merge_commit_msg.py tests/contract/test_root_separation.py -q",
+          "expect": "all pass"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_subject_line",
+          "red": "TypeError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_three_forms_capture_identically",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_states_the_mode",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_unknown_mode_token_is_a_problem",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_squash_capture_refuses_a_non_conventional_title",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_writes_the_squash_subject",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_build_without_a_flag_accepts_either_exact_subject",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_rejects_a_paraphrased_subject",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_build_names_the_flag_on_a_merge_subject",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_squash_subject_without_a_flag_still_needs_a_conventional_title",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashBuild::test_unknown_mode_token_is_a_problem_in_build",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_squash.py::TestSquashCapture::test_default_capture_adds_only_the_merge_mode_line",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "Squash mode in the skill docs",
+      "action": "Wave 1, parallel2 implement lane task-4 (own worktree), file-disjoint from task-3; the interface is fixed by this plan. Copy tests/skills/test_merge_commit_msg_skill_contract.py from the plan first. SKILL.md: argument-hint '<PR number> [squash | --squash | -s] [-- <guidance>]'; description adds 'squash message' and 'squash-merge commit for PR N' triggers; Arguments: before `--` the PR number, then an optional mode token (`--squash`, `-s` or a bare `squash`), normalized to `--squash`; on every command `<PR number>` stands for the number plus ` --squash` in squash mode (D6); '`squash` after `--` is guidance'; any other token is a problem line. Step 1: subject `Merge PR #N -- <title>` or `<title> (#N)`, and squash needs a Conventional-Commit PR title (refusal reported, developer retitles). Step 2 and Changing a saved message: build with the same mode; a rebuild from the saved TXT needs no flag (build accepts either exact subject, D4). Common Mistakes: a row for running build with a different mode than capture (--squash). Keep the canned-message text (tests/skills/test_canned_message_skill_contract.py) and the stdin command form. message_format.md: both subjects in Layout, Section order 1 and Verbatim title ('Merge PR #NNN -- <title>' merge mode, '<title> (#NNN)' squash mode), and '## Worked example (squash, PR #NNN)' beside PR #887 with its receipt. README.md merge-commit-msg section: '/harness:merge-commit-msg 123 --squash' in the example block and the squash subject in the capture bullet. HARNESS_RULES.md line 36: the merge TXT rule covers squash mode (same file, same route), within RULES_LIMIT.",
+      "files": [
+        "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "plugins/harness/skills/merge-commit-msg/message_format.md",
+        "plugins/harness/rules/HARNESS_RULES.md",
+        "README.md",
+        "tests/skills/test_merge_commit_msg_skill_contract.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/SKILL.md:4",
+          "expect": "argument-hint: \"<PR number> [-- <guidance>]\""
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/SKILL.md:41-42",
+          "expect": "the subject (`Merge PR #N -- <title>`, ASCII"
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/SKILL.md:61",
+          "expect": "merge_commit_msg.py\" build <PR number> <<'MSG'"
+        },
+        {
+          "at": "plugins/harness/skills/merge-commit-msg/message_format.md:46",
+          "expect": "**Verbatim title.** The subject is exactly `Merge PR #NNN -- <title>`"
+        },
+        {
+          "at": "README.md:264",
+          "expect": "`/harness:merge-commit-msg <PR>` drafts the squash-merge subject and body"
+        },
+        {
+          "at": "plugins/harness/rules/HARNESS_RULES.md:36",
+          "expect": "A merge TXT follows the same rule: `harness:merge-commit-msg` `build`"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_merge_commit_msg_skill_contract.py tests/skills/test_canned_message_skill_contract.py tests/hooks/test_session_rules.py -q",
+          "expect": "all pass"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_argument_hint_names_the_squash_forms",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_description_triggers_on_a_squash_message",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_names_the_three_forms_and_keeps_squash_after_the_split_as_guidance",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_skill_states_both_subjects",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_common_mistakes_cover_a_mode_mismatch",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_format_card_states_both_subjects_and_a_squash_example",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_merge_commit_msg_skill_contract.py::test_readme_and_rules_name_the_squash_mode",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "Version bump, strap freeze and guard runs",
+      "action": "Wave 2, main session, after `P2 stage task-3`, `P2 stage task-4` and `P2 cleanup`. Bump plugins/harness plugin.json 0.57.0 -> 0.58.0. strap check, then `strap.py freeze merge-commit-msg` (mechanical only: every planned node passes on the staged content). ruff with --no-cache over the changed .py files. `python tools/select_tests.py --base main` and run each selected file by name. Hand off: changed-file list, frozen hash, merge recommendation; the developer commits, then plan.py record per item with that commit.",
+      "files": [
+        "plugins/harness/.claude-plugin/plugin.json",
+        "docs/plans/strap/merge-commit-msg/SkillSpec.json"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-3",
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "commands": [
+        {
+          "run": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/scripts/strap.py\" freeze merge-commit-msg",
+          "expect": "freeze [done] | merge-commit-msg"
+        },
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py plugins/harness/lib/harness_lib/commit_txt.py tests/skills/test_merge_commit_msg_squash.py tests/lib/test_commit_txt_subject_parts.py tests/skills/test_merge_commit_msg_skill_contract.py",
+          "expect": "All checks passed!"
+        },
+        {
+          "run": "python tools/select_tests.py --base main",
+          "expect": "a list of test files, each then run by name"
+        }
+      ]
+    }
+  ],
+  "base_commit": "854d1fe11ffc93ba5307ca94550103875624898d",
+  "frozen": {
+    "commit": "035cc6a51a07cfd26669fe127b4ae36471a4bbca",
+    "tree": "f4db5ba78e1b66290d3cee58bd1989673770ba7b",
+    "date": "2026-11-05",
+    "digest": "606379fbeb3374d8cf0b1abb345f0893d2f3d57aa6f5f9187e0e043812c29641"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Must a squash-mode PR title parse as a Conventional-Commit subject, and through which parser?",
+      "options": [
+        {
+          "id": "require-public",
+          "summary": "Require it; commit_txt exposes subject_parts (private alias kept)"
+        },
+        {
+          "id": "no-require",
+          "summary": "Any title passing the non-ASCII and branch-name checks"
+        },
+        {
+          "id": "require-own-regex",
+          "summary": "Require it with a second regex in the driver"
+        }
+      ],
+      "chosen": "require-public",
+      "rationale": "Developer, 2026-11-05 (TODO-003 decision_question)."
+    },
+    {
+      "id": "D2",
+      "question": "How do the squash behaviors enter the strap gate, given a frozen spec refuses add_behavior?",
+      "options": [
+        {
+          "id": "archive-fresh",
+          "summary": "Archive the frozen spec under strap/_archive/, open a fresh new --edit spec"
+        },
+        {
+          "id": "refreeze-only",
+          "summary": "Keep the spec, add unregistered tests, freeze --refreeze"
+        },
+        {
+          "id": "extend-strap",
+          "summary": "Teach strap.py to reopen a frozen spec first"
+        }
+      ],
+      "chosen": "archive-fresh",
+      "rationale": "Developer, 2026-11-05."
+    },
+    {
+      "id": "D3",
+      "question": "Capture header: the issue asks for 'Mode: squash' or 'Mode: merge', and also byte-identical no-mode output. Which wins?",
+      "options": [
+        {
+          "id": "squash-only-line",
+          "summary": "'- Mode: squash' fact and '# PR #N squash message' heading only in squash mode; merge output unchanged"
+        },
+        {
+          "id": "both-lines",
+          "summary": "Print 'Mode: merge' too; the no-mode output changes"
+        }
+      ],
+      "chosen": "both-lines",
+      "rationale": "Developer, 2026-11-05. Byte identity of the no-mode capture is dropped; the TXT and receipt stay unchanged."
+    },
+    {
+      "id": "D4",
+      "question": "Mode handoff from capture to build (capture writes nothing).",
+      "options": [
+        {
+          "id": "flag-or-detect",
+          "summary": "build takes the flag; without it, either exact subject is accepted and its mode applies"
+        },
+        {
+          "id": "flag-required",
+          "summary": "build without the flag accepts only the merge subject"
+        }
+      ],
+      "chosen": "flag-or-detect",
+      "rationale": "Developer, 2026-11-05."
+    },
+    {
+      "id": "D5",
+      "question": "An unknown second positional (capture 7 rebase).",
+      "options": [
+        {
+          "id": "problem-line",
+          "summary": "Optional positional without argparse choices; the driver prints a problem: line, exit 1"
+        },
+        {
+          "id": "argparse-choices",
+          "summary": "choices=['squash']; argparse exits 2 with its usage text"
+        }
+      ],
+      "chosen": "problem-line",
+      "rationale": "Developer, 2026-11-05."
+    },
+    {
+      "id": "D6",
+      "question": "How SKILL.md commands carry the mode.",
+      "options": [
+        {
+          "id": "placeholder-carries-flag",
+          "summary": "'<PR number>' on the commands stands for the number plus ' --squash' in squash mode; command lines unchanged"
+        },
+        {
+          "id": "explicit-bracket",
+          "summary": "Commands read 'capture <PR number> [--squash]'; the stdin contract node changes"
+        }
+      ],
+      "chosen": "placeholder-carries-flag",
+      "rationale": "Developer, 2026-11-05."
+    }
+  ],
+  "values": [
+    {
+      "name": "squash subject",
+      "value": "<title> (#N)",
+      "source": "issue #226, Requested interface"
+    },
+    {
+      "name": "merge subject",
+      "value": "Merge PR #N -- <title>",
+      "source": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:96-98"
+    },
+    {
+      "name": "argument-hint",
+      "value": "<PR number> [squash | --squash | -s] [-- <guidance>]",
+      "source": "issue #226, Skill rules and frontmatter"
+    },
+    {
+      "name": "HARNESS_RULES size budget",
+      "value": "RULES_LIMIT 10000; file is 9322 chars at base",
+      "source": "tests/hooks/test_session_rules.py:31"
+    },
+    {
+      "name": "harness plugin version",
+      "value": "0.57.0 -> 0.58.0",
+      "source": "plugins/harness/.claude-plugin/plugin.json:3"
+    }
+  ],
+  "formats": [
+    {
+      "name": "TXT subject line (line 1 of PR<N>_merge.txt)",
+      "example": "Fix(workers): pool crash on spawn (#7)",
+      "source": {
+        "at": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:290-295",
+        "expect": "subject = subject_line(pr, title)"
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "_?subject_parts\\(",
+      "hits": {
+        "plugins/harness/lib/harness_lib/commit_txt.py": "definition and two internal callers; renamed public, private alias kept"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "subject_line\\(pr, title\\)|title_problem\\(pr, |pr_view\\(repo, pr\\)",
+      "hits": {
+        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py": "every call site is inside the driver; each gains the squash flag",
+        "docs/PR_REVIEWS/0164_Featuremerge-commit-msg_merge_commit_msg.py_stdin_build.json": "historical review; unchanged"
+      }
+    },
+    {
+      "id": "S3",
+      "pattern": "merge_commit_msg\\.py\\\"? (capture|build)|harness:merge-commit-msg <",
+      "hits": {
+        "README.md": "TASK-4 adds the squash forms",
+        "docs/PROVENANCE.md": "provenance prose; unchanged",
+        "docs/PR_REVIEWS/0164_Featuremerge-commit-msg_merge_commit_msg.py_stdin_build.json": "historical review; unchanged",
+        "plugins/harness/hooks/guard_commit_txt.py": "route 'build <N>' rebuilds either subject without a flag (D4); unchanged",
+        "plugins/harness/skills/branch-commit-msg/SKILL.md": "--merge-msg passes the PR number only: merge mode; unchanged",
+        "plugins/harness/skills/merge-commit-msg/SKILL.md": "TASK-4",
+        "plugins/harness/skills/merge-commit-msg/message_format.md": "TASK-4",
+        "tests/contract/test_root_separation.py": "merge-mode build subprocess; unchanged, must still pass",
+        "tests/skills/test_canned_message_skill_contract.py": "pins canned-message text in SKILL.md; TASK-4 keeps it",
+        "tests/skills/test_merge_commit_msg_skill_contract.py": "TASK-4"
+      }
+    }
+  ]
+}
