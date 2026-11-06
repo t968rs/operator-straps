@@ -7,16 +7,19 @@ from __future__ import annotations
 import json
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
 from harness_lib.todo_sync import TodoSyncError
 
 
-def run_gh(cwd: Path, args: Sequence[str]) -> str:
-    """Stdout of ``gh <args>`` run in ``cwd``; a missing ``gh`` or a non-zero exit raises."""
+def run_gh(cwd: Path, args: Sequence[str], stdin: Optional[str] = None) -> str:
+    """Stdout of ``gh <args>`` run in ``cwd`` with ``stdin`` as input; a missing ``gh`` or a failure raises.
+
+    Long text (an issue body) travels on ``stdin`` so the command line stays under the Windows length limit.
+    """
     try:
-        done = subprocess.run(["gh", *args], cwd=cwd, capture_output=True, text=True, encoding="utf-8",
-                              errors="replace")
+        done = subprocess.run(["gh", *args], cwd=cwd, input=stdin, capture_output=True, text=True,
+                              encoding="utf-8", errors="replace")
     except OSError as exc:
         raise TodoSyncError(f"gh could not run ({exc}); install gh or check PATH") from exc
     if done.returncode != 0:

@@ -148,10 +148,12 @@ _CREATED_URL = re.compile(r"(https://\S+/issues/(\d+))\s*$")
 def file_issue(cfg: HarnessConfig, title: str, body: str) -> Tuple[int, str]:
     """File one issue (in ``todo.gh.repo``, else the repository ``gh`` resolves); returns number and URL."""
     repo = ["--repo", cfg.todo.gh_repo] if cfg.todo.gh_repo else []
-    out = gh.run_gh(cfg.project_root, ["issue", "create", "--title", title, "--body", body, *repo]).strip()
+    out = gh.run_gh(cfg.project_root, ["issue", "create", "--title", title, "--body-file", "-", *repo],
+                    stdin=body).strip()
     match = _CREATED_URL.search(out)
     if match is None:
-        raise TodoSyncError(f"gh issue create printed no issue URL: {out[:200]!r}")
+        raise TodoSyncError(f"gh issue create printed no issue URL: {out[:200]!r}; the issue may exist, "
+                            "so check gh issue list before a rerun")
     return int(match.group(2)), match.group(1)
 
 

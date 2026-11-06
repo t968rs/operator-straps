@@ -95,3 +95,11 @@ def test_driver_refuses_a_bad_level(make_project) -> None:
     done = _run(root, "-r", "4")
     assert done.returncode == 2
     assert "research" in done.stderr
+
+
+@pytest.mark.parametrize("extra", [["some note text"], ["--note", "some note text"]])
+def test_driver_rejects_a_note_argument(make_project, extra: List[str]) -> None:
+    root = make_project(config(), files=todo_files())
+    done = _run(root, *extra)
+    assert done.returncode == 2
+    assert "unrecognized arguments" in done.stderr

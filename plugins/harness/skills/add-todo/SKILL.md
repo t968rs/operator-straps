@@ -17,7 +17,7 @@ near zero, and the research is done once, by the agent, at the depth the develop
 
 Split `$ARGUMENTS` at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`:
 the flags come before it, the note after it. The note is the skill's own argument, so with no flags `-- <note>`
-and `<note>` are the same invocation. The note never reaches a command line.
+and `<note>` are the same invocation. With flags and no `--` token, the text after the last flag (and its level) is the note. The note never reaches a command line.
 
 | Flag | Effect | Default |
 |---|---|---|
@@ -98,6 +98,7 @@ commits. With `--issue`, name the issue the reply's `Added` line gives. Name an 
 | The note contradicts what the conversation found | State both in the Context line; the agent checks. |
 | The conversation found nothing about the note | `Context: none`; level 0 records a reminder. |
 | The conversation cited a file the note does not name | Include it when it bears on the note; the agent decides. |
+| The note is about a GitHub issue that is already open | Dispatch as usual; the agent names `/harness:sync-gh-todo` under `Open`, since `add` cannot mark an existing issue as tracked. |
 
 ## Related
 

@@ -18,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _todo_helpers import CATALOG_REL, MIN_CATALOG, build  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, check  # noqa: E402
-from harness_lib.todo_sync.ranking import SOURCE_TYPE_ORDER  # noqa: E402
+from harness_lib.todo_sync.ranking import SOURCE_TYPE_ORDER, expected_order, method_from  # noqa: E402
 from harness_lib.todo_sync.reshape import NOTE_SOURCE, add_items, apply_add, summary_lines  # noqa: E402
 
 CATALOG_RULES = ["T1", "T6", "T7", "T8", "T9", "T10"]
@@ -68,8 +68,14 @@ def test_issue_and_url_come_together_or_not_at_all(over: Dict[str, Any], fragmen
         add_items(_catalog(), [_note(**over)], today=DAY)
 
 
-def test_note_sorts_after_every_other_source_type_on_a_tie() -> None:
-    assert SOURCE_TYPE_ORDER[NOTE_SOURCE] > max(v for k, v in SOURCE_TYPE_ORDER.items() if k != NOTE_SOURCE)
+@pytest.mark.parametrize("other", sorted(set(SOURCE_TYPE_ORDER) - {NOTE_SOURCE}))
+def test_note_sorts_after_every_other_source_type_on_a_tie(other: str) -> None:
+    # The note item comes first in the input and wins the title tie-break, so only the source-type term
+    # placed ahead of the ref and title keys can put it last.
+    note = {**_note(title="A note"), "id": "TODO-001", "sources": [{"type": NOTE_SOURCE, "ref": DAY}]}
+    rival = {**_note(title="B rival"), "id": "TODO-002", "sources": [{"type": other, "ref": "1"}]}
+    method = method_from(MIN_CATALOG["ranking_method"])
+    assert expected_order([note, rival], method) == ["TODO-002", "TODO-001"]
 
 
 def test_note_item_passes_the_catalog_rules(make_project) -> None:
@@ -80,4 +86,6 @@ def test_note_item_passes_the_catalog_rules(make_project) -> None:
     assert re.fullmatch(r"added TODO-\d{3} \(note\); 4 item\(s\) now", summary_lines(done, False)[0])
     written = json.loads((cfg.project_root / CATALOG_REL).read_text(encoding="utf-8"))
     assert [i["sources"] for i in written["items"]].count([{"type": "note", "ref": DAY}]) == 1
-    assert check(cfg, rules=CATALOG_RULES).findings == ()
+    report = check(cfg, rules=CATALOG_RULES)
+    assert set(CATALOG_RULES) <= set(report.rules_run), report.rules_skipped
+    assert report.findings == ()

@@ -11,7 +11,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pytest
 
@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _todo_helpers import CATALOG_REL, TODO_DIR, build, config  # noqa: E402
 from conftest import GIT_ENV, PLUGIN_ROOT  # noqa: E402
-from harness_lib.todo_sync import TodoSyncError, gh  # noqa: E402
+from harness_lib.todo_sync import TodoSyncError, gh, reshape  # noqa: E402
 from harness_lib.todo_sync.issues import file_issue, issue_body  # noqa: E402
 from harness_lib.todo_sync.reshape import apply_add, summary_lines  # noqa: E402
 
@@ -41,9 +41,11 @@ class FakeGh:
 
     def __init__(self) -> None:
         self.calls: List[List[str]] = []
+        self.stdins: List[Optional[str]] = []
 
-    def __call__(self, cwd: Path, args: List[str]) -> str:
+    def __call__(self, cwd: Path, args: List[str], stdin: Optional[str] = None) -> str:
         self.calls.append(list(args))
+        self.stdins.append(stdin)
         return URL.format(n=41 + len(self.calls)) + "\n"
 
 
@@ -58,7 +60,21 @@ def test_file_issue_returns_number_and_url(make_project, monkeypatch) -> None:
     fake = FakeGh()
     monkeypatch.setattr(gh, "run_gh", fake)
     assert file_issue(cfg, "Title", "Body") == (42, URL.format(n=42))
-    assert fake.calls == [["issue", "create", "--title", "Title", "--body", "Body"]]
+    assert fake.calls == [["issue", "create", "--title", "Title", "--body-file", "-"]]
+    assert fake.stdins == ["Body"]
+
+
+def test_run_gh_feeds_stdin_to_the_subprocess(monkeypatch) -> None:
+    seen: Dict[str, Any] = {}
+
+    def fake_run(argv: List[str], **kwargs: Any) -> subprocess.CompletedProcess:
+        seen.update(kwargs, argv=argv)
+        return subprocess.CompletedProcess(argv, 0, stdout="ok\n", stderr="")
+
+    monkeypatch.setattr(gh.subprocess, "run", fake_run)
+    assert gh.run_gh(Path("."), ["issue", "create", "--body-file", "-"], stdin="x" * 40000) == "ok\n"
+    assert seen["argv"] == ["gh", "issue", "create", "--body-file", "-"]
+    assert seen["input"] == "x" * 40000
 
 
 def test_file_issue_honors_the_configured_repo(make_project, monkeypatch) -> None:
@@ -71,7 +87,7 @@ def test_file_issue_honors_the_configured_repo(make_project, monkeypatch) -> Non
 
 def test_file_issue_refuses_output_without_an_issue_url(make_project, monkeypatch) -> None:
     cfg = build(make_project)
-    monkeypatch.setattr(gh, "run_gh", lambda cwd, args: "created\n")
+    monkeypatch.setattr(gh, "run_gh", lambda cwd, args, stdin=None: "created\n")
     with pytest.raises(TodoSyncError, match="no issue URL"):
         file_issue(cfg, "Title", "Body")
 
@@ -110,19 +126,21 @@ def test_dry_run_files_nothing_and_says_what_it_would_file(make_project, monkeyp
     cfg = build(make_project)
     fake = FakeGh()
     monkeypatch.setattr(gh, "run_gh", fake)
+    before = (cfg.project_root / CATALOG_REL).read_bytes()
     dry = apply_add(cfg, _spec_file(cfg, [_note()]), dry_run=True, file_issues=True, today=DAY)
     assert fake.calls == []
     assert "would file 1 issue(s)" in summary_lines(dry, True)
+    assert (cfg.project_root / CATALOG_REL).read_bytes() == before
 
 
 def test_a_gh_failure_names_the_issues_already_filed(make_project, monkeypatch) -> None:
     cfg = build(make_project)
     fake = FakeGh()
 
-    def flaky(cwd: Path, args: List[str]) -> str:
+    def flaky(cwd: Path, args: List[str], stdin: Optional[str] = None) -> str:
         if fake.calls:
             raise TodoSyncError("gh issue create failed: rate limited")
-        return fake(cwd, args)
+        return fake(cwd, args, stdin)
 
     monkeypatch.setattr(gh, "run_gh", flaky)
     before = (cfg.project_root / CATALOG_REL).read_bytes()
@@ -131,11 +149,34 @@ def test_a_gh_failure_names_the_issues_already_filed(make_project, monkeypatch) 
     assert (cfg.project_root / CATALOG_REL).read_bytes() == before
 
 
+def test_a_write_failure_after_filing_names_the_filed_issues(make_project, monkeypatch) -> None:
+    cfg = build(make_project)
+    monkeypatch.setattr(gh, "run_gh", FakeGh())
+
+    def locked(*args: Any, **kwargs: Any) -> None:
+        raise OSError("catalog is locked")
+
+    monkeypatch.setattr(reshape, "write_edits", locked)
+    with pytest.raises(TodoSyncError, match=r"catalog is locked; already filed: #42 "):
+        apply_add(cfg, _spec_file(cfg, [_note()]), file_issues=True, today=DAY)
+
+
+def test_dry_run_labels_the_item_to_file(make_project, monkeypatch) -> None:
+    cfg = build(make_project)
+    monkeypatch.setattr(gh, "run_gh", FakeGh())
+    dry = apply_add(cfg, _spec_file(cfg, [_note()]), dry_run=True, file_issues=True, today=DAY)
+    head = summary_lines(dry, True)[0]
+    assert "(issue to file)" in head
+    assert "(note)" not in head
+
+
 def test_cli_dry_run_takes_the_file_issue_flag(make_project) -> None:
     cfg = build(make_project)
     spec = _spec_file(cfg, [_note()])
     env = {**os.environ, **GIT_ENV}
     env.pop("CLAUDE_PROJECT_DIR", None)
+    for name in ("GH_REPO", "GH_HOST", "GH_TOKEN"):
+        env.pop(name, None)
     done = subprocess.run([sys.executable, str(PLUGIN_ROOT / "scripts" / "todo_sync.py"), "--project",
                            str(cfg.project_root), "add", "--spec", str(spec), "--file-issue", "--dry-run"],
                           capture_output=True, text=True, encoding="utf-8", env=env)
@@ -150,3 +191,9 @@ def test_items_that_name_an_issue_are_not_filed_again(make_project, monkeypatch)
     known = _note(title="Known", issue=9, url=URL.format(n=9))
     apply_add(cfg, _spec_file(cfg, [known, _note()]), file_issues=True, today=DAY)
     assert len(fake.calls) == 1
+    assert fake.calls[0][3] == "Parser skips a row"
+    written = json.loads((cfg.project_root / CATALOG_REL).read_text(encoding="utf-8"))
+    by_title = {i["title"]: i for i in written["items"]}
+    assert by_title["Known"]["sources"] == [{"type": "gh_issue", "ref": "#9", "url": URL.format(n=9)}]
+    filed = [{"type": "gh_issue", "ref": "#42", "url": URL.format(n=42)}]
+    assert by_title["Parser skips a row"]["sources"] == filed

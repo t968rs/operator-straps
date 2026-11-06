@@ -53,8 +53,10 @@ catalog items.
     script builds the source (``gh_issue``, or for an entry with neither a local-only ``note`` dated today),
     scores the item, re-sorts, renumbers, recounts and rewrites moved ids as ``split`` does. An issue the
     catalog already records is refused. ``--file-issue`` files a GitHub issue (``gh issue create``, in
-    ``todo.gh.repo`` when set) for each entry that names none, after the whole spec validates, and records it
-    as the ``gh_issue`` source; a dry run files nothing and prints ``would file N issue(s)``.
+    ``todo.gh.repo`` when set) for each entry that names none, after the whole spec and its companion edits
+    pass a dry run, and records it as the ``gh_issue`` source; a failure after filing names the issues
+    filed. A dry run files nothing, labels each such item ``(issue to file)`` and prints
+    ``would file N issue(s)``.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
 ``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or any

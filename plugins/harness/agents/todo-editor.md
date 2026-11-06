@@ -40,8 +40,9 @@ says, the evidence behind a close candidate, and the prose that named an id that
   (`TS` below stands for everything before `<subcommand>`).
 - One command per Bash call (no `&&`, `;`). Absolute paths with forward slashes. `git -C "<root>"` instead of
   `cd`. Read-only git only: `log`, `show`, `status`, `diff`, `grep`.
-- Configured paths: `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" --repo "<root>" config --get todo.catalog --get state_dir`
-  prints one line per key in that order (an empty line is null). Both are project-relative.
+- Configured paths: `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" --repo "<root>" config --get todo.catalog --get state_dir --get todo.gh.repo`
+  prints one line per key in that order (an empty line is null). The first two are project-relative; the
+  third is the `owner/name` repository issues live in (empty: the one `gh` resolves for the checkout).
 - The catalog can be large: Grep for `"id": "TODO-NNN"` and Read around the hit with `offset` and `limit`.
   Never Read it whole.
 
@@ -166,16 +167,20 @@ session's conversation had already established (or `none`). Draft exactly one it
 
 1. Research to the `Research:` level and no further. Context is a lead, not evidence.
    - **0:** draft from the Note and Context lines alone. At most Glob that a path they name exists; read no
-     code, config, docs or schema, grep for nothing, and settle no question the note raises. The note is the
+     code, config, docs or schema about the note's subject, grep for nothing on it, and settle no question
+     the note raises. The note is the
      item: a reminder about future work ("once the keys exist", "after the merge") is a valid item as it
      stands, and "I could not verify it" is no reason to hold it back. Write what the Context claims as the
      session's ("per the session: ..."), and put an open question in `decision_question` with
-     `needs_decision: true` instead of answering it.
+     `needs_decision: true` instead of answering it. The Environment's config lookup still runs,
+     and the catalog's `ranking_method` scales the Rules require are still read for scoring (Grep for
+     `severity_scale` and `impact_definitions` and Read around the hit); neither is research.
    - **1:** also Read the files the note and context name, around the lines they cite. Check each claim; cite
      `path:line` in `summary`; a claim the tree neither confirms nor refutes is written as `unverified`.
    - **2:** also Grep the callers and consumers of the named symbols (into `blast_radius.consumers`), the
      tests that cover them, catalog items on the same files (named in `summary`) and open issues on the
-     subject (`gh issue list --search`, read-only; into `related_gh_issues`).
+     subject (`gh issue list --search <terms> [--repo <todo.gh.repo>]`, read-only, with `--repo` whenever
+     the `todo.gh.repo` line is not empty; into `related_gh_issues`).
    - **3:** also `git -C "<root>" log` the files, read the PR reviews the context names, weigh the
      alternatives in `proposed_change`, add a `code_snippet` with its `path:line` header, and give every claim
      in `summary` a `path:line` or `unverified`. A Context ask to keep it short shortens the prose, never the
@@ -183,11 +188,15 @@ session's conversation had already established (or `none`). Draft exactly one it
 2. Score as in **sync**: `severity`, `impact`, `loe` and `blast_radius` follow the catalog's `ranking_method`
    scales, with a best guess at level 0. `kind` and `why_ranked` as in **sync**.
 3. Write `{"items": [{...}]}` to `<state_dir>/todo-sync/add.json` with the **sync** item keys, never `issue` or
-   `url`: the script makes the item a local `note` source, or files the issue.
+   `url`: the script makes the item a local `note` source, or files the issue. A note about an issue that is
+   already open belongs to `/harness:sync-gh-todo`, not to `add`: a `related_gh_issues` entry still leaves the
+   issue untracked, so the next sync would draft a second item for it. Say so under `Open`.
 4. `TS add --spec <path> --dry-run`, read it, then `TS add --spec <path>`. Under `Issue: yes` both runs take
    `--file-issue`; under `Issue: no` neither does, even when the note asks for an issue: the item stays local
    and `Open` says the note asked for one. Never run `gh issue create` yourself. On a `problem:` line fix the
-   spec and rerun once; a `problem:` line naming issues `already filed` is relayed verbatim under `Open`.
+   spec and rerun once; a `problem:` line naming issues `already filed` is relayed verbatim under `Open`, and
+   the rerun after it sets `issue` and `url` from that line in the spec and drops `--file-issue`, so the
+   issue is not filed twice.
 5. List the item under `Added` as `TODO-NNN (note)`, or `TODO-NNN for #N <url>` from the `filed` line, with
    ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
 
@@ -215,7 +224,7 @@ Operation: <retire | split | refresh | sync | add> <ids, issues or the note's fi
 Result: <the script's first line>
 Renumbered: <old->new, ... | none>
 Prose fixed: <file: where, one per line | none>
-Added: <TODO-NNN for #N (needs decision), close_candidates #N, tracker #N notes, ... | none>
+Added: <TODO-NNN for #N [<url>] | TODO-NNN (note), each (needs decision) when set, close_candidates #N, tracker #N notes, ... | none>
 Stubs: <stub path: updated | deleted | kept, its status now and what is left, one per line | none>
 Resolved: <research entry id: FULLY_IMPLEMENTED with the evidence run, or PARTIAL with the gap, one per line | none>
 Close: <issue #N: why it can close (commit SHA or PR), one per line | none>

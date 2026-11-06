@@ -1,5 +1,5 @@
-"""Split one TODO item into parts, add items for open issues, or refresh every item's score and rank; all
-three end by renumbering.
+"""Split one TODO item into parts, add items (for open issues or local notes), or refresh every item's score
+and rank; all three end by renumbering.
 
 Rule T6 ties each id to its rank, so the operations finish the same way: rescore from ``ranking_method``,
 sort, renumber ``TODO-<rank>``, map the link lists (``depends_on``, ``unblocks``, tracker ``child_todo_ids``,
@@ -399,9 +399,11 @@ class ReshapeResult:
     rewritten: Tuple[str, ...]
     flagged: Tuple[str, ...]
     references: Tuple[str, ...]
-    #: Issues ``add --file-issue`` filed (number, URL), and how many a dry run would file.
+    #: Issues ``add --file-issue`` filed (number, URL), how many a dry run would file, and the ids of the
+    #: items it would file them for.
     filed: Tuple[Tuple[int, str], ...] = ()
     to_file: int = 0
+    pending: Tuple[str, ...] = ()
 
 
 def read_spec(path: Path, key: str = "parts") -> List[Any]:
@@ -427,19 +429,48 @@ def apply_add(cfg: HarnessConfig, spec: Path, dry_run: bool = False, file_issues
               today: Optional[str] = None) -> ReshapeResult:
     """Add the items of the ``add`` spec file to the project's catalog and rewrite moved ids in its
     companions. With ``file_issues``, each item that names no issue gets one filed first, once the whole
-    spec validates; a dry run files nothing."""
+    spec and its companion edits pass a dry run; a dry run files nothing and ranks each item to file under a
+    placeholder issue above every catalog number, so ties sort as the real run's ``gh_issue`` source does.
+    A failure after filing names the issues filed."""
     specs = read_spec(spec, "items")
     day = today or dt.date.today().isoformat()
     pending = ([n for n, s in enumerate(specs) if isinstance(s, dict) and "issue" not in s]
                if file_issues else [])
     if not pending:
         return _apply(cfg, "add", lambda data: add_items(data, specs, day), dry_run)
-    add_items(load_catalog(cfg, "add")[1], specs, day)
+    preview = _apply(cfg, "add", lambda data: _preview_add(data, specs, pending, day), True)
     if dry_run:
-        dry = _apply(cfg, "add", lambda data: add_items(data, specs, day), True)
-        return replace(dry, to_file=len(pending))
+        ids = tuple(preview.reshape.added[n][0] for n in pending)
+        return replace(preview, to_file=len(pending), pending=ids)
     filed_specs, filed = _file_pending(cfg, specs, pending)
-    return replace(_apply(cfg, "add", lambda data: add_items(data, filed_specs, day), False), filed=filed)
+    try:
+        result = _apply(cfg, "add", lambda data: add_items(data, filed_specs, day), False)
+    except (TodoSyncError, RankingError, OSError) as exc:
+        raise TodoSyncError(_with_filed(str(exc), filed)) from exc
+    return replace(result, filed=filed)
+
+
+#: The URL a dry run gives an issue it would file; the ``.invalid`` host never resolves.
+PLACEHOLDER_URL = "https://placeholder.invalid/issues/{}"
+
+
+def _preview_add(data: Dict[str, Any], specs: Sequence[Any], pending: Sequence[int], day: str) -> Reshape:
+    """Validate ``specs`` as written, then add them with a placeholder issue for each index in ``pending``."""
+    add_items(data, specs, day)
+    named = {s["issue"] for s in specs if isinstance(s, dict) and isinstance(s.get("issue"), int)}
+    top = max(catalog_issue_numbers(data) | named, default=0)
+    out = list(specs)
+    for k, n in enumerate(pending, 1):
+        out[n] = {**out[n], "issue": top + k, "url": PLACEHOLDER_URL.format(top + k)}
+    return add_items(data, out, day)
+
+
+def _with_filed(message: str, filed: Sequence[Tuple[int, str]]) -> str:
+    """``message`` naming the issues already filed, so a rerun adds them instead of filing them again."""
+    if not filed:
+        return message
+    done = ", ".join(f"#{num} {link}" for num, link in filed)
+    return f"{message}; already filed: {done} (add them with issue and url set)"
 
 
 def _file_pending(cfg: HarnessConfig, specs: Sequence[Any], pending: Sequence[int]
@@ -450,9 +481,7 @@ def _file_pending(cfg: HarnessConfig, specs: Sequence[Any], pending: Sequence[in
         try:
             number, url = issues.file_issue(cfg, out[n]["title"], issues.issue_body(out[n]))
         except TodoSyncError as exc:
-            done = ", ".join(f"#{num} {link}" for num, link in filed)
-            raise TodoSyncError(f"{exc}; already filed: {done} (add them with issue and url set)"
-                                if filed else str(exc)) from exc
+            raise TodoSyncError(_with_filed(str(exc), filed)) from exc
         out[n] = {**out[n], "issue": number, "url": url}
         filed.append((number, url))
     return out, tuple(filed)
@@ -483,7 +512,7 @@ def summary_lines(result: ReshapeResult, dry_run: bool) -> List[str]:
     out = result.reshape
     count = len(out.catalog["items"])
     changed = out.split is not None or bool(out.added)
-    lines = [_head(out, dry_run, count)]
+    lines = [_head(out, dry_run, count, result.pending)]
     lines.extend(f"filed #{number} {url}" for number, url in result.filed)
     if result.to_file:
         lines.append(f"would file {result.to_file} issue(s)")
@@ -504,12 +533,20 @@ def summary_lines(result: ReshapeResult, dry_run: bool) -> List[str]:
     return lines
 
 
-def _head(out: Reshape, dry_run: bool, count: int) -> str:
-    """The first report line: what a split, an add or a refresh did to the catalog."""
+def _head(out: Reshape, dry_run: bool, count: int, pending: Tuple[str, ...] = ()) -> str:
+    """The first report line: what a split, an add or a refresh did to the catalog; ``pending`` items are
+    the ones a dry run would file an issue for."""
     if out.split is not None:
         return f"{'would split' if dry_run else 'split'} {out.split} into {', '.join(out.parts)}; " \
                f"{count} item(s) now"
     if out.added:
-        added = ", ".join(f"{item} ({'note' if issue is None else f'#{issue}'})" for item, issue in out.added)
+        added = ", ".join(f"{item} ({_label(item, issue, pending)})" for item, issue in out.added)
         return f"{'would add' if dry_run else 'added'} {added}; {count} item(s) now"
     return f"{'would refresh' if dry_run else 'refreshed'} {count} item(s)"
+
+
+def _label(item: str, issue: Optional[int], pending: Tuple[str, ...]) -> str:
+    """An added item's source on the head line: an issue to file, its issue number, or ``note``."""
+    if item in pending:
+        return "issue to file"
+    return "note" if issue is None else f"#{issue}"

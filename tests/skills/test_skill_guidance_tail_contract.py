@@ -22,10 +22,10 @@ _REFERENCE = _PLUGIN / "reference" / "skill_arguments.md"
 _POINTER = "${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md"
 
 _INVOCABLE = [
-    "a-w", "add-bookmark", "amend-commit-msg", "branch-commit-msg", "bubble-memo", "c-msg", "check-runlogs",
-    "d-w", "doctor", "fold-in-review", "merge-commit-msg", "parallel2", "post-forcepush", "pr-review", "pr-sum",
-    "pr-team", "review-local", "roast-my-code", "strap-skills", "sync-gh-todo", "todo-edit", "write-plan",
-    "writing-docstrings",
+    "a-w", "add-bookmark", "add-todo", "amend-commit-msg", "branch-commit-msg", "bubble-memo", "c-msg",
+    "check-runlogs", "d-w", "doctor", "fold-in-review", "merge-commit-msg", "parallel2", "post-forcepush",
+    "pr-review", "pr-sum", "pr-team", "review-local", "roast-my-code", "strap-skills", "sync-gh-todo",
+    "todo-edit", "write-plan", "writing-docstrings",
 ]
 _KNOWLEDGE = [
     "agent-permissions", "consumer-contract-audit", "decompose-module", "efficient-file-reading",
