@@ -21,7 +21,9 @@ MIN_SCENARIOS = 2
 MIN_DISCIPLINE_PRESSURES = 3
 DESCRIPTION_MAX = 1024
 NAME_PATTERN = r"^[a-z0-9]+(-[a-z0-9]+)*$"
-REL_PATH_PATTERN = r"^(?![/\\])(?![A-Za-z]:)"
+#: No leading slash or backslash and no drive letter, written without look-around: pydantic before 2.5
+#: compiles every pattern with an engine that refuses look-around.
+REL_PATH_PATTERN = r"^(?:[^/\\A-Za-z]|[A-Za-z](?:[^:]|$))"
 SPEC_FILE = "SkillSpec.json"
 SCHEMA_DRAFT = "https://json-schema.org/draft/2020-12/schema"
 SCHEMA_ID = "https://github.com/t968rs/operator-straps/plugins/harness/schemas/SkillSpec.schema.json"
@@ -390,8 +392,7 @@ class SkillTarget(BaseModel):
     """Where a project-profile skill lands: the project's skills and agents folders, repo-relative (no
     leading slash or backslash, no drive letter)."""
 
-    # The relative-path pattern needs look-ahead, which only the Python regex engine supports.
-    model_config = ConfigDict(extra="forbid", regex_engine="python-re")
+    model_config = ConfigDict(extra="forbid")
 
     skills_dir: str = Field(min_length=1, pattern=REL_PATH_PATTERN)
     agents_dir: str = Field(min_length=1, pattern=REL_PATH_PATTERN)

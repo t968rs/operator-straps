@@ -24,7 +24,7 @@ least one check failed; warnings exit 0.
 |---|---|
 | `python` | The interpreter `hpy` picked is older than 3.11 (fail). |
 | `interpreter` | `HARNESS_PY` or the plugin's `python` option is set but did not start, so `hpy` fell through (warn). Also warns when the `python` option is set in `~/.claude/settings.json` but the shell never received it, so `hpy` ran the PATH `python` instead. |
-| `modules` | `pydantic>=2`, `referencing` or `jsonschema` is missing from that interpreter (fail). |
+| `modules` | `pydantic>=2.1`, `referencing` or `jsonschema` is missing from that interpreter, or its pydantic is older than 2.1 (fail). |
 | `git` / `gh` | Not on PATH: `git` fails, `gh` warns (review and summary skills need it). |
 | `repository` | The directory is not a git checkout (warn). |
 | `config` | `.claude/harness.json` is unreadable or fails the schema (fail); an absent file is fine, defaults apply. |

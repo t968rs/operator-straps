@@ -9,6 +9,7 @@ import importlib
 import importlib.metadata
 import json
 import os
+import re
 import shutil
 import sys
 from dataclasses import dataclass
@@ -32,6 +33,10 @@ REQUIRED_MODULES: Tuple[Tuple[str, Optional[str], str], ...] = (
     ("referencing", None, "referencing"),
     ("jsonschema", None, "jsonschema"),
 )
+
+#: Lowest release of a required module where the major-version probe is not enough: pydantic 2.0 lacks
+#: what the plan models build on, so their import fails there.
+MIN_RELEASES: Mapping[str, Tuple[int, ...]] = {"pydantic": (2, 1)}
 
 
 @dataclass(frozen=True)
@@ -118,12 +123,35 @@ def check_interpreter(environ: Mapping[str, str], configured: Optional[str] = No
     return Check(OK, "interpreter", f"{sys.executable} (PATH fallback; set HARNESS_PY to pin one)")
 
 
-def _installed(module: str, attr: Optional[str]) -> bool:
+def _release(dist: str) -> Optional[Tuple[int, ...]]:
+    """The numeric release of the installed distribution ``dist`` (``2.4.2`` -> ``(2, 4, 2)``), else None."""
+    try:
+        found = re.match(r"\d+(?:\.\d+)*", importlib.metadata.version(dist))
+    except importlib.metadata.PackageNotFoundError:
+        return None
+    return tuple(int(part) for part in found.group(0).split(".")) if found else None
+
+
+def _requirement(module: str, requirement: str) -> str:
+    """The pip requirement for ``module``, raised to its release floor when it has one."""
+    floor = MIN_RELEASES.get(module)
+    return requirement if floor is None else f"{_dist(requirement)}>={'.'.join(map(str, floor))}"
+
+
+def _dist(requirement: str) -> str:
+    return requirement.split(">=")[0]
+
+
+def _installed(module: str, attr: Optional[str], requirement: str) -> bool:
+    """``module`` imports, has ``attr`` and, when it has a floor and a known release, meets the floor."""
     try:
         loaded = importlib.import_module(module)
     except ImportError:
         return False
-    return attr is None or hasattr(loaded, attr)
+    if attr is not None and not hasattr(loaded, attr):
+        return False
+    floor, found = MIN_RELEASES.get(module), _release(_dist(requirement))
+    return floor is None or found is None or found >= floor
 
 
 def _version(requirement: str) -> str:
@@ -135,12 +163,13 @@ def _version(requirement: str) -> str:
 
 
 def check_modules() -> Check:
-    """Every required module imports; otherwise one pip line naming all that are missing."""
-    missing = [req for module, attr, req in REQUIRED_MODULES if not _installed(module, attr)]
+    """Every required module imports at its floor; otherwise one pip line naming each missing or old one."""
+    missing = [_requirement(module, req) for module, attr, req in REQUIRED_MODULES
+               if not _installed(module, attr, req)]
     if not missing:
         return Check(OK, "modules", ", ".join(_version(req) for _, _, req in REQUIRED_MODULES))
     pip = f'"{sys.executable}" -m pip install ' + " ".join(f'"{req}"' for req in missing)
-    return Check(FAIL, "modules", "missing: " + ", ".join(missing), pip)
+    return Check(FAIL, "modules", "missing or too old: " + ", ".join(missing), pip)
 
 
 def check_tool(name: str, severity: str, needed_by: str) -> Check:

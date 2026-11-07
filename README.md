@@ -338,7 +338,7 @@ option. `pytest-scope` options (see `plugins/pytest-scope/README.md`):
 
 | Option            | Default | Meaning                                                                                                                                                |
 |-------------------|---------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `python`          | unset   | Interpreter for harness hooks only; skill commands do not receive it, so pin those with `HARNESS_PY`. Needs `jsonschema`, `referencing`, `pydantic>=2` |
+| `python`          | unset   | Interpreter for harness hooks only; skill commands do not receive it, so pin those with `HARNESS_PY`. Needs `jsonschema`, `referencing`, `pydantic>=2.1` |
 | `bash_discipline` | `true`  | Deny Bash commands chained with `&&` or `;`                                                                                                            |
 | `inject_rules`    | `true`  | Add `rules/HARNESS_RULES.md` to the session context at start                                                                                           |
 

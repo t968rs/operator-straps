@@ -45,6 +45,28 @@ def test_old_major_version_counts_as_missing(monkeypatch: pytest.MonkeyPatch) ->
     assert doctor.check_modules().status == doctor.FAIL
 
 
+def test_pydantic_below_its_release_floor_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    """pydantic 2.0 passes the major-version probe but lacks what the plan models build on."""
+    monkeypatch.setattr(doctor, "_release", lambda dist: (2, 0, 3) if dist == "pydantic" else None)
+    check = doctor.check_modules()
+    assert check.status == doctor.FAIL
+    assert "pydantic>=2.1" in check.detail
+    assert check.fix == f'"{sys.executable}" -m pip install "pydantic>=2.1"'
+
+
+@pytest.mark.parametrize("found", [(2, 1), (2, 1, 1), (2, 14, 1), None])
+def test_pydantic_at_or_above_its_floor_or_unknown_passes(monkeypatch: pytest.MonkeyPatch, found) -> None:
+    """A release at or above the floor passes; a release no metadata names is left to the major probe."""
+    monkeypatch.setattr(doctor, "_release", lambda dist: found)
+    assert doctor.check_modules().status == doctor.OK
+
+
+def test_release_reads_the_installed_distribution() -> None:
+    import pydantic
+    assert doctor._release("pydantic") == tuple(int(part) for part in pydantic.VERSION.split(".")[:3])
+    assert doctor._release("no-such-dist-xyz") is None
+
+
 def test_python_below_the_floor_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(doctor, "MIN_PYTHON", (99, 0))
     assert doctor.check_python().status == doctor.FAIL
