@@ -79,7 +79,7 @@
       ],
       "commands": [
         {
-          "run": "C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_review_plan.py -q",
+          "run": "python -m pytest tests/lib/test_review_plan.py -q",
           "expect": "passed, no failures"
         }
       ],
@@ -182,6 +182,7 @@
           "expect": "from harness_lib.config import ConfigError, activate, active, load_config"
         }
       ],
+      "commands": [],
       "tests": [
         {
           "node": "tests/scripts/test_diff_delta_script.py::test_prints_one_status_line",
@@ -264,11 +265,11 @@
       ],
       "commands": [
         {
-          "run": "C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_review_edit.py tests/lib/test_review_merge.py tests/schemas/test_pr_review_schema_verification_log.py -q",
+          "run": "python -m pytest tests/lib/test_review_edit.py tests/lib/test_review_merge.py tests/schemas/test_pr_review_schema_verification_log.py -q",
           "expect": "passed, no failures"
         },
         {
-          "run": "C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/scripts/test_pr_review_driver.py -q",
+          "run": "python -m pytest tests/scripts/test_pr_review_driver.py -q",
           "expect": "passed, no failures"
         }
       ],
@@ -384,7 +385,7 @@
       ],
       "commands": [
         {
-          "run": "C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_pr_summary.py tests/scripts/test_pr_sum.py -q",
+          "run": "python -m pytest tests/lib/test_pr_summary.py tests/scripts/test_pr_sum.py -q",
           "expect": "passed, no failures"
         }
       ],
@@ -422,10 +423,10 @@
   ],
   "base_commit": "ea47d7f073faf9186012654502119227d19f0fc3",
   "frozen": {
-    "commit": "c5f09310e815c786a8a9ee5ec78681af49f3a081",
-    "tree": "1102e4a8f06f62c9ac252970b5b30a621b059685",
-    "date": "2026-11-06",
-    "digest": "ff94c3cef45c2e6ce62d48e971f8765b8cdb3e8d33dfac08339647d4727db603",
+    "commit": "ca24390f2a57ff86176ef9b08033b76a89a259fb",
+    "tree": "aaa726f5d92340affcb87ecc6d0afa9c3f493dc8",
+    "date": "2026-11-07",
+    "digest": "9ec7215e7bd4ee2af173d4a893bff51580cb02178bdfd8130089b2727b92e1b8",
     "records": "sealed"
   },
   "decisions": [

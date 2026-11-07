@@ -6,7 +6,7 @@
 **Spec:** `docs/superpowers/specs/2026-11-06-diff-delta-design.md`
 **Branch:** 1140-diff-delta-and-skills -> main
 **Base commit:** `ea47d7f`
-**Frozen:** 2026-11-06 at `c5f0931`
+**Frozen:** 2026-11-07 at `ca24390`
 **Execution model:** serial
 
 ## Decisions
@@ -66,7 +66,7 @@ Create plugins/harness/lib/harness_lib/diff_delta.py (stdlib only): frozen datac
 - [x] Test `tests/lib/test_diff_delta.py::test_delta_payload_shape` fails with ImportError, then passes
 - [x] Test `tests/lib/test_diff_delta.py::test_between_reads_two_refs` fails with ImportError, then passes
 - [x] Test `tests/lib/test_diff_delta.py::test_between_bad_ref_raises_delta_error` fails with ImportError, then passes
-- [x] Run `C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_review_plan.py -q`: passed, no failures
+- [x] Run `python -m pytest tests/lib/test_review_plan.py -q`: passed, no failures
 - [x] Record it: `plan.py record 0010 TASK-1 --sha <sha>` or `--staged`
 
 **Evidence:** staged tree 93c435c: 14 test node(s) passed
@@ -114,8 +114,8 @@ pr_review.review_meta(facts, excluded: Sequence[str]) builds diff_delta.from_sta
 - [x] Test `tests/scripts/test_pr_review_stats_source.py::test_schema_accepts_a_source_sub_object` fails with AssertionError, then passes
 - [x] Test `tests/scripts/test_pr_review_stats_source.py::test_schema_rejects_a_malformed_source` fails with AssertionError, then passes
 - [x] Test `tests/scripts/test_pr_review_stats_source.py::test_set_stats_keeps_an_existing_source` fails with AssertionError, then passes
-- [x] Run `C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_review_edit.py tests/lib/test_review_merge.py tests/schemas/test_pr_review_schema_verification_log.py -q`: passed, no failures
-- [x] Run `C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/scripts/test_pr_review_driver.py -q`: passed, no failures
+- [x] Run `python -m pytest tests/lib/test_review_edit.py tests/lib/test_review_merge.py tests/schemas/test_pr_review_schema_verification_log.py -q`: passed, no failures
+- [x] Run `python -m pytest tests/scripts/test_pr_review_driver.py -q`: passed, no failures
 - [x] Record it: `plan.py record 0010 TASK-3 --sha <sha>` or `--staged`
 
 **Evidence:** staged tree 93c435c: 5 test node(s) passed
@@ -150,7 +150,7 @@ pr_summary: PrFile.artifact returns diff_delta.is_machine_generated(self.path, d
 - [x] Test `tests/lib/test_pr_summary_delta.py::test_delta_table_shown_for_any_excluded_file` fails with ImportError, then passes
 - [x] Test `tests/lib/test_pr_summary_delta.py::test_render_places_the_table_after_the_summary` fails with ImportError, then passes
 - [x] Test `tests/lib/test_pr_summary_delta.py::test_artifact_note_is_gone` fails with ImportError, then passes
-- [x] Run `C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_pr_summary.py tests/scripts/test_pr_sum.py -q`: passed, no failures
+- [x] Run `python -m pytest tests/lib/test_pr_summary.py tests/scripts/test_pr_sum.py -q`: passed, no failures
 - [x] Record it: `plan.py record 0010 TASK-4 --sha <sha>` or `--staged`
 
 **Evidence:** staged tree 93c435c: 7 test node(s) passed
