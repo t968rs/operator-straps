@@ -62,7 +62,10 @@ class PrFile:
 
     @property
     def artifact(self) -> bool:
-        """True for a machine-generated path: an exclusions-file pattern or the Artifact commit bucket."""
+        """True for a machine-generated path.
+
+        Machine-generated means an exclusions-file or harness output pattern, or the Artifact commit bucket.
+        """
         return diff_delta.is_machine_generated(self.path, diff_delta.active_patterns())
 
     @property

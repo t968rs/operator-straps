@@ -4,7 +4,8 @@ A ``DiffDelta`` holds the added and deleted line counts and the file count of th
 machine-generated, the sorted machine-generated paths it left out, and in ``full`` the unfiltered delta of
 every path. One rule decides what is machine-generated, shared by pr-review and pr-sum: a path matching a
 pattern of the project's exclusions file (``exclusions`` in ``.claude/harness.json``, plus the harness's own
-output patterns), or a path the commit buckets file as ``Artifact``.
+output patterns; both off when ``exclusions`` is null), or a path the commit buckets file as ``Artifact``.
+``project_patterns`` is the one pattern lookup; pr-review reads it with ``strict=True``.
 
 ``between`` reads two git refs; ``from_stats`` and ``from_patterns`` build a delta from ``DiffStat`` rows
 already read. Library code: the configuration is read through ``active()`` inside the functions.
@@ -58,8 +59,9 @@ def _totals(stats: Sequence[DiffStat]) -> DiffDelta:
 def from_stats(stats: Iterable[DiffStat], excluded: Callable[[str], bool]) -> DiffDelta:
     """The delta of ``stats`` without the paths ``excluded`` accepts; ``full`` holds every path."""
     rows = list(stats)
-    kept = [s for s in rows if not excluded(s.path)]
-    left_out = tuple(sorted(s.path for s in rows if excluded(s.path)))
+    flags = [(s, excluded(s.path)) for s in rows]
+    kept = [s for s, out in flags if not out]
+    left_out = tuple(sorted(s.path for s, out in flags if out))
     source = _totals(kept)
     return DiffDelta(source.adds, source.subs, source.files, left_out, _totals(rows))
 
@@ -69,21 +71,34 @@ def from_patterns(stats: Iterable[DiffStat], patterns: Sequence[str]) -> DiffDel
     return from_stats(stats, lambda path: is_machine_generated(path, patterns))
 
 
-def project_patterns(repo: Path) -> Tuple[str, ...]:
+def _load_patterns(target: Path) -> Sequence[str]:
+    """The patterns of the exclusions file ``target``; FileNotFoundError when absent, DeltaError when
+    unreadable or not an ``exclusions`` list of ``{pattern}`` rows."""
+    from harness_lib.git_status_filter_excluded import load_exclusions
+    try:
+        return load_exclusions(target)
+    except FileNotFoundError:
+        raise
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise DeltaError(f"exclusions file {target}: {exc}") from exc
+
+
+def project_patterns(repo: Path, strict: bool = False) -> Tuple[str, ...]:
     """The exclusion patterns of the project at ``repo``: its configured file plus the harness patterns.
 
-    Empty when ``exclusions`` is null; the harness patterns alone when the configured file is missing.
+    Empty when ``exclusions`` is null. A missing configured file yields the harness patterns alone, or
+    FileNotFoundError when ``strict`` (pr-review). DeltaError when the file cannot be read or does not
+    hold an ``exclusions`` list.
     """
     from harness_lib.config import active
     from harness_lib.default_exclusions import harness_patterns, with_harness_patterns
-    from harness_lib.git_status_filter_excluded import load_exclusions
     cfg = active()
     if not cfg.exclusions:
         return ()
     target = Path(repo) / cfg.exclusions
-    if not target.is_file():
+    if not strict and not target.is_file():
         return tuple(harness_patterns(cfg))
-    return tuple(with_harness_patterns(cfg, load_exclusions(target)))
+    return tuple(with_harness_patterns(cfg, _load_patterns(target)))
 
 
 def _file_key(target: Path) -> Tuple[object, ...]:

@@ -1,11 +1,13 @@
 """Behavioral tests for harness_lib.diff_delta: the filtered and full deltas, the machine-generated rule, the
 project pattern lookup, the payload shape and the two-ref git read.
 
-Every test builds a throwaway project with ``make_project`` and activates its configuration, so the
-machine-generated rule never reads the checkout the suite runs from.
+Every test that reads the machine-generated rule or the project patterns builds a throwaway project with
+``make_project`` and activates its configuration, so the rule never reads the checkout the suite runs from;
+the pure ``from_stats`` tests pass a predicate and read no configuration.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Callable
 
@@ -112,10 +114,18 @@ def test_project_patterns_null_exclusions_is_empty(make_project: Callable[..., P
 def test_active_patterns_follow_the_file_on_disk(make_project: Callable[..., Path]) -> None:
     root = _activate(make_project, config={"exclusions": "config/ex.json"},
                      files={"config/ex.json": _EXCLUSIONS})
+    target = root / "config" / "ex.json"
     assert "gen/*" in active_patterns()
-    (root / "config" / "ex.json").write_text('{"exclusions": [{"pattern": "out/*"}]}\n', encoding="utf-8")
+    assert active_patterns() is active_patterns()
+    target.write_text('{"exclusions": [{"pattern": "out/*"}]}\n', encoding="utf-8")
     patterns = active_patterns()
     assert "out/*" in patterns and "gen/*" not in patterns
+    before = target.stat()
+    target.write_text('{"exclusions": [{"pattern": "new/*"}]}\n', encoding="utf-8")
+    assert target.stat().st_size == before.st_size
+    os.utime(target, ns=(before.st_atime_ns, before.st_mtime_ns + 10**9))
+    patterns = active_patterns()
+    assert "new/*" in patterns and "out/*" not in patterns
 
 
 def test_delta_payload_shape() -> None:
