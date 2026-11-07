@@ -23,6 +23,8 @@ argparse usage error and exits 2.
 ``FILE reviewer (--add | --remove) NAME``
 ``FILE strength TEXT``
 ``FILE shas [--base SHA] [--head SHA]`` / ``FILE review-date D`` / ``FILE stats ADD DEL FILES``
+    ``stats`` keeps an existing ``stats.source`` unchanged, or drops it when a source count exceeds
+    its new total.
 ``FILE regrade ID SEVERITY`` / ``FILE merge KEEP DROP[,DROP...]``
 ``FILE check``
     Validate only; nothing is written.
