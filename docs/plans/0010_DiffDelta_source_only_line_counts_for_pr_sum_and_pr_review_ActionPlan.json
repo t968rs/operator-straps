@@ -1,0 +1,587 @@
+{
+  "plan_id": "0010",
+  "plan_created": "2026-11-06",
+  "completed": "2026-11-06",
+  "source_document": "docs/superpowers/specs/2026-11-06-diff-delta-design.md",
+  "documentation": "docs/plans/0010_DiffDelta_source_only_line_counts_for_pr_sum_and_pr_review_PIP.md",
+  "branch": "1140-diff-delta-and-skills",
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "harness_lib.diff_delta: DiffDelta and the shared machine-generated rule",
+      "action": "Create plugins/harness/lib/harness_lib/diff_delta.py (stdlib only): frozen dataclass DiffDelta(adds, subs, files, excluded: Tuple[str, ...] = (), full: Optional[DiffDelta] = None) with cached_property net = adds - subs; DeltaError(ValueError); is_machine_generated(path, patterns) (fnmatch over patterns, or path_bucket ARTIFACT); from_stats(stats, excluded: Callable[[str], bool]) returning the filtered delta whose full is the unfiltered one (full.excluded empty, full.full None, excluded sorted); from_patterns(stats, patterns); project_patterns(repo): () when cfg.exclusions is null, the configured file through with_harness_patterns, harness_patterns(cfg) alone when the file is missing; active_patterns(): project_patterns(active().project_root) cached on the exclusions file (path, mtime_ns, size); between(repo, ref_a, ref_b, patterns=None): one git diff --numstat -M -z read through commit_diff.parse_numstat_z, DeltaError on a failed git call; delta_payload(delta) as a JSON-able dict. Make review_plan.is_excluded delegate to is_machine_generated (same signature). Copy the planned test file first.",
+      "files": [
+        "plugins/harness/lib/harness_lib/diff_delta.py",
+        "plugins/harness/lib/harness_lib/review_plan.py",
+        "tests/lib/test_diff_delta.py"
+      ],
+      "status": "COMPLETE",
+      "evidence": "staged tree 93c435c: 14 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "93c435cba407914681aea6ef2e1c486634457fc7"
+          },
+          "tests": {
+            "nodes": [
+              "tests/lib/test_diff_delta.py::test_from_stats_splits_source_and_full",
+              "tests/lib/test_diff_delta.py::test_nothing_excluded_keeps_equal_counts",
+              "tests/lib/test_diff_delta.py::test_excluded_paths_are_sorted",
+              "tests/lib/test_diff_delta.py::test_delta_is_frozen",
+              "tests/lib/test_diff_delta.py::test_machine_generated_by_pattern_or_artifact_bucket",
+              "tests/lib/test_diff_delta.py::test_review_plan_is_excluded_matches_the_shared_rule",
+              "tests/lib/test_diff_delta.py::test_from_patterns_uses_the_shared_rule",
+              "tests/lib/test_diff_delta.py::test_project_patterns_read_the_configured_file",
+              "tests/lib/test_diff_delta.py::test_project_patterns_missing_file_falls_back_to_harness_patterns",
+              "tests/lib/test_diff_delta.py::test_project_patterns_null_exclusions_is_empty",
+              "tests/lib/test_diff_delta.py::test_active_patterns_follow_the_file_on_disk",
+              "tests/lib/test_diff_delta.py::test_delta_payload_shape",
+              "tests/lib/test_diff_delta.py::test_between_reads_two_refs",
+              "tests/lib/test_diff_delta.py::test_between_bad_ref_raises_delta_error"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_diff_delta.py::test_from_stats_splits_source_and_full tests/lib/test_diff_delta.py::test_nothing_excluded_keeps_equal_counts tests/lib/test_diff_delta.py::test_excluded_paths_are_sorted tests/lib/test_diff_delta.py::test_delta_is_frozen tests/lib/test_diff_delta.py::test_machine_generated_by_pattern_or_artifact_bucket tests/lib/test_diff_delta.py::test_review_plan_is_excluded_matches_the_shared_rule tests/lib/test_diff_delta.py::test_from_patterns_uses_the_shared_rule tests/lib/test_diff_delta.py::test_project_patterns_read_the_configured_file tests/lib/test_diff_delta.py::test_project_patterns_missing_file_falls_back_to_harness_patterns tests/lib/test_diff_delta.py::test_project_patterns_null_exclusions_is_empty tests/lib/test_diff_delta.py::test_active_patterns_follow_the_file_on_disk tests/lib/test_diff_delta.py::test_delta_payload_shape tests/lib/test_diff_delta.py::test_between_reads_two_refs tests/lib/test_diff_delta.py::test_between_bad_ref_raises_delta_error"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "8b668b95605cb33f0835847bd3e6d7522f2f6d9a1bf0d46af9687d95fae86784"
+      },
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/review_plan.py:151-153",
+          "expect": "return any(fnmatch.fnmatch(path, p) for p in patterns) or path_bucket(path) is Bucket.ARTIFACT"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_plan.py:139-148",
+          "expect": "return tuple(with_harness_patterns(cfg, load_exclusions(Path(repo) / cfg.exclusions)))"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_plan.py:262",
+          "expect": "is_excluded(parts[0], patterns)"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_review.py:366-374",
+          "expect": "rp.is_excluded(f.path, patterns)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/commit_diff.py:63-64",
+          "expect": "def parse_numstat_z(text: str) -> List[DiffStat]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/default_exclusions.py:52-57",
+          "expect": "def harness_patterns(cfg: HarnessConfig) -> List[str]:"
+        }
+      ],
+      "commands": [
+        {
+          "run": "C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_review_plan.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_diff_delta.py::test_from_stats_splits_source_and_full",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_nothing_excluded_keeps_equal_counts",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_excluded_paths_are_sorted",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_delta_is_frozen",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_machine_generated_by_pattern_or_artifact_bucket",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_review_plan_is_excluded_matches_the_shared_rule",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_from_patterns_uses_the_shared_rule",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_project_patterns_read_the_configured_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_project_patterns_missing_file_falls_back_to_harness_patterns",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_project_patterns_null_exclusions_is_empty",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_active_patterns_follow_the_file_on_disk",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_delta_payload_shape",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_between_reads_two_refs",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_diff_delta.py::test_between_bad_ref_raises_delta_error",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "scripts/diff_delta.py: the delta between two git refs",
+      "action": "Create plugins/harness/scripts/diff_delta.py: positional ref_a ref_b, --repo DIR (default cwd), --json. Put the plugin lib on sys.path the way pr_sum.py does, activate(load_config(project_root(repo))), ensure_default_exclusions, then diff_delta.between(root, a, b). Print the status line from values (file or files by count) or, with --json, json.dumps(delta_payload(delta), indent=2). A DeltaError or ConfigError prints 'problem: <text>' on stderr and exits 1. Copy the planned test file first.",
+      "files": [
+        "plugins/harness/scripts/diff_delta.py",
+        "tests/scripts/test_diff_delta_script.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "COMPLETE",
+      "evidence": "staged tree 93c435c: 3 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "93c435cba407914681aea6ef2e1c486634457fc7"
+          },
+          "tests": {
+            "nodes": [
+              "tests/scripts/test_diff_delta_script.py::test_prints_one_status_line",
+              "tests/scripts/test_diff_delta_script.py::test_json_prints_the_payload",
+              "tests/scripts/test_diff_delta_script.py::test_bad_ref_exits_one_with_a_problem_line"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_diff_delta_script.py::test_prints_one_status_line tests/scripts/test_diff_delta_script.py::test_json_prints_the_payload tests/scripts/test_diff_delta_script.py::test_bad_ref_exits_one_with_a_problem_line"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "8ebe256fb79eda6f6170bd321e5a43e6542bd04d2a62b27c06913b0948b24cf7"
+      },
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/pr_sum.py:70",
+          "expect": "from harness_lib.config import ConfigError, activate, active, load_config"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_diff_delta_script.py::test_prints_one_status_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_diff_delta_script.py::test_json_prints_the_payload",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_diff_delta_script.py::test_bad_ref_exits_one_with_a_problem_line",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "pr-review: stats.source in the review document",
+      "action": "pr_review.review_meta(facts, excluded: Sequence[str]) builds diff_delta.from_stats over the facts files with membership in excluded as the predicate and writes stats = {additions, deletions, files_changed (the totals, unchanged), source: {additions, deletions, files_changed}}; plan_document passes scope.excluded. PR_REVIEW.schema.json: stats.properties.source, an object with additionalProperties false and the three keys required, each an integer with minimum 0, described as the counts without the machine-generated exclusions. review_edit.set_stats keeps an existing stats.source. schemas/README.md names the source sub-object. Copy the planned test file first.",
+      "files": [
+        "plugins/harness/scripts/pr_review.py",
+        "plugins/harness/schemas/PR_REVIEW.schema.json",
+        "plugins/harness/lib/harness_lib/review_edit.py",
+        "plugins/harness/schemas/README.md",
+        "tests/scripts/test_pr_review_stats_source.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "COMPLETE",
+      "evidence": "staged tree 93c435c: 5 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "93c435cba407914681aea6ef2e1c486634457fc7"
+          },
+          "tests": {
+            "nodes": [
+              "tests/scripts/test_pr_review_stats_source.py::test_review_meta_writes_totals_and_source",
+              "tests/scripts/test_pr_review_stats_source.py::test_plan_document_meta_uses_the_scope_exclusions",
+              "tests/scripts/test_pr_review_stats_source.py::test_schema_accepts_a_source_sub_object",
+              "tests/scripts/test_pr_review_stats_source.py::test_schema_rejects_a_malformed_source",
+              "tests/scripts/test_pr_review_stats_source.py::test_set_stats_keeps_an_existing_source"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_pr_review_stats_source.py::test_review_meta_writes_totals_and_source tests/scripts/test_pr_review_stats_source.py::test_plan_document_meta_uses_the_scope_exclusions tests/scripts/test_pr_review_stats_source.py::test_schema_accepts_a_source_sub_object tests/scripts/test_pr_review_stats_source.py::test_schema_rejects_a_malformed_source tests/scripts/test_pr_review_stats_source.py::test_set_stats_keeps_an_existing_source"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "6100b9dd9cf6f118e769bfc5d099b4cea7edb94332286d7c60cfdc29b497ef3a"
+      },
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/pr_review.py:520-532",
+          "expect": "def review_meta(facts: PrFacts) -> Dict[str, object]:"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_review.py:533-541",
+          "expect": "\"meta\": review_meta(facts),"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_review.py:505-514",
+          "expect": "reviewable, excluded = split_reviewable(facts, patterns)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_edit.py:189-194",
+          "expect": "return _with(doc, stats=counts)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_merge.py:466",
+          "expect": "\"stats\": copy.deepcopy(meta[\"stats\"])"
+        },
+        {
+          "at": "plugins/harness/schemas/README.md:35",
+          "expect": "Aggregated stats (additions, deletions, files_changed)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_review_edit.py tests/lib/test_review_merge.py tests/schemas/test_pr_review_schema_verification_log.py -q",
+          "expect": "passed, no failures"
+        },
+        {
+          "run": "C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/scripts/test_pr_review_driver.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_pr_review_stats_source.py::test_review_meta_writes_totals_and_source",
+          "red": "TypeError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_stats_source.py::test_plan_document_meta_uses_the_scope_exclusions",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_stats_source.py::test_schema_accepts_a_source_sub_object",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_stats_source.py::test_schema_rejects_a_malformed_source",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_stats_source.py::test_set_stats_keeps_an_existing_source",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "pr-sum: shared machine-generated rule and the delta table",
+      "action": "pr_summary: PrFile.artifact returns diff_delta.is_machine_generated(self.path, diff_delta.active_patterns()); PrFacts.delta returns from_patterns over DiffStat(path, added, deleted) of every file; delta_table(facts) returns the Source / Machine-generated / Total markdown table (layout pinned by the planned test) or None when delta.excluded is empty; render_summary puts the table where the Note was; artifact_note is removed. tests/lib/test_pr_summary.py: drop TestArtifactNote and the artifact_note import, and reword the module docstring's classification sentence. skills/pr-sum/SKILL.md: the Step 1 artifact paragraph names the exclusions file and the delta table (the script adds it; do not write one) and the Common Mistakes row names the delta table. Bump plugins/harness/.claude-plugin/plugin.json to 0.62.0. Copy the planned test file first.",
+      "files": [
+        "plugins/harness/lib/harness_lib/pr_summary.py",
+        "tests/lib/test_pr_summary.py",
+        "plugins/harness/skills/pr-sum/SKILL.md",
+        "plugins/harness/.claude-plugin/plugin.json",
+        "tests/lib/test_pr_summary_delta.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "COMPLETE",
+      "evidence": "staged tree 93c435c: 7 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "93c435cba407914681aea6ef2e1c486634457fc7"
+          },
+          "tests": {
+            "nodes": [
+              "tests/lib/test_pr_summary_delta.py::test_artifact_follows_the_exclusions_file",
+              "tests/lib/test_pr_summary_delta.py::test_facts_delta_filters_machine_generated_files",
+              "tests/lib/test_pr_summary_delta.py::test_delta_table_layout",
+              "tests/lib/test_pr_summary_delta.py::test_delta_table_absent_without_excluded_files",
+              "tests/lib/test_pr_summary_delta.py::test_delta_table_shown_for_any_excluded_file",
+              "tests/lib/test_pr_summary_delta.py::test_render_places_the_table_after_the_summary",
+              "tests/lib/test_pr_summary_delta.py::test_artifact_note_is_gone"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_pr_summary_delta.py::test_artifact_follows_the_exclusions_file tests/lib/test_pr_summary_delta.py::test_facts_delta_filters_machine_generated_files tests/lib/test_pr_summary_delta.py::test_delta_table_layout tests/lib/test_pr_summary_delta.py::test_delta_table_absent_without_excluded_files tests/lib/test_pr_summary_delta.py::test_delta_table_shown_for_any_excluded_file tests/lib/test_pr_summary_delta.py::test_render_places_the_table_after_the_summary tests/lib/test_pr_summary_delta.py::test_artifact_note_is_gone"
+          }
+        },
+        "date": "2026-11-06",
+        "seal": "4487a97470f2b67dc41c3f21a1b1a2510187050685cb648271adf6317b6eba22"
+      },
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/pr_summary.py:61-64",
+          "expect": "return path_bucket(self.path) is Bucket.ARTIFACT"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/pr_summary.py:119-122",
+          "expect": "return tuple(f.path for f in self.listed if not f.artifact)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/pr_summary.py:473-483",
+          "expect": "def artifact_note(facts: PrFacts) -> Optional[str]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/pr_summary.py:497-500",
+          "expect": "ARTIFACT_TAG if file.artifact else"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/pr_summary.py:555-558",
+          "expect": "note = artifact_note(facts)"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_sum.py:218-224",
+          "expect": "chosen = [f for f in facts.files if not f.artifact]"
+        },
+        {
+          "at": "plugins/harness/scripts/pr_sum.py:282",
+          "expect": "target.write_text(render_summary(facts, draft), encoding=\"utf-8\")"
+        },
+        {
+          "at": "tests/lib/test_pr_summary.py:136-137",
+          "expect": "class TestArtifactNote:"
+        },
+        {
+          "at": "plugins/harness/skills/pr-sum/SKILL.md:89-90",
+          "expect": "adds the artifact `***Note:***` itself (do not write one)"
+        },
+        {
+          "at": "plugins/harness/skills/pr-sum/SKILL.md:261",
+          "expect": "Writing the artifact `***Note:***` into `summary`"
+        },
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3",
+          "expect": "\"version\": \"0.61."
+        }
+      ],
+      "commands": [
+        {
+          "run": "C:/Users/t968rs/miniforge3/envs/o-s/python.exe -m pytest tests/lib/test_pr_summary.py tests/scripts/test_pr_sum.py -q",
+          "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_pr_summary_delta.py::test_artifact_follows_the_exclusions_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_pr_summary_delta.py::test_facts_delta_filters_machine_generated_files",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_pr_summary_delta.py::test_delta_table_layout",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_pr_summary_delta.py::test_delta_table_absent_without_excluded_files",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_pr_summary_delta.py::test_delta_table_shown_for_any_excluded_file",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_pr_summary_delta.py::test_render_places_the_table_after_the_summary",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_pr_summary_delta.py::test_artifact_note_is_gone",
+          "red": "ImportError"
+        }
+      ]
+    }
+  ],
+  "base_commit": "ea47d7f073faf9186012654502119227d19f0fc3",
+  "frozen": {
+    "commit": "c5f09310e815c786a8a9ee5ec78681af49f3a081",
+    "tree": "1102e4a8f06f62c9ac252970b5b30a621b059685",
+    "date": "2026-11-06",
+    "digest": "ff94c3cef45c2e6ce62d48e971f8765b8cdb3e8d33dfac08339647d4727db603",
+    "records": "sealed"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "What do review JSON stats.additions/deletions/files_changed mean once source counts exist?",
+      "options": [
+        {
+          "id": "keep-totals",
+          "summary": "Keep the full totals; add a stats.source sub-object"
+        },
+        {
+          "id": "source-only",
+          "summary": "Change them to source-only; move the totals to a sub-object"
+        }
+      ],
+      "chosen": "keep-totals",
+      "rationale": "Developer choice: old and new review JSONs keep one meaning."
+    },
+    {
+      "id": "D2",
+      "question": "Where do the skills get their DiffDelta?",
+      "options": [
+        {
+          "id": "from-stats",
+          "summary": "from_stats over the per-file counts already captured; between() for any two refs"
+        },
+        {
+          "id": "between-only",
+          "summary": "Every caller runs between(ref_a, ref_b)"
+        },
+        {
+          "id": "persisted",
+          "summary": "Persist the delta in the skeleton and plan.json"
+        }
+      ],
+      "chosen": "from-stats",
+      "rationale": "Developer choice (approach A): no extra git read, working-tree captures keep their counts."
+    },
+    {
+      "id": "D3",
+      "question": "Which pr-sum format shows the source versus machine-generated counts?",
+      "options": [
+        {
+          "id": "delta-table",
+          "summary": "Source / Machine-generated / Total table, shown when any file is excluded"
+        },
+        {
+          "id": "source-header",
+          "summary": "Header leads with the source delta; a one-line note names excluded files"
+        },
+        {
+          "id": "short-note",
+          "summary": "The current header and over-half trigger, with a tighter note"
+        }
+      ],
+      "chosen": "delta-table",
+      "rationale": "Developer choice for issue 234."
+    },
+    {
+      "id": "D4",
+      "question": "How does PrFile.artifact reach the project exclusion patterns?",
+      "options": [
+        {
+          "id": "active-cache",
+          "summary": "diff_delta.active_patterns(): the active project patterns, cached on the exclusions file path, mtime and size"
+        },
+        {
+          "id": "explicit",
+          "summary": "Thread a patterns argument through new_draft, draft_problems, render_summary and run_diff"
+        }
+      ],
+      "chosen": "active-cache",
+      "rationale": "Every pr-sum call site already runs under an activated config; the property keeps its callers."
+    },
+    {
+      "id": "D5",
+      "question": "What does pr-sum do when the configured exclusions file is missing?",
+      "options": [
+        {
+          "id": "harness-fallback",
+          "summary": "Use the harness output patterns alone"
+        },
+        {
+          "id": "raise",
+          "summary": "Fail the capture with a problem line"
+        }
+      ],
+      "chosen": "harness-fallback",
+      "rationale": "A summary never fails on a review-only file; pr-review keeps its strict exclusion_patterns."
+    }
+  ],
+  "values": [
+    {
+      "name": "delta table trigger",
+      "value": "at least one file of facts.files is machine-generated",
+      "source": "design: Decided, pr-sum",
+      "assumes": [
+        "delta-table"
+      ]
+    },
+    {
+      "name": "delta table rows",
+      "value": "Source, Machine-generated, Total; columns Delta, Files, +, -, Net; numbers right-aligned, Net signed",
+      "source": "design: Decided, pr-sum",
+      "assumes": [
+        "delta-table"
+      ]
+    },
+    {
+      "name": "CLI status line",
+      "value": "delta [ok] | source +A/-D (net +N), F file(s) | total +A/-D (net +N), F file(s) | excluded X",
+      "source": "tests/scripts/test_diff_delta_script.py::test_prints_one_status_line",
+      "assumes": [
+        "from-stats"
+      ]
+    },
+    {
+      "name": "harness plugin version",
+      "value": "0.62.0 (from 0.61.1)",
+      "source": "plugins/harness/.claude-plugin/plugin.json:3"
+    }
+  ],
+  "formats": [
+    {
+      "name": "review JSON stats.source",
+      "example": "{\"additions\": 43, \"deletions\": 1, \"files_changed\": 2, \"source\": {\"additions\": 3, \"deletions\": 1, \"files_changed\": 1}}",
+      "source": {
+        "at": "plugins/harness/schemas/PR_REVIEW.schema.json:81-110",
+        "expect": "\"stats\": {"
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "artifact_note|review_meta\\(|set_stats\\(",
+      "hits": {
+        "docs/PR_REVIEWS/0015_Add_harness_lib.review_edit_per-field_PR_review_editors_and_byte-stable_loadsave.json": "historical review record; untouched",
+        "docs/PR_REVIEWS/0019_Add_per-field_PR_review_editors_and_improve_review_resolution_handling.json": "historical review record; untouched",
+        "plugins/harness/lib/harness_lib/pr_summary.py": "TASK-4 replaces artifact_note with delta_table",
+        "plugins/harness/lib/harness_lib/review_edit.py": "TASK-3 set_stats keeps an existing source",
+        "plugins/harness/scripts/pr_review.py": "TASK-3 review_meta gains the excluded paths",
+        "plugins/harness/scripts/review_edit.py": "set_stats CLI caller; signature unchanged",
+        "tests/lib/test_pr_summary.py": "TASK-4 drops TestArtifactNote and its import",
+        "tests/lib/test_review_edit.py": "existing set_stats tests; still pass (no source in their doc)"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "\\.artifact\\b",
+      "hits": {
+        "plugins/harness/lib/harness_lib/pr_summary.py": "TASK-4 PrFile.artifact switches to diff_delta.is_machine_generated",
+        "plugins/harness/scripts/pr_sum.py": "_chosen reads PrFile.artifact; unchanged, follows the property",
+        "tests/lib/test_pr_summary.py": "TestPrFile artifact probes; docs/PR_REVIEWS stays machine-generated by default"
+      }
+    }
+  ]
+}
