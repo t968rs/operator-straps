@@ -27,6 +27,7 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Pattern, Sequence, Tuple, Union
 
 from harness_lib.branch_commits import Bucket, path_bucket
+from harness_lib.diff_delta import is_machine_generated
 
 if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
@@ -149,8 +150,11 @@ def exclusion_patterns(repo: Path) -> Tuple[str, ...]:
 
 
 def is_excluded(path: str, patterns: Sequence[str]) -> bool:
-    """Returns True when ``path`` matches an exclusion pattern (``fnmatch``) or buckets as ``ARTIFACT``."""
-    return any(fnmatch.fnmatch(path, p) for p in patterns) or path_bucket(path) is Bucket.ARTIFACT
+    """Returns True when ``path`` matches an exclusion pattern (``fnmatch``) or buckets as ``ARTIFACT``.
+
+    The rule is ``harness_lib.diff_delta.is_machine_generated``, shared with pr-sum.
+    """
+    return is_machine_generated(path, patterns)
 
 
 def registry_names() -> Tuple[str, ...]:

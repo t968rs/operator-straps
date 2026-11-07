@@ -106,6 +106,33 @@
             "string"
           ],
           "description": "Total number of files modified"
+        },
+        "source": {
+          "type": "object",
+          "description": "The same counts without the machine-generated paths (the project's exclusions file and the Artifact commit bucket)",
+          "additionalProperties": false,
+          "required": [
+            "additions",
+            "deletions",
+            "files_changed"
+          ],
+          "properties": {
+            "additions": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Lines added outside the machine-generated paths"
+            },
+            "deletions": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Lines deleted outside the machine-generated paths"
+            },
+            "files_changed": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Files modified outside the machine-generated paths"
+            }
+          }
         }
       }
     },

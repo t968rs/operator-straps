@@ -187,10 +187,14 @@ def set_review_date(doc: Mapping[str, object], date: str) -> Doc:
 
 
 def set_stats(doc: Mapping[str, object], additions: int, deletions: int, files_changed: int) -> Doc:
-    """``stats`` from three non-negative integer counts (``bool`` refused)."""
-    counts = {"additions": additions, "deletions": deletions, "files_changed": files_changed}
+    """``stats`` from three non-negative integer counts (``bool`` refused); an existing ``source`` stays."""
+    counts: Dict[str, object] = {"additions": additions, "deletions": deletions,
+                                 "files_changed": files_changed}
     if any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in counts.values()):
         raise ValueError(f"stats must be non-negative integers: {counts}")
+    old = doc.get("stats")
+    if isinstance(old, Mapping) and "source" in old:
+        counts["source"] = copy.deepcopy(old["source"])
     return _with(doc, stats=counts)
 
 

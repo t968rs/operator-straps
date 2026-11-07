@@ -32,7 +32,7 @@ Structure of an agent code-review verdict:
 
 **Version bump protocol:** any change to the schema that breaks existing PR_REVIEWS JSONs (new required field, type change, removed property) requires a major version bump. `2.0.0` reflects the `fix: string → array[string]` migration completed in PR #1216; `2.1.0` adds the optional issue field `fix_kind` (non-breaking, so no sweep). When bumping a major version, sweep all existing PR_REVIEWS JSONs in the same PR.
 
-- Aggregated stats (additions, deletions, files_changed)
+- Aggregated stats (additions, deletions, files_changed), plus the optional `source` sub-object: the same three counts without the machine-generated paths (the exclusions file and the Artifact commit bucket)
 - `verdict` — must match `^(READY TO MERGE|NOT READY TO MERGE)(.*)$`. The string `NEEDS FIXES` is NOT permitted; that wording exists only in skill prose.
 - `strengths` — bullet observations (specific, not vague praise)
 - `issues` — categorized object (`{critical, important, minor}`), each issue with `id`, `name`, `summary`, `file` and/or `files` (at least one), `fix[]` (array of one-or-more remediation options; each entry is a self-contained alternative; was string pre-PR-1216), and optional `lines`, `step`, `reviewer`, `both_reviewers`, `fix_kind` (`mechanical` | `judgment`; routes the Phase 5 fixer model)
