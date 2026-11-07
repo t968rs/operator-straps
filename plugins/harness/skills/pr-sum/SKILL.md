@@ -86,8 +86,10 @@ Exit 0 writes `<summaries>/<NNNN>_pr.json` and prints `wrote <path>`; use that p
 - `facts` — script-owned: refs, commit lines, files with status and `+/-` counts. **Never edit.**
 - `draft` — yours: `title`, `summary`, `descriptions` (one key per file that needs one), `sections`.
 
-Artifact files (paths the project's commit buckets classify as Artifact) and pure moves have no description
-key; the script tags and places them, and adds the artifact `***Note:***` itself (do not write one). Header
+Machine-generated files (paths matching the project's `exclusions` file or the harness output patterns, or
+classified as Artifact by the commit buckets) and pure moves have no description key; the script tags and
+places them. When any file is machine-generated, the script adds a Source / Machine-generated / Total delta
+table under the Summary itself (do not write one). Header
 totals are local `git diff --numstat` sums and can differ slightly from GitHub's. Rerunning `capture` refreshes
 `facts` and keeps the draft (title, summary, sections, and descriptions for paths still in the PR); the level
 flags are stored fresh on every capture, so repeat them on a rerun.
@@ -258,7 +260,7 @@ Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit
 |-----------------------------------------------------------|-----------------------------------------------------------------|
 | Editing `facts` (counts, commits, file rows)              | Rerun `capture`; it refreshes `facts` and keeps the draft       |
 | Writing or patching the summary markdown by hand          | Edit `draft`; rerun `build`. The markdown is script output.     |
-| Writing the artifact `***Note:***` into `summary`         | Delete it; the script adds it                                   |
+| Writing the delta table or source counts into `summary`   | Delete it; the script adds the table                            |
 | An AI vendor or product name anywhere in `draft`          | Remove it; `build` rejects it                                   |
 | An emoji or a section sign in `draft`                     | Remove it, or write "Section 2"; `build` rejects both           |
 | Running `gh pr diff` / `gh api` for files or commits      | `capture` and `diff` already have them                          |
