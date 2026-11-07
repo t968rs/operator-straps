@@ -187,11 +187,26 @@ def set_review_date(doc: Mapping[str, object], date: str) -> Doc:
 
 
 def set_stats(doc: Mapping[str, object], additions: int, deletions: int, files_changed: int) -> Doc:
-    """``stats`` from three non-negative integer counts (``bool`` refused)."""
-    counts = {"additions": additions, "deletions": deletions, "files_changed": files_changed}
+    """``stats`` from three non-negative integer counts (``bool`` refused).
+
+    An existing ``source`` is kept unchanged while each of its counts stays at or below the matching new
+    total; a source count above its new total marks a stale capture, so the ``source`` is dropped.
+    """
+    counts: Dict[str, object] = {"additions": additions, "deletions": deletions,
+                                 "files_changed": files_changed}
     if any(isinstance(v, bool) or not isinstance(v, int) or v < 0 for v in counts.values()):
         raise ValueError(f"stats must be non-negative integers: {counts}")
+    old = doc.get("stats")
+    source = old.get("source") if isinstance(old, Mapping) else None
+    if isinstance(source, Mapping) and _source_fits(source, counts):
+        counts["source"] = copy.deepcopy(dict(source))
     return _with(doc, stats=counts)
+
+
+def _source_fits(source: Mapping[str, object], totals: Mapping[str, object]) -> bool:
+    """True when every ``source`` count is an integer at or below the matching total."""
+    return all(isinstance(source.get(k), int) and not isinstance(source.get(k), bool)
+               and source.get(k) <= v for k, v in totals.items())
 
 
 # --- verdict ------------------------------------------------------------------------------------------------

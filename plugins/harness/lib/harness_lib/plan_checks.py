@@ -244,16 +244,29 @@ def sweep_hits(root: Path, pattern: str, skip_prefix: str,
     """Files matching ``pattern``, minus ``skip_prefix``; or an error.
 
     Without ``rev`` the working tree is searched (tracked or untracked, not ignored); with it, the commit.
+    The tracked files get a scan of their own as well: ``--untracked`` honors the ignore rules on every
+    path it walks and so drops a tracked file that sits under an ignored folder.
     """
-    where = ["--untracked"] if rev is None else []
-    done = subprocess.run(["git", "grep", "-z", "-l", "-I", "-E", *where, "-e", pattern,
-                           *([] if rev is None else [rev])], cwd=root,
-                          capture_output=True, text=True, encoding="utf-8", errors="replace")
+    runs = [[], ["--untracked"]] if rev is None else [[]]
+    found: Set[str] = set()
+    for options in runs:
+        paths, error = _grep_files(root, pattern, options, [] if rev is None else [rev])
+        if error:
+            return set(), error
+        found |= paths
+    prefix, at = skip_prefix.rstrip("/") + "/", "" if rev is None else f"{rev}:"
+    paths = (p[len(at):] if p.startswith(at) else p for p in found)
+    return {p for p in paths if not p.startswith(prefix)}, None
+
+
+def _grep_files(root: Path, pattern: str, options: List[str],
+                trees: List[str]) -> Tuple[Set[str], Optional[str]]:
+    """The paths ``git grep`` lists for ``pattern`` with ``options``, in ``trees`` or the working tree."""
+    done = subprocess.run(["git", "grep", "-z", "-l", "-I", "-E", *options, "-e", pattern, *trees],
+                          cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace")
     if done.returncode not in (0, 1):
         return set(), done.stderr.strip() or f"exit {done.returncode}"
-    prefix, at = skip_prefix.rstrip("/") + "/", "" if rev is None else f"{rev}:"
-    paths = (p[len(at):] if p.startswith(at) else p for p in done.stdout.split("\0") if p)
-    return {p for p in paths if not p.startswith(prefix)}, None
+    return {p for p in done.stdout.split("\0") if p}, None
 
 
 def sweep_problems(plan: ActionPlan, root: Path, plans_prefix: str, rev: Optional[str] = None) -> List[str]:

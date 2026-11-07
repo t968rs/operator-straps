@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
-  "$version": "2.1.0",
+  "$version": "2.2.0",
   "title": "PR Code Review Output",
   "description": "Standard schema for code review results produced by agent reviewers",
   "type": "object",
@@ -106,6 +106,33 @@
             "string"
           ],
           "description": "Total number of files modified"
+        },
+        "source": {
+          "type": "object",
+          "description": "The same counts without the machine-generated paths (the project's exclusions file plus the harness output patterns, both off when exclusions is null, and the Artifact commit bucket)",
+          "additionalProperties": false,
+          "required": [
+            "additions",
+            "deletions",
+            "files_changed"
+          ],
+          "properties": {
+            "additions": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Lines added outside the machine-generated paths"
+            },
+            "deletions": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Lines deleted outside the machine-generated paths"
+            },
+            "files_changed": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Files modified outside the machine-generated paths"
+            }
+          }
         }
       }
     },

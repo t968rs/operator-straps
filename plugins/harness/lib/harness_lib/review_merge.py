@@ -50,7 +50,7 @@ if TYPE_CHECKING:
 MERGE_WINDOW = 3
 PENDING = "pending - to be populated in Phase 4"
 SCHEMA_NAME = "PR_REVIEW.schema.json"
-SCHEMA_VERSION = "2.1.0"
+SCHEMA_VERSION = "2.2.0"
 EVIDENCE_NOTE = "(working-tree snapshot; developer commits)"
 TIERS = ("critical", "important", "minor")
 CLOSED_STATUSES = ("RESOLVED", "CLOSED_NO_ACTION")

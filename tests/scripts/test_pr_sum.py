@@ -792,7 +792,7 @@ class TestBuild:
         assert out == clone / _SUMMARIES / "1234_Feature_a_a_change.md"
         text = out.read_text(encoding="utf-8")
         assert "**Files Changed:** 3 (+31 / -1 lines, 1 relocated)" in text
-        assert "***Note:***" in text
+        assert "| Machine-generated |" in text
         assert "Relocated 1 files" in text
         assert receipt == (
             f"Saved: {_SUMMARIES}/1234_Feature_a_a_change.md — "

@@ -176,7 +176,9 @@ from harness_lib import review_merge as rmg  # noqa: E402
 from harness_lib import review_models as rm  # noqa: E402
 from harness_lib import review_plan as rp  # noqa: E402
 from harness_lib import review_waves as rwv  # noqa: E402
+from harness_lib import diff_delta  # noqa: E402
 from harness_lib.branch_capture import CaptureError, git, git_out  # noqa: E402
+from harness_lib.commit_diff import DiffStat  # noqa: E402
 from harness_lib.config import HarnessConfig, activate, active, load_config  # noqa: E402
 from harness_lib.default_exclusions import ensure_default_exclusions  # noqa: E402
 from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, file_patches  # noqa: E402
@@ -519,12 +521,19 @@ def triggered_skill_folders(scope: Scope) -> Tuple[str, ...]:
     return rp.skill_candidates(scope.lenses.get(rp.Lens.SKILL_PACKAGE, ()))
 
 
-def review_meta(facts: PrFacts) -> Dict[str, object]:
-    """The review-document fields capture knows."""
+def review_stats(facts: PrFacts, excluded: Sequence[str]) -> Dict[str, object]:
+    """The PR totals plus ``source``: the same counts without the machine-generated ``excluded`` paths."""
+    left_out = frozenset(excluded)
+    stats = (DiffStat(f.path, f.added, f.deleted) for f in facts.files)
+    delta = diff_delta.from_stats(stats, left_out.__contains__)
+    return {"additions": facts.additions, "deletions": facts.deletions, "files_changed": len(facts.files),
+            "source": {"additions": delta.adds, "deletions": delta.subs, "files_changed": delta.files}}
+
+
+def review_meta(facts: PrFacts, excluded: Sequence[str]) -> Dict[str, object]:
+    """The review-document fields capture knows; ``excluded`` are the machine-generated paths."""
     return {"pr": facts.number, "pr_title": facts.pr_title, "branch": facts.head, "base_branch": facts.base,
-            "base_sha": facts.merge_base, "head_sha": facts.head_sha,
-            "stats": {"additions": facts.additions, "deletions": facts.deletions,
-                      "files_changed": len(facts.files)}}
+            "base_sha": facts.merge_base, "head_sha": facts.head_sha, "stats": review_stats(facts, excluded)}
 
 
 def plan_document(run_id: str, data: Mapping[str, object], facts: PrFacts, scope: Scope,
@@ -532,7 +541,8 @@ def plan_document(run_id: str, data: Mapping[str, object], facts: PrFacts, scope
     """``plan.json`` content."""
     return {
         "run_id": run_id, "pr": facts.number, "state": data["state"], "url": data.get("url"),
-        "first_sha": data.get("first_sha"), "last_sha": data.get("last_sha"), "meta": review_meta(facts),
+        "first_sha": data.get("first_sha"), "last_sha": data.get("last_sha"),
+        "meta": review_meta(facts, scope.excluded),
         "excluded": list(scope.excluded), "buckets": scope.buckets, "registry_notes": list(scope.notes),
         "lenses": scope.lenses, "skills": list(scope.skills), "guards": asdict(scope.guards), "roast": roast,
         "slots": [s.record() for s in scope.slots], "dispatch_time": dict(dispatch_time),

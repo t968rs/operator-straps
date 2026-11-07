@@ -64,7 +64,7 @@ def _as_is(d: Dict[str, object]) -> Dict[str, object]:
 
 
 _EDITORS = [
-    pytest.param(_as_is, lambda d: red.set_schema(d, "x.json", "2.1.0"), id="set_schema"),
+    pytest.param(_as_is, lambda d: red.set_schema(d, "x.json", "2.2.0"), id="set_schema"),
     pytest.param(_as_is, lambda d: red.set_pr_meta(d, pr_title="New title"), id="set_pr_meta"),
     pytest.param(_as_is, lambda d: red.set_shas(d, head_sha=_SHA), id="set_shas"),
     pytest.param(_as_is, lambda d: red.set_review_date(d, "2026-10-05"), id="set_review_date"),
@@ -107,7 +107,7 @@ def test_editors_do_not_mutate(doc: Dict[str, object], seed, edit) -> None:
 
 
 def test_set_schema(doc: Dict[str, object]) -> None:
-    assert red.set_schema(doc, "x.json", "2.1.0")["schema_ref"] == "x.json"
+    assert red.set_schema(doc, "x.json", "2.2.0")["schema_ref"] == "x.json"
     with pytest.raises(ValueError, match="unknown schema version"):
         red.set_schema(doc, "x.json", "9.9.9")
 

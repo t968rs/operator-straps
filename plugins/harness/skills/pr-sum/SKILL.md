@@ -26,6 +26,8 @@ reads it from there. No `--level` means 2.
 | 2     | Default. Behavior flows (at most 3), at most one shape diagram, Changed Symbols.                    |
 | 3     | Level 2 plus: up to 5 flows, every shape diagram once (two more: Sequence Diagram, Data Flow).      |
 
+Every level adds the delta table under the Summary when any file is machine-generated.
+
 `--min-viz [N]` applies at level 3 only (ignored at levels 1 and 2). `build` then requires N diagram blocks
 (default 3): fenced, over 200 characters between the fences, and holding an arrow (`→ ► ▶ ▼ ▲ ◄ ← ↑ ↓ ➜ ⟶ ->
 =>`), counted across the Summary and every section. `capture` arms a Stop-hook sentinel, so the session cannot
@@ -86,8 +88,19 @@ Exit 0 writes `<summaries>/<NNNN>_pr.json` and prints `wrote <path>`; use that p
 - `facts` — script-owned: refs, commit lines, files with status and `+/-` counts. **Never edit.**
 - `draft` — yours: `title`, `summary`, `descriptions` (one key per file that needs one), `sections`.
 
-Artifact files (paths the project's commit buckets classify as Artifact) and pure moves have no description
-key; the script tags and places them, and adds the artifact `***Note:***` itself (do not write one). Header
+Machine-generated files (paths matching the project's `exclusions` file plus the harness output patterns,
+both off when `exclusions` is null, or classified as Artifact by the commit buckets) and pure moves have no description key; the script tags and
+places them. When any file is machine-generated, the script adds a Source / Machine-generated / Total delta
+table under the Summary itself (do not write one). The same source-only count between any two refs comes
+from `diff_delta.py`, outside the summary flow:
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/diff_delta.py" REF_A REF_B [--repo DIR] [--json]
+```
+
+It prints `delta [ok] | source +A/-D (net +N), F files | total +A/-D (net +N), F files | excluded X`
+(`source` without the machine-generated paths, `total` with every path, `excluded` the count left out), or
+with `--json` the same numbers plus the excluded paths; a failure exits 1 with one `problem:` line. Header
 totals are local `git diff --numstat` sums and can differ slightly from GitHub's. Rerunning `capture` refreshes
 `facts` and keeps the draft (title, summary, sections, and descriptions for paths still in the PR); the level
 flags are stored fresh on every capture, so repeat them on a rerun.
@@ -258,7 +271,7 @@ Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit
 |-----------------------------------------------------------|-----------------------------------------------------------------|
 | Editing `facts` (counts, commits, file rows)              | Rerun `capture`; it refreshes `facts` and keeps the draft       |
 | Writing or patching the summary markdown by hand          | Edit `draft`; rerun `build`. The markdown is script output.     |
-| Writing the artifact `***Note:***` into `summary`         | Delete it; the script adds it                                   |
+| Writing the delta table or source counts into `summary`   | Delete it; the script adds the table                            |
 | An AI vendor or product name anywhere in `draft`          | Remove it; `build` rejects it                                   |
 | An emoji or a section sign in `draft`                     | Remove it, or write "Section 2"; `build` rejects both           |
 | Running `gh pr diff` / `gh api` for files or commits      | `capture` and `diff` already have them                          |
