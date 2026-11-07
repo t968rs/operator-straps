@@ -27,7 +27,7 @@ from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Dict, List, Mapping, Optional, Pattern, Sequence, Tuple, Union
 
 from harness_lib.branch_commits import Bucket, path_bucket
-from harness_lib.diff_delta import is_machine_generated
+from harness_lib.diff_delta import is_machine_generated, project_patterns
 
 if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
@@ -140,13 +140,9 @@ def _dir_prefix(rel: str) -> str:
 def exclusion_patterns(repo: Path) -> Tuple[str, ...]:
     """The machine-generated exclusion patterns (the Phase 4 / Phase 2 list) of the project's configured
     ``exclusions`` file under ``repo``, plus any harness pattern the file lacks; empty when none is
-    configured."""
-    cfg = _cfg()
-    if not cfg.exclusions:
-        return ()
-    from harness_lib.default_exclusions import with_harness_patterns
-    from harness_lib.git_status_filter_excluded import load_exclusions
-    return tuple(with_harness_patterns(cfg, load_exclusions(Path(repo) / cfg.exclusions)))
+    configured. The lookup is ``harness_lib.diff_delta.project_patterns`` in strict mode, shared with
+    pr-sum: a missing configured file raises FileNotFoundError, a malformed one DeltaError."""
+    return project_patterns(repo, strict=True)
 
 
 def is_excluded(path: str, patterns: Sequence[str]) -> bool:

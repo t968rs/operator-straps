@@ -4,6 +4,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Dict, List
 
+from conftest import git
 from harness_lib import plan_checks as pc
 from harness_lib.plan_doc import validate_plan
 from harness_lib.plan_models import ActionPlan
@@ -200,6 +201,18 @@ def test_untracked_files_count_and_the_plans_folder_does_not(make_project) -> No
     hits = {"src/old_name.py": "rewrite", "src/user.py": "rewrite"}
     assert pc.sweep_problems(sweep_plan(hits), root, "docs/PLANS") == [
         "sweep S1: src/fresh.py has hits but no classification"]
+
+
+def test_a_tracked_file_under_an_ignored_folder_still_counts(make_project) -> None:
+    root = make_project(files={**FILES, ".gitignore": "gen/\n"})
+    (root / "gen").mkdir()
+    (root / "gen" / "x.txt").write_text("OLD_NAME\n", encoding="utf-8")
+    git(root, "add", "-f", "gen/x.txt")
+    git(root, "commit", "-q", "-m", "tracked under an ignored folder")
+    (root / "src" / "fresh.py").write_text("OLD_NAME\n", encoding="utf-8")
+    hits, error = pc.sweep_hits(root, "OLD_NAME|old_name", "docs/PLANS")
+    assert error is None
+    assert {"gen/x.txt", "src/fresh.py"} <= hits
 
 
 def test_a_bad_pattern_is_a_problem(make_project) -> None:

@@ -36,6 +36,8 @@ from harness_lib.default_exclusions import ensure_default_exclusions  # noqa: E4
 from harness_lib.diff_delta import DeltaError, DiffDelta, between, delta_payload  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
 
+_GIT_TIMEOUT_SECONDS = 30
+
 
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Source-only line counts between two git refs.")
@@ -51,7 +53,11 @@ def _root(repo: Optional[Path]) -> Path:
     if repo is None:
         return project_root(Path.cwd())
     argv = ["git", "-C", str(repo), "rev-parse", "--show-toplevel"]
-    done = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", stdin=subprocess.DEVNULL)
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8",
+                              stdin=subprocess.DEVNULL, timeout=_GIT_TIMEOUT_SECONDS)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise DeltaError(f"--repo {repo}: {exc}") from exc
     if done.returncode != 0:
         raise DeltaError(f"--repo {repo}: not inside a git checkout")
     return Path(done.stdout.strip()).resolve()
@@ -86,7 +92,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         cfg = activate(load_config(_root(args.repo)))
         ensure_default_exclusions(cfg)
         delta = between(cfg.project_root, args.ref_a, args.ref_b)
-    except (DeltaError, ConfigError) as exc:
+    except (DeltaError, ConfigError, OSError) as exc:
         print(f"problem: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(delta_payload(delta), indent=2) if args.json else status_line(delta))
