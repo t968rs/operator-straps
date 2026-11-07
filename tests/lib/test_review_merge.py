@@ -401,7 +401,7 @@ class TestReviewDocument:
             "review_date", "verdict", "stats", "reviewers", "scoped_review_files", "bubbles", "strengths",
             "issues", "bubble_up", "verification_log",
         ]
-        assert doc["version"] == "2.1.0" and doc["bubbles"] == [] and doc["bubble_up"] == []
+        assert doc["version"] == "2.2.0" and doc["bubbles"] == [] and doc["bubble_up"] == []
         assert doc["verification_log"]["pre_fix_time"] == rmg.PENDING
         assert doc["verdict"] == "NOT READY TO MERGE - important: I1"
         assert [i["id"] for i in doc["issues"]["minor"]] == ["M1"] and doc["issues"]["critical"] == []
