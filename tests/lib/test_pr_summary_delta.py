@@ -62,6 +62,15 @@ def test_delta_table_layout() -> None:
     assert delta_table(_facts()) == _TABLE
 
 
+def test_delta_table_signs_negative_and_zero_nets() -> None:
+    """A net-deletion row renders ``-N`` and a balanced row ``+0``."""
+    files = (PrFile("M", "src/pkg/a.py", None, 1, 5), PrFile("A", "gen/out.json", None, 2, 2))
+    rows = {line.split("|")[1].strip(): line for line in (delta_table(_facts(*files)) or "").splitlines()}
+    assert rows["Source"].endswith("|  -4 |")
+    assert rows["Machine-generated"].endswith("|  +0 |")
+    assert rows["Total"].endswith("|  -4 |")
+
+
 def test_delta_table_absent_without_excluded_files() -> None:
     assert delta_table(_facts(PrFile("M", "src/pkg/a.py", None, 3, 1))) is None
 

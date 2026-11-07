@@ -68,6 +68,7 @@ if str(_LIB) not in sys.path:
 from harness_lib import min_viz_sentinel  # noqa: E402
 from harness_lib.branch_capture import CaptureError, git  # noqa: E402
 from harness_lib.config import ConfigError, activate, active, load_config  # noqa: E402
+from harness_lib.diff_delta import DeltaError  # noqa: E402
 from harness_lib.pr_capture import (  # noqa: E402
     PrMeta,
     budgeted_diff,
@@ -440,7 +441,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     commands = {"capture": _cmd_capture, "diff": _cmd_diff, "build": _cmd_build}
     try:
         return commands[args.command](args, activate_project(args.repo))
-    except ConfigError as exc:
+    except (ConfigError, DeltaError) as exc:
         sys.stderr.write(f"problem: {exc}\n")
         return 1
     except CaptureError as exc:

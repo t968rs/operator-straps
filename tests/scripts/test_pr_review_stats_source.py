@@ -86,3 +86,9 @@ def test_set_stats_keeps_an_existing_source() -> None:
     assert red.set_stats(doc, 50, 2, 3)["stats"] == {
         "additions": 50, "deletions": 2, "files_changed": 3, "source": _SOURCE,
     }
+
+
+def test_set_stats_drops_a_source_above_the_new_totals() -> None:
+    """A totals edit below the kept source counts (source.additions 3 > additions 1) drops the stale source."""
+    doc = {"stats": {"additions": 43, "deletions": 1, "files_changed": 2, "source": dict(_SOURCE)}}
+    assert red.set_stats(doc, 1, 0, 1)["stats"] == {"additions": 1, "deletions": 0, "files_changed": 1}
