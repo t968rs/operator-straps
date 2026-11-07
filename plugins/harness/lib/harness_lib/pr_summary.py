@@ -5,7 +5,8 @@ prose an agent writes: the derived title, the Summary, one description per liste
 level 2 up, the flowchart, diagram and table sections. ``render_summary`` lays both out as the summary
 markdown the driver saves under the project's configured ``artifacts.summaries`` directory, so counts and
 file rows are never re-typed. Artifact classification goes through
-``branch_commits.path_bucket`` (the project's configured commit buckets). Git and gh are not run here.
+``diff_delta.is_machine_generated`` (the project's exclusions file, the harness output patterns and the
+Artifact commit bucket), the rule pr-review shares. Git and gh are not run here.
 """
 from __future__ import annotations
 
@@ -14,7 +15,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import PurePosixPath
 from typing import Dict, List, Mapping, Optional, Tuple
 
-from harness_lib.branch_commits import Bucket, path_bucket
+from harness_lib import diff_delta
+from harness_lib.commit_diff import DiffStat
 from harness_lib.commit_txt import glyph_problems, vendor_names
 
 MONOSPACE_WIDTH = 120
@@ -60,8 +62,8 @@ class PrFile:
 
     @property
     def artifact(self) -> bool:
-        """True for a machine-generated artifact path: one ``path_bucket`` places in the Artifact bucket."""
-        return path_bucket(self.path) is Bucket.ARTIFACT
+        """True for a machine-generated path: an exclusions-file pattern or the Artifact commit bucket."""
+        return diff_delta.is_machine_generated(self.path, diff_delta.active_patterns())
 
     @property
     def relocated(self) -> bool:
@@ -120,6 +122,12 @@ class PrFacts:
     def described(self) -> Tuple[str, ...]:
         """Paths whose row needs a drafted description: listed, non-artifact files."""
         return tuple(f.path for f in self.listed if not f.artifact)
+
+    @property
+    def delta(self) -> diff_delta.DiffDelta:
+        """The line counts without the machine-generated files; ``full`` counts every file."""
+        stats = (DiffStat(f.path, f.added, f.deleted) for f in self.files)
+        return diff_delta.from_patterns(stats, diff_delta.active_patterns())
 
 
 @dataclass(frozen=True)
@@ -470,17 +478,33 @@ def draft_problems(facts: PrFacts, draft: PrDraft, level: int = DEFAULT_LEVEL) -
     return problems + _control_problems(draft)
 
 
-def artifact_note(facts: PrFacts) -> Optional[str]:
-    """The artifact-noise Note line when artifact files account for more than half of the changed lines."""
-    artifacts = [f for f in facts.files if f.artifact]
-    added, deleted = sum(f.added for f in artifacts), sum(f.deleted for f in artifacts)
-    if 2 * (added + deleted) <= facts.additions + facts.deletions:
+_DELTA_HEADER = ("Delta", "Files", "+", "-", "Net")
+
+
+def _delta_rows(delta: diff_delta.DiffDelta) -> List[Tuple[str, ...]]:
+    """Source, Machine-generated and Total rows: label, files, added, deleted, signed net."""
+    full = delta.full if delta.full is not None else delta
+    generated = (len(delta.excluded), full.adds - delta.adds, full.subs - delta.subs)
+    counts = [("Source", delta.files, delta.adds, delta.subs), ("Machine-generated", *generated),
+              ("Total", full.files, full.adds, full.subs)]
+    return [(label, str(files), str(adds), str(subs), f"{adds - subs:+d}")
+            for label, files, adds, subs in counts]
+
+
+def delta_table(facts: PrFacts) -> Optional[str]:
+    """The Source / Machine-generated / Total line-count table; None when no file is machine-generated."""
+    delta = facts.delta
+    if not delta.excluded:
         return None
-    return (
-        f"***Note:*** {len(artifacts)} machine-generated artifact file(s) account for "
-        f"+{added}/-{deleted} of the +{facts.additions}/-{facts.deletions} headline; the source delta is "
-        f"+{facts.additions - added}/-{facts.deletions - deleted}."
-    )
+    rows = [_DELTA_HEADER, *_delta_rows(delta)]
+    widths = [max(len(row[col]) for row in rows) for col in range(len(_DELTA_HEADER))]
+
+    def line(row: Tuple[str, ...]) -> str:
+        cells = [row[0].ljust(widths[0]), *(cell.rjust(w) for cell, w in zip(row[1:], widths[1:]))]
+        return "| " + " | ".join(cells) + " |"
+
+    rule = "|" + "|".join(["-" * (widths[0] + 2), *("-" * (w + 1) + ":" for w in widths[1:])]) + "|"
+    return "\n".join([line(rows[0]), rule, *(line(row) for row in rows[1:])])
 
 
 def _cell(text: str) -> str:
@@ -553,10 +577,10 @@ def _header(facts: PrFacts, title: str) -> List[str]:
 
 
 def render_summary(facts: PrFacts, draft: PrDraft) -> str:
-    """Summary markdown: header, Summary, Note, drafted sections, Files Changed, Relocated."""
-    note = artifact_note(facts)
+    """Summary markdown: header, Summary, delta table, drafted sections, Files Changed, Relocated."""
+    table = delta_table(facts)
     lines = [*_header(facts, draft.title), "", "## Summary", "", draft.summary.strip()]
-    lines += ["", note] if note else []
+    lines += ["", table] if table else []
     for section in draft.sections:
         lines += ["", f"## {section.heading.strip()}", "", section.body.strip()]
     lines += ["", *_files_block(facts, draft), *_relocated_block(facts)]

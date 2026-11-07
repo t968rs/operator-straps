@@ -1,8 +1,9 @@
 """Behavioral tests for harness_lib.pr_summary: facts, draft checks, payload round trip, markdown layout.
 
 Every test runs against a throwaway project with the plugin-default harness configuration activated, so
-artifact classification (``PrFile.artifact`` through ``branch_commits.path_bucket``) never depends on the
-checkout the suite runs from.
+artifact classification (``PrFile.artifact`` through ``diff_delta.is_machine_generated``: the exclusions
+file, the harness output patterns and the Artifact commit bucket) never depends on the checkout the suite
+runs from.
 """
 from __future__ import annotations
 
@@ -19,7 +20,6 @@ from harness_lib.pr_summary import (
     PrFacts,
     PrFile,
     PrSection,
-    artifact_note,
     draft_from_payload,
     draft_problems,
     facts_from_payload,
@@ -131,27 +131,6 @@ class TestPayload:
 class TestSummaryFilename:
     def test_underscored_title(self) -> None:
         assert summary_filename(7, "Feature(a): `a` parameter") == "0007_Feature_a_a_parameter.md"
-
-
-class TestArtifactNote:
-    def test_emitted_when_artifacts_dominate(self) -> None:
-        assert artifact_note(_facts()) == (
-            "***Note:*** 1 machine-generated artifact file(s) account for +40/-0 of the +43/-1 headline; "
-            "the source delta is +3/-1."
-        )
-
-    def test_absent_when_source_dominates(self) -> None:
-        assert artifact_note(_facts(files=(PrFile("M", "src/pkg/a.py", None, 3, 1),))) is None
-
-    def test_exact_half_boundary(self) -> None:
-        source = PrFile("M", "src/pkg/a.py", None, 1, 1)
-        half = PrFile("A", "docs/PR_REVIEWS/1_x.json", None, 2, 0)
-        over = PrFile("A", "docs/PR_REVIEWS/1_x.json", None, 3, 0)
-        assert artifact_note(_facts(files=(source, half))) is None
-        assert artifact_note(_facts(files=(source, over))) == (
-            "***Note:*** 1 machine-generated artifact file(s) account for +3/-0 of the +4/-1 headline; "
-            "the source delta is +1/-1."
-        )
 
 
 class TestDraftProblems:
@@ -608,7 +587,7 @@ class TestRenderSummary:
         assert text.startswith(
             "# PR #7: Feature(a): `a` parameter\n\n**Branch:** 0007-demo\n**Base:** dev\n"
             "**Date:** 2026-10-10\n**Files Changed:** 3 (+43 / -1 lines, 1 relocated)\n\n"
-            "## Summary\n\nAdds `a`.\n\n***Note:*** "
+            "## Summary\n\nAdds `a`.\n\n| Delta "
         )
         assert "\n## Changed Symbols\n\n```\nx\n```\n" in text
         assert "abc1234" not in text
@@ -650,7 +629,7 @@ class TestRenderSummary:
     def test_section_order(self) -> None:
         text = render_summary(_facts(), _draft(sections=(_FLOW, _SYMBOLS)))
         marks = [
-            "## Summary", "***Note:***", "## New Behavior: append", "## Changed Symbols",
+            "## Summary", "| Delta ", "## New Behavior: append", "## Changed Symbols",
             "<summary>Files Changed (2)</summary>",
             "<summary>Relocated 1 files",
         ]
