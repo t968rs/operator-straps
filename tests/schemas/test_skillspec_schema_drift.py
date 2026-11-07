@@ -5,7 +5,9 @@ Pins that the committed ``plugins/harness/schemas/SkillSpec.schema.json`` equals
 checks JSON out with CRLF on Windows), that its ``$schema`` / ``$id`` follow the harness schemas convention,
 that ``tools/gen_skillspec_schema.py`` writes the schema and its ``--check`` mode exits 0 in sync and 1 on
 drift, that harness-shaped and target-shaped ``dump_spec`` documents validate against the committed schema
-under Draft 2020-12, and that ``target`` folders reject absolute paths in both the model and the schema.
+under Draft 2020-12, that ``target`` folders reject absolute paths and accept repo-relative ones in both the
+model and the schema, and that ``REL_PATH_PATTERN`` compiles on pydantic's default regex engine (no
+look-around).
 """
 from __future__ import annotations
 
@@ -13,11 +15,11 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Annotated, Any, Dict, List
 
 import pytest
 from jsonschema import Draft202012Validator
-from pydantic import ValidationError
+from pydantic import Field, TypeAdapter, ValidationError
 
 from harness_lib import strap_models as sm
 
@@ -143,6 +145,29 @@ def test_committed_schema_rejects_absolute_target_folder(field: str, value: str)
     document = _target_spec()
     document["target"][field] = value
     assert _errors(document) != []
+
+
+_RELATIVE = [".claude/skills", "a", "a/b", "ab:c", "_x", "./skills", "9:"]
+
+
+@pytest.mark.parametrize("value", _RELATIVE)
+@pytest.mark.parametrize("field", ["skills_dir", "agents_dir"])
+def test_skill_target_accepts_relative_folder(field: str, value: str) -> None:
+    """A repo-relative folder passes the model and the committed schema, one letter before a colon aside."""
+    folders = {"skills_dir": ".claude/skills", "agents_dir": ".claude/agents", field: value}
+    assert getattr(sm.SkillTarget(**folders), field) == value
+    document = _target_spec()
+    document["target"][field] = value
+    assert _errors(document) == []
+
+
+def test_relative_path_pattern_builds_on_the_default_regex_engine() -> None:
+    """The pattern needs no look-around: pydantic before 2.5 has no ``regex_engine`` and always compiles a
+    pattern with the default engine, which refuses look-around and fails the module import."""
+    adapter = TypeAdapter(Annotated[str, Field(pattern=sm.REL_PATH_PATTERN)])
+    assert adapter.validate_python(".claude/skills") == ".claude/skills"
+    with pytest.raises(ValidationError):
+        adapter.validate_python("C:/elsewhere")
 
 
 @pytest.mark.parametrize("field, value", [("bogus", 1), ("mode", "rewrite")])

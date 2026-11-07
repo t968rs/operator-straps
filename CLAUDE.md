@@ -94,7 +94,7 @@ plugin (ArcGIS Pro toolbox skills) plus eight TypeScript mods (`agent-watcher`, 
 
 Python 3.11; `Optional[X]` / `Union[X, Y]`, never `X | Y`. No first or second person in comments or docstrings.
 Functions under 50 lines. Allowed runtime dependencies: the standard library, `jsonschema`, `referencing`,
-`pydantic>=2`.
+`pydantic>=2.1`.
 
 ## Releases
 

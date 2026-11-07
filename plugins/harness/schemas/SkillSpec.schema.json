@@ -588,13 +588,13 @@
       "properties": {
         "skills_dir": {
           "minLength": 1,
-          "pattern": "^(?![/\\\\])(?![A-Za-z]:)",
+          "pattern": "^(?:[^/\\\\A-Za-z]|[A-Za-z](?:[^:]|$))",
           "title": "Skills Dir",
           "type": "string"
         },
         "agents_dir": {
           "minLength": 1,
-          "pattern": "^(?![/\\\\])(?![A-Za-z]:)",
+          "pattern": "^(?:[^/\\\\A-Za-z]|[A-Za-z](?:[^:]|$))",
           "title": "Agents Dir",
           "type": "string"
         }

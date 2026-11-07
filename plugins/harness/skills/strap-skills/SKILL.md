@@ -42,7 +42,7 @@ change of the key never re-targets an open spec.
 
 `skills_dir` defaults to `.claude/skills/` and `agents_dir` to `.claude/agents/`. A project skill needs the
 harness plugin enabled at run time (it puts `harness-skill-api` on the Bash PATH) and, for `red` and `freeze`,
-`HARNESS_PY` pointing at an interpreter with `pydantic>=2`, `jsonschema`, `referencing`, `pytest` and the
+`HARNESS_PY` pointing at an interpreter with `pydantic>=2.1`, `jsonschema`, `referencing`, `pytest` and the
 project's own test dependencies: the gate runs the planned tests under it. In a project skill's run brief
 (its SKILL.md and role agent), `${CLAUDE_SKILL_DIR}` points at the skill folder of the arm's source and
 `${CLAUDE_PROJECT_DIR}` at the scenario tree; the API heredoc's `--repo` carries the latter, so a scenario's

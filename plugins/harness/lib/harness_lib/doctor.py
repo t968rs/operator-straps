@@ -9,6 +9,7 @@ import importlib
 import importlib.metadata
 import json
 import os
+import re
 import shutil
 import sys
 from dataclasses import dataclass
@@ -26,12 +27,33 @@ MIN_PYTHON: Tuple[int, int] = (3, 11)
 #: Environment variables ``hpy`` reads for an interpreter, in the order it tries them.
 INTERPRETER_VARS: Tuple[str, ...] = ("HARNESS_PY", "CLAUDE_PLUGIN_OPTION_PYTHON")
 
-#: (module, v2-only attribute or None, pip requirement); the same list ``pr_review.py`` gates on.
+#: (module, v2-only attribute or None, pip requirement); ``pr_review.py`` carries the same literal and gates
+#: on it through ``requirement_met``, as ``plan.py`` and ``plan_api`` do through ``missing_pydantic``. A
+#: ``>=`` requirement is also a release floor: pydantic 2.0 passes the major-version probe but lacks what
+#: the plan models build on, so their import fails there.
 REQUIRED_MODULES: Tuple[Tuple[str, Optional[str], str], ...] = (
-    ("pydantic", "model_validator", "pydantic>=2"),
+    ("pydantic", "model_validator", "pydantic>=2.1"),
     ("referencing", None, "referencing"),
     ("jsonschema", None, "jsonschema"),
 )
+
+
+def _numeric(text: str) -> Optional[Tuple[int, ...]]:
+    """The leading numeric release in ``text`` (``2.4.2rc1`` -> ``(2, 4, 2)``), else None."""
+    found = re.match(r"\d+(?:\.\d+)*", text)
+    return tuple(int(part) for part in found.group(0).split(".")) if found else None
+
+
+def _floor(requirement: str) -> Optional[Tuple[int, ...]]:
+    """The release after ``>=`` in ``requirement`` (``pydantic>=2.1`` -> ``(2, 1)``), else None."""
+    _, sep, spec = requirement.partition(">=")
+    return _numeric(spec) if sep else None
+
+
+#: Release floor of each required module that has one, read from its requirement in ``REQUIRED_MODULES``.
+MIN_RELEASES: Mapping[str, Tuple[int, ...]] = {
+    module: floor for module, _, req in REQUIRED_MODULES if (floor := _floor(req)) is not None
+}
 
 
 @dataclass(frozen=True)
@@ -118,16 +140,42 @@ def check_interpreter(environ: Mapping[str, str], configured: Optional[str] = No
     return Check(OK, "interpreter", f"{sys.executable} (PATH fallback; set HARNESS_PY to pin one)")
 
 
-def _installed(module: str, attr: Optional[str]) -> bool:
+def _release(dist: str) -> Optional[Tuple[int, ...]]:
+    """The numeric release of the installed distribution ``dist`` (``2.4.2`` -> ``(2, 4, 2)``), else None."""
+    try:
+        return _numeric(importlib.metadata.version(dist))
+    except importlib.metadata.PackageNotFoundError:
+        return None
+
+
+def _dist(requirement: str) -> str:
+    return requirement.split(">=")[0]
+
+
+def requirement_met(module: str, attr: Optional[str], requirement: str) -> bool:
+    """``module`` imports, has ``attr`` and, when ``requirement`` sets a floor and the release is known,
+    meets it. Stdlib only, so a driver can call it before importing anything that needs ``module``."""
     try:
         loaded = importlib.import_module(module)
     except ImportError:
         return False
-    return attr is None or hasattr(loaded, attr)
+    if attr is not None and not hasattr(loaded, attr):
+        return False
+    floor = _floor(requirement)
+    if floor is None:
+        return True
+    found = _release(_dist(requirement))
+    return found is None or found >= floor
+
+
+def missing_pydantic() -> Optional[str]:
+    """The pydantic pip requirement when the installed pydantic does not meet it, else None."""
+    entry = next(entry for entry in REQUIRED_MODULES if entry[0] == "pydantic")
+    return None if requirement_met(*entry) else entry[2]
 
 
 def _version(requirement: str) -> str:
-    dist = requirement.split(">=")[0]
+    dist = _dist(requirement)
     try:
         return f"{dist} {importlib.metadata.version(dist)}"
     except importlib.metadata.PackageNotFoundError:
@@ -135,12 +183,12 @@ def _version(requirement: str) -> str:
 
 
 def check_modules() -> Check:
-    """Every required module imports; otherwise one pip line naming all that are missing."""
-    missing = [req for module, attr, req in REQUIRED_MODULES if not _installed(module, attr)]
+    """Every required module imports at its floor; otherwise one pip line naming each missing or old one."""
+    missing = [req for module, attr, req in REQUIRED_MODULES if not requirement_met(module, attr, req)]
     if not missing:
         return Check(OK, "modules", ", ".join(_version(req) for _, _, req in REQUIRED_MODULES))
     pip = f'"{sys.executable}" -m pip install ' + " ".join(f'"{req}"' for req in missing)
-    return Check(FAIL, "modules", "missing: " + ", ".join(missing), pip)
+    return Check(FAIL, "modules", "missing or too old: " + ", ".join(missing), pip)
 
 
 def check_tool(name: str, severity: str, needed_by: str) -> Check:

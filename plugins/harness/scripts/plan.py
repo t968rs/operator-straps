@@ -92,17 +92,11 @@ from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 
-def _pydantic_missing() -> bool:
-    """True when pydantic 2 does not import: the plan models need it."""
-    try:
-        import pydantic
-    except ImportError:
-        return True
-    return not hasattr(pydantic, "model_validator")
+from harness_lib.doctor import missing_pydantic  # noqa: E402
 
-
-if _pydantic_missing():
-    print("problem: pydantic>=2 is not installed; plan needs it (pip install 'pydantic>=2')", file=sys.stderr)
+_MISSING = missing_pydantic()
+if _MISSING is not None:
+    print(f"problem: {_MISSING} is not installed; plan needs it (pip install '{_MISSING}')", file=sys.stderr)
     sys.exit(1)
 
 from harness_lib import parallel_lanes as pl  # noqa: E402
