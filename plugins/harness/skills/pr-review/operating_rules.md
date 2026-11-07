@@ -51,7 +51,8 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   An edit no subcommand covers (a reviewer, a strength, `shas`, `review-date`, `stats`) goes through
   `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" <review JSON> --recompute
   <subcommand> ...` (`harness_lib.review_edit`: one editor per root field, validated byte-stable write), never
-  `python -c`. The agent never runs its `verdict --text`, and runs `resolve-file` only as the `pr-team` shim's
+  `python -c`. `stats` keeps an existing `stats.source` unchanged, or drops it when a source count exceeds its
+  new total. The agent never runs its `verdict --text`, and runs `resolve-file` only as the `pr-team` shim's
   closeout step; any other field (PR title, issue text, verification log) is surfaced to the developer.
 - **Folder glob:** only true reviews live at the top of the project's review directory (`artifacts.reviews`
   in `.claude/harness.json`): PR reviews as `NNNN_*.json`, and local reviews (`review-local`, keyed
