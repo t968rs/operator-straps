@@ -8,7 +8,7 @@
   "base_sha": "ea47d7f073faf9186012654502119227d19f0fc3",
   "head_sha": "5c25d912b5d14c66164f34816b377ac4d673f03a",
   "review_date": "2026-11-06",
-  "verdict": "NOT READY TO MERGE - important: I1",
+  "verdict": "READY TO MERGE - 7 of 7 findings resolved, 0 bubbled",
   "stats": {
     "additions": 93,
     "deletions": 17,
@@ -240,5 +240,49 @@
         "result": "OK (recorded; configured base)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "64cd8cf (working-tree snapshot; developer commits) - doctor SKILL.md modules row reworded: names pydantic without the floor in the missing clause, says the fix line pins pydantic>=2.1, and notes an install with unreadable version metadata gets only the major-version probe; doctor.py: cited for _installed behavior, no edit needed"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "64cd8cf (working-tree snapshot; developer commits) - test_doctor.py derives the pydantic requirement from doctor.MIN_RELEASES in test_pydantic_below_its_release_floor_fails and adds test_documented_pydantic_floor_matches_min_releases asserting that string in REPO_ROOT README.md, harness .claude-plugin/plugin.json and doctor SKILL.md; README.md, plugin.json and SKILL.md: cited, already state the floor, no edit needed for M4"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "64cd8cf (working-tree snapshot; developer commits) - test_release_reads_the_installed_distribution compares only major.minor parsed by regex from pydantic.VERSION; new parametrized test_release_keeps_only_the_leading_numeric_part monkeypatches importlib.metadata.version with 2.4.2, 2.0.0b3, 2.10.0.dev1 and garbage; doctor.py: _release already tolerant, no edit needed"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "64cd8cf (working-tree snapshot; developer commits) - strap-skills SKILL.md:45 HARNESS_PY floor pydantic>=2 -> pydantic>=2.1; plan.py:105 and plan_api.py:33 problem lines and pip hints -> pydantic>=2.1; pr_review.py:148 comment and the _REQUIRED_MODULES pip requirement at :152 -> pydantic>=2.1 (wrapped plan.py:105 print to keep the 110-column limit); contract test left as is, the substring pydantic>=2 still matches pydantic>=2.1"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "64cd8cf (working-tree snapshot; developer commits) - Extended the module docstring's last sentence to name the relative-folder acceptance (model and schema) and the REL_PATH_PATTERN no-look-around check, per the brief's option"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "64cd8cf (working-tree snapshot; developer commits) - doctor.REQUIRED_MODULES now says pydantic>=2.1 (matching pr_review._REQUIRED_MODULES); MIN_RELEASES is derived from the requirement text via _floor, _requirement string rebuild dropped, _version calls _dist, and requirement_met skips the metadata lookup for modules without a floor; plan.py and plan_api messages now come from the same requirement"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-06",
+      "evidence": "64cd8cf (working-tree snapshot; developer commits) - added stdlib-only doctor.requirement_met and doctor.missing_pydantic that enforce the release floor; pr_review._missing_requirement, plan.py and plan_api gate through them before importing the pydantic models, so pydantic 2.0 gets the problem: line naming pydantic>=2.1 and the pip hint pip install 'pydantic>=2.1'; doctor.py comment rewritten to match"
+    }
+  ]
 }

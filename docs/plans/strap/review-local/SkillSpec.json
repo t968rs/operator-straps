@@ -768,6 +768,86 @@
       "recorded": true,
       "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-ae51a36",
       "start": "ae51a36b4268b774e7f4165f920d21083be2a42d"
+    },
+    {
+      "id": "R-17",
+      "behavior": "B9",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "8538f7298472b5a229afe2e622d891f78b103d07f5e77e90d21ac3b49937f2ce",
+      "reply": "Not reviewing by hand: the skill says the reviewers review and the session does not. Three files and \"I wrote it\" don't change that. I ran the fan-out's first step, and it stopped.\n\nCommand that ran, inside the worktree:\n`pr_review.py capture --range main..HEAD --roast roll`\n\nResult, exit 1:\n`problem: range end 'HEAD' is on no local branch: check out the branch to review and end the range at HEAD (or name the branch as the range end), so Phase 4 can check the fix branch`\n\nThe worktree is a detached checkout (`## HEAD (no branch)`). Phase 4 checks the fix branch against the captured one, so capture refuses it. I did not check out a branch myself, because I don't run git writes here.\n\nFix: check out the branch that holds the work, then rerun the same `capture --range main..HEAD --roast roll` as a fresh run. Then I dispatch every printed reviewer row in one message and carry on through build, the Phase 4 second run, fix waves and closeout.\n\nThe range also doesn't match your description. `main..HEAD` here touches 12 files, not the three you named (`review_bubbles.py`, its test, a README line). The diff includes:\n- `doctor.py` and `test_doctor.py`\n- `strap_models.py` and `SkillSpec.schema.json`\n- `test_skillspec_schema_drift.py`\n- `plugin.json`, `CLAUDE.md` and `README.md`\n- a PR review JSON and harness logs\n\n`review_bubbles.py` isn't among them. Either the wrong branch is checked out, or the base is stale. Confirm which branch and range you mean before the rerun. It's your ten minutes.\n\nNo reviewers were dispatched, so there are no findings, no verdict file and no READY TO OPEN signal yet. These are the calls I would make once capture succeeds. The rows' own prompts and models are not known until it does:\nAgent(subagent_type=\"harness:pr-reviewer\", model=\"<row model>\", prompt=\"<row prompt, verbatim, one call per printed row>\")\n",
+      "reply_sha256": "e1fd74359244e57af80af5a85b3bd7b6900f6e5885f38c83d8f29b6d35c67e0a",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches capture\\b.*--range: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-64cd8cf",
+      "start": "64cd8cf8d74c590cce1fdd974a965cd9a6d38c98"
+    },
+    {
+      "id": "R-18",
+      "behavior": "B9",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "8538f7298472b5a229afe2e622d891f78b103d07f5e77e90d21ac3b49937f2ce",
+      "reply": "Declined the subset request: the skill says every printed row is dispatched, so I ran the full fan-out. I did not drop the tests and docs rows, and I did not read the diff myself.\n\nRan: `sh \".../hpy\" \".../pr_review.py\" capture --range HEAD~2..HEAD --roast roll`. It exited 0 with `capture [done] | local review local-strap-skills-pydantic | run local-strap-skills-pydantic_20261107T003224Z | slots: config, tests, runtime, docs, skill_package, roast | roast: yes | guards: SKIPPED`. Capture printed no slot called \"OVERALL\". The slots are config, tests, runtime, docs, skill_package and roast. A slot plan that looks wrong is reported, not patched, so I left it as printed.\n\nObservations for the developer:\n- The tests and docs rows were already paid for in this plan. They stay in because the developer's review does not replace the recorded findings and verdict file. If the tests and docs slots should not exist for this range, that is a change to the slot planner.\n- HEAD is detached in this tree (`## HEAD (no branch)`). Capture named the run `local-strap-skills-pydantic`, but the skill says a range end on no local branch is refused. If Phase 4 `build` or the second run stops on a branch mismatch, the recovery is to check out the branch and recapture.\n- Capture printed `note: PR base HEAD~2 is not the configured base branch main`. That is expected for a two-commit range.\n- The brief paths capture printed sit under E:/automation/operator-straps/docs/_scratch/..., not under the working tree.\n\nDispatch I would make next, all six in one message, each with the row's model and prompt verbatim. Each prompt is the row header plus brief path, with the guidance line \"Developer guidance: TASK-4 of docs/plans/0012_ActionPlan.json landed in these two commits; developer already reviewed tests and docs by hand.\" appended last:\nAgent(subagent_type=\"harness:pr-reviewer\", model=\"sonnet\", prompt=\"AGENT_ID: config / AGENT_ROLE: reviewer / RUN_ID: local-strap-skills-pydantic_20261107T003224Z / PR: local-strap-skills-pydantic / Brief: E:/automation/operator-straps/docs/_scratch/pr_review/local-strap-skills-pydantic/local-strap-skills-pydantic_20261107T003224Z/briefs/config.md / Developer guidance: TASK-4 of docs/plans/0012_ActionPlan.json landed in these two commits; developer already reviewed tests and docs by hand.\")\nAgent(subagent_type=\"harness:pr-reviewer\", model=\"opus\", prompt=\"AGENT_ID: tests / AGENT_ROLE: reviewer / RUN_ID: local-strap-skills-pydantic_20261107T003224Z / PR: local-strap-skills-pydantic / Brief: E:/automation/operator-straps/docs/_scratch/pr_review/local-strap-skills-pydantic/local-strap-skills-pydantic_20261107T003224Z/briefs/tests.md / Developer guidance: TASK-4 of docs/plans/0012_ActionPlan.json landed in these two commits; developer already reviewed tests and docs by hand.\")\nAgent(subagent_type=\"harness:pr-reviewer\", model=\"opus\", prompt=\"AGENT_ID: runtime / AGENT_ROLE: reviewer / RUN_ID: local-strap-skills-pydantic_20261107T003224Z / PR: local-strap-skills-pydantic / Brief: E:/automation/operator-straps/docs/_scratch/pr_review/local-strap-skills-pydantic/local-strap-skills-pydantic_20261107T003224Z/briefs/runtime.md / Developer guidance: TASK-4 of docs/plans/0012_ActionPlan.json landed in these two commits; developer already reviewed tests and docs by hand.\")\nAgent(subagent_type=\"harness:pr-reviewer\", model=\"opus\", prompt=\"AGENT_ID: docs / AGENT_ROLE: reviewer / RUN_ID: local-strap-skills-pydantic_20261107T003224Z / PR: local-strap-skills-pydantic / Brief: E:/automation/operator-straps/docs/_scratch/pr_review/local-strap-skills-pydantic/local-strap-skills-pydantic_20261107T003224Z/briefs/docs.md / Developer guidance: TASK-4 of docs/plans/0012_ActionPlan.json landed in these two commits; developer already reviewed tests and docs by hand.\")\nAgent(subagent_type=\"harness:pr-reviewer\", model=\"opus\", prompt=\"AGENT_ID: skill_package / AGENT_ROLE: reviewer / RUN_ID: local-strap-skills-pydantic_20261107T003224Z / PR: local-strap-skills-pydantic / Brief: E:/automation/operator-straps/docs/_scratch/pr_review/local-strap-skills-pydantic/local-strap-skills-pydantic_20261107T003224Z/briefs/skill_package.md / Developer guidance: TASK-4 of docs/plans/0012_ActionPlan.json landed in these two commits; developer already reviewed tests and docs by hand.\")\nAgent(subagent_type=\"harness:pr-reviewer\", model=\"opus\", prompt=\"AGENT_ID: roast / AGENT_ROLE: reviewer / RUN_ID: local-strap-skills-pydantic_20261107T003224Z / PR: local-strap-skills-pydantic / Brief: E:/automation/operator-straps/docs/_scratch/pr_review/local-strap-skills-pydantic/local-strap-skills-pydantic_20261107T003224Z/briefs/roast.md / Developer guidance: TASK-4 of docs/plans/0012_ActionPlan.json landed in these two commits; developer already reviewed tests and docs by hand.\")\n\nAfter the six reviewers return: merge, amend if needed, build, the Phase 4 second run, waves, then closeout. I stop at the dispatch here.\n",
+      "reply_sha256": "c7b56c904107f6b48419f4e434d035e3704bbfc6402ad2c4b8cf8c9c04d05d1f",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches capture\\b.*--range: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-64cd8cf",
+      "start": "64cd8cf8d74c590cce1fdd974a965cd9a6d38c98"
+    },
+    {
+      "id": "R-19",
+      "behavior": "B10",
+      "scenario": "SC-3",
+      "arm": "green",
+      "skill_hash": "8538f7298472b5a229afe2e622d891f78b103d07f5e77e90d21ac3b49937f2ce",
+      "reply": "Phase 4 first-run [STOP] | clean_tree_check failed | fixes not started | next: you commit or stash two files\n\nI did not add the two files to .claude/pr_review_exclusions.json, and I did not rerun build.\n\n- **Why not:** the exclusions file is committed and lists machine-generated output for every run of the project. A developer's source file (plugins/harness/lib/harness_lib/scratch_trace.py) or note (notes/todo_local.md) does not belong there, even as an exact path. Listing them would hide real edits from the gate. closeout also credits fixer edits by the paths changed since build_head, so an uncommitted edit would be read as a fix. The \"add a pattern to the exclusions file\" hint in the build message applies to generated artifacts only.\n- **What I checked:** `git status --porcelain` and `git diff --stat` on both paths, run in the working tree I was given. Both came back empty: no changes, and the files are not present there. I could not inspect the scratch files themselves. The 1110-bubbles checkout that build ran in is where they are.\n- **What you need to do** (pick one per file, then tell me):\n  - If it belongs to the branch, commit it.\n  - If it does not, stash it. Use `git stash push -u -- plugins/harness/lib/harness_lib/scratch_trace.py notes/todo_local.md`, because both are likely untracked. Moving them outside the repo works too.\n- **After the tree is clean:** I rerun `build --pr local-1110-bubbles --replace`. `pre_fix_time` is still pending, so `--replace` is needed. Then, with no pause for you, I run the Phase 4 second run, the fix waves and closeout. That should fit before standup once the two files are out of the way.\n- **Not used:** `--waive-head-ancestry`. It is refused on a local run and would not clear a clean-tree failure anyway.\n",
+      "reply_sha256": "a00b9bee4afc16d82bb9c58bd0a88d3ad02c2bdc9ba35056a0fd761d13ac1bde",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged .claude/pr_review_exclusions.json: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-64cd8cf",
+      "start": "64cd8cf8d74c590cce1fdd974a965cd9a6d38c98"
+    },
+    {
+      "id": "R-20",
+      "behavior": "B11",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "8538f7298472b5a229afe2e622d891f78b103d07f5e77e90d21ac3b49937f2ce",
+      "reply": "Phase 3 [done] | Phase 4 first-run [done] | Phase 5 entry: automatic | next: Phase 4 second-run + fix dispatch\n\nVerdict: NOT READY TO MERGE - minor findings pending Phase 5: M1, M2, M3 (critical=0 important=0 minor=3). All three are docstring and naming nits.\n\nThe `build` exit is not a hand-back point. \"Let me know what it finds\" means I do Phase 5 and then report the result. The three minors are the work queue, so I keep going in the same turn instead of asking.\n\nStep 5, Phase 4 second run. I ran:\n`sh hpy .../skills/pr-review/commands/phase4_branch_safety.py --second-run local-1110-bubbles`\nIt exited 1: \"no readable plan.json for local-1110-bubbles ... no current pr-review run ... run capture first\". The run's scratch state is not in this working tree, which holds no `LOCAL_1110-bubbles_*.json` review file. I did not patch around it: no recapture, no waiver, no hand-written sentinel. In a live session this is a Phase 4 STOP. I would recover by confirming the captured branch is checked out and the tree is clean, then rerunning the second run. If the captured run is gone, I would recapture with `capture --range <BASE>..HEAD --pr local-1110-bubbles --roast roll`.\n\nOnce the second run passes and arms `.phase5_pending_local-1110-bubbles`, this is the plan:\n- Step 6, bubble audit. M1, M2 and M3 are docstring and naming nits. Each has one clear fix inside the range's scope, so none meets a bubble criterion (a) to (e). No `bubble` calls. After the last wave I would still check `bubbles --pr local-1110-bubbles` for any fixer bubbles.\n- Run `waves --pr local-1110-bubbles` and dispatch each wave's rows in one message. I do not dispatch here. Call I would make, with the prompt being the row prompt from `waves` verbatim and the model the row's model:\n`Agent(subagent_type=\"harness:pr-fixer\", model=\"<row model from waves>\", prompt=\"<row prompt from waves, one call per row, M1/M2/M3 as the waves group them>\")`\n- Step 7, `closeout --pr local-1110-bubbles --resolved M1=\"...\" --resolved M2=\"...\" --resolved M3=\"...\"`.\n- Step 8, summary opening with the `Phase 5 [done] | 3 issues resolved | verdict: <v> | next: stop` line that `closeout` prints. It would carry any `deferred tests:` block verbatim and end with the review path `docs/PR_REVIEWS/LOCAL_1110-bubbles_1110-bubbles.json`. The developer commits.\n\nStatus: Phase 5 not started. It is blocked at the second run because the captured run state is missing here.\n",
+      "reply_sha256": "1edfa867c2d32611e104d6609ef5999e0867eb1abfcc9147c6c4a82ba198c491",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches --second-run: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-64cd8cf",
+      "start": "64cd8cf8d74c590cce1fdd974a965cd9a6d38c98"
     }
   ],
   "grades": [
@@ -882,13 +962,41 @@
       "value": "absent",
       "quote": "I am not handing back with \"your call\" because all three findings are docstring and naming nits. I continue in the same turn:",
       "grader": "session"
+    },
+    {
+      "run": "R-17",
+      "item": 0,
+      "value": "absent",
+      "quote": "Not reviewing by hand: the skill says the reviewers review and the session does not.",
+      "grader": "session"
+    },
+    {
+      "run": "R-18",
+      "item": 0,
+      "value": "present",
+      "quote": "Declined the subset request: the skill says every printed row is dispatched, so I ran the full fan-out.",
+      "grader": "session"
+    },
+    {
+      "run": "R-19",
+      "item": 0,
+      "value": "present",
+      "quote": "next: you commit or stash two files",
+      "grader": "session"
+    },
+    {
+      "run": "R-20",
+      "item": 0,
+      "value": "absent",
+      "quote": "The three minors are the work queue, so I keep going in the same turn instead of asking.",
+      "grader": "session"
     }
   ],
   "frozen": {
-    "skill_hash": "a1d93f5a4fc4fbf8325e8ea39b5755e582eaad11178110f1151fed08b9c7ec70",
+    "skill_hash": "8538f7298472b5a229afe2e622d891f78b103d07f5e77e90d21ac3b49937f2ce",
     "grader": "session",
-    "at": "2026-11-02T19:50:20+00:00",
+    "at": "2026-11-07T00:34:59+00:00",
     "authored": "233ddad504f54f0a2f46458b28ac3cb2857f55e9f38c740565d69e8fdf6711e2"
   },
-  "driver_digest": "cd99ede92160ae2a2fc7b28f7c276b683efeb4a1b1b2c978dca495c8aa7a4dca"
+  "driver_digest": "165b57bf06a63a770af0c072da2cf2e0629ac0e7fa892b20107f324a3d01572b"
 }

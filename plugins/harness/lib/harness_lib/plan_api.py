@@ -10,7 +10,8 @@ the active project), and refuses (all problems at once, nothing written) an unkn
 not loaded or whose file changed since, a changed ``plan_id``, ``base_commit`` or ``frozen`` (``plan.py
 new`` and ``freeze`` own them), an extra key at the plan or item level the file does not already carry (a
 misspelled field), a duplicate item id and, on a frozen plan, any change to an execution field (only
-``plan.py record`` sets those). Without pydantic 2 the import prints one ``problem:`` line and exits 1.
+``plan.py record`` sets those). Without pydantic at the floor ``doctor.REQUIRED_MODULES`` names, the
+import prints one ``problem:`` line and exits 1.
 """
 from __future__ import annotations
 
@@ -19,18 +20,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
+from harness_lib.doctor import missing_pydantic
 
-def _pydantic_missing() -> bool:
-    """True when pydantic 2 does not import: the plan models need it."""
-    try:
-        import pydantic
-    except ImportError:
-        return True
-    return not hasattr(pydantic, "model_validator")
-
-
-if _pydantic_missing():
-    print("problem: pydantic>=2 is not installed; plan_api needs it (pip install 'pydantic>=2')",
+_MISSING = missing_pydantic()
+if _MISSING is not None:
+    print(f"problem: {_MISSING} is not installed; plan_api needs it (pip install '{_MISSING}')",
           file=sys.stderr)
     sys.exit(1)
 

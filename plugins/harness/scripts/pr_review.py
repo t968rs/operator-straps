@@ -145,26 +145,22 @@ _LIB = Path(__file__).resolve().parents[1] / "lib"
 if str(_LIB) not in sys.path:
     sys.path.insert(0, str(_LIB))
 
-#: (module, v2-only attribute or None, pip requirement): the review models need pydantic>=2, the review
+#: (module, v2-only attribute or None, pip requirement): the review models need pydantic>=2.1, the review
 #: schema validation needs jsonschema and referencing. referencing comes first because jsonschema imports
 #: it, so a missing referencing is named as itself.
 _REQUIRED_MODULES: Tuple[Tuple[str, Optional[str], str], ...] = (
-    ("pydantic", "model_validator", "pydantic>=2"),
+    ("pydantic", "model_validator", "pydantic>=2.1"),
     ("referencing", None, "referencing"),
     ("jsonschema", None, "jsonschema"),
 )
 
 
 def _missing_requirement() -> Optional[str]:
-    """Return the pip requirement of the first review dependency that does not import, else None."""
-    import importlib
+    """Return the pip requirement of the first review dependency below its floor or absent, else None."""
+    from harness_lib.doctor import requirement_met
 
     for module, attr, requirement in _REQUIRED_MODULES:
-        try:
-            loaded = importlib.import_module(module)
-        except ImportError:
-            return requirement
-        if attr is not None and not hasattr(loaded, attr):
+        if not requirement_met(module, attr, requirement):
             return requirement
     return None
 

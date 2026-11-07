@@ -5,7 +5,9 @@ Pins that the committed ``plugins/harness/schemas/SkillSpec.schema.json`` equals
 checks JSON out with CRLF on Windows), that its ``$schema`` / ``$id`` follow the harness schemas convention,
 that ``tools/gen_skillspec_schema.py`` writes the schema and its ``--check`` mode exits 0 in sync and 1 on
 drift, that harness-shaped and target-shaped ``dump_spec`` documents validate against the committed schema
-under Draft 2020-12, and that ``target`` folders reject absolute paths in both the model and the schema.
+under Draft 2020-12, that ``target`` folders reject absolute paths and accept repo-relative ones in both the
+model and the schema, and that ``REL_PATH_PATTERN`` compiles on pydantic's default regex engine (no
+look-around).
 """
 from __future__ import annotations
 

@@ -4,13 +4,14 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import List
 
 import pytest
 
-from conftest import PLUGIN_ROOT
+from conftest import PLUGIN_ROOT, REPO_ROOT
 from harness_lib import doctor
 
 
@@ -45,13 +46,27 @@ def test_old_major_version_counts_as_missing(monkeypatch: pytest.MonkeyPatch) ->
     assert doctor.check_modules().status == doctor.FAIL
 
 
+def _pydantic_floor() -> str:
+    return "pydantic>=" + ".".join(map(str, doctor.MIN_RELEASES["pydantic"]))
+
+
 def test_pydantic_below_its_release_floor_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     """pydantic 2.0 passes the major-version probe but lacks what the plan models build on."""
     monkeypatch.setattr(doctor, "_release", lambda dist: (2, 0, 3) if dist == "pydantic" else None)
     check = doctor.check_modules()
     assert check.status == doctor.FAIL
-    assert "pydantic>=2.1" in check.detail
-    assert check.fix == f'"{sys.executable}" -m pip install "pydantic>=2.1"'
+    assert _pydantic_floor() in check.detail
+    assert check.fix == f'"{sys.executable}" -m pip install "{_pydantic_floor()}"'
+
+
+@pytest.mark.parametrize("doc", [
+    REPO_ROOT / "README.md",
+    PLUGIN_ROOT / ".claude-plugin" / "plugin.json",
+    PLUGIN_ROOT / "skills" / "doctor" / "SKILL.md",
+], ids=["README.md", "harness plugin.json", "doctor SKILL.md"])
+def test_documented_pydantic_floor_matches_min_releases(doc: Path) -> None:
+    """The floor the docs state is the one the doctor enforces."""
+    assert _pydantic_floor() in doc.read_text(encoding="utf-8")
 
 
 @pytest.mark.parametrize("found", [(2, 1), (2, 1, 1), (2, 14, 1), None])
@@ -63,8 +78,19 @@ def test_pydantic_at_or_above_its_floor_or_unknown_passes(monkeypatch: pytest.Mo
 
 def test_release_reads_the_installed_distribution() -> None:
     import pydantic
-    assert doctor._release("pydantic") == tuple(int(part) for part in pydantic.VERSION.split(".")[:3])
+    found = doctor._release("pydantic")
+    major_minor = re.match(r"\d+\.\d+", pydantic.VERSION).group(0)
+    assert found is not None and found[:2] == tuple(int(part) for part in major_minor.split("."))
     assert doctor._release("no-such-dist-xyz") is None
+
+
+@pytest.mark.parametrize("raw, expected", [
+    ("2.4.2", (2, 4, 2)), ("2.0.0b3", (2, 0, 0)), ("2.10.0.dev1", (2, 10, 0)), ("garbage", None),
+])
+def test_release_keeps_only_the_leading_numeric_part(monkeypatch: pytest.MonkeyPatch, raw: str,
+                                                     expected) -> None:
+    monkeypatch.setattr(doctor.importlib.metadata, "version", lambda dist: raw)
+    assert doctor._release("pydantic") == expected
 
 
 def test_python_below_the_floor_fails(monkeypatch: pytest.MonkeyPatch) -> None:
