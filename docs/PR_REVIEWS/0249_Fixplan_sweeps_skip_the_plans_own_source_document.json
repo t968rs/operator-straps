@@ -8,7 +8,7 @@
   "base_sha": "82f8e06c134cb5e54f7d59c7ba8a66a13d32a5b1",
   "head_sha": "35652cffb58318cc53cd602eddd914988b2d32d0",
   "review_date": "2026-11-09",
-  "verdict": "NOT READY TO MERGE - minor findings pending Phase 5: M1, M2, M3, M4, M5",
+  "verdict": "READY TO MERGE - 5 of 5 findings resolved, 0 bubbled",
   "stats": {
     "additions": 64,
     "deletions": 5,
@@ -184,5 +184,37 @@
         "result": "OK (recorded; configured base)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "8363826 (working-tree snapshot; developer commits) - Narrowed source_path docstring: None when unset or when an absolute path lies outside root; a relative path is returned as written. plan.py: cited for the absolute --spec storage in cmd_new, no edit needed for the docstring option"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "8363826 (working-tree snapshot; developer commits) - Reworded sweep_problems docstring: source document skipped on both sides; plans folder already dropped from hits by sweep_hits"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "8363826 (working-tree snapshot; developer commits) - Prefixed the Changes entry with the PR number (#249) so it matches the list format"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "8363826 (working-tree snapshot; developer commits) - plan_models.py ActionPlan.sweeps description now states the plans folder and the plan's own source_document are skipped on both sides; ActionPlan.schema.json regenerated via tools/gen_plan_schema.py (--check passes); write-plan SKILL.md:63 already states the exclusions, so no edit there"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "8363826 (working-tree snapshot; developer commits) - Moved SPEC and CODE_HITS up beside sweep_plan; sweep_plan(hits, source=None) now sets source_document when given; removed source_plan and pointed its four call sites at sweep_plan; added Optional to the typing import. The sweep tests are contiguous again."
+    }
+  ]
 }
