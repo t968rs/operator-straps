@@ -8,7 +8,7 @@
   "base_sha": "b03c2febc21194c2b0e3fb04ed4c1f34c5271e1a",
   "head_sha": "a635405ad0ba5f8ab579b5f09df9cbf9682a5291",
   "review_date": "2026-11-09",
-  "verdict": "NOT READY TO MERGE - minor findings pending Phase 5: M21, M22",
+  "verdict": "READY TO MERGE - 20 of 20 findings resolved, 0 bubbled",
   "stats": {
     "additions": 635,
     "deletions": 71,
@@ -552,6 +552,18 @@
       "status": "RESOLVED",
       "date": "2026-11-09",
       "evidence": "a635405 (working-tree snapshot; developer commits) - new tests/skills/test_pr_sum_skill_contract.py pins the pr-sum argument hint, consent sentence and the unasked gh pr edit row (outside fixer waves)"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "9ec9567 (working-tree snapshot; developer commits) - Added boolean key auto_title (default false) to defaults.json, harness.schema.json, the HarnessConfig dataclass and _build, and the README key table; pr_sum.py and merge_commit_msg.py capture take --auto-title/--no-auto-title (BooleanOptionalAction, default None) and fall back to active().auto_title; both SKILL.md consent paragraphs, argument hints, capture commands and Common Mistakes rows name the key as standing consent and --no-auto-title as the per-run opt-out; README merge-commit-msg section names the key"
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "9ec9567 (working-tree snapshot; developer commits) - Split the merge-commit-msg argument rule into separate Accepted before --, Rejected before -- and After -- bullets, with --auto-title and --no-auto-title listed only as accepted; added a contract test pinning the title flags in the accepted rule and no flag in the rejection rule"
     }
   ]
 }
