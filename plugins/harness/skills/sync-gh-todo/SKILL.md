@@ -15,7 +15,7 @@ stress). It fills the `Guidance:` line of Step 2's prompt.
 The TODO checks compare the catalogs, stubs and snapshot with each other and never read GitHub, so an issue
 reaches the catalog only when someone writes an item for it. `todo_sync.py untracked` lists the open issues no
 catalog record mentions; the `todo-editor` agent drafts one item per issue from the issue text and, when the
-issue links a PR review, from the review's own text; `todo_sync.py add` inserts the items and renumbers. The
+issue links a PR review, from the review's own text; `todo_sync.py add` inserts and ranks the items. The
 catalog and the issue text never enter the main session's context.
 
 ## Step 1: list the untracked issues
@@ -38,8 +38,8 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.
 
 `init` writes an empty catalog and the first snapshot and prints one `created <path>` line per file. It
 never overwrites an existing catalog: a `problem:` line from it ends the run, relayed as it stands. Any other
-`problem:` line from the untracked command (no `todo.folder` in `.claude/harness.json`, `gh` missing or failing)
-ends the run: relay it.
+`problem:` line from the untracked command (no `todo.folder` in `.claude/harness.json`, a catalog still holding
+`TODO-NNN` ids, which names `todo_sync.py migrate-ids`, `gh` missing or failing) ends the run: relay it.
 
 ## Step 2: dispatch the agent
 

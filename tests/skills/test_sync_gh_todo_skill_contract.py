@@ -19,7 +19,7 @@ _SKILL = _PLUGIN_ROOT / "skills" / "sync-gh-todo" / "SKILL.md"
 _AGENT = _PLUGIN_ROOT / "agents" / "todo-editor.md"
 _SCRIPT = _PLUGIN_ROOT / "scripts" / "todo_sync.py"
 _LAUNCHER = 'sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py"'
-_REPLY_FIELDS = ("Operation", "Result", "Renumbered", "Prose fixed", "Added", "Stubs", "Resolved", "Close",
+_REPLY_FIELDS = ("Operation", "Result", "Retired ids", "Prose fixed", "Added", "Stubs", "Resolved", "Close",
                  "Open", "Check")
 
 

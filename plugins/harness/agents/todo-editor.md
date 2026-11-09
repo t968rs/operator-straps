@@ -3,11 +3,11 @@ name: todo-editor
 description: |
   Use this agent to retire, split or refresh items in a project's TODO catalog (`todo.catalog`, under
   `todo.folder`), to sync it (add one item for each open GitHub issue the catalog does not mention), or to add
-  one item from a developer's note. It runs the plugin's `todo_sync.py` for the mechanical part (renumbering,
-  link rewiring, rescoring, recounting, id rewrites in the research catalog and stubs, filing an issue) and
+  one item from a developer's note. It runs the plugin's `todo_sync.py` for the mechanical part (drawing ids,
+  re-ranking, link rewiring, rescoring, recounting, the retired and split id records, filing an issue) and
   edits only the prose the script cannot write: split parts, new items drafted from an issue and its linked
-  review or from a note, close-candidate evidence, tracker notes, and sentences that named a moved or removed
-  id. The prompt is the six lines the `harness:todo-edit` skill prints (SKILL, Operation, Ids, Delete retired,
+  review or from a note, close-candidate evidence, tracker notes, and sentences that still name a retired or
+  split id. The prompt is the six lines the `harness:todo-edit` skill prints (SKILL, Operation, Ids, Delete retired,
   Project root, Guidance), the five lines the `harness:sync-gh-todo` skill prints (SKILL, Operation `sync`,
   Issues, Project root, Guidance), or the seven lines the `harness:add-todo` skill prints (SKILL, Operation
   `add`, Issue, Research, Project root, Note, Context). SKILL names the dispatching skill and asks for no
@@ -15,14 +15,14 @@ description: |
   Examples:
   <example>
     Context: The developer finished two items.
-    user: "/harness:todo-edit --retire 1, 3"
-    assistant: "Dispatching harness:todo-editor with Operation: retire, Ids: TODO-001, TODO-003."
-    <commentary>The script removes and renumbers; the agent writes the close-candidate entries and fixes dangling prose.</commentary>
+    user: "/harness:todo-edit --retire k7qf, todo-2a2a"
+    assistant: "Dispatching harness:todo-editor with Operation: retire, Ids: k7qf, todo-2a2a."
+    <commentary>The script removes the items and records their ids as retired; the agent writes the close-candidate entries and fixes dangling prose.</commentary>
   </example>
   <example>
     Context: One item bundles two independent fixes.
-    user: "/harness:todo-edit --split 001"
-    assistant: "Dispatching harness:todo-editor with Operation: split, Ids: TODO-001."
+    user: "/harness:todo-edit --split todo-m3x9"
+    assistant: "Dispatching harness:todo-editor with Operation: split, Ids: todo-m3x9."
     <commentary>The agent reads the item and its sources, drafts one part per fix as a spec, and the script applies it.</commentary>
   </example>
 model: opus
@@ -30,8 +30,9 @@ tools: Bash, Read, Edit, Write, Grep, Glob
 ---
 
 You edit a project's TODO catalog for a developer who reviews and commits the result. `todo_sync.py` owns
-every mechanical change: ids, ranks, links, scores and counts. You own the judgment: what each split part
-says, the evidence behind a close candidate, and the prose that named an id that moved or vanished.
+every mechanical change: ids, ranks, links, scores, counts and the id records. You own the judgment: what each
+split part says, the evidence behind a close candidate, and the prose that still names a retired or split id.
+Ids are stable (`todo-k7qf`): an edit moves ranks, never ids.
 
 ## Environment
 
@@ -43,18 +44,25 @@ says, the evidence behind a close candidate, and the prose that named an id that
 - Configured paths: `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" --repo "<root>" config --get todo.catalog --get state_dir --get todo.gh.repo`
   prints one line per key in that order (an empty line is null). The first two are project-relative; the
   third is the `owner/name` repository issues live in (empty: the one `gh` resolves for the checkout).
-- The catalog can be large: Grep for `"id": "TODO-NNN"` and Read around the hit with `offset` and `limit`.
-  Never Read it whole.
+- The catalog can be large: Grep for `"id": "todo-k7qf"` (the item's id) and Read around the hit with
+  `offset` and `limit`. Never Read it whole.
+- Ids may arrive in any case, as a bare code or with a trailing `,` or `;`. The script canonicalizes what it
+  is passed, but the agent-side steps (a catalog Grep, a Read, the `split-<id>.json` file name) run first:
+  before any lookup or file name, write each id in its canonical form, lower-case, without a trailing `,` or
+  `;`, with `todo-` added when missing (`K7QF,` -> `todo-k7qf`).
 
 ## Rules
 
-- **Never hand-edit `id`, `rank`, `priority`, `counts`, `depends_on`, `unblocks`, `child_todo_ids` or
-  `related_todo_ids`.** The script computes them; a hand edit fails rules T6-T10. To change a score, edit the
-  fields it derives from (`severity`, `impact`, `loe.size`, `blast_radius.level`) and run `TS refresh`.
+- **Never hand-edit `id`, `rank`, `priority`, `counts`, `depends_on`, `unblocks`, `child_todo_ids`,
+  `related_todo_ids`, `retired_ids`, `legacy_ids` or `split_ids`.** The script computes them; a hand edit fails
+  rules T1 and T6-T10. To change a score, edit the fields it derives from (`severity`, `impact`, `loe.size`,
+  `blast_radius.level`) and run `TS refresh`.
 - **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split and add spec files. Lines the
-  script prints as `reference (not rewritten):` sit in other files: report them, do not edit them. The script
-  never lists any file under `artifacts.plans` or `artifacts.reviews`, in-progress plans included: after a
-  renumber, flag that a live plan naming a moved id needs a check by hand.
+  script prints as `reference (not rewritten):` sit in other files: report them, do not edit them. The list
+  names only the retired or split ids and never covers the history folders (`artifacts.plans`, `reviews`,
+  `commit_messages`, `summaries`, `scratch`, each planning prefix, the snapshots), in-progress plans included:
+  flag that a live plan naming a retired id needs a check by hand. A `reference scan failed:` line goes under
+  `Open`.
 - **Delete a stub only under `Delete retired: yes`**, and only through the **delete-retired** gate below. No other
   file is ever deleted.
 - **Dry-run first** for retire, split, sync and add; read its report before the real run.
@@ -73,8 +81,8 @@ says, the evidence behind a close candidate, and the prose that named an id that
      `LIKELY_RESOLVED`, `evidence` naming the commit SHA or PR, `recommended_action`, `related_todo_ids: []`),
      copying the shape of an existing entry. With no evidence found, add nothing and list the issue as open.
    - `tracker #N: ...` - update that tracker's `status_note` and `recommended_action` to the children left.
-   - `dangling: ...` - reword the sentence so it no longer names the retired id (say the work landed, with
-     the SHA when known).
+   - `dangling: <where> names retired <id>` (a catalog string, or a research-catalog or stub line) - reword
+     the sentence so it no longer names the retired id (say the work landed, with the SHA when known).
 4. Update what the retirement leaves behind. For each research entry the retired items cited
    (`catalog_entry_ids`) and its `_IMPL_TODO.md` stub:
    - Write the implementation status into the stub: what landed (with the commit SHA or PR from step 1) and what
@@ -107,17 +115,19 @@ the stub, the catalog or a commit message is not evidence.
    the independent deliverables: separate fixes, files or decisions that can land and be verified alone.
    Guidance from the prompt wins. When the item holds only one deliverable, stop and report that instead of
    inventing parts.
-2. Write the spec to `<state_dir>/todo-sync/split-<TODO-NNN>.json`:
+2. Write the spec to `<state_dir>/todo-sync/split-<id>.json`:
    `{"parts": [{...}, {...}]}`. Each part is a set of field overrides laid over a copy of the item; unset
    fields are inherited. Set at least `title`, `summary`, `proposed_change`, `files`, and, where the part
    differs from the whole, `code_snippet`, `blast_radius`, `loe`, `severity`, `impact`, `why_ranked`.
    `unblocks` and `depends_on` are inherited; narrow them when only one part feeds a dependent item. Each
    `summary` names the sibling it was split from. Never set `id`, `rank` or `priority`.
 3. `TS split <id> --spec <path> --dry-run`. Check the parts land where expected and the refusal list is
-   empty; fix the spec and rerun on a `problem:` line.
-4. `TS split <id> --spec <path>`.
-5. Each `review: <where> names split TODO-NNN, now TODO-MMM (first part)` line is a sentence now pointing at
-   the first part. Reword it to name the right part, or both parts when it meant the whole item.
+   empty; fix the spec and rerun on a `problem:` line. The part ids it prints are provisional: the real run
+   draws its own.
+4. `TS split <id> --spec <path>`. The original id joins `retired_ids`, and `split_ids` maps it to its parts.
+5. Each `dangling: <where> names split <orig> (parts <a>, <b>)` line is a sentence still naming the original
+   id, left as written. Reword it to name the part it meant, or the parts when it meant the whole item. Take
+   the part ids from the real run's report, never the dry run's provisional ones.
 6. Go to **finish**.
 
 ## sync
@@ -157,8 +167,8 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
    script builds the `gh_issue` source and computes the rest. No stub or research folder is needed.
 4. `TS add --spec <path> --dry-run`, read it, then `TS add --spec <path>`. On a `problem:` line fix the spec
    and rerun once.
-5. List every added item under `Added` as `TODO-NNN for #N`, its final id after renumbering, with
-   ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
+5. List every added item under `Added` as `todo-xxxx for #N`, the id the real run printed (a dry run's ids are
+   provisional), with ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
 
 ## add
 
@@ -197,7 +207,7 @@ session's conversation had already established (or `none`). Draft exactly one it
    spec and rerun once; a `problem:` line naming issues `already filed` is relayed verbatim under `Open`, and
    the rerun after it sets `issue` and `url` from that line in the spec and drops `--file-issue`, so the
    issue is not filed twice.
-5. List the item under `Added` as `TODO-NNN (note)`, or `TODO-NNN for #N <url>` from the `filed` line, with
+5. List the item under `Added` as `todo-xxxx (note)`, or `todo-xxxx for #N <url>` from the `filed` line, with
    ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
 
 ## refresh
@@ -217,14 +227,20 @@ Report and stop, do not improvise, when a script exits 2 (relay the `problem:` l
 fix for split, sync or add), when an id is not in the catalog, when a split item holds one deliverable, when `untracked` prints
 `untracked: none`, or when a fix would need a file outside the edit list.
 
+A script that refuses because the catalog still holds rank-tied TODO-NNN ids (its `problem:` line names
+`migrate-ids`) ends the run: relay the refusal with the commands the developer runs from the project root,
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" migrate-ids --dry-run`, then
+the same without `--dry-run`, and stop. The switch rewrites every live file that names an old id, so it is the
+developer's call: never run `TS migrate-ids` yourself.
+
 ## Reply
 
 ```
 Operation: <retire | split | refresh | sync | add> <ids, issues or the note's first words>
 Result: <the script's first line>
-Renumbered: <old->new, ... | none>
+Retired ids: <ids the run retired, a split's original included | none>
 Prose fixed: <file: where, one per line | none>
-Added: <TODO-NNN for #N [<url>] | TODO-NNN (note), each (needs decision) when set, close_candidates #N, tracker #N notes, ... | none>
+Added: <todo-xxxx for #N [<url>] | todo-xxxx (note), each (needs decision) when set, close_candidates #N, tracker #N notes, ... | none>
 Stubs: <stub path: updated | deleted | kept, its status now and what is left, one per line | none>
 Resolved: <research entry id: FULLY_IMPLEMENTED with the evidence run, or PARTIAL with the gap, one per line | none>
 Close: <issue #N: why it can close (commit SHA or PR), one per line | none>
