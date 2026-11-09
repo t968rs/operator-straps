@@ -18,7 +18,8 @@ against a type list). Any other mode token is refused. Both modes write ``PR<N>_
     holding the message skeleton with the subject of the mode, lineage and review lines already filled in.
     Writes no file. Exits 1 when the PR is not open or its title cannot head the subject of the mode; with
     ``--auto-title`` such a title adds a ``- Title problem:`` fact instead, and the subject line of the
-    skeleton becomes ``RETITLE_HINT``, filled from what ``retitle`` prints.
+    skeleton becomes ``RETITLE_HINT``, filled from what ``retitle`` prints. Without the flag the project's
+    ``auto_title`` key decides; ``--no-auto-title`` turns it off for one capture.
 
 ``retitle N [squash] --title T``
     Replace a PR title the mode refuses with ``T`` through ``harness_lib.pr_title.change_pr_title``
@@ -37,7 +38,7 @@ against a type list). Any other mode token is refused. Both modes write ``PR<N>_
 
 Usage::
 
-    merge_commit_msg.py [--repo DIR] capture N [--squash | -s | squash] [--auto-title]
+    merge_commit_msg.py [--repo DIR] capture N [--squash | -s | squash] [--auto-title | --no-auto-title]
     merge_commit_msg.py [--repo DIR] retitle N [--squash | -s | squash] --title T
     merge_commit_msg.py [--repo DIR] build N [--squash | -s | squash] <<'MSG' ... MSG
 """
@@ -450,8 +451,9 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("pr", type=int, help="PR number")
         command.add_argument("mode", nargs="?", help="'squash' for a squash-merge subject")
         command.add_argument("--squash", "-s", action="store_true", help="squash subject '<title> (#N)'")
-    commands["capture"].add_argument("--auto-title", action="store_true",
-                                     help="a title the mode refuses asks for retitle instead of exiting 1")
+    commands["capture"].add_argument("--auto-title", action=argparse.BooleanOptionalAction, default=None,
+                                     help="a title the mode refuses asks for retitle instead of exiting 1 "
+                                          "(default: harness.json auto_title)")
     commands["retitle"].add_argument("--title", required=True, help="the new Word(scope): summary title")
     return parser
 
@@ -472,7 +474,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         squash = squash_mode(args)
         repo = activate(load_config(project_root(args.repo))).project_root
         if args.command == "capture":
-            sys.stdout.write(run_capture(repo, args.pr, squash, args.auto_title))
+            auto_title = active().auto_title if args.auto_title is None else args.auto_title
+            sys.stdout.write(run_capture(repo, args.pr, squash, auto_title))
         elif args.command == "retitle":
             print(run_retitle(repo, args.pr, args.title, squash))
         else:
