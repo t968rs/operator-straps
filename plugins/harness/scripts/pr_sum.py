@@ -21,7 +21,8 @@
     summary level in the skeleton (default 2; 1 prose only, 2 the visual layout,
     3 the visual layout with more diagram types); ``--min-viz [N]`` at level 3 also stores N (default 3) and
     arms the Stop-hook sentinel that holds the session until ``build`` succeeds. ``--auto-title`` stores
-    ``auto_title``. The flags are stored fresh on every capture.
+    ``auto_title``; without the flag the project's ``auto_title`` key decides, and ``--no-auto-title``
+    turns it off for one capture. The flags are stored fresh on every capture.
 ``diff FILE [--path P ...]``
     The PR's diff under the ``commit_diff`` budgets: paths read in full until ``PR_BLOCK_BUDGET`` changed
     lines are spent, and output capped at ``PR_CHAR_BUDGET`` characters (later sections keep only their
@@ -52,7 +53,7 @@ Usage::
 
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr N
         [--no-fetch] [--remote-head | --local] [--committed-only] [--out FILE] [--level 1|2|3]
-        [--min-viz [N]] [--auto-title] [--repo DIR]
+        [--min-viz [N]] [--auto-title | --no-auto-title] [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff FILE [--path P ...]
         [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE
@@ -382,9 +383,10 @@ def _parser() -> argparse.ArgumentParser:
              "hook sentinel. Ignored below level 3.",
     )
     cap.add_argument(
-        "--auto-title", action="store_true",
+        "--auto-title", action=argparse.BooleanOptionalAction, default=None,
         help="Store auto_title: build sets the draft title as the PR title when the PR title fails the "
-             "Word(scope): summary check (gh pr edit).",
+             "Word(scope): summary check (gh pr edit). Default: harness.json auto_title; --no-auto-title "
+             "turns it off for this run.",
     )
     diff = sub.add_parser("diff", parents=common, help="Print the PR diff under the read budgets.")
     diff.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8).")
@@ -446,12 +448,18 @@ def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
         untracked=not args.local,
     )
     keys = level_keys(args.level, args.min_viz)
-    _write_skeleton(out, {**payload, **keys, **({"auto_title": True} if args.auto_title else {})})
+    auto_title = resolve_auto_title(args.auto_title)
+    _write_skeleton(out, {**payload, **keys, **({"auto_title": True} if auto_title else {})})
     dropped = dropped_descriptions(previous, payload)
     note = sync_sentinel(args.pr, keys) + _local_note(repo, meta, args, dropped)
-    note += auto_title_note(meta) if args.auto_title else ""
+    note += auto_title_note(meta) if auto_title else ""
     print(f"wrote {out}" + (" (existing draft carried forward)" if previous else "") + note)
     return 0
+
+
+def resolve_auto_title(flag: Optional[bool]) -> bool:
+    """``--auto-title`` / ``--no-auto-title`` when given, else the project's ``auto_title`` key."""
+    return active().auto_title if flag is None else flag
 
 
 def auto_title_note(meta: PrMeta) -> str:
