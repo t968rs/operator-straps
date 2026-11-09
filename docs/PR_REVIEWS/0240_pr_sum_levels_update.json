@@ -8,7 +8,7 @@
   "base_sha": "0ae8c1c5ab13accc9dc2396a5003fab59711f0b3",
   "head_sha": "d0618f035275baafbbc273048ee295b8e4b36a39",
   "review_date": "2026-11-09",
-  "verdict": "NOT READY TO MERGE - important: I1, I2, I3, I4",
+  "verdict": "READY TO MERGE - 17 of 17 findings resolved, 0 bubbled",
   "stats": {
     "additions": 782,
     "deletions": 38,
@@ -24,14 +24,18 @@
     "runtime (opus)",
     "docs (sonnet)",
     "skill_package (opus)",
-    "roast (opus)"
+    "roast (opus)",
+    "developer_notes_1 (developer)",
+    "developer_notes_2 (developer)"
   ],
   "scoped_review_files": [
     "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/tests.json",
     "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/runtime.json",
     "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/docs.json",
     "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/skill_package.json",
-    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/roast.json"
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/roast.json",
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/developer_notes_1.json",
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/developer_notes_2.json"
   ],
   "bubbles": [],
   "strengths": [
@@ -307,6 +311,43 @@
         "fix": [
           "Reword the docstring: 'Most tests build one fence as a list of lines and read the problem lines comparison_problems returns; TestIsComparison checks header detection alone.'"
         ]
+      },
+      {
+        "id": "M11",
+        "name": "pr-sum Examples folder holds only Level-2.md",
+        "file": "plugins/harness/skills/pr-sum/Examples/Level-2.md",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: fill out the example markdowns following Level-2.md. Confirmed: plugins/harness/skills/pr-sum/Examples/ holds only Level-2.md (PR 240 summarized at level 2); no level 1 or level 3 example exists.",
+        "fix": [
+          "Add plugins/harness/skills/pr-sum/Examples/Level-1.md and Examples/Level-3.md: PR 240 summarized at level 1 and at level 3, following Level-2.md's structure and the sections SKILL.md requires at each level, each passing pr_sum.py build validation at its level"
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "pr-sum skill has no user-facing README.md",
+        "file": "plugins/harness/skills/pr-sum/README.md",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: pr-sum has no README.md. Confirmed: plugins/harness/skills/pr-sum/ holds only SKILL.md and Examples/Level-2.md; pr-review, fold-in-review and parallel2 each ship a README.md beside their SKILL.md.",
+        "fix": [
+          "Add plugins/harness/skills/pr-sum/README.md: a formatted, user-facing guide (what the skill produces, how to invoke it, the three levels and what each adds, the capture / diff / build flow, the comparison flow format and the alignment pass in brief, and a pointer to the Examples folder), consistent with SKILL.md and the README.md of plugins/harness/skills/pr-review"
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "pr-sum Examples lack Level-1.md and Level-3.md (M11 re-anchored on the files the fix creates)",
+        "file": "plugins/harness/skills/pr-sum/Examples/Level-1.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/Examples/Level-1.md",
+          "plugins/harness/skills/pr-sum/Examples/Level-3.md"
+        ],
+        "reviewer": "developer_notes_2",
+        "fix_kind": "judgment",
+        "summary": "Developer note (same as M11): fill out the example markdowns following Level-2.md. M11 was anchored on the Level-2.md template, which the fix never edits, so closeout cannot accept it; this finding anchors the same work on the two files it creates.",
+        "fix": [
+          "Add plugins/harness/skills/pr-sum/Examples/Level-1.md and Examples/Level-3.md: PR 240 summarized at level 1 and at level 3, following Level-2.md's structure and passing pr_sum.py build validation at their level"
+        ]
       }
     ]
   },
@@ -325,6 +366,143 @@
         "result": "SKIPPED (no CICD/test-infra paths in PR)"
       }
     },
-    "pre_fix_time": "pending - to be populated in Phase 4"
-  }
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1141-pr-sum-levels-update",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1141-pr-sum-levels-update",
+        "head_ref_name": "1141-pr-sum-levels-update",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "081713691a9adc5c1bc2658eb704a14623dd50f5",
+        "head_sha": "a0a40de38f8b7f4820ed21527100f26b1af6b97b",
+        "base_ancestor_command": "git merge-base --is-ancestor 081713691a9adc5c1bc2658eb704a14623dd50f5 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor a0a40de38f8b7f4820ed21527100f26b1af6b97b HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - _shift now refuses the move when the run's last row is a │ feeding a glyph (│▼├└) at the column on the next row (new _feeds_below), so the run stays as written and build reports the original hanging connector; module docstring notes the rule; test_run_feeding_a_junction_stays pins the ├ case and its no-junction control; pr_sum.py: no edit, _cmd_build saves only bodies the pass changed, and a refused run is unchanged"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - test_shape_fences_stay_and_tables_align puts the ▼ at column 18 (in snap reach of 'stage'), asserts the full Data Flow body equals the untouched fence plus the aligned table with the '| ------ | ---- | ------ |' separator, and asserts align_body with flow=True does snap it to column 15; pr_align.py: no edit, the gate is cited only"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - test_unclosed_fence_stays moves the │ to column 6, three columns right of 'read', and asserts the closed variant snaps it to column 3, so only the unclosed-fence rule keeps it; pr_align.py: no edit, align_body is cited only"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - test_level_one_skeleton_is_not_rewritten gives the level-1 skeleton a Behavior flow plus the unpadded Changed Symbols table, asserts main returns 1 (level 1 forbids sections) with the skeleton bytes unchanged, then the same payload at level 2 builds and saves the aligned table; pr_sum.py and pr_align.py: no edit, the level gate is cited only"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - pr_compare._TAG now skips [[new]]-style emphasis via (?<!\\[)...(?!\\]); _BEFORE, _AFTER and the up/down/arm glyph strings are defined once in pr_compare, _GLYPHS is built from them, and pr_summary imports them instead of redefining; the suggested regression test belongs in tests/lib/test_pr_compare.py, outside this file set"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Docs aligned with the check (refusing [removed] would change the message tests/lib/test_pr_summary.py:199 pins, outside the file set): _label_problems docstring says a stacked BEFORE fence holds no [changed] or [new] tag and [removed] may mark a dropped step; SKILL.md says build refuses [changed] and [new] in a stacked BEFORE fence"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Comparison example: the mid-run arrowhead under 'append review rows' is now a plain connector, so the BEFORE run ends at the arrowhead above 'read matrix'"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Finished the >> marker row ('the BEFORE connector runs on past it'); the stacked bullet now says a BEFORE step AFTER drops takes [removed] in the BEFORE fence, and the build sentence names only [changed] and [new] as refused there; pr_summary.py: docstring narrowed under M3, no further edit"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Step 4 alignment prose now says connectors slide to the nearest column the line above feeds down (step text or a connector) where the cells are free, markers move where the cells are free, tags fall back to the widest tagged line past 120 columns or stay put, and what the pass cannot move stays as written; pr_align.py module docstring states the tag fallback to the widest tagged line and that tags stay put when neither fits; snap_connectors docstring says the nearest column the line above feeds down, where the cells are free"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Common Mistakes fix cell scoped to the stacked form: 'First line BEFORE / AFTER; stacked: [changed]/[new] in AFTER'"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - module docstring reworded: most tests build one fence and read comparison_problems output; TestIsComparison checks header detection alone (tests/lib/test_pr_compare.py lines 1-5)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - align_table treats only the row under the header as the separator (a later all-dash row is data) with a '| - | - |' data-row test; module docstring and SKILL.md Step 4 now say the pass changes whitespace, separator dash runs and outer table pipes, never cell or step text order"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - added TestBuildAlignment.test_failed_build_still_saves_aligned_bodies (empty summary, misaligned table: main == 1 and the saved body is aligned); SKILL.md exit-1 paragraph says to re-read the skeleton before fixing; pr_sum.py: cited only, _cmd_build already writes before run_build"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - added TestComparisonFence cases: wide untagged line puts tags two right of the widest tagged line, tagged lines past MONOSPACE_WIDTH leave the fence unchanged, and a text-changing pass (align_tags patched) returns the block; pr_align.py: cited only, no code change needed"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Added plugins/harness/skills/pr-sum/README.md: user-facing guide covering output, invocation flags, the three levels, the capture/diff/build flow, comparison and stacked flow formats, the alignment pass, the Examples folder and related files, in the pr-review README layout"
+    },
+    {
+      "id": "M11",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - closed, no action: mis-anchored on the Level-2.md template the fix never edits; the work is recorded as M13"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - added Examples/Level-1.md and Examples/Level-3.md (PR 240 at levels 1 and 3, both pass draft_problems at their level), written by fixer w3_fix_2 under M11 (outside fixer waves)"
+    }
+  ]
 }
