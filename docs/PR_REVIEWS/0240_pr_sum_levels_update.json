@@ -1,0 +1,508 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 240,
+  "pr_title": "`pr sum` levels update",
+  "branch": "1141-pr-sum-levels-update",
+  "base_branch": "main",
+  "base_sha": "0ae8c1c5ab13accc9dc2396a5003fab59711f0b3",
+  "head_sha": "d0618f035275baafbbc273048ee295b8e4b36a39",
+  "review_date": "2026-11-09",
+  "verdict": "READY TO MERGE - 17 of 17 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 782,
+    "deletions": 38,
+    "files_changed": 11,
+    "source": {
+      "additions": 781,
+      "deletions": 38,
+      "files_changed": 10
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (sonnet)",
+    "skill_package (opus)",
+    "roast (opus)",
+    "developer_notes_1 (developer)",
+    "developer_notes_2 (developer)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/tests.json",
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/docs.json",
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/roast.json",
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/developer_notes_1.json",
+    "docs/_scratch/pr_review/0240/pr240_20261109T162441Z/findings/developer_notes_2.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "All new tests are behavioral: real align_*/comparison_problems calls on literal fences and tables, no mocks or stubs of the code under test.",
+    "test_pr_compare pins exact problem strings with 1-based columns computed from _HEAD.index, so message wording and column arithmetic regressions both fail.",
+    "test_text_never_changes and test_pass_is_idempotent state the pass's core invariants (spaces only, fixed point after one run) directly.",
+    "The SKILL.md comparison example is read from the plugin tree and asserted to be both an alignment fixed point and a clean draft_problems build, so docs and validator cannot drift apart.",
+    "TestBuildAlignment exercises the real build CLI end to end and checks that a list-of-lines body stays a list while a string body stays a string after the rewrite.",
+    "test_pr_summary's renamed side-by-side test now asserts the new refusal message instead of silently passing, and the absolute-column test was updated to a valid comparison header.",
+    "align_fence keeps every move safe: it reverts the whole fence when any line's non-space text would change, so a marker or run that jumps over a token cannot reorder step text.",
+    "aligned_payload rewrites only the section bodies that changed and keeps a body drafted as a line list as a list, so the skeleton write-back does not churn untouched JSON.",
+    "pr_compare builds problem lines with 1-based fence, line and column numbers after expanding tabs, matching the existing _connector_problems convention.",
+    "No import cycle: pr_compare has no harness_lib imports, pr_summary imports it, and pr_align sits on top of both.",
+    "pr_sum.py docstrings state that the alignment write-back happens whether or not validation passes, and the code does that.",
+    "The comparison-flow rules (header order, marker-to-tag pairing, one gutter column, tags at the [CHANGE] column, [[ closes, side-by-side without [CHANGE] refused) match pr_compare.py and pr_summary.py `_side_by_side_problems` one for one.",
+    "The worked comparison example passes comparison_problems and the connector check, is already in aligned form (align_fence leaves it unchanged), and is 96 columns wide, under the 120 limit.",
+    "The note that build saves alignment changes back to the skeleton even when a check then fails matches `_cmd_build` in pr_sum.py, which writes the skeleton before run_build.",
+    "The new Common Mistakes rows and the removed 'Side by side in one fence' sentence keep the page free of the old, now-conflicting side-by-side guidance.",
+    "The new comparison example (SKILL.md:209-221) passes `_label_problems`, `comparison_problems` and `_connector_problems`, and `align_fence` returns it unchanged, so the taught example is a fixed point of build.",
+    "The marker table (SKILL.md:187-191) matches `MARKER_TAGS` in pr_compare.py exactly, and the listed comparison checks map one-to-one to `_tag_problems`, `_step_tag_problems`, `_column_problems` and `_emphasis_problems`.",
+    "The alignment paragraph (SKILL.md:273-279) matches the code: `_cmd_build` saves the aligned skeleton before `run_build` validates, `align_draft` skips level 1, and `MAX_SHIFT = 4`.",
+    "The side-by-side refusal without `[CHANGE]` (SKILL.md:199-200) matches `_side_by_side_problems`, and the Common Mistakes table gains rows for both new rules.",
+    "align_fence's same_text guard returns the original fence whenever a move would reorder or drop text, so a bad shift fails closed instead of corrupting a flow.",
+    "pr_align reuses pr_summary's _column_kinds and _feeds_down, so the alignment pass and the connector check agree on what counts as fed.",
+    "test_skill_example_is_a_fixed_point and test_aligned_skill_example_builds pin the SKILL.md example to both the pass and the validator, so the doc cannot drift from the code unnoticed.",
+    "aligned_payload replaces only the changed bodies and keeps each one in its drafted form, list or string, so the round-trip leaves the rest of the skeleton alone.",
+    "Every test in scope is behavioral against real collaborators: no mock chains, and the build tests run the real CLI against a real git fixture.",
+    "comparison_problems returns precise 1-based fence-line and column messages, so the agent knows exactly what to fix by hand after the pass."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Connector snap leaves the junction below the run hanging",
+        "file": "plugins/harness/lib/harness_lib/pr_align.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_align.py",
+          "plugins/harness/scripts/pr_sum.py",
+          "tests/lib/test_pr_align.py"
+        ],
+        "lines": "140-165",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "_run (pr_align.py:140-151) stops at the first row whose glyph at the column is not in _RUN_GLYPHS (\"│▼\"), so a run that continues into a junction (├, └, or a │ that is not the first character of its token) is cut short. _shift then moves only the upper rows. Example fence: \"start\" / \"      │\" / \"      ├─► x\" / \"      ▼\". The │ at column 7 hangs, _shift slides it two columns left under \"t\", and the ├ on the next row now has nothing above it. Validation (_connector_problems) still fails, but on a line the author did not touch, and _cmd_build has already saved the shifted body back to the skeleton (pr_sum.py:451-453). The module docstring promises that the run slides together and that 'What the pass cannot place stays as written'. Here the pass places the run partly and persists the broken result. tests/lib/test_pr_align.py has no fence with a junction below the run.",
+        "fix": [
+          "In _shift, refuse the move when the row after the last run row holds an up-glyph (│▼├└) at `column` that the run's last row fed, so the run stays as written and build reports the original hanging connector.",
+          "Extend _run to continue through ├/└ rows at the column (their whole token, arm included, moves with the run) and check _fits for those rows too; add a test with a ├ junction below a hanging │."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "test_shape_fences_stay_and_tables_align checks neither claim",
+        "file": "tests/lib/test_pr_align.py",
+        "files": [
+          "tests/lib/test_pr_align.py",
+          "plugins/harness/lib/harness_lib/pr_align.py"
+        ],
+        "lines": "135-138",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The assertion is a startswith on the fence plus the table header row only. The aligned header of _TABLE is byte-identical to the unaligned one (column widths 6/4/6 already match 'Symbol'/'File'/'Status'), so table alignment is never observed; the separator row, which does change ('|---|---|---|' -> '| ------ | ---- | ------ |'), sits past the checked prefix. The fence's '▼' at column 14 sits under node text of 'stage' (_feeds_down is True), so it is not hanging and would stay even if align_draft treated 'Data Flow' as a flow section. The test passes with the shape-vs-flow gate in align_draft removed and with align_table returning rows unchanged; the shape gate has no other test.",
+        "fix": [
+          "Place the connector where a flow fence would snap it (e.g. '\\n' + ' ' * 18 + '▼' under 'source ──► stage', within MAX_SHIFT of column 15) and assert the full aligned body equals the fence unchanged followed by the aligned table, including '| ------ | ---- | ------ |' as the separator row."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "test_unclosed_fence_stays uses a connector out of snap reach",
+        "file": "tests/lib/test_pr_align.py",
+        "files": [
+          "tests/lib/test_pr_align.py",
+          "plugins/harness/lib/harness_lib/pr_align.py"
+        ],
+        "lines": "147-149",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The '│' sits at column 14 under 'read' (columns 1-4), 10 columns away, beyond MAX_SHIFT = 4; snap_connectors would leave it in place even inside a closed flow fence (the same shape test_out_of_reach_stays already covers). The test therefore passes if align_body aligned an unclosed fence, and does not pin the 'an unclosed fence stays as is' contract in align_body's docstring.",
+        "fix": [
+          "Put the connector within reach, e.g. body = \"```\\nread\\n      │\" (column 7, three columns right of 'read'), so a closed fence would snap it to column 4 and only the unclosed-fence rule keeps it; optionally assert the closed variant does move."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "test_level_one_skeleton_is_not_rewritten cannot observe the level gate",
+        "file": "tests/scripts/test_pr_sum.py",
+        "files": [
+          "tests/scripts/test_pr_sum.py",
+          "plugins/harness/scripts/pr_sum.py",
+          "plugins/harness/lib/harness_lib/pr_align.py"
+        ],
+        "lines": "71-80,935-944",
+        "reviewer": "tests, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The skeleton is built with _filled(...) and no sections, so align_draft returns an equal draft at every level and aligned_payload reports changed=False; _cmd_build never writes the skeleton whatever the level is. The test passes unchanged if the level == 1 short-circuit in align_draft is deleted or the payload's level is ignored, so it does not test what its name says at the script layer.\n\nAlso (roast): test_level_one_skeleton_is_not_rewritten builds a level-1 skeleton with no sections, so align_draft has nothing to change at any level; the test still passes if align_draft drops its level == 1 early return. It only proves an unchanged skeleton is not rewritten. Level gating is covered in test_pr_align, but this test's name claims it at the build boundary and does not check it.",
+        "fix": [
+          "Give the level-1 skeleton a section whose body alignment would change (an unaligned table such as _SYMBOLS_BODY), run build (level 1 forbids sections, so expect the CaptureError exit path rather than 0), and assert the skeleton bytes are unchanged; optionally pair it with the same payload at level 2 to show the rewrite does happen there.",
+          "Give the level-1 skeleton a misaligned table section (for example the unpadded Changed Symbols table), assert main(...) returns 1 (level 1 forbids sections) and that the skeleton bytes are unchanged.",
+          "Rename the test to test_unchanged_skeleton_is_not_rewritten so it claims only what it checks."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Module docstring says the pass changes only spaces",
+        "file": "plugins/harness/lib/harness_lib/pr_align.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_align.py",
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "tests/lib/test_pr_align.py"
+        ],
+        "lines": "3-4,86-110",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "pr_align.py:3 says 'The pass changes only spaces in section bodies'. align_table redraws separator cells with a different dash count (_rule, line 86-89) and always writes a closing ' |', which adds a pipe to a row drafted without one (lines 105-109). align_fence also expands tabs to spaces on every line of a fence it changes (line 217). Unlike align_fence, align_table has no same-text guard.\n\nAlso (roast): align_table treats every row whose cells all match :?-+:? as a separator, and _rule redraws it at the column width. That means it adds dashes to the real separator, and a data row such as '| - |' or '| - | - |' gets redrawn as a second rule ('| --- |'). The module docstring (pr_align.py:3) and SKILL.md:274 promise the pass 'changes only spaces'. align_fence has a same_text guard against this, but tables get no such guard.",
+        "fix": [
+          "Reword the docstring: 'changes only whitespace, separator dashes and outer table pipes; cell and step text keep their order'.",
+          "Or keep a row's missing trailing pipe and the separator's dash count when only padding is needed.",
+          "Treat only the first all-dash row after the header (index 1) as the separator, pass later all-dash rows through as data, and add an align_table test for a '| - |' data row.",
+          "Reword pr_align.py:3 and SKILL.md:274 to say the pass changes spaces and separator dash runs only."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Change-tag regex matches inside [[new]] emphasis",
+        "file": "plugins/harness/lib/harness_lib/pr_compare.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_compare.py",
+          "plugins/harness/lib/harness_lib/pr_summary.py"
+        ],
+        "lines": "24-27,65-67",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_TAG = r\"\\[(?:changed|new|removed)\\]\" has no guard against an adjacent bracket, so the emphasis markup \"[[new]]\", \"[[changed]]\" or \"[[removed]]\" in an AFTER step (the docstring at pr_compare.py:11 allows [[ ]] around any changed word) is read as a change tag. _tags then reports 'not the last text on its line' or 'has no marker on its step', and _step_tag_problems counts an extra tag. A valid comparison is refused with a misleading message.\n\nAlso (runtime): pr_compare.py:25-27 redefines _BEFORE and _AFTER exactly as pr_summary.py:34-35 does. Its _GLYPHS is the union of pr_summary's _UP_GLYPHS, _DOWN_GLYPHS and _ARM_GLYPHS spelled out by hand. pr_summary already imports from pr_compare, so if the label or glyph rules change in one file the other will not follow.\n\nAlso (roast): pr_compare._BEFORE and _AFTER duplicate pr_summary._BEFORE and _AFTER line for line, and pr_compare._GLYPHS is the union of pr_summary's _UP_GLYPHS, _DOWN_GLYPHS and _ARM_GLYPHS copied by hand. pr_summary now imports pr_compare, so the two copies must stay in sync. A glyph added to pr_summary later would make pr_compare._is_step read a connector as step text and misassign tags to steps.",
+        "fix": [
+          "Use r\"(?<!\\[)\\[(?:changed|new|removed)\\](?!\\])\" for _TAG, and add a test where an AFTER step emphasises the word new.",
+          "Keep _BEFORE, _AFTER and the glyph strings in pr_compare (which has no harness_lib imports) and import them into pr_summary; or derive pr_compare._GLYPHS from one shared constant.",
+          "Define _BEFORE, _AFTER and the three glyph strings once in pr_compare (which imports nothing from harness_lib), import them into pr_summary, and build _GLYPHS from them.",
+          "Move the shared flow constants into a small leaf module that both pr_summary and pr_compare import."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Stacked BEFORE fence check skips the new [removed] tag",
+        "file": "plugins/harness/lib/harness_lib/pr_summary.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_summary.py",
+          "plugins/harness/skills/pr-sum/SKILL.md"
+        ],
+        "lines": "33,334-349",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The _label_problems docstring now says 'A stacked BEFORE fence holds no change tag'. The check still reads _FLOW_TAGS = (\"[changed]\", \"[new]\") (pr_summary.py:33), so the [removed] tag added by this PR (pr_compare.MARKER_TAGS) passes in a stacked BEFORE fence. The problem text at line 348 also names only [changed] / [new].\n\nAlso (roast): This PR adds the [removed] tag, but _FLOW_TAGS is still (\"[changed]\", \"[new]\"), so _label_problems passes a stacked BEFORE fence that carries [removed]. SKILL.md:197 says build 'refuses tags in a stacked BEFORE fence', and a dropped step is exactly what someone would tag in the BEFORE fence. The doc and the check disagree on the newest tag.",
+        "fix": [
+          "Add \"[removed]\" to the tags checked for before_only fences (for example tuple(TAG_MARKERS) from pr_compare) and update the misplaced message.",
+          "Or narrow the docstring to '[changed] or [new]' if [removed] is meant to be allowed in a stacked BEFORE fence.",
+          "Add \"[removed]\" to _FLOW_TAGS and widen the misplaced message to name all three tags; add a test_pr_summary case for a [removed] tag in a stacked BEFORE fence.",
+          "Narrow SKILL.md:197 to 'refuses [changed] and [new] tags in a stacked BEFORE fence', and say [removed] is a comparison-only tag."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Write-back on a failed build is documented but untested",
+        "file": "plugins/harness/scripts/pr_sum.py",
+        "files": [
+          "plugins/harness/scripts/pr_sum.py",
+          "tests/scripts/test_pr_sum.py",
+          "plugins/harness/skills/pr-sum/SKILL.md"
+        ],
+        "lines": "449-456",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "SKILL.md and the pr_sum.py docstrings promise that build saves aligned bodies to the skeleton even when validation then fails (_cmd_build writes before run_build raises). The only write-back test covers a passing build. If someone moves the write after run_build, every test stays green and agents fixing a failed draft lose the aligned bodies the docs say they have.\n\nAlso (roast): _cmd_build saves aligned bodies to the skeleton, and on a failed build prints only the problem: lines, with no hint that the file changed underneath the agent. The agent then edits a stale copy, and its next edit either fails or overwrites the alignment. SKILL.md does not tell the agent to re-read the skeleton after a failed build.",
+        "fix": [
+          "Add a TestBuildAlignment case: a skeleton with a misaligned table and one known defect (for example an empty summary); assert main(...) == 1 and that the saved section body is the aligned one.",
+          "When aligned_payload reports a change, write a one-line stderr note such as 'aligned section bodies saved to <skeleton>'. Use stderr so the success receipt stays verbatim.",
+          "Add a sentence to the SKILL.md build paragraph: after a failed build, re-read the skeleton before editing it."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Grammar example: the shared-step arrow points into a bare `│`",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "lines": "182,211-216",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "In the comparison example, `append review rows` (SKILL.md:211) drops through `│` and `▼` (212-213) into another bare `│` (214), then `│`, `▼` and finally `read matrix` (217). Everywhere else in the grammar a `▼` lands on a step, so this mid-run arrowhead is the one place where it does not. The example also does not show how the shared step feeds the AFTER column, which leaves the new 'drawn once, at the left' rule (SKILL.md:182) unillustrated. The block passes every `build` check and the alignment pass leaves it unchanged, so this is about teaching clarity only.",
+        "fix": [
+          "Replace the `▼` at SKILL.md:213 with `│` so the BEFORE run is one connector ending at the `▼` above `read matrix`.",
+          "Or add one sentence after SKILL.md:182 saying the AFTER flow starts at its first differing step with no incoming connector."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Marker table row for >> ends mid-sentence",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/lib/harness_lib/pr_summary.py"
+        ],
+        "lines": "190,193-197",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The `>>` row of the marker table reads 'an AFTER step BEFORE lacks; the BEFORE side carries its `│` on', and the sentence stops there. No rule in pr_compare.py or pr_summary.py requires or checks a BEFORE-side connector on a `>>` row, so the clause is both incomplete and an unenforced claim. A reader cannot tell what the BEFORE side should show.\n\nAlso (skill_package): SKILL.md:197 says `build` 'refuses tags in a stacked BEFORE fence', but the stacked check in pr_summary.py:343 tests only `_FLOW_TAGS = (\"[changed]\", \"[new]\")` (pr_summary.py:33), so a `[removed]` tag in a stacked BEFORE fence passes. The stacked bullet (SKILL.md:193-195) also lists only `[changed]` and `[new]`, so a wide flow that drops a step has no documented way to show it. The refusal message at pr_summary.py:348 still names only `[changed] / [new]`.",
+        "fix": [
+          "Finish the clause, for example 'an AFTER step BEFORE lacks; the shared flow's `│` continues down the BEFORE side', or drop it and keep 'an AFTER step BEFORE lacks'.",
+          "Add \"[removed]\" to `_FLOW_TAGS` in pr_summary.py so the stacked BEFORE check refuses all three tags, and update the message at pr_summary.py:348 to match.",
+          "Or narrow SKILL.md:197 to 'refuses `[changed]` and `[new]` in a stacked BEFORE fence' and say in the stacked bullet (SKILL.md:193-195) how a dropped step is shown, for example `[removed]` on the BEFORE step."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Alignment-pass prose is more absolute than pr_align.py",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/lib/harness_lib/pr_align.py"
+        ],
+        "lines": "273-279",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Step 4 says the pass slides a hanging connector 'to the nearest step text above it' and 'moves the markers into one gutter column'. In pr_align.py `_shift` targets the nearest column the line above feeds down (step text or a connector), and `align_markers` moves markers only to a column every marker can reach with free cells, leaving them as written otherwise. The closing sentence ('fix by hand only what the pass leaves as a problem: line') covers the failure case, but the pass's 'when the cells there are free' condition is not stated.\n\nAlso (roast): SKILL.md:276 says a hanging connector slides 'to the nearest step text above it', but _shift accepts any column _feeds_down accepts: a vertical connector or a single-blank word gap as well as node text. SKILL.md:278 says tags go 'two spaces right of the widest line', but align_tags falls back to the widest tagged line when that would pass 120 columns, and leaves the tags alone when even that does not fit. Agents read this paragraph to decide what to fix by hand, so it should describe what the code does.",
+        "fix": [
+          "Add 'where the cells are free' after the marker and connector clauses, and say 'the nearest column the line above feeds down' instead of 'step text'.",
+          "Reword SKILL.md:276 to 'to the nearest column the line above feeds down (step text or a connector)', and add to SKILL.md:278 'or of the widest tagged line when that would pass 120 columns'."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Common Mistakes row on BEFORE/AFTER labels and tags is stale for comparison fences",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "lines": "309",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The row 'Unlabelled `Behavior:` fences, or BEFORE tags' with fix 'First line BEFORE / AFTER; tags in AFTER only' predates the comparison form. In a comparison fence the first line is 'BEFORE ... AFTER ... [CHANGE]' and tags sit in the [CHANGE] column, not in an AFTER column or fence. The row now partly contradicts the new Behavior section (lines 178-201) and the new row below it.\n\nAlso (skill_package): SKILL.md:309 gives 'First line BEFORE / AFTER; tags in AFTER only' as an unscoped fix. That rule now holds only for the stacked form. In a comparison fence, a `<<` marker takes `[removed]` for a BEFORE step that AFTER drops (SKILL.md:191; pr_compare.py:21), and every tag sits in the `[CHANGE]` column, not in the AFTER flow. An agent applying row 309 to a comparison fence gets the wrong placement.",
+        "fix": [
+          "Reword the fix cell to 'First line BEFORE / AFTER (comparison: plus [CHANGE]); no tags in a stacked BEFORE fence'.",
+          "Reword the fix cell at SKILL.md:309 as 'First line BEFORE / AFTER; stacked: tags in the AFTER fence only'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "align_tags width fallback and align_fence text guard untested",
+        "file": "tests/lib/test_pr_align.py",
+        "files": [
+          "tests/lib/test_pr_align.py",
+          "plugins/harness/lib/harness_lib/pr_align.py"
+        ],
+        "lines": "90-119",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "align_tags has two branches tied to MONOSPACE_WIDTH (tagged lines alone set the column when the widest line would push the tag past the limit; unchanged when even that overflows), and align_fence returns the block when the text would change. No test in test_pr_align.py reaches either branch; every comparison fixture is narrow enough for the first-choice column.",
+        "fix": [
+          "Add a TestComparisonFence case with an untagged line wide enough that widest+2+len(tag) passes MONOSPACE_WIDTH, asserting tags land two right of the widest tagged line, and one where even the tagged lines overflow, asserting the fence is returned unchanged."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "test_pr_compare module docstring overstates its scope",
+        "file": "tests/lib/test_pr_compare.py",
+        "lines": "1-5",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says each test builds one fence and reads the problem lines comparison_problems returns, but TestIsComparison calls is_comparison on single header lines and reads a bool.",
+        "fix": [
+          "Reword the docstring: 'Most tests build one fence as a list of lines and read the problem lines comparison_problems returns; TestIsComparison checks header detection alone.'"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "pr-sum Examples folder holds only Level-2.md",
+        "file": "plugins/harness/skills/pr-sum/Examples/Level-2.md",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: fill out the example markdowns following Level-2.md. Confirmed: plugins/harness/skills/pr-sum/Examples/ holds only Level-2.md (PR 240 summarized at level 2); no level 1 or level 3 example exists.",
+        "fix": [
+          "Add plugins/harness/skills/pr-sum/Examples/Level-1.md and Examples/Level-3.md: PR 240 summarized at level 1 and at level 3, following Level-2.md's structure and the sections SKILL.md requires at each level, each passing pr_sum.py build validation at its level"
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "pr-sum skill has no user-facing README.md",
+        "file": "plugins/harness/skills/pr-sum/README.md",
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer note: pr-sum has no README.md. Confirmed: plugins/harness/skills/pr-sum/ holds only SKILL.md and Examples/Level-2.md; pr-review, fold-in-review and parallel2 each ship a README.md beside their SKILL.md.",
+        "fix": [
+          "Add plugins/harness/skills/pr-sum/README.md: a formatted, user-facing guide (what the skill produces, how to invoke it, the three levels and what each adds, the capture / diff / build flow, the comparison flow format and the alignment pass in brief, and a pointer to the Examples folder), consistent with SKILL.md and the README.md of plugins/harness/skills/pr-review"
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "pr-sum Examples lack Level-1.md and Level-3.md (M11 re-anchored on the files the fix creates)",
+        "file": "plugins/harness/skills/pr-sum/Examples/Level-1.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/Examples/Level-1.md",
+          "plugins/harness/skills/pr-sum/Examples/Level-3.md"
+        ],
+        "reviewer": "developer_notes_2",
+        "fix_kind": "judgment",
+        "summary": "Developer note (same as M11): fill out the example markdowns following Level-2.md. M11 was anchored on the Level-2.md template, which the fix never edits, so closeout cannot accept it; this finding anchors the same work on the two files it creates.",
+        "fix": [
+          "Add plugins/harness/skills/pr-sum/Examples/Level-1.md and Examples/Level-3.md: PR 240 summarized at level 1 and at level 3, following Level-2.md's structure and passing pr_sum.py build validation at their level"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 240 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"081713691a9adc5c1bc2658eb704a14623dd50f5\",\"headRefName\":\"1141-pr-sum-levels-update\",\"headRefOid\":\"d0618f035275baafbbc273048ee295b8e4b36a39\",\"last_sha\":\"d0618f035275baafbbc273048ee295b8e4b36a39\",\"mergeCommit\":null,\"number\":240,\"state\":\"OPEN\",\"title\":\"`pr sum` levels update\",\"url\":\"https://github.com/t968rs/operator-straps/pull/240\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1141-pr-sum-levels-update",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1141-pr-sum-levels-update",
+        "head_ref_name": "1141-pr-sum-levels-update",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "081713691a9adc5c1bc2658eb704a14623dd50f5",
+        "head_sha": "a0a40de38f8b7f4820ed21527100f26b1af6b97b",
+        "base_ancestor_command": "git merge-base --is-ancestor 081713691a9adc5c1bc2658eb704a14623dd50f5 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor a0a40de38f8b7f4820ed21527100f26b1af6b97b HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - _shift now refuses the move when the run's last row is a │ feeding a glyph (│▼├└) at the column on the next row (new _feeds_below), so the run stays as written and build reports the original hanging connector; module docstring notes the rule; test_run_feeding_a_junction_stays pins the ├ case and its no-junction control; pr_sum.py: no edit, _cmd_build saves only bodies the pass changed, and a refused run is unchanged"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - test_shape_fences_stay_and_tables_align puts the ▼ at column 18 (in snap reach of 'stage'), asserts the full Data Flow body equals the untouched fence plus the aligned table with the '| ------ | ---- | ------ |' separator, and asserts align_body with flow=True does snap it to column 15; pr_align.py: no edit, the gate is cited only"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - test_unclosed_fence_stays moves the │ to column 6, three columns right of 'read', and asserts the closed variant snaps it to column 3, so only the unclosed-fence rule keeps it; pr_align.py: no edit, align_body is cited only"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - test_level_one_skeleton_is_not_rewritten gives the level-1 skeleton a Behavior flow plus the unpadded Changed Symbols table, asserts main returns 1 (level 1 forbids sections) with the skeleton bytes unchanged, then the same payload at level 2 builds and saves the aligned table; pr_sum.py and pr_align.py: no edit, the level gate is cited only"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - pr_compare._TAG now skips [[new]]-style emphasis via (?<!\\[)...(?!\\]); _BEFORE, _AFTER and the up/down/arm glyph strings are defined once in pr_compare, _GLYPHS is built from them, and pr_summary imports them instead of redefining; the suggested regression test belongs in tests/lib/test_pr_compare.py, outside this file set"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Docs aligned with the check (refusing [removed] would change the message tests/lib/test_pr_summary.py:199 pins, outside the file set): _label_problems docstring says a stacked BEFORE fence holds no [changed] or [new] tag and [removed] may mark a dropped step; SKILL.md says build refuses [changed] and [new] in a stacked BEFORE fence"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Comparison example: the mid-run arrowhead under 'append review rows' is now a plain connector, so the BEFORE run ends at the arrowhead above 'read matrix'"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Finished the >> marker row ('the BEFORE connector runs on past it'); the stacked bullet now says a BEFORE step AFTER drops takes [removed] in the BEFORE fence, and the build sentence names only [changed] and [new] as refused there; pr_summary.py: docstring narrowed under M3, no further edit"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Step 4 alignment prose now says connectors slide to the nearest column the line above feeds down (step text or a connector) where the cells are free, markers move where the cells are free, tags fall back to the widest tagged line past 120 columns or stay put, and what the pass cannot move stays as written; pr_align.py module docstring states the tag fallback to the widest tagged line and that tags stay put when neither fits; snap_connectors docstring says the nearest column the line above feeds down, where the cells are free"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Common Mistakes fix cell scoped to the stacked form: 'First line BEFORE / AFTER; stacked: [changed]/[new] in AFTER'"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - module docstring reworded: most tests build one fence and read comparison_problems output; TestIsComparison checks header detection alone (tests/lib/test_pr_compare.py lines 1-5)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - align_table treats only the row under the header as the separator (a later all-dash row is data) with a '| - | - |' data-row test; module docstring and SKILL.md Step 4 now say the pass changes whitespace, separator dash runs and outer table pipes, never cell or step text order"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - added TestBuildAlignment.test_failed_build_still_saves_aligned_bodies (empty summary, misaligned table: main == 1 and the saved body is aligned); SKILL.md exit-1 paragraph says to re-read the skeleton before fixing; pr_sum.py: cited only, _cmd_build already writes before run_build"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - added TestComparisonFence cases: wide untagged line puts tags two right of the widest tagged line, tagged lines past MONOSPACE_WIDTH leave the fence unchanged, and a text-changing pass (align_tags patched) returns the block; pr_align.py: cited only, no code change needed"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - Added plugins/harness/skills/pr-sum/README.md: user-facing guide covering output, invocation flags, the three levels, the capture/diff/build flow, comparison and stacked flow formats, the alignment pass, the Examples folder and related files, in the pr-review README layout"
+    },
+    {
+      "id": "M11",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - closed, no action: mis-anchored on the Level-2.md template the fix never edits; the work is recorded as M13"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a0a40de (working-tree snapshot; developer commits) - added Examples/Level-1.md and Examples/Level-3.md (PR 240 at levels 1 and 3, both pass draft_problems at their level), written by fixer w3_fix_2 under M11 (outside fixer waves)"
+    }
+  ]
+}

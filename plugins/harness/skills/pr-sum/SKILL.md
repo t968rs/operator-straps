@@ -175,13 +175,31 @@ not a call graph; a function name goes in parentheses only when it helps the rea
 | Changed behavior    | `Behavior: <trigger>`        | `BEFORE` and `AFTER` flows                      |
 | New behavior        | `New Behavior: <trigger>`    | one flow, no label                              |
 
-A `Behavior:` section has a fence whose first line starts with `BEFORE` and a fence whose first line starts
-with `AFTER`, or one side-by-side fence with both labels on its first line. Both flows start from the same
-trigger and reuse the same wording for unchanged steps, so the difference stands out. Tags go in the AFTER flow
-only: `[changed]` on a step whose outcome differs from BEFORE, `[new]` on a step BEFORE lacks; a step worded the
-same in both is untagged. `build` checks those labels, and checks tags only in a stacked BEFORE fence (none
-allowed there). A `New Behavior:` section is exactly one fence holding at least one non-blank line, with no
-`BEFORE` or `AFTER` label on its first line; `build` checks both.
+A `Behavior:` section draws BEFORE and AFTER from the same trigger and reuses the same wording for unchanged
+steps, so the difference stands out. It takes one of two forms:
+
+- **Comparison**, whenever it fits in 120 columns: one fence whose first line names the columns `BEFORE`,
+  `AFTER` and `[CHANGE]`, in that order. Steps both flows share before they part are drawn once, at the left.
+  Each changed step gets a marker in the gutter between the two flows and one tag in the `[CHANGE]` column,
+  on the marker line or on a line continuing that step's text; an unchanged step gets neither. `[[` and `]]`
+  mark the words that changed inside an AFTER step.
+
+  | Marker | The row shows                                                   | Tag         |
+  |--------|-----------------------------------------------------------------|-------------|
+  | `<>`   | the BEFORE step on its left becomes the AFTER step on its right | `[changed]` |
+  | `>>`   | an AFTER step BEFORE lacks; the BEFORE `│` runs on past it      | `[new]`     |
+  | `<<`   | a BEFORE step AFTER drops                                       | `[removed]` |
+
+- **Stacked**, for a wider flow: a fence whose first line starts with `BEFORE`, then a fence whose first line
+  starts with `AFTER`. `[changed]` and `[new]` go in the AFTER fence only: `[changed]` on a step whose
+  outcome differs from BEFORE, `[new]` on a step BEFORE lacks. A BEFORE step AFTER drops takes `[removed]`
+  in the BEFORE fence.
+
+`build` checks the labels, refuses `[changed]` and `[new]` in a stacked BEFORE fence, and in a comparison fence checks that every
+marked step holds the one tag its marker takes, every tag sits on a marked step, the markers share one gutter
+column, the tags start at the `[CHANGE]` column and every `[[` closes. A side-by-side fence without
+`[CHANGE]` is refused. A `New Behavior:` section is exactly one fence holding at least one non-blank line, with
+no `BEFORE` or `AFTER` label on its first line; `build` checks both.
 
 A decision is drawn as a fork with labeled arms (`──no──►` across, `│yes` down), never as a chain of steps.
 Every `│` and `▼` sits under the step text or connector on the line above; the single blank between two words
@@ -190,21 +208,20 @@ arm (its label included), in both flow kinds. Keep a flow to about ten steps. Us
 glyphs:
 
 ```
-BEFORE                                         AFTER
-append review rows                             append review rows
-     │                                              │
-     ▼                                              ▼
-read matrix ──fails──► treated as empty        matrix exists? ──no──► write a new file                 [new]
-     │ok                    │                       │yes
-     ▼                      ▼                       ▼
-append, write file     write new rows only     read succeeds? ──no──► file kept, rows reported failed  [changed]
-                                                    │yes
-                                                    ▼
-                                               append, write file
+BEFORE                                       AFTER                                     [CHANGE]
+append review rows
+     │
+     │
+     │                                   >>  matrix exists? ──no──► write a new file   [new]
+     │                                            │yes
+     ▼                                            ▼
+read matrix ──fails──► treated as empty  <>  read succeeds? ──no──► file kept, [[rows  [changed]
+     │ok                    │                     │yes              reported failed]]
+     ▼                      ▼                     ▼
+append, write file     write new rows only   append, write file
 ```
 
-Side by side in one fence when both fit in 120 columns; otherwise a BEFORE fence, then an AFTER fence. A
-refactor with no behavior change has no flows; the summary says behavior is unchanged.
+A refactor with no behavior change has no flows; the summary says behavior is unchanged.
 
 ### 2. Shape diagram (optional; at most one, at level 3 each heading at most once)
 
@@ -254,15 +271,28 @@ directory every changed source file shares; `descriptions` keys stay the full pa
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build SKELETON [--repo DIR]
 ```
 
+At levels 2 and 3, `build` first runs a vertical alignment pass over the section bodies and saves what it
+changed back to the skeleton, even when a check then fails. It changes only whitespace, separator dash runs
+and outer table pipes, never the order of cell or step text: it pads markdown table cells so the pipes line
+up (the separator under the header is redrawn at the column width; its colons set right or center padding), slides a hanging `│` or `▼`,
+with the connectors below it and a label such as `│yes`, up to 4 columns to the nearest column the line above
+feeds down (step text or a connector) where the cells are free, and in a comparison fence moves the markers
+into one gutter column where the cells are free and the tags, with the `[CHANGE]` header, into one column two
+spaces right of the widest line (of the widest tagged line when that would pass 120 columns; the tags stay put
+when neither fits). What the pass cannot move stays as written. So do not hand-pad tables or tag columns; draw
+the steps and connectors close, and fix by hand only what the pass leaves as a `problem:` line.
+
 `build` checks: `title` and `summary` non-empty, `title` on one line, a description for every listed
 non-artifact path and none for paths outside the PR, no AI vendor names, no emojis and no section sign (write
 "Section 2"; backticked text is exempt), no control characters (tab and line breaks excepted) in any drafted
 string, the section rules of the skeleton's level (including the
-`Behavior:` labels, the one unlabeled fence of a `New Behavior:` section, and connector alignment in every
-flow), and with `--min-viz` the diagram-block count. A shortfall prints one `problem:` line with the count
-found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated files.
+`Behavior:` labels and comparison rules, the one unlabeled fence of a `New Behavior:` section, and connector
+alignment in every flow), and with `--min-viz` the diagram-block count. A shortfall prints one `problem:` line
+with the count found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated
+files.
 
-Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit 0 writes
+Exit 1: each `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
+to it), fix the draft and rerun. Exit 0 writes
 `<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim — nothing else.
 
 ## Common Mistakes
@@ -281,7 +311,9 @@ Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit
 | Running the script from another project's directory       | Run from the project root, or pass `--repo <dir>`               |
 | A flowchart of function calls                             | Steps are observable: condition, outcome, error, file           |
 | AFTER flow only, for a fix                                | BEFORE and AFTER, same trigger and same wording                 |
-| Unlabelled `Behavior:` fences, or BEFORE tags             | First line BEFORE / AFTER; tags in AFTER only                   |
+| Unlabelled `Behavior:` fences, or BEFORE tags             | First line BEFORE / AFTER; stacked: [changed]/[new] in AFTER    |
+| Side-by-side flows without `[CHANGE]`, markers or tags    | Comparison fence: header, one marker and one tag per change     |
+| Padding table pipes or tag columns by hand                | `build` aligns them; fix only what it reports                   |
 | A flow per module                                         | A flow per behavior, at most three (five at level 3)            |
 | Flow steps or diagrams not in the diff                    | Each step traces to removed or added lines                      |
 | Long paths or sentences in table cells                    | Key block above, bullets below                                  |

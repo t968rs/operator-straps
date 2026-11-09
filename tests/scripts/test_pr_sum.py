@@ -907,6 +907,63 @@ class TestBuild:
         assert not (other / _SUMMARIES).exists() and not (clone / _SUMMARIES).exists()
 
 
+class TestBuildAlignment:
+    _ALIGNED = [
+        "| Symbol     | File      | Status  |",
+        "| ---------- | --------- | ------- |",
+        "| `run_diff` | pr_sum.py | CHANGED |",
+    ]
+
+    def test_build_saves_aligned_bodies(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+    ) -> None:
+        clone, _, head = pr_repo
+        sections = [
+            {"heading": "New Behavior: diff read", "body": ["```", "read every path", " " * 17 + "│", "```"]},
+            {"heading": "Changed Symbols", "body": _SYMBOLS_BODY},
+        ]
+        skeleton = tmp_path / "1234_pr.json"
+        payload = _filled(script.capture_payload(clone, _meta(script, head), fetch=False), sections)
+        skeleton.write_text(json.dumps(payload), encoding="utf-8")
+        assert script.main(["build", str(skeleton), "--repo", str(clone)]) == 0
+        saved = json.loads(skeleton.read_text(encoding="utf-8"))["draft"]["sections"]
+        assert saved[0]["body"] == ["```", "read every path", " " * 14 + "│", "```"]
+        assert saved[1]["body"] == "\n".join(self._ALIGNED)
+        summary = (clone / _SUMMARIES / "1234_Feature_a_a_change.md").read_text(encoding="utf-8")
+        assert "\n".join(self._ALIGNED) in summary
+
+    def test_failed_build_still_saves_aligned_bodies(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+    ) -> None:
+        clone, _, head = pr_repo
+        filled = _filled(script.capture_payload(clone, _meta(script, head), fetch=False), [_SYMBOLS_SECTION])
+        payload = {**filled, "draft": {**filled["draft"], "summary": ""}}
+        skeleton = tmp_path / "1234_pr.json"
+        skeleton.write_text(json.dumps(payload), encoding="utf-8")
+        assert script.main(["build", str(skeleton), "--repo", str(clone)]) == 1
+        saved = json.loads(skeleton.read_text(encoding="utf-8"))["draft"]
+        assert saved["summary"] == ""
+        assert saved["sections"][0]["body"] == "\n".join(self._ALIGNED)
+
+    def test_level_one_skeleton_is_not_rewritten(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+    ) -> None:
+        clone, _, head = pr_repo
+        captured = script.capture_payload(clone, _meta(script, head), fetch=False)
+        sections = [{"heading": "Behavior: diff read", "body": _FLOW_BODY}, _SYMBOLS_SECTION]
+        payload = {**_filled(captured, sections), "level": 1}
+        skeleton = tmp_path / "1234_pr.json"
+        skeleton.write_text(json.dumps(payload), encoding="utf-8")
+        before = skeleton.read_bytes()
+        assert script.main(["build", str(skeleton), "--repo", str(clone)]) == 1
+        assert skeleton.read_bytes() == before
+        skeleton.write_text(json.dumps({**payload, "level": 2}), encoding="utf-8")
+        assert script.main(["build", str(skeleton), "--repo", str(clone)]) == 0
+        saved = json.loads(skeleton.read_text(encoding="utf-8"))["draft"]["sections"]
+        assert saved[0]["body"] == _FLOW_BODY
+        assert saved[1]["body"] == "\n".join(self._ALIGNED)
+
+
 def _diagram(n: int) -> str:
     """A fenced block that qualifies for ``--min-viz``: over 200 characters, with an arrow."""
     return "```\n" + "start ──► finish\n" * 14 + f"case {n}\n```"

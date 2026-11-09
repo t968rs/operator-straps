@@ -33,8 +33,9 @@
     Validate the draft, write ``<summaries>/<NNNN>_<Title>.md`` and print the receipt. The level and the
     ``--min-viz`` count come from the skeleton (a skeleton without a level builds at level 2): levels 2 and 3
     require the visual sections and cap their table cells, level 3 also requires the stored count of diagram
-    blocks, level 1 forbids sections. A successful build clears the PR's
-    ``--min-viz`` sentinel.
+    blocks, level 1 forbids sections. At levels 2 and 3 the vertical alignment pass (``pr_align``) runs
+    first and saves any section body it changed back to the skeleton, whether or not validation then
+    passes. A successful build clears the PR's ``--min-viz`` sentinel.
 
 Roots: the project (git top level of ``--repo``, which must lie inside a git checkout, else of the working
 directory) holds every input and output; ``<summaries>`` is its ``.claude/harness.json``
@@ -69,6 +70,7 @@ from harness_lib import min_viz_sentinel  # noqa: E402
 from harness_lib.branch_capture import CaptureError, git  # noqa: E402
 from harness_lib.config import ConfigError, activate, active, load_config  # noqa: E402
 from harness_lib.diff_delta import DeltaError  # noqa: E402
+from harness_lib.pr_align import align_draft  # noqa: E402
 from harness_lib.pr_capture import (  # noqa: E402
     PrMeta,
     budgeted_diff,
@@ -271,10 +273,12 @@ def build_problems(facts: PrFacts, draft: PrDraft, level: int, minimum: int) -> 
 def run_build(repo: Path, payload: Mapping[str, object]) -> Tuple[Path, str]:
     """Validate the draft, write the summary markdown, and return its path and the receipt.
 
-    The level and ``--min-viz`` count come from the skeleton; a successful build clears the PR's sentinel.
+    The level and ``--min-viz`` count come from the skeleton; the draft is validated and rendered after the
+    alignment pass of its level. A successful build clears the PR's sentinel.
     """
-    facts, draft = _facts(payload), _draft(payload)
+    facts = _facts(payload)
     level, minimum = skeleton_level(payload), skeleton_min_viz(payload)
+    draft = align_draft(_draft(payload), level)
     problems = build_problems(facts, draft, level, minimum)
     if problems:
         raise CaptureError(problems)
@@ -388,8 +392,7 @@ def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
         untracked=not args.local,
     )
     keys = level_keys(args.level, args.min_viz)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({**payload, **keys}, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    _write_skeleton(out, {**payload, **keys})
     dropped = dropped_descriptions(previous, payload)
     note = sync_sentinel(args.pr, keys) + _local_note(repo, meta, args, dropped)
     print(f"wrote {out}" + (" (existing draft carried forward)" if previous else "") + note)
@@ -420,9 +423,35 @@ def _cmd_diff(args: argparse.Namespace, repo: Path) -> int:
     return 0
 
 
+def aligned_payload(payload: Mapping[str, object]) -> Tuple[Dict[str, object], bool]:
+    """``payload`` with its section bodies through the alignment pass, and whether any body changed.
+
+    Only the changed bodies are replaced; a body drafted as a list of lines stays a list.
+    """
+    draft = _draft(payload)
+    aligned = align_draft(draft, skeleton_level(payload))
+    if aligned == draft:
+        return dict(payload), False
+    raw = dict(payload["draft"])
+    sections = [dict(entry) for entry in raw["sections"]]
+    for entry, before, after in zip(sections, draft.sections, aligned.sections):
+        if before.body != after.body:
+            entry["body"] = after.body.split("\n") if isinstance(entry.get("body"), list) else after.body
+    return {**payload, "draft": {**raw, "sections": sections}}, True
+
+
+def _write_skeleton(path: Path, payload: Mapping[str, object]) -> None:
+    """Write ``payload`` as the skeleton JSON at ``path``."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
 def _cmd_build(args: argparse.Namespace, repo: Path) -> int:
-    """Run ``build`` and print the receipt."""
-    _, text = run_build(repo, _read(args.skeleton))
+    """Run ``build`` and print the receipt; section bodies the alignment pass changed are saved first."""
+    payload, changed = aligned_payload(_read(args.skeleton))
+    if changed:
+        _write_skeleton(args.skeleton, payload)
+    _, text = run_build(repo, payload)
     print(text)
     return 0
 
