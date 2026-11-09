@@ -199,8 +199,16 @@ class TestDraftProblems:
             "section 'Behavior: append': [changed] / [new] tags belong in the AFTER flow only",
         ]
 
-    def test_side_by_side_flow_passes(self) -> None:
+    def test_side_by_side_flow_without_change_header_refused(self) -> None:
         body = "```\nBEFORE          AFTER\nwrite rows      keep file  [changed]\n```"
+        draft = _draft(sections=(PrSection("Behavior: x", body), _SYMBOLS))
+        assert draft_problems(_facts(), draft) == [
+            "section 'Behavior: x': fence 1: a side-by-side flow is a comparison; its first line holds "
+            "BEFORE, AFTER and [CHANGE]",
+        ]
+
+    def test_comparison_flow_passes(self) -> None:
+        body = "```\nBEFORE         AFTER        [CHANGE]\nwrite rows <>  keep file    [changed]\n```"
         draft = _draft(sections=(PrSection("Behavior: x", body), _SYMBOLS))
         assert draft_problems(_facts(), draft) == []
 
@@ -486,8 +494,9 @@ class TestConnectorAlignment:
 
     def test_side_by_side_columns_are_absolute(self) -> None:
         rows = [
-            ("BEFORE", "AFTER"), ("writes rows", "verify file"), ("     │", "     │"), ("     ▼", "      ▼"),
-            ("done", "done"),
+            ("BEFORE", "AFTER".ljust(16) + "[CHANGE]"),
+            ("writes rows  <>", "verify file".ljust(16) + "[changed]"),
+            ("     │", "     │"), ("     ▼", "      ▼"), ("done", "done"),
         ]
         body = _fenced(*(left.ljust(16) + right for left, right in rows))
         assert _flow_problems_of("Behavior: x", body) == [_hang("section 'Behavior: x'", 1, 4, "▼", 23)]

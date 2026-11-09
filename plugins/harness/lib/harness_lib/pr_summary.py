@@ -18,6 +18,7 @@ from typing import Dict, List, Mapping, Optional, Tuple
 from harness_lib import diff_delta
 from harness_lib.commit_diff import DiffStat
 from harness_lib.commit_txt import glyph_problems, vendor_names
+from harness_lib.pr_compare import CHANGE_HEADER, comparison_problems, is_comparison
 
 MONOSPACE_WIDTH = 120
 TABLE_CELL_WIDTH = 40
@@ -333,8 +334,8 @@ def _label_problems(name: str, blocks: List[List[str]]) -> List[str]:
     """Flow labels and tag placement of a ``Behavior:`` section.
 
     Two forms pass the label check: stacked fences, one whose first line starts with the word BEFORE and
-    one whose first line holds the word AFTER; or one side-by-side fence whose first line holds both. Change
-    tags are checked only in a stacked BEFORE fence; tags in a side-by-side fence are not checked.
+    one whose first line holds the word AFTER; or one side-by-side fence whose first line holds both. A
+    stacked BEFORE fence holds no change tag; a side-by-side fence follows the comparison rules.
     """
     firsts = _first_lines(blocks)
     labelled = any(_BEFORE.match(f) for f in firsts) and any(_AFTER.search(f) for f in firsts)
@@ -345,7 +346,21 @@ def _label_problems(name: str, blocks: List[List[str]]) -> List[str]:
         "AFTER, or one side-by-side fence whose first line holds both",
     ]
     misplaced = f"{name}: [changed] / [new] tags belong in the AFTER flow only"
-    return problems + ([misplaced] if tagged else [])
+    return problems + ([misplaced] if tagged else []) + _side_by_side_problems(name, blocks)
+
+
+def _side_by_side_problems(name: str, blocks: List[List[str]]) -> List[str]:
+    """Comparison rules (``pr_compare``) of each fence whose first line holds both BEFORE and AFTER; such a
+    fence without the ``[CHANGE]`` header is refused."""
+    problems = []
+    for fence, (first, block) in enumerate(zip(_first_lines(blocks), blocks), 1):
+        if not (_BEFORE.match(first) and _AFTER.search(first)):
+            continue
+        problems += comparison_problems(name, fence, block) if is_comparison(first) else [
+            f"{name}: fence {fence}: a side-by-side flow is a comparison; its first line holds BEFORE, "
+            f"AFTER and {CHANGE_HEADER}",
+        ]
+    return problems
 
 
 def _section_kind(heading: str, level: int = 2) -> Optional[str]:
