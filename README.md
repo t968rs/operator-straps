@@ -269,6 +269,7 @@ squash-merge commit instead.
 ```text
 /harness:merge-commit-msg 123
 /harness:merge-commit-msg 123 --squash
+/harness:merge-commit-msg 123 --squash --auto-title
 /harness:merge-commit-msg 123 -- lead with the hook change
 ```
 
@@ -276,7 +277,9 @@ squash-merge commit instead.
   writes nothing. The subject (`Merge PR #N -- <title>`, or `<title> (#N)` in squash mode), `Branch lineage:`
   and, when a review JSON exists, the review-artifact and review-fix lines come filled. Squash mode needs a
   `Word(scope): summary` PR title (a word, an optional scope, a colon and a non-empty summary; the word is
-  not checked against the commit types); any other title stops the run.
+  not checked against the commit types); any other title stops the run. With `--auto-title` it does not:
+  the agent writes a compliant title and `retitle <PR> --title` sets it with `gh pr edit`. A usable title is
+  never replaced. `pr-sum --auto-title` does the same with the summary's title at `build`.
 - The agent replaces the prose and bullet placeholders (format: `plugins/harness/skills/merge-commit-msg/message_format.md`)
   and passes the whole message to `build <PR>` on stdin.
 - `build` reads the title from `gh` again and rejects a changed subject, a leftover placeholder, an indented line,

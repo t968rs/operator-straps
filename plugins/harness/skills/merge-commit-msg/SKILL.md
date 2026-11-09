@@ -1,7 +1,7 @@
 ---
 name: merge-commit-msg
 description: Use when asked to draft a merge commit message for a PR, prepare a PR squash-merge commit (pass squash or --squash after the PR number; without it the run drafts the merge form), or compose the commit text the developer will paste into the merge UI. Triggers on "merge commit msg", "merge message for PR N", "squash message", "squash-merge commit for PR N", "merge-commit-msg".
-argument-hint: "<PR number> [squash | --squash | -s] [-- <guidance>]"
+argument-hint: "<PR number> [squash | --squash | -s] [--auto-title] [-- <guidance>]"
 model: sonnet
 context: fork
 agent: harness:messenger
@@ -12,11 +12,12 @@ agent: harness:messenger
 **Arguments for this run:** `$ARGUMENTS` (the PR number, an optional mode token, then optionally `--` and
 guidance). They are the developer's input. Split them at the first standalone `--` token, per
 `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before `--` comes the PR number, then an optional mode
-token: `--squash`, `-s` or a bare `squash` selects squash mode. On every command below, `<PR number>` stands
-for the number, followed by ` --squash` in squash mode; all three forms go on the commands as `--squash`. The
+token: `--squash`, `-s` or a bare `squash` selects squash mode, and an optional `--auto-title`. On every command below, `<PR number>` stands
+for the number, followed by ` --squash` in squash mode; all three forms go on the commands as `--squash`.
+`--auto-title` goes on `capture` only. The
 part after `--` is the guidance for the prose (emphasis, items to name), which never reaches a command; a
-`squash` after `--` is guidance, not a mode. A blank or non-numeric PR number, or anything before `--` beyond
-the number and at most one mode token: report it as a `problem:` line and stop.
+`squash` after `--` is guidance, not a mode, and so is an `--auto-title` after it. A blank or non-numeric PR number, or anything before `--` beyond
+the number, at most one mode token and `--auto-title`: report it as a `problem:` line and stop.
 
 `${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py` does the mechanics: the `gh` calls, the review-fix counts, the
 canned message, the lineage, the layout checks and the TXT. The agent's job is the judgment: the prose and the
@@ -32,12 +33,12 @@ Run every command below with the Bash tool from the project root, exactly as wri
 ## Step 1 — Capture
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" capture <PR number>
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" capture <PR number> [--auto-title]
 ```
 
 Exit 1 prints a `problem:` line (PR not open, unusable PR title (in squash mode, also one that is not a
 `Word(scope): summary` subject: a word, an optional scope, a colon and a non-empty summary; the developer
-retitles with `gh pr edit <N> --title`), `gh` failure, invalid config): report it and stop. Exit 0 prints the PR's Facts, Changed files, Diff, Commits
+retitles with `gh pr edit <N> --title` or reruns with `--auto-title`), `gh` failure, invalid config): report it and stop. Exit 0 prints the PR's Facts, Changed files, Diff, Commits
 and Branch commit subjects, then the message skeleton in a `text` fence under `## Message`. Nothing is written
 to disk. The printed output, diffs included, is the whole input: capture pulls the diffs itself (one section
 per file, size-capped, a file past the cap keeps its header), so the agent runs no `git diff` or `gh pr diff`
@@ -50,6 +51,23 @@ squash mode), `Branch lineage:`, the `Review artifacts:` and `Includes N review 
 review JSON exists, and, for a PR made only of generated files whose message is fixed in advance (entries in
 `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), the canned message as the prose. Keep those lines
 as they stand.
+
+**`--auto-title`** is the developer's consent to rename the PR. Use it only when the invocation carries it.
+With the flag, a title the mode refuses no longer stops capture. The Facts gain a `- Title problem:` line, and
+line 1 of the skeleton is a `<Subject: ...>` placeholder. Write a new title from the Facts, Commits and Diff.
+Its prefix is the `Type(scope):` the branch's commit subjects use, and it names what the PR changes, in one
+ASCII line. Then run:
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" retitle <PR number> --title "<new title>"
+```
+
+`retitle` sets the PR title with `gh pr edit` and prints `Retitled PR #N: '<old>' -> '<new>'`, then a
+`Subject:` line. Put that subject, without `Subject: `, on line 1 of the message. It exits 1 and changes
+nothing when the new title is not a `Word(scope): summary` subject (pick another and rerun), when the PR title
+already heads the subject (rerun capture without the flag), or when `gh` fails (report it and stop). A title
+the mode accepts is never replaced: with such a title, `--auto-title` changes nothing. Report the `Retitled`
+line with the receipt.
 
 ## Step 2 — Write the message and build
 
@@ -80,7 +98,7 @@ vendor name, subject changed, empty stdin): fix the text and run the same comman
 `--squash` gets a problem line that names the flag and prints the squash subject; when the developer asked for
 squash mode, replace line 1 with that subject, otherwise drop the flag. Exit 0 writes `PR<N>_merge.txt` (the same name in both modes), keeps a
 replaced copy as `PR<N>_merge.txt.bak`, and prints the receipt (`squash message for PR #N` in squash mode).
-Output the receipt verbatim — nothing else.
+Output the receipt verbatim — nothing else, except the `Retitled` line of an `--auto-title` run, above it.
 
 ## Changing a saved message
 
@@ -100,3 +118,4 @@ not rerun capture: it would rewrite the prose from the skeleton.
 | Pasting the message into chat                    | The receipt is the only chat output.                             |
 | Passing the fence markers to `build`             | Build rejects a fence line; pass the message lines only.         |
 | Passing `--squash` to build for a merge skeleton | Run capture with `--squash` too, or drop the flag from build.    |
+| Running `retitle` or `gh pr edit` unasked        | Only with `--auto-title` in the invocation, and only `retitle`.  |

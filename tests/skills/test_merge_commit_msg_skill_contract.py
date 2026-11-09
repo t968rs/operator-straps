@@ -3,7 +3,7 @@
 ``merge_commit_msg.py capture`` prints the facts and ``build`` takes the message on stdin and writes only the
 TXT, so neither the skill, its format card, the hook docstring nor the README may route work through a
 ``PR<N>_merge.md``. The squash mode is selected by ``--squash``, ``-s`` or a bare ``squash`` right after the
-PR number; the docs name all three forms and both subjects.
+PR number; the docs name all three forms and both subjects. ``--auto-title`` is the only route to ``retitle``.
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from harness_lib.skill_parts import skill_parts
 
 NAME = "merge-commit-msg"
 SKILL_DIR = PLUGIN_ROOT / "skills" / NAME
-HINT = "<PR number> [squash | --squash | -s] [-- <guidance>]"
+HINT = "<PR number> [squash | --squash | -s] [--auto-title] [-- <guidance>]"
 
 
 def _text(path: Path) -> str:
@@ -76,6 +76,13 @@ def test_format_card_and_readme_name_the_stdin_route() -> None:
 
 def test_argument_hint_names_the_squash_forms() -> None:
     assert skill_parts(SKILL_DIR / "SKILL.md")[0].get("argument-hint", "").strip("\"'") == HINT
+
+
+def test_skill_gates_retitle_on_the_auto_title_flag() -> None:
+    text = _text(SKILL_DIR / "SKILL.md")
+    assert "**`--auto-title`** is the developer's consent to rename the PR" in text
+    assert 'merge_commit_msg.py" retitle <PR number> --title "<new title>"' in text
+    assert "`retitle` or `gh pr edit` unasked" in _section(text, "## Common Mistakes")
 
 
 def test_description_triggers_on_a_squash_message() -> None:

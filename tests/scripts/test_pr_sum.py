@@ -1148,6 +1148,110 @@ class TestCaptureLevels:
         assert (flagged.level, flagged.min_viz) == (3, 3)
 
 
+class TestAutoTitle:
+    """``capture --auto-title`` stores ``auto_title``; ``build`` then reads the PR title again and, when it
+    fails the ``Word(scope): summary`` check, makes the draft title the PR title (``change_pr_title``)."""
+
+    _DRAFT_TITLE = "Feature(a): `a` change"
+
+    @pytest.fixture()
+    def edits(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch) -> list:
+        calls: list = []
+        monkeypatch.setattr(script, "change_pr_title", lambda *args: calls.append(args))
+        return calls
+
+    def _payload(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], **keys: object,
+    ) -> Dict[str, object]:
+        clone, _, head = pr_repo
+        filled = _filled(script.capture_payload(clone, _meta(script, head), fetch=False))
+        return {**filled, "level": 1, **keys}
+
+    def _gh(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, head: str, title: str,
+            merge_commit: Optional[str] = None) -> None:
+        meta = script.PrMeta(1234, title, "main", "1234-demo", head, merge_commit)
+        monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: meta)
+
+    def test_capture_stores_the_flag_and_notes_the_title(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
+            monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+    ) -> None:
+        clone, _, head = pr_repo
+        self._gh(script, monkeypatch, head, "1234 demo")
+        out = tmp_path / "1234_pr.json"
+        argv = ["capture", "--pr", "1234", "--no-fetch", "--out", str(out), "--repo", str(clone)]
+        assert script.main([*argv, "--auto-title"]) == 0
+        assert json.loads(out.read_text(encoding="utf-8"))["auto_title"] is True
+        assert "--auto-title: build sets the draft title as the PR title" in capsys.readouterr().out
+        assert script.main(argv) == 0
+        assert "auto_title" not in json.loads(out.read_text(encoding="utf-8"))
+
+    def test_build_retitles_a_refused_pr_title(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
+            edits: list,
+    ) -> None:
+        clone, _, head = pr_repo
+        self._gh(script, monkeypatch, head, "1234 demo")
+        out, text = script.run_build(clone, self._payload(script, pr_repo, auto_title=True))
+        assert out.is_file()
+        assert edits == [(1234, self._DRAFT_TITLE, clone, "1234-demo")]
+        assert text.splitlines()[-1] == f"Retitled PR #1234: '1234 demo' -> {self._DRAFT_TITLE!r}"
+
+    @pytest.mark.parametrize("title, merge_commit, note", [
+        ("Feature(a): own title", None, "PR #1234 title kept: 'Feature(a): own title' already passes"),
+        ("1234 demo", "abc1234", "PR #1234 title kept: the PR is merged"),
+    ])
+    def test_build_keeps_a_usable_or_merged_title(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
+            edits: list, title: str, merge_commit: Optional[str], note: str,
+    ) -> None:
+        clone, _, head = pr_repo
+        self._gh(script, monkeypatch, head, title, merge_commit)
+        _, text = script.run_build(clone, self._payload(script, pr_repo, auto_title=True))
+        assert not edits and text.splitlines()[-1] == note
+
+    def test_draft_title_with_a_defect_writes_nothing(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
+            edits: list,
+    ) -> None:
+        clone, _, head = pr_repo
+        self._gh(script, monkeypatch, head, "1234 demo")
+        payload = self._payload(script, pr_repo, auto_title=True)
+        payload["draft"]["title"] = "`a` change"
+        with pytest.raises(script.CaptureError, match=r"--auto-title: draft title '`a` change' is not a W"):
+            script.run_build(clone, payload)
+        assert not edits and not (clone / _SUMMARIES).exists()
+
+    def test_build_without_the_flag_reads_no_gh(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
+            edits: list,
+    ) -> None:
+        monkeypatch.setattr(script, "gh_metadata", lambda *_a: pytest.fail("gh read"))
+        _, text = script.run_build(pr_repo[0], self._payload(script, pr_repo))
+        assert not edits and len(text.splitlines()) == 1
+
+    def test_malformed_flag_asks_for_a_capture(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        monkeypatch.setattr(script, "gh_metadata", lambda *_a: pytest.fail("gh read"))
+        with pytest.raises(script.CaptureError, match="auto_title.*rerun capture"):
+            script.run_build(pr_repo[0], self._payload(script, pr_repo, auto_title="yes"))
+
+    def test_gh_edit_failure_is_a_problem(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        clone, _, head = pr_repo
+        self._gh(script, monkeypatch, head, "1234 demo")
+
+        def refuse(*_args: object) -> None:
+            raise script.TitleError("gh pr edit 1234 failed: HTTP 403")
+
+        monkeypatch.setattr(script, "change_pr_title", refuse)
+        with pytest.raises(script.CaptureError, match="gh pr edit 1234 failed"):
+            script.run_build(clone, self._payload(script, pr_repo, auto_title=True))
+        assert not (clone / _SUMMARIES).exists()
+
+
 class TestCli:
     def test_parser(self, script: ModuleType) -> None:
         assert script._parser().parse_args(["build", "x.json"]).command == "build"
