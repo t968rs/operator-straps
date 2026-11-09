@@ -1,0 +1,692 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 248,
+  "pr_title": "1143 todo numbering",
+  "branch": "1143-todo-numbering",
+  "base_branch": "main",
+  "base_sha": "250a9a5cb3ee1b6372b20b4014200f5a21f7f4ca",
+  "head_sha": "cdd94d2deef1d833668ea9ae0792cc68e77b5a9f",
+  "review_date": "2026-11-09",
+  "verdict": "READY TO MERGE - 21 of 24 findings resolved, 3 bubbled",
+  "stats": {
+    "additions": 4816,
+    "deletions": 607,
+    "files_changed": 46,
+    "source": {
+      "additions": 4811,
+      "deletions": 607,
+      "files_changed": 45
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0248/pr248_20261109T224832Z/findings/config.json",
+    "docs/_scratch/pr_review/0248/pr248_20261109T224832Z/findings/tests.json",
+    "docs/_scratch/pr_review/0248/pr248_20261109T224832Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0248/pr248_20261109T224832Z/findings/docs.json",
+    "docs/_scratch/pr_review/0248/pr248_20261109T224832Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0248/pr248_20261109T224832Z/findings/overall.json",
+    "docs/_scratch/pr_review/0248/pr248_20261109T224832Z/findings/system_shape.json"
+  ],
+  "bubbles": [
+    "M5",
+    "M4",
+    "M3"
+  ],
+  "strengths": [
+    "todo_id pattern is equivalent to ids.py ID_RE (same alphabet, 4 characters, lookaheads for one digit and one letter), and the description's alphabet and exclusions (no 0, 1, i, l, o) match ALPHABET.",
+    "legacy_todo_id kept as a separate def used only for legacy_ids.map keys, so old ids never validate as live ids; T1 filters only their pattern errors, leaving other errors intact.",
+    "New retired_ids, legacy_ids and split_ids properties are optional and closed (additionalProperties false), so existing catalogs still validate; split_ids/retired_ids/legacy_ids prose agrees with the T6 rules and migrate.py behavior.",
+    "Cross-record rule list in the description (T6-T10, unchecked fields) matches the rule code and schemas/README.md.",
+    "The id draw tests use a scripted rng (Scripted) to prove deterministically that new_id, add_items and split_item redraw past retired, live and original ids, instead of relying on chance with a real rng.",
+    "test_todo_catalog_schema.py checks the schema's id pattern against is_id over one shared list of good and bad codes, so the JSON Schema and the Python validator cannot drift apart unnoticed.",
+    "The migrate tests cover the failure paths behaviorally: git grep failing, a locked file write followed by a rerun that finishes from the stored map, a project schema that rejects the new ids, non-UTF-8 files and CRLF preservation, each asserting that the catalog bytes are untouched.",
+    "test_operations_refuse_a_legacy_catalog drives retire, split, refresh and add through the real driver against the legacy fixture, and asserts the exit code, the 'problem: <op>:' prefix and that the catalog bytes did not change.",
+    "MUST_EXIT_ZERO in test_root_separation.py now includes the todo_sync retire, split, refresh and migrate-ids cases, so a refusal can no longer pass the outside-the-project snapshot check vacuously.",
+    "The rewritten tests check byte-level non-mutation of companions and history records (_bytes before and after) instead of only parsed content, which fits the new 'list, never rewrite' contract.",
+    "No mock-chain wiring tests: every monkeypatch is fault injection on a real collaborator (subprocess.run, write_file, the gh fake), and the outcome is asserted on files or reports.",
+    "migrate seeds each draw from sha256(old id, title), so a dry run, its real run and two checkouts agree on the new ids without storing state.",
+    "migrate refuses on a rejecting project schema and on git grep failure before any write, and a partial write failure is recoverable by rerunning through the stored legacy_ids map.",
+    "Moving TodoSyncError to errors.py breaks the import cycle cleanly while __init__ still re-exports it.",
+    "_rewrite_text and dump_like preserve line endings, BOM-free strict UTF-8 and indentation, and undecodable files are reported as skipped rather than corrupted.",
+    "resolve_ids triages retired, split and legacy ids into specific, joined problem messages instead of a bare 'no such item'.",
+    "A failed reference scan degrades to scan_error after the catalog write instead of failing the whole retire or split.",
+    "The todo-editor agent's description of report lines matches the script output exactly: 'dangling: <where> names retired <id>' (retire.py:117, :187), 'names split <orig> (parts <a>, <b>)' (reshape.py:376) and 'reference scan failed:' (retire.py:329, reshape.py:592).",
+    "The history-folder list in the agent and the todo-edit skill (plans, reviews, commit_messages, summaries, scratch, planning prefixes, snapshots) matches retire.history_paths (retire.py:219-229) item for item.",
+    "The README's migrate-ids paragraph puts the risky steps in order: update the project schema and every install first, then a dry run; and it says why (an older harness renumbers stable ids back).",
+    "The agent's split step warns that dry-run part ids are provisional and must come from the real run's report, which matches reshape.DRAW_NOTE; a contract test pins it (B7).",
+    "The plan's id-space arithmetic is right: 31^4 - 23^4 - 8^4 = 639584, and the schema pattern's character classes give exactly the 23 letters and 8 digits in the documented alphabet.",
+    "The harness row in the release table (0.65.0) matches plugins/harness/.claude-plugin/plugin.json at the head.",
+    "Every example id in the skill and agent (`k7qf`, `todo-2a2a`, `todo-m3x9`) is valid under `ids.ALPHABET` and the digit-plus-letter rule, so the examples do not contradict the format they teach.",
+    "Step 3's history-folder list (plans, reviews, commit_messages, summaries, scratch, planning prefixes, snapshots) matches `retire.history_paths` exactly, and the agent's Rules repeat the same list.",
+    "Skill and agent agree on the migrate-ids stop: the skill says the agent relays the refusal and the developer runs the switch, and the agent's Stop conditions spell out both commands and forbid running it; the contract test pins both sides.",
+    "No orphan rank-tied wording survives in either skill package: no `TODO-NNN` normalization, no renumbering, and sync-gh-todo's `add` line now says it inserts and ranks.",
+    "The id design is complete end to end. ids.py is the single source for the format, the draw, canonicalization, `mentions` and `resolve_ids`, and retire, reshape, migrate, rules_todo, add_todo.py and issues.py all import it rather than keeping their own regexes.",
+    "migrate-ids is built for a partial failure. A git grep failure and a project-schema rejection both refuse before any write. The catalog is written first, carrying the full map. A failed file write names every file not written, and a rerun finishes through the stored `legacy_ids` map. Tests cover each path (test_a_failed_file_write_leaves_the_map_for_a_rerun, test_rerun_applies_the_stored_map_to_live_files).",
+    "Seeding each migration draw from sha256(old id, title) makes the dry run and the real run agree on the ids, which the tests check (test_migration_ids_are_reproducible). add and split keep the random draw and print a provisional-ids note on a dry run.",
+    "resolve_ids turns a stale reference into an answer, not just 'unknown': an old TODO-NNN reports what the map says it meant and its date, a split id names its parts, and a retired id says it was retired.",
+    "T1 and T6 report a legacy catalog as one actionable migrate-ids finding (plus the duplicates migrate-ids needs cleared) instead of a pattern error per id. retire, split, add, refresh, add-todo and untracked all refuse it before doing any work, so gh and agent dispatch never run.",
+    "other_references drops the history folders in Python instead of passing exclude pathspecs, which avoids the Windows command-line limit. A failed scan becomes a reported `scan_error`, not a silent empty list.",
+    "The tests are behavioral throughout. They run real git projects through make_project and drive the CLI as a subprocess, and the only seams are fault injections (subprocess.run raising OSError, write_file failing), never stubs of the code under test. MUST_EXIT_ZERO now covers retire, split, refresh and migrate-ids, so a refusal can no longer pass the root-separation check vacuously.",
+    "The legacy fixture is a byte-identical copy of the base min fixture, and _todo_helpers spells TodoCatalog.legacy.json out in code, so tools/select_tests.py maps fixture changes to their readers.",
+    "The plan records each decision with its rejected options, and the repository's own switch is deferred until after the release, with the needed `--exclude plugins --exclude tests` written down.",
+    "One module (todo_sync/ids.py) owns the id format, the generator, resolution and the legacy guard; the schema pattern, T6, README.md:404-406 and schemas/README.md:182 all describe the same 31-character alphabet with a digit and a letter.",
+    "The schema description, schemas/README.md:184 and t6_ids_and_ranks list the same cross-record rules (unique, not retired, split_ids keys retired, parts live or retired), so docs and code agree on what T6 checks.",
+    "The legacy refusal sits at the shared load_catalog chokepoint plus the add-todo and untracked pre-dispatch checks, so no write path can renumber a stable catalog or act on a legacy one.",
+    "Prose contract tests (test_todo_stable_id_prose.py, the todo-edit and sync-gh-todo contract tests) pin the README and skill text against renumbering language, keeping docs in lockstep with the behavior change.",
+    "plugin.json and docs/RELEASES/v0.7.0.md agree on harness 0.65.0, and the PIP records D14 deferring this repository's own catalog switch until the release ships, matching the README's install-first ordering."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "README migrate-ids paragraph omits that it rewrites every live file in the repository",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/migrate.py",
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py",
+          "plugins/harness/scripts/add_todo.py",
+          "plugins/harness/skills/sync-gh-todo/SKILL.md"
+        ],
+        "lines": "422-431",
+        "reviewer": "system_shape, docs",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "README.md:422-431 says migrate-ids keeps the map in legacy_ids and leaves history as written, and that --exclude skips a path, but never says what the run writes outside the catalog. The code (migrate.py:273-290 live_files, todo_sync.py:68-79 docstring, plan decision D13) rewrites the research catalog, the stubs and every tracked or untracked text file git grep finds naming TODO-NNN, source code and tests included; this repository's own deferred switch needs --exclude plugins --exclude tests for that reason (ActionPlan deferred_to_future_plans). A developer reading only the README cannot tell what --exclude is excluding from, or that files outside docs change. The same paragraph's history list (plans, reviews, snapshots, commit messages, PR summaries) also leaves out artifacts.scratch and each artifacts.planning_prefixes entry, which history_paths (retire.py:219-229) skips.\n\nAlso (docs): README.md:430 says 'Until the catalog is migrated, `retire`, `split`, `refresh` and `add` refuse'. ENT-1 also makes `todo_sync.py untracked` refuse (issues.py:123 `ids.require_stable(src.todo.data, \"untracked\")`) and `add_todo.py row` refuse (add_todo.py:68). Those are the first commands `/harness:sync-gh-todo` and `/harness:add-todo` run, and the README describes both flows a few lines below. A reader going by this list would not expect sync-gh-todo to stop at its first step. The v0.7.0 notes name both skills correctly.\n\nAlso (system_shape): issues.find_untracked (issues.py:118-124) now refuses a legacy catalog with 'untracked: <MIGRATE_HINT>', and the release notes (docs/RELEASES/v0.7.0.md:18-24) say sync-gh-todo refuses. But the docs that enumerate the refusals name only add, retire, split and refresh: README.md:430-431 and the todo_sync.py module docstring (todo_sync.py:82-84); the untracked section of that docstring (todo_sync.py:48-56) lists only the gh refusals, and find_untracked's own docstring is silent. README.md:431 also says check reports one T6 finding, while t6_ids_and_ranks (rules_todo.py:184-200) adds the duplicate-id findings, as schemas/README.md:184 correctly states.",
+        "fix": [
+          "In README.md:423-425 add one sentence: the run rewrites every live file that names an old id (the research catalog, the stubs and each tracked or untracked text file git grep finds, source and tests included), minus the catalog schema, the history folders and each --exclude; the dry run lists those files first.",
+          "In the same paragraph list the full history set: plans, reviews, commit messages, summaries, scratch, each planning prefix and the snapshots.",
+          "Rewrite the sentence as: 'Until the catalog is migrated, `retire`, `split`, `refresh`, `add` and `untracked` refuse (so `/harness:add-todo` and `/harness:sync-gh-todo` stop before any dispatch), and `check` reports one T6 finding that names `migrate-ids`.'",
+          "Add untracked to the refusal lists in README.md:430 and todo_sync.py:83, add 'or the catalog still holds TODO-NNN ids (naming migrate-ids)' to the untracked section at todo_sync.py:55-56, and append 'plus any duplicate-id findings' to README.md:431."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "A comma-joined id list the skill documents is refused by the script",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/ids.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/ids.py",
+          "plugins/harness/skills/todo-edit/SKILL.md",
+          "plugins/harness/agents/todo-editor.md"
+        ],
+        "lines": "69-79,157-174",
+        "reviewer": "overall, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "todo-edit SKILL.md:23 accepts `--retire` ids 'comma- or space-separated', and :27 and :45 tell the session to pass them as typed because the script canonicalizes them. The agent runs `TS retire <ids>` (todo-editor.md:75). For `--retire k7qf,2a2a` (no space), argv holds one token, 'k7qf,2a2a'. `ids._clean` strips only one trailing ',' or ';', so `canonical` returns None, `_legacy_id` does not match, and `resolve_ids` raises \"not a TODO id: 'k7qf,2a2a'\". The agent's stop conditions then end the run. Before this PR the session normalized each id itself, so this documented input worked; now it fails closed.\n\nAlso (skill_package): Step 1's table accepts `--retire` ids that are comma- or space-separated (and the argument-hint reads `ID[, ID ...]`), but line 27 now says to pass each id as typed, and the prompt's `Ids:` line carries them as typed. The agent runs `TS retire <ids>`; `todo_sync.py retire` takes `ids` with nargs='+', and `ids.canonical` (plugins/harness/lib/harness_lib/todo_sync/ids.py:69-79) strips only one trailing `,` or `;` per argv token. Input written as `--retire k7qf,todo-2a2a` (comma, no space) reaches the script as the single token `k7qf,todo-2a2a`, which `_triage` classes as malformed, so the run stops with `not a TODO id: 'k7qf,todo-2a2a'`. The old skill normalized each id and so split the list; the new text dropped that split without the script taking it over. The refusal is safe (nothing is written), but a documented input form fails every time.\n\nAlso (skill_package): Line 27-29 says the script 'canonicalizes it ..., names the item an old rank-tied id meant as of the migration, and refuses a retired, split or unknown id'. The list of refusals leaves out the rank-tied form, so a reader takes `TODO-007` / `7` as accepted and resolved through `legacy_ids`. In `ids._triage` (plugins/harness/lib/harness_lib/todo_sync/ids.py:132-144) a rank-tied id is a `note` problem, and `resolve_ids` raises on any problem: the old id is refused, the note only names what it meant.\n\nAlso (skill_package): Line 19 keeps 'Free text after the ids with no `--` token is read as guidance too'. Under the old text an id was numeric (`TODO-007`, `007`, `7`), so the boundary was obvious; now ids are passed as typed with no shape stated beyond `todo-k7qf` / `k7qf`, so the session has no stated test for whether a token like `fix2` or `retire` is an id or the start of guidance. A wrong cut either sends guidance words to the script (a malformed-id refusal) or drops an id into Guidance.\n\nAlso (skill_package): Line 29 runs to about 170 characters, joining the new sentence's tail to the old `--delete-retired` sentence; every other prose line in the file wraps near 110.",
+        "fix": [
+          "In `resolve_ids` (ids.py:157-174), split each raw on `[,;\\s]+` and drop empty pieces before `_triage`, so 'k7qf,2a2a' and 'k7qf, 2a2a' resolve alike. Add a case to tests/lib/test_todo_sync_ids.py::test_canonical_accepts_any_case_and_a_bare_code or a new resolve test.",
+          "Alternatively, have SKILL.md:27/:45 and todo-editor.md:75 tell the session and agent to split the typed list into separate arguments, and pin that with a contract test.",
+          "In Step 1, say the session splits the ids at commas and whitespace and passes each piece as typed, joined with `, ` on the `Ids:` line (e.g. `Ids: k7qf, todo-2a2a`), so every argv token holds one id.",
+          "Or have the script split each `retire` argv token on `,` before `resolve_ids` (and pin it in tests/scripts), keeping the skill's pass-through rule as written.",
+          "Reword to: 'the script canonicalizes it (a trailing comma included) and refuses, with the reason, a retired, split or unknown id, or an old rank-tied id (naming the item it meant as of the migration).'",
+          "State the shape in Step 1: an id token is `todo-` plus four characters, or the four characters alone, holding at least one digit and one letter; the first token that is neither starts the guidance.",
+          "Rewrap lines 27-32 at 110 columns."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Lines left unreflowed after edits in the README and the todo-edit skill",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/skills/todo-edit/SKILL.md"
+        ],
+        "lines": "419,443",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md:419 is just 'that can close. With' and :443 is just 'records. An': short lines left where earlier text was replaced. plugins/harness/skills/todo-edit/SKILL.md:29 runs to about 200 characters ('retired, split or unknown id with the reason. `--delete-retired` is a flag of ... once every deliverable in the stub is'), while the rest of these files wrap at about 110 characters.",
+        "fix": [
+          "Reflow README.md:415-421 and :441-445, and todo-edit SKILL.md:27-32, to the files' usual width of about 110 characters, without changing any wording."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "v0.7.0 change line has no PR number and its last sentence has no full stop",
+        "file": "docs/RELEASES/v0.7.0.md",
+        "lines": "18-24",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Every other change line in docs/RELEASES/v0.7.0.md starts with its PR number (`- #244 Feature(harness): ...`), but the new line at :18 starts `- Feature(todo): ...` with no `#248`. The GitHub release body is this file, so the entry has no link to its PR. The line's last sentence ('Commit messages put `TODO` terms in backticks (`commit_format.md`)') also has no full stop, unlike the sentences before it.\n\nAlso (overall): In docs/RELEASES/v0.7.0.md every Changes bullet opens with the PR number (`#244 Feature(harness): ...`, `#240 ...`). The new stable-id bullet at :18 opens with `Feature(todo):` and no `#248`. It also folds in the unrelated commit_format.md backtick rule without a closing period.\n\nAlso (system_shape): docs/RELEASES/v0.7.0.md:18-24 adds the stable-id bullet without the '#248' prefix every other change line carries (:25, :31), and appends the separate commit_format.md backtick rule to its end with no closing period, so the reference-doc change reads as part of the TODO id feature.",
+        "fix": [
+          "Start the line with `- #248 Feature(todo): ...` and end it with `(`commit_format.md`).`",
+          "Start the bullet with `#248 Feature(todo):`. Optionally split the commit_format.md rule into its own `#248 Docs(reference): ...` line.",
+          "Prefix the bullet with '#248', end it after the migrate-ids ordering sentence, and give 'Docs(harness): commit messages put `TODO` terms in backticks (`commit_format.md`)' its own bullet."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Rendered plan 0011 refers to MIG-2 and the deferred follow-up, but the plan does not show them",
+        "file": "docs/plans/0011_Stable_TODO_ids_PIP.md",
+        "files": [
+          "docs/plans/0011_Stable_TODO_ids_PIP.md",
+          "docs/plans/0011_Stable_TODO_ids_ActionPlan.json"
+        ],
+        "lines": "27,349",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "docs/plans/0011_Stable_TODO_ids_PIP.md:27 (D14) points to '(deferred_to_future_plans)', and SKL-2's evidence at :349 depends on 'MIG-2' twice (switch this repository's catalog, then rerun the add-todo greens and refreeze). The PIP has no deferred section and defines MIG-2 nowhere. The topic, its steps (`--exclude plugins --exclude tests`, render on a day with no snapshot yet) and its affected sites exist only in ActionPlan.json:1500-1509, because the renderer drops `deferred_to_future_plans`. A reader of the PIP cannot see that this repository's catalog stays on `TODO-NNN` ids and that add-todo stays stale after the merge.",
+        "fix": [
+          "Open a GitHub issue for the deferred switch and the add-todo refreeze, and name it in the PR description so the follow-up has a tracked home.",
+          "Or teach `plan.py render` to emit a 'Deferred to future plans' section, then render plan 0011 again."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "todo-edit SkillSpec B4 statement leaves out split_ids, which the rule and its test cover",
+        "file": "docs/plans/strap/todo-edit/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/todo-edit/SkillSpec.json",
+          "plugins/harness/agents/todo-editor.md",
+          "tests/skills/test_todo_edit_skill_contract.py"
+        ],
+        "lines": "72",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "docs/plans/strap/todo-edit/SkillSpec.json:72 reads 'The agent never hand-edits id, rank, retired_ids or legacy_ids'. The agent's rule (todo-editor.md:53-54), the test that pins B4 (tests/skills/test_todo_edit_skill_contract.py:101 loops over `split_ids` too) and PIP SKL-1's B4 ('id, rank, retired_ids, legacy_ids or split_ids') all include `split_ids`. The recorded behavior is narrower than what is enforced.",
+        "fix": [
+          "On the next `strap.py new todo-edit --edit` pass or refreeze, change the B4 statement to 'The agent never hand-edits id, rank, retired_ids, legacy_ids or split_ids'."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Strap run records commit absolute local paths",
+        "file": "docs/plans/strap/todo-edit/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/todo-edit/SkillSpec.json",
+          "docs/plans/strap/add-todo/SkillSpec.json",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "193,209",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "The new R-1 run in docs/plans/strap/todo-edit/SkillSpec.json stores `tree` as an absolute path under the developer's home folder (:209), and its reply embeds `Project root: C:/Users/...` (:193). The R-8 run added to docs/plans/strap/add-todo/SkillSpec.json does the same. The project keeps local and absolute paths out of tracked logged rows. The strap driver writes these fields, and the reply is hashed (`reply_sha256`), so hand-scrubbing this PR's records would break them.",
+        "fix": [
+          "As a follow-up in plugins/harness/scripts/strap.py: record `tree` relative to `worktree_root` (or just its folder name), and redact the project root in a reply before hashing and storing it. Leave the frozen records in this PR as they are."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "todo-editor looks up ids by their canonical form, but ids arrive as typed and the script only canonicalizes later",
+        "file": "plugins/harness/agents/todo-editor.md",
+        "files": [
+          "plugins/harness/agents/todo-editor.md",
+          "plugins/harness/skills/todo-edit/SKILL.md"
+        ],
+        "lines": "47-49,72,111,115",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The agent's catalog lookup (todo-editor.md:47-48) greps for `\"id\": \"todo-k7qf\"`. The next sentence says ids 'may arrive in any case or as a bare code; the script canonicalizes them'. The todo-edit skill passes ids as typed (SKILL.md:27, 45), so the description's own example sends `Ids: k7qf, todo-2a2a` (line 19). Retire step 1 (:72) and split step 1 (:111) read the item before any script runs, so a literal Grep for `\"id\": \"k7qf\"` or `\"id\": \"K7QF\"` finds nothing. The split spec path `split-<id>.json` (:115) takes whatever form arrived. The agent has to work out the canonical form on its own, and the prose does not say how.\n\nAlso (overall): todo-editor.md:47-48 tells the agent to Grep for `\"id\": \"todo-k7qf\"` and says ids 'may arrive in any case or as a bare code; the script canonicalizes them'. The split flow reads the item before any script runs (step 1) and names the spec file `split-<id>.json` (:115). An Ids line of `K7QF` or `k7qf,` therefore leads to a case-sensitive Grep miss on `\"todo-K7QF\"`, or a file name like `split-k7qf,.json`. The script's canonicalization never reaches those agent-side steps.\n\nAlso (system_shape): todo-editor.md:47-49 tells the agent to Grep for '\"id\": \"todo-k7qf\"' and, in the same bullet, that ids may arrive in any case or as a bare code because the script canonicalizes them. Retire step 1 (:72) and split step 1 (:111) read the item before any script runs, so an id typed as K7QF or k7qf (the todo-edit SKILL.md:23 example) gives a Grep that misses the lowercase, prefixed id stored in the catalog.",
+        "fix": [
+          "In the Environment bullet, add: 'Before any lookup or file name, write each id in its canonical form: lower-case, with `todo-` added when missing (`K7QF` -> `todo-k7qf`).'",
+          "Or tell retire and split to run the dry run first and take the canonical ids from its first line (`would retire todo-k7qf, ...` / `would split todo-m3x9 into ...`) before reading the items.",
+          "In todo-editor.md:47-48 and :115, tell the agent to canonicalize the id itself before its Grep and the spec file name: lower-case it, drop a trailing ',' or ';', and prefix `todo-` when missing.",
+          "In todo-editor.md:47-48 say to Grep for the canonical form: lowercase the id and add the todo- prefix when it is a bare code (or Grep case-insensitively for the bare code), before reading around the hit."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "taken_ids ignores ids the catalog still records in legacy_ids and split_ids",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/ids.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/ids.py",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py"
+        ],
+        "lines": "55-57",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "taken_ids returns live item ids plus retired_ids only. An item deleted by hand (not through retire) leaves its id in legacy_ids.map values or split_ids parts but outside both sets, so add or split can redraw it; resolve_ids then reports 'TODO-012 ... meant todo-xxxx (<unrelated new title>)' and split_ids names a part that is now a different item, contradicting the schema's 'a retired id is never reused' intent. T6 does not flag legacy map values that are neither live nor retired, so nothing surfaces the gap.",
+        "fix": [
+          "Add the string values of legacy_ids.map and the keys and parts of split_ids to the set taken_ids returns.",
+          "Or add a T6 check that every legacy_ids.map value is a live item or in retired_ids."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "migrate imports private helpers _companions and _under from retire",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/migrate.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/migrate.py",
+          "plugins/harness/lib/harness_lib/todo_sync/retire.py"
+        ],
+        "lines": "25-26",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "migrate.py imports the underscore-private _companions and _under across modules; they are now shared API of retire.py, so the leading underscore misstates their contract and a later private refactor of retire breaks migrate silently.",
+        "fix": [
+          "Rename them companions and under_any (or similar public names) in retire.py and update retire.py and migrate.py call sites."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "migrate-ids --exclude silently ignores absolute or cwd-relative paths",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/migrate.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/migrate.py",
+          "plugins/harness/scripts/todo_sync.py"
+        ],
+        "lines": "273-290",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "live_files compares each --exclude value, after posix() (backslashes and a leading ./ only), as a prefix of the project-relative paths git grep prints from the project root. An absolute path (E:/repo/vendor) or a path relative to a working directory below the root (cwd docs/, --exclude old for docs/old) never matches, so the exclusion is a no-op and a real run rewrites the files the person meant to keep. Nothing reports that an --exclude matched no candidate.",
+        "fix": [
+          "Resolve each --exclude against the working directory, take it relative_to(cfg.project_root) and refuse (TodoSyncError) one that lies outside the root; keep the component-prefix match on the result.",
+          "Alternatively, report each --exclude that matched no candidate as an 'exclude matched nothing:' line in summary_lines so a dry run exposes the typo."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "_ID_RECORDS and the catalog mention walker are duplicated in retire and reshape",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+          "plugins/harness/lib/harness_lib/todo_sync/retire.py"
+        ],
+        "lines": "45,379-395",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "retire.py:28 and reshape.py:45 each define the same `_ID_RECORDS` frozenset. `_dangling` (retire.py:111-126) and `_split_flags` (reshape.py:379-395) repeat the same walk: items under `items/<id>`, the id records skipped, `todo_ids.mentions` on each string. Only the note text differs. A fourth id record added later must be added in both places or one scan starts flagging it.",
+        "fix": [
+          "Keep one `mention_paths(data, ids, note)` helper and the `_ID_RECORDS` constant in retire.py (reshape already imports from retire). Have both `_dangling` and `_split_flags` call it."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "add_items and refresh_items skip the legacy guard their siblings apply",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+        "lines": "95-100,113-131",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "`split_item` (reshape.py:78) and `retire_items` (retire.py:50) call `todo_ids.require_stable`, and their docstrings list the legacy refusal. The pure `add_items` (reshape.py:113-131) and `refresh_items` (:95-100) do not. On a `TODO-NNN` catalog, `add_items` builds a mixed catalog: a stable-id item among legacy ids. Only `_apply`'s `load_catalog` keeps the driver safe, so a library caller of the pure function gets no refusal.",
+        "fix": [
+          "Call `todo_ids.require_stable(catalog, \"add\")` at the top of `add_items` and `todo_ids.require_stable(catalog, \"refresh\")` in `refresh_items`, and add the Raises line to each docstring."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "write_edits keeps a dead edits parameter and a stale docstring",
+        "file": "plugins/harness/lib/harness_lib/todo_sync/retire.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/todo_sync/retire.py",
+          "plugins/harness/lib/harness_lib/todo_sync/reshape.py",
+          "tests/lib/test_todo_sync_file_issue.py"
+        ],
+        "lines": "212-216,289-290",
+        "reviewer": "runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Both callers now pass edits={} (retire.py:182, reshape.py:555), so the companion-write loop never runs, and the docstring 'Write the catalog atomically, then each rewritten companion' contradicts apply_retirement and _apply, which state that only the catalog is written.\n\nAlso (overall): Every caller now passes `{}`: retire.py:182 and reshape.py:555. The `edits` parameter and its loop in `write_edits` (retire.py:212-216) are dead, and the docstring 'then each rewritten companion' describes writes that no longer happen. `_companions` (retire.py:289-290) still says the companions are 'files whose TODO ids follow the catalog', which stopped being true when id rewrites were removed. tests/lib/test_todo_sync_file_issue.py:156 patches `write_edits` with `*args`, so dropping the parameter breaks nothing.\n\nAlso (system_shape): retire.write_edits (retire.py:212-216) is documented as 'Write the catalog atomically, then each rewritten companion', while the module docstring (retire.py:1-9) and every caller (retire.py:182, reshape.py:555) now write only the catalog and pass edits={}. The edits parameter has no production use left; the only other consumer is the test stub that swaps reshape.write_edits (tests/lib/test_todo_sync_file_issue.py:159).",
+        "fix": [
+          "Drop the edits parameter and its loop, update the docstring to 'Write the catalog atomically', and update both callers (tests/lib/test_todo_sync_file_issue.py monkeypatches reshape.write_edits by name, so keep the function name).",
+          "Reduce `write_edits` to `(cfg, catalog_text)` writing only the catalog. Update its docstring and the two callers, and reword the `_companions` docstring to 'the research catalog and the stubs, scanned for mentions of a retired or split id (and rewritten only by migrate-ids)'.",
+          "Drop the edits parameter (and its loop) from write_edits, update both callers and the test stub's signature, and change the docstring to 'Write the catalog atomically'.",
+          "Keep the signature and change the docstring to say callers pass {} since ids became stable, so the module reads consistently."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "schemas README says legacy_ids is written once, but a migrate-ids rerun extends the map",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/todo_sync/migrate.py"
+        ],
+        "lines": "180-181",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plugins/harness/schemas/README.md:181 describes `legacy_ids` as 'written once by `todo_sync.py migrate-ids`'. The code and decision D12 say otherwise: migrate.py:73 sets `data[\"legacy_ids\"] = {\"migrated\": migrated, \"map\": {**known, **mapping}}`, so a rerun on a catalog that gained `TODO-NNN` items (for example from a branch merged after the switch) adds new entries to the stored map. A reader who treats the record as write-once would not expect it to change.\n\nAlso (system_shape): plugins/harness/schemas/README.md:180 describes legacy_ids as 'written once by todo_sync.py migrate-ids'. migrate_catalog (migrate.py:66-73) rewrites legacy_ids on every rerun, adding new legacy ids to the stored map (plan D12, todo_sync.py:76-78), so the record is not write-once.",
+        "fix": [
+          "Replace 'written once by `todo_sync.py migrate-ids`' with 'written by `todo_sync.py migrate-ids`; a rerun adds new legacy ids and never changes a stored entry'.",
+          "Reword to 'written by todo_sync.py migrate-ids; a rerun adds new legacy ids to the map and keeps the first migrated date'."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "Schema description omits duplicate-id findings on a legacy catalog",
+        "file": "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_todo.py"
+        ],
+        "lines": "5",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The top-level description says a catalog with rank-tied TODO-NNN ids 'gets one T6 finding naming todo_sync.py migrate-ids'. t6_ids_and_ranks returns the migrate finding plus every duplicate-id finding for such a catalog (rules_todo.py:193-196), and schemas/README.md already says '(plus any duplicate ids)'. The schema prose is the only copy that claims exactly one.",
+        "fix": [
+          "Reword to 'gets one T6 finding naming todo_sync.py migrate-ids, plus any duplicate-id findings', matching schemas/README.md."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Driver docstring omits that untracked also refuses a legacy catalog",
+        "file": "plugins/harness/scripts/todo_sync.py",
+        "files": [
+          "plugins/harness/scripts/todo_sync.py",
+          "plugins/harness/lib/harness_lib/todo_sync/issues.py"
+        ],
+        "lines": "83-84",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "todo_sync.py's docstring says a catalog still holding TODO-NNN ids 'refuses add, retire, split and refresh', but find_untracked now calls require_stable(..., 'untracked') too, so untracked also exits 2 naming migrate-ids.",
+        "fix": [
+          "Add untracked to the list: 'refuses untracked, add, retire, split and refresh, naming migrate-ids'."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Shared min fixture still says ids are reproducible from the item fields",
+        "file": "tests/fixtures/todo_sync/TodoCatalog.min.json",
+        "files": [
+          "tests/fixtures/todo_sync/TodoCatalog.min.json",
+          "tests/lib/test_todo_sync_scaffold.py"
+        ],
+        "lines": "58",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "TodoCatalog.min.json ranking_method.notes still ends 'so ids and ranks are reproducible from the item fields alone.' (line 58). Under stable ids that sentence is false, and the PR changed the starter catalog to say 'ranks are reproducible from the item fields alone; ids never change', with test_todo_sync_scaffold.py:52 asserting the old phrase is gone from it. Every lib and script test copies this fixture, so the stale contract text ships in every test project and in any snapshot rendered from it. The legacy fixture keeps the old wording on purpose, since it models a catalog from before the switch.",
+        "fix": [
+          "Replace the last sentence of ranking_method.notes in tests/fixtures/todo_sync/TodoCatalog.min.json with the starter wording from scaffold.py:67 ('... so ranks are reproducible from the item fields alone; ids never change.')."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Scripted rng stand-in copied into three test modules",
+        "file": "tests/lib/test_todo_sync_add.py",
+        "files": [
+          "tests/lib/test_todo_sync_add.py",
+          "tests/lib/test_todo_sync_ids.py",
+          "tests/lib/test_todo_sync_reshape.py",
+          "tests/lib/_todo_helpers.py"
+        ],
+        "lines": "19-28",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The Scripted class (an rng whose choice() pops the next scripted character and asserts seq == ALPHABET) is defined identically in tests/lib/test_todo_sync_ids.py:17-25, tests/lib/test_todo_sync_add.py:19-28 and tests/lib/test_todo_sync_reshape.py:23-32. If the id generator's draw contract changes (for example, a different alphabet argument), all three copies have to change in step.\n\nAlso (overall): The same `Scripted` class (a `choice` that pops a fixed script and asserts the alphabet) is defined in tests/lib/test_todo_sync_ids.py:17-25, tests/lib/test_todo_sync_add.py and tests/lib/test_todo_sync_reshape.py. The shared `_todo_helpers` module already serves all three.",
+        "fix": [
+          "Move Scripted into tests/lib/_todo_helpers.py next to ID1-ID3, import it in the three modules and delete the local copies.",
+          "Move `Scripted` into tests/lib/_todo_helpers.py and import it in the three test files."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "is_id positive checks repeated in every parametrized case",
+        "file": "tests/lib/test_todo_sync_ids.py",
+        "lines": "59-70",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_is_id_rejects_words_numbers_lookalikes_and_case (tests/lib/test_todo_sync_ids.py:59-64) is parametrized over 14 rejected strings, and every case also asserts the same three accepted ids. test_canonical_accepts_any_case_and_a_bare_code (lines 67-70) has the same pattern with its three None checks. A regression in the accepted set shows up as 14 or 7 identical failures, all named after unrelated rejected inputs.",
+        "fix": [
+          "Move the accepted-id assertions into their own unparametrized test (for example test_is_id_accepts_stable_codes), and do the same for the canonical None checks."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Module docstrings still say only TodoCatalog.min.json is used",
+        "file": "tests/lib/test_todo_sync_rules_todo.py",
+        "files": [
+          "tests/lib/test_todo_sync_rules_todo.py",
+          "tests/lib/test_todo_sync_reshape.py",
+          "tests/lib/test_todo_sync_retire.py"
+        ],
+        "lines": "1",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstrings of test_todo_sync_rules_todo.py (line 1), test_todo_sync_reshape.py (lines 1-3) and test_todo_sync_retire.py (lines 1-3) say their tests run on copies of TodoCatalog.min.json. Each module now also imports LEGACY_CATALOG and runs refusal or T6 tests on TodoCatalog.legacy.json (for example test_t6_reports_a_legacy_catalog_once, test_split_refuses_a_legacy_catalog, test_retire_refuses_a_legacy_catalog). The module docstring of tests/scripts/test_todo_sync.py was updated to name both fixtures; these three were not.",
+        "fix": [
+          "Add a clause to each of the three docstrings saying the legacy-refusal tests use TodoCatalog.legacy.json (rank-tied TODO-001 to TODO-003), as in tests/scripts/test_todo_sync.py lines 4-7."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "Split record-skip test name no longer matches its fixture",
+        "file": "tests/scripts/test_todo_sync.py",
+        "lines": "408-410",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "In tests/scripts/test_todo_sync.py the retiring fixture now seeds commit-message records (RECORDS includes docs/_commit_messages), and the retire counterpart was renamed to test_retire_skips_plan_review_and_commit_message_records. The split test is still named test_split_skips_plan_and_review_records, although it now also proves that commit-message records are skipped.",
+        "fix": [
+          "Rename test_split_skips_plan_and_review_records to test_split_skips_plan_review_and_commit_message_records."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "New _section helper duplicates the inline slice in the delete-retired test",
+        "file": "tests/skills/test_todo_edit_skill_contract.py",
+        "lines": "39-42,71",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "tests/skills/test_todo_edit_skill_contract.py adds _section(text, heading) (lines 39-42), which returns the body up to the next level-2 heading. test_agent_gates_stub_deletion_on_run_evidence (line 71) still slices the same way inline with body.split('## delete-retired', 1)[1].split('\\n## ', 1)[0], without the helper's 'no section' assertion message.",
+        "fix": [
+          "Replace the inline slice at line 71 with section = _section(body, '## delete-retired')."
+        ]
+      },
+      {
+        "id": "M23",
+        "name": "README renumber ban covers the whole README, not the TODO text",
+        "file": "tests/skills/test_todo_stable_id_prose.py",
+        "lines": "1-2,17-20",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "test_readme_todo_text_never_renumbers (tests/skills/test_todo_stable_id_prose.py:17-20) and the module docstring scope the check to the README's TODO sync text. The code instead searches every line of README.md for /[Rr]enumber/. The README also documents plans, parallel2, bookmarks and PR tooling, so a legitimate 'renumber' anywhere else (plan or lane numbering, for example) fails a test about TODO ids, and the failure message points at the wrong feature.\n\nAlso (overall): `test_readme_todo_text_never_renumbers` (tests/skills/test_todo_stable_id_prose.py:17-20) fails on any 'renumber' anywhere in README.md. The README covers every plugin, so a later unrelated sentence would fail this TODO guard. An example is commit-block renumbering, which branch-commit-msg and amend-commit-msg do. The test name promises a narrower check than it makes.",
+        "fix": [
+          "Limit the search to the TODO paragraphs, as test_readme_documents_migrate_ids already does: filter _paragraphs() to those naming todo_sync.py, RepoToDo or TODO, then assert no renumber hit in them.",
+          "Keep the global scan, but rename the test and update the docstring to state that the whole README is banned from saying 'renumber'.",
+          "Limit the scan to the TODO section, for example the paragraphs naming `todo_sync.py`, `todo-edit`, `add-todo` or `sync-gh-todo`, the way `test_readme_documents_migrate_ids` already filters paragraphs."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M5",
+      "classification": "out_of_scope",
+      "reason": "Fix belongs in strap.py (relative tree path, redact project root before hashing), untouched by this PR; recorded runs are hashed and final."
+    },
+    {
+      "id": "M4",
+      "classification": "needs_follow_up",
+      "reason": "Frozen strap spec locks behavior statements; widening B4 to split_ids needs a new strap.py new todo-edit --edit pass."
+    },
+    {
+      "id": "M3",
+      "classification": "needs_follow_up",
+      "reason": "Both fixes are outside the PR: open a GitHub issue for MIG-2 (developer call) or add a deferred section to plan.py render."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 248 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":9,\"first_sha\":\"522b961a4e61e03e87183fe4b0ca3943ba429ff6\",\"headRefName\":\"1143-todo-numbering\",\"headRefOid\":\"cdd94d2deef1d833668ea9ae0792cc68e77b5a9f\",\"last_sha\":\"cdd94d2deef1d833668ea9ae0792cc68e77b5a9f\",\"mergeCommit\":null,\"number\":248,\"state\":\"OPEN\",\"title\":\"1143 todo numbering\",\"url\":\"https://github.com/t968rs/operator-straps/pull/248\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1143-todo-numbering",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1143-todo-numbering",
+        "head_ref_name": "1143-todo-numbering",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "522b961a4e61e03e87183fe4b0ca3943ba429ff6",
+        "head_sha": "cdd94d2deef1d833668ea9ae0792cc68e77b5a9f",
+        "base_ancestor_command": "git merge-base --is-ancestor 522b961a4e61e03e87183fe4b0ca3943ba429ff6 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor cdd94d2deef1d833668ea9ae0792cc68e77b5a9f HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - migrate.py imports and calls the public names companions and under_any from retire (the retire.py rename is the other part's); retire.py renames _companions to companions and _under to under_any and updates its own call sites (other_references, companion_mentions); migrate.py imports belong to the other part"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - new migrate.exclude_paths resolves each --exclude against the working directory, takes it relative to the project root and refuses (TodoSyncError) one at or outside the root; the driver passes Path.cwd() and its docstring and --exclude help describe the rule; live_files keeps the component-prefix match"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - migrate.py: cited as evidence only; migrate_catalog already extends legacy_ids.map and keeps the first migrated date, so the README wording (other part) is the fix; legacy_ids row now reads 'written by todo_sync.py migrate-ids; a rerun adds new legacy ids to the map and keeps the first migrated date' (plugins/harness/schemas/README.md:180). Wording matches migrate.py:66-73, which keeps the first migrated date and refuses ids already in the map."
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - todo_sync.py module docstring now lists untracked among the commands a legacy catalog refuses; Fix is the todo_sync.py docstring refusal list (other part). issues.py find_untracked already calls require_stable(..., 'untracked'); no edit in this part."
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - todo_sync.py docstring: untracked section names the legacy-catalog refusal, and migrate-ids says it rewrites each tracked or untracked text file git grep finds, source and tests included; migrate.py: cited only, its live_files behaviour is what the docs now describe; sync-gh-todo SKILL.md Step 1 problem list names the untracked refusal on a catalog still holding TODO-NNN ids (pointing at todo_sync.py migrate-ids); README and code docstrings belong to the other part; add_todo.py docstring (lines 7-10) already names the legacy TODO-NNN refusal and migrate-ids, and the add-todo refusal text matches the code (add_todo.py:68); no edit. The README, migrate.py, todo_sync.py, issues.py and sync-gh-todo SKILL.md edits belong to the other parts.; README.md migrate-ids paragraph: dry run lists files, the run rewrites every live file naming an old id (with skips), history set lists scratch and planning prefixes; refusal sentence now names untracked, /harness:add-todo and /harness:sync-gh-todo, and plus any duplicate-id findings. issues.py find_untracked docstring now states it refuses a legacy catalog naming migrate-ids."
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - Reflowed todo-edit SKILL.md lines 27-32 (the ~200-character --delete-retired line) to about 110 columns; the I2 rewording of the same paragraph kept that width.; README.md: reflowed the todo-edit paragraph (around lines 418-421) and the add paragraph (around lines 443-444) to the usual width; no wording changed. todo-edit SKILL.md is in the other part."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - todo-editor.md Environment: new bullet tells the agent to write each id in canonical form (lower-case, trailing , or ; dropped, todo- added when missing; K7QF, -> todo-k7qf) before any Grep, Read or split-<id>.json file name. SKILL.md: Step 1 now has the session split ids into separate pieces, so a comma-joined token never reaches the Ids line."
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - ids.taken_ids now also returns the string values of legacy_ids.map and the keys and parts of split_ids (new helper _recorded_ids), so a draw never reuses an id the records still name; test_taken_ids_hold_ids_the_legacy_map_and_split_ids_record pins it.; rules_todo.py: T6 now flags each legacy_ids.map value that is neither a live item nor in retired_ids (new _legacy_orphans, wired into t6_ids_and_ranks); T6 docstring updated. ids.py taken_ids is the other part."
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - test_todo_sync_ids.py drops its local Scripted class and imports Scripted from tests/lib/_todo_helpers.py (already added there by the other part's fixer), with the sys.path insert the sibling modules use.; tests/lib/test_todo_sync_reshape.py: deleted the local Scripted class and its ALPHABET import; imports Scripted from _todo_helpers (added there by the other part's fixer). add and ids copies are the other part's files.; Deleted the local Scripted class from tests/lib/test_todo_sync_add.py and imported Scripted from _todo_helpers; dropped the now-unused ALPHABET import. _todo_helpers.py:33 already defines Scripted (added by the other part's fixer).; Moved the Scripted rng stand-in into tests/lib/_todo_helpers.py next to ID1-ID3 (imports ALPHABET from harness_lib.todo_sync.ids); the three test modules import it there (other fixer's part)"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - Moved the accepted-id asserts into an unparametrized test_is_id_accepts_stable_codes and the canonical None checks into test_canonical_rejects_words_numbers_and_empty."
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - ids.resolve_ids splits each raw at [,;\\s]+ and drops empty pieces (new _pieces helper), so k7qf,2a2a resolves as two ids, pinned by test_resolve_splits_a_joined_id_list. SKILL.md Step 1 states the id shape and the guidance boundary, has the session split ids at commas and whitespace and join them with ', ' on the Ids line, and lists an old rank-tied id among the refusals; the paragraph is wrapped at 110. todo-editor.md: TS retire <ids> needs no change now that the script splits joined tokens. Note: reshape.split_item unpacks [orig_id], so a split raw that joins two live ids would raise ValueError rather than TodoSyncError; the skill already refuses --split with more than one id."
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - retire.py gains mention_paths(data, ids, note) holding the single _ID_RECORDS walk; _dangling and reshape._split_flags call it, and reshape drops its _ID_RECORDS copy and the walk_strings import"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - add_items and refresh_items call todo_ids.require_stable with 'add' and 'refresh' first and their docstrings gain the Raises line"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - write_edits reduced to (cfg, catalog_text) with docstring 'Write the catalog atomically'; both callers drop the {} argument; companions docstring now says the research catalog and stubs are scanned for mentions of a retired or split id and rewritten only by migrate-ids; test_todo_sync_file_issue.py: its write_edits stub takes *args, so no edit"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - Module docstrings of test_todo_sync_reshape.py, test_todo_sync_retire.py and test_todo_sync_rules_todo.py now name TodoCatalog.legacy.json (rank-tied TODO-001 to TODO-003) for the legacy-refusal and T6 cases."
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - tests/scripts/test_todo_sync.py:408 renamed test_split_skips_plan_and_review_records to test_split_skips_plan_review_and_commit_message_records; no other reference to the old name."
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - Fix is the top-level description in TodoCatalog.schema.json (other part). rules_todo.py t6_ids_and_ranks already returns the migrate finding plus duplicate-id findings; no edit in this part.; Top-level description now says 'gets one T6 finding naming todo_sync.py migrate-ids, plus any duplicate-id findings, instead of a pattern error per id' (plugins/harness/schemas/catalogs/TodoCatalog.schema.json:5), matching schemas/README.md."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - Prefixed the stable-id bullet with #248 and added the closing full stop after the commit_format.md backtick rule (docs/RELEASES/v0.7.0.md:18-24)."
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - ranking_method.notes last sentence now reads 'so ranks are reproducible from the item fields alone; ids never change.' (tests/fixtures/todo_sync/TodoCatalog.min.json:58), matching scaffold.py:66-67."
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - test_agent_gates_stub_deletion_on_run_evidence now uses _section(body, '## delete-retired') instead of the inline slice"
+    },
+    {
+      "id": "M23",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "cdd94d2 (working-tree snapshot; developer commits) - test_readme_todo_text_never_renumbers scans only README paragraphs naming todo_sync.py, todo-edit, add-todo, sync-gh-todo or RepoToDo, and asserts such paragraphs exist"
+    }
+  ]
+}
