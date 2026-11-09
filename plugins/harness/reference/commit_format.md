@@ -77,6 +77,9 @@ do not make it clear, default to `Feature` and note the ambiguity in the body.
 - **No double quotes.** The commit driver hands the message to `git commit -m` as one argument, and a double
   quote ends that argument early on some hosts: the rest reaches git as pathspecs and the commit fails. Name a
   term with backticks or single quotes (`` `--` ``, `'Guidance'`); `build` rejects every `"`, backticked or not.
+- **Backtick every `TODO`.** A `TODO` or `todo` term in the subject or body prose goes inside backticks
+  (`` `TODO` `` ids, `` `todo-k7qf` ``, `` `todo-edit` ``): a bare TODO reads as an open to-do marker to readers
+  and to tools that scan history for one. The scope (`todo_sync`) and a bullet's leading file name stay bare.
 - **Read the diff before writing.** A message drafted from filenames alone ("modify converter") is filler too.
 - Optional final line: a status or result when it adds information (`→ COMPLETE`, `99/99 PASS`). Use `→` for state
   transitions.
