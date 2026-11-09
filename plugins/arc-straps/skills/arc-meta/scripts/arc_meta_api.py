@@ -12,6 +12,10 @@ the apply writers use, so the checker and the writers cannot drift. Locations co
 ``plugins.arc-straps.arc_meta`` in ``.claude/harness.json`` through ``paths(repo)``; ``repo`` defaults to
 the active project. Refusals raise ``ApiError``, a ``ValueError``; a configuration defect raises the
 harness ``ConfigError`` unchanged. ``__all__`` is the surface the api heredoc binds.
+
+``<a href>`` is a supported tag. A ``<para>`` field holds plain text, so ``check_canonical`` reports a
+child element inside one as ``unsupported_para_markup``. ``check_applied`` compares text with each link's
+href appended (``text_with_links``), so an href-only change reads as ``page_stale``.
 """
 from __future__ import annotations
 
@@ -35,7 +39,7 @@ __all__ = [
     "check_applied", "entry_sources", "format_rows", "format_problems", "paths",
 ]
 
-SUPPORTED_TAGS = frozenset({"p", "b", "strong", "i", "em", "ul", "li", "para"})
+SUPPORTED_TAGS = frozenset({"p", "b", "strong", "i", "em", "ul", "li", "a", "para"})
 PARAM_ATTRS = ("displayname", "type", "direction", "datatype")
 _PREFIX = re.compile(r"^\d+[A-Za-z]?[\s_]")
 _TAG = re.compile(r"<(/?)([A-Za-z][A-Za-z0-9]*)")
@@ -186,9 +190,32 @@ def _field_markup_problems(tool: str, field: str, html: str, param: Optional[str
     return problems
 
 
+def _para_problems(tool: str, field: str, element: Optional[ET.Element],
+                   param: Optional[str]) -> List[Problem]:
+    """One ``unsupported_para_markup`` problem per ``<para>`` of ``element`` that holds a child element.
+
+    The readers flatten a ``<para>`` to its text, so a child element vanishes unless the field is CDATA HTML.
+    """
+    if element is None:
+        return []
+    return [_problem(ProblemCode.UNSUPPORTED_PARA_MARKUP, tool,
+                     f"{field}: <para> holds <{'>, <'.join(sorted({child.tag for child in para}))}>; "
+                     "write the field as CDATA HTML", param)
+            for para in element.findall("para") if len(para)]
+
+
+def _para_markup_problems(tool: str, tool_el: ET.Element) -> List[Problem]:
+    problems = [problem for tag in ("summary", "usage")
+                for problem in _para_problems(tool, tag, tool_el.find(tag), None)]
+    for param in tool_el.iter("param"):
+        problems += _para_problems(tool, "dialogReference", param.find("dialogReference"), param.get("name"))
+    return problems
+
+
 def _markup_problems(tool: str, tool_el: ET.Element) -> List[Problem]:
-    return [problem for param, field, html in _rich_fields(tool_el)
-            for problem in _field_markup_problems(tool, field, html, param)]
+    problems = [problem for param, field, html in _rich_fields(tool_el)
+                for problem in _field_markup_problems(tool, field, html, param)]
+    return problems + _para_markup_problems(tool, tool_el)
 
 
 def _text_problems(tool: str, text: str, tool_el: ET.Element) -> List[Problem]:
@@ -238,7 +265,7 @@ def check_canonical(tool: str, repo: RepoLike = None) -> List[Problem]:
 # --- check_applied: hover text --------------------------------------------------------------------------
 
 def _plain(markup: Optional[str]) -> str:
-    return " ".join(mf.plain_text(mf.parse(markup or "")).split())
+    return " ".join(mf.text_with_links(mf.parse(markup or "")).split())
 
 
 def _shown_plain(markup: Optional[str]) -> Optional[str]:

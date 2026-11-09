@@ -1,0 +1,475 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 250,
+  "pr_title": "arcgis help links plan",
+  "branch": "1145-help-links-plan",
+  "base_branch": "main",
+  "base_sha": "e703a52a7fe49c29497eec9e00176911228a69b8",
+  "head_sha": "567b9c5bf33d7071a2886c61d0c9cc8a6603363a",
+  "review_date": "2026-11-09",
+  "verdict": "READY TO MERGE - 16 of 16 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 2711,
+    "deletions": 38,
+    "files_changed": 15,
+    "source": {
+      "additions": 2708,
+      "deletions": 38,
+      "files_changed": 14
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0250/pr250_20261109T234316Z/findings/tests.json",
+    "docs/_scratch/pr_review/0250/pr250_20261109T234316Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0250/pr250_20261109T234316Z/findings/docs.json",
+    "docs/_scratch/pr_review/0250/pr250_20261109T234316Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0250/pr250_20261109T234316Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every new test is behavioral: the parser, renderers and writers run for real on the make_toolbox demo archive, with no stubbed collaborators.",
+    "The parser refusals cover each documented case (missing, empty or name-only href, nested <a>, unclosed at the end of a <p>, an <li> and the markup) with parametrized ids.",
+    "test_check_applied_reports_an_href_only_change_as_page_stale pins the key design decision: an href-only change is page_stale on every surface, not page_style_stale, so a generator sweep cannot publish unchecked targets; the paired guard test proves an unchanged href stays clean.",
+    "BAD_CANONICAL swaps its <a> for <code>, so the existing unsupported_tag expectation in test_arc_meta_api.py keeps a real unsupported tag now that <a> is supported.",
+    "The release-notes test globs docs/RELEASES/ and declares WALK_ROOTS accordingly, so selection reruns it on release-note edits, and its path strings carry the arc-straps anchor for plugin.json and README.md changes.",
+    "The skill contract's negative assertion ('no links' gone) is meaningful: it runs on whitespace-normalized text, where the old rule's 'no\\n  links' line break would otherwise have hidden it.",
+    "text_with_links feeds only the comparison key, so an href-only edit reads as page_stale on the help page. Hover checks stay text-only because both sides of that comparison are xdoc or plain text without hrefs, so the checker and the writers stay consistent.",
+    "_para_problems surfaces the old silent loss of child elements inside a <para> (inner_html flattens them with itertext) as a named unsupported_para_markup problem with an actionable detail.",
+    "Href values are escaped for double-quoted attributes through one helper (_attr), used by both the Pro HTML and canonical renderers.",
+    "Pulling _run_canon out keeps to_canonical the inverse of parse: the link wraps the bold/italic markup, and the parser reads it back as the same runs.",
+    "Run.href defaults to None, so existing positional Run construction and _replace calls keep working unchanged.",
+    "The SKILL.md API row for check_canonical names `unsupported_para_markup`, which matches the new ProblemCode and the module docstrings in arc_meta_models.py and arc_meta_api.py.",
+    "The SKILL.md rule that a `<para>` holds plain text only matches the code: _para_problems covers the summary, the usage and each dialogReference.",
+    "The release table row, the plugin.json bump and the README sentence change together, and contract tests pin them so they cannot drift.",
+    "The plan records each decision with its rejected options and rationale, and gives the split-PR boundary (D10) with explicit version steps for PR A and PR B.",
+    "The parser refuses a nested <a>, a missing or empty href, and an <a> still open at </p>, </para>, </li> or the end of the markup, so an href cannot leak into the next block; the module docstring lists exactly these refusals.",
+    "Hover checks stay consistent: fields_of already flattens the summary to plain text and renders parameters as xdoc without hrefs, so text_with_links compares link-free strings on both sides of the rc check and only the page sees href changes.",
+    "plain_text and text_with_links share one _flatten helper, so plain_text's output is unchanged for every existing caller.",
+    "unsupported_para_markup closes a silent drop (inner_html flattens a <para> through itertext); the code ships in the models enum, the API check, the SKILL check_canonical row, the plugin README and the v0.7.0 notes together.",
+    "Hrefs round-trip safely: HTMLParser unescapes attribute values and _attr re-escapes &, <, > and double quotes for both the Pro <A HREF> and the canonical <a href>.",
+    "The parser refuses an unclosed `<a>` at </p>, </para>, </li> and the end of the markup, so an href cannot leak into the next block, and test_an_unclosed_a_is_refused_at_the_end_of_its_block covers all three exits.",
+    "`_plain` switches to text_with_links, so an href-only change reads as page_stale instead of page_style_stale and a generator sweep cannot publish an unchecked link. A guard test pins that an unchanged href stays clean on both surfaces.",
+    "The writer tests run the real apply_page and apply_rc on a make_toolbox archive and then assert check_applied == []: behavioral end to end, with no mocks.",
+    "`_para_problems` reads the parsed `<para>` elements because inner_html has already dropped the children by the time `_rich_fields` sees the field. The check sits at the only layer that can see the markup.",
+    "`Run.href` defaults to None, so every positional Run(text, bold, italic) constructor and every _replace call keeps working, and link-free output stays byte-identical.",
+    "The release guards (manifest version in a release-notes row, manifest and marketplace descriptions equal) hold through both planned bumps and declare their WALK_ROOTS, so select_tests routes them correctly."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Authoring rule drops the relative-link warning while nothing checks relative hrefs",
+        "file": "plugins/arc-straps/skills/arc-meta/SKILL.md",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/SKILL.md",
+          "plugins/arc-straps/README.md",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+          "tests/skills/test_arc_meta_skill_contract.py",
+          "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+          "docs/RELEASES/v0.7.0.md"
+        ],
+        "lines": "138-143",
+        "reviewer": "docs, skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The old Format bullet explained that the \"?\" page renders from a temp copy, so relative links break. The new text (SKILL.md:140-143) allows any `<a href>` and removes that warning. The only code that reports relative hrefs, `link_relative` (plan D9, TASK-7), belongs to PR B and is still PENDING. At this head, arc-meta passes `docs/demo.html` or `../x.html` through to the page with no warning, and the skill no longer tells the author the link will be dead. The plan's own D9 rationale says a relative href \"is dead on the '?' page\".\n\nAlso (skill_package): The Format bullet replaced 'no links (the \"?\" page is rendered from a temp copy, so relative links break ...)' with '`<a href>` passes through to the \"?\" page'. The reason the old rule gave still holds: Pro renders the page from %TEMP% (SKILL.md 179), so a relative href breaks. check_canonical accepts any non-empty href (arc_meta_format.py _open_link 93-100, SUPPORTED_TAGS now holds 'a'), and the link_relative check the plan assigns to arc-help-pages (plan D9) does not exist at this head. An author following the skill as merged writes <a href=\"../help/x.html\">, gets `clean` from check_canonical and check_applied, and publishes a dead link.\n\nAlso (roast): The Format bullet says link targets and help pages 'belong to `arc-help-pages`', but this PR ships arc-straps 0.2.0 with only `arc-meta` (plugins/arc-straps/skills/ holds one skill). The plan makes arc-help-pages PR B (TASK-4 to TASK-9, PENDING), gated on a Pro click-test that 'can stop Section 3' (D10; TASK-4 notes). TASK-3.1 step 4 says 'No arc-help-pages mention anywhere: that is PR B', yet TASK-3 step 1 puts the name in this file. An agent that follows the bullet goes looking for a skill that is not installed, and if the Gate fails the pointer stays wrong for good. The contract test pins it too (tests/skills/test_arc_meta_skill_contract.py:152). It points at a skill that may never ship.\n\nAlso (roast): The removed sentence explained that the \"?\" page is rendered from a temp copy, so relative links break. This PR adds `a` to SUPPORTED_TAGS (arc_meta_api.py:42), so `check_canonical` now reports `<a href=\"docs/x.html\">` as clean. The only check for relative hrefs, `link_relative` (D9), lives in PR B's check_links. In PR A nothing checks a relative href and nothing warns about it, so an author following the skill can ship a dead link to the \"?\" page with every check clean. The PR made links legal and removed the one sentence that said how to write them.\n\nAlso (docs): SKILL.md:141-142 says link targets and help pages 'belong to `arc-help-pages`'. That skill does not exist at this head: plugins/arc-straps/skills/ holds only arc-meta, and plan TASK-4 to TASK-9 are PENDING. Plan D10 says the Gate can stop Section 3, and TASK-3.1 step 4 says there is 'No arc-help-pages mention anywhere: that is PR B'. arc-straps 0.2.0 therefore ships prose that sends an agent to a missing skill, possibly for good. The sentence is pinned by tests/skills/test_arc_meta_skill_contract.py:152.\n\nAlso (skill_package): The Format bullet says 'link targets and help pages belong to `arc-help-pages`', but plugins/arc-straps/skills/ holds only arc-meta at 567b9c5; the skill arrives in a later PR (plan TASK-4 to TASK-9). Until then the pointer dangles, and a release cut in between ships arc-meta pointing at nothing. The plan itself says no arc-help-pages mention belongs in this PR's descriptions.\n\nAlso (skill_package): SKILL.md 138-139 states 'The subset is `<p>`, `<b>`, `<i>`, `<ul>`/`<li>` with one level of `<ul>` inside an `<li>`', while the generator docstring (arc_meta_format.py 13-16) and SUPPORTED_TAGS (arc_meta_api.py 42) now put `<a href>` in the supported subset. The link sentence two lines later adds it back, so the bullet now gives the subset in two places that disagree.\n\nAlso (roast): Before this PR, an `<a name=...>` or a bare `<a>` collapsed to its text and check_canonical only reported unsupported_tag; the writers still applied. Now `_open_link` (arc_meta_format.py:93-100) raises, so check_canonical reports `unparseable` and apply_page, apply_rc and apply_toolbox's load_source refuse the field. The same applies to a nested or unclosed `<a>`. arc_meta_format's docstring records the refusal, but the SKILL.md Format bullet, the plugin README sentence and the release-note line describe links only as passing through. A project with an old named anchor learns about this when its apply stops.",
+        "fix": [
+          "Add one sentence to the Format bullet after the pass-through sentence: 'A relative href breaks (the \"?\" page renders from a temp copy); write an absolute `file:///` or web URL.' The contract tests in tests/skills/test_arc_meta_skill_contract.py:145-162 still pass, because they only check that the words 'no links' are absent.",
+          "Keep one clause in the Format bullet: 'Use absolute URLs (a scheme or a fragment); the \"?\" page renders from a temp copy, so a relative href breaks.'",
+          "Or have check_canonical report an href with no scheme that does not start with '#' (urllib.parse.urlsplit), the same rule the plan gives link_relative, so the skill's Step 3 `clean` gate catches it.",
+          "Reword SKILL.md:141-142 to say arc-meta does not check link targets (for example, '`<a href>` passes through to the \"?\" page and hovers show the link text; arc-meta does not check where a link points'). Drop the `arc-help-pages` assertion from tests/skills/test_arc_meta_skill_contract.py:152 and move the hand-off sentence into TASK-8/TASK-9, through the plan driver.",
+          "Keep the sentence but mark it as future work ('a later `arc-help-pages` skill will own link targets') and change the test to match.",
+          "Keep the warning in the Format bullet at SKILL.md:141-142, for example: 'Write an absolute href (a `file:///` URI or a web URL): Pro renders the \"?\" page from a temp copy, so a relative href breaks.'",
+          "Have check_canonical report a relative href in this PR, by pulling D9's rule forward through the plan driver.",
+          "Reword so it does not depend on PR B: 'arc-meta does not check link targets; a later arc-straps skill (`arc-help-pages`) builds and checks help pages.' Keep the backticked name so the test at tests/skills/test_arc_meta_skill_contract.py:152 still passes.",
+          "Or drop the `arc-help-pages` clause and the test assertion from PR A, and add both back in TASK-8/TASK-9 when the skill ships.",
+          "Drop the clause until arc-help-pages lands, and let that PR add it (tests/skills/test_arc_meta_skill_contract.py 152 then moves with it).",
+          "Or mark it as forthcoming ('a later arc-straps skill, arc-help-pages, will own link targets') so the sentence is true at this head.",
+          "Make the subset sentence read '... `<ul>`/`<li>` with one level of `<ul>` inside an `<li>`, and `<a href>`.' and keep the following sentence for what the link does on each surface.",
+          "Add one clause to SKILL.md:141-142: 'an `<a>` without an `href`, nested in another `<a>` or left open is refused (`unparseable`)'. Optionally extend the release-note line at docs/RELEASES/v0.7.0.md:18 to say an `<a>` without href now blocks apply."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release-note change line lacks the PR number and type prefix",
+        "file": "docs/RELEASES/v0.7.0.md",
+        "lines": "18",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Every other line under Changes in docs/RELEASES/v0.7.0.md starts with `#<PR> Type(scope):`, for example '#249 Fix(plan): ...' and '#220 Feat(arc-straps): ...'. The new line 18 starts with plain 'arc-meta passes ...', so the published release body does not link the change to PR #250.\n\nAlso (roast): Every other entry under Changes reads '#NNN Type(scope): ...'. The new line is a bare sentence, so the release body cannot link it to this PR.",
+        "fix": [
+          "Change line 18 to '- #250 Feature(arc-meta): pass `<a href>` through to the \"?\" page and report `<para>` markup (`unsupported_para_markup`)'.",
+          "Rewrite docs/RELEASES/v0.7.0.md:18 as '- #250 Feature(arc-meta): passes `<a href>` through to the \"?\" page and reports `<para>` markup (`unsupported_para_markup`)'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Plan records an absolute machine path into a consuming project",
+        "file": "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+        "files": [
+          "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+          "docs/plans/1011_arc_straps_help_links_PIP.md"
+        ],
+        "lines": "2,4,1720",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "`source_document` (ActionPlan.json:4, rendered as PIP.md:6 **Spec:**) is `E:/automation/toolboxes/floodplain_development/docs/...`. That is a local absolute path into another repository, so nobody else can open it from this repo, and it names a consuming project in a tracked file. `deferred_to_future_plans` (ActionPlan.json:1720) also names that project. Most other plans cite a repo-relative spec or an issue URL (0002 to 0011).\n\nAlso (docs): Plans in docs/plans run 0001 to 0011, and this plan is 1011. harness_lib.plan_doc.next_plan_id (plan_doc.py:48-51) returns the highest four-digit prefix plus one, so every later plan will be numbered from 1012, leaving a gap of 1000. The id looks like a typo for 0012, or like a number carried over from the consuming project.\n\nAlso (roast): `source_document` is 'E:/automation/toolboxes/floodplain_development/docs/...', a local absolute path into another repository, and the notes and deferred topics name the consuming project. The PIP renders the path again at line 6. CLAUDE.md's literal ban covers only plugins/, but tracked docs that carry machine paths go against the repository's rule that logged data never carries local paths. Plan 0001 is the only precedent.",
+        "fix": [
+          "Point `source_document` at a repo-independent reference: an issue URL, or a copy of the spec committed under docs/superpowers/specs/. Change it through the plan driver and re-render the PIP. Write the deferred topic generically ('migrate the consuming project to arc-straps').",
+          "Renumber to 0012 before merge: rename both files and docs/plans/1011/ (local, gitignored), then update `plan_id`, `documentation` and the 'docs/plans/1011/tests' text in each action, and re-render.",
+          "Or keep 1011 on purpose and say why in the PR description.",
+          "Record the spec as a project-neutral reference (for example 'consuming project: docs/superpowers/specs/2026-11-09-toolbox-help-links-design.md') through the plan driver and re-render; or accept this as plan-tooling convention and note it."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "PR B's planned tests exist only in this checkout",
+        "file": "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+        "files": [
+          "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+          "docs/plans/1011_arc_straps_help_links_PIP.md"
+        ],
+        "lines": "565-567",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "TASK-4 to TASK-9 stay PENDING after this merge, and each one starts with 'Copy each planned file from docs/plans/1011/tests/<repo path>'. Those files (test_arc_help_pages_*.py, _arc_help_project.py, the planned test_root_separation.py and others) match the ignore rule `docs/plans/**/*.py` at .gitignore:241, so the PR does not carry them. A worktree cut from main for PR B, after the Gate in another repository, will not have them, and a `git clean -X` deletes them. The plan's second half depends on untracked files.",
+        "fix": [
+          "Record in the TASK-4 notes, through the plan driver, where the planned tests live and that PR B's branch must start from this checkout, or copy them into PR B's worktree first.",
+          "Archive the planned test files somewhere tracked, or force-add them on PR B's branch, so the pending tasks can be executed from main."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Plan cites README.md:557 where the row is at 577",
+        "file": "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+        "files": [
+          "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+          "docs/plans/1011_arc_straps_help_links_PIP.md"
+        ],
+        "lines": "1182,1710",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "TASK-9's anchor correctly pins `README.md:577` (the `plugins/arc-straps/` row; `git grep` at the frozen commit 40814da agrees). Sweep S7 (ActionPlan.json:1710, PIP.md:72) and TASK-9 step 3 (ActionPlan.json:1182, PIP.md:481) cite line 557 instead. The executor of TASK-9 gets two line numbers for the same edit.",
+        "fix": [
+          "Change 557 to 577 in the S7 hit and the TASK-9 action through the plan driver, refreeze, and re-render the PIP."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "D1's chosen option names the wrong problem code",
+        "file": "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+        "files": [
+          "docs/plans/1011_arc_straps_help_links_ActionPlan.json",
+          "docs/plans/1011_arc_straps_help_links_PIP.md"
+        ],
+        "lines": "1264",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "D1's chosen option `flag_para_children` (ActionPlan.json:1264, PIP.md:14) says check_canonical reports a `<para>` child 'as unsupported_tag'. The plan's own Values row 'para markup problem code' (PIP.md:48), TASK-2 step 4, and the shipped code (arc_meta_models.py:51, arc_meta_api.py:193-212) use a separate code, `unsupported_para_markup`. A reader of the decision record gets the wrong code.\n\nAlso (roast): D1's chosen option `flag_para_children` says check_canonical reports a `<para>` child 'as unsupported_tag'. The Values table, TASK-2 step 4 and the code all use the new code `unsupported_para_markup` (arc_meta_models.py:51). The rendered PIP repeats the stale wording at line 14. Anyone reading the decision record sees a different contract from the one that shipped.",
+        "fix": [
+          "Amend the option summary to 'reports ... as unsupported_para_markup' through the plan driver (refreeze), or add a line to the D1 rationale saying the code became `unsupported_para_markup` (Values row).",
+          "Through the plan driver (the plan is frozen), amend D1's option summary or rationale to name `unsupported_para_markup`, then re-render the PIP."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "check_applied row does not say an href-only change reads as page_stale",
+        "file": "plugins/arc-straps/skills/arc-meta/SKILL.md",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/SKILL.md",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py"
+        ],
+        "lines": "208",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The API module docstring (arc_meta_api.py 17-18) says check_applied compares text with each link's href appended, so an href-only change reads as page_stale. The SKILL.md check_applied row (208) lists page_stale causes as 'a missing page, text, the resTitle or keywords, ...' with no mention of link targets, so an author who changed only an href and sees page_stale, with the hover clean, has no hint why.",
+        "fix": [
+          "In the page_stale parenthesis, change 'text' to 'text or a link target'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "_markup_problems concatenation wrapped mid-call",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+        "lines": "215-218",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "arc_meta_api.py:215-218 appends `+ _para_markup_problems(` to the end of a list comprehension and puts the arguments on a dangling continuation line. This makes the return hard to read. Para problems for a field are also listed after the problems of every other field, not next to their own field.",
+        "fix": [
+          "Split into `problems = [...field problems...]` followed by `return problems + _para_markup_problems(tool, tool_el)`."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "fields_of and rc_text docstrings miss that a link makes a parameter rich",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py",
+        "lines": "36-37,44,63-64",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "is_plain now returns False for a run inside a link (arc_meta_format.py 294), so a dialogReference whose one run is a link becomes xdoc rich text in the rc and Pro HTML on the page. arc_meta_canonical.py fields_of (63-64) still says a parameter becomes xdoc 'when the canonical XML carries <b>/<i>/<ul> markup', and rc_text (36-37) and add_dialog_ref (44) describe the switch as 'formatted' or 'unformatted' only.",
+        "fix": [
+          "Update the fields_of docstring to '... carries <b>/<i>/<ul> markup or a link', and rc_text/add_dialog_ref to 'unformatted and outside any link'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Open link leaks across an implicitly closed block",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py",
+        "lines": "93-100,102-105,144-155,170-173,197-204",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The docstring at arc_meta_format.py:102-103 says the open-link refusal stops an href leaking into the next block, and the module docstring (lines 21-22) says an <a> still open where its paragraph or list item ends raises ValueError. The check only runs on explicit end tags (handle_endtag, lines 170-171). HTMLParser does not synthesize end tags, so in `<ul><li><a href=\"x\">a<li>b</a></li></ul>` or `<p><a href=\"x\">one<p>two</a></p>` the second <li>/<p> start opens a new block with self._href still set. Its text becomes a link run with href x, and the later </a> closes it cleanly, so nothing is refused.\n\nAlso (runtime): _open_link (arc_meta_format.py:97-100) refuses only a falsy href. `href=\" \"` passes and renders as <A HREF=\" \">, an href with surrounding spaces is kept as written, and the docstring's 'missing or empty href' refusal does not cover either case. Also, `<a href=\"x\"></a>` or `<a href=\"x\"> </a>` produces no run, because handle_data drops whitespace-only text. The authored link then disappears from every surface without the ValueError the module docstring promises for malformed links.",
+        "fix": [
+          "In handle_starttag, call self._refuse_open_link(f\"<{tag}>\") before handling tag in (\"p\", \"para\", \"li\", \"ul\"), so a block that opens while a link is still open is refused the same way an explicit end tag is.",
+          "Strip the href before the check (`href = (dict(attrs).get(\"href\") or \"\").strip()`; refuse when empty, store the stripped value). Track whether the open link received a text run, and raise ValueError(\"<a> without text\") at </a> when it did not."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "A link-only parameter description now turns its hover rc into xdoc that drops the link",
+        "file": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py",
+        "files": [
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py"
+        ],
+        "lines": "289-294",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "is_plain now returns False for a run with an href (arc_meta_format.py:294). arc_meta_canonical.rc_text uses is_plain to choose the bare rc string over xdoc. A parameter whose only markup is a link therefore gets `<xdoc><p><span>..</span><span>..</span></p></xdoc>` in tool.content.rc, but _runs_xdoc drops the href, so the hover looks the same as before. Every such tool shows hover_style_stale and the rc churns for no visible change. The fields_of docstring (arc_meta_canonical.py:63-64) still says xdoc is chosen only for <b>/<i>/<ul> markup. add_dialog_ref does need href-aware plainness, because a <para> would lose the link.",
+        "fix": [
+          "Give rc_text its own plainness test that ignores href (single paragraph, one run, not bold, not italic), and keep is_plain href-aware for add_dialog_ref.",
+          "Or keep the behavior and update the fields_of and rc_text docstrings in arc_meta_canonical.py to say a link also selects xdoc, even though xdoc keeps only the link text."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "apply_rc writer test skips the check_applied step the module docstring promises",
+        "file": "tests/arc/test_arc_meta_links.py",
+        "lines": "5-7,199-206,209-213",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (lines 5-7) says the writer tests run the apply calls on the demo toolbox 'then check_applied over the result'. test_apply_page_writes_the_links_into_the_help_page does (line 182), but test_apply_rc_writes_the_link_text_without_the_href (lines 209-213) stops at the rc member and never runs check_applied, so a hover that the writer and the checker disagree on for a link-only parameter (rc_text vs fields_of) would pass this test.\n\nAlso (tests): test_load_source_refuses_an_a_without_href (lines 199-206) uses try/except/else to capture the ApiError message; it works (the else sets an empty string so the assert fails), but pytest.raises states the expectation directly and reports a missing raise clearly instead of an empty-string assertion.",
+        "fix": [
+          "Append `assert api.check_applied(TOOL, repo=root) == []` to test_apply_rc_writes_the_link_text_without_the_href (the default page is default_page(canonical), so the toolbox is fully applied after apply_rc).",
+          "Or narrow the module docstring to say only the page writer test runs check_applied afterward.",
+          "Rewrite as `with pytest.raises(ApiError) as caught:` around the load_source call, then `assert \"idAbs\" in str(caught.value) and \"href\" in str(caught.value)`."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "test_to_pro_html_escapes_the_href_attribute repeats the AMP literal",
+        "file": "tests/arc/test_arc_meta_links.py",
+        "lines": "34,115",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "Line 34 defines AMP = '<p><a href=\"a?x=1&amp;y=&quot;2&quot;\">q</a></p>' and line 147 uses it, but line 115 spells the same markup inline again; an edit to one copy leaves the two escaping tests on different inputs.",
+        "fix": [
+          "Replace the inline literal on line 115 with `mf.parse(AMP)`."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "text_with_links is never exercised on a link inside a list item",
+        "file": "tests/arc/test_arc_meta_links.py",
+        "files": [
+          "tests/arc/test_arc_meta_links.py",
+          "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py"
+        ],
+        "lines": "155-160",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_text_with_links_appends_each_href (lines 155-160) checks only a single-link paragraph (SEE) and asserts containment, not the 'text [href]' shape; the list branch of _flatten (arc_meta_format.py:304) never sees a link run in any test, and the href-only page_stale test in test_arc_meta_link_checks.py places every link in a <p>. A regression that dropped hrefs from list items would let an href change in a usage bullet pass check_applied as clean or style-only.",
+        "fix": [
+          "Add `assert mf.text_with_links(mf.parse(LIST)) == \"See the guide [u]. Plain.\"` to test_text_with_links_appends_each_href, which pins both the format and the list-item branch."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "README pass-through test docstring cites an unnamed 'Section 2'",
+        "file": "tests/contract/test_arc_straps_registration.py",
+        "lines": "84",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The docstring of test_the_plugin_readme_says_links_pass_through opens with 'Section 2:', but the test reads the README's '## What it is' section, which is its first level-two heading; the reference points at an external plan the reader of the merged test cannot find.",
+        "fix": [
+          "Drop the 'Section 2:' prefix, or name the source it refers to (the plan file and its section)."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Para-markup contract test half-passes on the base commit",
+        "file": "tests/skills/test_arc_meta_skill_contract.py",
+        "lines": "155-160",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "test_the_skill_names_the_para_markup_check asserts that 'CDATA' and '`<para>`' appear in the Authoring section. Both were already in the unchanged sentence \"`<dialogReference>` is a `<para>` or CDATA HTML\" (SKILL.md:138), so that half cannot fail: deleting the new 'A `<para>` holds plain text only' sentence keeps it green. Only the check_canonical row assertion guards anything.",
+        "fix": [
+          "Assert on the new sentence instead, for example `assert \"holds plain text only\" in authoring`, in place of the CDATA and `<para>` assertion at tests/skills/test_arc_meta_skill_contract.py:160."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 250 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":8,\"first_sha\":\"40814da8fdb2fcacab533cec21ed0b301fbc0bb2\",\"headRefName\":\"1145-help-links-plan\",\"headRefOid\":\"567b9c5bf33d7071a2886c61d0c9cc8a6603363a\",\"last_sha\":\"567b9c5bf33d7071a2886c61d0c9cc8a6603363a\",\"mergeCommit\":null,\"number\":250,\"state\":\"OPEN\",\"title\":\"arcgis help links plan\",\"url\":\"https://github.com/t968rs/operator-straps/pull/250\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1145-help-links-plan",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1145-help-links-plan",
+        "head_ref_name": "1145-help-links-plan",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "40814da8fdb2fcacab533cec21ed0b301fbc0bb2",
+        "head_sha": "567b9c5bf33d7071a2886c61d0c9cc8a6603363a",
+        "base_ancestor_command": "git merge-base --is-ancestor 40814da8fdb2fcacab533cec21ed0b301fbc0bb2 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 567b9c5bf33d7071a2886c61d0c9cc8a6603363a HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - fields_of docstring now says a parameter becomes xdoc for <b>/<i>/<ul> markup or a link; rc_text and add_dialog_ref docstrings say 'unformatted and outside any link'"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - handle_starttag refuses an <a> still open when <p>/<para>/<li>/<ul> starts; _open_link strips the href and refuses a blank one; new _close_link raises '<a> without text' for a link that received no text run; module docstring lists the new refusals"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - kept the behavior (test_arc_meta_links.py:213 pins xdoc for a lone link) and documented it: rc_text and fields_of docstrings say a link selects xdoc though xdoc keeps only the link text; arc_meta_format.py: is_plain stays href-aware as add_dialog_ref needs, no edit"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - arc_meta_format.py: the list-item branch of _flatten already appends hrefs via text_with_links; the fix is the new assertion in tests/arc/test_arc_meta_links.py, owned by another fixer; test_text_with_links_appends_each_href asserts text_with_links(mf.parse(LIST)) == 'See the guide [u]. Plain.', covering the list-item branch of _flatten; arc_meta_format.py belongs to the other part and is unchanged here"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - test_apply_rc_writes_the_link_text_without_the_href now ends with assert api.check_applied(TOOL, repo=root) == []; test_load_source_refuses_an_a_without_href uses pytest.raises(ApiError) and asserts idAbs and href in the message"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - test_to_pro_html_escapes_the_href_attribute parses the module AMP constant instead of an inline literal"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - dropped the unnamed 'Section 2:' prefix from the test_the_plugin_readme_says_links_pass_through docstring"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - test_the_skill_names_the_para_markup_check now asserts 'A `<para>` holds plain text only' is in the Authoring section in place of the CDATA and <para> assertion; the check_canonical row assertion is unchanged"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - Line 18 now starts with '#250 Feature(arc-meta):' and the sentence reads 'pass ... and report ...', matching the other Changes entries"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - SKILL.md check_applied page_stale list now reads 'text or a link target' so an href-only change is explained; arc_meta_api.py docstring (lines 16-18) already states the href-append behavior"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - _markup_problems split into 'problems = [...field problems...]' followed by 'return problems + _para_markup_problems(tool, tool_el)'; para problems still follow the field problems in the return"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - SKILL.md Format bullet: subset sentence now lists `<a href>`; adds the absolute-href warning (relative href breaks on the temp-copy \"?\" page, arc-meta does not check targets), the `unparseable` refusal of an `<a>` without href/text, nested or left open, and marks `arc-help-pages` as a later skill; README sentence and v0.7.0 release line carry the same warning and refusal; contract test also pins 'relative href breaks'. arc_meta_format.py and arc_meta_api.py: no edit, the format docstring already records the refusal and SUPPORTED_TAGS is correct; ActionPlan: no edit, the arc-help-pages pointer stays as forthcoming so no hand-off move is needed"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - plan 1011 source_document is now the project-neutral 'consuming project: docs/superpowers/specs/2026-11-09-toolbox-help-links-design.md'; the deferred topic and TASK-4 notes say 'the consuming project'; plan id 1011 kept as the developer chose it; written through plan_api, refrozen, PIP re-rendered (outside fixer waves)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - TASK-4 notes record that the planned tests under docs/plans/1011/tests/ are git-ignored, so PR B starts from this checkout or copies them in first; refrozen (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - sweep S7 and TASK-9 step 3 cite README.md:577; refrozen, PIP re-rendered (outside fixer waves)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "d71476a (working-tree snapshot; developer commits) - D1 flag_para_children option names unsupported_para_markup; refrozen, PIP re-rendered (outside fixer waves)"
+    }
+  ]
+}

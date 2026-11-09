@@ -1,0 +1,1735 @@
+{
+  "plan_id": "1011",
+  "plan_created": "2026-11-09",
+  "source_document": "consuming project: docs/superpowers/specs/2026-11-09-toolbox-help-links-design.md",
+  "documentation": "docs/plans/1011_arc_straps_help_links_PIP.md",
+  "branch": null,
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "arc-meta generator: <a href> pass-through in arc_meta_format",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/arc/test_arc_meta_links.py)\n1. Run gains a fourth field `href: Optional[str] = None` (a NamedTuple default: the positional Run(text, bold, italic) in tests/arc/test_arc_meta_format.py:27 and _trim_edges' _replace keep working).\n2. _SubsetParser tracks the open link (self._href). handle_starttag('a'): when a link is already open raise ValueError naming '<a> nested in another <a>'; read dict(attrs).get('href') and raise ValueError naming '<a> without href' when it is None or empty; else store it. handle_endtag('a') clears it. An <a> still open where its block ends (handle_endtag of p, para or li) or at the end of the markup (close()) raises ValueError naming 'unclosed <a>', so no href leaks into the next block. handle_data builds Run(text, bold, ital, self._href). <a> may sit inside or wrap <b>/<i>/<span>: the href is independent of the bold and italic counters.\n3. _runs_pro: a run with an href renders <SPAN{style}><A HREF=\"{escape(href, {'\"': '&quot;'})}\">{escape(text)}</A></SPAN>; a run without one renders byte for byte as today.\n4. _runs_xdoc: unchanged; it writes the link text only and never the href (pinned by test_to_xdoc_writes_the_link_text_only).\n5. _runs_canon: a run with an href wraps its rendering in <a href=\"...\">...</a> (attribute-escaped), so parse(to_canonical(blocks)) == blocks and '<p>See <a href=\"u\">x</a>.</p>' renders back verbatim.\n6. is_plain also requires runs[0].href is None, so a lone-link parameter goes to the '?' page as Pro HTML (add_dialog_ref) and to the hover as xdoc text (rc_text).\n7. New public text_with_links(blocks): plain_text with each link run's href appended after its text (e.g. 'the guide [href]'), whitespace-collapsed like plain_text; equal to plain_text without links.\n8. Module docstring: the subset gains <a href>; name the two refusals.\nNo edit to arc_meta_canonical/page/rc/toolbox: their anchored calls pick the behavior up. D7 = pass_through: arc_meta_toolbox needs no edit; build_metadata carries anchors through to_pro_html, rc_description keeps run.text and load_source's parse probe refuses an <a> without href, each pinned by a node. D1 = flag_para_children leaves inner_html and every reader as they are (TASK-2 adds the check).",
+      "files": [
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py",
+        "tests/arc/test_arc_meta_links.py"
+      ],
+      "status": "COMPLETE",
+      "evidence": "staged tree 4a93008: 22 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4a930086d21c259dcc35b0ee7cfb9ca6efc18271"
+          },
+          "tests": {
+            "nodes": [
+              "tests/arc/test_arc_meta_links.py::test_parse_keeps_the_href_on_the_link_run",
+              "tests/arc/test_arc_meta_links.py::test_a_link_may_wrap_or_sit_inside_bold_and_italic",
+              "tests/arc/test_arc_meta_links.py::test_an_a_without_href_is_refused",
+              "tests/arc/test_arc_meta_links.py::test_an_a_nested_in_another_a_is_refused",
+              "tests/arc/test_arc_meta_links.py::test_to_pro_html_writes_an_anchor_inside_the_run_span",
+              "tests/arc/test_arc_meta_links.py::test_to_pro_html_escapes_the_href_attribute",
+              "tests/arc/test_arc_meta_links.py::test_to_canonical_round_trips_a_link",
+              "tests/arc/test_arc_meta_links.py::test_is_plain_is_false_for_a_lone_link",
+              "tests/arc/test_arc_meta_links.py::test_add_dialog_ref_writes_pro_html_for_a_lone_link",
+              "tests/arc/test_arc_meta_links.py::test_apply_page_writes_the_links_into_the_help_page",
+              "tests/arc/test_arc_meta_links.py::test_apply_rc_writes_the_link_text_without_the_href",
+              "tests/arc/test_arc_meta_links.py::test_parse_reads_back_a_link_from_pro_html",
+              "tests/arc/test_arc_meta_links.py::test_to_xdoc_writes_the_link_text_only",
+              "tests/arc/test_arc_meta_links.py::test_text_with_links_appends_each_href",
+              "tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[p]",
+              "tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[li]",
+              "tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[markup_end]",
+              "tests/arc/test_arc_meta_links.py::test_a_closed_link_does_not_leak_into_the_next_block",
+              "tests/arc/test_arc_meta_links.py::test_a_link_inside_a_list_item_round_trips",
+              "tests/arc/test_arc_meta_links.py::test_to_canonical_keeps_an_href_with_an_ampersand_and_quotes",
+              "tests/arc/test_arc_meta_links.py::test_the_toolbox_page_carries_a_link_and_its_rc_the_text",
+              "tests/arc/test_arc_meta_links.py::test_load_source_refuses_an_a_without_href"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_meta_links.py::test_parse_keeps_the_href_on_the_link_run tests/arc/test_arc_meta_links.py::test_a_link_may_wrap_or_sit_inside_bold_and_italic tests/arc/test_arc_meta_links.py::test_an_a_without_href_is_refused tests/arc/test_arc_meta_links.py::test_an_a_nested_in_another_a_is_refused tests/arc/test_arc_meta_links.py::test_to_pro_html_writes_an_anchor_inside_the_run_span tests/arc/test_arc_meta_links.py::test_to_pro_html_escapes_the_href_attribute tests/arc/test_arc_meta_links.py::test_to_canonical_round_trips_a_link tests/arc/test_arc_meta_links.py::test_is_plain_is_false_for_a_lone_link tests/arc/test_arc_meta_links.py::test_add_dialog_ref_writes_pro_html_for_a_lone_link tests/arc/test_arc_meta_links.py::test_apply_page_writes_the_links_into_the_help_page tests/arc/test_arc_meta_links.py::test_apply_rc_writes_the_link_text_without_the_href tests/arc/test_arc_meta_links.py::test_parse_reads_back_a_link_from_pro_html tests/arc/test_arc_meta_links.py::test_to_xdoc_writes_the_link_text_only tests/arc/test_arc_meta_links.py::test_text_with_links_appends_each_href tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[p] tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[li] tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[markup_end] tests/arc/test_arc_meta_links.py::test_a_closed_link_does_not_leak_into_the_next_block tests/arc/test_arc_meta_links.py::test_a_link_inside_a_list_item_round_trips tests/arc/test_arc_meta_links.py::test_to_canonical_keeps_an_href_with_an_ampersand_and_quotes tests/arc/test_arc_meta_links.py::test_the_toolbox_page_carries_a_link_and_its_rc_the_text tests/arc/test_arc_meta_links.py::test_load_source_refuses_an_a_without_href"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "5ec1a77a537f676b1cedbde25506544b2b053593d80a1313eeee0080cc440550"
+      },
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:13-15",
+          "expect": "Any other tag collapses to its text."
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:52-57",
+          "expect": "class Run(NamedTuple):"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:121-143",
+          "expect": "def handle_starttag(self, tag, attrs):"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:144-166",
+          "expect": "def handle_endtag(self, tag):"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:168-175",
+          "expect": "run = Run(text, self._bold > 0, self._ital > 0)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:182-196",
+          "expect": "runs[0] = runs[0]._replace(text=runs[0].text.lstrip())"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:245-256",
+          "expect": "return \"\".join(f\"<p>{''.join(p.itertext())}</p>\" for p in paras)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:259-264",
+          "expect": "return len(runs) == 1 and not runs[0].bold and not runs[0].italic"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:267-275",
+          "expect": "parts.append(\"\".join(r.text for r in content))"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:278-284",
+          "expect": "out += f\"<SPAN{style}>{escape(r.text)}</SPAN>\""
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:314-326",
+          "expect": "out += f\"<span>{text}</span>\""
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:346-358",
+          "expect": "def _runs_canon(runs: List[Run]) -> str:"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py:35-40",
+          "expect": "return mf.plain_text(blocks) if summary or mf.is_plain(blocks) else mf.to_xdoc(blocks)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py:43-49",
+          "expect": "if mf.is_plain(blocks):"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py:79-81",
+          "expect": "ET.SubElement(parent, tag).text = mf.to_pro_html(blocks)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py:94-97",
+          "expect": "usage_blocks = mf.parse(mf.inner_html(src_tool.find(\"usage\")))"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py:107",
+          "expect": "add_dialog_ref(pe, mf.parse(mf.inner_html(p.find(\"dialogReference\"))))"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_page.py:81-83",
+          "expect": "return arc_meta_canonical.page(arc_meta_canonical.load(tool_dir, tool)[1], illustration)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_rc.py:163-165",
+          "expect": "summary, descr = canonical.fields(tool_dir, tool)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_toolbox.py:96-102",
+          "expect": "lines.extend(\"\".join(run.text for run in runs) for runs in groups)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_toolbox.py:138",
+          "expect": "_add(did, \"idAbs\", mf.to_pro_html(mf.parse(source.abstract_html)))"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_toolbox.py:143-144",
+          "expect": "_add(did, \"resConst/Consts/useLimit\", mf.to_pro_html(mf.parse(source.use_limit_html)))"
+        },
+        {
+          "at": "tests/arc/test_arc_meta_format.py:26-27",
+          "expect": "return Run(text, bold, False)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_toolbox.py:69-81",
+          "expect": "raise ApiError(f\"{path.as_posix()} <{tag}> cannot be converted ({exc})\") from exc"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/arc/test_arc_meta_format.py -q",
+          "expect": "passed"
+        },
+        {
+          "run": "python -m pytest tests/arc/test_arc_meta_page.py tests/arc/test_arc_meta_rc.py tests/arc/test_arc_meta_roundtrip.py tests/arc/test_arc_meta_toolbox.py -q",
+          "expect": "passed"
+        },
+        {
+          "run": "python -m ruff check plugins/arc-straps tests/arc",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_parse_keeps_the_href_on_the_link_run",
+          "red": "TypeError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_a_link_may_wrap_or_sit_inside_bold_and_italic",
+          "red": "TypeError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_an_a_without_href_is_refused",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_an_a_nested_in_another_a_is_refused",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_to_pro_html_writes_an_anchor_inside_the_run_span",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_to_pro_html_escapes_the_href_attribute",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_to_canonical_round_trips_a_link",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_is_plain_is_false_for_a_lone_link",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_add_dialog_ref_writes_pro_html_for_a_lone_link",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_apply_page_writes_the_links_into_the_help_page",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_apply_rc_writes_the_link_text_without_the_href",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_parse_reads_back_a_link_from_pro_html",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_to_xdoc_writes_the_link_text_only",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_text_with_links_appends_each_href",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[p]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[li]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_an_unclosed_a_is_refused_at_the_end_of_its_block[markup_end]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_a_closed_link_does_not_leak_into_the_next_block",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_a_link_inside_a_list_item_round_trips",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_to_canonical_keeps_an_href_with_an_ampersand_and_quotes",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_the_toolbox_page_carries_a_link_and_its_rc_the_text",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_links.py::test_load_source_refuses_an_a_without_href",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "arc-meta checks: <a> is a supported tag; _plain compares text with links",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/arc/test_arc_meta_link_checks.py)\n1. SUPPORTED_TAGS gains \"a\" (arc_meta_api.py:38).\n2. _plain returns ' '.join(mf.text_with_links(mf.parse(markup or '')).split()); _shown_plain keeps calling _plain. Both the hover check (278) and the page check (297) use it: the rc never holds an href, so hover results do not move, and an href-only page change now reports page_stale instead of page_style_stale.\n3. tests/arc/_arc_toolbox.py:75: BAD_CANONICAL's summary link <a href=\"docs/demo.html\">the page</a> becomes <code>the page</code>, so test_check_canonical_flags_join_key_and_lint_problems (tests/arc/test_arc_meta_api.py:137-143) keeps its one unsupported_tag; nothing else reads that summary.\n4. D1 = flag_para_children: arc_meta_models.ProblemCode gains UNSUPPORTED_PARA_MARKUP = 'unsupported_para_markup'. check_canonical adds, for the summary, the usage and each parameter's dialogReference, one problem per <para> holding a child element, detail '<field>: <para> holds <tag>; write the field as CDATA HTML' (param set for a dialogReference). It reads the parsed elements, since inner_html's output has already dropped them; inner_html and the readers stay as they are.\n5. Module docstrings name the new code; the SKILL.md change is TASK-3.",
+      "files": [
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py",
+        "tests/arc/_arc_toolbox.py",
+        "tests/arc/test_arc_meta_link_checks.py",
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_models.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "COMPLETE",
+      "evidence": "staged tree 4a93008: 6 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4a930086d21c259dcc35b0ee7cfb9ca6efc18271"
+          },
+          "tests": {
+            "nodes": [
+              "tests/arc/test_arc_meta_link_checks.py::test_the_anchor_is_a_supported_tag",
+              "tests/arc/test_arc_meta_link_checks.py::test_check_canonical_accepts_links",
+              "tests/arc/test_arc_meta_link_checks.py::test_check_canonical_reports_an_a_without_href_as_unparseable",
+              "tests/arc/test_arc_meta_link_checks.py::test_check_applied_reports_an_href_only_change_as_page_stale",
+              "tests/arc/test_arc_meta_link_checks.py::test_check_canonical_flags_markup_inside_a_para[a]",
+              "tests/arc/test_arc_meta_link_checks.py::test_check_canonical_flags_markup_inside_a_para[b]"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_meta_link_checks.py::test_the_anchor_is_a_supported_tag tests/arc/test_arc_meta_link_checks.py::test_check_canonical_accepts_links tests/arc/test_arc_meta_link_checks.py::test_check_canonical_reports_an_a_without_href_as_unparseable tests/arc/test_arc_meta_link_checks.py::test_check_applied_reports_an_href_only_change_as_page_stale tests/arc/test_arc_meta_link_checks.py::test_check_canonical_flags_markup_inside_a_para[a] tests/arc/test_arc_meta_link_checks.py::test_check_canonical_flags_markup_inside_a_para[b]"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "0f8208f9cb9345e29e9b9e6614c12333b3d14ed424285fd3b0f6118276aa50d8"
+      },
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:38",
+          "expect": "SUPPORTED_TAGS = frozenset({\"p\", \"b\", \"strong\", \"i\", \"em\", \"ul\", \"li\", \"para\"})"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:167-173",
+          "expect": "mf.parse(html)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:176-186",
+          "expect": "tags = sorted({tag.lower() for _, tag in _TAG.findall(html)} - SUPPORTED_TAGS)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:240-241",
+          "expect": "return \" \".join(mf.plain_text(mf.parse(markup or \"\")).split())"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:244-250",
+          "expect": "return _plain(markup)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:278",
+          "expect": "if _shown_plain(actual) != _plain(expected):"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:297-299",
+          "expect": "return [_problem(ProblemCode.PAGE_STALE, tool,"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:347-349",
+          "expect": "problems += _field_problem(tool, \"dialogReference\", expected,"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:418-421",
+          "expect": "problems += _field_problem(tool, tag, expected, actual)"
+        },
+        {
+          "at": "tests/arc/_arc_toolbox.py:75",
+          "expect": "See <a href=\"docs/demo.html\">the page</a>."
+        },
+        {
+          "at": "tests/arc/test_arc_meta_api.py:137-143",
+          "expect": "(\"unsupported_tag\", None), (\"deep_nesting\", None), (\"thumbnail\", None), (\"unparseable\", \"Mode\"),"
+        },
+        {
+          "at": "tests/arc/test_arc_meta_api.py:378",
+          "expect": "root = _toolbox(make_project, canonical=BAD_CANONICAL, page=\"<metadata/>\")"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:150-155",
+          "expect": "yield param.get(\"name\"), \"dialogReference\", mf.inner_html(param.find(\"dialogReference\"))"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:189-191",
+          "expect": "def _markup_problems(tool: str, tool_el: ET.Element) -> List[Problem]:"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_models.py:37-55",
+          "expect": "UNSUPPORTED_TAG = \"unsupported_tag\""
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/arc/test_arc_meta_api.py tests/arc/test_arc_meta_links.py tests/arc/test_arc_meta_link_checks.py -q",
+          "expect": "passed"
+        },
+        {
+          "run": "python -m ruff check plugins/arc-straps tests/arc",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/arc/test_arc_meta_link_checks.py::test_the_anchor_is_a_supported_tag",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_link_checks.py::test_check_canonical_accepts_links",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_link_checks.py::test_check_canonical_reports_an_a_without_href_as_unparseable",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_link_checks.py::test_check_applied_reports_an_href_only_change_as_page_stale",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_link_checks.py::test_check_canonical_flags_markup_inside_a_para[a]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/arc/test_arc_meta_link_checks.py::test_check_canonical_flags_markup_inside_a_para[b]",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "arc-meta SKILL.md: the Authoring 'no links' rule becomes the pass-through sentence",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/skills/test_arc_meta_skill_contract.py: the existing file plus test_authoring_passes_links_through_and_hands_targets_to_arc_help_pages)\n1. plugins/arc-straps/skills/arc-meta/SKILL.md Authoring, Format bullet (140-142): replace ', no links (the \"?\" page is rendered from a temp copy, so relative links break and the hover renders none)' with one sentence: '`<a href>` passes through to the \"?\" page, hovers show the link text, and link targets and help pages belong to `arc-help-pages`.' Keep 'No `<Binary>`/`<Thumbnail>` in the canonical XML' and 'ASCII punctuation only.'\n2. D1: the Format bullet adds that a `<para>` holds plain text only, and markup or links go in CDATA HTML; the API table row for check_canonical (206) names `unsupported_para_markup`.",
+      "files": [
+        "plugins/arc-straps/skills/arc-meta/SKILL.md",
+        "tests/skills/test_arc_meta_skill_contract.py"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "COMPLETE",
+      "evidence": "staged tree 4a93008: 2 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4a930086d21c259dcc35b0ee7cfb9ca6efc18271"
+          },
+          "tests": {
+            "nodes": [
+              "tests/skills/test_arc_meta_skill_contract.py::test_authoring_passes_links_through_and_hands_targets_to_arc_help_pages",
+              "tests/skills/test_arc_meta_skill_contract.py::test_the_skill_names_the_para_markup_check"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_arc_meta_skill_contract.py::test_authoring_passes_links_through_and_hands_targets_to_arc_help_pages tests/skills/test_arc_meta_skill_contract.py::test_the_skill_names_the_para_markup_check"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "fc7a4a281717567828be9fdeb36f530e44d9d2d23ef4a68dcb8f462cdcd18fcb"
+      },
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/SKILL.md:138-139",
+          "expect": "The subset is `<p>`, `<b>`, `<i>`, `<ul>`/`<li>` with one level of `<ul>` inside an `<li>`."
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/SKILL.md:140-142",
+          "expect": "links (the \"?\" page is rendered from a temp copy, so relative links break and the hover renders none)"
+        },
+        {
+          "at": "tests/skills/test_arc_meta_skill_contract.py:140-142",
+          "expect": "def test_pinned_rule_sentences_appear_verbatim(sentence: str) -> None:"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/SKILL.md:206",
+          "expect": "| `check_canonical(tool)` | join-key, type and direction mismatches"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_arc_meta_skill_contract.py -q",
+          "expect": "passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_arc_meta_skill_contract.py::test_authoring_passes_links_through_and_hands_targets_to_arc_help_pages",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_arc_meta_skill_contract.py::test_the_skill_names_the_para_markup_check",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3.1",
+      "title": "PR A release: arc-straps 0.1.0 -> 0.2.0 for the link pass-through",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/contract/test_arc_straps_registration.py: the existing nodes plus test_the_release_notes_carry_the_manifest_version and test_the_manifest_and_the_marketplace_describe_the_plugin_alike, guards that hold through both bumps, and test_the_plugin_readme_says_links_pass_through)\n1. plugins/arc-straps/.claude-plugin/plugin.json: version 0.1.0 -> 0.2.0. No other file pins the arc-straps version: pyproject.toml:3 is the repository's own version, and tools/select_tests.py and tests/scripts/test_select_tests.py mirror the pytest pythonpath, not a version.\n2. docs/RELEASES/v0.7.0.md: the arc-straps row becomes '| arc-straps | (new) | 0.2.0 |' and one change line says arc-meta passes `<a href>` through to the '?' page and reports `<para>` markup (unsupported_para_markup). If `gh release list --limit 1` shows v0.7.0 already cut, start the next release file per CLAUDE.md Releases with '| arc-straps | 0.1.0 | 0.2.0 |'.\n3. plugins/arc-straps/README.md 'What it is': one sentence in the arc-meta account that `<a href>` passes through to the '?' page and hovers show the link text.\n4. Descriptions: plugin.json and the marketplace entry stay word-for-word equal; Section 2 needs no new wording, so edit both or neither. No arc-help-pages mention anywhere: that is PR B.",
+      "files": [
+        "plugins/arc-straps/.claude-plugin/plugin.json",
+        ".claude-plugin/marketplace.json",
+        "plugins/arc-straps/README.md",
+        "docs/RELEASES/v0.7.0.md",
+        "tests/contract/test_arc_straps_registration.py"
+      ],
+      "dependencies": [
+        "TASK-3"
+      ],
+      "status": "COMPLETE",
+      "evidence": "staged tree 4a93008: 1 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "4a930086d21c259dcc35b0ee7cfb9ca6efc18271"
+          },
+          "tests": {
+            "nodes": [
+              "tests/contract/test_arc_straps_registration.py::test_the_plugin_readme_says_links_pass_through"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/contract/test_arc_straps_registration.py::test_the_plugin_readme_says_links_pass_through"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "4edf33e8db88e4b600d5479a6c4f58658be54f7e9f22147e7fdc1c47e6f58312"
+      },
+      "notes": "PR A is TASK-1 to TASK-3.1 (D10 = split_pr); it ships before the Gate.",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/.claude-plugin/plugin.json:3-4",
+          "expect": "\"version\": \"0.1.0\","
+        },
+        {
+          "at": ".claude-plugin/marketplace.json:13-17",
+          "expect": "ArcGIS Pro toolbox skills: arc-meta checks and applies tool help in a project's .atbx archive"
+        },
+        {
+          "at": "plugins/arc-straps/README.md:7-8",
+          "expect": "Its first skill, `arc-meta`, checks and applies"
+        },
+        {
+          "at": "docs/RELEASES/v0.7.0.md:11",
+          "expect": "| arc-straps | (new) | 0.1.0 |"
+        },
+        {
+          "at": "pyproject.toml:3",
+          "expect": "version = \"0.1.0\""
+        },
+        {
+          "at": "tests/contract/test_arc_straps_registration.py:21-24",
+          "expect": "assert manifest[\"dependencies\"] == [{\"name\": \"harness\", \"version\": \">=0.56.0\"}]"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/contract/test_arc_straps_registration.py -q",
+          "expect": "passed"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/arc-straps",
+          "expect": "Validation passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/contract/test_arc_straps_registration.py::test_the_plugin_readme_says_links_pass_through",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "arc-help-pages config: the arc_help_pages section, HelpPaths and paths()",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/arc/test_arc_help_pages_config.py)\n1. New plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_config.py, mirroring arc_meta_config.py without importing it: PLUGIN = 'arc-straps'; _CONFIG = Path(__file__).resolve().parents[3] / 'config'; _KEYS = ('atbx', 'tool_dir', 'help_dir'); _OPTIONAL = ('atbx',); RepoLike.\n   @dataclass(frozen=True) HelpPaths(root, atbx, tool_dir, help_dir, checkout_root) (D5), with property prefix = checkout_root.as_uri() + '/' and method page_href(page) = prefix + (help_dir / f'{page}.html').relative_to(root).as_posix().\n   paths(repo=None): cfg = active() when repo is None else load_config(project_root(Path(repo))); section = plugin_section(PLUGIN, _CONFIG / 'defaults.json', _CONFIG / 'arc-straps.schema.json', cfg); _section(section) checks section['arc_help_pages'] is an object, has no unknown keys, tool_dir and help_dir are strings, atbx is a string or None, none is '' (messages 'plugins.arc-straps.arc_help_pages[.<key>]: ...', as _meta words them); atbx = root / atbx or the only *.atbx at root (refusal '<what> at <root>; set plugins.arc-straps.arc_help_pages.atbx in .claude/harness.json'); _inside refuses '<key>: resolves outside the project root'; checkout_root = main_worktree(root) from harness_lib.project (D2: no git call of its own; main_worktree returns root outside git or in a bare repository). __all__ = ['HelpPaths', 'RepoLike', 'paths'].\n2. config/defaults.json gains \"arc_help_pages\": {\"atbx\": null, \"tool_dir\": \"tool_metadata/tools\", \"help_dir\": \"tool_metadata/tool_help\"}; config/arc-straps.schema.json gains the arc_help_pages object (additionalProperties false; atbx optPath, tool_dir relPath, help_dir relPath, each described).\n3. plugins/arc-straps/README.md Configuration: a `plugins.arc-straps.arc_help_pages` paragraph saying it resolves apart from arc_meta, followed by its own key table whose rows are exactly `atbx`, `tool_dir` and `help_dir` (the first table after the first mention of `plugins.arc-straps.arc_help_pages`); the 'A new key touches' paragraph (90-93) names arc_help_pages_config.py (HelpPaths, paths(), _section() with _OPTIONAL) beside arc_meta_config.py. The Boundary list (51) names `harness_lib.project.main_worktree` beside project_root (D2).\n4. CLAUDE.md:12-19: the key-touch list names each section's config module; line 14 names `main_worktree` beside `project_root` (D2).\n5. pyproject.toml pythonpath (10) and pylint init-hook (27), and tools/select_tests.py DEFAULT_PYTHONPATH (73): append 'plugins/arc-straps/skills/arc-help-pages/scripts' to all three, in the same position (test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook pins them equal).",
+      "files": [
+        "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_config.py",
+        "plugins/arc-straps/config/defaults.json",
+        "plugins/arc-straps/config/arc-straps.schema.json",
+        "plugins/arc-straps/README.md",
+        "CLAUDE.md",
+        "pyproject.toml",
+        "tools/select_tests.py",
+        "tests/arc/test_arc_help_pages_config.py"
+      ],
+      "dependencies": [
+        "TASK-3.1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "notes": "PR B is TASK-4 to TASK-9 (D10 = split_pr). It starts after the Gate passes in the consuming project's plan (1666 TASK-7.1): the developer follows the link from the '?' page in Pro (spec, Gate section). If the Gate fails, TASK-4 to TASK-9 are recorded --blocked and the design is revisited. The planned test files under docs/plans/1011/tests/ match the git-ignore rule docs/plans/**/*.py, so they live only in the checkout that wrote them: start PR B from that checkout, or copy them into PR B's worktree before TASK-4.",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py:14-17",
+          "expect": "_KEYS = (\"atbx\", \"tool_dir\", \"toolbox_source\", \"registry\")"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py:21-29",
+          "expect": "class ArcMetaPaths:"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py:38-39",
+          "expect": "section = plugin_section(PLUGIN, _CONFIG / \"defaults.json\", _CONFIG / \"arc-straps.schema.json\", cfg)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py:49-65",
+          "expect": "def _meta(section: Dict[str, Any]) -> Dict[str, Any]:"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py:68-73",
+          "expect": "if path is not None and not path.resolve().is_relative_to(base):"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py:76-82",
+          "expect": "found = sorted(root.glob(\"*.atbx\"))"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/project.py:35-46",
+          "expect": "def project_root(start: Optional[Path] = None) -> Path:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/project.py:49-64",
+          "expect": "def main_worktree(start: Path) -> Path:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plugin_config.py:34-42",
+          "expect": "unknown = sorted(set(data) - set(schema.get(\"properties\", {}))) if closed else []"
+        },
+        {
+          "at": "plugins/arc-straps/config/defaults.json:1-8",
+          "expect": "\"arc_meta\": {"
+        },
+        {
+          "at": "plugins/arc-straps/config/arc-straps.schema.json:10",
+          "expect": "\"optPath\": {\"oneOf\": [{\"$ref\": \"#/$defs/relPath\"}, {\"type\": \"null\"}]}"
+        },
+        {
+          "at": "plugins/arc-straps/config/arc-straps.schema.json:12-23",
+          "expect": "\"arc_meta\": {"
+        },
+        {
+          "at": "plugins/arc-straps/README.md:60-66",
+          "expect": "Set under `plugins.arc-straps.arc_meta` in the project's `.claude/harness.json`."
+        },
+        {
+          "at": "plugins/arc-straps/README.md:90-93",
+          "expect": "The skill prints the resolved locations with `print(paths())`. A new key touches `config/defaults.json`,"
+        },
+        {
+          "at": "plugins/arc-straps/README.md:51-52",
+          "expect": "`harness_lib.project.project_root`, which resolves a `repo` argument inside a subfolder to its project"
+        },
+        {
+          "at": "CLAUDE.md:13-14",
+          "expect": "it reaches harness only through `harness-skill-api`, `harness_lib.config`,"
+        },
+        {
+          "at": "CLAUDE.md:16-19",
+          "expect": "`ArcMetaPaths` and `paths()` in `arc_meta_config.py`, `_meta()` with its `_OPTIONAL` tuple"
+        },
+        {
+          "at": "pyproject.toml:10",
+          "expect": "pythonpath = [\"plugins/harness/lib\", \"tests\", \"plugins/arc-straps/skills/arc-meta/scripts\"]"
+        },
+        {
+          "at": "pyproject.toml:27",
+          "expect": "init-hook = \"import sys; sys.path[:0] = ['plugins/harness/lib', 'tests', 'plugins/arc-straps/skills/arc-meta/scripts']\""
+        },
+        {
+          "at": "tools/select_tests.py:73",
+          "expect": "DEFAULT_PYTHONPATH = (\"plugins/harness/lib\", \"tests\", \"plugins/arc-straps/skills/arc-meta/scripts\")"
+        },
+        {
+          "at": "tests/scripts/test_select_tests.py:498-505",
+          "expect": "assert list(sel.DEFAULT_PYTHONPATH) == sel.pythonpath_roots(REPO_ROOT)"
+        },
+        {
+          "at": "tests/arc/test_arc_meta_config.py:49-55",
+          "expect": "jsonschema.Draft202012Validator(schema).validate(defaults)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/scripts/test_select_tests.py::test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook -q",
+          "expect": "1 passed"
+        },
+        {
+          "run": "python -m pytest tests/arc/test_arc_meta_config.py tests/contract/test_arc_straps_registration.py -q",
+          "expect": "passed"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/arc-straps",
+          "expect": "Validation passed"
+        },
+        {
+          "run": "python -m pytest tests/schemas/test_schema_meta_valid.py -q",
+          "expect": "passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_defaults_resolve_every_location",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_overrides_win",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_the_section_resolves_apart_from_arc_meta",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_checkout_root_from_a_worktree_is_the_main_checkout",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_page_href_is_the_main_checkout_uri_plus_the_repo_path",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[none]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[two]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_unknown_keys_are_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[section]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[atbx]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[help_dir]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[tool_dir]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[help_dir]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[atbx]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_defaults_and_schema_carry_the_section",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_the_plugin_readme_documents_every_key",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_no_repo_reads_the_active_project",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_config.py::test_checkout_root_outside_git_falls_back_to_the_root",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "arc-help-pages models and source: the records and the canonical/archive reader",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/arc/_arc_help_project.py, the demo-project helper TASK-5 to TASK-7 share, and tests/arc/test_arc_help_pages_source.py)\n1. New arc_help_pages_models.py (standard library and pydantic only; frozen, extra='forbid', as arc_meta_models._MODEL_CONFIG): HelpError(ValueError); FragmentError(HelpError); ParamKind(str, Enum) REQUIRED='Required', OPTIONAL='Optional', DERIVED='Derived'; HelpProblemCode(str, Enum) in spec order help_page_stale, help_page_unlinked, fragment_invalid, link_target_missing, link_outside_checkout, then link_relative (D9); ParamDoc(name, displayname, type: ParamKind, direction: str, datatype: str, reference_html: str); ToolDoc(name, displayname, summary, alias, params: List[ParamDoc]); Fragment(page, tool, body); HelpProblem(code, subject, detail); HelpOutcome(page, changed, applied, lines).\n2. New arc_help_pages_source.py: has_tool(tool, repo=None) is True when <tool_dir>/<Tool>.xml exists and the archive holds <Tool>.tool/tool.content. tool_doc(tool, repo=None) -> ToolDoc: the canonical XML read as UTF-8 (HelpError when absent, undecodable or malformed, as arc_meta_canonical.load refuses); displayname from <tool displayname>; summary = whitespace-collapsed plain text of <summary> (tags stripped, entities decoded); params in tool.content 'params' key order (member decoded by the UTF-16/UTF-8-sig rule of arc_meta_archive.decode, re-implemented), each matched to the canonical <param name> exactly; a tool.content param without one raises HelpError naming it (D8); canonical params absent from tool.content are left out. ParamDoc attributes come from the canonical <param>; reference_html is CDATA text as-is, each <para> as '<p>' + html-escaped itertext + '</p>' (D1: readers unchanged; arc-meta's check_canonical reports <para> markup), '' when the field holds no text. alias = toolbox.content JSON 'alias' ('' when absent). Imports nothing from arc-meta.",
+      "files": [
+        "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_models.py",
+        "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_source.py",
+        "tests/arc/_arc_help_project.py",
+        "tests/arc/test_arc_help_pages_source.py"
+      ],
+      "dependencies": [
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:56-65",
+          "expect": "names, label = (f\"{tool}.tool/tool.content\", f\"{tool}.tool/tool.content.rc\"), p.atbx.name"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:134-136",
+          "expect": "return [_row(name, param, rc) for name, param in content.get(\"params\", {}).items()]"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_archive.py:26-30",
+          "expect": "return raw.decode(\"utf-8-sig\")"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py:19-32",
+          "expect": "raise ApiError(f\"no canonical source at {path.as_posix()}\")"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:245-256",
+          "expect": "paras = element.findall(\"para\")"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_models.py:15",
+          "expect": "_MODEL_CONFIG = ConfigDict(extra=\"forbid\", frozen=True)"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_models.py:18-19",
+          "expect": "class ApiError(ValueError):"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_models.py:22-27",
+          "expect": "REQUIRED = \"Required\""
+        },
+        {
+          "at": "tests/arc/test_arc_meta_toolbox.py:43",
+          "expect": "\"toolbox.content\": b'{\"version\": \"1.0\", \"alias\": \"demo\"}',"
+        },
+        {
+          "at": "tests/arc/_arc_toolbox.py:130-141",
+          "expect": "def make_toolbox(make_project: Callable[..., Path], canonical: str = CANONICAL,"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check plugins/arc-straps tests/arc",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/arc/test_arc_help_pages_source.py::test_tool_doc_reads_the_canonical_text_and_the_archive_alias",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_source.py::test_params_follow_tool_content_order_not_the_canonical_order",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_source.py::test_param_doc_carries_the_canonical_attributes_and_reference_html",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_source.py::test_a_tool_content_param_missing_from_the_canonical_xml_is_refused",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_source.py::test_a_tool_needs_both_its_canonical_xml_and_its_archive_entry",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_source.py::test_records_are_frozen_and_forbid_extra_keys",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_source.py::test_problem_codes_spell_the_spec_values",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-6",
+      "title": "arc-help-pages build: fragment parsing, template fill, Parameters, syntax, nav, apply_help",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/arc/test_arc_help_pages_build.py)\n1. New arc_help_pages_build.py. Markers (D3 = generic): tool_line(tool) returns '<!-- help:tool {tool} -->', PARAMETERS_MARKER = '<!-- help:parameters -->', SYNTAX_MARKER = '<!-- help:syntax -->'. FOOTER (D4 = generated_note) = 'Built by arc-help-pages from the canonical tool help and a page fragment. Edit those sources, not this page.'. The planned tests pin all four literally; other tests read them by name.\n2. parse_fragment(page, text) -> Fragment, FragmentError for: a first non-blank line that is not a tool line; a tool source.has_tool rejects; a missing marker; a <section ...> without id or without <h2>. The body is every line after the tool line.\n3. render(fragment, doc, template): string.Template(template).substitute(title=escape(displayname), summary=escape(summary), nav=..., sections=..., footer=FOOTER); a KeyError or ValueError from the template is a HelpError naming _template.html (a template without $footer is fine). sections = the body lines with each marker line replaced by its generated section, joined with '\\n' and stripped. Parameters: <section class=\"panel\" id=\"parameters\"><h2>Parameters</h2><table><thead><tr><th>Python parameter</th><th>Label</th><th>Description</th><th>ArcGIS data type</th></tr></thead><tbody> + one row per ToolDoc param <tr><td>{name}[ <span class=\"tag\">optional|derived</span>]</td><td>{escaped displayname}</td><td>{reference_html or 'No description.'}</td><td>{datatype}</td></tr> + </tbody></table></section>, no whitespace between tags. Syntax: <section class=\"panel\" id=\"syntax\"><h2>Python syntax</h2><pre><code>arcpy.{alias}.{tool}(a, {b}, c)</code></pre> (non-derived params in tool.content order, optional ones in braces) + <p>Derived output: <code>X</code>, <code>Y</code></p> when there are derived outputs + </section>. nav = <a href=\"#{id}\">{h2 text, tags stripped}</a> per section in page order, joined with ''. GOLDEN in the planned test pins the whole layout.\n4. build_page(page, repo=None) -> str: reads <help_dir>/_fragments/<page>.html and <help_dir>/_template.html (UTF-8, universal newlines; HelpError when absent), source.tool_doc, render. No timestamp and no absolute path: two projects at different roots build the same bytes.\n5. apply_help(page, apply=False, repo=None) -> HelpOutcome: reads <help_dir>/<page>.html with universal newlines (a CRLF checkout under core.autocrlf compares equal; the consuming repo has core.autocrlf=true and `git ls-files --eol` shows i/lf w/crlf for its page) and compares it with the build; equal -> changed False, the file untouched, an 'UP TO DATE: ...' line; else lines naming the page as its POSIX path relative to the root (tool_metadata/tool_help/<page>.html) with the size change, ending with exactly 'DRY-RUN: nothing written. Re-run with apply=True to write.', or with apply=True writing page.encode('utf-8') bytes (LF) and an 'APPLIED ...' line. The skill prints \"\\n\".join(apply_help(name).lines). Imports nothing from arc-meta.",
+      "files": [
+        "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_build.py",
+        "tests/arc/test_arc_help_pages_build.py"
+      ],
+      "dependencies": [
+        "TASK-5"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_page.py:131-138",
+          "expect": "return lines + [\"\", \"DRY-RUN: nothing written. Re-run with apply=True to write.\"]"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_page.py:153-155",
+          "expect": "lines.append(\"UP TO DATE: the archive page matches the canonical source; nothing to write.\")"
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_models.py:107-120",
+          "expect": "class ApplyOutcome(BaseModel):"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m ruff check plugins/arc-straps tests/arc",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_template_fill_replaces_every_slot",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_nav_lists_each_section_by_id_and_h2_in_page_order",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_parameters_table_follows_tool_content_order_with_tags",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_syntax_braces_optional_params_and_lists_derived_outputs_after_it",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_rebuild_is_byte_identical_and_apply_writes_it",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_parameters]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_h2]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_id]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_syntax]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_tool_line]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[unknown_tool]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_the_build_matches_the_golden_page_wherever_the_project_sits",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_the_dry_run_report_names_the_page_and_ends_with_the_notice",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_a_crlf_checkout_of_the_page_is_up_to_date",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_the_marker_spellings_are_the_fragment_contract",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_build.py::test_the_footer_is_one_fixed_line",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-7",
+      "title": "arc-help-pages API: help_pages, check_help_page, check_links, format_problems",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/arc/test_arc_help_pages_api.py)\n1. New arc_help_pages_api.py; __all__ binds HelpError, HelpProblemCode, paths, help_pages, build_page, apply_help, check_help_page, check_links and format_problems (build_page and apply_help re-exported from the build module), the heredoc surface harness-skill-api binds.\n2. help_pages(repo=None): sorted stems of <help_dir>/_fragments/*.html.\n3. check_help_page(page, repo=None): a FragmentError -> [fragment_invalid] alone; any other HelpError from the build (tool_doc, template) -> one help_page_stale problem whose detail is 'cannot build <page>: <message>', alone; else help_page_stale when <help_dir>/<page>.html is absent or its text, read with universal newlines (CRLF equals LF), differs from build_page, and help_page_unlinked when the fragment tool's canonical XML holds no href naming this page: equal to paths().page_href(page) with the prefix compared ignoring case (a link to another page does not count).\n4. check_links(tool, repo=None): every href in the tool's canonical XML text (href=\"...\" or href='...', entity-decoded); skip '#...' and non-file: schemes; under the prefix (ignoring case) strip '#'/'?' suffixes, URL-decode the tail, link_target_missing when root / tail is not a file; any other file: href is link_outside_checkout. subject = page or tool; detail names the href.\n5. format_problems: 'code | subject | detail' per problem, or 'clean'. Imports nothing from arc-meta.\n6. tests/contract/test_root_separation.py (planned file): the 'arc-help-pages apply_help' case runs apply_help through harness-skill-api (scripts/skill_api.py --file .../arc_help_pages_api.py <page>) on the demo help project, joins MUST_EXIT_ZERO, and test_arc_help_pages_apply_lands_in_the_project checks the page lands under the project.\n7. D9 = link_relative: check_links reports link_relative for each href that does not start with '#', has no scheme (urllib.parse.urlsplit) and does not start with '/' or '\\\\'; the detail names the href.",
+      "files": [
+        "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_api.py",
+        "tests/arc/test_arc_help_pages_api.py",
+        "tests/contract/test_root_separation.py"
+      ],
+      "dependencies": [
+        "TASK-6"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:33-36",
+          "expect": "__all__ = ["
+        },
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:524-528",
+          "expect": "if not problems: return \"clean\""
+        },
+        {
+          "at": "plugins/harness/scripts/skill_api.py:61-71",
+          "expect": "if folder not in sys.path:"
+        },
+        {
+          "at": "tests/contract/test_root_separation.py:171-184",
+          "expect": "def _arc_rc_args(root: Path) -> Tuple[List[str], str]:"
+        },
+        {
+          "at": "tests/contract/test_root_separation.py:235-236",
+          "expect": "\"todo_sync refresh\", \"todo_sync migrate-ids\"})"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/contract/test_no_repo_literals.py -q",
+          "expect": "passed"
+        },
+        {
+          "run": "python -m ruff check plugins/arc-straps tests/arc",
+          "expect": "All checks passed!"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_the_api_binds_the_spec_surface",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_help_pages_lists_each_fragment_stem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_missing_or_edited_page_as_stale",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_unlinked_page",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_help_page_matches_the_link_prefix_ignoring_case",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_invalid_fragment_alone",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_missing_target",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_links_decodes_the_tail_and_drops_the_fragment",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_file_href_outside_the_checkout",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_links_ignores_anchors_and_web_links",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_the_checks_from_a_worktree_use_the_main_checkout_prefix",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_format_problems_prints_one_line_each_or_clean",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_no_module_of_the_skill_imports_arc_meta",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reads_a_crlf_page_as_current",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_help_page_counts_a_link_to_another_page_as_unlinked",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_page_it_cannot_build_as_one_problem",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[upper]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[lower_drive]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/contract/test_root_separation.py::test_arc_help_pages_apply_lands_in_the_project",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[arc-help-pages apply_help]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/arc/test_arc_help_pages_api.py::test_check_links_reports_relative_hrefs",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-8",
+      "title": "arc-help-pages SKILL.md: the procedure",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/skills/test_arc_help_pages_skill_contract.py)\n1. New plugins/arc-straps/skills/arc-help-pages/SKILL.md. Frontmatter: name arc-help-pages; a description starting 'Use when' that names a toolbox tool's server-hosted help page and its link from the '?' page; argument-hint '<page> [-- <guidance>]'.\n2. Body: the project content (template, fragments, built pages, img/) and the link contract (paths().page_href; the production swap happens downstream); Steps per spec Section 3 Skill procedure: (1) read the tool's code: the entry module, the params model, the validator; an existing page's text is a claim to re-check, a contradicted claim is replaced and named; (2) write or update the fragment; (3) dry-run, then apply, apply_help; (4) add or confirm the link in the tool's canonical XML and apply it with arc-meta; (5) check_help_page and check_links until both are clean. Heredocs through harness-skill-api --repo \"${CLAUDE_PROJECT_DIR}\" --file \"${CLAUDE_SKILL_DIR}/scripts/arc_help_pages_api.py\" <page> (a <Tool> heredoc for check_links); the apply heredocs are exactly print(\"\\n\".join(apply_help(name).lines)) then the apply=True form. An API table and a Hand off section. No project literal (BANNED in the test, fpm: included, R2); fragments use the help: markers <!-- help:tool <Tool> -->, <!-- help:parameters -->, <!-- help:syntax --> (D3).",
+      "files": [
+        "plugins/arc-straps/skills/arc-help-pages/SKILL.md",
+        "tests/skills/test_arc_help_pages_skill_contract.py"
+      ],
+      "dependencies": [
+        "TASK-7"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/skills/arc-meta/SKILL.md:191-198",
+          "expect": "harness-skill-api --repo \"${CLAUDE_PROJECT_DIR}\" --file \"${CLAUDE_SKILL_DIR}/scripts/arc_meta_api.py\" <Tool> <<'PY'"
+        },
+        {
+          "at": "tests/skills/test_arc_meta_skill_contract.py:28-32",
+          "expect": "LAUNCHER = 'harness-skill-api --repo \"${CLAUDE_PROJECT_DIR}\" --file \"${CLAUDE_SKILL_DIR}/scripts/'"
+        },
+        {
+          "at": "CLAUDE.md:41-43",
+          "expect": "arc-straps skills run their Python through"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/contract/test_no_repo_literals.py -q",
+          "expect": "passed"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/arc-straps",
+          "expect": "Validation passed"
+        },
+        {
+          "run": "python -m pytest tests/contract/test_root_separation.py -k help -q",
+          "expect": "passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_frontmatter_names_the_skill_folder",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_description_says_when_to_use_it",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_every_heredoc_goes_through_the_launcher",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_an_argument_follows_the_file_path_exactly_when_name_is_read",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_heredoc_calls_are_bound_names_or_builtins",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_apply_heredocs_dry_run_then_apply",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[entry]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[params]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[validator]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_page]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_links]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[arc_meta]",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/skills/test_arc_help_pages_skill_contract.py::test_body_has_no_project_literal",
+          "red": "ImportError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-9",
+      "title": "PR B release: arc-straps 0.2.0 -> 0.3.0, descriptions and READMEs name arc-help-pages",
+      "action": "Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path first. (tests/contract/test_arc_help_pages_registration.py, new; PR A's tests/contract/test_arc_straps_registration.py guards keep running)\n1. plugins/arc-straps/.claude-plugin/plugin.json: version 0.2.0 -> 0.3.0; the description names arc-meta and arc-help-pages. .claude-plugin/marketplace.json: the arc-straps description the same, word for word.\n2. plugins/arc-straps/README.md 'What it is': a paragraph for `arc-help-pages` (pages built from fragments and the canonical XML, the two checks).\n3. README.md:35 arc-straps row names `arc-help-pages`; README.md:577 names both skills.\n4. Release notes: while v0.7.0 is uncut, its arc-straps row becomes '| arc-straps | (new) | 0.3.0 |' plus one change line for arc-help-pages; once v0.7.0 is cut, the next release file carries '| arc-straps | 0.2.0 | 0.3.0 |' (CLAUDE.md Releases).",
+      "files": [
+        "plugins/arc-straps/.claude-plugin/plugin.json",
+        ".claude-plugin/marketplace.json",
+        "plugins/arc-straps/README.md",
+        "README.md",
+        "docs/RELEASES/v0.7.0.md",
+        "tests/contract/test_arc_help_pages_registration.py"
+      ],
+      "dependencies": [
+        "TASK-8"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/arc-straps/.claude-plugin/plugin.json:3-4",
+          "expect": "\"version\": \"0.1.0\","
+        },
+        {
+          "at": ".claude-plugin/marketplace.json:13-17",
+          "expect": "ArcGIS Pro toolbox skills: arc-meta checks and applies tool help in a project's .atbx archive"
+        },
+        {
+          "at": "README.md:35",
+          "expect": "`arc-meta` checks each tool's canonical help XML against its parameters"
+        },
+        {
+          "at": "README.md:577",
+          "expect": "ArcGIS Pro toolbox skills (`arc-meta`) and the `plugins.arc-straps` defaults and schema"
+        },
+        {
+          "at": "plugins/arc-straps/README.md:7-8",
+          "expect": "Its first skill, `arc-meta`, checks and applies"
+        },
+        {
+          "at": "docs/RELEASES/v0.7.0.md:11",
+          "expect": "| arc-straps | (new) | 0.1.0 |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/contract/test_arc_help_pages_registration.py tests/contract/test_arc_straps_registration.py -q",
+          "expect": "passed"
+        },
+        {
+          "run": "claude plugin validate --strict plugins/arc-straps",
+          "expect": "Validation passed"
+        },
+        {
+          "run": "claude plugin validate --strict .",
+          "expect": "Validation passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/contract/test_arc_help_pages_registration.py::test_every_description_of_the_plugin_names_the_help_pages_skill",
+          "red": "AssertionError"
+        }
+      ]
+    }
+  ],
+  "base_commit": "e703a52a7fe49c29497eec9e00176911228a69b8",
+  "frozen": {
+    "commit": "d71476ae0ae92919ac283c9fc4449ce468ab0ab6",
+    "tree": "790614dfe8f8aa2d9f607994d0a16c529a76fde7",
+    "date": "2026-11-09",
+    "digest": "c9fb19045122409ab63c45d09d5b2fc53206dc65fb5118f59450c32f082afd22",
+    "records": "sealed"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "A <para> dialogReference flattens its child elements: arc_meta_format.inner_html joins itertext() (arc_meta_format.py:253-255), so <para>See <a href=\"...\">x</a></para> loses the href silently, and check_canonical never sees the <a> (it scans inner_html's output). Most canonical dialogReferences in the consuming project are <para>. How does a link in a <para> field behave?",
+      "options": [
+        {
+          "id": "cdata_only",
+          "summary": "Links go in CDATA fields only; the arc-meta SKILL.md sentence says so; no code change, the href in a <para> is still dropped without a report."
+        },
+        {
+          "id": "flag_para_children",
+          "summary": "check_canonical reports an element child of <para> (such as <a>) as unsupported_para_markup, so the author moves the field to CDATA; writers unchanged. Adds a TASK-2 node."
+        },
+        {
+          "id": "serialize_para_children",
+          "summary": "inner_html (and arc-help-pages' own <para> reader) serialize child elements, so <a> in a <para> passes through like CDATA. Adds TASK-1 and TASK-5 nodes."
+        }
+      ],
+      "chosen": "flag_para_children",
+      "rationale": "A <para> stays plain text; check_canonical names the dropped markup so the author moves the field to CDATA, and no reader changes. The developer accepted this recommendation on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D2",
+      "question": "checkout_root: harness already computes the parent of `git rev-parse --path-format=absolute --git-common-dir` as harness_lib.project.main_worktree (project.py:49-64), but CLAUDE.md:13-14 and plugins/arc-straps/README.md:51 limit arc-straps to project_root from that module.",
+      "options": [
+        {
+          "id": "harness_main_worktree",
+          "summary": "arc_help_pages_config imports harness_lib.project.main_worktree; CLAUDE.md:14 and the plugin README Boundary section name it beside project_root."
+        },
+        {
+          "id": "local_git_call",
+          "summary": "arc_help_pages_config runs the git command itself (subprocess, stdin closed, timeout), mirroring main_worktree's fallbacks; the documented harness surface stays as it is."
+        }
+      ],
+      "chosen": "harness_main_worktree",
+      "rationale": "harness_lib.project.main_worktree already implements the rule with its outside-git and bare-repository fallbacks; arc-straps documents it beside project_root instead of a second git call. The developer accepted this recommendation on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D3",
+      "question": "Fragment markers: the spec spells them <!-- fpm:tool X -->, <!-- fpm:parameters -->, <!-- fpm:syntax -->. `fpm` is the consuming project's package name, and CLAUDE.md:9-11 bars consumer names under plugins/ (the ban test's `\\bfpm\\.[a-z_]` pattern, tests/contract/test_no_repo_literals.py:27, does not catch `fpm:`).",
+      "options": [
+        {
+          "id": "fpm",
+          "summary": "Keep the spec's fpm: prefix verbatim in the plugin."
+        },
+        {
+          "id": "generic",
+          "summary": "A plugin-owned prefix, e.g. <!-- help:tool X -->, <!-- help:parameters -->, <!-- help:syntax -->; the project's fragments use it."
+        },
+        {
+          "id": "configurable",
+          "summary": "A new arc_help_pages key (e.g. marker_prefix, default generic) so a project keeps fpm:; one more key through the four-place touch list."
+        }
+      ],
+      "chosen": "generic",
+      "rationale": "help: names no consuming project; the arc-help-pages skill contract bans fpm: in SKILL.md. The developer accepted this recommendation on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D4",
+      "question": "The spec names the $footer template slot but not what fills it.",
+      "options": [
+        {
+          "id": "generated_note",
+          "summary": "A fixed generated line naming the tool and the fragment the page was built from (no path, no timestamp, so a rebuild stays byte-identical and identical across worktrees)."
+        },
+        {
+          "id": "empty",
+          "summary": "An empty string; the template owns any footer text."
+        },
+        {
+          "id": "fragment_footer",
+          "summary": "A third fragment marker block supplies the footer text."
+        }
+      ],
+      "chosen": "generated_note",
+      "rationale": "One fixed line, FOOTER = 'Built by arc-help-pages from the canonical tool help and a page fragment. Edit those sources, not this page.': no path, time or version, so rebuilds stay byte-identical across roots and worktrees. The developer accepted this recommendation on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D5",
+      "question": "Spec HelpPaths(atbx, tool_dir, help_dir, checkout_root) has no field for the checkout the call runs in, which link_target_missing ('absent from the current tree') and the repo-relative page href need when the checks run from a linked worktree.",
+      "options": [
+        {
+          "id": "add_root",
+          "summary": "HelpPaths adds root, as ArcMetaPaths carries it."
+        },
+        {
+          "id": "four_fields",
+          "summary": "Keep four fields; derive the tree from help_dir's parents."
+        }
+      ],
+      "chosen": "add_root",
+      "rationale": "arc_meta_config.ArcMetaPaths carries root the same way (arc_meta_config.py:21-29); deriving it from help_dir breaks when help_dir is configured at another depth. Confirmed by the developer on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D6",
+      "question": "Spec Section 3 Tests puts the tests in tests/arc-help-pages/; this repo keeps arc-straps tests in tests/arc/ (plugins/arc-straps/README.md:54, tests/arc/test_arc_meta_*.py).",
+      "options": [
+        {
+          "id": "tests_arc",
+          "summary": "tests/arc/test_arc_help_pages_*.py beside the arc-meta tests."
+        },
+        {
+          "id": "tests_arc_help_pages",
+          "summary": "A new tests/arc-help-pages/ folder."
+        }
+      ],
+      "chosen": "tests_arc",
+      "rationale": "The plugin README names tests/<area>/test_<name>.py with the arc-meta tests under tests/arc/, and tests/arc already holds the _-prefixed helpers tools/select_tests.py treats as an import root; the spec's path yields to the repo convention as the task brief directs. Confirmed by the developer on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D7",
+      "question": "Toolbox page links: arc_meta_toolbox renders idAbs and useLimit through to_pro_html (arc_meta_toolbox.py:138,144), so once TASK-1 lands a link in the toolbox source reaches toolbox.metadata.xml. check_links(tool) reads only per-tool canonical XML, so that link goes unchecked in development. The spec is silent on the toolbox surface.",
+      "options": [
+        {
+          "id": "pass_through",
+          "summary": "Accept: the toolbox page carries links; development leaves them unchecked (Production_Convert's swap still checks every swapped href). Adds a TASK-1 node pinning the anchor in build_metadata."
+        },
+        {
+          "id": "strip_on_toolbox",
+          "summary": "The toolbox writer renders link text only until a toolbox-level check exists. Adds a TASK-1 node pinning no anchor in build_metadata."
+        },
+        {
+          "id": "check_toolbox_source",
+          "summary": "arc-help-pages also scans the toolbox source; needs a toolbox_source key in arc_help_pages."
+        }
+      ],
+      "chosen": "pass_through",
+      "rationale": "One generator for both surfaces; Production_Convert's swap and check still cover toolbox links, and three TASK-1 nodes pin the toolbox behavior. The developer accepted this recommendation on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D8",
+      "question": "A tool.content parameter with no <param> in the canonical XML: the spec orders rows by tool.content but does not say what a row without canonical attributes shows.",
+      "options": [
+        {
+          "id": "refuse",
+          "summary": "tool_doc raises HelpError naming the parameter; arc-meta's check_canonical already reports it as missing_param."
+        },
+        {
+          "id": "row_without_text",
+          "summary": "A row with the name and the tool.content datatype and 'No description.'."
+        }
+      ],
+      "chosen": "refuse",
+      "rationale": "A help page row nobody wrote text for publishes an unchecked gap; the fix is in the canonical XML, which arc-meta's check_canonical names (missing_param, arc_meta_api.py:214-216). Confirmed by the developer on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D9",
+      "question": "Relative hrefs in check_links (review R5): an href that is not '#...', has no scheme and is not absolute (docs/demo.html, ../x.html) resolves against Pro's temp copy of the '?' page and breaks; the spec's Section 3 Checks name no code for it.",
+      "options": [
+        {
+          "id": "link_relative",
+          "summary": "A new HelpProblemCode link_relative reports each one."
+        },
+        {
+          "id": "skip_relative",
+          "summary": "check_links skips them, as it skips web links."
+        },
+        {
+          "id": "as_outside",
+          "summary": "Report them as link_outside_checkout."
+        }
+      ],
+      "chosen": "link_relative",
+      "rationale": "A relative href is dead on the '?' page, and its own code tells the author to write the development href instead. The developer accepted this recommendation on 2026-11-09 (relayed by the coordinator)."
+    },
+    {
+      "id": "D10",
+      "question": "Section 2 ships first (review R3): the spec's Order of work puts the Gate between Section 2 and Section 3, so the arc-meta change can ship and be clicked in Pro before arc-help-pages exists.",
+      "options": [
+        {
+          "id": "split_pr",
+          "summary": "PR A = TASK-1 to TASK-3.1 (arc-straps 0.1.0 -> 0.2.0); PR B = TASK-4 to TASK-9 (0.2.0 -> 0.3.0), started after the Gate passes."
+        },
+        {
+          "id": "one_pr",
+          "summary": "One pull request for Sections 2 and 3, one bump to 0.2.0."
+        }
+      ],
+      "chosen": "split_pr",
+      "rationale": "The Gate can stop Section 3; a separate PR A ships the link pass-through the Gate needs without waiting on, or being reverted with, arc-help-pages. The developer accepted this recommendation on 2026-11-09 (relayed by the coordinator)."
+    }
+  ],
+  "values": [
+    {
+      "name": "arc-straps version",
+      "value": "PR A (TASK-3.1) 0.1.0 -> 0.2.0; PR B (TASK-9) 0.2.0 -> 0.3.0; only plugin.json and the release notes carry it",
+      "source": "plugins/arc-straps/.claude-plugin/plugin.json:3; CLAUDE.md Releases",
+      "assumes": [
+        "split_pr"
+      ]
+    },
+    {
+      "name": "release notes file",
+      "value": "docs/RELEASES/v0.7.0.md while v0.7.0 is uncut (latest release v0.6.0 on 2026-11-09): arc-straps row '(new) | 0.2.0' after PR A, '(new) | 0.3.0' after PR B; once cut, the next file with '<old> | <new>' rows",
+      "source": "docs/RELEASES/v0.7.0.md:11; CLAUDE.md:99-112",
+      "assumes": [
+        "split_pr"
+      ]
+    },
+    {
+      "name": "generated section ids and headings",
+      "value": "parameters / <h2>Parameters</h2>; syntax / <h2>Python syntax</h2>",
+      "source": "spec Section 3 Build rules and Nav; labels from the consuming project's existing page nav"
+    },
+    {
+      "name": "parameter tags",
+      "value": "<td>{name} <span class=\"tag\">optional</span></td> (or derived); none for required",
+      "source": "spec Section 3 Build rules; consuming project tool_help/smooth_simplify.html:27"
+    },
+    {
+      "name": "empty parameter text",
+      "value": "No description.",
+      "source": "spec Section 3 Build rules"
+    },
+    {
+      "name": "syntax line",
+      "value": "arcpy.<alias>.<Tool>(required, {optional}) on one line in tool.content order; derived outputs left out and listed after it",
+      "source": "spec Section 3 Build rules"
+    },
+    {
+      "name": "page bytes",
+      "value": "template and fragment read as UTF-8 with universal newlines; page written as page.encode('utf-8') bytes (LF, no BOM); the tracked page is read with universal newlines before any comparison, so a CRLF checkout (core.autocrlf=true, git ls-files --eol i/lf w/crlf in the consuming repo) is current; no timestamp or absolute path, so an unchanged rebuild is byte-identical at any root",
+      "source": "spec Section 3 Project content"
+    },
+    {
+      "name": "template slots",
+      "value": "$title (escaped displayname), $summary (escaped plain text of <summary>), $nav, $sections, $footer through string.Template.substitute; a missing or stray $name is a HelpError naming _template.html",
+      "source": "spec Section 3 Project content"
+    },
+    {
+      "name": "href checks",
+      "value": "prefix = checkout_root.as_uri() + '/', matched ignoring case; tail stripped of #... and ?..., URL-decoded, checked as a file under root (the current tree); #anchor and non-file schemes skipped; any other file: href is link_outside_checkout",
+      "source": "spec Section 1 and Section 3 Checks"
+    },
+    {
+      "name": "fragment markers",
+      "value": "<!-- help:tool <Tool> -->, <!-- help:parameters -->, <!-- help:syntax -->",
+      "source": "spec Section 3 (Project content), prefix per D3",
+      "assumes": [
+        "generic"
+      ]
+    },
+    {
+      "name": "arc_help_pages key types",
+      "value": "_KEYS = (atbx, tool_dir, help_dir); _OPTIONAL = (atbx,); tool_dir and help_dir non-empty strings",
+      "source": "arc_meta_config.py:16-17 pattern; spec Section 3 Shared plugin files"
+    },
+    {
+      "name": "apply report lines",
+      "value": "'DRY-RUN: nothing written. Re-run with apply=True to write.' and 'UP TO DATE: ...' as arc-meta's page writer prints them",
+      "source": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_page.py:136,154"
+    },
+    {
+      "name": "Parameters table header",
+      "value": "<table><thead><tr><th>Python parameter</th><th>Label</th><th>Description</th><th>ArcGIS data type</th></tr></thead><tbody>...</tbody></table>",
+      "source": "review R7; consuming project tool_help/smooth_simplify.html:24 (its three headers, plus Label for the displayname column)"
+    },
+    {
+      "name": "derived outputs under the syntax",
+      "value": "<p>Derived output: <code>A</code>, <code>B</code></p> after the <pre><code> signature; omitted when the tool has none",
+      "source": "spec Section 3 Build rules; golden page in the planned build test"
+    },
+    {
+      "name": "sections assembly",
+      "value": "fragment lines after the tool line, each marker line replaced by its generated section, joined with '\\n' and stripped",
+      "source": "spec Section 3 Project content; golden page in the planned build test"
+    },
+    {
+      "name": "unbuildable page",
+      "value": "check_help_page reports one help_page_stale problem, detail 'cannot build <page>: <HelpError message>', and no other problem",
+      "source": "review R13"
+    },
+    {
+      "name": "apply report path",
+      "value": "apply_help lines name the page as its POSIX path relative to the root, e.g. tool_metadata/tool_help/<page>.html; the dry run ends with the DRY-RUN line",
+      "source": "review R12"
+    },
+    {
+      "name": "unclosed link refusal",
+      "value": "ValueError naming 'unclosed <a>' at </p>, </para>, </li> or the end of the markup; <a href=\"\"> is refused as '<a> without href'",
+      "source": "review R9"
+    },
+    {
+      "name": "footer",
+      "value": "Built by arc-help-pages from the canonical tool help and a page fragment. Edit those sources, not this page.",
+      "source": "decision D4",
+      "assumes": [
+        "generated_note"
+      ]
+    },
+    {
+      "name": "para markup problem code",
+      "value": "unsupported_para_markup, detail '<field>: <para> holds <tag>; write the field as CDATA HTML'",
+      "source": "decision D1",
+      "assumes": [
+        "flag_para_children"
+      ]
+    },
+    {
+      "name": "relative href problem code",
+      "value": "link_relative for an href not starting with '#', with no scheme and not starting with '/' or '\\'",
+      "source": "decision D9",
+      "assumes": [
+        "link_relative"
+      ]
+    }
+  ],
+  "formats": [
+    {
+      "name": "canonical link markup (CDATA rich field)",
+      "example": "<usage><![CDATA[<p>See <a href=\"file:///C:/work/project/tool_metadata/tool_help/demo.html\">the guide</a>.</p>]]></usage>",
+      "source": {
+        "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:121-143",
+        "expect": "def handle_starttag(self, tag, attrs):"
+      }
+    },
+    {
+      "name": "Pro help-page anchor",
+      "example": "<SPAN><A HREF=\"file:///C:/work/project/tool_metadata/tool_help/demo.html\">the guide</A></SPAN>; bold: <SPAN STYLE=\"font-weight:bold;\"><A HREF=\"u\">B</A></SPAN>",
+      "source": {
+        "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:278-284",
+        "expect": "out += f\"<SPAN{style}>{escape(r.text)}</SPAN>\""
+      }
+    },
+    {
+      "name": "hover rc for a link (text only)",
+      "example": "<xdoc><p><span>See </span><span>the guide</span><span>.</span></p></xdoc>",
+      "source": {
+        "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:314-326",
+        "expect": "out += f\"<span>{text}</span>\""
+      }
+    },
+    {
+      "name": "development href",
+      "example": "file:///C:/work/project/tool_metadata/tool_help/demo.html = Path(checkout_root).as_uri() + '/' + repo-relative path; checkout_root = parent of git --git-common-dir",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/project.py:56",
+        "expect": "\"rev-parse\", \"--path-format=absolute\", \"--git-common-dir\""
+      }
+    },
+    {
+      "name": "plugins.arc-straps.arc_help_pages section",
+      "example": "{\"plugins\": {\"arc-straps\": {\"arc_help_pages\": {\"atbx\": null, \"tool_dir\": \"tool_metadata/tools\", \"help_dir\": \"tool_metadata/tool_help\"}}}}",
+      "source": {
+        "at": "plugins/harness/lib/harness_lib/plugin_config.py:18-21",
+        "expect": "merged = deep_merge(_read(defaults_path), (cfg or active()).plugin(name))"
+      }
+    },
+    {
+      "name": "help fragment file",
+      "example": "line 1: <!-- help:tool Demo --> (the name is the archive's <Tool>.tool folder); then <section class=\"panel\" id=\"overview\"><h2>Overview</h2>...</section> blocks and the two lines <!-- help:parameters --> and <!-- help:syntax --> where the generated sections go",
+      "source": {
+        "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:58",
+        "expect": "names, label = (f\"{tool}.tool/tool.content\", f\"{tool}.tool/tool.content.rc\"), p.atbx.name"
+      }
+    },
+    {
+      "name": "toolbox alias",
+      "example": "toolbox.content: {\"version\": \"1.0\", \"alias\": \"demo\", ...}",
+      "source": {
+        "at": "tests/arc/test_arc_meta_toolbox.py:43",
+        "expect": "\"toolbox.content\": b'{\"version\": \"1.0\", \"alias\": \"demo\"}',"
+      }
+    },
+    {
+      "name": "tool.content params (dialog order)",
+      "example": "{\"params\": {\"in_poly\": {...}, \"Mode\": {\"type\": \"optional\"}, \"Out_Poly\": {\"type\": \"derived\", \"direction\": \"out\"}}} (absent type = required, absent direction = in)",
+      "source": {
+        "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:117-131",
+        "expect": "type=_TYPES.get(str(param.get(\"type\", \"required\")).lower(), ParamType.REQUIRED),"
+      }
+    },
+    {
+      "name": "canonical dialogReference forms",
+      "example": "<dialogReference><para>Text.</para></dialogReference> or <dialogReference><![CDATA[<p>..</p>]]></dialogReference>",
+      "source": {
+        "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py:245-256",
+        "expect": "paras = element.findall(\"para\")"
+      }
+    },
+    {
+      "name": "help problem line",
+      "example": "link_target_missing | Demo | tool_metadata/tool_help/gone.html",
+      "source": {
+        "at": "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py:524-528",
+        "expect": "if not problems: return \"clean\""
+      }
+    }
+  ],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "mf\\.(parse|is_plain|plain_text|to_pro_html|to_xdoc|to_canonical|inner_html)\\(",
+      "hits": {
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py": "check path: parse as the refusal probe (170), plain_text inside _plain (241; TASK-2 switches it to text_with_links), inner_html readers (153, 155, 314); anchored in TASK-2",
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py": "writer helpers: rc_text and add_dialog_ref call is_plain/plain_text/to_xdoc/to_pro_html, _set_rich and _add_tool call parse/to_pro_html; no edit, behavior follows TASK-1; anchored in TASK-1",
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_toolbox.py": "toolbox writer: parse refusal probe (78), rc_description reads run.text (99; link text only), idAbs/useLimit through to_pro_html (138, 144; anchors pass through, see D7)",
+        "tests/arc/test_arc_meta_api.py": "test: rc_text over BOLD_OUT (197); unchanged",
+        "tests/arc/test_arc_meta_format.py": "tests of link-free markup; unchanged, they pin byte-identical output for content without links"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "(^|[^A-Za-z_])Run\\(",
+      "hits": {
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py": "class Run and its one construction in _SubsetParser.handle_data (174); TASK-1 adds href",
+        "plugins/harness/lib/harness_lib/strap_models.py": "unrelated: strap Run pydantic model",
+        "plugins/harness/scripts/strap.py": "unrelated: strap Run",
+        "tests/arc/test_arc_meta_format.py": "positional Run(text, bold, False) in _r (27); stays valid because href defaults to None",
+        "tests/lib/test_strap_api.py": "unrelated: strap Run keyword constructions",
+        "tests/lib/test_strap_runs.py": "unrelated: strap Run keyword constructions"
+      }
+    },
+    {
+      "id": "S3",
+      "pattern": "rc_text\\(|SUPPORTED_TAGS|_plain\\(",
+      "hits": {
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py": "SUPPORTED_TAGS (38, 178) and _plain/_shown_plain (240-297); TASK-2 edits both",
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_canonical.py": "rc_text definition and its fields_of callers; is_plain callers; no edit",
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_format.py": "is_plain definition (259); TASK-1 adds the href condition",
+        "tests/arc/test_arc_meta_api.py": "rc_text over BOLD_OUT; unchanged",
+        "tests/arc/test_arc_meta_format.py": "rc_text tests over link-free markup; unchanged",
+        "tests/lib/test_pr_summary.py": "unrelated: test_level_one_is_plain"
+      }
+    },
+    {
+      "id": "S4",
+      "pattern": "<a href",
+      "hits": {
+        "tests/arc/_arc_toolbox.py": "BAD_CANONICAL summary (75): its only unsupported tag; TASK-2 swaps it for <code> so test_check_canonical_flags_join_key_and_lint_problems keeps its unsupported_tag"
+      }
+    },
+    {
+      "id": "S5",
+      "pattern": "plugins/arc-straps/skills/arc-meta/scripts",
+      "hits": {
+        "pyproject.toml": "pytest pythonpath (10) and pylint init-hook (27); TASK-4 appends the arc-help-pages scripts folder to both",
+        "tools/select_tests.py": "DEFAULT_PYTHONPATH mirror (73); TASK-4 appends the same folder",
+        "tests/scripts/test_select_tests.py": "arc-meta import-root test (491) and the mirror test (498-505); unchanged",
+        "docs/PROVENANCE.md": "port record of arc-meta; unchanged (arc-help-pages is new, not a port)",
+        "docs/PR_REVIEWS/0220_1129_new_arcgis_plugin.json": "historical review; unchanged",
+        "docs/TODO/RepoToDo.json": "TODO prose; unchanged"
+      }
+    },
+    {
+      "id": "S6",
+      "pattern": "arc-meta checks and applies",
+      "hits": {
+        ".claude-plugin/marketplace.json": "arc-straps description; TASK-3.1 keeps it equal to the manifest's, TASK-9 names arc-help-pages",
+        "plugins/arc-straps/.claude-plugin/plugin.json": "manifest description; TASK-3.1 keeps it equal to the marketplace's, TASK-9 names arc-help-pages"
+      }
+    },
+    {
+      "id": "S7",
+      "pattern": "ArcMetaPaths|skills \\(`arc-meta`\\)|`arc-meta` checks each",
+      "hits": {
+        "CLAUDE.md": "key-touch list (17); TASK-4 names arc_help_pages_config.py beside it",
+        "README.md": "arc-straps row (35) and plugins/arc-straps/ row (577); TASK-9 names arc-help-pages",
+        "plugins/arc-straps/README.md": "'A new key touches' paragraph (91); TASK-4 names arc_help_pages_config.py",
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_api.py": "uses of ArcMetaPaths; unchanged",
+        "plugins/arc-straps/skills/arc-meta/scripts/arc_meta_config.py": "ArcMetaPaths definition; unchanged (mirrored, never imported, by arc_help_pages_config)",
+        "docs/PR_REVIEWS/0220_1129_new_arcgis_plugin.json": "historical review; unchanged"
+      }
+    }
+  ],
+  "deferred_to_future_plans": [
+    {
+      "topic": "Step 0 (migrate the consuming project to arc-straps) and the Gate",
+      "rationale": "Work in the consuming repository; planned there.",
+      "affected_sites": []
+    },
+    {
+      "topic": "Section 3 project content and the first page (smooth_simplify)",
+      "rationale": "The template, fragments, built pages and img/ live in the consuming repository; planned there once TASK-9 ships.",
+      "affected_sites": []
+    },
+    {
+      "topic": "Section 4 Production_Convert link swap",
+      "rationale": "Another repository; planned there.",
+      "affected_sites": []
+    }
+  ]
+}

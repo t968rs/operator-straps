@@ -19,6 +19,11 @@ tool's hover text and "?" page hold what an apply writes. Two hover states the h
 failing until a manual `tool.content` or rc edit. Every project value (archive, XML folder, registry) comes from
 `.claude/harness.json`; nothing in the plugin names a project.
 
+Authored `<a href>` links pass through to the "?" page, and hovers show the link text. arc-meta does not check
+link targets: write an absolute href, since Pro renders the "?" page from a temp copy and a relative href breaks.
+An `<a>` without an `href` or text, nested in another `<a>` or left open is refused as `unparseable`, and the
+apply calls refuse that field.
+
 ## Install
 
 ```

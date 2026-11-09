@@ -11,8 +11,17 @@ native ArcGIS forms used by the two display surfaces:
         <xdoc><p><b>..</b><span>..</span></p><ul><li><p><span>..</span></p></li></ul></xdoc>
 
 Supported subset: ``<p>``, ``<b>`` (and ``<strong>``), ``<i>`` (and ``<em>``),
-``<ul>``/``<li>``, with one level of ``<ul>`` nested inside an ``<li>``. A ``<para>`` element
-is treated as a paragraph (the metadata-native form). Any other tag collapses to its text.
+``<ul>``/``<li>``, with one level of ``<ul>`` nested inside an ``<li>``, and ``<a href>``. A
+``<para>`` element is treated as a paragraph (the metadata-native form). Any other tag collapses
+to its text.
+
+A link keeps its ``href`` on each run it covers, independent of bold and italic, so ``<a>`` may
+wrap or sit inside ``<b>``/``<i>``/``<span>``. The Pro help page renders an anchor inside the
+run's span, the canonical form writes the ``<a href>`` back, and xdoc keeps the link text only.
+An ``<a>`` without an ``href`` (or with a blank one), an ``<a>`` without text, an ``<a>``
+nested in another ``<a>``, and an ``<a>`` still open where its paragraph or list item (or the
+markup) ends or a new paragraph, list or list item starts raise ``ValueError``. The ``href`` is
+stored stripped of surrounding whitespace.
 
 A nested list parses to a ``("sub", items)`` block placed right after the ``("ul", ...)``
 block whose last item is its parent; the renderers nest it back inside that item. Sibling
@@ -32,7 +41,7 @@ from __future__ import annotations
 import base64
 import re
 from html.parser import HTMLParser
-from typing import List, NamedTuple, Optional, Tuple, Union
+from typing import Callable, List, NamedTuple, Optional, Tuple, Union
 from xml.sax.saxutils import escape
 
 _WS_RE = re.compile(r"\s+")
@@ -50,11 +59,12 @@ PRO_SUBUL_STYLE = "margin-top:0.25em;margin-bottom:0;"
 
 
 class Run(NamedTuple):
-    """A text run with bold/italic state."""
+    """A text run with bold/italic state and the href of the link it sits in (None outside a link)."""
 
     text: str
     bold: bool
     italic: bool
+    href: Optional[str] = None
 
 
 # A block is ("p", [Run, ...]), ("ul", [[Run, ...], ...]) or ("sub", [[Run, ...], ...]).
@@ -80,6 +90,29 @@ class _SubsetParser(HTMLParser):
         self._in_li = False
         self._nested = False
         self._outer_li = False
+        self._href: Optional[str] = None
+        self._link_text = False
+
+    def _open_link(self, attrs) -> None:
+        """Store the stripped href of an opening ``<a>``; refuse a nested link or a missing or blank href."""
+        if self._href is not None:
+            raise ValueError("<a> nested in another <a>")
+        href = (dict(attrs).get("href") or "").strip()
+        if not href:
+            raise ValueError("<a> without href")
+        self._href = href
+        self._link_text = False
+
+    def _close_link(self) -> None:
+        """Close the open ``<a>``; refuse a link that received no text, which no surface could show."""
+        if self._href is not None and not self._link_text:
+            raise ValueError("<a> without text")
+        self._href = None
+
+    def _refuse_open_link(self, where: str) -> None:
+        """Refuse an ``<a>`` still open at ``where``, so its href cannot leak into the next block."""
+        if self._href is not None:
+            raise ValueError(f"unclosed <a> at {where}")
 
     def _flush_loose(self) -> None:
         if self._loose:
@@ -119,6 +152,8 @@ class _SubsetParser(HTMLParser):
         self._items = None
 
     def handle_starttag(self, tag, attrs):
+        if tag in ("p", "para", "li", "ul"):
+            self._refuse_open_link(f"<{tag}>")
         if tag in ("p", "para"):
             if not self._in_li:
                 self._flush_loose()
@@ -128,6 +163,8 @@ class _SubsetParser(HTMLParser):
         elif tag == "li":
             self._runs = []
             self._in_li = True
+        elif tag == "a":
+            self._open_link(attrs)
         elif tag in _INLINE:
             if _INLINE[tag] == "bold":
                 self._bold += 1
@@ -142,7 +179,11 @@ class _SubsetParser(HTMLParser):
             self._ital += ital
 
     def handle_endtag(self, tag):
-        if tag in ("p", "para"):
+        if tag in ("p", "para", "li"):
+            self._refuse_open_link(f"</{tag}>")
+        if tag == "a":
+            self._close_link()
+        elif tag in ("p", "para"):
             if not self._in_li and self._runs is not None:
                 self.blocks.append(("p", self._runs))
                 self._runs = None
@@ -171,11 +212,13 @@ class _SubsetParser(HTMLParser):
             return
         if self._runs is None and self._outer_li and not self._nested:
             raise ValueError(f"item text after a nested list inside the same <li>: {text.strip()!r}")
-        run = Run(text, self._bold > 0, self._ital > 0)
+        run = Run(text, self._bold > 0, self._ital > 0, self._href)
+        self._link_text = self._link_text or self._href is not None
         (self._runs if self._runs is not None else self._loose).append(run)
 
     def close(self):
         super().close()
+        self._refuse_open_link("the end of the markup")
         self._flush_loose()
 
 
@@ -257,22 +300,40 @@ def inner_html(element) -> str:
 
 
 def is_plain(blocks: List[Block]) -> bool:
-    """Return True for a single paragraph with one unformatted run."""
+    """Return True for a single paragraph with one unformatted run outside any link."""
     if len(blocks) != 1 or blocks[0][0] != "p":
         return False
     runs = blocks[0][1]
-    return len(runs) == 1 and not runs[0].bold and not runs[0].italic
+    return len(runs) == 1 and not runs[0].bold and not runs[0].italic and runs[0].href is None
+
+
+def _flatten(blocks: List[Block], run_text: Callable[[Run], str]) -> str:
+    """Join every paragraph and list item into one whitespace-collapsed line of ``run_text`` output."""
+    parts: List[str] = []
+    for kind, content in blocks:
+        if kind == "p":
+            parts.append("".join(run_text(r) for r in content))
+        else:
+            parts.extend("".join(run_text(r) for r in item) for item in content)
+    return _WS_RE.sub(" ", " ".join(parts)).strip()
 
 
 def plain_text(blocks: List[Block]) -> str:
     """Flatten blocks to a single plain-text line."""
-    parts: List[str] = []
-    for kind, content in blocks:
-        if kind == "p":
-            parts.append("".join(r.text for r in content))
-        else:
-            parts.extend("".join(r.text for r in item) for item in content)
-    return _WS_RE.sub(" ", " ".join(parts)).strip()
+    return _flatten(blocks, lambda r: r.text)
+
+
+def text_with_links(blocks: List[Block]) -> str:
+    """Flatten blocks like :func:`plain_text`, with each link run's href appended as ``text [href]``.
+
+    Equal to :func:`plain_text` for blocks without links, so a changed href changes the result.
+    """
+    return _flatten(blocks, lambda r: r.text if r.href is None else f"{r.text} [{r.href}]")
+
+
+def _attr(value: str) -> str:
+    """``value`` escaped for a double-quoted attribute."""
+    return escape(value, {'"': "&quot;"})
 
 
 def _runs_pro(runs: List[Run]) -> str:
@@ -280,7 +341,8 @@ def _runs_pro(runs: List[Run]) -> str:
     for r in runs:
         styles = ("font-weight:bold;" if r.bold else "") + ("font-style:italic;" if r.italic else "")
         style = f' STYLE="{styles}"' if styles else ""
-        out += f"<SPAN{style}>{escape(r.text)}</SPAN>"
+        text = escape(r.text) if r.href is None else f'<A HREF="{_attr(r.href)}">{escape(r.text)}</A>'
+        out += f"<SPAN{style}>{text}</SPAN>"
     return out
 
 
@@ -343,26 +405,27 @@ def to_xdoc(blocks: List[Block]) -> str:
     return f"<xdoc>{''.join(parts)}</xdoc>"
 
 
+def _run_canon(r: Run) -> str:
+    """One run in the authoring subset; a link run wraps its formatting in ``<a href>``."""
+    text = escape(r.text)
+    if r.bold and r.italic:
+        text = f"<b><i>{text}</i></b>"
+    elif r.bold:
+        text = f"<b>{text}</b>"
+    elif r.italic:
+        text = f"<i>{text}</i>"
+    return text if r.href is None else f'<a href="{_attr(r.href)}">{text}</a>'
+
+
 def _runs_canon(runs: List[Run]) -> str:
-    out = ""
-    for r in runs:
-        text = escape(r.text)
-        if r.bold and r.italic:
-            out += f"<b><i>{text}</i></b>"
-        elif r.bold:
-            out += f"<b>{text}</b>"
-        elif r.italic:
-            out += f"<i>{text}</i>"
-        else:
-            out += text
-    return out
+    return "".join(_run_canon(r) for r in runs)
 
 
 def to_canonical(blocks: List[Block]) -> str:
     """Render blocks as the canonical authoring subset (for a CDATA source field).
 
-    Plain text carries no wrapper; ``<b>``/``<i>`` mark inline formatting and ``<ul>``/
-    ``<li>`` mark lists. This is the inverse of :func:`parse` for the supported subset.
+    Plain text carries no wrapper; ``<b>``/``<i>`` mark inline formatting, ``<a href>`` marks a
+    link and ``<ul>``/``<li>`` mark lists. This is the inverse of :func:`parse` for the supported subset.
     """
     parts: List[str] = []
     for kind, content in _grouped(blocks):

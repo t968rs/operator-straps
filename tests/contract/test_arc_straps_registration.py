@@ -1,9 +1,16 @@
-"""The arc-straps plugin is registered where every plugin is, and declares its harness dependency."""
+"""The arc-straps plugin is registered where every plugin is, and declares its harness dependency.
+
+The release notes carry the manifest's version in an arc-straps row, and the manifest and the marketplace
+describe the plugin in the same words, so each pull request that bumps the plugin keeps both in step.
+"""
 from __future__ import annotations
 
 import json
 import re
 from pathlib import Path
+from typing import List
+
+WALK_ROOTS = ("docs/RELEASES/",)
 
 
 def _text(repo_root: Path, rel: str) -> str:
@@ -47,3 +54,34 @@ def test_the_plugin_readme_documents_its_keys(repo_root: Path) -> None:
 def test_provenance_records_the_port(repo_root: Path) -> None:
     text = _text(repo_root, "docs/PROVENANCE.md")
     assert "plugins/arc-straps/skills/arc-meta/" in text and "0c4e45eb6" in text
+
+
+def _manifest(repo_root: Path) -> dict:
+    return json.loads(_text(repo_root, "plugins/arc-straps/.claude-plugin/plugin.json"))
+
+
+def _release_rows(repo_root: Path) -> List[str]:
+    """Every arc-straps row of the release-notes tables under docs/RELEASES/."""
+    rows: List[str] = []
+    for path in sorted((repo_root / "docs" / "RELEASES").glob("v*.md")):
+        rows += re.findall(r"^\|\s*arc-straps\s*\|.*$", path.read_text(encoding="utf-8"), re.MULTILINE)
+    return rows
+
+
+def test_the_release_notes_carry_the_manifest_version(repo_root: Path) -> None:
+    version = re.escape(_manifest(repo_root)["version"])
+    rows = _release_rows(repo_root)
+    assert any(re.search(rf"\|\s*{version}\s*\|\s*$", row) for row in rows), rows
+
+
+def test_the_manifest_and_the_marketplace_describe_the_plugin_alike(repo_root: Path) -> None:
+    plugins = json.loads(_text(repo_root, ".claude-plugin/marketplace.json"))["plugins"]
+    entry = next(p for p in plugins if p["name"] == "arc-straps")
+    assert entry["description"] == _manifest(repo_root)["description"]
+
+
+def test_the_plugin_readme_says_links_pass_through(repo_root: Path) -> None:
+    """The README's account of arc-meta says ``<a href>`` reaches the "?" page."""
+    text = _text(repo_root, "plugins/arc-straps/README.md")
+    what = text.partition("## What it is")[2].partition("\n## ")[0]
+    assert "`<a href>`" in what, what
