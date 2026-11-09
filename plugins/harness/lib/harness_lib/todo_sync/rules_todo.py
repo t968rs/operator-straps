@@ -10,6 +10,7 @@ from collections import Counter
 from typing import Any, Dict, Iterable, List, Optional, Set
 
 from harness_lib.project import schema_path
+from harness_lib.todo_sync.ids import LEGACY_RE, MIGRATE_HINT, is_legacy
 from harness_lib.todo_sync.ranking import RankingError, expected_order, method_from, score
 from harness_lib.todo_sync.report import Finding
 from harness_lib.todo_sync.sources import TERMINAL_RESEARCH, Sources, posix, rows_sha256
@@ -42,8 +43,18 @@ def _subject(src: Sources, path: List[Any]) -> Optional[str]:
     return None
 
 
+def _legacy_id_error(error: Any) -> bool:
+    """True for a ``pattern`` error on a rank-tied ``TODO-NNN`` id."""
+    return error.validator == "pattern" and isinstance(error.instance, str) \
+        and LEGACY_RE.fullmatch(error.instance) is not None
+
+
 def t1_schema(src: Sources) -> List[Finding]:
-    """T1: the catalog validates against ``todo.catalog_schema`` (else the harness TodoCatalog schema)."""
+    """T1: the catalog validates against ``todo.catalog_schema`` (else the harness TodoCatalog schema).
+
+    On a catalog that still holds ``TODO-NNN`` item ids, the pattern errors those ids raise are left to T6,
+    which reports the whole catalog once.
+    """
     import jsonschema
     rel = src.todo.rel
     try:
@@ -56,6 +67,8 @@ def t1_schema(src: Sources) -> List[Finding]:
     cls = jsonschema.validators.validator_for(schema, default=jsonschema.Draft202012Validator)
     validator = cls(schema, format_checker=jsonschema.FormatChecker())
     errors = sorted(validator.iter_errors(src.todo.data), key=lambda e: [str(p) for p in e.absolute_path])
+    if isinstance(src.todo.data, dict) and is_legacy(src.todo.data):
+        errors = [e for e in errors if not _legacy_id_error(e)]
     out = [Finding("T1", "error", rel, f"{'/'.join(str(p) for p in e.absolute_path) or '<root>'}: "
                    f"{e.message[:200]}", subject=_subject(src, list(e.absolute_path)),
                    fix="Make the catalog match its schema.") for e in errors]
@@ -128,20 +141,75 @@ def t5_live_entries(src: Sources) -> List[Finding]:
     return out
 
 
+def _catalog(src: Sources) -> Dict[str, Any]:
+    return src.todo.data if isinstance(src.todo.data, dict) else {}
+
+
+def _retired(src: Sources) -> Set[str]:
+    raw = _catalog(src).get("retired_ids")
+    return {r for r in raw if isinstance(r, str)} if isinstance(raw, list) else set()
+
+
+def _duplicate_ids(src: Sources) -> List[Finding]:
+    return [Finding("T6", "error", src.todo.rel, f"id {item_id} appears {n} times", subject=item_id)
+            for item_id, n in Counter(str(i.get("id")) for i in src.items()).items() if n > 1]
+
+
+def _retired_items(src: Sources, retired: Set[str]) -> List[Finding]:
+    return [Finding("T6", "error", src.todo.rel, f"id {item_id} is in retired_ids", subject=item_id,
+                    fix="Drop the id from retired_ids, or give the item a new id.")
+            for item_id in (str(i.get("id")) for i in src.items()) if item_id in retired]
+
+
+def _split_records(src: Sources, retired: Set[str]) -> List[Finding]:
+    """Every ``split_ids`` key is retired; every part it names is a live item or retired."""
+    raw, rel = _catalog(src).get("split_ids"), src.todo.rel
+    live, out = {str(i.get("id")) for i in src.items()}, []
+    for split_id, parts in (raw.items() if isinstance(raw, dict) else ()):
+        if split_id not in retired:
+            out.append(Finding("T6", "error", rel, f"split id {split_id} is not in retired_ids",
+                               subject=split_id, fix="Add the split id to retired_ids."))
+        for part in parts if isinstance(parts, list) else ():
+            if part not in live and part not in retired:
+                out.append(Finding("T6", "error", rel, f"split id {split_id} names part {part}, neither an "
+                                   "item nor retired", subject=split_id,
+                                   fix="Fix the part id, or add it to retired_ids."))
+    return out
+
+
+def _legacy_orphans(src: Sources, retired: Set[str]) -> List[Finding]:
+    """Every ``legacy_ids`` map value is a live item or retired, so no draw can reuse a migrated id."""
+    legacy = _catalog(src).get("legacy_ids")
+    mapping = legacy.get("map") if isinstance(legacy, dict) else None
+    if not isinstance(mapping, dict):
+        return []
+    live = {str(i.get("id")) for i in src.items()}
+    return [Finding("T6", "error", src.todo.rel,
+                    f"legacy id {old} maps to {new}, neither an item nor retired", subject=new,
+                    fix="Restore the item, or add the id to retired_ids.")
+            for old, new in mapping.items() if isinstance(new, str) and new not in live | retired]
+
+
+def _rank_order(src: Sources) -> List[Finding]:
+    return [Finding("T6", "error", src.todo.rel, f"rank {item.get('rank')} at position {pos}",
+                    subject=str(item.get("id")), fix="Set ranks 1..n in item order.")
+            for pos, item in enumerate(src.items(), 1) if item.get("rank") != pos]
+
+
 def t6_ids_and_ranks(src: Sources) -> List[Finding]:
-    """T6: ids are unique and equal ``TODO-<rank>``; ranks run 1..n in item order."""
-    rel, out = src.todo.rel, []
-    for item_id, n in Counter(str(i.get("id")) for i in src.items()).items():
-        if n > 1:
-            out.append(Finding("T6", "error", rel, f"id {item_id} appears {n} times", subject=item_id))
-    for pos, item in enumerate(src.items(), 1):
-        rank, item_id = item.get("rank"), str(item.get("id"))
-        if rank != pos:
-            out.append(Finding("T6", "error", rel, f"rank {rank} at position {pos}", subject=item_id,
-                               fix="Renumber ranks 1..n in item order."))
-        elif item_id != f"TODO-{pos:03d}":
-            out.append(Finding("T6", "error", rel, f"id {item_id} does not match rank {rank}",
-                               subject=item_id, fix=f"Rename it TODO-{pos:03d}."))
+    """T6: ids are unique and not retired, ``split_ids`` and ``legacy_ids`` records hold, ranks run 1..n.
+
+    A catalog that still holds rank-tied ``TODO-NNN`` ids gets one finding naming ``migrate-ids``, plus
+    its duplicate-id findings, which ``migrate-ids`` needs cleared first.
+    """
+    rel = src.todo.rel
+    if is_legacy(_catalog(src)):
+        legacy = Finding("T6", "error", rel, MIGRATE_HINT,
+                         fix="Run todo_sync.py migrate-ids --dry-run, then without --dry-run.")
+        return capped([legacy] + _duplicate_ids(src), "T6", rel)
+    retired = _retired(src)
+    out = (_duplicate_ids(src) + _retired_items(src, retired) + _split_records(src, retired)
+           + _legacy_orphans(src, retired) + _rank_order(src))
     return capped(out, "T6", rel)
 
 

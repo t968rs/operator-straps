@@ -7,6 +7,7 @@ import json
 import pytest
 
 from conftest import FIXTURES
+from harness_lib.todo_sync.ids import is_id
 from harness_lib.todo_sync.ranking import RankingError, expected_order, method_from, score, sort_key
 
 CATALOG = json.loads((FIXTURES / "todo_sync" / "TodoCatalog.min.json").read_text(encoding="utf-8"))
@@ -35,15 +36,18 @@ def test_unblock_bonus_only_when_the_item_unblocks(doc) -> None:
     assert value == without["base_score"]
 
 
-def test_expected_order_matches_ranks(doc) -> None:
+def test_fixture_order_follows_the_scores(doc) -> None:
     method = method_from(doc["ranking_method"])
-    assert expected_order(doc["items"], method) == ["TODO-001", "TODO-002", "TODO-003"]
+    by_rank = [i["id"] for i in sorted(doc["items"], key=lambda i: i["rank"])]
+    assert all(is_id(i) for i in by_rank)
+    assert expected_order(doc["items"], method) == by_rank
+    assert expected_order(list(reversed(doc["items"])), method) == by_rank
 
 
 def test_tie_breaks_on_severity_then_loe_then_source(doc) -> None:
     method = method_from(doc["ranking_method"])
     a, b = doc["items"][1], copy.deepcopy(doc["items"][1])
-    b["id"], b["title"] = "TODO-009", "Another"
+    b["id"], b["title"] = "todo-9zzz", "Another"
     b["sources"] = [{"type": "gh_issue", "ref": "#5", "url": "u"}]
     assert sort_key(b, method, 1.0) < sort_key(a, method, 1.0)
     b["sources"] = [{"type": "impl_stub", "ref": "docs/A/_IMPL_TODO.md", "item": "Z"}]

@@ -13,6 +13,7 @@ import jsonschema
 import pytest
 
 from conftest import FIXTURES, PLUGIN_ROOT
+from harness_lib.todo_sync.ids import is_id
 
 SCHEMAS = PLUGIN_ROOT / "schemas"
 CATALOG_SCHEMA = SCHEMAS / "catalogs" / "TodoCatalog.schema.json"
@@ -69,6 +70,46 @@ def test_catalog_schema_is_draft_2020_12() -> None:
 ], ids=["id-pattern", "terminal-status", "unknown-item-key", "decision-question", "abs-stub-ref",
         "backslash-stub-ref", "close-state", "trackers-required"])
 def test_catalog_schema_rejects(catalog: Dict[str, Any], mutate) -> None:
+    bad = copy.deepcopy(catalog)
+    mutate(bad)
+    assert _errors(CATALOG_SCHEMA, bad)
+
+
+@pytest.mark.parametrize("code", ["todo-k7qf", "todo-2a2a", "todo-z9zz", "todo-sync", "todo-2345",
+                                  "TODO-001", "TODO-K7QF", "todo-k7q", "todo-k7qf2", "todo-k1qf", "todo-kiqf",
+                                  "todo-kolf", "k7qf"])
+def test_todo_id_pattern_takes_stable_codes_only(catalog: Dict[str, Any], code: str) -> None:
+    doc = copy.deepcopy(catalog)
+    old = doc["items"][2]["id"]
+    doc["items"][2]["id"] = code
+    assert old not in json.dumps(doc["items"][:2])
+    assert (_errors(CATALOG_SCHEMA, doc) == []) is is_id(code)
+
+
+def test_retired_and_legacy_ids_validate(catalog: Dict[str, Any]) -> None:
+    doc = copy.deepcopy(catalog)
+    doc["retired_ids"] = ["todo-2a2a", "todo-m3x9"]
+    doc["legacy_ids"] = {"migrated": "2026-11-09", "map": {"TODO-001": doc["items"][0]["id"],
+                                                         "TODO-017": "todo-2a2a"}}
+    doc["split_ids"] = {"todo-m3x9": [doc["items"][1]["id"], doc["items"][2]["id"]]}
+    assert _errors(CATALOG_SCHEMA, doc) == []
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda d: d.update(retired_ids=["todo-2a2a", "todo-2a2a"]),
+    lambda d: d.update(retired_ids=["TODO-004"]),
+    lambda d: d.update(legacy_ids={"map": {"TODO-001": "todo-2a2a"}}),
+    lambda d: d.update(legacy_ids={"migrated": "yesterday", "map": {}}),
+    lambda d: d.update(legacy_ids={"migrated": "2026-11-09", "map": {"todo-2a2a": "todo-m3x9"}}),
+    lambda d: d.update(legacy_ids={"migrated": "2026-11-09", "map": {"TODO-001": "TODO-002"}}),
+    lambda d: d.update(legacy_ids={"migrated": "2026-11-09", "map": {}, "note": "x"}),
+    lambda d: d.update(split_ids={"todo-m3x9": ["todo-k7qf"]}),
+    lambda d: d.update(split_ids={"todo-m3x9": ["todo-k7qf", "todo-k7qf"]}),
+    lambda d: d.update(split_ids={"TODO-004": ["todo-k7qf", "todo-2a2a"]}),
+    lambda d: d.update(split_ids={"todo-m3x9": ["todo-k7qf", "TODO-005"]}),
+], ids=["retired-repeat", "retired-legacy", "legacy-no-date", "legacy-bad-date", "legacy-key", "legacy-value",
+        "legacy-extra-key", "split-one-part", "split-repeat", "split-legacy-key", "split-legacy-part"])
+def test_legacy_ids_rejects_a_bad_map(catalog: Dict[str, Any], mutate) -> None:
     bad = copy.deepcopy(catalog)
     mutate(bad)
     assert _errors(CATALOG_SCHEMA, bad)
