@@ -136,10 +136,14 @@ PY
 
 - **Format:** ArcGIS metadata format 1.0, `ItemDescription` profile. `<summary>` and `<usage>` are
   CDATA-wrapped HTML; `<dialogReference>` is a `<para>` or CDATA HTML. The subset is `<p>`, `<b>`, `<i>`,
-  `<ul>`/`<li>` with one level of `<ul>` inside an `<li>`. The generator emits the heavy
-  `<DIV STYLE=...><SPAN>` markup; never write it by hand. No `<Binary>`/`<Thumbnail>` in the canonical XML, no
-  links (the "?" page is rendered from a temp copy, so relative links break and the hover renders none). ASCII
-  punctuation only.
+  `<ul>`/`<li>` with one level of `<ul>` inside an `<li>`, and `<a href>`. The generator emits the heavy
+  `<DIV STYLE=...><SPAN>` markup; never write it by hand. No `<Binary>`/`<Thumbnail>` in the canonical XML.
+  `<a href>` passes through to the "?" page and hovers show the link text; arc-meta does not check where a
+  link points. Write an absolute href (a `file:///` URI, a web URL or a `#` fragment): Pro renders the "?" page
+  from a temp copy, so a relative href breaks. An `<a>` without an `href` or text, nested in another `<a>` or
+  left open is refused (`unparseable`), and the apply calls refuse that field. A later arc-straps skill,
+  `arc-help-pages`, will build help pages and check link targets. A `<para>` holds plain text only; markup and
+  links go in CDATA HTML. ASCII punctuation only.
 - **Images:** a tool's `<Tool>.tool/tool.illustration.png` in the archive is embedded by `apply_page` as
   `<Binary><Thumbnail><img src="data:image/png;base64,..."/>` in the "?" page, the element Pro's stylesheets
   draw as the page illustration. The canonical XML never carries it; `page_image_stale` means the page and the
@@ -203,8 +207,8 @@ PY
 | `paths()` | the resolved locations: project root, archive, `tool_dir`, `toolbox_source` and registry (None when none is configured) |
 | `param_table(tool)` | one row per `tool.content` parameter: join key, dialog title, type and direction as the canonical XML spells them, datatype, whether the hover is wired, symbology layer, value-list values, Pro default |
 | `entry_sources(tool)` | the entry module from `tool.script.execute.link` with `entry_exists` (False when the link dangles), the embedded script as `embedded_script` (None when the archive holds none), the embedded validator, and the configured registry's `py_path` with a `registry_stale` flag |
-| `check_canonical(tool)` | join-key, type and direction mismatches, a numeric-prefixed displayname, non-ASCII text, thumbnails, unsupported tags, lists nested past one level, markup the generator refuses (`unparseable`) |
-| `check_applied(tool)` | each surface whose archive state differs from the canonical XML: `hover_unwired`, `hover_stale`, `hover_style_stale`, `page_stale` (a missing `tool.metadata.xml` page, text, the resTitle or keywords, a dropped or extra parameter, or a displayname, type, direction or datatype attribute), `page_style_stale` (older generator markup, or a parameter order that differs from the canonical XML), `page_image_stale` (the page's illustration differs from the archive's `tool.illustration.png`, is missing, or is present when the archive has none); a summary or parameter whose canonical text is empty is not compared against the rc |
+| `check_canonical(tool)` | join-key, type and direction mismatches, a numeric-prefixed displayname, non-ASCII text, thumbnails, unsupported tags, lists nested past one level, markup in a `<para>` (`unsupported_para_markup`), markup the generator refuses (`unparseable`) |
+| `check_applied(tool)` | each surface whose archive state differs from the canonical XML: `hover_unwired`, `hover_stale`, `hover_style_stale`, `page_stale` (a missing `tool.metadata.xml` page, text or a link target, the resTitle or keywords, a dropped or extra parameter, or a displayname, type, direction or datatype attribute), `page_style_stale` (older generator markup, or a parameter order that differs from the canonical XML), `page_image_stale` (the page's illustration differs from the archive's `tool.illustration.png`, is missing, or is present when the archive has none); a summary or parameter whose canonical text is empty is not compared against the rc |
 | `tool_names()` | every tool in the archive, for a sweep of `check_applied` |
 
 ## Judgment

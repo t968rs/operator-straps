@@ -4,6 +4,9 @@ Enums are ``str`` enums, so a value compares equal to, and serializes as, its pl
 forbids extra keys and is frozen: the API builds each record once from the toolbox archive and the canonical
 XML, and nothing downstream edits it. Imports only the standard library and pydantic, and avoids pydantic
 features newer than 2.4 (the ArcGIS Pro environment pins an older pydantic).
+
+``ProblemCode.UNSUPPORTED_PARA_MARKUP`` (``unsupported_para_markup``) marks a ``<para>`` field that holds a
+child element, which the readers would drop.
 """
 from __future__ import annotations
 
@@ -45,6 +48,7 @@ class ProblemCode(str, Enum):
     NON_ASCII = "non_ascii"
     THUMBNAIL = "thumbnail"
     UNSUPPORTED_TAG = "unsupported_tag"
+    UNSUPPORTED_PARA_MARKUP = "unsupported_para_markup"
     DEEP_NESTING = "deep_nesting"
     UNPARSEABLE = "unparseable"
     HOVER_UNWIRED = "hover_unwired"

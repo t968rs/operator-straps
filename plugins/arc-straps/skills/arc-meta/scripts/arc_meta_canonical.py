@@ -33,15 +33,16 @@ def load(tool_dir: Path, tool: str) -> Tuple[str, ET.Element]:
 
 
 def rc_text(blocks: list, summary: bool = False) -> str:
-    """The rc value for ``blocks``: empty when blank, plain text for the summary and an unformatted
-    parameter, ``xdoc`` rich text for a formatted parameter."""
+    """The rc value for ``blocks``: empty when blank, plain text for the summary and a parameter that is
+    unformatted and outside any link, ``xdoc`` rich text for any other parameter. A link selects ``xdoc``
+    even though ``xdoc`` keeps only the link text."""
     if not mf.plain_text(blocks).strip():
         return ""
     return mf.plain_text(blocks) if summary or mf.is_plain(blocks) else mf.to_xdoc(blocks)
 
 
 def add_dialog_ref(param_el: ET.Element, blocks: list) -> None:
-    """Add a <dialogReference>: a plain <para> when unformatted, else escaped HTML."""
+    """Add a <dialogReference>: a plain <para> when unformatted and outside any link, else escaped HTML."""
     ref = ET.SubElement(param_el, "dialogReference")
     if mf.is_plain(blocks):
         ET.SubElement(ref, "para").text = mf.plain_text(blocks)
@@ -61,8 +62,8 @@ def fields_of(root: ET.Element, label: str) -> Tuple[str, Dict[str, str]]:
     """``(summary rc text, {lowercased parameter name: rc text})`` of a parsed canonical root.
 
     The summary is always plain text; a parameter keeps a bare string when plain and becomes ``xdoc`` rich
-    text when the canonical XML carries ``<b>``/``<i>``/``<ul>`` markup. The writer and the check API both
-    read hover text here.
+    text when the canonical XML carries ``<b>``/``<i>``/``<ul>`` markup or a link (``xdoc`` keeps only the
+    link text). The writer and the check API both read hover text here.
     """
     tool_el = tool_element(root, label)
     summary = rc_text(mf.parse(mf.inner_html(tool_el.find("summary"))), summary=True)
