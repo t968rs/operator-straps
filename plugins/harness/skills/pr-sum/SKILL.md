@@ -187,14 +187,15 @@ steps, so the difference stands out. It takes one of two forms:
   | Marker | The row shows                                                   | Tag         |
   |--------|-----------------------------------------------------------------|-------------|
   | `<>`   | the BEFORE step on its left becomes the AFTER step on its right | `[changed]` |
-  | `>>`   | an AFTER step BEFORE lacks; the BEFORE side carries its `│` on  | `[new]`     |
+  | `>>`   | an AFTER step BEFORE lacks; the BEFORE `│` runs on past it      | `[new]`     |
   | `<<`   | a BEFORE step AFTER drops                                       | `[removed]` |
 
 - **Stacked**, for a wider flow: a fence whose first line starts with `BEFORE`, then a fence whose first line
-  starts with `AFTER`. Tags go in the AFTER fence only: `[changed]` on a step whose outcome differs from
-  BEFORE, `[new]` on a step BEFORE lacks.
+  starts with `AFTER`. `[changed]` and `[new]` go in the AFTER fence only: `[changed]` on a step whose
+  outcome differs from BEFORE, `[new]` on a step BEFORE lacks. A BEFORE step AFTER drops takes `[removed]`
+  in the BEFORE fence.
 
-`build` checks the labels, refuses tags in a stacked BEFORE fence, and in a comparison fence checks that every
+`build` checks the labels, refuses `[changed]` and `[new]` in a stacked BEFORE fence, and in a comparison fence checks that every
 marked step holds the one tag its marker takes, every tag sits on a marked step, the markers share one gutter
 column, the tags start at the `[CHANGE]` column and every `[[` closes. A side-by-side fence without
 `[CHANGE]` is refused. A `New Behavior:` section is exactly one fence holding at least one non-blank line, with
@@ -210,7 +211,7 @@ glyphs:
 BEFORE                                       AFTER                                     [CHANGE]
 append review rows
      │
-     ▼
+     │
      │                                   >>  matrix exists? ──no──► write a new file   [new]
      │                                            │yes
      ▼                                            ▼
@@ -271,12 +272,15 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py"
 ```
 
 At levels 2 and 3, `build` first runs a vertical alignment pass over the section bodies and saves what it
-changed back to the skeleton, even when a check then fails. It changes only spaces: it pads markdown table
-cells so the pipes line up (a separator's colons set right or center padding), slides a hanging `│` or `▼`,
-with the connectors below it and a label such as `│yes`, up to 4 columns to the nearest step text above it,
-and in a comparison fence moves the markers into one gutter column and the tags, with the `[CHANGE]` header,
-into one column two spaces right of the widest line. So do not hand-pad tables or tag columns; draw the steps
-and connectors close, and fix by hand only what the pass leaves as a `problem:` line.
+changed back to the skeleton, even when a check then fails. It changes only whitespace, separator dash runs
+and outer table pipes, never the order of cell or step text: it pads markdown table cells so the pipes line
+up (the separator under the header is redrawn at the column width; its colons set right or center padding), slides a hanging `│` or `▼`,
+with the connectors below it and a label such as `│yes`, up to 4 columns to the nearest column the line above
+feeds down (step text or a connector) where the cells are free, and in a comparison fence moves the markers
+into one gutter column where the cells are free and the tags, with the `[CHANGE]` header, into one column two
+spaces right of the widest line (of the widest tagged line when that would pass 120 columns; the tags stay put
+when neither fits). What the pass cannot move stays as written. So do not hand-pad tables or tag columns; draw
+the steps and connectors close, and fix by hand only what the pass leaves as a `problem:` line.
 
 `build` checks: `title` and `summary` non-empty, `title` on one line, a description for every listed
 non-artifact path and none for paths outside the PR, no AI vendor names, no emojis and no section sign (write
@@ -287,7 +291,8 @@ alignment in every flow), and with `--min-viz` the diagram-block count. A shortf
 with the count found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated
 files.
 
-Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit 0 writes
+Exit 1: each `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
+to it), fix the draft and rerun. Exit 0 writes
 `<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim — nothing else.
 
 ## Common Mistakes
@@ -306,7 +311,7 @@ Exit 1: each `problem:` line names a draft defect; fix the draft and rerun. Exit
 | Running the script from another project's directory       | Run from the project root, or pass `--repo <dir>`               |
 | A flowchart of function calls                             | Steps are observable: condition, outcome, error, file           |
 | AFTER flow only, for a fix                                | BEFORE and AFTER, same trigger and same wording                 |
-| Unlabelled `Behavior:` fences, or BEFORE tags             | First line BEFORE / AFTER; tags in AFTER only                   |
+| Unlabelled `Behavior:` fences, or BEFORE tags             | First line BEFORE / AFTER; stacked: [changed]/[new] in AFTER    |
 | Side-by-side flows without `[CHANGE]`, markers or tags    | Comparison fence: header, one marker and one tag per change     |
 | Padding table pipes or tag columns by hand                | `build` aligns them; fix only what it reports                   |
 | A flow per module                                         | A flow per behavior, at most three (five at level 3)            |
