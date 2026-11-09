@@ -1,6 +1,6 @@
 """todo_sync driver: check a project's TODO, research and plan artifacts for drift, render the snapshot,
-write the runner pointer, start a catalog, list untracked GitHub issues, and add, retire, split or re-rank
-catalog items.
+write the runner pointer, start a catalog, list untracked GitHub issues, add, retire, split or re-rank
+catalog items, and switch a catalog to stable ids once.
 
 ``check [--format summary|json|markdown] [--out PATH] [--rules S1,S2] [--fail-on error|warn]``
     Run the rule catalog and write the report (``TodoSyncReport.schema.json``) atomically to ``--out`` or
@@ -17,21 +17,28 @@ catalog items.
     Write ``<state_dir>/todo-sync/runner.json`` (interpreter, this script, project, report) and print its
     path.
 ``retire ID [ID ...] [--dry-run]``
-    Remove finished items (``TODO-007``, ``007`` or ``7``) from the catalog, renumber the rest so T6 holds,
-    rescore items that lose their only unblocked item, recount, and rewrite moved ids in the research
-    catalog and stubs. Prints the follow-up the catalog cannot record by itself: resolved issues to list
-    as close candidates, trackers to revisit, prose still naming a retired id, and other files naming a
-    TODO id (not rewritten; the snapshots and the ``artifacts.plans`` and ``artifacts.reviews`` records are
-    skipped). ``--dry-run`` prints the same report and writes nothing.
+    Remove finished items (``todo-k7qf`` or ``k7qf``, any case) from the catalog and record their ids in
+    ``retired_ids``, which no new id reuses. Ids are stable, so nothing is renumbered and no id is
+    rewritten: the kept items take ranks 1..n in order, items that lose their only unblocked item are
+    rescored, the counts recomputed, and only the catalog is written. Prints the follow-up the catalog
+    cannot record by itself: resolved issues to list as close candidates, trackers to revisit, research
+    catalog and stub lines naming a retired id (``dangling:``), and other files naming a retired id
+    (``reference (not rewritten):``; the snapshots and the history folders, ``artifacts.plans``,
+    ``reviews``, ``commit_messages``, ``summaries``, ``scratch`` and each planning prefix, are skipped).
+    ``--dry-run`` prints the same report and writes nothing.
 ``split ID --spec PATH [--dry-run]``
     Replace one item with the parts in the spec file (``{"parts": [{...}, {...}]}``, each a set of field
     overrides laid over a copy of the item; ``title`` required, ``id`` / ``rank`` / ``priority`` refused).
-    Parts inherit the item's links, tracker and close candidates; then rescore, renumber, recount and
-    rewrite moved ids as ``retire`` does. Prose naming the split id is pointed at the first part and
-    listed under ``review:``.
+    Every part gets a new id drawn past every live and retired id; the original id joins ``retired_ids``
+    and ``split_ids`` records its parts in spec order. Parts inherit the item's links, tracker and close
+    candidates; then rescore, re-rank and recount. No id is rewritten: research catalog and stub lines
+    naming the split id are listed as ``dangling:`` with its parts, and other files naming it as
+    ``reference (not rewritten):``, for a person to point at the right part. A dry run draws its own ids;
+    the real run draws again.
 ``refresh [--dry-run]``
-    Rescore every item from ``ranking_method``, re-sort, renumber, recount and rewrite moved ids, after hand
-    edits to item fields. A catalog already in order is left untouched.
+    Rescore every item from ``ranking_method``, re-sort and set each rank to its position, after hand edits
+    to item fields. Ids never change and only the catalog is written. A catalog already in order is left
+    untouched.
 ``init``
     Create the TODO folder, an empty schema-valid catalog (the default ranking tables, no items, the current
     commit in ``generated_from``) and the first snapshot (skipped when ``todo.snapshots.dir`` is null). Prints
@@ -46,22 +53,38 @@ catalog items.
     per issue and writes the rows (issue text, comments and the text of linked PR reviews) to
     ``<state_dir>/todo-sync/untracked.json``. Prints ``untracked: none`` and writes nothing when every open
     issue is recorded. Refuses, exit 2, when ``gh`` fails, returns no JSON list, or the listing reaches the
-    issue limit (the result may be cut off).
+    issue limit (the result may be cut off), or the catalog still holds ``TODO-NNN`` ids (naming
+    ``migrate-ids``).
 ``add --spec PATH [--dry-run] [--file-issue]``
     Add one item per entry of the spec file (``{"items": [{...}, {...}]}``; each holds the fields a person
     judges, never ``id``, ``rank`` or ``priority``, and names its ``issue`` and ``url`` or neither). The
-    script builds the source (``gh_issue``, or for an entry with neither a local-only ``note`` dated today),
-    scores the item, re-sorts, renumbers, recounts and rewrites moved ids as ``split`` does. An issue the
-    catalog already records is refused. ``--file-issue`` files a GitHub issue (``gh issue create``, in
-    ``todo.gh.repo`` when set) for each entry that names none, after the whole spec and its companion edits
-    pass a dry run, and records it as the ``gh_issue`` source; a failure after filing names the issues
-    filed. A dry run files nothing, labels each such item ``(issue to file)`` and prints
+    script draws each item a new stable id past every live and retired id, builds the source
+    (``gh_issue``, or for an entry with neither a local-only ``note`` dated today), scores the item,
+    re-sorts and recounts; no other id changes and only the catalog is written. A dry run draws its own
+    ids; the real run draws again. An issue the catalog already records is refused. ``--file-issue`` files
+    a GitHub issue (``gh issue create``, in ``todo.gh.repo`` when set) for each entry that names none, after
+    the whole spec passes a dry run, and records it as the ``gh_issue`` source; a failure after filing
+    names the issues filed. A dry run files nothing, labels each such item ``(issue to file)`` and prints
     ``would file N issue(s)``.
+``migrate-ids [--dry-run] [--exclude PATH]...``
+    Switch a catalog from rank-tied ``TODO-NNN`` ids to stable ``todo-xxxx`` ids, once. Each item draws an
+    id seeded from its old id and title, so a dry run and its real run (and two checkouts of one catalog)
+    agree; the ``old -> new`` map is stored in the catalog's ``legacy_ids``. Every live file naming an old
+    id is rewritten through the map: the research catalog, the stubs and each tracked or untracked text
+    file ``git grep`` finds, source and tests included, minus the catalog schema, the history folders
+    ``retire`` skips and each ``--exclude`` (repeatable; absolute or relative to the working directory, and
+    refused unless it lies below the project root; matched by path component: ``vendor`` skips
+    ``vendor/x.md``, never ``vendored.md``). The project's
+    ``todo.catalog_schema``, when set, must accept the migrated catalog: a real run refuses before any
+    write, a dry run reports it as ``schema:``. A rerun on a migrated catalog rewrites the remaining live
+    references through the stored map and adds new legacy ids to it; a legacy id the map already holds is
+    refused. ``--dry-run`` prints the new ids and the files it would rewrite and writes nothing.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
 ``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or any
-refused operation (render, init, add, retire, split, refresh, a failed ``gh`` call) exits 2 with one
-``problem:`` line on stderr.
+refused operation (render, init, add, retire, split, refresh, migrate-ids, a failed ``gh`` call) exits 2
+with one ``problem:`` line on stderr. A catalog still holding ``TODO-NNN`` ids refuses untracked, add,
+retire, split and refresh, naming ``migrate-ids``.
 """
 from __future__ import annotations
 
@@ -79,6 +102,8 @@ from harness_lib.project import project_root  # noqa: E402
 from harness_lib.todo_sync import (TodoSyncError, check, render_snapshot, report_path,  # noqa: E402
                                    write_report, write_runner)
 from harness_lib.todo_sync.issues import find_untracked, write_untracked  # noqa: E402
+from harness_lib.todo_sync.migrate import apply_migration, exclude_paths  # noqa: E402
+from harness_lib.todo_sync.migrate import summary_lines as migrate_lines  # noqa: E402
 from harness_lib.todo_sync.report import Report, format_markdown, format_summary  # noqa: E402
 from harness_lib.todo_sync.reshape import apply_add, apply_refresh, apply_split  # noqa: E402
 from harness_lib.todo_sync.scaffold import init_catalog  # noqa: E402
@@ -89,6 +114,9 @@ from harness_lib.todo_sync.retire import apply_retirement, summary_lines  # noqa
 INACTIVE = "todo sync inactive (todo.folder is null)"
 #: ``--fail-on`` thresholds, lowest severity first.
 FAIL_LEVELS = ("warn", "error")
+#: Help for the item ids ``retire`` and ``split`` take.
+ID_HELP = "Item ids: todo-k7qf or k7qf (any case)."
+DRY_RUN_HELP = "Print the report; write nothing."
 
 
 def _summary() -> str:
@@ -120,23 +148,41 @@ def _parser() -> argparse.ArgumentParser:
     rnd = sub.add_parser("render", parents=[common], help="Write the dated top-N snapshot.")
     rnd.add_argument("--date", type=dt.date.fromisoformat, help="Snapshot date (default: today).")
     sub.add_parser("runner", parents=[common], help="Write the runner pointer.")
-    ret = sub.add_parser("retire", parents=[common], help="Remove finished items and renumber the rest.")
-    ret.add_argument("ids", nargs="+", help="Item ids: TODO-007, 007 or 7.")
-    ret.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
-    spl = sub.add_parser("split", parents=[common], help="Replace one item with parts and renumber.")
-    spl.add_argument("id", help="Item id: TODO-007, 007 or 7.")
-    spl.add_argument("--spec", type=Path, required=True, help='JSON file: {"parts": [{...}, {...}]}.')
-    spl.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
-    ref = sub.add_parser("refresh", parents=[common], help="Rescore, re-sort and renumber every item.")
-    ref.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
+    _reshapers(sub, common)
     sub.add_parser("init", parents=[common], help="Create the TODO folder, an empty catalog and a snapshot.")
     sub.add_parser("untracked", parents=[common], help="List open issues no catalog record mentions.")
     add = sub.add_parser("add", parents=[common], help="Add one item per spec entry: issue or local note.")
     add.add_argument("--spec", type=Path, required=True, help='JSON file: {"items": [{...}, {...}]}.')
-    add.add_argument("--dry-run", action="store_true", help="Print the report; write nothing.")
+    add.add_argument("--dry-run", action="store_true", help=DRY_RUN_HELP)
     add.add_argument("--file-issue", action="store_true",
                      help="File a GitHub issue for each item that names none, once the spec validates.")
+    _migrator(sub, common)
     return parser
+
+
+def _reshapers(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
+    """``retire``, ``split`` and ``refresh``: the structural edits of a stable-id catalog."""
+    ret = sub.add_parser("retire", parents=[common],
+                         help="Remove finished items and record their ids as retired.")
+    ret.add_argument("ids", nargs="+", help=ID_HELP)
+    ret.add_argument("--dry-run", action="store_true", help=DRY_RUN_HELP)
+    spl = sub.add_parser("split", parents=[common], help="Replace one item with parts that get new ids.")
+    spl.add_argument("id", help=ID_HELP)
+    spl.add_argument("--spec", type=Path, required=True, help='JSON file: {"parts": [{...}, {...}]}.')
+    spl.add_argument("--dry-run", action="store_true", help=DRY_RUN_HELP)
+    ref = sub.add_parser("refresh", parents=[common], help="Rescore and re-rank every item.")
+    ref.add_argument("--dry-run", action="store_true", help=DRY_RUN_HELP)
+
+
+def _migrator(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
+    """``migrate-ids``: the one-time switch from ``TODO-NNN`` to stable ids."""
+    mig = sub.add_parser("migrate-ids", parents=[common],
+                         help="Give every item a stable id once and rewrite live references; a rerun "
+                              "finishes through the stored map")
+    mig.add_argument("--dry-run", action="store_true", help=DRY_RUN_HELP)
+    mig.add_argument("--exclude", action="append", default=[], metavar="PATH",
+                     help="Leave files under PATH (absolute or relative to the working directory, below "
+                          "the project root; matched by path component) as written; repeatable.")
 
 
 def _config(args: argparse.Namespace) -> HarnessConfig:
@@ -210,6 +256,10 @@ def _dispatch(cfg: HarnessConfig, args: argparse.Namespace) -> int:
         print("\n".join(reshape_lines(apply_split(cfg, args.id, args.spec, args.dry_run), args.dry_run)))
     elif args.command == "refresh":
         print("\n".join(reshape_lines(apply_refresh(cfg, args.dry_run), args.dry_run)))
+    elif args.command == "migrate-ids":
+        exclude = exclude_paths(cfg, args.exclude, Path.cwd())
+        result = apply_migration(cfg, args.dry_run, exclude)
+        print("\n".join(migrate_lines(result, args.dry_run)))
     else:
         print(write_runner(cfg))
     return 0

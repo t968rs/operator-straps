@@ -42,6 +42,16 @@ def test_starter_catalog_is_empty_and_records_the_commit() -> None:
         "docs_tooling"}
 
 
+def test_starter_catalog_has_no_retired_ids_yet() -> None:
+    catalog = starter_catalog("abc1234", DAY)
+    assert catalog.get("retired_ids") == []
+    assert "legacy_ids" not in catalog
+    assert list(catalog)[-1] == "retired_ids"
+    notes = catalog["ranking_method"]["notes"]
+    assert "ranks are reproducible from the item fields alone; ids never change" in notes
+    assert "ids and ranks are reproducible" not in notes
+
+
 def test_catalog_head_sha_is_the_current_commit(make_project) -> None:
     cfg = build(make_project, {})
     init_catalog(cfg, DAY)

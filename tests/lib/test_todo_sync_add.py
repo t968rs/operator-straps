@@ -1,12 +1,13 @@
 """Adding drafted items to the TODO catalog, on copies of ``TodoCatalog.min.json``.
 
-TODO-001 unblocks TODO-002; issue 11 is TODO-001's source, 101 a tracker with child 103, 102 a close
-candidate.
+ID1 unblocks ID2; issue 11 is ID1's source, 101 a tracker with child 103, 102 a close candidate. A new item
+gets a new stable id; every other id stays and only ranks move.
 """
 from __future__ import annotations
 
 import copy
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Callable, Dict, List
@@ -15,8 +16,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _todo_helpers import CATALOG_REL, MIN_CATALOG, build  # noqa: E402
+from _todo_helpers import CATALOG_REL, ID1, ID2, ID3, MIN_CATALOG, Scripted, build  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, check  # noqa: E402
+from harness_lib.todo_sync.ids import is_id  # noqa: E402
 from harness_lib.todo_sync.ranking import method_from, score  # noqa: E402
 from harness_lib.todo_sync.reshape import add_items, apply_add, read_spec, summary_lines  # noqa: E402
 
@@ -24,7 +26,7 @@ CATALOG_RULES = ["T1", "T6", "T7", "T8", "T9", "T10"]
 
 
 def _spec(issue: int = 9, **over: Any) -> Dict[str, Any]:
-    """A full spec item: the scoring fields of TODO-001 with severity 5, so it outranks TODO-001."""
+    """A full spec item: the scoring fields of ID1 with severity 5, so it outranks ID1."""
     base = {"issue": issue, "url": f"https://github.com/example/widgets/issues/{issue}",
             "title": f"New problem {issue}", "kind": "bug", "summary": "The parser skips a row.",
             "proposed_change": "Read every row.", "impact": "silent_wrong_output", "severity": 5,
@@ -37,25 +39,36 @@ def _catalog() -> Dict[str, Any]:
     return copy.deepcopy(MIN_CATALOG)
 
 
-def test_new_item_outranks_and_shifts_the_rest() -> None:
+def test_added_items_get_new_ids_and_every_other_id_stays() -> None:
     out = add_items(_catalog(), [_spec()])
+    [(new, issue)] = out.added
+    assert issue == 9 and is_id(new) and new not in {ID1, ID2, ID3}
+    assert [(i["id"], i["rank"]) for i in out.catalog["items"]] == [(new, 1), (ID1, 2), (ID2, 3), (ID3, 4)]
+    assert out.reranked == ((ID1, 1, 2), (ID2, 2, 3), (ID3, 3, 4))
     items = {i["id"]: i for i in out.catalog["items"]}
-    assert out.added == (("TODO-001", 9),)
-    assert out.renames == {"TODO-001": "TODO-002", "TODO-002": "TODO-003", "TODO-003": "TODO-004"}
-    assert items["TODO-001"]["gh_issues"] == [9]
-    assert items["TODO-001"]["sources"] == [{"type": "gh_issue", "ref": "#9",
-                                             "url": "https://github.com/example/widgets/issues/9"}]
-    assert items["TODO-002"]["unblocks"] == ["TODO-003"]
-    assert items["TODO-003"]["depends_on"] == ["TODO-002"]
-    assert out.catalog["trackers"][0]["child_todo_ids"] == ["TODO-003"]
+    assert items[new]["gh_issues"] == [9]
+    assert items[new]["sources"] == [{"type": "gh_issue", "ref": "#9",
+                                      "url": "https://github.com/example/widgets/issues/9"}]
+    assert items[ID1]["unblocks"] == [ID2]
+    assert items[ID2]["depends_on"] == [ID1]
+    assert out.catalog["trackers"][0]["child_todo_ids"] == [ID2]
+    assert not hasattr(out, "renames")
 
 
 def test_low_value_item_lands_last() -> None:
     low = _spec(severity=1, impact="docs_tooling", loe={"size": "XL", "reasoning": "Large."},
                 blast_radius={"level": "XL", "reasoning": "Everything.", "consumers": []})
     out = add_items(_catalog(), [low])
-    assert out.added == (("TODO-004", 9),)
-    assert out.renames == {}
+    assert out.catalog["items"][-1]["id"] == out.added[0][0]
+    assert out.reranked == ()
+
+
+def test_add_never_draws_a_retired_id() -> None:
+    catalog = _catalog()
+    catalog["retired_ids"] = ["todo-2a2a"]
+    out = add_items(catalog, [_spec()], rng=Scripted("2a2a" + "p4rs" + "k7qf"))
+    assert out.added == (("todo-k7qf", 9),)
+    assert out.catalog["retired_ids"] == ["todo-2a2a"]
 
 
 def test_counts_follow_the_new_items() -> None:
@@ -63,6 +76,7 @@ def test_counts_follow_the_new_items() -> None:
     assert out.catalog["counts"]["items"] == 5
     assert out.catalog["counts"]["sources_absorbed"]["gh_issue"] == 3
     assert all(new not in out.rescored for new, _ in out.added)
+    assert len({new for new, _ in out.added}) == 2
 
 
 def test_an_issue_only_cross_referenced_by_an_item_gets_its_own_item() -> None:
@@ -82,7 +96,7 @@ def test_priority_is_computed_not_taken() -> None:
 CASES: Dict[str, Callable[[], List[Any]]] = {
     "missing why_ranked": lambda: [{k: v for k, v in _spec().items() if k != "why_ranked"}],
     "sets rank": lambda: [_spec(rank=1)],
-    "sets depends_on": lambda: [_spec(depends_on=["TODO-001"])],
+    "sets depends_on": lambda: [_spec(depends_on=[ID1])],
     "sets sources": lambda: [_spec(sources=[])],
     "item source": lambda: [_spec(11)],
     "tracker": lambda: [_spec(101)],
@@ -141,20 +155,32 @@ def test_wrong_value_types_are_refused_not_crashes(case: str) -> None:
         add_items(_catalog(), [_spec(**over)])
 
 
+def test_dry_run_says_its_ids_are_provisional(make_project) -> None:
+    cfg = build(make_project)
+    spec = cfg.project_root / "add.json"
+    spec.write_text(json.dumps({"items": [_spec()]}), encoding="utf-8")
+    lines = summary_lines(apply_add(cfg, spec, dry_run=True), True)
+    assert re.fullmatch(r"would add todo-[2-9a-hjkmnp-z]{4} \(#9\); 4 item\(s\) now", lines[0])
+    assert "note: new ids are drawn at random; the real run draws its own" in lines
+
+
 def test_apply_add_writes_the_catalog_and_dry_run_does_not(make_project) -> None:
     cfg = build(make_project)
     catalog_path = cfg.project_root / CATALOG_REL
     spec = cfg.project_root / "add.json"
     spec.write_text(json.dumps({"items": [_spec()]}), encoding="utf-8")
     before = catalog_path.read_bytes()
-    dry = apply_add(cfg, spec, dry_run=True)
+    apply_add(cfg, spec, dry_run=True)
     assert catalog_path.read_bytes() == before
-    assert summary_lines(dry, True)[0].startswith("would add TODO-001 (#9);")
     done = apply_add(cfg, spec)
+    new = done.reshape.added[0][0]
     written = json.loads(catalog_path.read_text(encoding="utf-8"))
-    assert [i["id"] for i in written["items"]] == ["TODO-001", "TODO-002", "TODO-003", "TODO-004"]
-    assert summary_lines(done, False)[0] == "added TODO-001 (#9); 4 item(s) now"
-    assert summary_lines(done, False)[-1] == "next: todo_sync.py render, then todo_sync.py check"
+    assert [i["id"] for i in written["items"]] == [new, ID1, ID2, ID3]
+    lines = summary_lines(done, False)
+    assert lines[0] == f"added {new} (#9); 4 item(s) now"
+    assert f"re-ranked 3 item(s): {ID1} 1->2, {ID2} 2->3, {ID3} 3->4" in lines
+    assert not any(line.startswith("note: new ids") for line in lines)
+    assert lines[-1] == "next: todo_sync.py render, then todo_sync.py check"
     report = check(cfg, rules=CATALOG_RULES)
     assert report.findings == ()
 

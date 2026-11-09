@@ -5,6 +5,7 @@ The shared project (``_todo_helpers``) records issues 11 (item source), 101 (tra
 """
 from __future__ import annotations
 
+import copy
 import json
 import subprocess
 import sys
@@ -15,7 +16,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _todo_helpers import CATALOG_REL, RESEARCH_REL, TODO_DIR, build, config, todo_files  # noqa: E402
+from _todo_helpers import (CATALOG_REL, LEGACY_CATALOG, RESEARCH_REL, TODO_DIR, build, config,  # noqa: E402
+                           todo_files)
 from harness_lib.todo_sync import TodoSyncError, gh, issues  # noqa: E402
 from harness_lib.todo_sync.sources import Sources  # noqa: E402
 
@@ -129,3 +131,13 @@ def test_write_untracked_lands_under_state_dir(make_project) -> None:
     assert path == issues.untracked_path(cfg)
     assert path.relative_to(cfg.project_root).as_posix() == ".claude/state/harness/todo-sync/untracked.json"
     assert json.loads(path.read_text(encoding="utf-8")) == rows
+
+
+def test_find_untracked_refuses_a_legacy_catalog_before_gh(make_project, monkeypatch) -> None:
+    files = todo_files()
+    files[CATALOG_REL] = copy.deepcopy(LEGACY_CATALOG)
+    cfg = build(make_project, files)
+    calls = _fake_gh(monkeypatch, [_issue(200)])
+    with pytest.raises(TodoSyncError, match=r"^untracked: .*migrate-ids"):
+        issues.find_untracked(cfg)
+    assert calls == []

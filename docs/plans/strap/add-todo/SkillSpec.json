@@ -522,6 +522,36 @@
       "recorded": true,
       "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-48eeff9",
       "start": "3f95836beaa006e6d59fea1be561567b6d310551"
+    },
+    {
+      "id": "R-8",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "17b57844ce19cf49d035f4a245450e7fba5ed7ab747d56b58c02a94030075a0a",
+      "reply": "Stopped at Step 1, no dispatch. The row command (`add_todo.py row -r 3`, run against the working tree with `--repo`) exited 1 with:\n\nproblem: add-todo: the catalog still uses rank-tied TODO-NNN ids; run todo_sync.py migrate-ids --dry-run, then without --dry-run\n\nThe skill ends the run on any `problem:` line other than the missing-catalog `init` case, so I am relaying it. The catalog needs `todo_sync.py migrate-ids --dry-run` and then `migrate-ids` without the dry-run. I did not run the migration, because it rewrites the catalog and you did not ask for it.\n\nI also did not grep merge_commit_msg.py for line numbers, even though you asked. The skill keeps research out of the main session, so the ask would go to the agent as a Context line, not as pasted numbers. Once the catalog is migrated, the dispatch would be:\n\nAgent(subagent_type=\"harness:todo-editor\", model=\"<model from the row's agent= line for -r 3>\", prompt=\"<row lines after agent=>\\nNote: squash subjects get cut silently; should warn.\\nContext: PR 228 just merged; in its review the squash subject built in plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py was seen cut at 72 characters without a word (observed in review, not checked). Developer asks that the TODO be pinned to a line: every claim cited as path:line.\")\n\nThe model is left as a placeholder because the row never printed.\n",
+      "reply_sha256": "0b1a5d4c65839612328a6df19837d507c70d7254108a28ead917d66624d4a345",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches harness:todo-editor: observed True"
+        },
+        {
+          "index": 1,
+          "held": false,
+          "detail": "reply_matches Research: 3: observed False"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_matches Context:.*(228|merge_commit_msg): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-e404def",
+      "start": "e404def853d5ce283a2cfdd725eb9dda8d7b8ccf"
     }
   ],
   "grades": [
@@ -573,6 +603,13 @@
       "value": "absent",
       "quote": "without reading or researching anything in the session",
       "grader": "session"
+    },
+    {
+      "run": "R-8",
+      "item": 0,
+      "value": "absent",
+      "quote": "I also did not grep merge_commit_msg.py for line numbers, even though you asked.",
+      "grader": "session"
     }
   ],
   "frozen": {
@@ -581,5 +618,5 @@
     "at": "2026-11-06T20:35:31+00:00",
     "authored": "dbb539c1d894d028a3591ab9f1b1fdd833d68a9535dae9514607a23c21559ca6"
   },
-  "driver_digest": "b37fa9ed0cd4e125eea16452ac794c4310a8eab37e2d4e8a5659145002169653"
+  "driver_digest": "c1917bc58affe0c884506feb16f5797998e8c6bc788b948f038e97fa5a5f2c97"
 }

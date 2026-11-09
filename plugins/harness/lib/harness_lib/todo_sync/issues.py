@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from harness_lib.config import HarnessConfig
-from harness_lib.todo_sync import TodoSyncError, gh
+from harness_lib.todo_sync import TodoSyncError, gh, ids
 from harness_lib.todo_sync.report import write_atomic
 from harness_lib.todo_sync.reviews import fetch_reviews, review_links, slug_of
 from harness_lib.todo_sync.sources import Sources
@@ -116,9 +116,15 @@ def open_issues(cfg: HarnessConfig) -> List[Dict[str, Any]]:
 
 
 def find_untracked(cfg: HarnessConfig) -> List[Dict[str, Any]]:
-    """The open issues no catalog record mentions, sorted by number."""
+    """The open issues no catalog record mentions, sorted by number.
+
+    Refuses a catalog still holding rank-tied ``TODO-NNN`` ids, naming ``migrate-ids``.
+    """
     _require_folder(cfg)
-    tracked = tracked_numbers(Sources(cfg))
+    src = Sources(cfg)
+    if src.todo.ok:
+        ids.require_stable(src.todo.data, "untracked")
+    tracked = tracked_numbers(src)
     rows = open_issues(cfg)
     fresh = sorted((r for r in rows if r["number"] not in tracked), key=lambda r: r["number"])
     for row in fresh:

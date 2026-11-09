@@ -63,8 +63,8 @@ STARTER_RANKING: Dict[str, Any] = {
              "supported workflow.",
         "5": "Crashes or corrupts a production path on its normal inputs."},
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking "
-             "compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are "
-             "reproducible from the item fields alone.",
+             "compares scores rounded to 4 decimals; the tie breakers apply in order, so ranks are "
+             "reproducible from the item fields alone; ids never change.",
 }
 _SHA = re.compile(r"^[0-9a-f]{7,40}$")
 
@@ -88,7 +88,7 @@ def starter_catalog(head_sha: str, today: dt.date) -> Dict[str, Any]:
                    "by_impact": {}, "by_loe": {size: 0 for size in LOE_SIZES},
                    "sources_absorbed": {"gh_issue": 0, "impl_stub": 0, "research_folder": 0},
                    "merged_items": 0},
-        "items": [], "trackers": [], "close_candidates": [],
+        "items": [], "trackers": [], "close_candidates": [], "retired_ids": [],
     }
 
 

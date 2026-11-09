@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/catalogs/TodoCatalog.schema.json",
   "title": "TodoCatalog",
-  "description": "One ranked, de-duplicated TODO list for a repository, built from open GitHub issues, the open or partial remaining items of research implementation stubs, the open items of research folders and local-only notes added by hand. Each item is one unit of work and lists every source it absorbs. Tracker issues are recorded under trackers, and issues whose work has already landed (LIKELY_RESOLVED) or whose target no longer exists (STALE) are recorded under close_candidates instead of items; an issue whose work has only partly landed is an item with status PARTIAL. Item order and rank follow the deterministic formula todo_sync applies with the numeric tables of ranking_method (impact_weights, loe_points, blast_factors, unblock_bonus); its value, cost, score and tie_breakers strings are human-readable records only. This schema checks each record on its own; the harness todo_sync rules T6-T10 check these cross-record rules: item ids are unique and equal TODO-<rank>, ranks run 1..n in ranking order, priority.score and rank follow the fixed formula, depends_on and unblocks are mutual inverses naming existing ids, every tracker field names a tracker in trackers, child_todo_ids lists exactly the items pointing at that tracker, and counts other than sources_absorbed and merged_items tally the items. No rule checks counts.sources_absorbed, counts.merged_items, close_candidates[].related_todo_ids membership, or the sort order of unblocks and related_todo_ids.",
+  "description": "One ranked, de-duplicated TODO list for a repository, built from open GitHub issues, the open or partial remaining items of research implementation stubs, the open items of research folders and local-only notes added by hand. Each item is one unit of work and lists every source it absorbs. Tracker issues are recorded under trackers, and issues whose work has already landed (LIKELY_RESOLVED) or whose target no longer exists (STALE) are recorded under close_candidates instead of items; an issue whose work has only partly landed is an item with status PARTIAL. Item order and rank follow the deterministic formula todo_sync applies with the numeric tables of ranking_method (impact_weights, loe_points, blast_factors, unblock_bonus); its value, cost, score and tie_breakers strings are human-readable records only. Item ids are random and stable: re-ranking, retiring or splitting never renames an item, and a retired id (retired_ids) is never drawn again; a catalog whose items still carry rank-tied TODO-NNN ids gets one T6 finding naming todo_sync.py migrate-ids, plus any duplicate-id findings, instead of a pattern error per id. This schema checks each record on its own; the harness todo_sync rules T6-T10 check these cross-record rules: item ids are unique and absent from retired_ids, every split_ids key is in retired_ids and every part it names is an item or retired, ranks run 1..n in ranking order, priority.score and rank follow the fixed formula, depends_on and unblocks are mutual inverses naming existing ids, every tracker field names a tracker in trackers, child_todo_ids lists exactly the items pointing at that tracker, and counts other than sources_absorbed and merged_items tally the items. No rule checks counts.sources_absorbed, counts.merged_items, close_candidates[].related_todo_ids membership, or the sort order of unblocks and related_todo_ids.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -59,7 +59,7 @@
       "items": {
         "$ref": "#/$defs/item"
       },
-      "description": "Ranked work items, ordered by rank (TODO-001 first)."
+      "description": "Ranked work items, ordered by rank (rank 1 first)."
     },
     "trackers": {
       "type": "array",
@@ -74,13 +74,67 @@
         "$ref": "#/$defs/close_candidate"
       },
       "description": "Open issues whose work has landed or whose target no longer exists."
+    },
+    "retired_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/todo_id"
+      },
+      "description": "Ids of items retired or split away, kept so a new id is never drawn from them; no live item carries one (T6). todo_sync.py init writes an empty list.",
+      "uniqueItems": true
+    },
+    "legacy_ids": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "migrated",
+        "map"
+      ],
+      "properties": {
+        "migrated": {
+          "type": "string",
+          "format": "date",
+          "description": "Date todo_sync.py migrate-ids switched the catalog to stable ids (YYYY-MM-DD)."
+        },
+        "map": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/legacy_todo_id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/todo_id"
+          },
+          "description": "Rank-tied TODO-NNN id -> the stable id of the item it named as of migrated."
+        }
+      },
+      "description": "The one-time switch from rank-tied TODO-NNN ids, written by todo_sync.py migrate-ids, so old references still resolve."
+    },
+    "split_ids": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/todo_id"
+      },
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/todo_id"
+        },
+        "minItems": 2,
+        "uniqueItems": true
+      },
+      "description": "Retired id -> the ids of the parts a split gave it, in spec order; every key is in retired_ids and every part is an item or retired (T6)."
     }
   },
   "$defs": {
     "todo_id": {
       "type": "string",
+      "pattern": "^todo-(?=[2-9a-hjkmnp-z]*[2-9])(?=[2-9a-hjkmnp-z]*[a-hjkmnp-z])[2-9a-hjkmnp-z]{4}$",
+      "description": "Item id: todo- plus 4 random characters of 23456789abcdefghjkmnpqrstuvwxyz (no 0, 1, i, l, o) holding at least one digit and one letter. Stable: it never changes when items are re-ranked, retired or split, and a retired id is never reused; order lives in rank."
+    },
+    "legacy_todo_id": {
+      "type": "string",
       "pattern": "^TODO-[0-9]{3,}$",
-      "description": "Item id, TODO-NNN with at least three digits, numbered by rank (TODO-001 for rank 1; a fourth digit appears from rank 1000)."
+      "description": "Rank-tied item id from before todo_sync.py migrate-ids (TODO-NNN, at least three digits); appears only as a legacy_ids.map key."
     },
     "gh_number": {
       "type": "integer",
@@ -644,12 +698,12 @@
       "properties": {
         "id": {
           "$ref": "#/$defs/todo_id",
-          "description": "TODO-NNN, numbered by rank."
+          "description": "Stable id (todo-k7qf), drawn when the item is created; never changes, and never reused once retired."
         },
         "rank": {
           "type": "integer",
           "minimum": 1,
-          "description": "1-based position in ranking order; equals the number in id."
+          "description": "1-based position in ranking order; changes on every re-rank while id stays."
         },
         "title": {
           "type": "string",

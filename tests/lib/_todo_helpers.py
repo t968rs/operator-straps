@@ -2,7 +2,9 @@
 
 ``todo_files()`` returns the project files (repo-relative path -> text or JSON-able data); a test edits
 the dict, then ``build(make_project, files)`` writes the project and returns its config. The TODO catalog
-is the shared ``TodoCatalog.min.json`` fixture.
+is the shared ``TodoCatalog.min.json`` fixture, whose items carry the stable ids ``ID1``-``ID3`` in rank
+order; ``LEGACY_CATALOG`` is the same catalog with the rank-tied ``TODO-001``-``TODO-003`` ids it held
+before ``migrate-ids``.
 """
 from __future__ import annotations
 
@@ -12,6 +14,7 @@ from typing import Any, Dict, List, Optional
 
 from conftest import FIXTURES
 from harness_lib.config import HarnessConfig, load_config
+from harness_lib.todo_sync.ids import ALPHABET
 
 TODO_DIR = "docs/RESEARCH/_TODO"
 CATALOG_REL = f"{TODO_DIR}/RepoToDo.json"
@@ -22,6 +25,21 @@ STUB_REL = "docs/RESEARCH/Alpha/_IMPL_TODO.md"
 PLAN_REL = "docs/PLANS/0001_Sample_ActionPlan.json"
 PIP_REL = "docs/PLANS/0001_Sample_PIP.md"
 MIN_CATALOG = json.loads((FIXTURES / "todo_sync" / "TodoCatalog.min.json").read_text(encoding="utf-8"))
+LEGACY_CATALOG = json.loads((FIXTURES / "todo_sync" / "TodoCatalog.legacy.json").read_text(encoding="utf-8"))
+#: The min fixture's item ids, in rank order (were TODO-001, TODO-002, TODO-003).
+ID1, ID2, ID3 = "todo-p4rs", "todo-sp7t", "todo-c4ch"
+
+
+class Scripted:
+    """An rng stand-in whose ``choice`` returns the next character of a fixed script."""
+
+    def __init__(self, script: str) -> None:
+        self.script = list(script)
+
+    def choice(self, seq: str) -> str:
+        assert seq == ALPHABET
+        return self.script.pop(0)
+
 
 #: The whole block a consuming project needs: every other path takes its default under the folder.
 TODO_BLOCK = {"folder": TODO_DIR}

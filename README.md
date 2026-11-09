@@ -30,8 +30,8 @@ to track review progress, keep Git state visible, preserve context through compa
 | Isolated task's checkout  | `d-w`                                               | A detached-HEAD worktree cut from HEAD, an integration branch, or another ref.                                                                                                                                                    | • Script resolves the base ref to a commit and creates a detached worktree.<br>• Failed integration-branch fetches stop creation; directory collisions get a fresh path.<br>• Runs the project's configured `worktree_setup`, then `worktree_baseline`, in the new worktree; failures are reported, never fatal, and `--no-setup` skips both.<br>• Warns when run from a linked worktree.                                                                                                                                                       |
 | Diagnose `harness`        | `doctor`                                            | A read-only report on the interpreter `hpy` picks, the three Python modules, `git`, `gh` and `.claude/harness.json`, each marked `ok`, `warn` or `fail`, with the fix beside every failure.                                       | • Standard library only, so it runs when `pydantic`, `jsonschema` or `referencing` are missing.<br>• Installs nothing and writes nothing; the install line is for you to run, naming the interpreter `hpy` uses.                                                                                                                                                                                                                                                                                                                                |
 | (Re)Attach Worktree       | `a-w`                                               | The work from a `d-w` worktree lands on the branch you name, <br/>staged and uncommitted or as its own commits (`--committed`), and the worktree is removed.                                                                      | • Script requires the target branch checked out with no tracked changes.<br>• Staging merges three-way; `--committed` fast-forwards only. A refusal changes nothing; a three-way conflict keeps the worktree (files and index) and leaves markers in the target checkout, with the commands to finish or undo.                                                                                                                                                                                                                                  |
-| Add a TODO note           | `add-todo`                                          | One ranked catalog item from a note typed after `--`, researched to the level `-r 0-3` asks; local-only, or backed by a new GitHub issue with `--issue`.                                                                          | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• The main session only prints the dispatch row and adds the conversation's context; the `todo-editor` agent researches and drafts, and the script scores, renumbers and (with `--issue`) files the issue after the spec validates.                                                                                                                                                                                                                                              |
-| Create TODO               | `sync-gh-todo`                                      | One drafted, ranked catalog item per open GitHub issue no catalog record mentions, then the catalog renumbered.                                                                                                                   | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• `gh` lists the issues; the script refuses an issue the catalog already records, scores and renumbers the items, and `check` runs after the edit.                                                                                                                                                                                                                                                                                                                             |
+| Add a TODO note           | `add-todo`                                          | One ranked catalog item from a note typed after `--`, researched to the level `-r 0-3` asks; local-only, or backed by a new GitHub issue with `--issue`.                                                                          | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• The main session only prints the dispatch row and adds the conversation's context; the `todo-editor` agent researches and drafts, and the script scores, ranks and (with `--issue`) files the issue after the spec validates.                                                                                                                                                                                                                                                  |
+| Create TODO               | `sync-gh-todo`                                      | One drafted, ranked catalog item per open GitHub issue no catalog record mentions, then ranked among the existing items; no id changes.                                                                                           | • Active only when `.claude/harness.json` sets `todo.folder`.<br>• `gh` lists the issues; the script refuses an issue the catalog already records, scores and ranks the items, and `check` runs after the edit.                                                                                                                                                                                                                                                                                                                                 |
 | ArcGIS toolbox help       | `arc-straps`                                        | `arc-meta` checks each tool's canonical help XML against its parameters, and the `.atbx` archive's hover text and "?" page against that XML; it applies the hover text, the page and the toolbox-level help, dry run first. Paths come from `plugins.arc-straps` in `.claude/harness.json`. | • The checks and the apply writers share one generator, so a passing `check_applied` means the tool's hover text and "?" page hold what an apply writes; a reference to a key the rc lacks, or a literal description in `tool.content`, is left alone by the writer and keeps it failing.<br>• An apply writes a temp copy, validates it, then copies the original to `<archive>.bak` and swaps the copy in; a failed validation leaves the archive and any older `.bak` unchanged.<br>• Python runs through `harness-skill-api` (needs `harness` 0.56.0 or later); ArcGIS Pro is not needed. |
 | Banner Config             | `banner-status`: `setup-statusline`, or `band-line` | Options: (1) ccstatusline as the project's status line (needs Node.js and npm; `setup-statusline` offers the install)<br/>(2) `band-line`: an `oStraps:` band above the prompt with the model and context window, no npm install. | • The skill writes `.claude/settings.json` `statusLine` and `.claude/ccstatusline.json` only after the user approves each edit.<br>• `band-line` reads the `git-status` snapshot; neither draws without `git-status`.                                                                                                                                                                                                                                                                                                                           |
 
@@ -401,17 +401,37 @@ TODO sync needs only `todo.folder`. Once set, the catalog is `<folder>/RepoToDo.
 used when present (a name set explicitly must exist); stubs are `_IMPL_TODO.md` files under `artifacts.research`.
 Set a key below only to depart from that layout.
 
-`todo_sync.py retire ID [ID ...] [--dry-run]` removes finished items: ids follow rank (rule T6), so it renumbers
-the rest, rescores, recounts and rewrites moved ids in the research catalog and stubs, then lists what it cannot
-record itself (issues to add as close candidates, trackers to revisit, other files naming a TODO id).
+Item ids are stable: a random code such as `todo-k7qf` (lowercase `todo-` plus four characters, at least one digit
+and one letter), drawn once and kept for the life of the item. Order lives only in `rank`, and no structural edit
+changes any id.
+
+`todo_sync.py retire ID [ID ...] [--dry-run]` removes finished items, rescores, recounts and records each removed id
+in the catalog's `retired_ids` list, so the id is never drawn again. It then lists what it cannot record itself
+(issues to add as close candidates, trackers to revisit, prose naming a retired or split id). That reference list
+is for a person: the script never rewrites prose.
 `todo_sync.py split ID --spec PATH` replaces one item with the parts in a spec file (field overrides over a copy
-of the item); `todo_sync.py refresh` rescores and re-sorts after hand edits. Both renumber and rewrite ids the same
-way. `/harness:todo-edit --retire 1, 3 [--delete-retired] | --split 001 | --refresh` runs any of the three through
-the `todo-editor` agent, which also writes the split parts, close-candidate evidence and the prose that named a
-moved id. A retirement also updates implementation status in the affected stubs and research entries; the reply
-names each stub's new state, the research entries now fully resolved and the issues that can close. With
-`--delete-retired`, the agent also sets an entry to `FULLY_IMPLEMENTED` and deletes its stub, but only after
-checking every deliverable in it; a stub with an unproven deliverable is kept and listed.
+of the item). Every part gets a new id, the original joins `retired_ids`, and `split_ids` records the original
+with its parts; `todo_sync.py refresh` rescores and re-sorts after hand edits and leaves every id as it is.
+`/harness:todo-edit --retire todo-k7qf, m3x9 [--delete-retired] | --split todo-sp7t | --refresh` runs any of the
+three through the `todo-editor` agent, which also writes the split parts, close-candidate evidence and the prose
+that named a retired or split id. A retirement also updates implementation status in the affected stubs and
+research entries; the reply names each stub's new state, the research entries now fully resolved and the issues
+that can close. With `--delete-retired`, the agent also sets an entry to `FULLY_IMPLEMENTED` and deletes its stub,
+but only after checking every deliverable in it; a stub with an unproven deliverable is kept and listed.
+
+`todo_sync.py migrate-ids [--dry-run] [--exclude PATH ...]` is the one-time switch of an old catalog from rank-tied
+`TODO-NNN` ids to stable ones. A `--dry-run` goes first and lists the files it would rewrite along with the plan.
+The run rewrites every live file that names an old id: the research catalog, the stubs, and each tracked or
+untracked text file `git grep` finds, source code and tests included. It skips the catalog and its schema, the
+history folders, and each `--exclude` path; `--exclude` is repeatable and skips a path by path component. The run
+keeps the old-to-new map in `legacy_ids` and leaves history as written: plans, reviews, snapshots, commit messages,
+PR summaries, the scratch folder and each `artifacts.planning_prefixes` entry keep the old ids. A rerun finishes a
+partial switch through the stored map. Before migrating, update the project's own `RepoToDo.schema.json` (or the file
+`todo.catalog_schema` names) from the harness `catalogs/TodoCatalog.schema.json`, and update every install that
+runs `todo_sync` on the project to this release: an older harness turns stable ids back into rank-tied `TODO-NNN`
+ids on its next add or refresh. Until the catalog is migrated, `retire`, `split`, `refresh`, `add` and `untracked`
+refuse (so `/harness:add-todo` and `/harness:sync-gh-todo` stop before any dispatch), and `check` reports one T6
+finding that names `migrate-ids`, plus any duplicate-id findings.
 
 `todo_sync.py init` creates a project's first catalog: with `todo.folder` set, it makes the folder, an empty
 schema-valid catalog at `todo.catalog` (default `RepoToDo.json`; default ranking tables, no items, current commit
@@ -422,8 +442,8 @@ recorded) and the first snapshot. It refuses to overwrite a catalog, needs a git
 source, a tracker or tracker child, a close candidate or a research entry; an issue an item only lists in
 `related_gh_issues` still counts as untracked) and writes each one's text, comments and linked PR review text to
 `<state_dir>/todo-sync/untracked.json`. `todo_sync.py add --spec PATH [--dry-run] [--file-issue]` inserts one
-item per spec entry, scores it, renumbers the rest, recounts, and refuses an issue the catalog already records. An
-entry that names no issue becomes a local-only item with a `note` source (its `ref` the date added);
+item per spec entry with a new stable id, scores it, ranks it, recounts, and refuses an issue the catalog already
+records. An entry that names no issue becomes a local-only item with a `note` source (its `ref` the date added);
 `--file-issue` instead files a GitHub issue for it once the whole spec validates, and records that issue.
 `/harness:sync-gh-todo` runs `untracked` (running `init` first when `untracked` reports `todo.catalog` as `file not
 found`, then `untracked` again) and hands the issues to the `todo-editor` agent. The agent drafts each item from
@@ -437,7 +457,7 @@ found`, then `untracked` again) and hands the issues to the `todo-editor` agent.
 [main session]  todo_sync.py init             only when untracked reports the catalog file not found,
                                               then untracked again
 [todo-editor]   draft one item per issue      from the issue text and the text of any linked PR review
-[todo-editor]   todo_sync.py add --spec PATH  insert, score, renumber, recount; refuses a recorded issue
+[todo-editor]   todo_sync.py add --spec PATH  insert, score, rank, recount; refuses a recorded issue
 [todo-editor]   todo_sync.py render, check    new snapshot, then the drift checks
 ```
 
@@ -455,7 +475,7 @@ items and open issues, 3 also reads history and linked reviews and cites `path:l
 [main session]  add_todo.py row -r 2          the dispatch row: agent, model, Issue, Research, Project root
 [main session]  + Note:, Context:             the note verbatim, the conversation's context
 [todo-editor]   research at the given level   read, trace, cite
-[todo-editor]   todo_sync.py add --spec PATH  insert as a note (or --file-issue), score, renumber, recount
+[todo-editor]   todo_sync.py add --spec PATH  insert as a note (or --file-issue), score, rank, recount
 [todo-editor]   todo_sync.py render, check    new snapshot, then the drift checks
 ```
 
