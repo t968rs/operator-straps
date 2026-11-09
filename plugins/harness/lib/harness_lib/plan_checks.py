@@ -269,15 +269,35 @@ def _grep_files(root: Path, pattern: str, options: List[str],
     return {p for p in done.stdout.split("\0") if p}, None
 
 
+def source_path(plan: ActionPlan, root: Path) -> Optional[str]:
+    """The plan's ``source_document`` as a repo-relative POSIX path; None when unset or outside ``root``."""
+    if not plan.source_document:
+        return None
+    path = Path(plan.source_document)
+    if not path.is_absolute():
+        return path.as_posix()
+    try:
+        return path.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        return None
+
+
 def sweep_problems(plan: ActionPlan, root: Path, plans_prefix: str, rev: Optional[str] = None) -> List[str]:
-    """Hits the sweep does not classify, and classified files without a hit (in the tree, or at ``rev``)."""
+    """Hits the sweep does not classify, and classified files without a hit (in the tree, or at ``rev``).
+
+    The plan's own source document is skipped on both sides, like the plans folder: it names the symbols
+    the sweeps search for, and a spec committed on the plan's branch is absent at the base.
+    """
     out: List[str] = []
+    source = source_path(plan, root)
+    skipped = {source} if source else set()
     for sweep in plan.sweeps:
-        sid, classified = sweep.id, set(sweep.hits)
+        sid, classified = sweep.id, set(sweep.hits) - skipped
         hits, error = sweep_hits(root, sweep.pattern, plans_prefix, rev)
         if error:
             out.append(f"sweep {sid}: git grep failed: {error}")
             continue
+        hits -= skipped
         out.extend(f"sweep {sid}: {p} has hits but no classification" for p in sorted(hits - classified))
         out.extend(f"sweep {sid}: {p} is classified but has no hit" for p in sorted(classified - hits))
     return out

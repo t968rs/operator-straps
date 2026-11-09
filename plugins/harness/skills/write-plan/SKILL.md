@@ -60,7 +60,7 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
    | `decisions[]` | each design question (id `D<n>`), its options and `chosen` (null = open) | chosen is one of its options |
    | `values[]` | every threshold, count or band copied from the spec or the code, with `assumes` | no value assumes a rejected option |
    | `formats[]` | every literal format another component parses, with `source` (an anchor at its producer or parser) | the source anchor |
-   | `sweeps[]` | every search the plan relies on (id `S<n>`; old names, moved paths) with each hit file classified | reruns the pattern; unclassified hits and stale classifications fail |
+   | `sweeps[]` | every search the plan relies on (id `S<n>`; old names, moved paths) with each hit file classified; the plans folder and the plan's own `source_document` are never hits | reruns the pattern; unclassified hits and stale classifications fail |
    | `items[].anchors` | `{at: "path:12-18", expect: "<text>"}` for each fact about existing code the item uses | opens the range, compares the text |
    | `items[].tests` | `{node, red}`: the pytest node and the exception that fails it before the work (`ImportError`, `AttributeError`, `AssertionError`, `NotImplementedError` or `TypeError`) | the node's file exists or is planned |
    | `items[].commands` | `{run, expect, writes}`: generation and verification commands | no commit SHA (use `{base}`, which `render` prints as the full base commit), no pytest run of a directory or of no file |
