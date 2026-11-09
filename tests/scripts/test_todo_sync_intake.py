@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -15,11 +16,12 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from _todo_helpers import CATALOG_REL, SNAP_DIR, build  # noqa: E402
+from _todo_helpers import CATALOG_REL, ID1, ID2, ID3, SNAP_DIR, build  # noqa: E402
 from conftest import PLUGIN_ROOT  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, gh  # noqa: E402
 
 UNTRACKED_REL = ".claude/state/harness/todo-sync/untracked.json"
+NEW_ID = r"todo-[2-9a-hjkmnp-z]{4}"
 
 
 @pytest.fixture(scope="module")
@@ -112,19 +114,23 @@ def test_init_creates_the_catalog_and_refuses_a_second_run(driver, make_project,
     assert (root / CATALOG_REL).read_bytes() == before
 
 
-def test_add_dry_run_then_real(driver, make_project, capsys) -> None:
+def test_add_prints_the_new_stable_id(driver, make_project, capsys) -> None:
     root = build(make_project).project_root
     spec = root / "add.json"
     spec.write_text(json.dumps({"items": [_spec(9)]}), encoding="utf-8")
     before = (root / CATALOG_REL).read_bytes()
     assert driver.main(["--project", str(root), "add", "--spec", str(spec), "--dry-run"]) == 0
-    assert "would add TODO-001 (#9)" in capsys.readouterr().out
+    dry = capsys.readouterr().out
+    assert re.search(rf"would add {NEW_ID} \(#9\)", dry)
+    assert "note: new ids are drawn at random; the real run draws its own" in dry
     assert (root / CATALOG_REL).read_bytes() == before
     assert driver.main(["--project", str(root), "add", "--spec", str(spec)]) == 0
     out = capsys.readouterr().out
-    assert "added TODO-001 (#9)" in out
+    found = re.search(rf"added ({NEW_ID}) \(#9\)", out)
+    assert found, out
+    items = json.loads((root / CATALOG_REL).read_text(encoding="utf-8"))["items"]
+    assert [i["id"] for i in items] == [found.group(1), ID1, ID2, ID3]
     assert out.splitlines()[-1] == "next: todo_sync.py render, then todo_sync.py check"
-    assert len(json.loads((root / CATALOG_REL).read_text(encoding="utf-8"))["items"]) == 4
 
 
 def test_add_refusal_exits_2(driver, make_project, capsys) -> None:

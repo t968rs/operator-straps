@@ -1,10 +1,11 @@
-"""Retire finished TODO items: drop them from the catalog, renumber the rest, rewrite every id that moved.
+"""Retire finished TODO items: drop them from the catalog, record their ids as retired, re-rank the rest.
 
-Rule T6 ties each id to its rank (``TODO-<rank>``, ranks 1..n), so removing an item renames every item
-ranked below it. ``retire_items`` is pure: it returns the new catalog plus the follow-up the catalog cannot
-record by itself (issues to list as close candidates, trackers whose prose names the retired work, prose
-that still names a retired id). ``apply_retirement`` writes the catalog, rewrites moved ids in the research
-catalog and the stubs, and lists other files that name a TODO id without touching them.
+Item ids are stable (``todo-k7qf``), so retiring renames nothing: the retired ids join ``retired_ids``, which
+new draws skip, and the kept items take ranks 1..n in their order. ``retire_items`` is pure: it returns the
+new catalog plus the follow-up the catalog cannot record by itself (issues to list as close candidates,
+trackers whose prose names the retired work, prose that still names a retired id). ``apply_retirement``
+writes only the catalog, then lists the research-catalog and stub lines and the other files that name a
+retired id, rewriting none of them.
 """
 from __future__ import annotations
 
@@ -13,30 +14,19 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from harness_lib.config import HarnessConfig
 from harness_lib.todo_sync import TodoSyncError
+from harness_lib.todo_sync import ids as todo_ids
 from harness_lib.todo_sync.ranking import RankingError, expected_order, method_from, score
 from harness_lib.todo_sync.report import write_atomic
 from harness_lib.todo_sync.rules_todo import catalog_counts
 from harness_lib.todo_sync.sources import Sources, posix
 
-ID_RE = re.compile(r"\bTODO-\d{3,}\b")
-_SHORT = re.compile(r"(?i)(?:TODO-)?0*([1-9]\d*)")
-
-
-def todo_id(rank: int) -> str:
-    """The id T6 expects at ``rank``."""
-    return f"TODO-{rank:03d}"
-
-
-def normalize_id(raw: str) -> str:
-    """``TODO-007`` from ``TODO-007``, ``todo-7``, ``007`` or ``7``."""
-    match = _SHORT.fullmatch(raw.strip())
-    if not match:
-        raise TodoSyncError(f"not a TODO id: {raw!r} (use TODO-007, 007 or 7)")
-    return todo_id(int(match.group(1)))
+#: Top-level catalog records whose strings are ids by design, never prose naming a retired id.
+_ID_RECORDS = frozenset({"retired_ids", "legacy_ids", "split_ids"})
+GREP_TIMEOUT = 60
 
 
 @dataclass(frozen=True)
@@ -45,42 +35,36 @@ class Retirement:
 
     catalog: Dict[str, Any]
     retired: Tuple[Dict[str, Any], ...]
-    renames: Dict[str, str]
     issues_to_close: Tuple[int, ...]
     trackers_touched: Tuple[int, ...]
     dangling: Tuple[str, ...]
 
 
 def retire_items(catalog: Dict[str, Any], ids: Iterable[str]) -> Retirement:
-    """Remove ``ids`` from a copy of ``catalog`` and renumber, relink and recount what remains."""
+    """Remove ``ids`` from a copy of ``catalog`` and record them in ``retired_ids``; unlink, re-rank and
+    recount what remains. No other id and no prose string changes.
+
+    Raises:
+        TodoSyncError: a catalog holding ``TODO-NNN`` ids, or ``ids`` naming no live item.
+    """
+    todo_ids.require_stable(catalog, "retire")
+    gone = set(todo_ids.resolve_ids(catalog, ids))
     data = copy.deepcopy(catalog)
     items = [i for i in data.get("items") or [] if isinstance(i, dict)]
-    gone = _resolve(items, ids)
     retired = tuple(i for i in items if i.get("id") in gone)
     kept = _ordered([i for i in items if i.get("id") not in gone], gone, data.get("ranking_method"))
-    moved = {str(i.get("id")): todo_id(n) for n, i in enumerate(kept, 1)}
     _drop_links(data, gone)
-    data["items"] = kept
-    dangling: List[str] = []
-    data = _rewrite_catalog(data, moved, gone, dangling)
-    for n, item in enumerate(data["items"], 1):
+    for n, item in enumerate(kept, 1):
         item["rank"] = n
+    data["items"] = kept
+    retired_ids = [str(i.get("id")) for i in retired]
+    _record_retired(data, retired_ids)
     data["counts"] = recount(data.get("counts"), data, retired)
     listed = {c.get("number") for c in data.get("close_candidates") or [] if isinstance(c, dict)}
     issues = {n for i in retired for n in i.get("gh_issues") or []} - listed
     trackers = {i["tracker"] for i in retired if i.get("tracker") is not None}
-    return Retirement(data, retired, {o: n for o, n in moved.items() if o != n}, tuple(sorted(issues)),
-                      tuple(sorted(trackers)), tuple(dangling))
-
-
-def _resolve(items: List[Dict[str, Any]], ids: Iterable[str]) -> Set[str]:
-    wanted = {normalize_id(raw) for raw in ids}
-    if not wanted:
-        raise TodoSyncError("name at least one TODO id to retire")
-    unknown = sorted(wanted - {str(i.get("id")) for i in items})
-    if unknown:
-        raise TodoSyncError(f"no such item(s) in the catalog: {', '.join(unknown)}")
-    return wanted
+    return Retirement(data, retired, tuple(sorted(issues)), tuple(sorted(trackers)),
+                      tuple(_dangling(data, retired_ids)))
 
 
 def _ordered(kept: List[Dict[str, Any]], gone: Set[str], method_raw: Any) -> List[Dict[str, Any]]:
@@ -114,21 +98,37 @@ def _drop_links(data: Dict[str, Any], gone: Set[str]) -> None:
                 record[field] = [x for x in record[field] if x not in gone]
 
 
-def _rewrite_catalog(data: Dict[str, Any], moved: Dict[str, str], gone: Set[str],
-                     dangling: List[str]) -> Dict[str, Any]:
-    """Every string of ``data`` with moved ids renamed; retired ids are left and noted in ``dangling``."""
-    def sub(text: str, where: str) -> str:
-        for hit in sorted({m for m in ID_RE.findall(text) if m in gone}):
-            dangling.append(f"{where} names retired {hit}")
-        return remap_text(text, moved)
+def _record_retired(data: Dict[str, Any], retired_ids: Sequence[str]) -> None:
+    """Append ``retired_ids`` to ``data['retired_ids']`` (created when absent), skipping ids already there."""
+    stored = data.get("retired_ids")
+    if stored is not None and not isinstance(stored, list):
+        raise TodoSyncError("retire: retired_ids is not a list")
+    record = list(stored or [])
+    record.extend(x for x in retired_ids if x not in record)
+    data["retired_ids"] = record
 
-    out: Dict[str, Any] = {}
+
+def _dangling(data: Dict[str, Any], gone: Sequence[str]) -> List[str]:
+    """``<json path> names retired <id>`` for each catalog string naming a ``gone`` id (``mention_paths``)."""
+    return mention_paths(data, gone, lambda hit: f"names retired {hit}")
+
+
+def mention_paths(data: Dict[str, Any], ids: Sequence[str], note: Callable[[str], str]) -> List[str]:
+    """``<json path> <note(id)>`` for each catalog string naming one of ``ids`` in any case; item paths read
+    ``items/<id>/...`` and the id records (``_ID_RECORDS``) are skipped."""
+    found: List[str] = []
+
+    def scan(text: str, where: str) -> str:
+        found.extend(f"{where} {note(hit)}" for hit in todo_ids.mentions(text, ids))
+        return text
+
     for key, value in data.items():
         if key == "items":
-            out[key] = [walk_strings(item, f"items/{todo_id(n)}", sub) for n, item in enumerate(value, 1)]
-        else:
-            out[key] = walk_strings(value, key, sub)
-    return out
+            for item in value:
+                walk_strings(item, f"items/{item.get('id')}", scan)
+        elif key not in _ID_RECORDS:
+            walk_strings(value, key, scan)
+    return found
 
 
 def walk_strings(obj: Any, where: str, sub: Callable[[str, str], str]) -> Any:
@@ -138,11 +138,6 @@ def walk_strings(obj: Any, where: str, sub: Callable[[str, str], str]) -> Any:
     if isinstance(obj, list):
         return [walk_strings(v, f"{where}/{n}", sub) for n, v in enumerate(obj)]
     return sub(obj, where) if isinstance(obj, str) else obj
-
-
-def remap_text(text: str, renames: Dict[str, str]) -> str:
-    """``text`` with each TODO id in ``renames`` replaced in one pass (no chained renames)."""
-    return ID_RE.sub(lambda m: renames.get(m.group(0), m.group(0)), text)
 
 
 def recount(stored: Any, data: Dict[str, Any], retired: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
@@ -177,25 +172,34 @@ class RetireResult:
 
     retirement: Retirement
     remaining: int
-    rewritten: Tuple[str, ...]
     dangling: Tuple[str, ...]
     references: Tuple[str, ...]
+    scan_error: Optional[str] = None
 
 
 def apply_retirement(cfg: HarnessConfig, ids: Iterable[str], dry_run: bool = False) -> RetireResult:
-    """Retire ``ids`` in the project's catalog and rewrite moved ids in the research catalog and stubs."""
+    """Retire ``ids`` in the project's catalog and write it (unless ``dry_run``), then list the companion
+    lines and other files still naming a retired id; nothing but the catalog is written."""
     raw, data = load_catalog(cfg, "retire")
     out = retire_items(data, ids)
-    notes = {str(i.get("id")): f"names retired {i.get('id')}" for i in out.retired}
-    edits, dangling = companion_edits(cfg, out.renames, notes)
+    gone = [str(i.get("id")) for i in out.retired]
     if not dry_run:
-        write_edits(cfg, dump_like(out.catalog, raw), edits)
-    refs = other_references(cfg, edits) if out.renames else ()
-    return RetireResult(out, len(out.catalog["items"]), tuple(edits), (*out.dangling, *dangling), refs)
+        write_edits(cfg, dump_like(out.catalog, raw))
+    try:
+        refs, scan_error = other_references(cfg, gone), None
+    except TodoSyncError as exc:
+        refs, scan_error = (), str(exc)
+    noted = companion_mentions(cfg, {x: f"names retired {x}" for x in gone})
+    return RetireResult(out, len(out.catalog["items"]), (*out.dangling, *noted), refs, scan_error)
 
 
-def load_catalog(cfg: HarnessConfig, verb: str) -> Tuple[str, Dict[str, Any]]:
-    """``(raw text, parsed object)`` of the project's catalog; ``verb`` names the caller in errors."""
+def load_catalog(cfg: HarnessConfig, verb: str, stable: bool = True) -> Tuple[str, Dict[str, Any]]:
+    """``(raw text, parsed object)`` of the project's catalog; ``verb`` names the caller in errors.
+
+    Raises:
+        TodoSyncError: no catalog configured, an unparseable file, a top level that is not an object, or
+            (with ``stable``) a catalog still holding ``TODO-NNN`` ids.
+    """
     if not cfg.todo.catalog:
         raise TodoSyncError(f"{verb} needs todo.folder")
     try:
@@ -205,24 +209,74 @@ def load_catalog(cfg: HarnessConfig, verb: str) -> Tuple[str, Dict[str, Any]]:
         raise TodoSyncError(f"{posix(cfg.todo.catalog)}: unparseable: {exc}") from exc
     if not isinstance(data, dict):
         raise TodoSyncError(f"{posix(cfg.todo.catalog)}: top level is not an object")
+    if stable:
+        todo_ids.require_stable(data, verb)
     return raw, data
 
 
-def write_edits(cfg: HarnessConfig, catalog_text: str, edits: Dict[str, str]) -> None:
-    """Write the catalog atomically, then each rewritten companion."""
+def write_edits(cfg: HarnessConfig, catalog_text: str) -> None:
+    """Write the catalog atomically."""
     write_atomic(cfg.path(cfg.todo.catalog), catalog_text)
-    for rel, text in edits.items():
-        cfg.path(rel).write_bytes(text.encode("utf-8"))
 
 
-def other_references(cfg: HarnessConfig, edited: Iterable[str]) -> Tuple[str, ...]:
-    """Lines naming a TODO id outside the catalog, its companions, ``edited``, the snapshots and every file
-    under ``artifacts.plans`` and ``artifacts.reviews`` (in-progress plans included)."""
-    skip = [posix(cfg.todo.catalog), *edited, *_companions(cfg),
-            posix(cfg.artifacts.plans), posix(cfg.artifacts.reviews)]
-    if cfg.todo.snapshots.dir:
-        skip.append(posix(cfg.todo.snapshots.dir))
-    return _references(cfg, skip)
+def history_paths(cfg: HarnessConfig) -> Tuple[str, ...]:
+    """Repo-relative POSIX folders, without a trailing ``/``, whose files are history the reference scans
+    skip: plans, reviews, commit messages, summaries, scratch, each planning prefix and the snapshots."""
+    art = cfg.artifacts
+    out: List[str] = []
+    for rel in (art.plans, art.reviews, art.commit_messages, art.summaries, art.scratch,
+                *art.planning_prefixes, cfg.todo.snapshots.dir):
+        path = posix(rel).rstrip("/") if rel else ""
+        if path and path not in out:
+            out.append(path)
+    return tuple(out)
+
+
+def git_grep(cfg: HarnessConfig, args: Sequence[str]) -> Tuple[str, ...]:
+    """Stdout lines of ``git -C <project root> grep <args>``; exit 1 (no match) gives ``()``.
+
+    Raises:
+        TodoSyncError: ``git grep failed: <reason>`` on an OSError, a timeout or an exit of 2 or more.
+    """
+    argv = ["git", "-C", str(cfg.project_root), "grep", *args]
+    try:
+        done = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                              timeout=GREP_TIMEOUT)
+    except OSError as exc:
+        raise TodoSyncError(f"git grep failed: {exc}") from exc
+    except subprocess.TimeoutExpired as exc:
+        raise TodoSyncError(f"git grep failed: timed out after {GREP_TIMEOUT} s") from exc
+    if done.returncode == 1:
+        return ()
+    if done.returncode != 0:
+        first = next((line.strip() for line in done.stderr.splitlines() if line.strip()), "")
+        raise TodoSyncError(f"git grep failed: {first or f'exit {done.returncode}'}")
+    return tuple(done.stdout.splitlines())
+
+
+def other_references(cfg: HarnessConfig, ids: Sequence[str]) -> Tuple[str, ...]:
+    """``path:line:text`` of tracked or untracked files naming any of ``ids`` (any case, whole word) outside
+    the catalog, its companions and ``history_paths``; ``()`` when ``ids`` is empty or the project root
+    holds no ``.git``.
+
+    The skipped paths are dropped here rather than passed as exclude pathspecs, which overrun the Windows
+    command line once the list grows.
+
+    Raises:
+        TodoSyncError: from ``git_grep``.
+    """
+    wanted = list(ids)
+    if not wanted or not (cfg.project_root / ".git").exists():
+        return ()
+    patterns = [arg for x in wanted for arg in ("-e", x)]
+    lines = git_grep(cfg, ["--untracked", "-n", "-I", "-i", "-F", "-w", *patterns])
+    skip = [posix(rel) for rel in (cfg.todo.catalog, *companions(cfg)) if rel] + list(history_paths(cfg))
+    return tuple(line.strip() for line in lines if not under_any(line.partition(":")[0], skip))
+
+
+def under_any(path: str, roots: Iterable[str]) -> bool:
+    """True when ``path`` is one of ``roots`` or lies inside one."""
+    return any(path == root or path.startswith(root + "/") for root in roots)
 
 
 def dump_like(data: Dict[str, Any], raw: str) -> str:
@@ -235,8 +289,9 @@ def dump_like(data: Dict[str, Any], raw: str) -> str:
     return text.replace("\n", "\r\n") if "\r\n" in raw else text
 
 
-def _companions(cfg: HarnessConfig) -> List[str]:
-    """Repo-relative files whose TODO ids follow the catalog: the research catalog and the stubs."""
+def companions(cfg: HarnessConfig) -> List[str]:
+    """Repo-relative companion files of the catalog: the research catalog and the stubs, scanned for mentions
+    of a retired or split id (and rewritten only by migrate-ids)."""
     rels: List[str] = []
     research = cfg.todo.research.catalog
     if research and cfg.path(research).is_file():
@@ -247,35 +302,25 @@ def _companions(cfg: HarnessConfig) -> List[str]:
     return rels
 
 
-def companion_edits(cfg: HarnessConfig, renames: Dict[str, str],
-                    notes: Dict[str, str]) -> Tuple[Dict[str, str], List[str]]:
-    """``(rel -> rewritten text, notes)`` for the companions whose ids move; each line naming an id in
-    ``notes`` adds ``<rel>:<line> <note>``."""
-    edits: Dict[str, str] = {}
-    noted: List[str] = []
-    for rel in _companions(cfg):
+def companion_mentions(cfg: HarnessConfig, notes: Dict[str, str]) -> List[str]:
+    """``<rel>:<line> <note>`` for each research-catalog or stub line naming an id in ``notes`` (any case);
+    nothing is rewritten."""
+    found: List[str] = []
+    for rel in companions(cfg):
         text = cfg.path(rel).read_bytes().decode("utf-8", errors="replace")
         for n, line in enumerate(text.splitlines(), 1):
-            hits = sorted(set(ID_RE.findall(line)) & set(notes))
-            noted.extend(f"{rel}:{n} {notes[hit]}" for hit in hits)
-        new = remap_text(text, renames)
-        if new != text:
-            edits[rel] = new
-    return edits, noted
+            found.extend(f"{rel}:{n} {notes[hit]}" for hit in todo_ids.mentions(line, notes))
+    return found
 
 
 REFERENCE_CAP = 30
 
 
 def summary_lines(result: RetireResult, dry_run: bool) -> List[str]:
-    """The driver's report: what moved, what was rewritten and the follow-up left to a person."""
+    """The driver's report: what was retired and the follow-up left to a person."""
     out = result.retirement
     ids = ", ".join(str(i.get("id")) for i in out.retired)
     lines = [f"{'would retire' if dry_run else 'retired'} {ids}; {result.remaining} item(s) remain"]
-    if out.renames:
-        lines.append(f"renumbered {len(out.renames)} item(s): "
-                     + ", ".join(f"{old}->{new}" for old, new in out.renames.items()))
-    lines.extend(f"rewrote ids in {rel}" for rel in result.rewritten)
     lines.extend(f"issue #{n}: a retired item resolves it; add a close_candidates entry with evidence"
                  for n in out.issues_to_close)
     lines.extend(f"tracker #{n}: lost child items; revisit status_note and recommended_action"
@@ -284,19 +329,8 @@ def summary_lines(result: RetireResult, dry_run: bool) -> List[str]:
     lines.extend(f"reference (not rewritten): {ref}" for ref in result.references[:REFERENCE_CAP])
     if len(result.references) > REFERENCE_CAP:
         lines.append(f"... {len(result.references) - REFERENCE_CAP} more reference(s)")
+    if result.scan_error:
+        lines.append(f"reference scan failed: {result.scan_error}")
     if not dry_run:
         lines.append("next: todo_sync.py render, then todo_sync.py check")
     return lines
-
-
-def _references(cfg: HarnessConfig, skip: Sequence[str]) -> Tuple[str, ...]:
-    """``path:line: text`` of other tracked or untracked files naming a TODO id; empty outside git."""
-    excludes = [f":(exclude){rel}" for rel in skip]
-    argv = ["git", "-C", str(cfg.project_root), "grep", "--untracked", "-n", "-I", "-E", "TODO-[0-9]{3,}",
-            "--", ".", *excludes]
-    try:
-        done = subprocess.run(argv, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                              timeout=60)
-    except (OSError, subprocess.TimeoutExpired):
-        return ()
-    return tuple(line.strip() for line in done.stdout.splitlines()) if done.returncode == 0 else ()

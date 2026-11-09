@@ -7,7 +7,6 @@ from __future__ import annotations
 
 import copy
 import json
-import re
 import sys
 from pathlib import Path
 from typing import Any, Dict
@@ -18,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _todo_helpers import CATALOG_REL, MIN_CATALOG, build  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, check  # noqa: E402
+from harness_lib.todo_sync.ids import ID_RE, is_id  # noqa: E402
 from harness_lib.todo_sync.ranking import SOURCE_TYPE_ORDER, expected_order, method_from  # noqa: E402
 from harness_lib.todo_sync.reshape import NOTE_SOURCE, add_items, apply_add, summary_lines  # noqa: E402
 
@@ -72,18 +72,28 @@ def test_issue_and_url_come_together_or_not_at_all(over: Dict[str, Any], fragmen
 def test_note_sorts_after_every_other_source_type_on_a_tie(other: str) -> None:
     # The note item comes first in the input and wins the title tie-break, so only the source-type term
     # placed ahead of the ref and title keys can put it last.
-    note = {**_note(title="A note"), "id": "TODO-001", "sources": [{"type": NOTE_SOURCE, "ref": DAY}]}
-    rival = {**_note(title="B rival"), "id": "TODO-002", "sources": [{"type": other, "ref": "1"}]}
+    note = {**_note(title="A note"), "id": "todo-a2a2", "sources": [{"type": NOTE_SOURCE, "ref": DAY}]}
+    rival = {**_note(title="B rival"), "id": "todo-b3b3", "sources": [{"type": other, "ref": "1"}]}
     method = method_from(MIN_CATALOG["ranking_method"])
-    assert expected_order([note, rival], method) == ["TODO-002", "TODO-001"]
+    assert expected_order([note, rival], method) == ["todo-b3b3", "todo-a2a2"]
+
+
+def test_note_head_line_names_a_stable_id(make_project) -> None:
+    cfg = build(make_project)
+    spec = cfg.project_root / "add.json"
+    spec.write_text(json.dumps({"items": [_note()]}), encoding="utf-8")
+    done = apply_add(cfg, spec, today=DAY)
+    head = summary_lines(done, False)[0]
+    [new] = ID_RE.findall(head)
+    assert is_id(new) and new == done.reshape.added[0][0]
+    assert head == f"added {new} (note); 4 item(s) now"
 
 
 def test_note_item_passes_the_catalog_rules(make_project) -> None:
     cfg = build(make_project)
     spec = cfg.project_root / "add.json"
     spec.write_text(json.dumps({"items": [_note()]}), encoding="utf-8")
-    done = apply_add(cfg, spec, today=DAY)
-    assert re.fullmatch(r"added TODO-\d{3} \(note\); 4 item\(s\) now", summary_lines(done, False)[0])
+    apply_add(cfg, spec, today=DAY)
     written = json.loads((cfg.project_root / CATALOG_REL).read_text(encoding="utf-8"))
     assert [i["sources"] for i in written["items"]].count([{"type": "note", "ref": DAY}]) == 1
     report = check(cfg, rules=CATALOG_RULES)

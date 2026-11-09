@@ -18,7 +18,7 @@ import pytest
 from conftest import GIT_ENV, PLUGIN_ROOT, REPO_ROOT, git
 
 sys.path.insert(0, str(REPO_ROOT / "tests" / "lib"))
-from _todo_helpers import config, todo_files  # noqa: E402
+from _todo_helpers import CATALOG_REL, ID1, ID2, LEGACY_CATALOG, config, todo_files  # noqa: E402
 
 WALK_ROOTS = ("plugins/",)
 PLUGINS = REPO_ROOT / "plugins"
@@ -124,14 +124,21 @@ def _todo_args(root: Path, *args: str) -> List[str]:
 
 
 def _split_args(root: Path, tmp: Path) -> List[str]:
-    """A split of TODO-002 into two parts, its spec outside the project."""
+    """A split of the fixture's second item into two parts, its spec outside the project."""
     spec = tmp / "split_spec.json"
     spec.write_text(json.dumps({"parts": [{"title": "Part one"}, {"title": "Part two"}]}), encoding="utf-8")
-    return _todo_args(root, "split", "2", "--spec", str(spec))
+    return _todo_args(root, "split", ID2, "--spec", str(spec))
+
+
+def _migrate_args(root: Path) -> List[str]:
+    """``migrate-ids`` on a project whose catalog still carries rank-tied ``TODO-NNN`` ids."""
+    args = _todo_args(root, "migrate-ids")
+    (root / CATALOG_REL).write_text(json.dumps(LEGACY_CATALOG, indent=2) + "\n", encoding="utf-8")
+    return args
 
 
 def _refresh_args(root: Path) -> List[str]:
-    """A refresh after a hand edit that moves TODO-003 above TODO-002, so it rewrites the catalog."""
+    """A refresh after a hand edit that moves the third item above the second, so it rewrites the catalog."""
     args = _todo_args(root, "refresh")
     path = root / "docs/RESEARCH/_TODO/RepoToDo.json"
     data = json.loads(path.read_text(encoding="utf-8"))
@@ -191,9 +198,10 @@ CASES = {
     "parallel2 plan": lambda r, t: (_parallel2_plan_args(r, t), None),
     "todo_sync check": lambda r, t: (_todo_args(r, "check"), None),
     "todo_sync render": lambda r, t: (_todo_args(r, "render", "--date", "2026-10-21"), None),
-    "todo_sync retire": lambda r, t: (_todo_args(r, "retire", "1"), None),
+    "todo_sync retire": lambda r, t: (_todo_args(r, "retire", ID1), None),
     "todo_sync split": lambda r, t: (_split_args(r, t), None),
     "todo_sync refresh": lambda r, t: (_refresh_args(r), None),
+    "todo_sync migrate-ids": lambda r, t: (_migrate_args(r), None),
     "todo_sync session hook": lambda r, t: (["hooks/todo_sync_session.py"],
                                             {"cwd": str(_todo_project(r)), "source": "startup"}),
     "merge-commit-msg build": lambda r, t: (_merge_build_args(r, t), None),
@@ -224,7 +232,8 @@ CASES = {
 
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
 MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers",
-                            "docstring-dispatch", "arc-meta apply_rc"})
+                            "docstring-dispatch", "arc-meta apply_rc", "todo_sync retire", "todo_sync split",
+                            "todo_sync refresh", "todo_sync migrate-ids"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
@@ -298,6 +307,14 @@ def test_todo_sync_output_lands_in_the_project(name: str, project: Path, tmp_pat
     assert done.returncode == 0, done.stderr
     expected = project / TODO_OUTPUTS[name]
     assert expected.is_file(), f"{name} did not write {TODO_OUTPUTS[name]}:\n{done.stderr}"
+
+
+def test_migrate_ids_writes_the_map_into_the_project_catalog(project: Path, tmp_path: Path) -> None:
+    script, payload = CASES["todo_sync migrate-ids"](project, tmp_path)
+    done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project, payload)
+    assert done.returncode == 0, done.stderr
+    catalog = json.loads((project / CATALOG_REL).read_text(encoding="utf-8"))
+    assert list(catalog["legacy_ids"]["map"]) == ["TODO-001", "TODO-002", "TODO-003"]
 
 
 def test_snapshot_notices_a_new_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

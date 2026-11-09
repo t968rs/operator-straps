@@ -5,14 +5,16 @@
     Print the ``agent=`` line (the model the research level picks) and the prompt header: ``SKILL``,
     ``Operation: add``, ``Issue``, ``Research`` and ``Project root``. The session appends ``Note:`` and
     ``Context:``; the note never reaches this command. Refuses, with one ``problem:`` line on stderr and exit
-    1, a project without ``todo.folder`` and one whose catalog does not exist yet (``todo_sync.py init``
-    creates it). A research level outside 0-3 is an argument error, exit 2.
+    1, a project without ``todo.folder``, one whose catalog does not exist yet (``todo_sync.py init``
+    creates it) and one that still holds rank-tied ``TODO-NNN`` ids (``migrate-ids`` switches it). A
+    research level outside 0-3 is an argument error, exit 2.
 
 ``--repo`` (default: the working directory) names a directory inside the project.
 """
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 from typing import Optional, Sequence
@@ -23,6 +25,8 @@ from harness_lib.add_todo_api import dispatch_row  # noqa: E402
 from harness_lib.add_todo_models import AddTodoRequest, ResearchLevel  # noqa: E402
 from harness_lib.config import ConfigError, HarnessConfig, activate, load_config  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
+from harness_lib.todo_sync import ids  # noqa: E402
+from harness_lib.todo_sync.errors import TodoSyncError  # noqa: E402
 
 INIT = "todo_sync.py init"
 
@@ -49,6 +53,21 @@ def _ready(cfg: HarnessConfig) -> None:
     catalog = cfg.path(cfg.todo.catalog)
     if not catalog.is_file():
         raise Refused(f"no TODO catalog at {cfg.todo.catalog}; create it with {INIT}")
+    _refuse_legacy(catalog)
+
+
+def _refuse_legacy(catalog: Path) -> None:
+    """Refuse a catalog that still holds TODO-NNN ids; an unreadable catalog is left to the later add."""
+    try:
+        data = json.loads(catalog.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return
+    if not isinstance(data, dict):
+        return
+    try:
+        ids.require_stable(data, "add-todo")
+    except TodoSyncError as exc:
+        raise Refused(str(exc)) from exc
 
 
 def main(argv: Optional[Sequence[str]] = None) -> int:

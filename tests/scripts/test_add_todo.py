@@ -5,6 +5,7 @@ note and the session's context never pass through the driver: the session append
 """
 from __future__ import annotations
 
+import copy
 import os
 import subprocess
 import sys
@@ -16,7 +17,7 @@ from pydantic import ValidationError
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
-from _todo_helpers import TODO_DIR, config, todo_files  # noqa: E402
+from _todo_helpers import CATALOG_REL, LEGACY_CATALOG, TODO_DIR, config, todo_files  # noqa: E402
 from conftest import GIT_ENV, PLUGIN_ROOT  # noqa: E402
 from harness_lib.add_todo_api import dispatch_row  # noqa: E402
 from harness_lib.add_todo_models import AddTodoRequest, ResearchLevel  # noqa: E402
@@ -103,3 +104,11 @@ def test_driver_rejects_a_note_argument(make_project, extra: List[str]) -> None:
     done = _run(root, *extra)
     assert done.returncode == 2
     assert "unrecognized arguments" in done.stderr
+
+
+def test_driver_refuses_a_legacy_catalog_before_the_dispatch(make_project) -> None:
+    files = todo_files()
+    files[CATALOG_REL] = copy.deepcopy(LEGACY_CATALOG)
+    done = _run(make_project(config(), files=files))
+    assert done.returncode == 1 and done.stdout == ""
+    assert done.stderr.startswith("problem: add-todo: ") and "migrate-ids" in done.stderr
