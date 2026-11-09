@@ -21,6 +21,7 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from harness_lib.config import HarnessConfig
 from harness_lib.project import plugin_root
+from harness_lib.todo_sync.errors import TodoSyncError
 from harness_lib.todo_sync import rules_plans as rp
 from harness_lib.todo_sync import rules_research as rr
 from harness_lib.todo_sync import rules_todo as rt
@@ -33,10 +34,6 @@ __all__ = ["RULES", "RULE_IDS", "Report", "TodoSyncError", "check", "render_snap
            "runner_path", "write_report", "write_runner"]
 
 RuleFn = Callable[[Sources], List[Finding]]
-
-
-class TodoSyncError(ValueError):
-    """A request the engine cannot serve (inactive feature, bad rule id, render target refused)."""
 
 
 @dataclass(frozen=True)
