@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from conftest import git
 from harness_lib import plan_checks as pc
@@ -172,8 +172,13 @@ def test_open_decisions_are_listed_with_their_question() -> None:
 
 # --- sweeps -----------------------------------------------------------------------------------------------
 
-def sweep_plan(hits: Dict[str, str]) -> ActionPlan:
-    return plan(sweeps=[{"id": "S1", "pattern": "OLD_NAME|old_name", "hits": hits}])
+SPEC = "docs/specs/x.md"
+CODE_HITS = {"src/old_name.py": "rewrite", "src/user.py": "rewrite"}
+
+
+def sweep_plan(hits: Dict[str, str], source: Optional[str] = None) -> ActionPlan:
+    top: Dict[str, Any] = {} if source is None else {"source_document": source}
+    return plan(sweeps=[{"id": "S1", "pattern": "OLD_NAME|old_name", "hits": hits}], **top)
 
 
 def test_a_sweep_with_every_hit_classified_passes(make_project) -> None:
@@ -203,17 +208,9 @@ def test_untracked_files_count_and_the_plans_folder_does_not(make_project) -> No
         "sweep S1: src/fresh.py has hits but no classification"]
 
 
-SPEC = "docs/specs/x.md"
-CODE_HITS = {"src/old_name.py": "rewrite", "src/user.py": "rewrite"}
-
-
-def source_plan(hits: Dict[str, str], source: str) -> ActionPlan:
-    return plan(source_document=source, sweeps=[{"id": "S1", "pattern": "OLD_NAME|old_name", "hits": hits}])
-
-
 def test_the_plans_own_spec_is_not_a_sweep_hit(make_project) -> None:
     root = make_project(files={**FILES, SPEC: "Rename OLD_NAME.\n"})
-    assert pc.sweep_problems(source_plan(CODE_HITS, SPEC), root, "docs/PLANS") == []
+    assert pc.sweep_problems(sweep_plan(CODE_HITS, SPEC), root, "docs/PLANS") == []
 
 
 def test_a_spec_committed_after_the_base_passes_the_sweep_at_the_base(make_project) -> None:
@@ -223,20 +220,20 @@ def test_a_spec_committed_after_the_base_passes_the_sweep_at_the_base(make_proje
     (root / SPEC).write_text("Rename OLD_NAME.\n", encoding="utf-8")
     git(root, "add", SPEC)
     git(root, "commit", "-q", "-m", "spec")
-    classified = source_plan({**CODE_HITS, SPEC: "the plan's own spec"}, SPEC)
+    classified = sweep_plan({**CODE_HITS, SPEC: "the plan's own spec"}, SPEC)
     assert pc.sweep_problems(classified, root, "docs/PLANS") == []
     assert pc.sweep_problems(classified, root, "docs/PLANS", base) == []
 
 
 def test_an_absolute_spec_path_inside_the_repo_is_skipped(make_project) -> None:
     root = make_project(files={**FILES, SPEC: "Rename OLD_NAME.\n"})
-    assert pc.sweep_problems(source_plan(CODE_HITS, str(root / SPEC)), root, "docs/PLANS") == []
+    assert pc.sweep_problems(sweep_plan(CODE_HITS, str(root / SPEC)), root, "docs/PLANS") == []
 
 
 def test_a_spec_outside_the_repo_skips_nothing(make_project, tmp_path: Path) -> None:
     root = make_project(files={**FILES, SPEC: "Rename OLD_NAME.\n"})
     outside = str(tmp_path / "elsewhere" / "x.md")
-    assert pc.sweep_problems(source_plan(CODE_HITS, outside), root, "docs/PLANS") == [
+    assert pc.sweep_problems(sweep_plan(CODE_HITS, outside), root, "docs/PLANS") == [
         "sweep S1: docs/specs/x.md has hits but no classification"]
 
 

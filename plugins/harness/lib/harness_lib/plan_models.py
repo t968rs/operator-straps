@@ -431,7 +431,8 @@ class ActionPlan(BaseModel):
     sweeps: List[Sweep] = Field(default_factory=list, description=(
         "Searches the plan relies on (old names, moved paths). `plan.py check` runs each pattern over "
         "tracked and untracked files and fails on a file with hits that `hits` does not classify, or a "
-        "classified file with none."))
+        "classified file with none. The plans folder and the plan's own `source_document` are skipped on "
+        "both sides."))
     deferred_to_future_plans: List[DeferredTopic] = Field(default_factory=list)
 
     # Hash and resolved path of the file this plan was loaded from; ``plan_api.write`` saves to that file

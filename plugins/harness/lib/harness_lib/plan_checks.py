@@ -270,7 +270,10 @@ def _grep_files(root: Path, pattern: str, options: List[str],
 
 
 def source_path(plan: ActionPlan, root: Path) -> Optional[str]:
-    """The plan's ``source_document`` as a repo-relative POSIX path; None when unset or outside ``root``."""
+    """The plan's ``source_document`` as a repo-relative POSIX path.
+
+    None when unset, or when an absolute path lies outside ``root``; a relative path is returned as written.
+    """
     if not plan.source_document:
         return None
     path = Path(plan.source_document)
@@ -285,8 +288,9 @@ def source_path(plan: ActionPlan, root: Path) -> Optional[str]:
 def sweep_problems(plan: ActionPlan, root: Path, plans_prefix: str, rev: Optional[str] = None) -> List[str]:
     """Hits the sweep does not classify, and classified files without a hit (in the tree, or at ``rev``).
 
-    The plan's own source document is skipped on both sides, like the plans folder: it names the symbols
-    the sweeps search for, and a spec committed on the plan's branch is absent at the base.
+    The plan's own source document is skipped on both sides; the plans folder is already dropped from the
+    hits by sweep_hits. The document names the symbols the sweeps search for, and a spec committed on the
+    plan's branch is absent at the base.
     """
     out: List[str] = []
     source = source_path(plan, root)
