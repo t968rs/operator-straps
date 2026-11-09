@@ -53,6 +53,7 @@
     {"bucket": "Docs", "prefixes": ["docs/"], "names": [], "suffixes": []}
   ],
   "auto_approve_python_c": false,
+  "auto_title": false,
   "worktree_root": null,
   "worktree_setup": [],
   "worktree_baseline": [],

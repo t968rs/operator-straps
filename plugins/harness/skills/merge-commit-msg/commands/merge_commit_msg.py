@@ -16,7 +16,16 @@ against a type list). Any other mode token is refused. Both modes write ``PR<N>_
     PR's diff (one section per file under ``DIFF_SECTION_CHARS`` characters, the whole under
     ``DIFF_CHAR_BUDGET``: a section past the budget keeps its ``diff --git`` header), then a ``text`` fence
     holding the message skeleton with the subject of the mode, lineage and review lines already filled in.
-    Writes no file. Exits 1 when the PR is not open or its title cannot head the subject of the mode.
+    Writes no file. Exits 1 when the PR is not open or its title cannot head the subject of the mode; with
+    ``--auto-title`` such a title adds a ``- Title problem:`` fact instead, and the subject line of the
+    skeleton becomes ``RETITLE_HINT``, filled from what ``retitle`` prints. Without the flag the project's
+    ``auto_title`` key decides; ``--no-auto-title`` turns it off for one capture.
+
+``retitle N [squash] --title T``
+    Replace a PR title the mode refuses with ``T`` through ``harness_lib.pr_title.change_pr_title``
+    (``gh pr edit``; ``T`` must pass the ``Word(scope): summary`` rule in both modes) and print the subject of
+    the mode for ``T``. Exits 1, changing nothing, when the PR is not open, its title already heads the
+    subject of the mode, or ``T`` is refused.
 
 ``build N [squash]``
     Take the message from stdin, validate it (verbatim subject of the mode from ``gh``, column-0 layout,
@@ -29,7 +38,8 @@ against a type list). Any other mode token is refused. Both modes write ``PR<N>_
 
 Usage::
 
-    merge_commit_msg.py [--repo DIR] capture N [--squash | -s | squash]
+    merge_commit_msg.py [--repo DIR] capture N [--squash | -s | squash] [--auto-title | --no-auto-title]
+    merge_commit_msg.py [--repo DIR] retitle N [--squash | -s | squash] --title T
     merge_commit_msg.py [--repo DIR] build N [--squash | -s | squash] <<'MSG' ... MSG
 """
 from __future__ import annotations
@@ -51,11 +61,11 @@ from harness_lib.commit_txt import (  # noqa: E402
     filler_words,
     glyph_problems,
     read_commit_txt,
-    subject_parts,
     vendor_names,
 )
 from harness_lib.config import ConfigError, active, activate, load_config  # noqa: E402
 from harness_lib.pr_capture import read_rank  # noqa: E402
+from harness_lib.pr_title import TitleError, change_pr_title, title_defect, title_problem  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
 
 LINE_WIDTH = 110
@@ -67,12 +77,12 @@ _DIFF_PATH = re.compile(r"^diff --git a/.* b/(.+)$")
 PLACEHOLDER = re.compile(r"^\s*(?:-\s+)?<.*>\s*$")
 _UNSAFE = re.compile(r'[\\/:*?"<>|]')
 SUBJECT_SEPARATOR = "--"
-_SLUG_SPLIT = re.compile(r"[-_/\s]+")
 _ARROWS = re.compile(r"\s*(?:-->|->)\s*")
 _SHA = re.compile(r"(?<![\w./-])(?=[0-9a-f]*\d)[0-9a-f]{7,40}(?![\w/-])")
 _SIGNOFF = re.compile(r"^\s*(co-authored-by|signed-off-by):", re.IGNORECASE)
 PROSE_HINT = "<Prose: what changed and why, 2-3 short paragraphs; lead with the action.>"
 BULLET_HINT = "  - <file>: <key change; 4-7 representative files>"
+RETITLE_HINT = "<Subject: the Subject line retitle prints>"
 TIERS = ("critical", "important", "minor")
 
 
@@ -117,33 +127,6 @@ def subject_line(pr: int, title: str, squash: bool = False) -> str:
     return f"Merge PR #{pr} {SUBJECT_SEPARATOR} {title}"
 
 
-def _tokens(text: str) -> List[str]:
-    return [t for t in _SLUG_SPLIT.split(text.casefold()) if t]
-
-
-def title_problem(pr: int, title: str, head: str, squash: bool = False) -> Optional[str]:
-    """Why ``title`` cannot head the subject of the mode, else None.
-
-    Two defects in both modes: a non-ASCII character, and a title that is only the branch name with its
-    hyphens or underscores turned into spaces (the default ``gh`` derives from a branch; it loses version
-    dots). The squash mode also refuses a title that is not a ``Word(scope): summary`` subject (a word of
-    letters, an optional scope, a colon and a non-empty summary).
-    """
-    fix = f"retitle it with gh pr edit {pr} --title"
-    if not title.isascii():
-        found = "".join(sorted({c for c in title if not c.isascii()}))
-        return f"PR #{pr} title holds non-ASCII characters {found!r}; {fix}"
-    if _SLUG_SPLIT.search(head) and _tokens(title) == _tokens(head):
-        return f"PR #{pr} title {title!r} reads as the branch name; {fix}"
-    if squash:
-        kind, _, summary = subject_parts(title)
-        if kind is None or not summary:
-            return (f"PR #{pr} title {title!r} is not a Word(scope): summary subject "
-                    "(Conventional-Commit shape: a word, an optional scope, a colon and a non-empty "
-                    f"summary), which a squash commit needs; {fix}")
-    return None
-
-
 def fetch_view(repo: Path, pr: int) -> Dict[str, object]:
     """The PR's shape from ``gh pr view``; a PR that is not open is refused."""
     fields = "number,title,headRefName,baseRefName,additions,deletions,changedFiles,body,state"
@@ -153,9 +136,13 @@ def fetch_view(repo: Path, pr: int) -> Dict[str, object]:
     return data
 
 
-def check_title(view: Dict[str, object], pr: int, squash: bool = False) -> None:
-    """Raise ``MergeMessageError`` when the PR title cannot head the subject of the mode."""
-    problem = title_problem(pr, str(view["title"]), str(view["headRefName"]), squash)
+def check_title(view: Dict[str, object], pr: int, squash: bool = False,
+                offer_auto_title: bool = True) -> None:
+    """Raise ``MergeMessageError`` when the PR title cannot head the subject of the mode.
+
+    ``offer_auto_title`` False keeps the ``--auto-title`` hint out of the problem, for ``build``.
+    """
+    problem = title_problem(pr, str(view["title"]), str(view["headRefName"]), squash, offer_auto_title)
     if problem:
         raise MergeMessageError(problem)
 
@@ -267,21 +254,37 @@ def mode_name(squash: bool) -> str:
     return "squash" if squash else "merge"
 
 
+def retitle_lines(pr: int, squash: bool) -> List[str]:
+    """The capture intro lines for a title ``--auto-title`` replaces: write one, run ``retitle``."""
+    command = f"retitle {pr}{' --squash' if squash else ''} --title \"<title>\""
+    return ["", "The PR title cannot head the subject (Title problem). Write a Word(scope): summary title "
+            f"from the facts and run `{command}`; it sets the PR title. Then replace the subject placeholder "
+            "with the Subject line it prints."]
+
+
 def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequence[str],
-           subjects: Sequence[str], diff: Sequence[str] = (), squash: bool = False) -> str:
-    """The capture output: script-owned facts, then the ``text`` fence holding the message skeleton."""
+           subjects: Sequence[str], diff: Sequence[str] = (), squash: bool = False,
+           retitle: Optional[str] = None) -> str:
+    """The capture output: script-owned facts, then the ``text`` fence holding the message skeleton.
+
+    ``retitle`` is the defect of a title ``--auto-title`` replaces: it becomes a ``- Title problem:`` fact
+    and the skeleton's subject becomes ``RETITLE_HINT``.
+    """
     title, base, head = str(view["title"]), str(view["baseRefName"]), str(view["headRefName"])
     names = lineage_names(str(view.get("body") or ""), base, head)
     canned = get_canned_message(files)
     message = message_template(pr, title, names, canned, squash)
+    message[0] = RETITLE_HINT if retitle else message[0]
     size = f"+{view['additions']} -{view['deletions']} across {view['changedFiles']} files"
-    facts = [f"- Title: {title}", f"- Mode: {mode_name(squash)}", f"- Branch: `{head}` into `{base}`",
+    facts = [f"- Title: {title}", *([f"- Title problem: {retitle}"] if retitle else []),
+             f"- Mode: {mode_name(squash)}", f"- Branch: `{head}` into `{base}`",
              f"- Size: {size}", f"- Canned message: {'yes, prefilled as the prose' if canned else 'none'}"]
     command = "build --squash" if squash else "build"
     parts = [f"# PR #{pr} {mode_name(squash)} message", "",
              "Facts and the diff are script-owned. Fill the placeholders of the skeleton under Message from "
              "them, keep its subject, lineage and review lines, and pass the message to "
              f"`{command}` on stdin.",
+             *(retitle_lines(pr, squash) if retitle else []),
              "",
              "## Facts", "", *facts, "", "## Changed files", "", *_bullets(files), "", "## Diff", "",
              *(diff or ["- none"]), "", "## Commits", "",
@@ -290,12 +293,34 @@ def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequ
     return "\n".join(parts)
 
 
-def run_capture(repo: Path, pr: int, squash: bool = False) -> str:
-    """The facts and the message skeleton of the open PR in the mode; nothing is written."""
+def run_capture(repo: Path, pr: int, squash: bool = False, auto_title: bool = False) -> str:
+    """The facts and the message skeleton of the open PR in the mode; nothing is written.
+
+    A title the mode refuses ends the capture, unless ``auto_title``: then the skeleton asks for ``retitle``.
+    """
     view = fetch_view(repo, pr)
-    check_title(view, pr, squash)
+    if not auto_title:
+        check_title(view, pr, squash)
+    defect = title_defect(str(view["title"]), str(view["headRefName"]), squash)
     subjects = branch_subjects(str(view["headRefName"]))
-    return render(pr, view, pr_files(repo, pr), pr_commits(repo, pr), subjects, pr_diff(repo, pr), squash)
+    return render(pr, view, pr_files(repo, pr), pr_commits(repo, pr), subjects, pr_diff(repo, pr), squash,
+                  defect)
+
+
+def run_retitle(repo: Path, pr: int, title: str, squash: bool = False) -> str:
+    """Set the open PR's title to ``title`` when the mode refuses the current one; return the report lines.
+
+    ``change_pr_title`` refuses a ``title`` that is not a ``Word(scope): summary`` subject before ``gh``
+    runs; a usable current title is refused here, so a title that already works is never replaced.
+    """
+    title = title.strip()
+    view = fetch_view(repo, pr)
+    old, head = str(view["title"]), str(view["headRefName"])
+    if title_defect(old, head, squash) is None:
+        raise MergeMessageError(f"PR #{pr} title {old!r} already heads the {mode_name(squash)} subject; "
+                                "nothing to retitle")
+    change_pr_title(pr, title, repo, head)
+    return f"Retitled PR #{pr}: {old!r} -> {title!r}\nSubject: {subject_line(pr, title, squash)}"
 
 
 def read_message(stream: TextIO) -> List[str]:
@@ -390,7 +415,7 @@ def run_build(repo: Path, pr: int, stream: TextIO, squash: bool = False) -> Tupl
     if squash and lines[0] == subject_line(pr, title):
         raise MergeMessageError(f"problem: {subject_problem(lines, pr, title, squash)}")
     squash = squash or lines[0] == subject_line(pr, title, squash=True)
-    check_title(view, pr, squash)
+    check_title(view, pr, squash, offer_auto_title=False)
     problems = message_problems(lines, pr, title, squash)
     if problems:
         raise MergeMessageError("\n".join(f"problem: {p}" for p in problems))
@@ -418,12 +443,18 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="merge_commit_msg.py", description=__doc__.splitlines()[0])
     parser.add_argument("--repo", type=Path, default=Path.cwd(), help="project checkout (default: cwd)")
     sub = parser.add_subparsers(dest="command", required=True)
+    commands = {}
     for name, text in (("capture", "Print the facts and the message skeleton of an open PR."),
-                       ("build", "Validate the message on stdin and write the TXT.")):
-        command = sub.add_parser(name, help=text)
+                       ("build", "Validate the message on stdin and write the TXT."),
+                       ("retitle", "Replace a PR title the mode refuses (gh pr edit); print the subject.")):
+        command = commands[name] = sub.add_parser(name, help=text)
         command.add_argument("pr", type=int, help="PR number")
         command.add_argument("mode", nargs="?", help="'squash' for a squash-merge subject")
         command.add_argument("--squash", "-s", action="store_true", help="squash subject '<title> (#N)'")
+    commands["capture"].add_argument("--auto-title", action=argparse.BooleanOptionalAction, default=None,
+                                     help="a title the mode refuses asks for retitle instead of exiting 1 "
+                                          "(default: harness.json auto_title)")
+    commands["retitle"].add_argument("--title", required=True, help="the new Word(scope): summary title")
     return parser
 
 
@@ -443,11 +474,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         squash = squash_mode(args)
         repo = activate(load_config(project_root(args.repo))).project_root
         if args.command == "capture":
-            sys.stdout.write(run_capture(repo, args.pr, squash))
+            auto_title = active().auto_title if args.auto_title is None else args.auto_title
+            sys.stdout.write(run_capture(repo, args.pr, squash, auto_title))
+        elif args.command == "retitle":
+            print(run_retitle(repo, args.pr, args.title, squash))
         else:
             target, subject, squash = run_build(repo, args.pr, sys.stdin, squash)
             print(receipt(repo, target, args.pr, subject, squash))
-    except (MergeMessageError, ConfigError) as exc:
+    except (MergeMessageError, TitleError, ConfigError) as exc:
         text = str(exc)
         sys.stderr.write(text + "\n" if text.startswith("problem:") else f"problem: {text}\n")
         return 1

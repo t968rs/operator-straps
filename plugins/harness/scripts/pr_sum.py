@@ -20,8 +20,9 @@
     descriptions stay for paths the PR still lists (new paths get empty slots). ``--level 1|2|3`` stores the
     summary level in the skeleton (default 2; 1 prose only, 2 the visual layout,
     3 the visual layout with more diagram types); ``--min-viz [N]`` at level 3 also stores N (default 3) and
-    arms the Stop-hook sentinel that holds the session until ``build`` succeeds. Both flags are stored fresh
-    on every capture.
+    arms the Stop-hook sentinel that holds the session until ``build`` succeeds. ``--auto-title`` stores
+    ``auto_title``; without the flag the project's ``auto_title`` key decides, and ``--no-auto-title``
+    turns it off for one capture. The flags are stored fresh on every capture.
 ``diff FILE [--path P ...]``
     The PR's diff under the ``commit_diff`` budgets: paths read in full until ``PR_BLOCK_BUDGET`` changed
     lines are spent, and output capped at ``PR_CHAR_BUDGET`` characters (later sections keep only their
@@ -35,7 +36,11 @@
     require the visual sections and cap their table cells, level 3 also requires the stored count of diagram
     blocks, level 1 forbids sections. At levels 2 and 3 the vertical alignment pass (``pr_align``) runs
     first and saves any section body it changed back to the skeleton, whether or not validation then
-    passes. A successful build clears the PR's ``--min-viz`` sentinel.
+    passes. A successful build clears the PR's ``--min-viz`` sentinel. With ``auto_title`` stored, ``build``
+    reads the PR again (``gh pr view``) and, when the PR is not merged and its title fails the
+    ``Word(scope): summary`` check of ``harness_lib.pr_title``, sets the draft title as the PR title
+    (``gh pr edit``) before it writes; a draft title that fails the same check is a problem, and nothing is
+    written or retitled. A usable PR title is kept.
 
 Roots: the project (git top level of ``--repo``, which must lie inside a git checkout, else of the working
 directory) holds every input and output; ``<summaries>`` is its ``.claude/harness.json``
@@ -48,7 +53,7 @@ Usage::
 
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr N
         [--no-fetch] [--remote-head | --local] [--committed-only] [--out FILE] [--level 1|2|3]
-        [--min-viz [N]] [--repo DIR]
+        [--min-viz [N]] [--auto-title | --no-auto-title] [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" diff FILE [--path P ...]
         [--repo DIR]
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" build FILE
@@ -93,6 +98,7 @@ from harness_lib.pr_summary import (  # noqa: E402
     skeleton,
     summary_filename,
 )
+from harness_lib.pr_title import TitleError, change_pr_title, title_defect  # noqa: E402
 from harness_lib.pr_viz import DEFAULT_MIN_VIZ, min_viz_problems  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
 
@@ -264,6 +270,45 @@ def skeleton_min_viz(payload: Mapping[str, object]) -> int:
     return value
 
 
+def skeleton_auto_title(payload: Mapping[str, object]) -> bool:
+    """``auto_title`` stored in a skeleton; False when absent. Raise ``CaptureError`` for a non-bool."""
+    value = payload.get("auto_title", False)
+    if not isinstance(value, bool):
+        raise CaptureError([f"skeleton auto_title must be true or false, not {value!r}; rerun capture"])
+    return value
+
+
+def needs_retitle(meta: PrMeta) -> bool:
+    """True when ``--auto-title`` replaces the PR title: the PR is unmerged and its title fails the check.
+
+    Unmerged means open or closed: unlike ``merge-commit-msg``, a closed PR is retitled too.
+    """
+    return meta.merge_commit is None and title_defect(meta.title, meta.head, conventional=True) is not None
+
+
+def auto_title_problems(meta: PrMeta, draft: PrDraft) -> List[str]:
+    """The draft title's defect as a PR title, when ``--auto-title`` would set it."""
+    new = draft.title.strip()
+    defect = title_defect(new, meta.head, conventional=True) if needs_retitle(meta) else None
+    if defect is None:
+        return []
+    return [f"--auto-title: draft title {new!r} {defect}, so it cannot replace PR title {meta.title!r}"]
+
+
+def apply_auto_title(repo: Path, meta: PrMeta, draft: PrDraft) -> str:
+    """Set the draft title as the PR title when ``needs_retitle``; return the receipt line either way."""
+    new = draft.title.strip()
+    if meta.merge_commit is not None:
+        return f"PR #{meta.number} title kept: the PR is merged"
+    if not needs_retitle(meta):
+        return f"PR #{meta.number} title kept: {meta.title!r} already passes"
+    try:
+        change_pr_title(meta.number, new, repo, meta.head)
+    except TitleError as exc:
+        raise CaptureError([str(exc)]) from exc
+    return f"Retitled PR #{meta.number}: {meta.title!r} -> {new!r}"
+
+
 def build_problems(facts: PrFacts, draft: PrDraft, level: int, minimum: int) -> List[str]:
     """Draft defects at ``level``, plus the ``--min-viz`` shortfall at level 3."""
     problems = draft_problems(facts, draft, level)
@@ -273,20 +318,25 @@ def build_problems(facts: PrFacts, draft: PrDraft, level: int, minimum: int) -> 
 def run_build(repo: Path, payload: Mapping[str, object]) -> Tuple[Path, str]:
     """Validate the draft, write the summary markdown, and return its path and the receipt.
 
-    The level and ``--min-viz`` count come from the skeleton; the draft is validated and rendered after the
-    alignment pass of its level. A successful build clears the PR's sentinel.
+    The level, ``--min-viz`` count and ``auto_title`` come from the skeleton; the draft is validated and
+    rendered after the alignment pass of its level. With ``auto_title`` the PR is read again and retitled
+    (``apply_auto_title``) before the summary is written, and the receipt gains that outcome as a second
+    line. A successful build clears the PR's sentinel.
     """
     facts = _facts(payload)
     level, minimum = skeleton_level(payload), skeleton_min_viz(payload)
+    meta = gh_metadata(repo, facts.number) if skeleton_auto_title(payload) else None
     draft = align_draft(_draft(payload), level)
     problems = build_problems(facts, draft, level, minimum)
+    problems += auto_title_problems(meta, draft) if meta else []
     if problems:
         raise CaptureError(problems)
     target = summaries_dir(repo) / summary_filename(facts.number, draft.title)
+    note = [apply_auto_title(repo, meta, draft)] if meta else []
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(render_summary(facts, draft), encoding="utf-8")
     min_viz_sentinel.clear(active(), facts.number)
-    return target, receipt(repo, target, facts, draft)
+    return target, "\n".join([receipt(repo, target, facts, draft), *note])
 
 
 def _repo_parent() -> argparse.ArgumentParser:
@@ -331,6 +381,12 @@ def _parser() -> argparse.ArgumentParser:
         "--min-viz", type=int, nargs="?", const=DEFAULT_MIN_VIZ, default=None, metavar="N",
         help=f"Level 3: require N diagram blocks before build (default {DEFAULT_MIN_VIZ}); arms the Stop "
              "hook sentinel. Ignored below level 3.",
+    )
+    cap.add_argument(
+        "--auto-title", action=argparse.BooleanOptionalAction, default=None,
+        help="Store auto_title: build sets the draft title as the PR title when the PR title fails the "
+             "Word(scope): summary check (gh pr edit). Default: harness.json auto_title; --no-auto-title "
+             "turns it off for this run.",
     )
     diff = sub.add_parser("diff", parents=common, help="Print the PR diff under the read budgets.")
     diff.add_argument("skeleton", type=Path, help="Skeleton JSON (UTF-8).")
@@ -392,11 +448,28 @@ def _cmd_capture(args: argparse.Namespace, repo: Path) -> int:
         untracked=not args.local,
     )
     keys = level_keys(args.level, args.min_viz)
-    _write_skeleton(out, {**payload, **keys})
+    auto_title = resolve_auto_title(args.auto_title)
+    _write_skeleton(out, {**payload, **keys, **({"auto_title": True} if auto_title else {})})
     dropped = dropped_descriptions(previous, payload)
     note = sync_sentinel(args.pr, keys) + _local_note(repo, meta, args, dropped)
+    note += auto_title_note(meta) if auto_title else ""
     print(f"wrote {out}" + (" (existing draft carried forward)" if previous else "") + note)
     return 0
+
+
+def resolve_auto_title(flag: Optional[bool]) -> bool:
+    """``--auto-title`` / ``--no-auto-title`` when given, else the project's ``auto_title`` key."""
+    return active().auto_title if flag is None else flag
+
+
+def auto_title_note(meta: PrMeta) -> str:
+    """Capture-line note for ``--auto-title``: what ``build`` will do with the PR title as it stands now."""
+    if meta.merge_commit is not None:
+        return " (--auto-title: the PR is merged; build keeps its title)"
+    if not needs_retitle(meta):
+        return " (--auto-title: the PR title already passes; build keeps it)"
+    defect = title_defect(meta.title, meta.head, conventional=True)
+    return f" (--auto-title: build sets the draft title as the PR title; PR title {meta.title!r} {defect})"
 
 
 def dropped_descriptions(previous: Optional[PrDraft], payload: Mapping[str, object]) -> int:

@@ -186,6 +186,7 @@ class HarnessConfig:
     review: ReviewConfig
     commit_buckets: Tuple[BucketRule, ...]
     auto_approve_python_c: bool
+    auto_title: bool
     worktree_root: Optional[str]
     worktree_setup: Tuple[Tuple[str, ...], ...]
     worktree_baseline: Tuple[Tuple[str, ...], ...]
@@ -315,7 +316,8 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         agent_usage_path=m["agent_usage_path"], exclusions=m["exclusions"],
         artifacts=_artifacts(m["artifacts"]), tests=_tests(m["tests"]),
         review=_review(m["review"]), commit_buckets=tuple(_bucket(b) for b in m["commit_buckets"]),
-        auto_approve_python_c=bool(m["auto_approve_python_c"]), worktree_root=m["worktree_root"],
+        auto_approve_python_c=bool(m["auto_approve_python_c"]), auto_title=bool(m["auto_title"]),
+        worktree_root=m["worktree_root"],
         worktree_setup=_argv_list(m["worktree_setup"], "worktree_setup"),
         worktree_baseline=_argv_list(m["worktree_baseline"], "worktree_baseline"),
         runlogs=_runlogs(m["runlogs"]), docstrings=_docstrings(m["docstrings"]),

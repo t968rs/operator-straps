@@ -46,11 +46,12 @@ Includes N review fixes (Critical: N, Important: N, Minor: N).
 
 - **Verbatim title.** The subject is exactly `Merge PR #NNN -- <title>` in merge mode or `<title> (#NNN)` in
   squash mode; build compares it with the title `gh` returns for the PR. The merge separator is ASCII `--`.
-  In both modes capture and build refuse a PR title that holds a non-ASCII character or reads as the branch
-  name with spaces for hyphens (`0028 changelog 3 17 2`); a squash title must also be a `Word(scope): summary`
-  subject: a word of letters, an optional scope, a colon and a non-empty summary. The word is not checked
-  against the commit types, so pick one from the project's list. On any refusal the developer retitles the
-  PR with `gh pr edit <N> --title`.
+  In both modes capture and build refuse an empty or multi-line PR title, one that holds a non-ASCII
+  character, and one that reads as the branch name with spaces for hyphens (`0028 changelog 3 17 2`); a
+  squash title must also be a `Word(scope): summary` subject: a word of letters, an optional scope, a colon
+  and a non-empty summary. The word is not checked against the commit types, so pick one from the project's
+  list. On any refusal the developer retitles the PR with `gh pr edit <N> --title`, or reruns with
+  `--auto-title` (see SKILL.md Step 1).
 - **No commit SHAs.** The merge UI records them. Build rejects a hex run of 7-40 characters holding a digit.
 - **No placeholders left.** Build rejects any line that is a bare `<...>` or `  - <...>`.
 - **No vendor or tool names** in prose or bullets (verbatim paths and the verbatim title are exempt), and no

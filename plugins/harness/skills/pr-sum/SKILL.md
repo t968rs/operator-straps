@@ -1,7 +1,7 @@
 ---
 name: pr-sum
 description: 'Use when asked to summarize a PR, describe PR changes, write a PR summary document, or draw one: a visual, diagram, flowchart or "more visual" summary, one "akin to" an earlier visual summary, or a PR that changes runtime behavior, relocates code, migrates call sites to a new API, sweeps a rename, or adds a small utility with a clear decision rule'
-argument-hint: "PR [--level 1|2|3] [--min-viz [N]] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]"
+argument-hint: "PR [--level 1|2|3] [--min-viz [N]] [--auto-title] [--no-auto-title] [--local | --remote-head] [--committed-only] [--repo DIR] [-- <guidance>]"
 model: sonnet
 effort: medium
 context: fork
@@ -54,15 +54,26 @@ what to leave out of the Summary): it shapes the agent's writing only, never a c
 breaks a `build` rule. Everything below reads the part before the token.
 
 The PR number comes from the invocation arguments. No number given: report that and stop; never guess one from
-the branch or `gh pr list`. The other arguments are the developer's flags: `--level 1|2|3` and
-`--min-viz [N]`, plus the source flags `--local`, `--remote-head` and `--committed-only` and `--repo DIR`;
-pass them through unchanged. Any other flag, a `--level` or `--min-viz` value holding anything but digits, or `--local` together with
-`--remote-head` is a problem to report; stop. Never choose a level, a `--min-viz` count, a source flag or a
+the branch or `gh pr list`. The other arguments are the developer's flags: `--level 1|2|3`,
+`--min-viz [N]`, `--auto-title` and `--no-auto-title`, plus the source flags `--local`, `--remote-head` and `--committed-only` and `--repo DIR`;
+pass them through unchanged. Any other flag, a `--level` or `--min-viz` value holding anything but digits, `--auto-title`
+together with `--no-auto-title`, or `--local` together with
+`--remote-head` is a problem to report; stop. Never choose a level, a `--min-viz` count, `--auto-title`, a source flag or a
 repo yourself. A `--repo DIR` is added to the `diff` and `build` commands below as well.
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN [--level L] [--min-viz [N]] [--local | --remote-head] [--committed-only] [--repo DIR]
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py" capture --pr NNN [--level L] [--min-viz [N]] [--auto-title | --no-auto-title] [--local | --remote-head] [--committed-only] [--repo DIR]
 ```
+
+`--auto-title` is the developer's consent to rename the PR. `"auto_title": true` in the project's
+`.claude/harness.json` is the same consent given once for every run: `capture` then behaves as if the flag
+were given, and `--no-auto-title` from the invocation withdraws it for that capture. With neither flag, pass
+none and let the key decide. With auto-title on, `capture` stores it in the skeleton and notes on
+its line what `build` will do with the PR title. When the PR title is not a one-line ASCII
+`Word(scope): summary` subject distinct from the branch name, a title a squash commit cannot use, `build` sets the draft `title` as the PR title (`gh pr edit`). A usable PR
+title is kept, and so is a merged PR's title; an unusable title on an open or closed (unmerged) PR is
+replaced. Unlike `merge-commit-msg --auto-title`, which refuses a PR that is not open, `build` retitles a
+closed PR too, and its receipt says `Retitled` either way.
 
 The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
 from local git. While the PR branch is checked out (a branch of the PR head's name whose HEAD contains that
@@ -103,7 +114,7 @@ It prints `delta [ok] | source +A/-D (net +N), F files | total +A/-D (net +N), F
 with `--json` the same numbers plus the excluded paths; a failure exits 1 with one `problem:` line. Header
 totals are local `git diff --numstat` sums and can differ slightly from GitHub's. Rerunning `capture` refreshes
 `facts` and keeps the draft (title, summary, sections, and descriptions for paths still in the PR); the level
-flags are stored fresh on every capture, so repeat them on a rerun.
+flags and the auto-title choice are stored fresh on every capture, so repeat them on a rerun.
 
 ## Step 2 — Read what changed
 
@@ -149,6 +160,11 @@ Edit only `draft`. `summary` and each section `body` may be a list of lines (no 
 | Refactor(io): remove duplicate normalize_headers and fix merge signature | Refactor(io): `normalize_headers` deduplication |
 
 No single subject (a broad multi-file change): scope plus artifact noun only.
+
+With `--auto-title` stored, and the PR title refused as above, the title also becomes the PR title. It then
+needs the `Type(scope):` prefix even when neither the PR title nor a commit subject has one: take the type the
+commit subjects use most, and when none has one, the type that names the change (`Feature`, `Fix`, `Docs`).
+It must also be ASCII on one line; `build` refuses anything else.
 
 **`summary`** — what changed and why. Paragraphs cap at three sentences; separate paragraphs with a blank line
 (`\n\n`). `summary` may also be a list of lines (no `\n` escapes); an empty `""` entry is the blank line between
@@ -291,7 +307,12 @@ alignment in every flow), and with `--min-viz` the diagram-block count. A shortf
 with the count found; add diagrams to the draft and rerun. The header's Files Changed count notes relocated
 files.
 
-Exit 1: each `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
+With `--auto-title` stored, `build` reads the PR again with `gh pr view` and checks the draft `title` as a PR
+title before it writes. When it retitles the PR, it does so before writing the summary. A failed `gh pr view`
+or `gh pr edit` is a `problem:` line naming `gh`, and nothing is written: report it and stop. The receipt gains a second line: `Retitled PR #N: '<old>' ->
+'<new>'`, or `PR #N title kept: ...`.
+
+Exit 1: every other `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
 to it), fix the draft and rerun. Exit 0 writes
 `<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim — nothing else.
 
@@ -321,3 +342,4 @@ to it), fix the draft and rerun. Exit 0 writes
 | Sections in a level 1 draft                               | Level 1 has none; `[]`                                          |
 | Padding a diagram to pass `--min-viz`                     | Each block shows a real flow from the diff                      |
 | Choosing the level without the developer                  | No `--level` means 2                                            |
+| Adding `--auto-title`, or running `gh pr edit`, unasked   | Only the developer's flag or `auto_title` key; `build` renames  |

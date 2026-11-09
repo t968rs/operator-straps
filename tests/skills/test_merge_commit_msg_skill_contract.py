@@ -3,7 +3,8 @@
 ``merge_commit_msg.py capture`` prints the facts and ``build`` takes the message on stdin and writes only the
 TXT, so neither the skill, its format card, the hook docstring nor the README may route work through a
 ``PR<N>_merge.md``. The squash mode is selected by ``--squash``, ``-s`` or a bare ``squash`` right after the
-PR number; the docs name all three forms and both subjects.
+PR number; the docs name all three forms and both subjects. ``--auto-title`` or the ``auto_title`` key is the
+only route to ``retitle``; the argument rule lists the title flags as accepted, apart from the rejection rule.
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ from harness_lib.skill_parts import skill_parts
 
 NAME = "merge-commit-msg"
 SKILL_DIR = PLUGIN_ROOT / "skills" / NAME
-HINT = "<PR number> [squash | --squash | -s] [-- <guidance>]"
+HINT = "<PR number> [squash | --squash | -s] [--auto-title] [--no-auto-title] [-- <guidance>]"
 
 
 def _text(path: Path) -> str:
@@ -76,6 +77,28 @@ def test_format_card_and_readme_name_the_stdin_route() -> None:
 
 def test_argument_hint_names_the_squash_forms() -> None:
     assert skill_parts(SKILL_DIR / "SKILL.md")[0].get("argument-hint", "").strip("\"'") == HINT
+
+
+def test_skill_gates_retitle_on_the_auto_title_flag() -> None:
+    text = _text(SKILL_DIR / "SKILL.md")
+    assert "**`--auto-title`** is the developer's consent to rename the PR" in text
+    assert 'merge_commit_msg.py" retitle <PR number> --title "<new title>"' in text
+    assert "`retitle` or `gh pr edit` unasked" in _section(text, "## Common Mistakes")
+
+
+def test_skill_names_the_auto_title_key_as_consent() -> None:
+    text = _text(SKILL_DIR / "SKILL.md")
+    assert '`"auto_title": true` in the project\'s `.claude/harness.json` is the same consent' in text
+    assert "`--no-auto-title`, also only from the invocation, withdraws" in text
+
+
+def test_argument_rule_accepts_the_title_flags_and_rejects_apart() -> None:
+    text = _text(SKILL_DIR / "SKILL.md")
+    rules = text.split("**Arguments for this run:**", 1)[1].split("\n\nOn every", 1)[0]
+    accepted = rules.split("- Accepted before `--`:", 1)[1].split("\n- ", 1)[0]
+    rejected = rules.split("- Rejected before `--`:", 1)[1].split("\n- ", 1)[0]
+    assert "`--auto-title`" in accepted and "`--no-auto-title`" in accepted
+    assert "auto-title" not in rejected and "beyond" not in rules
 
 
 def test_description_triggers_on_a_squash_message() -> None:
