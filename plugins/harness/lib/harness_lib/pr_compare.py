@@ -21,10 +21,13 @@ CHANGE_HEADER = "[CHANGE]"
 MARKER_TAGS: Dict[str, str] = {"<>": "[changed]", ">>": "[new]", "<<": "[removed]"}
 TAG_MARKERS: Dict[str, str] = {tag: marker for marker, tag in MARKER_TAGS.items()}
 TRAILING_TAG = re.compile(r"^(?P<text>.*?\S)?\s*(?P<tag>\[(?:changed|new|removed|CHANGE)\])\s*$")
-_TAG = re.compile(r"\[(?:changed|new|removed)\]")
+_TAG = re.compile(r"(?<!\[)\[(?:changed|new|removed)\](?!\])")
 _BEFORE = re.compile(r"BEFORE\b")
 _AFTER = re.compile(r"\bAFTER\b")
-_GLYPHS = "│▼├└┤┬┼┌┐╭╮─━═►▶◄◀→←┘┴╰╯"
+_UP_GLYPHS = "│▼├└"
+_DOWN_GLYPHS = "│▼├┤┬┼┌┐╭╮"
+_ARM_GLYPHS = "─━═►▶◄◀→←└┘┴╰╯"
+_GLYPHS = _UP_GLYPHS + _DOWN_GLYPHS + _ARM_GLYPHS
 
 
 def is_comparison(first_line: str) -> bool:

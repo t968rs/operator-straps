@@ -1,15 +1,19 @@
 """Vertical alignment pass of a pr-sum draft (levels 2 and 3), run by ``build`` before validation.
 
-The pass changes only spaces in section bodies, so every line keeps its text in order:
+The pass changes only whitespace, separator dash runs and outer table pipes in section bodies, so cell and
+step text keep their order:
 
-- Markdown tables outside fences get padded cells, so their pipes line up; a separator cell keeps its
-  alignment colons, which also set how the column's cells are padded.
+- Markdown tables outside fences get padded cells and a closing pipe, so their pipes line up; the separator
+  (the row right under the header) is redrawn at the column width and keeps its alignment colons, which also
+  set how the column's cells are padded.
 - In the fences of flow sections, a hanging ``│`` or ``▼`` (no step text or connector above it) slides,
   with the connector run below it and any label it carries (``│yes``), up to ``MAX_SHIFT`` columns to the
-  nearest column the line above feeds down, when the cells there are free.
+  nearest column the line above feeds down, when the cells there are free and no junction below the run
+  (``├``, ``└``) would be left hanging.
 - In a comparison fence (``pr_compare``), the gutter markers move to their most common column when the
   cells there are free, and every change tag, with the ``[CHANGE]`` header, moves to one column two spaces
-  right of the widest line, within ``MONOSPACE_WIDTH``.
+  right of the widest line, or of the widest tagged line when that would pass ``MONOSPACE_WIDTH``; the tags
+  stay put when neither fits.
 
 What the pass cannot place stays as written; ``build`` then reports it.
 """
@@ -34,6 +38,7 @@ from harness_lib.pr_summary import (
 
 MAX_SHIFT = 4
 _RUN_GLYPHS = "│▼"
+_UP_GLYPHS = "│▼├└"
 
 
 def align_draft(draft: PrDraft, level: int) -> PrDraft:
@@ -91,12 +96,14 @@ def _rule(cell: str, width: int) -> str:
 
 def align_table(rows: Sequence[str]) -> List[str]:
     """``rows`` with cells padded so the pipes line up; unchanged unless every row has the same cell count
-    and one row is a separator."""
+    and the row under the header is a separator. A later all-dash row (``| - |``) is data."""
     cells = [_cells(row) for row in rows]
-    rules = [all(_SEPARATOR_CELL.fullmatch(cell) for cell in row) for row in cells]
-    if len(rows) < 2 or len({len(row) for row in cells}) != 1 or not any(rules):
+    if len(rows) < 2 or len({len(row) for row in cells}) != 1:
         return list(rows)
-    separator = cells[rules.index(True)]
+    separator = cells[1]
+    if not all(_SEPARATOR_CELL.fullmatch(cell) for cell in separator):
+        return list(rows)
+    rules = [index == 1 for index in range(len(cells))]
     widths = [
         max([3] + [len(row[col]) for row, rule in zip(cells, rules) if not rule])
         for col in range(len(separator))
@@ -151,14 +158,25 @@ def _run(lines: Sequence[str], row: int, column: int) -> List[int]:
     return rows
 
 
+def _feeds_below(lines: Sequence[str], rows: Sequence[int], column: int) -> bool:
+    """True when the run's last ``│`` feeds a glyph at ``column`` on the next row that the run leaves
+    behind (a junction such as ``├`` or ``└``, or a connector inside a longer run of text)."""
+    last = rows[-1]
+    below = lines[last + 1] if last + 1 < len(lines) else ""
+    return lines[last][column] == "│" and column < len(below) and below[column] in _UP_GLYPHS
+
+
 def _shift(lines: List[str], row: int, column: int) -> None:
-    """Slide the run hanging at ``(row, column)`` to the nearest column the line above feeds down."""
+    """Slide the run hanging at ``(row, column)`` to the nearest column the line above feeds down; a run
+    that feeds a row it does not hold stays, so no connector below it is left hanging."""
     rows = _run(lines, row, column)
+    if not rows or _feeds_below(lines, rows, column):
+        return
     above = _column_kinds(lines[row - 1])
     for distance in range(1, MAX_SHIFT + 1):
         for shift in (-distance, distance):
             spans = [_span(lines[r], column) for r in rows]
-            if rows and column + shift >= 0 and _feeds_down(above, column + shift) and all(
+            if column + shift >= 0 and _feeds_down(above, column + shift) and all(
                     _fits(lines[r], span, shift) for r, span in zip(rows, spans)):
                 for r, span in zip(rows, spans):
                     lines[r] = _move(lines[r], span, shift)
@@ -166,7 +184,8 @@ def _shift(lines: List[str], row: int, column: int) -> None:
 
 
 def snap_connectors(lines: Sequence[str]) -> List[str]:
-    """``lines`` with each hanging connector run slid under the step text above it, where one fits."""
+    """``lines`` with each hanging connector run slid to the nearest column the line above feeds down (step
+    text or a connector), where the cells there are free."""
     out = list(lines)
     for row in range(1, len(out)):
         kinds = _column_kinds(out[row - 1])

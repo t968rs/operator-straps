@@ -18,7 +18,16 @@ from typing import Dict, List, Mapping, Optional, Tuple
 from harness_lib import diff_delta
 from harness_lib.commit_diff import DiffStat
 from harness_lib.commit_txt import glyph_problems, vendor_names
-from harness_lib.pr_compare import CHANGE_HEADER, comparison_problems, is_comparison
+from harness_lib.pr_compare import (
+    _AFTER,
+    _ARM_GLYPHS,
+    _BEFORE,
+    _DOWN_GLYPHS,
+    _UP_GLYPHS,
+    CHANGE_HEADER,
+    comparison_problems,
+    is_comparison,
+)
 
 MONOSPACE_WIDTH = 120
 TABLE_CELL_WIDTH = 40
@@ -31,11 +40,6 @@ _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 _FLOW_HEADING = "Behavior:"
 _NEW_FLOW_HEADING = "New Behavior:"
 _FLOW_TAGS = ("[changed]", "[new]")
-_BEFORE = re.compile(r"BEFORE\b")
-_AFTER = re.compile(r"\bAFTER\b")
-_UP_GLYPHS = "│▼├└"
-_DOWN_GLYPHS = "│▼├┤┬┼┌┐╭╮"
-_ARM_GLYPHS = "─━═►▶◄◀→←└┘┴╰╯"
 _SHAPE_HEADINGS = ("Module Relocations", "Symbol Relocations", "Call-Site Migration", "Rule Illustration")
 _LEVEL3_SHAPE_HEADINGS = (*_SHAPE_HEADINGS, "Sequence Diagram", "Data Flow")
 _SYMBOLS_HEADING = "Changed Symbols"
@@ -335,7 +339,8 @@ def _label_problems(name: str, blocks: List[List[str]]) -> List[str]:
 
     Two forms pass the label check: stacked fences, one whose first line starts with the word BEFORE and
     one whose first line holds the word AFTER; or one side-by-side fence whose first line holds both. A
-    stacked BEFORE fence holds no change tag; a side-by-side fence follows the comparison rules.
+    stacked BEFORE fence holds no ``[changed]`` or ``[new]`` tag (``[removed]`` may mark a dropped step
+    there); a side-by-side fence follows the comparison rules.
     """
     firsts = _first_lines(blocks)
     labelled = any(_BEFORE.match(f) for f in firsts) and any(_AFTER.search(f) for f in firsts)

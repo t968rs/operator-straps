@@ -11,6 +11,7 @@ from typing import Callable, List
 
 import pytest
 
+from harness_lib import pr_align
 from harness_lib.config import activate, load_config
 from harness_lib.pr_align import align_body, align_draft, align_fence, align_table, snap_connectors
 from harness_lib.pr_summary import PrDraft, PrFacts, PrFile, PrSection, draft_problems
@@ -58,6 +59,15 @@ class TestAlignTable:
         rows = ["| a | b |", "|---|---|", "| x \\| y | z |"]
         assert align_table(rows)[2] == "| x \\| y | z   |"
 
+    def test_dash_data_row_stays_data(self) -> None:
+        rows = ["| a | b |", "|---|---|", "| - | - |", "| long | x |"]
+        assert align_table(rows) == [
+            "| a    | b   |",
+            "| ---- | --- |",
+            "| -    | -   |",
+            "| long | x   |",
+        ]
+
     @pytest.mark.parametrize("rows", [
         ["| a | b |", "|---|", "| c | d |"],
         ["| a | b |", "| c | d |"],
@@ -86,6 +96,12 @@ class TestSnapConnectors:
         lines = ["ab", "z │", "done"]
         assert snap_connectors(lines) == lines
 
+    def test_run_feeding_a_junction_stays(self) -> None:
+        lines = ["start", "      │", "      ├─► x", "      ▼", "done"]
+        assert snap_connectors(lines) == lines
+        lines = ["start", "      │", "      ▼", "done"]
+        assert snap_connectors(lines)[1:3] == ["    │", "    ▼"]
+
 
 class TestComparisonFence:
     _FENCE = [
@@ -110,6 +126,22 @@ class TestComparisonFence:
         once = align_fence(self._FENCE)
         assert align_fence(once) == once
 
+    def test_wide_untagged_line_leaves_tags_on_the_tagged_lines(self) -> None:
+        block = ["BEFORE     AFTER  [CHANGE]", "read  <>  read boxes [changed]", "x" * 115]
+        assert align_fence(block) == [
+            "BEFORE     AFTER      [CHANGE]",
+            "read  <>  read boxes  [changed]",
+            "x" * 115,
+        ]
+
+    def test_tags_stay_when_the_tagged_lines_overflow(self) -> None:
+        block = ["BEFORE     AFTER  [CHANGE]", "read  <>  " + "y" * 102 + " [changed]"]
+        assert align_fence(block) == block
+
+    def test_text_change_returns_the_block(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr(pr_align, "align_tags", lambda lines: [line + " z" for line in lines])
+        assert align_fence(self._FENCE) == self._FENCE
+
     def test_unmoved_fence_keeps_its_tabs(self) -> None:
         block = ["\tread", "         │", "         ▼", "\tdone"]
         assert align_fence(block) == block
@@ -133,9 +165,14 @@ class TestAlignDraft:
         assert align_draft(draft, 1) == draft
 
     def test_shape_fences_stay_and_tables_align(self) -> None:
-        body = "```\nsource ──► stage\n             ▼\n```\n" + self._TABLE
-        aligned = align_draft(PrDraft("t", "s", {}, (PrSection("Data Flow", body),)), 3).sections[0].body
-        assert aligned.startswith("```\nsource ──► stage\n             ▼\n```\n| Symbol | File | Status |")
+        fence = "```\nsource ──► stage\n" + " " * 18 + "▼\n```\n"
+        aligned = align_draft(PrDraft("t", "s", {}, (PrSection("Data Flow", fence + self._TABLE),)), 3)
+        assert aligned.sections[0].body == fence + "\n".join([
+            "| Symbol | File | Status |",
+            "| ------ | ---- | ------ |",
+            "| `a`    | A    | NEW    |",
+        ])
+        assert align_body(fence, True) == fence.replace(" " * 18 + "▼", " " * 15 + "▼")
 
     def test_aligned_skill_example_builds(self, plugin_root: Path) -> None:
         body = "\n".join(["```", *_skill_example(plugin_root), "```"])
@@ -145,5 +182,6 @@ class TestAlignDraft:
         assert draft.sections[0].body == body
 
     def test_unclosed_fence_stays(self) -> None:
-        body = "```\nread\n             │"
+        body = "```\nread\n      │"
         assert align_body(body, True) == body
+        assert align_body(body + "\n```", True) == "```\nread\n   │\n```"

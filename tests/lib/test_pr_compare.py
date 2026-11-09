@@ -1,7 +1,7 @@
 """Behavioral tests for harness_lib.pr_compare: the comparison flow rules of a pr-sum ``Behavior:`` fence.
 
-Each test builds one fence as a list of lines and reads the problem lines ``comparison_problems`` returns;
-columns in the expected lines are 1-based.
+Most tests build one fence as a list of lines and read the problem lines ``comparison_problems`` returns;
+``TestIsComparison`` checks header detection alone. Columns in the expected lines are 1-based.
 """
 from __future__ import annotations
 
