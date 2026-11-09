@@ -5,7 +5,8 @@ placeholder when the title cannot head the subject of the mode, and exactly what
 when it can. ``retitle N [--squash] --title T`` replaces only a title the mode refuses: it runs
 ``change_pr_title`` (``gh pr edit``) and prints the subject to put on line 1.
 
-``gh`` and ``change_pr_title`` are the seams, swapped for a canned PR and a recorder.
+``gh`` and ``change_pr_title`` are the seams, swapped for a canned PR and a recorder; the refusal test runs
+the real ``change_pr_title`` behind a ``subprocess.run`` guard that fails on any ``gh`` call.
 """
 from __future__ import annotations
 
@@ -101,6 +102,16 @@ class TestCaptureAutoTitle:
         fence = _fence(captured.out)
         assert fence[0] == module.RETITLE_HINT and module.PLACEHOLDER.match(fence[0])
         assert "Branch lineage: `dev` -> `7-fix-workers`" in fence
+
+    def test_merge_mode_refused_title_prints_the_merge_retitle_hint(self, module, root, monkeypatch,
+                                                                    capsys) -> None:
+        code, captured = _run(module, root, monkeypatch, capsys, "7 fix workers",
+                              "capture", "7", "--auto-title")
+        assert code == 0, captured.err
+        assert "- Title problem: reads as the branch name" in captured.out
+        hint = [line for line in captured.out.splitlines() if 'retitle 7 --title "<title>"' in line]
+        assert hint and "--squash" not in hint[0]
+        assert _fence(captured.out)[0] == module.RETITLE_HINT
 
     def test_merge_mode_keeps_a_loose_title(self, module, root, monkeypatch, capsys) -> None:
         code, captured = _run(module, root, monkeypatch, capsys, LEGACY_TITLE, "capture", "7", "--auto-title")

@@ -135,9 +135,13 @@ def fetch_view(repo: Path, pr: int) -> Dict[str, object]:
     return data
 
 
-def check_title(view: Dict[str, object], pr: int, squash: bool = False) -> None:
-    """Raise ``MergeMessageError`` when the PR title cannot head the subject of the mode."""
-    problem = title_problem(pr, str(view["title"]), str(view["headRefName"]), squash)
+def check_title(view: Dict[str, object], pr: int, squash: bool = False,
+                offer_auto_title: bool = True) -> None:
+    """Raise ``MergeMessageError`` when the PR title cannot head the subject of the mode.
+
+    ``offer_auto_title`` False keeps the ``--auto-title`` hint out of the problem, for ``build``.
+    """
+    problem = title_problem(pr, str(view["title"]), str(view["headRefName"]), squash, offer_auto_title)
     if problem:
         raise MergeMessageError(problem)
 
@@ -308,6 +312,7 @@ def run_retitle(repo: Path, pr: int, title: str, squash: bool = False) -> str:
     ``change_pr_title`` refuses a ``title`` that is not a ``Word(scope): summary`` subject before ``gh``
     runs; a usable current title is refused here, so a title that already works is never replaced.
     """
+    title = title.strip()
     view = fetch_view(repo, pr)
     old, head = str(view["title"]), str(view["headRefName"])
     if title_defect(old, head, squash) is None:
@@ -409,7 +414,7 @@ def run_build(repo: Path, pr: int, stream: TextIO, squash: bool = False) -> Tupl
     if squash and lines[0] == subject_line(pr, title):
         raise MergeMessageError(f"problem: {subject_problem(lines, pr, title, squash)}")
     squash = squash or lines[0] == subject_line(pr, title, squash=True)
-    check_title(view, pr, squash)
+    check_title(view, pr, squash, offer_auto_title=False)
     problems = message_problems(lines, pr, title, squash)
     if problems:
         raise MergeMessageError("\n".join(f"problem: {p}" for p in problems))

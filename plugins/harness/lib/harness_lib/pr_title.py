@@ -46,12 +46,18 @@ def title_defect(title: str, head: str, conventional: bool = False) -> Optional[
     return None
 
 
-def title_problem(pr: int, title: str, head: str, conventional: bool = False) -> Optional[str]:
-    """``title_defect`` as a problem line naming PR ``pr`` and both ways out; None when there is none."""
+def title_problem(pr: int, title: str, head: str, conventional: bool = False,
+                  offer_auto_title: bool = True) -> Optional[str]:
+    """``title_defect`` as a problem line naming PR ``pr`` and the ways out; None when there is none.
+
+    ``offer_auto_title`` False drops the ``--auto-title`` way out, for a command that does not take the flag.
+    """
     defect = title_defect(title, head, conventional)
     if defect is None:
         return None
-    fix = f"retitle it with gh pr edit {pr} --title, or rerun with --auto-title"
+    fix = f"retitle it with gh pr edit {pr} --title"
+    if offer_auto_title:
+        fix += ", or rerun with --auto-title"
     return f"PR #{pr} title {title!r} {defect}; {fix}"
 
 

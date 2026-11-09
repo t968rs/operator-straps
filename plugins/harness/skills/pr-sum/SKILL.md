@@ -65,9 +65,11 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_sum.py"
 ```
 
 `--auto-title` is the developer's consent to rename the PR. `capture` stores it in the skeleton and notes on
-its line what `build` will do with the PR title. When the PR title is not a `Word(scope): summary` subject, a
-title a squash commit cannot use, `build` sets the draft `title` as the PR title (`gh pr edit`). A usable PR
-title is kept, and so is a merged PR's title.
+its line what `build` will do with the PR title. When the PR title is not a one-line ASCII
+`Word(scope): summary` subject distinct from the branch name, a title a squash commit cannot use, `build` sets the draft `title` as the PR title (`gh pr edit`). A usable PR
+title is kept, and so is a merged PR's title; an unusable title on an open or closed (unmerged) PR is
+replaced. Unlike `merge-commit-msg --auto-title`, which refuses a PR that is not open, `build` retitles a
+closed PR too, and its receipt says `Retitled` either way.
 
 The capture runs at any point of the PR's life. The PR anchors the number, title and base; the content comes
 from local git. While the PR branch is checked out (a branch of the PR head's name whose HEAD contains that
@@ -108,7 +110,7 @@ It prints `delta [ok] | source +A/-D (net +N), F files | total +A/-D (net +N), F
 with `--json` the same numbers plus the excluded paths; a failure exits 1 with one `problem:` line. Header
 totals are local `git diff --numstat` sums and can differ slightly from GitHub's. Rerunning `capture` refreshes
 `facts` and keeps the draft (title, summary, sections, and descriptions for paths still in the PR); the level
-flags are stored fresh on every capture, so repeat them on a rerun.
+flags and `--auto-title` are stored fresh on every capture, so repeat them on a rerun.
 
 ## Step 2 — Read what changed
 
@@ -157,8 +159,8 @@ No single subject (a broad multi-file change): scope plus artifact noun only.
 
 With `--auto-title` stored, and the PR title refused as above, the title also becomes the PR title. It then
 needs the `Type(scope):` prefix even when neither the PR title nor a commit subject has one: take the type the
-commit subjects use most (`Feature`, `Fix`, `Docs`). It must also be ASCII on one line; `build` refuses
-anything else.
+commit subjects use most, and when none has one, the type that names the change (`Feature`, `Fix`, `Docs`).
+It must also be ASCII on one line; `build` refuses anything else.
 
 **`summary`** — what changed and why. Paragraphs cap at three sentences; separate paragraphs with a blank line
 (`\n\n`). `summary` may also be a list of lines (no `\n` escapes); an empty `""` entry is the blank line between
@@ -302,11 +304,11 @@ with the count found; add diagrams to the draft and rerun. The header's Files Ch
 files.
 
 With `--auto-title` stored, `build` reads the PR again with `gh pr view` and checks the draft `title` as a PR
-title before it writes. When it retitles the PR, it does so before writing the summary. A failed `gh pr edit`
-is a `problem:` line, and nothing is written. The receipt gains a second line: `Retitled PR #N: '<old>' ->
+title before it writes. When it retitles the PR, it does so before writing the summary. A failed `gh pr view`
+or `gh pr edit` is a `problem:` line naming `gh`, and nothing is written: report it and stop. The receipt gains a second line: `Retitled PR #N: '<old>' ->
 '<new>'`, or `PR #N title kept: ...`.
 
-Exit 1: each `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
+Exit 1: every other `problem:` line names a draft defect; re-read the skeleton (the alignment pass may have saved
 to it), fix the draft and rerun. Exit 0 writes
 `<summaries>/<NNNN>_<Title>.md` and prints the receipt. Output the receipt verbatim — nothing else.
 

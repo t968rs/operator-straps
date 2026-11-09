@@ -55,8 +55,8 @@ as they stand.
 **`--auto-title`** is the developer's consent to rename the PR. Use it only when the invocation carries it.
 With the flag, a title the mode refuses no longer stops capture. The Facts gain a `- Title problem:` line, and
 line 1 of the skeleton is a `<Subject: ...>` placeholder. Write a new title from the Facts, Commits and Diff.
-Its prefix is the `Type(scope):` the branch's commit subjects use, and it names what the PR changes, in one
-ASCII line. Then run:
+Its prefix is the `Type(scope):` the branch's commit subjects use most, or, when none has one, the type that
+fits the change (`Feature`, `Fix`, `Docs`), and it names what the PR changes, in one ASCII line. Then run:
 
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commit_msg.py" retitle <PR number> --title "<new title>"
@@ -65,7 +65,8 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_SKILL_DIR}/commands/merge_commi
 `retitle` sets the PR title with `gh pr edit` and prints `Retitled PR #N: '<old>' -> '<new>'`, then a
 `Subject:` line. Put that subject, without `Subject: `, on line 1 of the message. It exits 1 and changes
 nothing when the new title is not a `Word(scope): summary` subject (pick another and rerun), when the PR title
-already heads the subject (rerun capture without the flag), or when `gh` fails (report it and stop). A title
+already heads the subject (rerun capture without the flag), or when the PR is not open or `gh` fails (report
+it and stop). A title
 the mode accepts is never replaced: with such a title, `--auto-title` changes nothing. Report the `Retitled`
 line with the receipt.
 
@@ -92,7 +93,8 @@ MSG
 Exit 1 prints `problem:` lines. A line about the PR state, title, `gh` or the config (PR not open, a PR title
 with non-ASCII characters or one that reads as the branch name, a squash-mode title that is not
 a `Word(scope): summary` subject, `gh pr view failed`, invalid config): report it and stop; editing the text cannot fix it,
-and the developer retitles the PR. An unknown mode token is an argument error: report it and stop. Any other
+and the developer retitles the PR or reruns the skill with `--auto-title`, which starts over at capture
+(`build` does not take the flag). An unknown mode token is an argument error: report it and stop. Any other
 `problem:` line names a defect in the message (placeholder left, indented line, filler word, commit SHA,
 vendor name, subject changed, empty stdin): fix the text and run the same command again. A merge subject under
 `--squash` gets a problem line that names the flag and prints the squash subject; when the developer asked for

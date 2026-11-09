@@ -1172,17 +1172,30 @@ class TestAutoTitle:
         meta = script.PrMeta(1234, title, "main", "1234-demo", head, merge_commit)
         monkeypatch.setattr(script, "gh_metadata", lambda _repo, _pr: meta)
 
+    @pytest.mark.parametrize("title, merged, note", [
+        ("1234 demo", False, "--auto-title: build sets the draft title as the PR title"),
+        ("Feature(a): own title", False, "--auto-title: the PR title already passes; build keeps it"),
+        ("1234 demo", True, "--auto-title: the PR is merged; build keeps its title"),
+    ])
     def test_capture_stores_the_flag_and_notes_the_title(
             self, script: ModuleType, pr_repo: Tuple[Path, str, str], tmp_path: Path,
             monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture,
+            title: str, merged: bool, note: str,
     ) -> None:
         clone, _, head = pr_repo
-        self._gh(script, monkeypatch, head, "1234 demo")
+        merge: Optional[str] = None
+        if merged:
+            _git(clone, "stash", "-u")
+            _git(clone, "checkout", "main")
+            _git(clone, "merge", "--no-ff", "1234-demo", "-m", "Merge PR 1234")
+            merge = _git(clone, "rev-parse", "HEAD")
+            _git(clone, "update-ref", "refs/remotes/origin/main", merge)
+        self._gh(script, monkeypatch, head, title, merge)
         out = tmp_path / "1234_pr.json"
         argv = ["capture", "--pr", "1234", "--no-fetch", "--out", str(out), "--repo", str(clone)]
         assert script.main([*argv, "--auto-title"]) == 0
         assert json.loads(out.read_text(encoding="utf-8"))["auto_title"] is True
-        assert "--auto-title: build sets the draft title as the PR title" in capsys.readouterr().out
+        assert note in capsys.readouterr().out
         assert script.main(argv) == 0
         assert "auto_title" not in json.loads(out.read_text(encoding="utf-8"))
 
@@ -1208,6 +1221,21 @@ class TestAutoTitle:
         clone, _, head = pr_repo
         self._gh(script, monkeypatch, head, title, merge_commit)
         _, text = script.run_build(clone, self._payload(script, pr_repo, auto_title=True))
+        assert not edits and text.splitlines()[-1] == note
+
+    @pytest.mark.parametrize("title, merge_commit, note", [
+        ("Feature(a): own title", None, "PR #1234 title kept: 'Feature(a): own title' already passes"),
+        ("1234 demo", "abc1234", "PR #1234 title kept: the PR is merged"),
+    ])
+    def test_kept_title_does_not_check_the_draft_title(
+            self, script: ModuleType, pr_repo: Tuple[Path, str, str], monkeypatch: pytest.MonkeyPatch,
+            edits: list, title: str, merge_commit: Optional[str], note: str,
+    ) -> None:
+        clone, _, head = pr_repo
+        self._gh(script, monkeypatch, head, title, merge_commit)
+        payload = self._payload(script, pr_repo, auto_title=True)
+        payload["draft"]["title"] = "`a` change"
+        _, text = script.run_build(clone, payload)
         assert not edits and text.splitlines()[-1] == note
 
     def test_draft_title_with_a_defect_writes_nothing(

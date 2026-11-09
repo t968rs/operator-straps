@@ -1,0 +1,557 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 244,
+  "pr_title": "Feature(harness): `--auto-title` for merge-commit-msg and pr-sum",
+  "branch": "1142-auto-title-pr",
+  "base_branch": "main",
+  "base_sha": "b03c2febc21194c2b0e3fb04ed4c1f34c5271e1a",
+  "head_sha": "a635405ad0ba5f8ab579b5f09df9cbf9682a5291",
+  "review_date": "2026-11-09",
+  "verdict": "NOT READY TO MERGE - minor findings pending Phase 5: M21, M22",
+  "stats": {
+    "additions": 635,
+    "deletions": 71,
+    "files_changed": 14,
+    "source": {
+      "additions": 634,
+      "deletions": 71,
+      "files_changed": 13
+    }
+  },
+  "reviewers": [
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "roast (opus)",
+    "developer_notes_1 (developer)",
+    "developer_notes_2 (developer)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0244/pr244_20261109T194954Z/findings/tests.json",
+    "docs/_scratch/pr_review/0244/pr244_20261109T194954Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0244/pr244_20261109T194954Z/findings/docs.json",
+    "docs/_scratch/pr_review/0244/pr244_20261109T194954Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0244/pr244_20261109T194954Z/findings/roast.json",
+    "docs/_scratch/pr_review/0244/pr244_20261109T194954Z/findings/developer_notes_1.json",
+    "docs/_scratch/pr_review/0244/pr244_20261109T194954Z/findings/developer_notes_2.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "test_gh_edit_failure_is_a_problem and test_draft_title_with_a_defect_writes_nothing assert that the summaries folder does not exist, which pins the retitle-before-write order the pr_sum.py docstring promises.",
+    "test_retitle_refuses_a_new_title_with_a_defect runs the real change_pr_title behind a subprocess guard that passes git through and fails on gh, so it proves the refusal end to end without stubbing the function under test.",
+    "test_usable_title_prints_what_capture_prints_without_the_flag compares the whole stdout with and without --auto-title, pinning the 'unchanged when the title is usable' contract exactly.",
+    "test_capture_stores_the_flag_and_notes_the_title reruns capture without the flag and asserts auto_title is gone, pinning 'stored fresh on every capture'.",
+    "test_build_without_the_flag_reads_no_gh and test_malformed_flag_asks_for_a_capture use a pytest.fail gh_metadata seam to prove no gh read happens without a valid flag.",
+    "TestTitleDefect parametrizes each defect with the word that names it, and test_branch_name_rule_needs_a_separator_in_the_head covers the separator guard edge case.",
+    "No mock-chain wiring tests: change_pr_title and subprocess.run are stubbed only at the outer gh boundary, and every stubbing test also asserts real outputs (receipt lines, subjects, written files).",
+    "The title check moves into one shared module (harness_lib/pr_title.py) that both drivers import, so the two drivers no longer carry separate copies of the branch-name and conventional rules.",
+    "change_pr_title validates the new title against the conventional rule before gh runs, so a bad title never reaches GitHub, and a title it writes heads either subject mode.",
+    "pr_sum collects the draft title's defect into the same problem list as the other draft checks, so a bad draft title stops the build before any retitle or write.",
+    "skeleton_auto_title type-checks the stored key the same way skeleton_level and skeleton_min_viz do, and an absent key means False, so older skeletons still build.",
+    "merge_commit_msg's auto-title skeleton subject RETITLE_HINT matches PLACEHOLDER, so build refuses a message whose subject line was never filled in.",
+    "The `argument-hint`, the README argument table, the capture command line and the Common Mistakes rows all carry `--auto-title` the same way in both skills, so no surface disagrees on the flag's position or consent rule.",
+    "merge-commit-msg SKILL.md:55-70 matches `run_capture`, `render` and `run_retitle`: the `- Title problem:` fact, the `RETITLE_HINT` subject placeholder, the two-line `Retitled` / `Subject:` output, and the rule that never replaces a usable title.",
+    "pr-sum SKILL.md:67-70 and 304-307 match `auto_title_note`, `needs_retitle` and `apply_auto_title`: merged PRs and passing titles are kept, the retitle runs before the write, and the receipt gains the second line.",
+    "The v0.7.0 plugin table bump to harness 0.64.0 matches `plugins/harness/.claude-plugin/plugin.json`, and #240 correctly lost its '(open)' marker.",
+    "The title check moves out of merge_commit_msg.py into the shared harness_lib.pr_title, so both skills apply one rule and the driver's private copy is gone.",
+    "Consent is enforced in code and docs alike: retitle refuses a usable current title, change_pr_title validates the new title before gh runs, and both skills carry a Common Mistakes row that the contract test pins.",
+    "RETITLE_HINT matches the PLACEHOLDER pattern, so build refuses a message whose subject was never filled from retitle's output.",
+    "pr-sum validates the draft title before any write and retitles before writing the summary, so a failed gh pr edit leaves neither a summary nor a half-applied rename.",
+    "SKILL.md argument hints, the argument tables, the driver Usage docstrings and the README examples all name --auto-title the same way.",
+    "The title check moved out of merge_commit_msg.py into harness_lib.pr_title, so merge-commit-msg and pr-sum share one rule; this PR also adds the empty and multi-line cases.",
+    "change_pr_title checks the new title before gh runs, so neither caller can write a title that would fail its own check.",
+    "Renaming is gated on consent everywhere: the flag is described as the developer's consent in both SKILLs, and both Common Mistakes tables say so; a contract test pins the merge-commit-msg wording.",
+    "pr-sum checks the draft title as a PR title together with the other draft problems, before anything is written or retitled, so a bad draft title cannot leave a renamed PR behind with no summary.",
+    "The tests are behavioral: only the gh and subprocess boundaries are replaced, and the real capture, build and retitle logic runs, including the paths that write nothing."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "README says pr-sum --auto-title 'does the same' while the two flags use different rules",
+        "file": "README.md",
+        "files": [
+          "README.md",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "278-282",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The merge-commit-msg README paragraph says 'A usable title is never replaced. `pr-sum --auto-title` does the same with the summary's title at `build`.' In merge mode, merge-commit-msg treats a loose title such as '[BUG] Worker pool crash' as usable and keeps it. pr_sum.needs_retitle always applies conventional=True, so pr-sum renames that same PR. The pr-sum SKILL and README describe this correctly; only the root README claims the two match.",
+        "fix": [
+          "Reword the README sentence, for example: '`pr-sum --auto-title` sets the summary's title at `build` whenever the PR title is not a `Word(scope): summary` subject, in either mode.'"
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Release notes say the change has no PR yet",
+        "file": "docs/RELEASES/v0.7.0.md",
+        "lines": "18-19",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v0.7.0.md:18 lists this change as '`1142-auto-title-pr` (no PR yet)', but it is PR #244. The release body is this file, so the stale placeholder would ship as written.\n\nAlso (roast): docs/RELEASES/v0.7.0.md lists this change as '`1142-auto-title-pr` (no PR yet)', but PR #244 is open for this branch. The neighbouring entries use the '#NNN' form.",
+        "fix": [
+          "docs/RELEASES/v0.7.0.md:18: replace '`1142-auto-title-pr` (no PR yet)' with '#244'.",
+          "Replace '`1142-auto-title-pr` (no PR yet)' with '#244 (open)' (or '#244' once merged)."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "build's title refusal tells the agent to rerun with a flag build does not accept",
+        "file": "plugins/harness/lib/harness_lib/pr_title.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/pr_title.py",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+          "plugins/harness/skills/merge-commit-msg/SKILL.md"
+        ],
+        "lines": "49-55",
+        "reviewer": "runtime, roast, docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "title_problem now ends every refusal with 'retitle it with gh pr edit N --title, or rerun with --auto-title'. merge_commit_msg.run_build still calls check_title (line 412), so a build whose PR title the mode refuses prints that hint, but only the capture subparser registers --auto-title (line 448). Following the hint on build fails with an argparse 'unrecognized arguments' error. The hint is correct for capture only.\n\nAlso (roast): title_problem now ends every refusal with 'or rerun with --auto-title'. merge_commit_msg.py still raises it from run_build through check_title (line 412), and the problem still fires there when the PR title changed after capture or when a squash-form line 1 switches build into squash mode. build has no --auto-title argument, so an agent that follows the hint gets an argparse exit 2. The hint also invites the agent to add the flag on its own, which is exactly what the SKILL's new Common Mistakes row forbids. A hint that leads straight into a usage error and a broken consent rule makes a poor recovery path.\n\nAlso (docs): `title_problem` (pr_title.py:54) now ends every title problem with 'retitle it with gh pr edit N --title, or rerun with --auto-title', and `run_build` reaches it through `check_title` (merge_commit_msg.py:412). The `build` subparser has no `--auto-title`, so the advice only makes sense as rerunning the skill from capture. merge-commit-msg SKILL.md:92-95 still says only 'report it and stop ... the developer retitles the PR', so an agent reading the problem line can try `build ... --auto-title` and hit an argparse error.\n\nAlso (skill_package): run_build calls check_title (merge_commit_msg.py:412 -> 138-142), which returns `pr_title.title_problem`'s text: '...; retitle it with gh pr edit N --title, or rerun with --auto-title' (pr_title.py:54). The `build` subparser has no `--auto-title` (merge_commit_msg.py:448 adds it to capture only), so passing the flag to build exits with an argparse error. SKILL.md Step 2 (lines 92-95) still says only 'the developer retitles the PR'. The hint only works for a full skill rerun, and that rerun goes back through capture and rewrites the prose. Neither text says that.",
+        "fix": [
+          "Give title_problem a parameter for the second way out (e.g. auto_flag: bool = True) and pass False from the build path of check_title, so build names only 'gh pr edit' or the retitle subcommand.",
+          "Have run_build append its own fix text ('run retitle N [--squash] --title T, then rebuild') in place of the shared one.",
+          "Give title_problem a flag (for example offer_auto_title: bool = True) and have run_build's check_title pass False, so build's refusal names only gh pr edit.",
+          "Word the hint as 'or ask the developer to rerun capture with --auto-title', so it names the command that owns the flag and keeps the developer's consent in the loop.",
+          "merge-commit-msg SKILL.md:95: 'and the developer retitles the PR or reruns the skill with `--auto-title` (capture takes the flag; build does not).'",
+          "Have `check_title` in `run_build` print the fix text without the `--auto-title` clause (a `title_problem` parameter that drops it).",
+          "SKILL.md:95: after 'the developer retitles the PR' add 'or reruns the skill with `--auto-title`, which starts over at capture'.",
+          "Have check_title in build pass a fix text without the flag (for example, a `fix` parameter on `title_problem` that build sets to the `gh pr edit` hint only)."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "pr-sum --auto-title renames closed, unmerged PRs",
+        "file": "plugins/harness/scripts/pr_sum.py",
+        "files": [
+          "plugins/harness/scripts/pr_sum.py",
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/skills/pr-sum/README.md"
+        ],
+        "lines": "280-282,294-305",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "needs_retitle and apply_auto_title use only merge_commit is None to decide that a PR is still live. PR_capture's GH_FIELDS does not request state, so a closed PR that was never merged counts as open, and build runs gh pr edit on it. merge-commit-msg refuses any PR that is not OPEN before it retitles (fetch_view), so the same flag means different things in the two skills. Editing a dead PR's title is harmless but unexpected, and the receipt calls it a plain 'Retitled'.",
+        "fix": [
+          "Add state to the fields build reads (a separate gh pr view --json state,title,headRefName,mergeCommit in the auto-title path, or extend PrMeta) and keep the title when state != OPEN, with a 'title kept: the PR is CLOSED' receipt line plus a test row in test_build_keeps_a_usable_or_merged_title.",
+          "If renaming a closed PR is intended, say so in the pr-sum SKILL and README ('a merged PR's title is kept; an open or closed one is replaced')."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "pr_sum build retitles the PR before the last check that can still refuse the write",
+        "file": "plugins/harness/scripts/pr_sum.py",
+        "lines": "328-333",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "run_build calls apply_auto_title (gh pr edit) at line 330, then summaries_dir(repo) at line 331, which raises CaptureError when repo is not the active project. In that case the PR is retitled but no summary is written, and the build exits 1, against the module docstring's ordering, which retitles only when the summary is then written.",
+        "fix": [
+          "Compute target = summaries_dir(repo) / summary_filename(...) before the apply_auto_title call, so every refusal happens before the side effect on GitHub."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "retitle exit-1 list leaves out a PR that is not open",
+        "file": "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "lines": "66-68",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "merge-commit-msg SKILL.md:66-68 lists three exit-1 cases for `retitle` (refused new title, title already usable, `gh` failure). `run_retitle` calls `fetch_view` first, which refuses a PR that is not open, as the module docstring says ('Exits 1, changing nothing, when the PR is not open, ...'). The skill gives no instruction for that case.",
+        "fix": [
+          "merge-commit-msg SKILL.md:68: 'or when the PR is not open or `gh` fails (report it and stop).'"
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "retitle uses --title unstripped, so the printed Subject can miss the title gh stores",
+        "file": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "lines": "305-317",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "run_retitle passes the --title argument to change_pr_title and subject_line as given (merge_commit_msg.py:316-317). subject_parts accepts trailing whitespace, so 'Feature(x): y ' passes the check, while GitHub trims the stored title. build later compares line 1 with subject_line built from the gh title, so the Subject line retitle printed (with the trailing space) fails 'subject must be exactly ...'. pr_sum's apply_auto_title already strips draft.title before the same call.",
+        "fix": [
+          "Strip the title at the top of run_retitle (title = title.strip()) before title_defect, change_pr_title and subject_line."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "message_format.md title rule still names only `gh pr edit` and the old refusals",
+        "file": "plugins/harness/skills/merge-commit-msg/message_format.md",
+        "files": [
+          "plugins/harness/skills/merge-commit-msg/message_format.md",
+          "plugins/harness/skills/merge-commit-msg/SKILL.md"
+        ],
+        "lines": "47-53",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "Step 2 marks message_format.md as REQUIRED reading. Its Verbatim title rule (lines 47-53) still says capture and build refuse only a non-ASCII or branch-name title, plus the squash shape, and that 'On any refusal the developer retitles the PR with `gh pr edit <N> --title`'. With this PR, `title_defect` also refuses an empty or multi-line title, and `--auto-title` makes capture continue past a refused title, with `retitle` as the sanctioned route. The format card now disagrees with SKILL.md:39-41 and SKILL.md:55-70.",
+        "fix": [
+          "message_format.md:49-53: add 'an empty or multi-line title' to the refused titles, and end with 'On any refusal the developer retitles the PR with `gh pr edit <N> --title`, or reruns with `--auto-title` (see SKILL.md Step 1).'"
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "pr-sum states the --auto-title trigger as the shape check only",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/skills/pr-sum/README.md"
+        ],
+        "lines": "67-70",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:67-69 and README.md:21-22 say build retitles 'When the PR title is not a `Word(scope): summary` subject'. `needs_retitle` uses `title_defect(..., conventional=True)`, which also refuses an empty, multi-line or non-ASCII title, and one that reads as the branch name. So a well-shaped title such as 'Feature(x): cafe' with an accented e gets replaced, although the docs say it is kept as usable.",
+        "fix": [
+          "SKILL.md:68 and README.md:21: say 'When the PR title is not a one-line ASCII `Word(scope): summary` subject distinct from the branch name'."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "pr-sum rerun note names only the level flags, but `--auto-title` is also stored fresh",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "109-111",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "pr-sum SKILL.md:110-111 says 'the level flags are stored fresh on every capture, so repeat them on a rerun'. `_cmd_capture` (pr_sum.py) writes `auto_title` only when the flag is passed on that capture, and the module docstring now says 'The flags are stored fresh on every capture'. A capture rerun without `--auto-title` silently drops the stored consent, and `build` then keeps the unusable PR title, while the skill text says only the level flags need repeating.\n\nAlso (skill_package): _cmd_capture stores `auto_title` only when the flag is on the current run (pr_sum.py: `**({\"auto_title\": True} if args.auto_title else {})`). The capture docstring says 'The flags are stored fresh on every capture'. SKILL.md:110-111 still says only that 'the level flags are stored fresh on every capture, so repeat them on a rerun'. An agent that reruns capture to refresh facts and leaves out `--auto-title` silently drops the developer's consent, and build then keeps the refused PR title.",
+        "fix": [
+          "pr-sum SKILL.md:110-111: 'the level flags and `--auto-title` are stored fresh on every capture, so repeat them on a rerun.'",
+          "SKILL.md:110-111: change 'the level flags are stored fresh on every capture' to 'the level flags and `--auto-title` are stored fresh on every capture'."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Auto-title prefix rule contradicts itself when no commit subject has a type",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/skills/merge-commit-msg/SKILL.md"
+        ],
+        "lines": "158-161",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "pr-sum SKILL.md:158-160 says the PR-bound title needs a `Type(scope):` prefix 'even when neither the PR title nor a commit subject has one: take the type the commit subjects use most'. When no commit subject has a type there is no most-used type to take, so the instruction has no answer for exactly the case it names. It also differs from the Prefix rule at lines 141-142 (first commit subject). merge-commit-msg SKILL.md:58 has the same gap: 'the `Type(scope):` the branch's commit subjects use' with no fallback, while `change_pr_title` (pr_title.py:64-66) refuses any title without the `Word(scope):` shape, so an agent with untyped commits has no stated way to pick one.\n\nAlso (skill_package): pr-sum SKILL.md:158-161 says the new PR title needs a `Type(scope):` prefix 'even when neither the PR title nor a commit subject has one: take the type the commit subjects use most'. When no commit subject has a prefix, there is no type the commit subjects use, so the rule tells the agent to copy something that does not exist. merge-commit-msg SKILL.md:57-58 has the same gap from the other side: 'Its prefix is the `Type(scope):` the branch's commit subjects use' gives no rule for a branch whose subjects carry none. The two skills feed the same `change_pr_title` check, but they give different instructions for picking the prefix.",
+        "fix": [
+          "pr-sum SKILL.md:158-160: 'It then needs a `Type(scope):` prefix: the type the commit subjects use most, or, when none has one, the type that fits the change (`Feature`, `Fix`, `Docs`).' Apply the same fallback sentence to merge-commit-msg SKILL.md:58.",
+          "pr-sum SKILL.md:159-160: replace 'take the type the commit subjects use most (`Feature`, `Fix`, `Docs`)' with 'take the type the commit subjects use most, and when none has one, the type that names the change (`Feature`, `Fix`, `Docs`)'; add the same fallback after 'the branch's commit subjects use' in merge-commit-msg SKILL.md:58."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "pr-sum build exit-1 text treats every problem as a draft defect, including a failed retitle",
+        "file": "plugins/harness/skills/pr-sum/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "304-311",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "pr-sum SKILL.md:304-307 says a failed `gh pr edit` is a `problem:` line, but lines 309-310 then say 'each `problem:` line names a draft defect; ... fix the draft and rerun'. With `auto_title` stored, `apply_auto_title` raises `CaptureError` for a `TitleError` from `gh` (missing `gh`, auth, network), and `gh_metadata` can also fail at build. Neither is a draft defect, so the skill steers the agent into a fix-and-rerun loop where it should report and stop.\n\nAlso (skill_package): SKILL.md:304-307 adds `gh pr view` and `gh pr edit` calls to build and says a failed edit is a `problem:` line. The next paragraph (309-310) still says 'each `problem:` line names a draft defect ... fix the draft and rerun'. A `gh pr edit ... failed` or 'gh is not installed' line from `apply_auto_title` is not a draft defect, so following that paragraph loops on reruns. merge-commit-msg covers the same case with 'report it and stop' (SKILL.md:68).",
+        "fix": [
+          "pr-sum SKILL.md:306: 'A failed `gh pr view` or `gh pr edit` is a `problem:` line naming `gh`; nothing is written: report it and stop.' Then on line 309 say 'every other `problem:` line names a draft defect'.",
+          "SKILL.md:306: change 'A failed `gh pr edit` is a `problem:` line, and nothing is written.' to 'A failed `gh pr view` or `gh pr edit` is a `problem:` line, and nothing is written: report it and stop.'"
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "test_subprocess_is_the_module_seam duplicates what the monkeypatch tests already enforce",
+        "file": "tests/lib/test_pr_title.py",
+        "lines": "9,90-91",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The test asserts only pr_title.subprocess is subprocess. Every TestChangePrTitle test already calls monkeypatch.setattr(pr_title.subprocess, 'run', ...), which raises AttributeError if the module stops importing subprocess, so this identity check adds no coverage.",
+        "fix": [
+          "Delete test_subprocess_is_the_module_seam and the now-unused 'import subprocess'.",
+          "Keep it, but fold the intent into the module docstring line that names subprocess.run as the seam."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "pr-sum capture: two of three auto_title_note branches untested",
+        "file": "tests/scripts/test_pr_sum.py",
+        "files": [
+          "tests/scripts/test_pr_sum.py",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "1175-1187",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "auto_title_note has three outcomes (merged, title already passes, build will retitle); test_capture_stores_the_flag_and_notes_the_title exercises only the retitle branch with '1234 demo'. The ' (--auto-title: the PR is merged; build keeps its title)' and ' (--auto-title: the PR title already passes; build keeps it)' notes are never asserted.",
+        "fix": [
+          "Parametrize test_capture_stores_the_flag_and_notes_the_title over (title, merge_commit, expected note): ('1234 demo', None, 'build sets the draft title'), ('Feature(a): own title', None, 'the PR title already passes'), ('1234 demo', 'abc1234', 'the PR is merged')."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "pr-sum build: draft-title check gated on needs_retitle is untested",
+        "file": "tests/scripts/test_pr_sum.py",
+        "files": [
+          "tests/scripts/test_pr_sum.py",
+          "plugins/harness/scripts/pr_sum.py"
+        ],
+        "lines": "1200-1223",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "auto_title_problems checks the draft title only when needs_retitle(meta) is true, so with auto_title stored and a PR title that already passes (or a merged PR) a non-conventional draft title such as '`a` change' must still build (draft_problems in pr_summary.py checks only empty and multi-line titles). test_draft_title_with_a_defect_writes_nothing covers only the refused-PR-title case, and test_build_keeps_a_usable_or_merged_title uses the conventional _filled title, so a regression that checked the draft title unconditionally would pass every test while blocking builds the docstring allows.",
+        "fix": [
+          "Add a parametrized case to TestAutoTitle: _gh with 'Feature(a): own title' (and with merge_commit 'abc1234'), payload draft title '`a` change', auto_title=True; assert run_build succeeds, edits is empty and the last receipt line is the 'title kept' note."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Docstring names change_pr_title as a swapped seam, but one test runs the real one",
+        "file": "tests/skills/test_merge_commit_msg_auto_title.py",
+        "lines": "8,141-153",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says '``gh`` and ``change_pr_title`` are the seams, swapped for a canned PR and a recorder.' test_retitle_refuses_a_new_title_with_a_defect deliberately skips the edits fixture, runs the real change_pr_title and guards pr_title.subprocess.run instead. The docstring does not mention this third seam.",
+        "fix": [
+          "Extend the docstring: '... swapped for a canned PR and a recorder; the refusal test runs the real ``change_pr_title`` behind a ``subprocess.run`` guard that fails on any ``gh`` call.'"
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "merge-commit-msg: --auto-title capture in merge mode with a refused title untested",
+        "file": "tests/skills/test_merge_commit_msg_auto_title.py",
+        "files": [
+          "tests/skills/test_merge_commit_msg_auto_title.py",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py"
+        ],
+        "lines": "94-109",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "retitle_lines has a squash=False branch (hint 'retitle 7 --title \"<title>\"' without --squash), and merge mode still refuses a branch-name title, so capture N --auto-title in merge mode can emit the Title problem fact and RETITLE_HINT. test_refused_title_prints_facts_with_a_subject_placeholder runs only --squash, and test_merge_mode_keeps_a_loose_title uses a title merge mode accepts; the merge-mode retitle hint is never asserted.",
+        "fix": [
+          "Add a TestCaptureAutoTitle case: _run with title '7 fix workers' and argv capture 7 --auto-title; assert '- Title problem: reads as the branch name' and 'retitle 7 --title \"<title>\"' are in the output (and '--squash' is not in that hint line), and the fence's first line is module.RETITLE_HINT."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "pr-sum SKILL.md --auto-title consent gate has no contract test",
+        "file": "tests/skills/test_merge_commit_msg_skill_contract.py",
+        "files": [
+          "tests/skills/test_merge_commit_msg_skill_contract.py",
+          "plugins/harness/skills/pr-sum/SKILL.md"
+        ],
+        "lines": "81-85",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The merge-commit-msg skill gets test_skill_gates_retitle_on_the_auto_title_flag and an updated argument-hint pin, but the matching pr-sum SKILL.md text the PR adds (argument-hint with [--auto-title], 'is the developer's consent to rename the PR', the Common Mistakes row 'Adding `--auto-title`, or running `gh pr edit`, unasked') has no test, so a later edit can drop the pr-sum consent gate without a failing test. No pr-sum skill contract test exists under tests/.",
+        "fix": [
+          "Add a pr-sum skill contract test (e.g. tests/skills/test_pr_sum_skill_contract.py) that asserts the argument-hint contains '[--auto-title]', the consent sentence is present, and the Common Mistakes section names '`gh pr edit`, unasked'; mirror test_skill_gates_retitle_on_the_auto_title_flag."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "--auto-title has no harness.json default; it is a per-invocation flag only",
+        "file": "plugins/harness/lib/harness_lib/config.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/config.py",
+          "plugins/harness/config/defaults.json",
+          "plugins/harness/config/harness.schema.json",
+          "plugins/harness/scripts/pr_sum.py",
+          "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+          "plugins/harness/skills/merge-commit-msg/SKILL.md",
+          "plugins/harness/skills/pr-sum/SKILL.md",
+          "README.md"
+        ],
+        "reviewer": "developer_notes_1",
+        "fix_kind": "judgment",
+        "summary": "Developer ask: make auto-title on by default through harness.json. Confirmed: pr_sum.py and merge_commit_msg.py read --auto-title only from argv, and config/defaults.json has no key for it. The project rule says a setting a driver can read belongs in a config key, not in an invocation flag the agent must remember to pass. Two skills share the setting, so one key serves both; an explicit per-run opt-out (a --no-auto-title flag) is needed once the default can be on, because the consent paragraphs in both SKILL.md files tie renaming to the invocation.",
+        "fix": [
+          "Add a boolean key (for example auto_title, default false) touching config/defaults.json, config/harness.schema.json, the dataclass and builder in harness_lib/config.py and the README key table; pr_sum.py and merge_commit_msg.py take active().auto_title as the capture default, with --no-auto-title to override; update both SKILL.md consent paragraphs, argument hints and contract tests to say the key or the flag is the consent."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "merge-commit-msg argument rule can be read as banning --auto-title",
+        "file": "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "files": [
+          "plugins/harness/skills/merge-commit-msg/SKILL.md",
+          "tests/skills/test_merge_commit_msg_skill_contract.py"
+        ],
+        "lines": "14-20",
+        "reviewer": "developer_notes_2",
+        "fix_kind": "mechanical",
+        "summary": "Developer report: a skill subagent rejected a valid --auto-title invocation. Confirmed in SKILL.md:19-20: 'anything before -- beyond the number, at most one mode token and --auto-title: report it as a problem: line' is one run-on sentence whose comma list reads as the set of rejected items, so --auto-title appears to be named as an error. The argument hint (line 4) and the Before-the-split rule (lines 14-15) accept the flag. The wording was added by this PR; the pr-sum SKILL has no copy of the phrase.",
+        "fix": [
+          "Split the sentence into an explicit allowed set and a rejection rule: 'Before -- the arguments are the PR number, at most one mode token and an optional --auto-title, in that order. A blank or non-numeric PR number, a second mode token or any other argument before -- is a problem: line; report it and stop.' and rewrap lines 15-20 so each rule stands alone.",
+          "Add a contract test pinning that the rule text lists --auto-title as accepted and names no flag-rejection phrase."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 244 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":1,\"first_sha\":\"a635405ad0ba5f8ab579b5f09df9cbf9682a5291\",\"headRefName\":\"1142-auto-title-pr\",\"headRefOid\":\"a635405ad0ba5f8ab579b5f09df9cbf9682a5291\",\"last_sha\":\"a635405ad0ba5f8ab579b5f09df9cbf9682a5291\",\"mergeCommit\":null,\"number\":244,\"state\":\"OPEN\",\"title\":\"Feature(harness): `--auto-title` for merge-commit-msg and pr-sum\",\"url\":\"https://github.com/t968rs/operator-straps/pull/244\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1142-auto-title-pr",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1142-auto-title-pr",
+        "head_ref_name": "1142-auto-title-pr",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "a635405ad0ba5f8ab579b5f09df9cbf9682a5291",
+        "head_sha": "a635405ad0ba5f8ab579b5f09df9cbf9682a5291",
+        "base_ancestor_command": "git merge-base --is-ancestor a635405ad0ba5f8ab579b5f09df9cbf9682a5291 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor a635405ad0ba5f8ab579b5f09df9cbf9682a5291 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - Root README sentence is edited by the other part's fixer; pr_sum.py needs no change (needs_retitle and apply_auto_title already implement the conventional-title rule the fix describes); README.md:281-282 reworded: pr-sum --auto-title sets the summary's title at build whenever the PR title is not a Word(scope): summary subject, in either mode"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - run_build computes target = summaries_dir(repo) / summary_filename(...) before apply_auto_title, so a refused summaries_dir raises before the gh pr edit side effect"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - SKILL.md rerun note is edited by the other part's fixer; _cmd_capture already stores auto_title only when the flag is on the run and its docstring states that, so pr_sum.py needs no change; Rerun note now says the level flags and `--auto-title` are stored fresh on every capture, so repeat them on a rerun"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - SKILL.md build exit-1 text is edited by the other part's fixer; apply_auto_title already raises CaptureError for TitleError, so pr_sum.py needs no change; Build text: a failed `gh pr view` or `gh pr edit` is a `problem:` line naming `gh`, nothing written, report it and stop; exit-1 text now says every other `problem:` line names a draft defect"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - title_problem gains offer_auto_title (default True); check_title passes it through and run_build calls it with False, so build's refusal names only gh pr edit; SKILL.md Step 2 adds that the developer may rerun the skill with --auto-title, which starts over at capture (build does not take the flag)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - SKILL.md retitle exit-1 list now names a PR that is not open alongside gh failure (report it and stop)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - run_retitle strips --title first, so title_defect, change_pr_title and the printed Subject line all use the trimmed title GitHub stores"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - SKILL.md: no edit, it already names gh pr edit and --auto-title for a refused title (Step 1, lines 39-41) and is the reference the message_format.md part aligns to; Verbatim title rule now lists the empty or multi-line title among refusals and names `--auto-title` (SKILL.md Step 1) as the second route after `gh pr edit`"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - SKILL.md --auto-title prefix rule now reads: the Type(scope) the commit subjects use most, or, when none has one, the type that fits the change (Feature, Fix, Docs); Auto-title prefix rule gains the fallback: when no commit subject has a type, the type that names the change (`Feature`, `Fix`, `Docs`)"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - Step 1 auto-title trigger now reads 'not a one-line ASCII `Word(scope): summary` subject distinct from the branch name'; README --auto-title row: trigger now reads 'not a one-line ASCII Word(scope): summary subject distinct from the branch name', matching title_defect(conventional=True); SKILL.md edited by the other part"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - docs/RELEASES/v0.7.0.md:18 '`1142-auto-title-pr` (no PR yet)' replaced with '#244'"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - tests/skills/test_merge_commit_msg_auto_title.py module docstring extended to name the subprocess.run guard seam for the refusal test"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - deleted test_subprocess_is_the_module_seam and the now-unused 'import subprocess'; the TestChangePrTitle monkeypatch tests still enforce the seam"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - Documented that --auto-title retitles an open or closed (unmerged) PR and keeps only a usable or merged title, noting the contrast with merge-commit-msg, in the pr-sum SKILL, README and the needs_retitle docstring"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - test_capture_stores_the_flag_and_notes_the_title covers the retitle, title-passes and merged notes; the merged case builds a real merge commit (outside fixer waves)"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - test_kept_title_does_not_check_the_draft_title pins that a kept or merged PR title skips the draft-title check (outside fixer waves)"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - test_merge_mode_refused_title_prints_the_merge_retitle_hint covers merge-mode capture with a refused title (outside fixer waves)"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "a635405 (working-tree snapshot; developer commits) - new tests/skills/test_pr_sum_skill_contract.py pins the pr-sum argument hint, consent sentence and the unasked gh pr edit row (outside fixer waves)"
+    }
+  ]
+}

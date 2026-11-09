@@ -6,7 +6,6 @@ the two ways out; ``change_pr_title`` refuses a new title with a defect and othe
 """
 from __future__ import annotations
 
-import subprocess
 from pathlib import Path
 from typing import List
 
@@ -85,7 +84,3 @@ class TestChangePrTitle:
         monkeypatch.setattr(pr_title.subprocess, "run", missing)
         with pytest.raises(pr_title.TitleError, match="gh is not installed"):
             pr_title.change_pr_title(240, "Feature(harness): x", tmp_path, HEAD)
-
-
-def test_subprocess_is_the_module_seam() -> None:
-    assert pr_title.subprocess is subprocess

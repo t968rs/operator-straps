@@ -278,7 +278,10 @@ def skeleton_auto_title(payload: Mapping[str, object]) -> bool:
 
 
 def needs_retitle(meta: PrMeta) -> bool:
-    """True when ``--auto-title`` replaces the PR title: the PR is unmerged and its title fails the check."""
+    """True when ``--auto-title`` replaces the PR title: the PR is unmerged and its title fails the check.
+
+    Unmerged means open or closed: unlike ``merge-commit-msg``, a closed PR is retitled too.
+    """
     return meta.merge_commit is None and title_defect(meta.title, meta.head, conventional=True) is not None
 
 
@@ -327,8 +330,8 @@ def run_build(repo: Path, payload: Mapping[str, object]) -> Tuple[Path, str]:
     problems += auto_title_problems(meta, draft) if meta else []
     if problems:
         raise CaptureError(problems)
-    note = [apply_auto_title(repo, meta, draft)] if meta else []
     target = summaries_dir(repo) / summary_filename(facts.number, draft.title)
+    note = [apply_auto_title(repo, meta, draft)] if meta else []
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(render_summary(facts, draft), encoding="utf-8")
     min_viz_sentinel.clear(active(), facts.number)
