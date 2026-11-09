@@ -142,6 +142,27 @@ def test_pinned_rule_sentences_appear_verbatim(sentence: str) -> None:
     assert " ".join(sentence.split()) in " ".join(_skill_parts()[1].split())
 
 
+def test_authoring_passes_links_through_and_hands_targets_to_arc_help_pages() -> None:
+    """The Authoring section lets ``<a href>`` through to the "?" page, warns that a relative href breaks, and
+    names ``arc-help-pages`` as the later skill for link targets; the old "no links" rule is gone."""
+    body = " ".join(_skill_parts()[1].split())
+    authoring = body.partition("## Authoring")[2].partition("## ")[0]
+    assert authoring, "SKILL.md has no Authoring section"
+    assert "no links" not in authoring
+    assert "`<a href>`" in authoring and "`arc-help-pages`" in authoring
+    assert "relative href breaks" in authoring
+
+
+def test_the_skill_names_the_para_markup_check() -> None:
+    """A ``<para>`` holds plain text: Authoring sends markup and links to CDATA, and the API table lists the
+    ``unsupported_para_markup`` code ``check_canonical`` reports."""
+    body = " ".join(_skill_parts()[1].split())
+    authoring = body.partition("## Authoring")[2].partition("## ")[0]
+    assert "A `<para>` holds plain text only" in authoring
+    rows = [line for line in _skill_parts()[1].splitlines() if line.startswith("| `check_canonical")]
+    assert rows and "`unsupported_para_markup`" in rows[0], rows
+
+
 _VALID_PAYLOADS = {
     "ParamRow": {"name": "Mode", "title": "Mode", "type": "Required", "direction": "Input",
                  "datatype": "GPString", "hover_wired": False},

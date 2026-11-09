@@ -72,7 +72,7 @@ BAD_CANONICAL: str = """<?xml version="1.0"?>
 <metadata xml:lang="en">
   <Esri><ArcGISFormat>1.0</ArcGISFormat><ArcGISProfile>ItemDescription</ArcGISProfile></Esri>
   <tool name="Demo" displayname="00 Demo Tool" xmlns="">
-    <summary><![CDATA[<p>Makes “polygons”. See <a href="docs/demo.html">the page</a>.</p>]]></summary>
+    <summary><![CDATA[<p>Makes “polygons”. See <code>the page</code>.</p>]]></summary>
     <usage><![CDATA[<ul><li>A<ul><li>B<ul><li>C</li></ul></li></ul></li></ul>]]></usage>
     <parameters>
       <param name="inpoly" displayname="Input Polygons" type="Required" direction="Input" \
