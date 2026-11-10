@@ -53,7 +53,7 @@ def commit_messages_dir() -> Path:
 def iter_commit_txts(folder: Optional[Path] = None) -> Iterator[Path]:
     """Yield digit-prefixed ``*.txt`` files in ``folder`` (sorted by name)."""
     target = folder if folder is not None else commit_messages_dir()
-    yield from sorted(target.glob(_DIGIT_TXT_GLOB))
+    yield from sorted(target.rglob(_DIGIT_TXT_GLOB))
 
 
 def txt_to_commit_dict(path: Union[str, Path], one_path_per_commit: bool = True) -> BranchCommitDocument:
