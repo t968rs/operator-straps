@@ -6,7 +6,8 @@ shape on a plan frozen without a record scheme. Known limits, accepted like a re
 item's own earlier record back by hand passes the seal, and ``keeps_sealed`` sees a hand-deleted scheme
 only while the digest still matches under it. A refreeze (``plan.py freeze``) also keeps the scheme the
 plan's copy at HEAD stores, so only a deleted scheme that was never committed lets a refreeze judge the
-plan as legacy.
+plan as legacy. A first freeze stores ``FIRST_SCHEME`` (receipts), and a receipts plan keeps that scheme the
+same three ways (``keeps_receipts``); its items' outcomes live in receipt files (``plan_receipts``).
 """
 from __future__ import annotations
 
@@ -19,6 +20,8 @@ from harness_lib.plan_doc import frozen_digest
 from harness_lib.plan_enums import ItemStatus, RecordProblemKind, RecordScheme, VerifyKind
 from harness_lib.plan_models import ActionItem, ActionPlan, Completed, Outcome
 
+# The scheme a plan's first freeze stores; the legacy driver suites patch it to sealed (D3).
+FIRST_SCHEME: RecordScheme = RecordScheme.receipts
 _COMMIT_REF = re.compile(r"[0-9a-f]{40}")
 _TREE_REF = re.compile(r"tree [0-9a-f]{40}")
 _ALL_FLAGS = "--sha SHA | --staged | --start | --blocked REASON | --closed RATIONALE"
@@ -99,8 +102,33 @@ def record_holds(plan: ActionPlan, item: ActionItem) -> bool:
     return legacy_allowed(plan) and legacy_shape(item)
 
 
-def scheme_for(plan: ActionPlan) -> Optional[RecordScheme]:
-    """The record scheme a freeze stores: sealed, unless a non-PENDING item still lacks a record."""
+def first_freeze(plan: ActionPlan) -> bool:
+    """Never frozen, every item PENDING without a record: a first freeze picks the plan's scheme."""
+    return plan.frozen is None and all(
+        item.status == ItemStatus.PENDING and item.record is None for item in plan.items)
+
+
+def keeps_receipts(plan: ActionPlan, committed: Optional[str] = None) -> bool:
+    """A frozen plan stays on the receipts scheme: it is stored, the digest proves a hand deleted it, or
+    ``committed`` (the scheme the plan's copy at HEAD stores, read by the caller) names it."""
+    frozen = plan.frozen
+    if frozen is None:
+        return False
+    receipts = RecordScheme.receipts
+    return (frozen.records == receipts or committed == receipts.value
+            or frozen.digest == frozen_digest(plan, receipts))
+
+
+def scheme_for(plan: ActionPlan, committed: Optional[str] = None) -> Optional[RecordScheme]:
+    """The record scheme a freeze stores.
+
+    ``FIRST_SCHEME`` on a first freeze (read at call time, so a test can patch it); receipts on a plan that
+    keeps them (``keeps_receipts``); else sealed, unless a non-PENDING item still lacks a record.
+    """
+    if first_freeze(plan):
+        return FIRST_SCHEME
+    if keeps_receipts(plan, committed):
+        return RecordScheme.receipts
     legacy = any(item.status != ItemStatus.PENDING and item.record is None for item in plan.items)
     return None if legacy else RecordScheme.sealed
 

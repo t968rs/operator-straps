@@ -171,7 +171,7 @@ class PrAttributes(BaseModel):
     review_doc: Optional[str] = Field(default=None, pattern=r"^docs/PR_REVIEWS/.+\.json$")
     branch: str
     base_branch: str
-    pip_document: Optional[str] = Field(default=None, pattern=r"^docs/PLANS/.+_PIP\.md$")
+    pip_document: Optional[str] = Field(default=None, pattern=r"^docs/PLANS/.+_PIP\.(md|html)$")
     merged_at: Optional[str] = Field(default=None, json_schema_extra=_DATE)
 
 

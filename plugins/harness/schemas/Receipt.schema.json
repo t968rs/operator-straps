@@ -1,0 +1,330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/Receipt.schema.json",
+  "$defs": {
+    "Blocked": {
+      "additionalProperties": false,
+      "description": "The item waits on something outside it.",
+      "properties": {
+        "kind": {
+          "const": "blocked",
+          "title": "Kind",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "reason"
+      ],
+      "title": "Blocked",
+      "type": "object"
+    },
+    "Closed": {
+      "additionalProperties": false,
+      "description": "The item is closed without action.",
+      "properties": {
+        "kind": {
+          "const": "closed",
+          "title": "Kind",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "rationale"
+      ],
+      "title": "Closed",
+      "type": "object"
+    },
+    "Completed": {
+      "additionalProperties": false,
+      "description": "The item is done: its code and, when it plans tests, the nodes that passed on it.",
+      "properties": {
+        "kind": {
+          "const": "complete",
+          "title": "Kind",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "tests": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PassedTests"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "kind",
+        "provenance"
+      ],
+      "title": "Completed",
+      "type": "object"
+    },
+    "Deviations": {
+      "additionalProperties": false,
+      "description": "How the work departed from the plan; every cited change id carries the digest of that change.",
+      "properties": {
+        "extra_files": {
+          "items": {
+            "$ref": "#/$defs/ExtraFile"
+          },
+          "title": "Extra Files",
+          "type": "array"
+        },
+        "substitutions": {
+          "items": {
+            "$ref": "#/$defs/TestSubstitution"
+          },
+          "title": "Substitutions",
+          "type": "array"
+        },
+        "change_digests": {
+          "additionalProperties": {
+            "pattern": "^[0-9a-f]{64}$",
+            "type": "string"
+          },
+          "description": "Change id -> digest of that DesignChange, for each id cited.",
+          "title": "Change Digests",
+          "type": "object"
+        }
+      },
+      "title": "Deviations",
+      "type": "object"
+    },
+    "ExtraFile": {
+      "additionalProperties": false,
+      "description": "A file the item changed that its plan did not list.",
+      "properties": {
+        "path": {
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "change": {
+          "description": "Id of the DesignChange that allows the file.",
+          "minLength": 1,
+          "title": "Change",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "change"
+      ],
+      "title": "ExtraFile",
+      "type": "object"
+    },
+    "PassedTests": {
+      "additionalProperties": false,
+      "description": "The planned nodes that passed on a throwaway worktree at the provenance tree.",
+      "properties": {
+        "nodes": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Nodes",
+          "type": "array"
+        },
+        "command": {
+          "description": "The pytest command line as run.",
+          "minLength": 1,
+          "title": "Command",
+          "type": "string"
+        }
+      },
+      "required": [
+        "nodes",
+        "command"
+      ],
+      "title": "PassedTests",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "description": "Where the recorded code came from: always a tree, a commit only when one existed.\n\nA commit source needs its commit and a staged source carries none; plan.py enforces that rule when it\nloads the plan, the JSON schema does not.",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/RecordSource"
+        },
+        "tree": {
+          "description": "The tree the tests ran on.",
+          "pattern": "^[0-9a-f]{40}$",
+          "title": "Tree",
+          "type": "string"
+        },
+        "commit": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit"
+        }
+      },
+      "required": [
+        "source",
+        "tree"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "RecordSource": {
+      "description": "Where the code of a COMPLETE record came from: a commit, or the staged index.",
+      "enum": [
+        "commit",
+        "staged"
+      ],
+      "title": "RecordSource",
+      "type": "string"
+    },
+    "Started": {
+      "additionalProperties": false,
+      "description": "Work on the item has begun.",
+      "properties": {
+        "kind": {
+          "const": "started",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Started",
+      "type": "object"
+    },
+    "TestSubstitution": {
+      "additionalProperties": false,
+      "description": "A planned test node replaced by another node that proves the item.",
+      "properties": {
+        "planned": {
+          "pattern": "^[^:]+\\.py(::[^:]+)+$",
+          "title": "Planned",
+          "type": "string"
+        },
+        "node": {
+          "pattern": "^[^:]+\\.py(::[^:]+)+$",
+          "title": "Node",
+          "type": "string"
+        },
+        "change": {
+          "description": "Id of the DesignChange that allows the substitution.",
+          "minLength": 1,
+          "title": "Change",
+          "type": "string"
+        }
+      },
+      "required": [
+        "planned",
+        "node",
+        "change"
+      ],
+      "title": "TestSubstitution",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "The sealed outcome of one plan item.",
+  "properties": {
+    "plan_id": {
+      "pattern": "^[0-9]{4}$",
+      "title": "Plan Id",
+      "type": "string"
+    },
+    "item": {
+      "pattern": "^[A-Z]{2,4}-[0-9.]+$",
+      "title": "Item",
+      "type": "string"
+    },
+    "outcome": {
+      "discriminator": {
+        "mapping": {
+          "blocked": "#/$defs/Blocked",
+          "closed": "#/$defs/Closed",
+          "complete": "#/$defs/Completed",
+          "started": "#/$defs/Started"
+        },
+        "propertyName": "kind"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Completed"
+        },
+        {
+          "$ref": "#/$defs/Started"
+        },
+        {
+          "$ref": "#/$defs/Blocked"
+        },
+        {
+          "$ref": "#/$defs/Closed"
+        }
+      ],
+      "title": "Outcome"
+    },
+    "evidence": {
+      "title": "Evidence",
+      "type": "string"
+    },
+    "deviations": {
+      "$ref": "#/$defs/Deviations"
+    },
+    "ref": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Ref"
+    },
+    "date": {
+      "format": "date",
+      "title": "Date",
+      "type": "string"
+    },
+    "seal": {
+      "description": "SHA-256 of this receipt without the seal and the item's planned files and tests.",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Seal",
+      "type": "string"
+    }
+  },
+  "required": [
+    "plan_id",
+    "item",
+    "outcome",
+    "evidence",
+    "date",
+    "seal"
+  ],
+  "title": "Receipt",
+  "type": "object"
+}

@@ -1,9 +1,10 @@
 """Plan documents owned by the ``plan.py`` driver: file names, plan ids, loading, dumping, freeze digest.
 
 A plan is ``<artifacts.plans>/<plan_id>_<Title>_ActionPlan.json`` holding an ``ActionPlan``
-(``harness_lib.plan_models``, the one definition of its shape); its PIP (``<plan_id>_<Title>_PIP.md``) is
-rendered from it, and the test files it plans live under ``<artifacts.plans>/<plan_id>/tests/<repo-relative
-path>``. Loading validates through the models and reports defects as ``schema: <json path>: <message>`` lines.
+(``harness_lib.plan_models``, the one definition of its shape); its PIP (``<plan_id>_<Title>_PIP.md``, or
+``<plan_id>_<Title>_PIP.html`` for a receipts plan) is rendered from it, and the test files it plans live
+under ``<artifacts.plans>/<plan_id>/tests/<repo-relative path>``. Loading validates through the models and
+reports defects as ``schema: <json path>: <message>`` lines.
 Dumping writes a field when it was set or differs from its default, so a plan file keeps its keys and the
 freeze digest of a plan on disk survives a load and a dump.
 """
@@ -22,6 +23,7 @@ from harness_lib.plan_enums import RecordScheme
 
 PLAN_SUFFIX = "_ActionPlan.json"
 PIP_SUFFIX = "_PIP.md"
+PIP_HTML_SUFFIX = "_PIP.html"
 # Fields that change while the plan executes; everything else is fixed once the plan is frozen.
 MUTABLE_TOP = pm.mutable_top()
 MUTABLE_ITEM = pm.mutable_item()
@@ -55,11 +57,21 @@ def plan_path(plans_dir: Path, plan_id: str, slug: str) -> Path:
     return plans_dir / f"{plan_id}_{slug}{PLAN_SUFFIX}"
 
 
-def pip_path(plan_file: Path) -> Path:
-    """The PIP beside a plan file; a problem when the file name lacks the plan suffix."""
+def _beside(plan_file: Path, suffix: str) -> Path:
+    """The file beside a plan file that swaps the plan suffix for ``suffix``; a problem without one."""
     if not plan_file.name.endswith(PLAN_SUFFIX):
         raise PlanError([f"{plan_file.name} does not end with {PLAN_SUFFIX}"])
-    return plan_file.with_name(plan_file.name[: -len(PLAN_SUFFIX)] + PIP_SUFFIX)
+    return plan_file.with_name(plan_file.name[: -len(PLAN_SUFFIX)] + suffix)
+
+
+def pip_path(plan_file: Path) -> Path:
+    """The markdown PIP beside a plan file; a problem when the file name lacks the plan suffix."""
+    return _beside(plan_file, PIP_SUFFIX)
+
+
+def pip_html_path(plan_file: Path) -> Path:
+    """The HTML PIP beside a plan file; a problem when the file name lacks the plan suffix."""
+    return _beside(plan_file, PIP_HTML_SUFFIX)
 
 
 def planned_tests_dir(plans_dir: Path, plan_id: str) -> Path:
@@ -163,10 +175,13 @@ def frozen_digest(plan: pm.ActionPlan, records: Optional[RecordScheme] = None) -
     A set ``records`` scheme wraps the hashed fields as ``{"plan": ..., "records": ...}``, so removing a
     stored scheme by hand moves the digest, and a top-level ``records`` key added to the open plan cannot
     forge it (a plan's top level always carries ``plan_id``). An unset scheme leaves earlier digests as they
-    were.
+    were. Under ``receipts`` no field executes in the JSON, so every field but ``frozen`` is hashed.
     """
-    fixed: Dict[str, Any] = {k: v for k, v in plan_dict(plan).items() if k not in MUTABLE_TOP}
-    fixed["items"] = [{k: v for k, v in item.items() if k not in MUTABLE_ITEM} for item in fixed["items"]]
+    if records == RecordScheme.receipts:
+        fixed: Dict[str, Any] = {k: v for k, v in plan_dict(plan).items() if k != "frozen"}
+    else:
+        fixed = {k: v for k, v in plan_dict(plan).items() if k not in MUTABLE_TOP}
+        fixed["items"] = [{k: v for k, v in item.items() if k not in MUTABLE_ITEM} for item in fixed["items"]]
     hashed = fixed if records is None else {"plan": fixed, "records": records.value}
     canonical = json.dumps(hashed, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()

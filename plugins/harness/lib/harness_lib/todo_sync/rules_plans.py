@@ -8,7 +8,8 @@ from __future__ import annotations
 import re
 from typing import Any, Dict, List, Optional
 
-from harness_lib.plan_enums import DONE, RULES_OPEN, ItemStatus, OutcomeKind, RecordSource
+from harness_lib.plan_enums import (DONE, RULES_OPEN, ItemStatus, OutcomeKind, RecordScheme,
+                                    RecordSource)
 from harness_lib.todo_sync.pip_sections import find_section, section_key
 from harness_lib.todo_sync.report import Finding
 from harness_lib.todo_sync.sources import PlanPair, Sources, posix
@@ -55,10 +56,20 @@ def _p1_item(pair: PlanPair, item: Dict[str, Any]) -> List[Finding]:
     return []
 
 
+def _is_receipts(pair: PlanPair) -> bool:
+    """True when the plan JSON is frozen with the receipts scheme.
+
+    The JSON shape is probed, not validated, so this module stays free of pydantic.
+    """
+    data = pair.plan.data if pair.plan is not None and pair.plan.ok else None
+    frozen = data.get("frozen") if isinstance(data, dict) else None
+    return isinstance(frozen, dict) and frozen.get("records") == RecordScheme.receipts
+
+
 def _p1_pair(src: Sources, pair: PlanPair, out: List[Finding], rule: str = "P1") -> List[Finding]:
     """P1 findings of one pair; an unparseable plan is reported into ``out`` under ``rule``."""
     items = _plan_items(src, rule, pair, out)
-    if items is None or pair.pip is None:
+    if items is None or pair.pip is None or _is_receipts(pair):
         return []
     return [f for item in items for f in _p1_item(pair, item)]
 
@@ -140,6 +151,8 @@ def p4_sync_claim(src: Sources) -> List[Finding]:
     """P4: ``markdown_sync_status: in_sync`` is not claimed while P1 has an error for the plan."""
     out: List[Finding] = []
     for pair in src.plan_pairs():
+        if _is_receipts(pair):
+            continue
         p1_errors = [f for f in _p1_pair(src, pair, out, "P4") if f.severity == "error"]
         status = pair.plan.data.get("markdown_sync_status") if p1_errors else None
         if status == "in_sync":

@@ -668,7 +668,7 @@
         "pip_document": {
           "anyOf": [
             {
-              "pattern": "^docs/PLANS/.+_PIP\\.md$",
+              "pattern": "^docs/PLANS/.+_PIP\\.(md|html)$",
               "type": "string"
             },
             {
@@ -747,7 +747,8 @@
     "RecordScheme": {
       "description": "How a frozen plan's items prove their status; unset means the legacy references still pass.",
       "enum": [
-        "sealed"
+        "sealed",
+        "receipts"
       ],
       "title": "RecordScheme",
       "type": "string"

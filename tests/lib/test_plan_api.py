@@ -10,14 +10,21 @@ import pytest
 
 from harness_lib import plan_api
 from harness_lib import plan_models as pm
+from harness_lib import plan_record
 from harness_lib.plan_doc import PlanError
-from harness_lib.plan_enums import ItemStatus
+from harness_lib.plan_enums import ItemStatus, RecordScheme
 
 WALK_ROOTS = ()  # walks only the plans folder of a make_project repo
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "plan_models"
 PLANS = "docs/PLANS"
 MINIMAL, INFLIGHT = "0001_Minimal_ActionPlan.json", "0003_Inflight_ActionPlan.json"
 FULL = "0002_Full_ActionPlan.json"
+
+
+@pytest.fixture(autouse=True)
+def sealed_first_freeze(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A first freeze stores the sealed scheme, as before receipts (D3), so a plan keeps its markdown PIP."""
+    monkeypatch.setattr(plan_record, "FIRST_SCHEME", RecordScheme.sealed)
 
 
 @pytest.fixture()

@@ -32,7 +32,7 @@ from harness_lib import plan_checks as pc  # noqa: E402
 from harness_lib import plan_doc as pd  # noqa: E402
 from harness_lib import plan_models as pm  # noqa: E402
 from harness_lib.config import activate, active, load_config  # noqa: E402
-from harness_lib.plan_render import render_pip  # noqa: E402
+from harness_lib.plan_render_html import write_pip  # noqa: E402
 from harness_lib.project import project_root  # noqa: E402
 
 PlanRef = Union[str, int, Path]
@@ -144,9 +144,8 @@ def write(plan: pm.ActionPlan, repo: Repo = None) -> pm.ActionPlan:
     problems += pc.duplicate_problems(checked) if checked is not None else []
     if problems or checked is None:
         raise pd.PlanError(problems)
-    pip_text = render_pip(checked, path.name)
     pd.save_plan(path, checked)
-    pd.pip_path(path).write_text(pip_text, encoding="utf-8")
+    write_pip(path, checked)
     checked._loaded_hash = _hash(path)
     checked._loaded_path = path
     return checked
