@@ -115,9 +115,10 @@ Skills outside this plugin apply when installed.
 
 - Planning documents live under the configured `artifacts.planning_prefixes`; research notes under
   `artifacts.research`.
-- Spec or plan changes that alter the design are catalogued in a `DesignEvolution.json` beside the plan's
-  research notes, conforming to `catalogs/DesignEvolutionCatalog.schema.json` (resolved through the pinned
-  schemas first, then the plugin's). Lint, guard, helper-extraction and rename changes stay out.
+- Spec or plan changes that alter the design go to `<artifacts.plans>/NNNN/DesignEvolution.json` through
+  `evolution_api`, conforming to `catalogs/DesignEvolutionCatalog.schema.json` (resolved through the pinned
+  schemas first, then the plugin's); a receipt that differs from its item cites one of those changes. Lint,
+  guard, helper-extraction and rename changes stay out.
 
 ## Writing conventions
 

@@ -131,6 +131,14 @@ This is a worked specimen (originally produced for Issue #747's CICD-Decompose-c
 
 **`tokens`:** input + output + cache read + cache creation. Watcher rows sum them over every model request of the invocation; watcher rows from before agent-watcher 0.7.0 hold, for a foreground dispatch, the last request's count, and nothing in the row dates them. Orchestrator rows carry the reviewer's self-reported figure, or 0.
 
+### 11. `Receipt.schema.json`
+
+**Applies to:** `<artifacts.plans>/NNNN/receipts/<ITEM>.json`, the sealed outcome `plan.py record` writes beside a plan frozen with the receipt scheme.
+
+**Generated, never edited.** The pydantic models in `plugins/harness/lib/harness_lib/receipt_models.py` are the one definition of a receipt; `tools/gen_plan_schema.py` writes this file (draft 2020-12) and `tests/contract/test_evolution_receipt_schema_generated.py` fails when the committed file drifts.
+
+**Key fields:** `plan_id`, `item`, `outcome` (discriminated on `kind`: `complete` with its `provenance` and optional passed `tests`, `started`, `blocked` with a `reason`, `closed` with a `rationale`), `evidence`, `date`, `seal`, and the optional `ref` and `deviations`. `deviations` lists the `extra_files` and test `substitutions` that differ from the item, each naming the `DesignChange` that allows it, plus `change_digests` (change id -> digest of that change). The seal is the SHA-256 of the receipt without the seal and the item's planned files and tests.
+
 ---
 
 ## Catalog Schemas (`catalogs/`)
@@ -182,6 +190,14 @@ Top-level fields (required): `generated`, `generated_from` (`description`, `head
 Per-item fields: `id` (`todo-k7qf`: `todo-` plus 4 random characters of `23456789abcdefghjkmnpqrstuvwxyz` holding a digit and a letter; stable, never renamed by a re-rank, retire or split, never reused once retired), `rank` (1-based position; changes on every re-rank), `title`, `kind`, `status` (`OPEN` / `PARTIAL` / `NEEDS_DECISION` / `BLOCKED`; no terminal status: finished work leaves the file), `needs_decision` + `decision_question`, `tracker`, `sources[]` (`gh_issue` / `impl_stub` / `research_folder` / `note`, the last a local-only item with no issue, `ref` the date added), `gh_issues[]`, `related_gh_issues[]`, `catalog_entry_ids[]`, `summary`, `proposed_change`, optional `code_snippet`, `files[]`, `blast_radius`, `loe`, `impact`, `severity`, `priority` (`score`, `components`), `depends_on[]`, `unblocks[]`, `why_ranked`.
 
 Cross-record rules the schema cannot express that `todo_sync` rules T6-T10 check: unique ids absent from `retired_ids`, every `split_ids` key in `retired_ids` with each part an item or retired, ranks 1..n, `priority.score` and order recomputed with the fixed formula from the numeric `ranking_method` tables, mutual `depends_on` / `unblocks`, tracker membership, and `counts` tallies other than `sources_absorbed` and `merged_items`. Unchecked: `counts.sources_absorbed`, `counts.merged_items`, `close_candidates[].related_todo_ids` membership, and the sort order of `unblocks` and `related_todo_ids`. The `ranking_method` formula strings (`value`, `cost`, `score`, `tie_breakers`) are human-readable records; `todo_sync` never parses them. A catalog whose items still carry rank-tied `TODO-NNN` ids gets one T6 finding naming `todo_sync.py migrate-ids` (plus any duplicate ids); T1 drops the pattern errors those ids raise.
+
+### `catalogs/DesignEvolutionCatalog.schema.json`
+
+**Applies to:** `<artifacts.plans>/NNNN/DesignEvolution.json`, the design changes of one plan, written through `harness_lib.evolution_api`.
+
+**Generated, never edited.** The models in `plugins/harness/lib/harness_lib/evolution_models.py` define it and `tools/gen_plan_schema.py` writes the file; `tests/contract/test_evolution_receipt_schema_generated.py` fails on drift.
+
+**Base relationship:** Standalone, closed (`additionalProperties: false`). Plan-bound: `plan_id` (4 digits) is required, and `primary_documents` always holds the `plan`. A change carries `id` (`S`, `PR`, `P`, `EX` or `CX` plus a number), `phase`, `items[]` (the plan items it touches), `original`, `issue`, `new_outcome` and `why_new_outcome`. The `category_enums` block is gone: the issue categories are an enum in the models.
 
 ---
 
@@ -310,4 +326,5 @@ Existing artifacts validate as-is unless their schema's required-set is widened.
 ## Migration
 
 - **ActionPlan, model first (harness 0.43.0).** `prAttributes.schema.json` is retired and `ActionPlan.schema.json` is generated from the plan models. A project that pinned the old draft-07 `ActionPlan.schema.json` must drop the pin or replace it with a copy of the plugin's generated `ActionPlan.schema.json` (a consuming project never runs the generator). With only the old `ActionPlan.schema.json` pinned, the schema hook reports an unresolvable `$ref` and exits 1 (it used to exit 0 as a setup error). With the old `prAttributes.schema.json` pinned too, the pinned directory still registers it, so the `$ref` resolves and the hook keeps validating plan writes against the old draft-07 shape while `plan.py` validates through the models; drop both pins. `plan.py` ignores a pinned plan schema and validates through the models, so a project that pinned a looser `prAttributes` loses that override.
+- **Receipts and a plan-bound DesignEvolution (harness 0.66.0).** `Receipt.schema.json` is new, and `catalogs/DesignEvolutionCatalog.schema.json` is regenerated from the models: `plan_id` is required, `primary_documents` always holds the `plan`, each change lists the plan `items` it touches, and `category_enums` is removed. A `DesignEvolution.json` kept beside the research notes no longer validates; move it to `<artifacts.plans>/NNNN/DesignEvolution.json`, add the `plan_id`, and drop `category_enums`. A project that pinned the old catalog schema must drop the pin or copy the plugin's. Plans frozen from this version render the PIP as HTML with a derived `live.js` sidecar; plans frozen earlier keep their markdown PIP.
 - **Every `plan.py` command validates.** `render`, `red`, `lanes` and `record` refuse a plan that does not validate, with the same `schema:` lines `check` prints; only `check` and `freeze` did before. A plan that fails to load is the one case for a hand edit: repair the JSON, then run `plan.py check`.
