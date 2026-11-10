@@ -247,7 +247,7 @@ Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path f
 
 ### TASK-4: arc-help-pages config: the arc_help_pages section, HelpPaths and paths()
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** TASK-3.1
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** TASK-3.1
 **Files:** `plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_config.py`, `plugins/arc-straps/config/defaults.json`, `plugins/arc-straps/config/arc-straps.schema.json`, `plugins/arc-straps/README.md`, `CLAUDE.md`, `pyproject.toml`, `tools/select_tests.py`, `tests/arc/test_arc_help_pages_config.py`
 
 **Anchors:**
@@ -283,35 +283,38 @@ Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path f
 4. CLAUDE.md:12-19: the key-touch list names each section's config module; line 14 names `main_worktree` beside `project_root` (D2).
 5. pyproject.toml pythonpath (10) and pylint init-hook (27), and tools/select_tests.py DEFAULT_PYTHONPATH (73): append 'plugins/arc-straps/skills/arc-help-pages/scripts' to all three, in the same position (test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook pins them equal).
 
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_defaults_resolve_every_location` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_overrides_win` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_the_section_resolves_apart_from_arc_meta` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_checkout_root_from_a_worktree_is_the_main_checkout` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_page_href_is_the_main_checkout_uri_plus_the_repo_path` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[none]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[two]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_unknown_keys_are_refused` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[section]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[atbx]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[help_dir]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[tool_dir]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[help_dir]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[atbx]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_defaults_and_schema_carry_the_section` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_the_plugin_readme_documents_every_key` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_no_repo_reads_the_active_project` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_config.py::test_checkout_root_outside_git_falls_back_to_the_root` fails with ImportError, then passes
-- [ ] Run `python -m pytest tests/scripts/test_select_tests.py::test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook -q`: 1 passed
-- [ ] Run `python -m pytest tests/arc/test_arc_meta_config.py tests/contract/test_arc_straps_registration.py -q`: passed
-- [ ] Run `claude plugin validate --strict plugins/arc-straps`: Validation passed
-- [ ] Run `python -m pytest tests/schemas/test_schema_meta_valid.py -q`: passed
-- [ ] Record it: `plan.py record 1011 TASK-4 --sha <sha>` or `--staged`
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_defaults_resolve_every_location` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_overrides_win` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_the_section_resolves_apart_from_arc_meta` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_checkout_root_from_a_worktree_is_the_main_checkout` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_page_href_is_the_main_checkout_uri_plus_the_repo_path` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[none]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[two]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_unknown_keys_are_refused` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[section]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[atbx]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[help_dir]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[tool_dir]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[help_dir]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[atbx]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_defaults_and_schema_carry_the_section` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_the_plugin_readme_documents_every_key` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_no_repo_reads_the_active_project` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_config.py::test_checkout_root_outside_git_falls_back_to_the_root` fails with ImportError, then passes
+- [x] Run `python -m pytest tests/scripts/test_select_tests.py::test_default_pythonpath_mirrors_pyproject_and_the_pylint_hook -q`: 1 passed
+- [x] Run `python -m pytest tests/arc/test_arc_meta_config.py tests/contract/test_arc_straps_registration.py -q`: passed
+- [x] Run `claude plugin validate --strict plugins/arc-straps`: Validation passed
+- [x] Run `python -m pytest tests/schemas/test_schema_meta_valid.py -q`: passed
+- [x] Record it: `plan.py record 1011 TASK-4 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree 021d85f: 18 test node(s) passed
+
+**Recorded:** 2026-11-09, staged, tree `021d85f`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_config.py::test_defaults_resolve_every_location tests/arc/test_arc_help_pages_config.py::test_overrides_win tests/arc/test_arc_help_pages_config.py::test_the_section_resolves_apart_from_arc_meta tests/arc/test_arc_help_pages_config.py::test_checkout_root_from_a_worktree_is_the_main_checkout tests/arc/test_arc_help_pages_config.py::test_page_href_is_the_main_checkout_uri_plus_the_repo_path tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[none] tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[two] tests/arc/test_arc_help_pages_config.py::test_unknown_keys_are_refused tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[section] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[atbx] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[help_dir] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[tool_dir] tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[help_dir] tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[atbx] tests/arc/test_arc_help_pages_config.py::test_defaults_and_schema_carry_the_section tests/arc/test_arc_help_pages_config.py::test_the_plugin_readme_documents_every_key tests/arc/test_arc_help_pages_config.py::test_no_repo_reads_the_active_project tests/arc/test_arc_help_pages_config.py::test_checkout_root_outside_git_falls_back_to_the_root`
 
 ### TASK-5: arc-help-pages models and source: the records and the canonical/archive reader
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** TASK-4
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** TASK-4
 **Files:** `plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_models.py`, `plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_source.py`, `tests/arc/_arc_help_project.py`, `tests/arc/test_arc_help_pages_source.py`
 
 **Anchors:**
@@ -330,17 +333,20 @@ Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path f
 1. New arc_help_pages_models.py (standard library and pydantic only; frozen, extra='forbid', as arc_meta_models._MODEL_CONFIG): HelpError(ValueError); FragmentError(HelpError); ParamKind(str, Enum) REQUIRED='Required', OPTIONAL='Optional', DERIVED='Derived'; HelpProblemCode(str, Enum) in spec order help_page_stale, help_page_unlinked, fragment_invalid, link_target_missing, link_outside_checkout, then link_relative (D9); ParamDoc(name, displayname, type: ParamKind, direction: str, datatype: str, reference_html: str); ToolDoc(name, displayname, summary, alias, params: List[ParamDoc]); Fragment(page, tool, body); HelpProblem(code, subject, detail); HelpOutcome(page, changed, applied, lines).
 2. New arc_help_pages_source.py: has_tool(tool, repo=None) is True when <tool_dir>/<Tool>.xml exists and the archive holds <Tool>.tool/tool.content. tool_doc(tool, repo=None) -> ToolDoc: the canonical XML read as UTF-8 (HelpError when absent, undecodable or malformed, as arc_meta_canonical.load refuses); displayname from <tool displayname>; summary = whitespace-collapsed plain text of <summary> (tags stripped, entities decoded); params in tool.content 'params' key order (member decoded by the UTF-16/UTF-8-sig rule of arc_meta_archive.decode, re-implemented), each matched to the canonical <param name> exactly; a tool.content param without one raises HelpError naming it (D8); canonical params absent from tool.content are left out. ParamDoc attributes come from the canonical <param>; reference_html is CDATA text as-is, each <para> as '<p>' + html-escaped itertext + '</p>' (D1: readers unchanged; arc-meta's check_canonical reports <para> markup), '' when the field holds no text. alias = toolbox.content JSON 'alias' ('' when absent). Imports nothing from arc-meta.
 
-- [ ] Test `tests/arc/test_arc_help_pages_source.py::test_tool_doc_reads_the_canonical_text_and_the_archive_alias` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_source.py::test_params_follow_tool_content_order_not_the_canonical_order` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_source.py::test_param_doc_carries_the_canonical_attributes_and_reference_html` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_source.py::test_a_tool_content_param_missing_from_the_canonical_xml_is_refused` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_source.py::test_a_tool_needs_both_its_canonical_xml_and_its_archive_entry` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_source.py::test_records_are_frozen_and_forbid_extra_keys` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_source.py::test_problem_codes_spell_the_spec_values` fails with ImportError, then passes
-- [ ] Run `python -m ruff check plugins/arc-straps tests/arc`: All checks passed!
-- [ ] Record it: `plan.py record 1011 TASK-5 --sha <sha>` or `--staged`
+- [x] Test `tests/arc/test_arc_help_pages_source.py::test_tool_doc_reads_the_canonical_text_and_the_archive_alias` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_source.py::test_params_follow_tool_content_order_not_the_canonical_order` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_source.py::test_param_doc_carries_the_canonical_attributes_and_reference_html` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_source.py::test_a_tool_content_param_missing_from_the_canonical_xml_is_refused` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_source.py::test_a_tool_needs_both_its_canonical_xml_and_its_archive_entry` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_source.py::test_records_are_frozen_and_forbid_extra_keys` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_source.py::test_problem_codes_spell_the_spec_values` fails with ImportError, then passes
+- [x] Run `python -m ruff check plugins/arc-straps tests/arc`: All checks passed!
+- [x] Record it: `plan.py record 1011 TASK-5 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree bde5885: 7 test node(s) passed
+
+**Recorded:** 2026-11-09, staged, tree `bde5885`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_source.py::test_tool_doc_reads_the_canonical_text_and_the_archive_alias tests/arc/test_arc_help_pages_source.py::test_params_follow_tool_content_order_not_the_canonical_order tests/arc/test_arc_help_pages_source.py::test_param_doc_carries_the_canonical_attributes_and_reference_html tests/arc/test_arc_help_pages_source.py::test_a_tool_content_param_missing_from_the_canonical_xml_is_refused tests/arc/test_arc_help_pages_source.py::test_a_tool_needs_both_its_canonical_xml_and_its_archive_entry tests/arc/test_arc_help_pages_source.py::test_records_are_frozen_and_forbid_extra_keys tests/arc/test_arc_help_pages_source.py::test_problem_codes_spell_the_spec_values`
 
 ### TASK-6: arc-help-pages build: fragment parsing, template fill, Parameters, syntax, nav, apply_help
 

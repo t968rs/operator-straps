@@ -4,5 +4,10 @@
     "tool_dir": "tool_metadata/tools",
     "toolbox_source": null,
     "registry": null
+  },
+  "arc_help_pages": {
+    "atbx": null,
+    "tool_dir": "tool_metadata/tools",
+    "help_dir": "tool_metadata/tool_help"
   }
 }

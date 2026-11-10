@@ -562,8 +562,43 @@
       "dependencies": [
         "TASK-3.1"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 021d85f: 18 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "021d85f2817fa7855c579c79935caee4a72a2ad9"
+          },
+          "tests": {
+            "nodes": [
+              "tests/arc/test_arc_help_pages_config.py::test_defaults_resolve_every_location",
+              "tests/arc/test_arc_help_pages_config.py::test_overrides_win",
+              "tests/arc/test_arc_help_pages_config.py::test_the_section_resolves_apart_from_arc_meta",
+              "tests/arc/test_arc_help_pages_config.py::test_checkout_root_from_a_worktree_is_the_main_checkout",
+              "tests/arc/test_arc_help_pages_config.py::test_page_href_is_the_main_checkout_uri_plus_the_repo_path",
+              "tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[none]",
+              "tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[two]",
+              "tests/arc/test_arc_help_pages_config.py::test_unknown_keys_are_refused",
+              "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[section]",
+              "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[atbx]",
+              "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[help_dir]",
+              "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[tool_dir]",
+              "tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[help_dir]",
+              "tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[atbx]",
+              "tests/arc/test_arc_help_pages_config.py::test_defaults_and_schema_carry_the_section",
+              "tests/arc/test_arc_help_pages_config.py::test_the_plugin_readme_documents_every_key",
+              "tests/arc/test_arc_help_pages_config.py::test_no_repo_reads_the_active_project",
+              "tests/arc/test_arc_help_pages_config.py::test_checkout_root_outside_git_falls_back_to_the_root"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_config.py::test_defaults_resolve_every_location tests/arc/test_arc_help_pages_config.py::test_overrides_win tests/arc/test_arc_help_pages_config.py::test_the_section_resolves_apart_from_arc_meta tests/arc/test_arc_help_pages_config.py::test_checkout_root_from_a_worktree_is_the_main_checkout tests/arc/test_arc_help_pages_config.py::test_page_href_is_the_main_checkout_uri_plus_the_repo_path tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[none] tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[two] tests/arc/test_arc_help_pages_config.py::test_unknown_keys_are_refused tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[section] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[atbx] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[help_dir] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[tool_dir] tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[help_dir] tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[atbx] tests/arc/test_arc_help_pages_config.py::test_defaults_and_schema_carry_the_section tests/arc/test_arc_help_pages_config.py::test_the_plugin_readme_documents_every_key tests/arc/test_arc_help_pages_config.py::test_no_repo_reads_the_active_project tests/arc/test_arc_help_pages_config.py::test_checkout_root_outside_git_falls_back_to_the_root"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "8e46eb1907ad52e0e28014ff86fefaeb07cdeac6a51f99074e7673efd24022ce"
+      },
       "notes": "PR B is TASK-4 to TASK-9 (D10 = split_pr). It starts after the Gate passes in the consuming project's plan (1666 TASK-7.1): the developer follows the link from the '?' page in Pro (spec, Gate section). If the Gate fails, TASK-4 to TASK-9 are recorded --blocked and the design is revisited. The planned test files under docs/plans/1011/tests/ match the git-ignore rule docs/plans/**/*.py, so they live only in the checkout that wrote them: start PR B from that checkout, or copy them into PR B's worktree before TASK-4.",
       "model": "sonnet",
       "anchors": [
@@ -762,8 +797,32 @@
       "dependencies": [
         "TASK-4"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree bde5885: 7 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "bde5885a4887dc1b97fb17ec00ae7d18b12b2c33"
+          },
+          "tests": {
+            "nodes": [
+              "tests/arc/test_arc_help_pages_source.py::test_tool_doc_reads_the_canonical_text_and_the_archive_alias",
+              "tests/arc/test_arc_help_pages_source.py::test_params_follow_tool_content_order_not_the_canonical_order",
+              "tests/arc/test_arc_help_pages_source.py::test_param_doc_carries_the_canonical_attributes_and_reference_html",
+              "tests/arc/test_arc_help_pages_source.py::test_a_tool_content_param_missing_from_the_canonical_xml_is_refused",
+              "tests/arc/test_arc_help_pages_source.py::test_a_tool_needs_both_its_canonical_xml_and_its_archive_entry",
+              "tests/arc/test_arc_help_pages_source.py::test_records_are_frozen_and_forbid_extra_keys",
+              "tests/arc/test_arc_help_pages_source.py::test_problem_codes_spell_the_spec_values"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_source.py::test_tool_doc_reads_the_canonical_text_and_the_archive_alias tests/arc/test_arc_help_pages_source.py::test_params_follow_tool_content_order_not_the_canonical_order tests/arc/test_arc_help_pages_source.py::test_param_doc_carries_the_canonical_attributes_and_reference_html tests/arc/test_arc_help_pages_source.py::test_a_tool_content_param_missing_from_the_canonical_xml_is_refused tests/arc/test_arc_help_pages_source.py::test_a_tool_needs_both_its_canonical_xml_and_its_archive_entry tests/arc/test_arc_help_pages_source.py::test_records_are_frozen_and_forbid_extra_keys tests/arc/test_arc_help_pages_source.py::test_problem_codes_spell_the_spec_values"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "9bd0a74634c6ef7667af30db746768a63e9ea2fb22381678ca3af0751dd084b1"
+      },
       "model": "sonnet",
       "anchors": [
         {

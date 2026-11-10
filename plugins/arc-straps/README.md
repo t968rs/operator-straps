@@ -54,7 +54,9 @@ claude plugin install arc-straps@operator-straps
   `harness_lib.plugin_config.plugin_section`, which merges this plugin's `config/defaults.json` under the
   project's `plugins.arc-straps` section and validates it against `config/arc-straps.schema.json`.
 - `harness_lib.project.project_root`, which resolves a `repo` argument inside a subfolder to its project
-  before `paths(repo)` loads that project's configuration.
+  before `paths(repo)` loads that project's configuration, and `harness_lib.project.main_worktree`, which
+  gives `arc-help-pages` the main checkout of the repository (the checkout a development href names) from a
+  linked worktree.
 
 Its tests follow the marketplace conventions: `tests/<area>/test_<name>.py` one level deep, consuming projects
 built with `make_project`, never a live checkout. `strap-skills` cannot target this plugin yet, so its
@@ -92,10 +94,26 @@ points inside the project.
 }
 ```
 
-The skill prints the resolved locations with `print(paths())`. A new key touches `config/defaults.json`,
-`config/arc-straps.schema.json`, `ArcMetaPaths`, `paths()` and the type checks in `_meta()` in
-`arc_meta_config.py` (a nullable path also joins `_OPTIONAL`; without `jsonschema` those checks are the only
-type validation), and this table; harness files do not change.
+The `arc-meta` skill prints the resolved locations with `print(paths())`. A new key touches
+`config/defaults.json`, `config/arc-straps.schema.json`, `ArcMetaPaths`, `paths()` and the type checks in
+`_meta()` in `arc_meta_config.py` (a nullable path also joins `_OPTIONAL`; without `jsonschema` those checks
+are the only type validation), and this table; harness files do not change. An `arc_help_pages` key touches the
+same two config files, `HelpPaths`, `paths()` and `_section()` with its `_OPTIONAL` tuple in
+`arc_help_pages_config.py`, and the `arc_help_pages` table below.
+
+### arc_help_pages
+
+`plugins.arc-straps.arc_help_pages` configures `arc-help-pages` and resolves apart from `arc_meta`: it has its
+own defaults, its own type checks (`_section()` in `arc_help_pages_config.py`) and its own archive lookup, so
+setting one section never changes the other. Paths follow the same rules as above. `paths()` also returns the
+checkout the call runs in (`root`) and the main checkout of its repository (`checkout_root`, from
+`harness_lib.project.main_worktree`; the project root itself outside git).
+
+| Key | Default | Meaning |
+|---|---|---|
+| `atbx` | `null` | Toolbox archive (`.atbx`). `null` means the one `.atbx` at the project root; none or several there is a config error naming this key |
+| `tool_dir` | `tool_metadata/tools` | Folder of canonical per-tool help XML, `<Tool>.xml` |
+| `help_dir` | `tool_metadata/tool_help` | Folder of the tracked help pages, `<Tool>.html` |
 
 ## Apply writes
 
