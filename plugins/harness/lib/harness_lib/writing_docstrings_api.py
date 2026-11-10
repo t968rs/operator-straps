@@ -41,6 +41,8 @@ _LABEL = re.compile(r"^\s*[A-Z][A-Za-z ]*:\s*$", re.MULTILINE)
 _SINGLE_TICK = re.compile(r"(?<!`)`(?!`)[^`\n]+?(?<!`)`(?!`)")
 #: A full-layout ``Parameters`` header, colon or not (a dashed underline must follow it).
 _PARAMS_HEADER = re.compile(r"^\s*Parameters:?\s*$")
+#: A section label, colon or not, as it sits above a dashed underline.
+_HEADER_LABEL = re.compile(r"^\s*[A-Z][A-Za-z ]*:?\s*$")
 #: The start of a ``name: (type) Description`` item, up to the opening parenthesis of the type.
 _PARAM_ITEM = re.compile(r"^( *)(\*{0,2}[A-Za-z_]\w*): \(")
 _CITATION = re.compile(r"report Section|PR #\d+|\(Section \d|\b[ICM]\d{1,2}\b:")
@@ -235,7 +237,7 @@ def _full_flags(raw: Sequence[str], first: int) -> List[str]:
     """
     lines = _strip_closing(raw)
     flags = []
-    widths = [first + i for i in _short_underlines(lines)]
+    widths = [first + i for i in _mismatched_underlines(lines)]
     if widths:
         flags.append(f"underline-width={widths}")
     params = [first + i for header, section in _param_sections(lines)
@@ -258,7 +260,7 @@ def _indent(line: str) -> int:
     return len(line) - len(line.lstrip())
 
 
-def _short_underlines(lines: Sequence[str]) -> List[int]:
+def _mismatched_underlines(lines: Sequence[str]) -> List[int]:
     """Index of each dashed underline below a label whose width differs from the label's, colon included."""
     return [i for i in range(1, len(lines)) if _DASHES.match(lines[i]) and _LABEL.match(lines[i - 1])
             and len(lines[i].strip()) != len(lines[i - 1].strip())]
@@ -266,11 +268,11 @@ def _short_underlines(lines: Sequence[str]) -> List[int]:
 
 def _is_header(lines: Sequence[str], i: int) -> bool:
     """True when ``lines[i]`` is a label (colon or not) with a dashed underline below it."""
-    return i + 1 < len(lines) and bool(lines[i].strip()) and bool(_DASHES.match(lines[i + 1]))
+    return i + 1 < len(lines) and bool(_HEADER_LABEL.match(lines[i])) and bool(_DASHES.match(lines[i + 1]))
 
 
 def _param_sections(lines: Sequence[str]) -> Iterator[Tuple[int, List[int]]]:
-    """``(header, items)`` per dashed ``Parameters`` section, colon or not: the header's index and the
+    """``(header, section)`` per dashed ``Parameters`` section, colon or not: the header's index and the
     indexes below its underline up to a blank line, a label, another header or the end."""
     for i in range(len(lines) - 1):
         if not (_PARAMS_HEADER.match(lines[i]) and _DASHES.match(lines[i + 1])):

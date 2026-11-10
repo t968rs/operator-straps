@@ -255,9 +255,7 @@ def test_the_full_layout_labels_are_known() -> None:
 
 
 def test_numpy_style_parameter_items_are_flagged_by_line() -> None:
-    flags = _flags(_NUMPY_PARAMS)
-    assert "param-format=[6, 7, 8, 9, 10, 11]" in flags
-    assert "separator-line" in flags
+    assert _flags(_NUMPY_PARAMS) == ["separator-line", "param-format=[6, 7, 8, 9, 10, 11]"]
 
 
 def test_parameter_descriptions_in_different_columns_are_flagged() -> None:

@@ -74,13 +74,18 @@ before a word of it is written. The convention is
    Each line reports `lines=`, `forks=`, `suggest=`, `current=` and any flags (`long-lines`, `single-backticks`,
    `citation`, `section-order`, `unknown-label`, `misaligned`, `blank`, `separator-line`, `underline-width`,
    `param-format`). `unknown-label` names a label outside the convention (`Args:`, `Logic:`); `misaligned` is a
-   line indented left of the opening `"""`. `underline-width` lists dashed underlines not as wide as their
-   label, colon included. `param-format` lists the lines of a dashed `Parameters` section (colon or not) that
+   line indented left of the opening `"""`. `underline-width` lists dashed underlines whose width differs
+   from their label, colon included (shorter or wider). `param-format` lists the lines of a dashed `Parameters` section (colon or not) that
    are not `name: (type) Description` items 4 spaces past the header, with every description in one column and
-   continuation lines at that column: a numpy-style `name: type` with its description below is rewritten into
-   that shape, even in a docstring kept in the full layout. The line limit is the project's `docstrings.line_length` (default 110). A one-line brief
+   continuation lines at that column: a numpy-style `name : type` with its description below is rewritten into
+   that shape, even in a docstring kept in the full layout. A numpy-style docstring flagged this way is
+   restyled whole: every section (`Returns` and `Raises` bodies included) takes the full layout's shape, an
+   exception to byte for byte.
+   The line limit is the project's `docstrings.line_length` (default 110). A one-line brief
    (`"""Summary."""`) is fine; a docstring that is blank or only separator characters is not, nor is a
-   separator-only line anywhere except the dashed underline under a full-layout label.
+   separator-only line anywhere except the dashed underline under a full-layout label. A `separator-line`
+   under a label without its colon (numpy's `Parameters` over `----------`) is fixed by adding the colon and
+   matching the underline to the label's width, never by deleting the underline.
 
 2. **Answer "1, 2 or 3?" for each symbol**, as one line in the reply:
    `<symbol>: tier <n> - <lines> lines, <forks> forks; <reason>`. The line never goes into the file. The first
@@ -160,7 +165,8 @@ section start in one column, and a continuation line starts at that column.
 
 - **Symbols** take double backticks (` ``name`` `); single backticks only in `#` comments.
 - **Line length:** the project's `docstrings.line_length` (default 110), indentation included; a long item
-  continues at its own indentation.
+  continues at its own indentation; a full-layout `Parameters` description continues at its description
+  column.
 - **Citations** (report sections, PR numbers, review IDs such as "I2:", plan or spec references) are dropped
   from the docstring and from comments in the same body; the rule they annotate stays.
 - **Accuracy:** every item is checked against the body. A defect the body shows (a counter that drifts, an

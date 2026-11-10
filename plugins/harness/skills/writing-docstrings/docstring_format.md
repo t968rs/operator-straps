@@ -171,7 +171,7 @@ its colon. Sections are separated by one blank line.
 
 ### Parameters
 
-Each parameter is one item, indented 4 spaces past the header: `param_name: (type)  Description.`
+Each parameter is one item, indented 4 spaces past the header: `param_name: (type) Description.`
 
 - The type is in parentheses, inline with the name.
 - The description starts on the item's own line, never on the line below the name.
@@ -251,7 +251,7 @@ interpreted text, which renders as italics; they belong in `#` comments, which n
 
 Every line, indentation included, fits the project's configured docstring line length
 (`docstrings.line_length`, default 110). A long intro is shortened; a long item continues on the next line at the
-item's own indentation.
+item's own indentation, except a full-layout `Parameters` description, which continues at its description column.
 
 ### Separator lines
 
@@ -277,9 +277,11 @@ research-doc references. The rule or reason a citation annotated is stated on it
 
 A line the tier command flags (a long line, a citation, single backticks) changes even in a docstring kept as
 is, and only as far as the flag requires; every other line stays byte for byte. A dashed docstring in another
-style (numpy's `Parameters` over `----------`, `name: type` with the description below) reads as full: its
-header gets `separator-line` or `underline-width` and its parameter lines `param-format`, and those lines are
-rewritten into the full layout's shape.
+style (numpy's `Parameters` over `----------`, `name : type` with the description below) reads as full: its
+header gets `separator-line` or `underline-width` and its parameter lines `param-format`. Such a docstring is
+restyled whole, an exception to the byte-for-byte rule: every section takes the full layout's shape, including
+the `Returns` and `Raises` bodies the command does not flag (numpy's `int` with the description below becomes
+`int: Description.` on one line).
 
 Content carried into a restyled docstring keeps its meaning; every item is checked against the body.
 
@@ -294,8 +296,8 @@ Content carried into a restyled docstring keeps its meaning; every item is check
 | Compact: `Notes:` before another section                 | `Notes:` last                                                |
 | Compact sections on a no-fork, single-purpose helper     | Brief                                                        |
 | Full layout on a short function                          | Compact                                                      |
-| Full: `Parameters` without colon, or a short underline   | `Parameters:` over an underline as wide, colon included      |
-| Full: `name: type`, its description on the line below    | `name: (type)  Description.` on one line                     |
+| Full: `Parameters` without colon, or underline mis-sized | `Parameters:` over an underline as wide, colon included      |
+| Full: `name : type`, its description on the line below   | `name: (type) Description.` on one line                      |
 | Full: descriptions starting in different columns         | One description column for the whole section                 |
 | `Returns` naming only the success value                  | Add the empty / False / None path                            |
 | Sphinx (`:param x:`) or Google (`Args:`) style           | Not used                                                     |
