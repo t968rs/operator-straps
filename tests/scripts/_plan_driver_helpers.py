@@ -15,6 +15,9 @@ from typing import Any, Callable, Dict, List, Tuple
 import pytest
 from conftest import git
 
+from harness_lib import plan_record
+from harness_lib.plan_enums import RecordScheme
+
 WALK_ROOTS = ()  # walks only tmp_path/trees and a make_project repo
 Result = Tuple[int, str, str]
 Run = Callable[..., Result]
@@ -38,6 +41,15 @@ def driver(plugin_root: Path) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.fixture()
+def sealed_first_freeze(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A first freeze stores the sealed scheme, as before receipts (D3), so the plan keeps its markdown PIP.
+
+    Suites written for the sealed and legacy schemes bind it as an autouse fixture.
+    """
+    monkeypatch.setattr(plan_record, "FIRST_SCHEME", RecordScheme.sealed)
 
 
 @pytest.fixture()

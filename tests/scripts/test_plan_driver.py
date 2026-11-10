@@ -21,8 +21,14 @@ from _plan_driver_helpers import (PLANS, SUB_TEST, Run, plan_file, read_plan, tr
                                   write_plan)
 
 driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
+sealed_first_freeze = helpers.sealed_first_freeze
 WALK_ROOTS = ()  # walks only a make_project repo and tmp_path/trees
 Fill = Callable[..., Dict[str, Any]]
+
+
+@pytest.fixture(autouse=True)
+def _sealed_first(sealed_first_freeze: None) -> None:
+    """Every test here runs with a first freeze storing the sealed scheme (D3)."""
 
 
 def sub_item(**extra: Any) -> Dict[str, Any]:
