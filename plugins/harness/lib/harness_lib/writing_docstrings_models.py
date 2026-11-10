@@ -32,7 +32,7 @@ SECTION_ORDER = ("Operation", "Tries", "Columns", "Rules", "Returns", "Raises", 
 KNOWN_LABELS = SECTION_ORDER + ("Parameters", "Example")
 #: Flag names a report row can carry, in the order they are checked.
 FLAG_NAMES = ("long-lines", "single-backticks", "citation", "section-order", "unknown-label", "misaligned",
-              "blank", "separator-line")
+              "blank", "separator-line", "underline-width", "param-format")
 
 
 class Tier(str, Enum):

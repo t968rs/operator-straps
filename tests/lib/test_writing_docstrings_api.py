@@ -149,19 +149,85 @@ _FULL = '''def f(x):
 
     Parameters:
     -----------
-    x : int
-        The value.
+        x: (int)                            The value.
+        name: (Optional[str], default None) The label, when one is given (its
+                                            casing kept).
 
     Returns:
     --------
-    int
-        ``x``
+    int: ``x``.
 
     Example:
     --------
-    >>> f(1)
+        f(1)
     """
     return x
+'''
+
+#: The docstring of issue 246: numpy-style items, the description on the line below each name.
+_NUMPY_PARAMS = '''def rasterize(vector_path, output_file, target_crs):
+    """
+         Rasterize a polygon.
+         Parameters
+         ----------
+         vector_path: list or str
+         Path(s) to the input file(s).
+         output_file: str
+         Path to the output file.
+         target_crs: str or int
+         Target coordinate system (EPSG code or WKT).
+    """
+    return output_file
+'''
+
+_UNALIGNED_PARAMS = '''def f(vector_path, out):
+    """
+    Writes a raster.
+
+    Parameters:
+    -----------
+        vector_path: (list or str) Path(s) to the input file(s).
+        out: (str) Path to the output file.
+    """
+    return out
+'''
+
+_ALIGNED_PARAMS = '''def f(vector_path, out, target_crs):
+    """
+    Writes a raster.
+
+    Parameters:
+    -----------
+        vector_path: (list or str)     Path(s) to the input file(s).
+        out: (str)                     Path to the output file.
+        target_crs: (str or int)       Target coordinate system (EPSG code or WKT).
+                                       Without one, the snap spec's reference gives it.
+    """
+    return out
+'''
+
+_OFF_COLUMN = '''def f(out, target_crs):
+    """
+    Writes a raster.
+
+    Parameters:
+    -----------
+        out: (str)                Path to the output file.
+        target_crs: (str or int)  Target coordinate system.
+            Without one, the snap spec's reference gives it.
+    """
+    return out
+'''
+
+_SHORT_UNDERLINE = '''def f(out):
+    """
+    Writes a raster.
+
+    Parameters:
+    ----------
+        out: (str) Path to the output file.
+    """
+    return out
 '''
 
 _ARGS = '''def f(x):
@@ -186,6 +252,32 @@ def test_an_aligned_compact_docstring_has_no_flags() -> None:
 
 def test_the_full_layout_labels_are_known() -> None:
     assert _flags(_FULL) == []
+
+
+def test_numpy_style_parameter_items_are_flagged_by_line() -> None:
+    assert _flags(_NUMPY_PARAMS) == ["separator-line", "param-format=[6, 7, 8, 9, 10, 11]"]
+
+
+def test_parameter_descriptions_in_different_columns_are_flagged() -> None:
+    assert _flags(_UNALIGNED_PARAMS) == ["param-format=[7, 8]"]
+
+
+def test_aligned_parameter_items_and_continuations_have_no_flags() -> None:
+    assert _flags(_ALIGNED_PARAMS) == []
+
+
+def test_a_continuation_off_the_description_column_is_flagged() -> None:
+    assert _flags(_OFF_COLUMN) == ["param-format=[9]"]
+
+
+def test_an_underline_narrower_than_its_label_is_flagged() -> None:
+    assert _flags(_SHORT_UNDERLINE) == ["underline-width=[6]"]
+
+
+def test_a_parameter_type_with_nested_parentheses_and_a_parenthesized_description() -> None:
+    source = ('def f(x):\n    """\n    Sets it.\n\n    Parameters:\n    -----------\n'
+              '        x: (Tuple[int, int] (pair)) The value (in m) then more.\n    """\n    return x\n')
+    assert _flags(source) == []
 
 
 def test_a_label_outside_the_convention_is_flagged() -> None:
@@ -270,7 +362,8 @@ def test_compact_labels_out_of_order_are_flagged() -> None:
 
 
 def test_the_emitted_flags_are_exactly_the_listed_flag_names() -> None:
-    fixtures = (_MISALIGNED, _ALIGNED, _FULL, _ARGS, _SINGLE_TICK, _OUT_OF_ORDER,
+    fixtures = (_MISALIGNED, _ALIGNED, _FULL, _ARGS, _SINGLE_TICK, _OUT_OF_ORDER, _NUMPY_PARAMS,
+                _SHORT_UNDERLINE,
                 'def f():\n    """I2: keeps the order stable."""\n',
                 'def f():\n    """Sets a flag.\n\n    ======\n    """\n', 'def f():\n    """ """\n')
     names = {flag.split("=", 1)[0] for source in fixtures for flag in _flags(source, max_line=20)}
