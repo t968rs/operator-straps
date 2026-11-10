@@ -56,17 +56,17 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 49,
+    "items": 50,
     "needs_decision": 30,
     "trackers": 0,
     "close_candidates": 24,
     "by_status": {
       "NEEDS_DECISION": 30,
-      "OPEN": 19
+      "OPEN": 20
     },
     "by_impact": {
       "dev_velocity": 27,
-      "docs_tooling": 18,
+      "docs_tooling": 19,
       "maintainability": 1,
       "runtime_failure": 3,
       "data_correctness": 0
@@ -74,12 +74,12 @@
     "by_loe": {
       "XS": 4,
       "S": 16,
-      "M": 21,
+      "M": 22,
       "L": 7,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 49,
+      "gh_issue": 50,
       "impl_stub": 0,
       "research_folder": 0
     },
@@ -167,8 +167,8 @@
       ],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "writing-docstrings produces parameter sections in the numpy shape: a 'Parameters' header over '----------', each 'name: type' on its own line and its description on the line below, unindented. The target is 'name: (type)' with the description on the same line, every description starting in one column and continuation lines at that column. Checked: the committed rule at plugins/harness/skills/writing-docstrings/docstring_format.md:174 already required 'param_name: (type) Description.' on one line, so the output broke a stated rule the tier command did not flag (unverified which step let it through). The working tree of branch 1147-BUG-writing-docstrings carries an uncommitted fix: docstring_format.md:174-190 adds the one-column rule and the issue's example, plus a restyle rule for a numpy-style dashed docstring and three anti-pattern rows; plugins/harness/lib/harness_lib/writing_docstrings_api.py:232-244 adds underline-width and param-format flags; tests/lib/test_writing_docstrings_api.py, plugins/harness/agents/docstring-writer.md and plugins/harness/lib/harness_lib/writing_docstrings_models.py also changed. Not yet committed or merged.",
-      "proposed_change": "Finish and land the 1147-BUG-writing-docstrings branch: the param-format and underline-width flags in writing_docstrings_api.py, the full-layout Parameters rules in docstring_format.md, the docstring-writer agent text, and tests that a numpy-style block (the issue's rasterize example) is flagged and rewritten to 'name: (type)  Description.' with one description column. Then close #246 against that PR.",
+      "summary": "writing-docstrings produces parameter sections in the numpy shape: a 'Parameters' header over '----------', each 'name: type' on its own line and its description on the line below, unindented. The target is 'name: (type)' with the description on the same line, every description starting in one column and continuation lines at that column. Checked: the committed rule at plugins/harness/skills/writing-docstrings/docstring_format.md:174 already required 'param_name: (type) Description.' on one line, so the output broke a stated rule the tier command did not flag (unverified which step let it through). The fix is committed on branch 1147-BUG-writing-docstrings (PR #253; commits 93501ec and cef5d4a): docstring_format.md:174-190 adds the one-column rule and the issue's example, plus a restyle rule for a numpy-style dashed docstring and three anti-pattern rows; plugins/harness/lib/harness_lib/writing_docstrings_api.py:231-245 (_full_flags) adds underline-width and param-format flags; tests/lib/test_writing_docstrings_api.py, plugins/harness/agents/docstring-writer.md and plugins/harness/lib/harness_lib/writing_docstrings_models.py also changed. Closes #246 on merge of PR #253.",
+      "proposed_change": "Land PR #253 from the committed 1147-BUG-writing-docstrings branch: the param-format and underline-width flags in writing_docstrings_api.py, the full-layout Parameters rules in docstring_format.md, the docstring-writer agent text, and tests that a numpy-style block (the issue's rasterize example) is flagged. The rewrite to 'name: (type)  Description.' with one description column is agent behavior that no test covers. Then close #246 against that PR.",
       "files": [
         "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
         "plugins/harness/lib/harness_lib/writing_docstrings_models.py",
@@ -2370,8 +2370,61 @@
       "why_ranked": "Severity 2 missing route with a concrete cost (memos written by hand), docs_tooling impact, M size."
     },
     {
-      "id": "todo-t72u",
+      "id": "todo-66qe",
       "rank": 39,
+      "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
+      "kind": "bug",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#254",
+          "url": "https://github.com/t968rs/operator-straps/issues/254"
+        }
+      ],
+      "gh_issues": [
+        254
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Raised as finding M4 (minor, bubbled) of the PR 253 review, recorded in docs/PR_REVIEWS/0253_bug_writing_docstrings.json on branch 1147-BUG-writing-docstrings (per the session; not re-read at research level 0). The recorded runs R-14, R-15 and R-16 in docs/plans/strap/writing-docstrings/SkillSpec.json store the worktree root, an absolute local path, in their run `tree` and in their reply text (per the session; the spec file exists, the stored content was not read). A standing project rule says tracked logs and rows never carry local or absolute paths, so the recorder breaks that rule on every run it records. The code locations (strap.py record-run and the harness_lib strap API behind it) were not checked: unverified.",
+      "proposed_change": "Change the strap recorder (strap.py record-run and the harness_lib strap API behind it) so that it stores the run `tree` relative to the configured worktree_root and redacts that root from recorded replies before hashing. Tracked spec files then never carry machine paths. Existing rows R-14, R-15 and R-16 stay as they are: editing a recorded reply breaks its hash pin, so they keep their absolute paths and are out of scope. Add a test that records a run under a temporary worktree root and asserts no absolute root appears in the stored tree or reply.",
+      "files": [
+        "docs/plans/strap/writing-docstrings/SkillSpec.json"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "The change is confined to the strap recorder's output for new runs; existing rows are pinned and not rewritten. Consumers were not researched at level 0.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Two code paths (tree relativising and reply redaction before hashing) plus a regression test; code locations unverified, so the estimate is a best guess."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.6,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.6,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 for a missing guard that leaks machine paths into tracked records, impact docs_tooling since it sits in strap run records outside the shipped paths, and size M for a recorder change with a test."
+    },
+    {
+      "id": "todo-t72u",
+      "rank": 40,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -2425,7 +2478,7 @@
     },
     {
       "id": "todo-6za3",
-      "rank": 40,
+      "rank": 41,
       "title": "strap-scenario-runner: a dispatching scenario must still record its run",
       "kind": "skill",
       "status": "OPEN",
@@ -2480,7 +2533,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 41,
+      "rank": 42,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2536,7 +2589,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 42,
+      "rank": 43,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -2596,7 +2649,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 43,
+      "rank": 44,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2651,7 +2704,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 44,
+      "rank": 45,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2708,7 +2761,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 45,
+      "rank": 46,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2761,7 +2814,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 46,
+      "rank": 47,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2816,7 +2869,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 47,
+      "rank": 48,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -2874,7 +2927,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 48,
+      "rank": 49,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -2929,7 +2982,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 49,
+      "rank": 50,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",

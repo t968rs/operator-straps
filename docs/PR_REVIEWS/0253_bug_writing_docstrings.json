@@ -1,0 +1,413 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 253,
+  "pr_title": "bug writing docstrings",
+  "branch": "1147-BUG-writing-docstrings",
+  "base_branch": "main",
+  "base_sha": "2c15aead1ea76d26a60c09dce874ce4dd1359952",
+  "head_sha": "e281ef4496f8bf6fe7a5a6e47d9d0e2e55aa5b03",
+  "review_date": "2026-11-09",
+  "verdict": "READY TO MERGE - 13 of 13 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1071,
+    "deletions": 668,
+    "files_changed": 12,
+    "source": {
+      "additions": 1064,
+      "deletions": 668,
+      "files_changed": 11
+    }
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0253/pr253_20261110T005953Z/findings/tests.json",
+    "docs/_scratch/pr_review/0253/pr253_20261110T005953Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0253/pr253_20261110T005953Z/findings/docs.json",
+    "docs/_scratch/pr_review/0253/pr253_20261110T005953Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0253/pr253_20261110T005953Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "All six new tests are behavioral: each parses a synthetic function and asserts the real docstring_flags output, with no stubs or mock chains.",
+    "Exact-list assertions on the param-format and underline-width line numbers match a trace of _full_flags, _bad_param_lines and _short_underlines, so the line-number contract is pinned.",
+    "The aligned fixture with a continuation, the off-column continuation, the nested-parenthesis item and the issue-246 numpy case cover both the positive and negative sides of the new rules.",
+    "test_the_emitted_flags_are_exactly_the_listed_flag_names was extended with the new fixtures, so FLAG_NAMES stays in step with the flags actually emitted.",
+    "The _FULL fixture was rewritten to the new full layout and still asserts no flags, which guards the layout the docs describe.",
+    "Line numbers in underline-width and param-format are computed from the docstring's own source lines (first + index into raw), matching how long-lines already reports, so the agent gets exact source lines to fix.",
+    "_close_paren matches balanced parentheses, so nested types such as (Optional[Tuple(int)], default None) find the right closing paren and an unclosed type falls out as off-shape instead of crashing.",
+    "_bad_param_lines states its four rules in a Rules block and the loop implements each one directly (item indent, same-line description, continuation column, a line after an off-shape line is off-shape, uniform column across items).",
+    "FLAG_NAMES gains underline-width and param-format in the same order docstring_flags appends them, keeping the 'in the order they are checked' contract and the set-equality test intact.",
+    "Colonless numpy-style headers are routed correctly: _param_sections accepts them for param-format while the existing separator-line check flags the header, as docstring_format.md describes.",
+    "The new full-layout Parameters example in docstring_format.md:184-189 passes the code's own rules: the underline is as wide as 'Parameters:', items sit 4 spaces past the header, and every description and continuation starts at column 40.",
+    "The agent and format prose for `param-format` match `_param_sections`, `_item_column` and `_bad_param_lines`: a dashed header with or without the colon, items 4 spaces past the header, one description column, and continuations at that column.",
+    "The claim that a dashed numpy docstring 'reads as full' (docstring_format.md:279-282) matches `current_layout`, which returns FULL for any dashed underline.",
+    "The SkillSpec records green retests R-14 to R-16 on the new skill hash and refreezes the spec with the hash and driver digest updated together.",
+    "The new full-layout Parameters example (docstring_format.md:183-190) obeys its own rule: every description and the continuation line start at the same column (40), one or more spaces past the longest `name: (type)`.",
+    "Flag names in the restyle paragraph (`separator-line`, `underline-width`, `param-format`) match FLAG names in writing_docstrings_models.py:35 and the agent's flag list, with no orphan or renamed references.",
+    "The 'reads as full' claim matches the code: `current_layout` returns FULL for any dashed underline, and `_param_sections` accepts `Parameters` with or without the colon, as the doc and agent both state.",
+    "The rule '4 spaces past the header' is the exact check in `_full_flags` (header indent + 4), a tighter statement than the old 'indented 4 spaces'.",
+    "The new anti-pattern rows map one to one onto the three new checks (underline width, description on the line below, mixed description columns).",
+    "FLAG_NAMES gains both flags and the exhaustive-names test adds _NUMPY_PARAMS and _SHORT_UNDERLINE, so a flag emitted without being listed (or listed without being emitted) still fails.",
+    "Tests are behavioral and exact: they run docstring_flags on real source, use the issue's own rasterize docstring, and pin the flagged line numbers.",
+    "_close_paren matches nested parentheses and has a test with a nested type and a parenthesized description, the case a naive regex would get wrong.",
+    "Code, convention, agent, README row, version bump and release notes move in lockstep; the existing contract test on agent flag names covers the two new flags.",
+    "The new helpers are small single-purpose functions with docstrings that state their exact rules."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "v0.7.1 notes omit the arc-straps minor bump that the v0.7.0 tag does not contain",
+        "file": "docs/RELEASES/v0.7.1.md",
+        "files": [
+          "docs/RELEASES/v0.7.1.md",
+          "docs/RELEASES/v0.7.0.md"
+        ],
+        "lines": "1-12",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "docs/RELEASES/v0.7.1.md says 'Since v0.7.0. Patch' and lists arc-straps under Unchanged. The published v0.7.0 release tag (local and remote) points at 3a27082 (#250), where arc-straps is 0.2.0. The merge base 2c15aea (#251, arc-help-pages) bumps arc-straps 0.2.0 -> 0.3.0, so `git diff v0.7.0 <head> -- plugins/*/.claude-plugin/plugin.json` shows both arc-straps and harness changed. The project release rule makes any minor bump since the latest tag a minor release, so the next version is v0.8.0, not v0.7.1. v0.7.0.md lists #251 and arc-straps 0.3.0, but the tag it describes does not hold them.",
+        "fix": [
+          "Rename the file to docs/RELEASES/v0.8.0.md, retitle it '# v0.8.0 (proposed)', change line 3 to 'Since `v0.7.0`. Minor: arc-straps bumped its minor version and harness its patch version.', add the row '| arc-straps | 0.2.0 | 0.3.0 |', drop arc-straps from the Unchanged list, and add a '#251 Feature(arc-straps): `arc-help-pages` skill' line under Changes.",
+          "If the developer means v0.7.0 to include #251, move the v0.7.0 tag and release to 2c15aea (the developer's call). The v0.7.1 notes are then correct as written."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Continuation rule contradicts itself across the convention and the agent",
+        "file": "plugins/harness/skills/writing-docstrings/docstring_format.md",
+        "files": [
+          "plugins/harness/skills/writing-docstrings/docstring_format.md",
+          "plugins/harness/agents/docstring-writer.md"
+        ],
+        "lines": "253-254",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The PR adds the rule that a Parameters description continues at the description column (docstring_format.md:181, docstring-writer.md:156-157), and `_bad_param_lines` flags any continuation off that column as `param-format`. The same two files still tell the writer the opposite in their line-length rules: docstring_format.md:253-254 says 'a long item continues on the next line at the item's own indentation' and docstring-writer.md:162-163 (All tiers) says 'a long item continues at its own indentation'. A writer that follows the line-length rule on a long full-layout parameter produces exactly the line the tier command then flags; the docs now argue with the code and with themselves.",
+        "fix": [
+          "Scope the line-length sentence in docstring_format.md:253-254 and docstring-writer.md:162-163 to non-parameter items, e.g. 'a long item continues at its own indentation; a full-layout Parameters description continues at its description column'."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release note change line lacks the PR number the other notes lead with",
+        "file": "docs/RELEASES/v0.7.1.md",
+        "lines": "16",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Each change line in docs/RELEASES/v0.7.0.md opens with its PR number ('- #251 Feature(arc-straps): ...'). The v0.7.1 line opens with 'Fix(writing-docstrings): ...' and names only issue #246, so it does not link to PR #253 that lands it.",
+        "fix": [
+          "Change docs/RELEASES/v0.7.1.md:16 to '- #253 Fix(writing-docstrings): full-layout parameter format (issue #246). ...'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Release note's last bullet ends mid-thought",
+        "file": "docs/RELEASES/v0.7.1.md",
+        "lines": "20",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "docs/RELEASES/v0.7.1.md:20 ends 'The convention aligns every description of a section in one column' with no period and no mention of the continuation-at-column rule, reading like a sentence that lost its tail. This file becomes the GitHub release body verbatim.",
+        "fix": [
+          "Finish the sentence: 'The convention aligns every description of a section in one column, and a continuation line starts at that column.'"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "TODO item for #246 still says the fix is uncommitted",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "170-171",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "The todo-p52r summary (docs/TODO/RepoToDo.json:170) says the branch 'carries an uncommitted fix' and ends 'Not yet committed or merged', and cites writing_docstrings_api.py:232-244 where `_full_flags` now sits at 231-245. At this head the fix is committed. The proposed_change (line 171) also promises tests that the block is 'flagged and rewritten', while the tests only cover flagging; the rewrite is agent behavior no test or strap scenario exercises.",
+        "fix": [
+          "Update the todo-p52r summary and proposed_change through todo-edit to describe the committed state (fix on branch 1147-BUG-writing-docstrings, PR #253, close #246 on merge) with the current line range, and drop the 'and rewritten' claim or point it at a strap scenario."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "New strap run records carry absolute machine paths",
+        "file": "docs/plans/strap/writing-docstrings/SkillSpec.json",
+        "lines": "760-844",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "R-14 to R-16 in docs/plans/strap/writing-docstrings/SkillSpec.json add the 'tree' field and reply text with a user-profile absolute worktree path (C:/Users/<user>/.config/harness/worktrees/...). This is a tracked file. Earlier runs in the same file follow the same pattern, so the source is the strap recorder, but this PR adds three more rows that carry it.\n\nAlso (roast): R-14, R-15 and R-16 in SkillSpec.json (lines ~761-835) store `tree` as `C:/Users/<user>/.config/harness/worktrees/...` and the replies embed the same absolute path in the dispatch prompt. The tracked spec now carries a local user path three more times. Earlier runs (R-13 and before) do the same, so the cause is the strap recorder, not this branch's hands.",
+        "fix": [
+          "Open a follow-up so the strap recorder stores the worktree as a path relative to `worktree_root` (or drops it) and redacts the root from recorded replies. Leave these rows as recorded, since their reply_sha256 pins the reply text.",
+          "Have the strap run recorder store `tree` relative to the worktree root (or as the worktree's name) and redact the root from `reply`; open an issue for it if out of scope for this PR."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "underline-width is described as a short underline, but the code flags any width mismatch",
+        "file": "plugins/harness/agents/docstring-writer.md",
+        "files": [
+          "plugins/harness/agents/docstring-writer.md",
+          "plugins/harness/skills/writing-docstrings/docstring_format.md",
+          "docs/RELEASES/v0.7.1.md",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+          "tests/lib/test_writing_docstrings_api.py"
+        ],
+        "lines": "77,80-83",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "`_short_underlines` (plugins/harness/lib/harness_lib/writing_docstrings_api.py:261-264) flags an underline whose width differs from its label in either direction (`!=`). The prose says only short ones are flagged. docstring-writer.md:77 says 'not as wide as their label', the anti-pattern row at docstring_format.md:297 says 'a short underline', and the release note says 'not as wide as its label'. A too-long underline gets flagged with no matching rule in the anti-pattern table.\n\nAlso (docs): In a numpy header ('Parameters' over '----------'), the label has no colon, so `_LABEL` does not match it. The code then flags the underline as `separator-line`, not `underline-width`. The agent prose at docstring-writer.md:82-83 says only that a separator-only line is not allowed except under a full-layout label. The fix is to add the colon and match the width (docstring_format.md:279-282 and 297), but that guidance is in the format document, and the agent reads that document only for tier 3. A kept full docstring flagged this way can lose its underline instead of gaining the colon.\n\nAlso (roast): `_short_underlines` (writing_docstrings_api.py:261-264) flags an underline whose width differs from its label, wider ones included, which matches the Section headers rule ('as wide as the header'). The prose describing the flag says otherwise: docstring-writer.md:77 'not as wide as their label', the anti-pattern row docstring_format.md:297 'a short underline', release notes v0.7.1.md:19 'not as wide as its label', and the only test is named for a narrower underline. A reader expecting only short underlines gets surprised by a flag on a long one; the function name is the only thing telling the truth, and it lies too.",
+        "fix": [
+          "Make the prose say any mismatch. At docstring-writer.md:77 write 'dashed underlines whose width differs from their label, colon included'. At docstring_format.md:297 change 'or a short underline' to 'or an underline of another width'. Make the same change in the v0.7.1 release note change line.",
+          "Append to docstring-writer.md line 83 one sentence such as: 'A `separator-line` under a label without its colon (numpy's `Parameters` over `----------`) is fixed by adding the colon and matching the underline to the label's width, never by deleting the underline.'",
+          "Reword the three descriptions to 'an underline whose width differs from its label, colon included', rename `_short_underlines` to `_mismatched_underlines`, and add a test with an underline wider than its label.",
+          "Or, if only short underlines should flag, change the comparison at writing_docstrings_api.py:264 to `<` and update the function docstring."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Unwrapped prose line in the agent's Measure step",
+        "file": "plugins/harness/agents/docstring-writer.md",
+        "lines": "81",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "docstring-writer.md:81 runs about 147 characters ('that shape, even in a docstring kept in the full layout. The line limit is ... A one-line brief'). The edit joined two wrapped lines, while the rest of the file wraps at 110.\n\nAlso (skill_package): docstring-writer.md:81 was extended without rewrapping and runs to about 150 characters, while the surrounding paragraph and the rest of the file wrap at 110 like the skill's own prose.",
+        "fix": [
+          "Rewrap lines 80-83 at 110 columns, breaking after 'full layout.' so 'The line limit is the project's `docstrings.line_length` (default 110). A one-line brief' starts its own line.",
+          "Rewrap the paragraph at docstring-writer.md:74-83 to 110 columns."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "_is_header treats any non-empty line over dashes as a header, not a label as documented",
+        "file": "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+        "lines": "267-269,280",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The docstring of _is_header (line 268) says it is true when lines[i] is a label (colon or not) with a dashed underline below it, but the code (line 269) only checks that the line is non-empty. _param_sections (line 280) uses it to end a Parameters section, so a description or continuation line that happens to sit over a dashed line ends the section early and the items after it are never checked for param-format. Probe: a section whose continuation line 'table below' is followed by a dashed line, then an item 'c: (Optional[str], default None) Third.' in a different column, reports only separator-line; the off-column item escapes param-format. The separator-line flag still fires, so the miss is partial, but the docstring and the code disagree.",
+        "fix": [
+          "Make _is_header match its docstring: require the line to be label-shaped, e.g. `re.match(r\"^\\s*[A-Z][A-Za-z ]*:?\\s*$\", lines[i])`, before checking the dashed line below it.",
+          "Or end the section by indentation instead of shape: break when `_indent(lines[j]) <= _indent(lines[header])` (pass the header indent into the loop), and reword the _is_header docstring to 'a non-empty line with a dashed underline below it'."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "_param_sections docstring names the second tuple element 'items' though it holds every section line",
+        "file": "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+        "lines": "273-274",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The docstring at line 273 describes the yield as ``(header, items)``, but the second element (the local `section`, line 278) holds every line index under the underline, continuation lines included, not only the items; _bad_param_lines then tells items from continuations itself. The trailing clause ('the indexes below its underline') is correct, so only the tuple name misleads.",
+        "fix": [
+          "Rename the tuple in the docstring to ``(header, lines)`` or ``(header, section)`` so it matches the local name and the content."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Parameter item template shows two spaces, examples show one",
+        "file": "plugins/harness/skills/writing-docstrings/docstring_format.md",
+        "files": [
+          "plugins/harness/skills/writing-docstrings/docstring_format.md",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py"
+        ],
+        "lines": "174,297-298",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The new rule template at docstring_format.md:174 and the anti-pattern fix at :298 write `param_name: (type)  Description.` with two spaces before the description, while the full-layout Structure block (:143-144) and Reference block (:218-219) use one space. The rule text (:179-180, 'at least one space past the longest') and the code (`_item_column`, writing_docstrings_api.py:296-306, which accepts any run of spaces) allow both. A reader of the template can take the double space as required and pad every item, which disagrees with the document's own examples.\n\nAlso (skill_package): The new row at docstring_format.md:297 names 'a short underline' as the anti-pattern. `_short_underlines` (writing_docstrings_api.py:261-264) flags any underline whose width differs from the label's (`!=`), so a long underline is flagged too. The Section headers rule (:169-170, 'as wide as the header') is right; the row narrows it.",
+        "fix": [
+          "Use one space in the template at :174 and in the anti-pattern row at :298 (`param_name: (type) Description.`), matching the Structure and Reference examples and the agent text.",
+          "Or keep two spaces and add a note under :174 that the gap is any width of at least one space, set by the longest item.",
+          "Reword the row at :297 to 'Full: `Parameters` without colon, or an underline wider or narrower than its label'."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Restyled numpy docstrings end up half converted",
+        "file": "plugins/harness/skills/writing-docstrings/docstring_format.md",
+        "files": [
+          "plugins/harness/skills/writing-docstrings/docstring_format.md",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py",
+          "plugins/harness/agents/docstring-writer.md"
+        ],
+        "lines": "194-199,278-282,298",
+        "reviewer": "skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docstring_format.md:278-282 says a numpy-style dashed docstring reads as full, its flagged header and parameter lines are rewritten into the full layout's shape, and every other line stays byte for byte. The tier command (writing_docstrings_api.py:213-245) only flags the separator under a colon-less header (`separator-line`), the underline width and the `Parameters` items. A numpy `Returns` / `Raises` body (`int` on one line, the description indented below it) is never flagged, so after the restyle the header becomes `Returns:` over `--------` while its body keeps the numpy shape, which contradicts the Returns rule at docstring_format.md:194 (`TypeName: Description.` on one line). The new paragraph promises a full-layout result that the byte-for-byte rule then blocks for every section except Parameters.\n\nAlso (skill_package): docstring_format.md:280 gives numpy's parameter shape as `name: type` with the description below. numpy style puts a space before the colon (`name : type`). Both forms fail `_PARAM_ITEM` (writing_docstrings_api.py:45) and are flagged, so behavior is fine, but the attribution is off and a reader looking for the numpy form may miss it.\n\nAlso (roast): docstring_format.md:279-282 states that a numpy-style dashed docstring 'reads as full' and that its flagged lines are rewritten into the full layout's shape. Only the headers (`separator-line`) and Parameters items (`param-format`) are flagged; a numpy `Returns` body (`int` on one line, the description indented below) or numpy `Raises` body carries no flag, and the kept-as-is rule (docstring_format.md:278-279, docstring-writer.md:61-62) leaves those lines byte for byte. The re-run then reports no flags on a docstring whose Returns section is still numpy, so the agent's own Check line certifies a hybrid.",
+        "fix": [
+          "Extend the paragraph at docstring_format.md:279-282 so that once a numpy section header is flagged, the section body under it (Returns, Raises) is also rewritten into the full layout's shape, and say this is an exception to the byte-for-byte rule.",
+          "Or add a flag in writing_docstrings_api.py for a full-layout `Returns` / `Raises` body that does not match `TypeName: Description.` / `ExcType: condition`, list it in the agent's flag list, and name it in this paragraph.",
+          "Write the example as `name : type` (or `name: type` / `name : type`) at :280 and in the anti-pattern row at :298.",
+          "State in docstring_format.md:279-282 that a docstring flagged with numpy-shaped Parameters is restyled whole (every section into the full layout), and mirror it in docstring-writer.md:78-81.",
+          "Or extend `_full_flags` with a Returns/Raises item-shape check (`Type: Description` on one line) and a test using the issue's docstring with a numpy Returns section."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "numpy-style test asserts membership, not the exact flag list",
+        "file": "tests/lib/test_writing_docstrings_api.py",
+        "files": [
+          "tests/lib/test_writing_docstrings_api.py",
+          "plugins/harness/lib/harness_lib/writing_docstrings_api.py"
+        ],
+        "lines": "257-282",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_numpy_style_parameter_items_are_flagged_by_line checks 'param-format=[...]' and 'separator-line' with `in`, while its sibling tests pin the whole list with `==`. Tracing the implementation, _NUMPY_PARAMS yields exactly ['param-format=[6, 7, 8, 9, 10, 11]', 'separator-line'], so an unexpected extra flag (for example a spurious underline-width or unknown-label on the unlabeled 'Parameters' header) would pass unnoticed.\n\nAlso (tests): Every new fixture opens its docstring on line 2, so the `first + i` line arithmetic in _full_flags never runs with another offset. The suite also has no case for a closing triple quote glued to the last item line (_strip_closing cuts it), for an item whose type parenthesis is never closed (_item_column returns None), for a `*args` or `**kwargs` item (the `\\*{0,2}` part of _PARAM_ITEM), or for CRLF source with the new flags (the only CRLF test uses a docstring with no sections).",
+        "fix": [
+          "Assert `_flags(_NUMPY_PARAMS) == [\"param-format=[6, 7, 8, 9, 10, 11]\", \"separator-line\"]`.",
+          "Add small cases: a method inside a class or a function after other statements (offset lines), a docstring ending `...file.\"\"\"` on the last item line, an item `x: (int Description` with an unclosed paren, a `**kwargs: (dict) ...` item, and a CRLF copy of _UNALIGNED_PARAMS."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I1",
+      "classification": "out_of_scope",
+      "reason": "v0.7.0 tags 3a27082 (#250), one before #251; retag at 2c15aea keeps v0.7.1 correct, else next is v0.8.0. Tags are the developer's call."
+    },
+    {
+      "id": "M4",
+      "classification": "needs_follow_up",
+      "reason": "Paths come from the strap run recorder; R-14..R-16 are hash-pinned and API-only. Fix the recorder (relative tree, redact root) as a follow-up."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 253 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":5,\"first_sha\":\"93501ecd31d375e27c649ac8429776f18fce49d8\",\"headRefName\":\"1147-BUG-writing-docstrings\",\"headRefOid\":\"e281ef4496f8bf6fe7a5a6e47d9d0e2e55aa5b03\",\"last_sha\":\"e281ef4496f8bf6fe7a5a6e47d9d0e2e55aa5b03\",\"mergeCommit\":null,\"number\":253,\"state\":\"OPEN\",\"title\":\"bug writing docstrings\",\"url\":\"https://github.com/t968rs/operator-straps/pull/253\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1147-BUG-writing-docstrings",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1147-BUG-writing-docstrings",
+        "head_ref_name": "1147-BUG-writing-docstrings",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "93501ecd31d375e27c649ac8429776f18fce49d8",
+        "head_sha": "e281ef4496f8bf6fe7a5a6e47d9d0e2e55aa5b03",
+        "base_ancestor_command": "git merge-base --is-ancestor 93501ecd31d375e27c649ac8429776f18fce49d8 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor e281ef4496f8bf6fe7a5a6e47d9d0e2e55aa5b03 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - _is_header now requires a label-shaped line (new _HEADER_LABEL, colon optional) above the dashed line, matching its docstring, so a lowercase continuation over dashes no longer ends a Parameters section"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - _param_sections docstring names the tuple (header, section), matching the local name and its content"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - Template at Parameters and the anti-pattern correct form use one space before the description; the anti-pattern row now says 'underline mis-sized' instead of 'a short underline'; writing_docstrings_api.py: cited only, _item_column and _short_underlines already behave as the doc now states"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - numpy-style test pins the whole flag list with ==; writing_docstrings_api.py: cited only, implementation unchanged by this issue"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - Line-length rule scoped: a long item continues at its own indentation except a full-layout Parameters description, which continues at its description column; Scoped the All-tiers line-length rule at docstring-writer.md:162-164: a long item continues at its own indentation, and a full-layout Parameters description continues at its description column. The matching docstring_format.md:253-254 edit belongs to the other part's fixer."
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - Rewrapped the Measure-step paragraph at docstring-writer.md:80-83 so 'that shape, even in a docstring kept in the full layout.' ends its line and the line-limit sentence starts its own line, all under 110 columns."
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - Prefixed the v0.7.1 change line with the PR number (#253) so it leads like the v0.7.0 entries."
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - Finished the last sentence with the continuation-at-column rule and a period."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - todo-p52r summary now states the fix is committed on 1147-BUG-writing-docstrings (PR #253; 93501ec, cef5d4a), cites _full_flags at writing_docstrings_api.py:231-245, and says it closes #246 on merge; proposed_change drops the 'and rewritten' test claim and notes the rewrite is agent behavior no test covers"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - Prose now says any width mismatch: docstring-writer.md flag list ('width differs from their label, colon included (shorter or wider)') and the v0.7.1 change line; docstring-writer.md adds that a separator-line under a colon-less label is fixed by adding the colon and matching the width, never by deleting the underline; _short_underlines renamed _mismatched_underlines. docstring_format.md: already present, anti-pattern row reads 'underline mis-sized'; test file: the existing narrower-underline test still covers the flag, no edit needed"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - docstring_format.md Existing-docstrings paragraph now says a numpy-style dashed docstring is restyled whole, Returns/Raises bodies included, as an exception to byte for byte; numpy form written as 'name : type' there and in the anti-pattern row; docstring-writer.md flag list mirrors the restyle-whole rule and the 'name : type' form. writing_docstrings_api.py: cited only, no new flag added (prose option chosen)"
+    },
+    {
+      "id": "I1",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (working-tree snapshot; developer commits) - closed, no action: Developer decision: v0.7.0 is retagged at 2c15aea (the merge of #251), so v0.7.0 holds the arc-straps 0.3.0 bump and the v0.7.1 notes are correct as written; the retag is the developer's to run"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "e281ef4 (developer-confirmed defer) - Developer deferred: the strap recorder fix (store tree relative to worktree_root, redact the root from recorded replies) is out of scope for this PR; rows R-14 to R-16 stay as recorded under their hash pins; todo-66qe, GitHub issue #254"
+    }
+  ]
+}
