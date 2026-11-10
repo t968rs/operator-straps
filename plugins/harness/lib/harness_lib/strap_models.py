@@ -330,7 +330,13 @@ class CheckResult(BaseModel):
 
 
 class Run(BaseModel):
-    """One scenario run on one arm; ``tree`` and ``start`` locate the working tree the run used."""
+    """One scenario run on one arm; ``tree`` and ``start`` locate the working tree the run used.
+
+    ``tree`` is relative to the configured worktree root (older runs hold an absolute path), and ``reply``
+    holds placeholders in place of the machine roots ``strap_api._machine_paths`` lists (the run tree, the
+    worktree root, the project, the main checkout, the plugin root and the home folder). ``checks`` come
+    from the reply before that redaction, so a ``reply_*`` check sees the paths the runner wrote.
+    """
 
     model_config = _MODEL_CONFIG
 

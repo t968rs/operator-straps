@@ -2,10 +2,13 @@
 
 Pins the spec location under ``artifacts.plans/strap/<name>/SkillSpec.json``, the validating factories,
 id assignment (``B<n>`` per spec, ``SC-<n>`` unique across the spec), the refusals of ``update_behavior``
-(driver-owned fields, frozen specs), ``drop_behavior``, ``record_run`` (once only, reply sha256), the
-``grade`` refusals, the driver-digest tamper refusal and that a refused operation leaves the file
-byte-for-byte unchanged. Specs are seeded through ``strap_models`` and ``dump_spec`` directly, with
-``driver_digest`` set from ``driver_digest``, so no test depends on ``strap.py``.
+(driver-owned fields, frozen specs), ``drop_behavior``, ``record_run`` (once only, machine paths
+replaced by placeholders before the reply sha256: run tree, worktree root, project, main checkout, plugin
+root, home), ``run_tree`` and ``tree_name`` (a tree relative to the worktree root, a legacy absolute tree
+kept as is, a tree outside the root refused), the ``grade`` refusals, the driver-digest tamper refusal and
+that a refused operation leaves the file byte-for-byte unchanged. Specs are seeded through ``strap_models``
+and ``dump_spec`` directly, with ``driver_digest`` set from ``driver_digest``, so no test depends on
+``strap.py``.
 
 Amendments pinned here: the exact ``__all__`` (D8), the drawn-scenario lock (D10), ``add_part`` (D14),
 the session-grade refusal on a judge spec (D16), and ``remove_part`` with what a frozen spec still takes:
@@ -250,6 +253,65 @@ def test_record_run_refuses_recorded_run(project: Path) -> None:
     with pytest.raises(StrapError, match="R-2 already recorded"):
         record_run(NAME, "R-2", "again")
     assert path.read_bytes() == before
+
+
+@pytest.fixture()
+def rooted(make_project, tmp_path: Path) -> Path:
+    """A project whose worktree root is ``tmp_path/trees``, seeded with R-1 placed at ``plan-red-1234567``."""
+    trees = (tmp_path / "trees").as_posix()
+    root = make_project(config={"artifacts": {"plans": PLANS}, "worktree_root": trees})
+    activate(load_config(root))
+    path = _seed(root)
+    spec = load_spec(path)
+    runs = [spec.runs[0].model_copy(update={"tree": "plan-red-1234567"}), spec.runs[1]]
+    _write(root, spec.model_copy(update={"runs": runs}))
+    return root
+
+
+def test_run_tree_resolves_under_the_worktree_root(rooted: Path, tmp_path: Path) -> None:
+    run = load_spec(_file(rooted)).runs[0]
+    assert strap_api.run_tree(run) == tmp_path / "trees" / "plan-red-1234567"
+    assert strap_api.run_tree(run.model_copy(update={"tree": ""})) is None
+
+
+def test_run_tree_keeps_an_absolute_tree(rooted: Path, tmp_path: Path) -> None:
+    old = (tmp_path / "elsewhere" / "plan-red-1234567").resolve()
+    run = load_spec(_file(rooted)).runs[0].model_copy(update={"tree": old.as_posix()})
+    assert strap_api.run_tree(run) == old
+
+
+def test_tree_name_is_relative_to_the_worktree_root(rooted: Path, tmp_path: Path) -> None:
+    assert strap_api.tree_name(tmp_path / "trees" / "plan-red-1234567") == "plan-red-1234567"
+    with pytest.raises(StrapError, match="not under the worktree root"):
+        strap_api.tree_name(tmp_path / "elsewhere")
+
+
+def test_record_run_redacts_machine_paths_before_hashing(rooted: Path, tmp_path: Path) -> None:
+    tree = (tmp_path / "trees" / "plan-red-1234567").resolve()
+    windows = str(tree).replace("/", "\\")
+    reply = (f"Scope: {tree.as_posix()}/src/pool.py\nAlso {windows}\\src\\pool.py\n"
+             f"Root: {rooted.resolve().as_posix()}/README.md\nTrees: {(tmp_path / 'trees').as_posix()}/x\n")
+    spec = record_run(NAME, "R-1", reply)
+    stored = spec.runs[0].reply
+    assert stored == ("Scope: <tree>/src/pool.py\nAlso <tree>\\src\\pool.py\n"
+                      "Root: <project>/README.md\nTrees: <worktree_root>/x\n"), stored
+    assert spec.runs[0].reply_sha256 == hashlib.sha256(stored.encode("utf-8")).hexdigest()
+
+
+def test_record_run_redacts_main_checkout_plugin_root_and_home(rooted: Path, tmp_path: Path,
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    main, home = (tmp_path / "main").resolve(), (tmp_path / "home").resolve()
+    plugin = (tmp_path / "plugins" / "harness").resolve()
+    monkeypatch.setattr(strap_api, "main_worktree", lambda start: main)
+    monkeypatch.setattr(strap_api, "plugin_root", lambda: plugin)
+    monkeypatch.setattr(Path, "home", staticmethod(lambda: home))
+    reply = (f"Main: {main.as_posix()}/.git/worktrees/x\nLauncher: {plugin.as_posix()}/scripts/hpy\n"
+             f"Home: {home.as_posix()}/notes.txt\nRoot: {rooted.resolve().as_posix()}/README.md\n")
+    spec = record_run(NAME, "R-1", reply)
+    stored = spec.runs[0].reply
+    assert stored == ("Main: <main>/.git/worktrees/x\nLauncher: <plugin>/scripts/hpy\n"
+                      "Home: ~/notes.txt\nRoot: <project>/README.md\n"), stored
+    assert spec.runs[0].reply_sha256 == hashlib.sha256(stored.encode("utf-8")).hexdigest()
 
 
 def test_grade_appends_with_normalized_quote(project: Path) -> None:

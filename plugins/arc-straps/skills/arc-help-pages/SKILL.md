@@ -38,9 +38,12 @@ All of it lives in the project, under `help_dir` (default `tool_metadata/tool_he
 - `img/`: images the fragments reference.
 
 The build fills the generated sections from the canonical XML and `tool.content`: the Parameters table in
-dialog order with its reference text ("No description." when a parameter has none), and the one-line Python
-syntax with optional parameters in braces and derived outputs listed after it. The nav lists each section by
+dialog order with its reference text ("No description." when a parameter has none), and the Python syntax:
+`import arcpy`, `arcpy.ImportToolbox(r"<folder>\<archive file>")` (the toolbox alias exists in arcpy only
+after that call; the archive is named by file only, so the page names no path), then the call with optional
+parameters in braces, a note on the alias, and the derived outputs. The nav lists each section by
 its `id` and `<h2>` in page order. A rebuild of unchanged sources is byte-identical at any checkout root.
+Since every page names the archive file, renaming the archive stales every page until each is rebuilt.
 
 ## Link contract
 
@@ -134,6 +137,7 @@ PY
 | `check_links` reports `link_relative` | Replace the href with the development href of the page. |
 | `check_links` reports `link_outside_checkout` | The href names another checkout, a path outside the repository, a drive or rooted path, or is malformed; replace it with the development href. |
 | `check_help_page` reports `help_page_stale` after an apply | Another source changed since: rebuild; a refusal naming the canonical XML or the archive is fixed there, not in the page. |
+| `check_help_page` reports `help_page_stale` with no source changed | A plugin update or an archive rename changed the generated sections: rebuild with `apply_help(page, apply=True)`. |
 | The page is current but `help_page_unlinked` | Add the development href to the tool's canonical XML and apply it with `arc-meta`. |
 
 ## Hand off

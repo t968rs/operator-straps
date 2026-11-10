@@ -158,15 +158,29 @@ def _parameters_section(doc: ToolDoc) -> str:
             "</tbody></table></section>")
 
 
-def _syntax_section(doc: ToolDoc) -> str:
-    """The one-line call in ``tool.content`` order, optional parameters braced, derived outputs after it."""
+def _syntax_code(doc: ToolDoc) -> str:
+    """``import arcpy``, the ``ImportToolbox`` line naming the archive file under a ``<folder>`` stand-in,
+    then the call in ``tool.content`` order with optional parameters braced; escaped for ``<code>``."""
     args = [f"{{{p.name}}}" if p.type is ParamKind.OPTIONAL else p.name
             for p in doc.params if p.type is not ParamKind.DERIVED]
-    call = escape(f"arcpy.{doc.alias}.{doc.name}({', '.join(args)})")
+    lines = ["import arcpy", f'arcpy.ImportToolbox(r"<folder>\\{doc.archive}")',
+             f"arcpy.{doc.alias}.{doc.name}({', '.join(args)})"]
+    return escape("\n".join(lines), quote=False)
+
+
+def _syntax_section(doc: ToolDoc) -> str:
+    """The import and call lines, a note on the alias and the folder stand-in, then the derived outputs.
+
+    ``arcpy.<alias>`` exists only once ``arcpy.ImportToolbox`` has loaded the archive, so the call alone
+    would read as part of arcpy. The archive is named by file only, keeping the page free of paths.
+    """
+    note = (f"<p><code>ImportToolbox</code> adds the tools of {escape(doc.archive)} to arcpy under the "
+            f"toolbox alias <code>{escape(doc.alias)}</code>; &lt;folder&gt; stands for the folder that "
+            "holds it.</p>")
     derived = [f"<code>{escape(p.name)}</code>" for p in doc.params if p.type is ParamKind.DERIVED]
     tail = f"<p>Derived output: {', '.join(derived)}</p>" if derived else ""
     return (f'<section class="panel" id="syntax"><h2>Python syntax</h2>'
-            f"<pre><code>{call}</code></pre>{tail}</section>")
+            f"<pre><code>{_syntax_code(doc)}</code></pre>{note}{tail}</section>")
 
 
 # --- page -----------------------------------------------------------------------------------------------

@@ -438,6 +438,29 @@ def test_record_run_stores_reply_and_drops_tree(started: str, piped: Callable[..
     assert not Path(started).exists()
 
 
+@pytest.mark.cross_os
+def test_run_stores_the_tree_relative_to_the_worktree_root(started: str, project: Path,
+                                                            tmp_path: Path) -> None:
+    [run] = read_spec(project)["runs"]
+    assert not Path(run["tree"]).is_absolute() and "/" not in run["tree"], run["tree"]
+    assert (tmp_path / "trees" / run["tree"]).resolve() == Path(started).resolve()
+
+
+@pytest.mark.cross_os
+def test_record_run_keeps_machine_paths_out_of_the_spec(started: str, piped: Callable[..., Result],
+                                                         project: Path) -> None:
+    windows = str(Path(started)).replace("/", "\\")
+    reply = f"Scope: {started}/ledger.md\nAgain: {windows}\\ledger.md\nRoot: {root_posix(project)}\n"
+    ok(piped(reply, "record-run", NAME, "--run", "R-1"))
+    text = spec_path(project).read_text(encoding="utf-8")
+    assert Path(started).name in text
+    trees = Path(started).parent
+    for machine in (started, root_posix(project), trees.as_posix(), str(trees)):
+        assert machine not in text and machine.replace("\\", "\\\\") not in text, machine
+    [run] = read_spec(project)["runs"]
+    assert run["reply"] == "Scope: <tree>/ledger.md\nAgain: <tree>\\ledger.md\nRoot: <project>\n"
+
+
 # --- retest and freeze ------------------------------------------------------------------------------------
 
 @pytest.mark.cross_os

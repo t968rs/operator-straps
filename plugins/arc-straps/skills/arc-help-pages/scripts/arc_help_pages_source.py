@@ -1,8 +1,9 @@
 """arc-help-pages source: what a help page is built from, read from the canonical XML and the archive.
 
 The canonical XML (``<tool_dir>/<Tool>.xml``) gives the title, the summary and each parameter's attributes
-and text; the archive gives the parameter order (``<Tool>.tool/tool.content``) and the toolbox alias
-(``toolbox.content``). Locations come from ``arc_help_pages_config.paths``; refusals raise ``HelpError``.
+and text; the archive gives the parameter order (``<Tool>.tool/tool.content``), the toolbox alias
+(``toolbox.content``) and its own file name, with no folder. Locations come from
+``arc_help_pages_config.paths``; refusals raise ``HelpError``.
 Imports only the standard library and the sibling config and models modules.
 """
 from __future__ import annotations
@@ -49,7 +50,8 @@ def tool_doc(tool: str, repo: RepoLike = None) -> ToolDoc:
     canonical = {el.get("name"): el for el in tool_el.findall("parameters/param")}
     rows = [_param_doc(name, canonical, tool) for name in _param_names(content, tool)]
     return ToolDoc(name=tool, displayname=tool_el.get("displayname", ""),
-                   summary=_collapsed(_field_text(tool_el.find("summary"))), alias=alias, params=rows)
+                   summary=_collapsed(_field_text(tool_el.find("summary"))), alias=alias,
+                   archive=p.atbx.name, params=rows)
 
 
 # --- canonical XML --------------------------------------------------------------------------------------

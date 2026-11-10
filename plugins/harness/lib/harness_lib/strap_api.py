@@ -18,16 +18,17 @@ from __future__ import annotations
 import hashlib
 import re
 from pathlib import Path
-from typing import Any, Callable, Iterable, List, Optional, Sequence, Union
+from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Union
 
 from harness_lib.config import active
+from harness_lib.project import main_worktree, plugin_root
 from harness_lib.strap_models import (
     DRIVER_OWNED_BEHAVIOR, NAME_PATTERN, SEAL_BROKEN, SPEC_FILE, Arm, Behavior, BehaviorKind, BehaviorState,
     Check, CheckKind, Grade, Grader, GradeValue, JudgedItem, JudgmentType, Part, PartKind, PlannedTest,
     Pressure, RedException, ReplyAct, Run, Scenario, SkillSpec, driver_digest, dump_spec, load_spec,
     part_path, seal_broken, sealed,
 )
-from harness_lib.strap_runs import quote_found
+from harness_lib.strap_runs import quote_found, redact_paths
 
 __all__ = [
     "StrapError", "spec_path", "new_behavior", "new_test", "new_scenario", "new_check", "new_judged",
@@ -281,17 +282,53 @@ def remove_part(name: str, path: str) -> SkillSpec:
 
 # --- driver and grading operations ----------------------------------------------------------------------
 
+def run_tree(run: Run) -> Optional[Path]:
+    """The run's working tree: ``tree`` under the configured worktree root, None when unset.
+
+    An absolute ``tree``, as runs placed before trees were stored relative hold it, stands as is.
+    """
+    return active().resolve_worktree_root() / run.tree if run.tree else None
+
+
+def tree_name(tree: Path) -> str:
+    """``tree`` relative to the configured worktree root, in POSIX form, for ``Run.tree``."""
+    root = active().resolve_worktree_root().resolve()
+    try:
+        return Path(tree).resolve().relative_to(root).as_posix()
+    except ValueError:
+        raise StrapError(f"{Path(tree).as_posix()} is not under the worktree root") from None
+
+
+def _machine_paths(run: Run) -> List[Tuple[str, Path]]:
+    """``(placeholder, path)`` for each machine path a reply may name: the run tree, the worktree root, the
+    project root, the main checkout (when the project is a linked worktree), the harness plugin root and the
+    home folder, each also in its resolved spelling."""
+    cfg = active()
+    tree = run_tree(run)
+    main = main_worktree(cfg.project_root)
+    pairs = [("<worktree_root>", cfg.resolve_worktree_root()), ("<project>", cfg.project_root),
+             *([("<main>", main)] if main != cfg.project_root.resolve() else []),
+             ("<plugin>", plugin_root()), ("~", Path.home()),
+             *([("<tree>", tree)] if tree is not None else [])]
+    return [*pairs, *((holder, path.resolve()) for holder, path in pairs)]
+
+
 def record_run(name: str, run_id: str, reply: str) -> SkillSpec:
-    """Store the reply of an unrecorded run with its sha256; ``strap.py record-run`` fills diff and checks."""
+    """Store the reply of an unrecorded run with its sha256; ``strap.py record-run`` fills diff and checks.
+
+    Machine paths in the reply under the roots ``_machine_paths`` lists become placeholders before the hash,
+    so the tracked spec names none of those roots.
+    """
     def change(spec: SkillSpec) -> SkillSpec:
         index = _run_index(spec, run_id)
         run = spec.runs[index]
         _refuse_frozen_baseline(spec, run)
         if run.recorded:
             raise StrapError(f"{run_id} already recorded")
-        sha = hashlib.sha256(reply.encode("utf-8")).hexdigest()
+        text = redact_paths(reply, _machine_paths(run))
+        sha = hashlib.sha256(text.encode("utf-8")).hexdigest()
         runs = list(spec.runs)
-        runs[index] = run.model_copy(update={"reply": reply, "reply_sha256": sha, "recorded": True})
+        runs[index] = run.model_copy(update={"reply": text, "reply_sha256": sha, "recorded": True})
         return spec.model_copy(update={"runs": runs})
 
     return _apply(name, change, frozen_ok=True)
