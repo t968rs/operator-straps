@@ -39,6 +39,15 @@ you through `init`.
 - **Work only inside `TREE`.** Every read, edit and command targets a path under `TREE`. Use absolute paths
   with forward slashes. Never touch the repository the row names with `--repo`, any other checkout or any
   file outside `TREE`; the working tree is a throwaway copy and the edits there are what the run measures.
+- **Project drivers take `TREE` as the project.** The shell starts in the repository the row names, and the
+  drivers (`plan.py`, `strap.py`, the `plan_api` and `evolution_api` heredocs) resolve the project from the
+  working directory when none is given. So every driver call the task makes names the tree: `--repo "<TREE>"`
+  on `plan.py` and `strap.py`, `repo="<TREE>"` on an API call. Only the `init` and `record-run` commands keep
+  the `--repo "<REPO>"` the row carries. A path in the task or in a fixture's plan text that points at a
+  checkout outside `TREE` stands for the same repo-relative path under `TREE`.
+- **Check the repository before recording.** Right before `record-run`, run `git -C "<REPO>" status
+  --porcelain`. When a path the scenario touched (a plan, its page, its receipts or catalog) shows there,
+  stop: report it as a `problem:` line and leave the file as it is, without restoring it; do not record.
 - **Play the task as written.** Follow the skill text when the brief carries one, and the task alone when it
   does not. Do not look for the skill elsewhere, and do not mention that you are a test.
 - **A scenario that plays the session ends its work at the dispatch, then records.** When the task is one the
@@ -75,6 +84,8 @@ Report and stop, do not improvise, when:
 - The prompt has no `TARGET`, `RUN` or `TREE` line.
 - `init` exits non-zero: relay its output verbatim.
 - `TREE` does not exist.
+- A driver call wrote into the repository the row names (the check before `record-run` shows a path the
+  scenario touched): name each such path.
 - `record-run` exits non-zero: relay its error output verbatim and do not run it again.
 
 ## Reply

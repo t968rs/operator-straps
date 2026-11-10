@@ -33,7 +33,12 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
     spec and stamps the current hash, whether or not the parts changed; on a spec never frozen it is a plain
     freeze. Every listed part file must exist. A frozen spec
     takes ``run --arm green``, ``record-run`` of a green run, and through ``api`` part edits and the grades
-    of green runs, so the new hash can earn its greens.
+    of green runs, so the new hash can earn its greens; new behaviors come only after ``reopen``.
+``reopen <name> [--base REF]``
+    Start a new round on a frozen spec: the stamp and the live behavior ids move into ``rounds``, ``frozen``
+    clears, the mode becomes edit and ``base`` moves to HEAD (or an ancestor REF). The new base must descend
+    from the previous one and hold every part as the working tree has it. ``red`` then skips the
+    mechanical behaviors frozen green in an earlier round; the next ``freeze`` gates every live behavior.
 ``api <name>``
     Run stdin code with the public names of ``harness_lib.strap_api`` and ``name`` bound.
 
@@ -66,7 +71,7 @@ from harness_lib.project import project_root
 from harness_lib.strap_lint import lint_project_skill, lint_python, lint_skill
 from harness_lib.strap_models import (
     Arm, Behavior, BehaviorKind, BehaviorState, Draw, DrawReason, Frozen, Grader, GradeValue, Part, PartKind,
-    Run, Scenario, SkillSpec, SpecMode,
+    Round, Run, Scenario, SkillSpec, SpecMode,
 )
 from harness_lib.strap_profile import Profile, new_fields, profile_of
 from harness_lib.strap_scaffold import planned_parts, render_parts
@@ -397,10 +402,12 @@ def _red_plan(spec: SkillSpec) -> ActionPlan:
     """The mechanical behaviors as the ``ActionPlan`` ``plan_red`` reads; ``plan_id`` is the skill name.
 
     Built with ``model_construct``: a skill name fails the plan id pattern and a behavior id the item id
-    pattern, and ``plan_red`` reads only ``plan_id`` and each item's id, status and tests.
+    pattern, and ``plan_red`` reads only ``plan_id`` and each item's id, status and tests. A behavior in
+    state ``green`` was frozen in an earlier round, so its code exists at the new base and it is skipped.
     """
+    done = (BehaviorState.DROPPED, BehaviorState.GREEN)
     items = [_red_item(b) for b in spec.behaviors
-             if b.kind == BehaviorKind.MECHANICAL and b.state != BehaviorState.DROPPED and b.tests]
+             if b.kind == BehaviorKind.MECHANICAL and b.state not in done and b.tests]
     return ActionPlan.model_construct(plan_id=spec.name, items=items)
 
 
@@ -879,9 +886,9 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     spec, problems = spec_problems(args.name)
     if spec is None:
         raise Refused(problems)
-    previous = spec.frozen
-    if previous is not None and not args.refreeze:
+    if spec.frozen is not None and not args.refreeze:
         raise Refused(["already frozen; after a part change, rerun freeze with --refreeze"])
+    previous = spec.frozen or (spec.rounds[-1].frozen if spec.rounds else None)
     current = skill_hash(spec)
     problems += freeze_problems(spec, current)
     if problems:
@@ -893,6 +900,41 @@ def cmd_freeze(args: argparse.Namespace) -> int:
                                  "behaviors": _with_states(spec, live, BehaviorState.GREEN)}))
     was = f" | was {previous.skill_hash[:12]}" if previous is not None else ""
     print(f"freeze [done] | {spec.name} | {current[:12]} | grader {grader.value}{was}")
+    return 0
+
+
+# --- reopen -----------------------------------------------------------------------------------------------
+
+def _reopen_base_problems(root: Path, spec: SkillSpec, base: str) -> List[str]:
+    """The new base must descend from the previous one and hold every part as the working tree has it."""
+    problems = []
+    if spec.base and git(root, "merge-base", "--is-ancestor", spec.base, base).returncode != 0:
+        problems.append(f"base {base[:12]} does not descend from the previous base {spec.base[:12]}")
+    paths = [part.path for part in spec.parts]
+    missing = [p for p in paths if git(root, "cat-file", "-e", f"{base}:{p}").returncode != 0]
+    problems += [f"{p}: not committed at base {base[:12]}; commit the frozen round first" for p in missing]
+    present = [p for p in paths if p not in missing]
+    if present and git(root, "diff", "--quiet", base, "--", *present).returncode != 0:
+        problems.append(f"parts differ from base {base[:12]}; commit the frozen round first")
+    return problems
+
+
+def cmd_reopen(args: argparse.Namespace) -> int:
+    """A new round on a frozen spec: the stamp moves into ``rounds`` and ``base`` moves to the new start."""
+    spec = load(args.name)
+    if spec.frozen is None:
+        raise Refused([f"{spec.name} is not frozen; nothing to reopen"])
+    root = _root()
+    base = _edit_base(root, spec.name, profile_of(spec).skill_md, args.base)
+    problems = _reopen_base_problems(root, spec, base)
+    if problems:
+        raise Refused(problems)
+    live = [b.id for b in spec.behaviors if b.state != BehaviorState.DROPPED]
+    rounds = [*spec.rounds, Round(base=spec.base, frozen=spec.frozen, behaviors=live)]
+    was = spec.frozen.skill_hash
+    spec = save(spec.model_copy(update={"rounds": rounds, "frozen": None, "mode": SpecMode.EDIT,
+                                        "base": base}))
+    print(f"reopen [done] | {spec.name} | round {len(rounds) + 1} | base {base[:12]} | was {was[:12]}")
     return 0
 
 
@@ -949,6 +991,8 @@ def _parser() -> argparse.ArgumentParser:
     freeze = _named(sub, "freeze", "Apply the final gate.")
     freeze.add_argument("--refreeze", action="store_true",
                         help="Freeze a frozen spec again after a part change; every gate runs again.")
+    reopen = _named(sub, "reopen", "Start a new round of behaviors on a frozen spec.")
+    reopen.add_argument("--base", help="Ancestor of HEAD the new round starts from (default: HEAD).")
     run = _named(sub, "run", "Create a scenario run and print the runner row.")
     run.add_argument("behavior", help="Behavior id, such as B1.")
     run.add_argument("--arm", required=True, choices=[arm.value for arm in Arm])
@@ -962,7 +1006,7 @@ def _parser() -> argparse.ArgumentParser:
 COMMANDS: Dict[str, Callable[[argparse.Namespace], int]] = {
     "new": cmd_new, "check": cmd_check, "red": cmd_red, "draw": cmd_draw, "run": cmd_run, "init": cmd_init,
     "record-run": cmd_record_run, "judge-row": cmd_judge_row, "scaffold": cmd_scaffold,
-    "retest": cmd_retest, "freeze": cmd_freeze, "api": cmd_api,
+    "retest": cmd_retest, "freeze": cmd_freeze, "reopen": cmd_reopen, "api": cmd_api,
 }
 
 

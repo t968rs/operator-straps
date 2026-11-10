@@ -1,0 +1,458 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 262,
+  "pr_title": "Feature(strap): `reopen` command",
+  "branch": "3150-strap-skills-rewrite",
+  "base_branch": "2150-plan-refreeze",
+  "base_sha": "88659f1b847e0ecb1a6740b1ca9c7a8a7ae5fd2d",
+  "head_sha": "d34fc5628b52e78e79dfb5a534bd5e1301dac421",
+  "review_date": "2026-11-10",
+  "verdict": "NOT READY TO MERGE - important: I1",
+  "stats": {
+    "additions": 2123,
+    "deletions": 24,
+    "files_changed": 24,
+    "source": {
+      "additions": 2109,
+      "deletions": 24,
+      "files_changed": 23
+    }
+  },
+  "reviewers": [
+    "config (sonnet)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/config.json",
+    "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/tests.json",
+    "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/docs.json",
+    "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/overall.json",
+    "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/roast.json"
+  ],
+  "bubbles": [
+    "I1"
+  ],
+  "strengths": [
+    "SkillSpec.schema.json matches SkillSpec.model_json_schema() exactly (verified by regeneration): the new Round def and the driver_owned rounds property sit in the declared field order.",
+    "Round reuses the existing Frozen def and keeps additionalProperties false, so the reopen history stays as strict as the other driver-owned records.",
+    "Every test in scope is behavioral: the driver runs in-process through `main` against a real git project built by `make_project`. There are no stubs of the code under test.",
+    "`test_freeze_after_reopen_gates_every_behavior` deletes `widget.txt` to prove the earlier-round B1 is gated again. It then restores the file and checks that the freeze line's 'was' names the previous round's hash.",
+    "Both refusal tests compare the spec before and after the call, so they check that nothing was written as well as the problem text.",
+    "`test_a_round_changes_the_driver_digest_but_not_the_authored_digest` checks the ownership split directly and round-trips the spec through dump and load.",
+    "The `test_strap_models` update keeps the docstring and the expected-dump filter in step with the new empty-`rounds` drop.",
+    "_dumped drops an empty rounds list and driver_digest guards with `name in dumped`, so specs written before the field existed keep byte-identical text and digests.",
+    "cmd_reopen reuses _edit_base, so the new base gets the same commit and ancestor validation as `new --edit`, and it refuses an unfrozen spec with a clear problem line.",
+    "Round uses the shared extra=forbid config and is marked driver-owned, so a hand edit of an earlier round's seal is caught by the driver digest.",
+    "cmd_freeze reports the last round's hash as 'was' after a reopen, keeping the freeze output continuous across rounds.",
+    "The new SKILL.md Reopen paragraph, the strap.py module docstring (lines 37-40), the README row and the release note all match cmd_reopen (strap.py:907-919): the `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>` line, refusing an unfrozen spec, and red skipping mechanical behaviors in state green.",
+    "Decision D2 is honored: the reopened base b7c62099 is the parent of 9b88a9a, the 'scope the skill to receipts plans' commit, so the baselines see the receipts code without the new SKILL.md guidance.",
+    "The plan-1014 fixture JSON and PIP are byte-identical to the real frozen plan, so the scenarios run against a genuinely frozen receipts plan, and the STR-1 receipt cites EX1 for both extra files.",
+    "The release notes table (harness 0.65.1 -> 0.67.0) matches plugin.json 0.67.0, and the rounds entry keeps the round-1 stamp and base exactly as they were before the reopen.",
+    "B10 is dropped per the skill's rule, with a reason that quotes the drawn baseline (R-2, SC-4) rather than rerunning until it fails.",
+    "The printed line `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>` matches cmd_reopen's print at strap.py:918 field for field, including round = len(rounds) + 1.",
+    "The claim that an earlier-round mechanical behavior skips red and its planned tests rerun matches _red_plan (strap.py:405-409, which skips the GREEN state) and _mechanical_gate (strap.py:862-867, which accepts GREEN and reruns the nodes).",
+    "The command fence follows the hpy-only house rule and the `[--base <ref>]` form used by the step 1 `new` fence, and it matches the reopen subparser at strap.py:975-976.",
+    "The paragraph agrees with its cross-references: the README strap row, docs/RELEASES/v1.0.0.md:54-57 and the design spec's Docs section (base rule, earlier behaviors gated again) say the same thing.",
+    "Ends with the same 'standard procedure: ask the developer for the OK' line as the refreeze paragraph, so the two lifecycle commands share one approval rule.",
+    "Old specs stay byte-compatible: `_dumped` drops an empty `rounds` and `driver_digest` reads only the names present in the dump. `test_strap_rounds.py` pins this against a recomputed pre-change digest.",
+    "Driver tests are behavioral end to end: `main --repo` against a `make_project` checkout with real git, real red and real freeze, and no stubs.",
+    "The implementation follows plan 1014 DRV-1 exactly: unfrozen refusal before any other check, `_edit_base` reuse, the `Round` contents, the print format, `previous` falling back to the last round, and the docstring entry.",
+    "D2 checks out: the reopen base b7c6209 is the parent of 9b88a9a (the receipts SKILL.md commit), so B9 baselines saw the receipts code without the guidance.",
+    "The plan-1014 fixture files are byte-identical to the frozen plan and PIP, and the extra files are declared through DesignEvolution EX1 and cited in the STR-1 receipt.",
+    "The version bump, regenerated schema, README row, release-notes table and change line all agree (harness 0.65.1 -> 0.67.0).",
+    "Byte compatibility for old specs is designed and pinned: `_dumped` drops an empty `rounds` and `driver_digest` reads only names present in the dump, and test_strap_rounds.py recomputes the pre-rounds driver digest independently to prove it.",
+    "Docs move in lockstep with the code: strap.py docstring, strap-skills SKILL.md reopen paragraph, README row, v1.0.0 release line and table, and the 0.66.0 -> 0.67.0 minor bump all state the same round rules (red skips earlier-green mechanical behaviors, every live behavior is gated at the next freeze).",
+    "The `_red_plan` skip of `green` mechanical behaviors is sound: only `cmd_freeze` sets GREEN, so a green behavior on an unfrozen spec was frozen in an earlier round, as the docstring claims.",
+    "test_strap_reopen.py exercises the real driver against a git-backed make_project, including the freeze gate rerunning an earlier behavior's planned tests (deleting widget.txt makes freeze refuse), not a stubbed wiring test.",
+    "The fixture deviation on STR-1 is recorded through DesignEvolution EX1 and cited on the sealed receipt as extra files, and the fixture copies are byte-identical blobs of the frozen plan files.",
+    "Byte compatibility is proven, not just claimed: test_strap_rounds.py recomputes the pre-rounds driver digest by hand and pins it, and dropping an empty `rounds` in `_dumped` plus the `name in dumped` guard keeps old specs digest-stable.",
+    "The reopen tests are behavioral end to end: the real driver against a real git project via make_project, and a red-skip test that fails if the GREEN skip is removed (`\"B1 \" not in out`).",
+    "test_freeze_after_reopen_gates_every_behavior deletes widget.txt to prove the earlier mechanical behavior is really gated again, rather than asserting a flag.",
+    "Both refusal tests assert that the spec file is byte-identical afterwards, so a refused reopen cannot half-write.",
+    "`cmd_reopen` reuses `_edit_base` and `load`, so ancestry checks, tamper detection and seal checks come for free instead of being reimplemented.",
+    "The docs line up: strap.py docstring, SKILL.md step 12, the README row, the release table (0.65.1 -> 0.67.0) and the change line all describe the same command and rules, and the fixture deviation is cited through EX1 on the STR-1 receipt."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "B10 dropped on a baseline the plan-1014 fixture contaminated",
+        "file": "docs/plans/strap/write-plan/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/write-plan/SkillSpec.json",
+          "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_ActionPlan.json",
+          "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_PIP.html",
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "docs/plans/1014_strap_reopen_ActionPlan.json",
+          "docs/plans/1014/DesignEvolution.json",
+          "docs/plans/1014/receipts/STR-1.json"
+        ],
+        "lines": "442-573,627-632",
+        "reviewer": "system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The scenario fixture plan-1014 is a byte-identical copy of the live plan 1014 (same blobs as docs/plans/1014_strap_reopen_ActionPlan.json and its PIP). Its STR-1 action (fixture ActionPlan line 218, PIP line 132) spells out the exact rules round 2 tests: '(a) a lane that needs a file outside its item stops and reports instead of building past the plan ... (c) a frozen receipts plan's JSON and HTML page are never edited by hand'. The B10 baseline task (SC-4) has the runner write a lane prompt from that plan, and the recorded baseline R-2 echoes the plan text almost verbatim ('stop and report which file and why; do not build past the plan', 'its JSON and HTML page are never hand-edited'), although the write-plan SKILL.md at the round-2 base b7c6209 has no stop-and-report rule (no match for stop/report/build past). B10 was then dropped (SkillSpec.json:572) because 'the drawn baseline already told the lane to stop and report ... under the pre-receipts SKILL.md'. The baseline passed on the fixture's text, not on the old SKILL.md, so the drop reason is false and the lane deviation stop added in plan 1013 stays unproven. This contradicts the strap-skills premise that a run must not carry instructions the agent would not see in real use (strap-skills SKILL.md:14-16). B9 is unaffected in direction: its baseline R-1 failed despite the same leak, so its baseline/green difference is still attributable to the SKILL.md.\n\nAlso (roast): Plan 1014 STR-1 asks for three judgment behaviors: (a) a lane stops and reports a deviation, (b) a mid-build change goes through `evolution_api.add` with `--also/--substitute --cite`, and (c) a frozen receipts plan's JSON and HTML page are never hand-edited. The round 2 spec has B9, which covers (b), and B10, which covers (a) and is dropped with a reason. No behavior covers (c). B9's `file_unchanged` check guards only the plan JSON, not `1014_strap_reopen_PIP.html`, and baseline R-1 did rewrite that page. The DesignEvolution has EX1 for the fixture files only. Nothing records that (c) was folded into B9 or left out, yet receipts/STR-1.json says `complete`. The frozen plan and its receipt now disagree about what was proven.",
+        "fix": [
+          "Build a separate frozen receipts fixture plan whose item text does not state the rules under test (for example a plan without the STR-1 item, frozen through plan.py), point B9/B10-style scenarios at it, then `strap.py reopen write-plan --base b7c6209...` for round 3 and add the lane-stop behavior again with that fixture, as step 9 of strap-skills advises for a behavior that still matters.",
+          "At minimum, record the contamination: add a DesignEvolution entry for STR-1 stating that B10's drop rests on a baseline that read the rule from the fixture, so the dropped_reason is not taken as evidence that the old SKILL.md taught it.",
+          "Record the scope change with `evolution_api.add` (EX2, items STR-1): (c) is covered by B9's `file_unchanged` check on the plan JSON, and the PIP page is not covered. Then re-record STR-1 citing EX2.",
+          "Or reopen write-plan for a round 3 with a behavior for (c) whose checks include `file_unchanged` on the PIP html."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Recorded baseline R-1 shows a scenario runner writing to the main checkout's frozen plan",
+        "file": "docs/plans/strap/write-plan/SkillSpec.json",
+        "files": [
+          "docs/plans/strap/write-plan/SkillSpec.json",
+          "plugins/harness/agents/strap-scenario-runner.md",
+          "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_ActionPlan.json"
+        ],
+        "lines": "593-598",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The R-1 reply stored in the write-plan spec says the runner's first `plan_api.write` and `plan.py freeze 1014 --refreeze` ran with cwd in the main checkout, because `plan.py` takes its project from cwd. It then restored `docs/plans/1014_strap_reopen_ActionPlan.json` and the PIP with `git show HEAD:<path>` and warned that the line endings may have changed. This breaks the runner contract in plugins/harness/agents/strap-scenario-runner.md:39-41 ('Never touch the repository the row names with --repo, any other checkout'). The new plan-1014 fixture makes the leak likely: its DOC-1 and STR-1 commands (fixture ActionPlan.json lines 196, 232 and 236) hard-code `E:/automation/operator-straps/...`, which is the real checkout, so a runner that follows the plan text drives the live repository. Here the frozen plan only survived because the runner noticed and reverted. A run that does not notice breaks the real plan's freeze digest or writes receipts into it, and the recorded evidence still looks clean, because the checks only read TREE.\n\nAlso (overall): The R-1 reply stored in the write-plan spec says the runner's first `plan_api.write` and `freeze --refreeze` ran with cwd in the main checkout, because `plan.py` takes its project from cwd. It then restored the plan JSON and PIP with `git show HEAD:<path>`, possibly with changed line endings. The runner contract (`strap-scenario-runner.md:40`) forbids touching the repository the row names. Nothing tells the runner that `plan.py` and `strap.py` need `--repo <TREE>`, so plan-driver scenarios such as B9 can leak into the developer's checkout again.",
+        "fix": [
+          "Make the run brief that `strap.py init` prints (and the strap-scenario-runner rule at strap-scenario-runner.md:39-41) require `--repo \"<TREE>\"` on every project driver call (`plan.py`, `strap.py`, `harness-skill-api`). Have it state that drivers resolve the project from cwd, which starts in the real checkout.",
+          "Have `strap.py run`/`init` refuse or flag a run whose main checkout `git status --porcelain` changed between `init` and `record-run`, so a leak becomes a `problem:` line rather than a confession in the reply.",
+          "Add to the runner agent's rules: project drivers (`plan.py`, `strap.py`) inside a scenario run with `--repo <TREE>`. Confirm the main checkout's `docs/plans/1014_strap_reopen_*` files match HEAD byte for byte."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "red skip of green behaviors lets a reopened behavior's new tests bypass the red gate",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "plugins/harness/lib/harness_lib/strap_api.py",
+          "plugins/harness/skills/strap-skills/SKILL.md"
+        ],
+        "lines": "400-410",
+        "reviewer": "runtime, roast, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "_red_plan now skips every mechanical behavior in state green, on the claim that green means 'frozen in an earlier round'. Before reopen a green behavior only existed on a frozen spec, where update_behavior is refused. After cmd_reopen clears frozen, strap_api.update_behavior (strap_api.py:211-220) can replace the tests of a green mechanical behavior: mechanical behaviors are never drawn, so _refuse_fields does not lock them, and the state stays green. red then skips the new planned tests, and _mechanical_gate (strap.py:862-867) accepts state green, so freeze passes tests that were never shown to fail first. The red-before-green contract is bypassed for any behavior carried over from an earlier round.\n\nAlso (roast): `_red_plan` now skips every mechanical behavior in state `green`, using the state as a stand-in for 'frozen in an earlier round, tests already proven red'. After `reopen` the spec is unfrozen, so `strap_api.update_behavior(name, \"B1\", tests=[...])` is accepted: mechanical behaviors are never drawn, so `_LOCKED_WHEN_DRAWN` does not lock their `tests`, and the state stays `green`. `red` then skips the new nodes, and `_mechanical_gate` accepts state GREEN plus passing tests, so a test written after its code freezes without ever failing. That breaks the Iron Law in strap-skills SKILL.md lines 53-56 ('a mechanical one only when its planned tests failed red as planned'). Before this PR the hole could not open: a mechanical behavior became green only at freeze, and a frozen spec refused `update_behavior`. The state flag says 'was green once', not 'these exact tests were proven red', and the gate trusts it for both.\n\nAlso (overall): `_red_plan` skips every mechanical behavior in state `green`, assuming its planned tests are the ones proven red in an earlier round. After `reopen` the spec is unfrozen, so `strap_api.update_behavior(name, 'B1', tests=[...])` is accepted (mechanical behaviors are never drawn, so `_LOCKED_WHEN_DRAWN` does not lock them) and the state stays `green`. `red` then skips the new nodes, and `_mechanical_gate` accepts `green` plus passing tests. Result: new planned tests reach a frozen spec without ever failing first. Before this PR a frozen spec refused every behavior edit, so reopen opens this path. Round 1 has a similar gap for a behavior edited after `red` (state `red`), but there the code usually does not exist yet. Here it already exists at the new base, so the tests pass unproven.",
+        "fix": [
+          "In strap_api.update_behavior, reset a behavior's state to open when a change touches tests (or statement) of a behavior in state green, so red runs its planned tests again.",
+          "Or have _red_plan skip only the behaviors listed in spec.rounds[-1].behaviors whose tests are unchanged since that round (store a digest of each behavior's tests in Round), and run red for the rest.",
+          "In `strap_api._refuse_fields`, refuse `tests` and `kind` on any behavior id listed in `spec.rounds[*].behaviors` (an earlier round's mechanical proof stays as it was proven). A changed test then goes on a new behavior, and that behavior runs red.",
+          "Alternatively, skip red in `_red_plan` only when the behavior's planned tests equal the ones frozen in the last round: store a per-behavior tests digest in `Round` at reopen and compare against it. A behavior whose tests changed drops back into the red plan, and `_mechanical_gate` requires a fresh RED for it.",
+          "Add a test to tests/scripts/test_strap_reopen.py: reopen, `update_behavior` B1 with a new node whose file already passes, then assert that `red` covers B1 or that the update is refused.",
+          "In `strap_api.update_behavior`, when `tests` (or `kind`) is in the changes and the behavior is in state `green` or `red`, reset its state to `open` so `red` picks it up again.",
+          "Or refuse `tests` changes on a behavior listed in any `rounds[*].behaviors`; a changed rule then becomes a new behavior."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "reopen does not ensure the new base holds the frozen round's parts",
+        "file": "plugins/harness/scripts/strap.py",
+        "lines": "907-919",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "The _red_plan docstring (strap.py:405) states that a green behavior's code 'exists at the new base', and the module docstring says base moves to HEAD. cmd_reopen (strap.py:907-919) takes HEAD or any ancestor REF through _edit_base without checking that the frozen parts are committed there. When the frozen round is still uncommitted (freeze runs on the working tree, the developer commits later) or --base names a commit older than the previous round's base, the new base lacks the round's code and SKILL.md text: red for new behaviors runs on a tree without the modules they build on (an ImportError instead of the planned exception, or a planned ImportError met for the wrong reason), and baseline runs of new judgment behaviors read a SKILL.md from before the earlier round (_skill_text, strap.py:637-640). _edit_base also checks SKILL.md only at HEAD, not at REF.",
+        "fix": [
+          "In cmd_reopen, refuse when any part path differs between the chosen base and the working tree (`git diff --quiet <base> -- <parts>` plus a check for untracked part files), with a problem line telling the author to commit the frozen round first.",
+          "Also refuse a --base that is not a descendant of the previous spec.base (`git merge-base --is-ancestor <spec.base> <base>`) when spec.base is set."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Root .gitignore ignores the plan-folder .gitignore the write-plan README says to commit",
+        "file": ".gitignore",
+        "files": [
+          ".gitignore",
+          "plugins/harness/skills/write-plan/README.md"
+        ],
+        "lines": "242",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "The PR adds `docs/plans/**/.gitignore` to the root .gitignore (line 242). The write-plan README's commit sequence (plugins/harness/skills/write-plan/README.md:96-97) says the freeze commit holds 'the plan JSON, the new HTML PIP, the deleted markdown PIP and the plan folder's `.gitignore`'. In this repo that step can no longer be followed without `git add -f`, and no plan-folder .gitignore is tracked. Behavior is unharmed (the driver rewrites the file on render and live.js stays out of git), but the repo's own rule and the plugin's documented lifecycle now disagree.",
+        "fix": [
+          "Drop the root rule and commit each plan folder's .gitignore with the freeze, as the write-plan README prescribes.",
+          "Keep the rule and make the README step say the plan folder's .gitignore is optional to commit (the driver rewrites it on render), so the repo's choice is within the documented lifecycle."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "STR-1 recorded complete with planned behavior (c) neither strapped nor logged as a design change",
+        "file": "docs/plans/1014/DesignEvolution.json",
+        "files": [
+          "docs/plans/1014/DesignEvolution.json",
+          "docs/plans/1014/receipts/STR-1.json",
+          "docs/plans/1014_strap_reopen_ActionPlan.json",
+          "docs/plans/strap/write-plan/SkillSpec.json"
+        ],
+        "lines": "9-37",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "STR-1's action (ActionPlan.json line 218) plans three judgment behaviors: (a) a lane stops and reports a deviation, (b) a mid-build design change goes through evolution_api.add and is cited, and (c) a frozen receipts plan's JSON and HTML page are never edited by hand. The frozen spec has B9, which covers (b) and checks only the plan JSON, and B10, which covers (a) and was dropped with a valid reason. No behavior covers (c), so nothing checks the HTML page. The only DesignEvolution entry, EX1, covers the fixture files alone. The STR-1 receipt (receipts/STR-1.json) records the item as complete, and nothing in the plan's records shows that (c) was folded into B9 or left out.\n\nAlso (system_shape): Plan 1014 STR-1 (ActionPlan.json:218) asks for three judgment behaviors: (a) lane stop-and-report, (b) design changes through evolution_api.add cited on record, (c) a frozen receipts plan's JSON and HTML page never hand-edited. The spec holds B9 (b), B10 (a) dropped, and no behavior for (c); B9's checks cover only the plan JSON (file_unchanged), never the PIP HTML. The sealed receipt STR-1.json marks the item complete, and DesignEvolution.json records only EX1 (the fixture files). The PR teaches in B9 that a change found during execution goes to the plan's DesignEvolution, yet its own scope cut on STR-1 has no entry, so the merged plan record overstates what round 2 proved.",
+        "fix": [
+          "Add a DesignEvolution change through evolution_api.add that records (c) folded into B9 (JSON only) and B10 dropped, and cite it on a re-record of STR-1.",
+          "Alternatively, reopen write-plan once more and strap (c) as its own behavior with a `file_unchanged` check on `docs/plans/1014_strap_reopen_PIP.html`.",
+          "Add a change EX2 through evolution_api.add with items [\"STR-1\"]: B10 dropped (with the reason, see the fixture contamination finding) and (c) folded into B9's file_unchanged check on the plan JSON; then rerender the PIP.",
+          "Alternatively add the (c) behavior in a later round with checks on both the plan JSON and the PIP HTML."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "module docstring omits rounds from the driver-owned list",
+        "file": "plugins/harness/lib/harness_lib/strap_models.py",
+        "lines": "5",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The strap_models module docstring lists the driver-owned fields as 'draws, runs, grades, frozen, driver_digest and each behavior's state', but SkillSpec.rounds is now marked _DRIVER_OWNED (line 436) and enters driver_digest.",
+        "fix": [
+          "Change the list on line 5 to 'draws, runs, grades, rounds, frozen, driver_digest and each behavior's state'."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Refreeze paragraph still says a frozen spec accepts only three changes",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/scripts/strap.py",
+          "README.md"
+        ],
+        "lines": "224-240,248-249",
+        "reviewer": "docs, skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "In step 12, line 224 says 'A frozen spec refuses every change but three: add_part and remove_part, a green run ..., and the refreeze itself', and lines 236-237 say behaviors, scenarios, draws and baselines 'stay locked after a freeze'. The new Reopen paragraph two blocks down (lines 242-253) adds a fourth change that a frozen spec accepts, and that change unlocks new behaviors. The strap.py docstring (lines 34-36) was updated with 'new behaviors come only after reopen', but the SKILL.md sentence was not. The new paragraph also leaves out that reopen sets `mode` to `edit` (strap.py:916). For a spec opened with `new`, that switches the baseline arm from no skill to the SKILL.md at `base`.\n\nAlso (skill_package): SKILL.md:224-225 says 'A frozen spec refuses every change but three: add_part and remove_part, a green run ..., and the refreeze itself', and SKILL.md:237-238 says 'Behaviors, scenarios, draws and baselines stay locked after a freeze'. The new paragraph at 242-253 adds a fourth command that works on a frozen spec (`reopen`, strap.py:907-919), and that command is how new behaviors get added. Read top to bottom, the two paragraphs disagree: the first lists the only changes allowed and says behaviors stay locked, then the next one adds behaviors through a command the list leaves out. The driver docstring already gives the exception (strap.py:36: 'new behaviors come only after ``reopen``').\n\nAlso (system_shape): strap-skills SKILL.md:224 says 'A frozen spec refuses every change but three' (add/remove_part, green runs, refreeze) and :236-237 'Behaviors, scenarios, draws and baselines stay locked after a freeze'; the README strap-skills row (README.md:27) says 'A frozen spec takes part edits and green runs only ... Behaviors, scenarios, draws and `retest` stay locked.' The same PR adds `reopen`, a fourth accepted operation on a frozen spec that unlocks behaviors. The new reopen paragraph and bullet follow, but the absolute statements before them now read as contradicted; strap.py's docstring (lines 34-36) already qualifies it with 'new behaviors come only after reopen'.",
+        "fix": [
+          "At SKILL.md:224 change 'but three' to 'but four' and add 'and `reopen`' to the list, or append 'until `reopen`' to the 'stay locked after a freeze' sentence at lines 236-237. In the Reopen paragraph at lines 248-249, say that the mode becomes edit.",
+          "At SKILL.md:237-238, change 'Behaviors, scenarios, draws and baselines stay locked after a freeze' to 'Behaviors, scenarios, draws and baselines stay locked after a freeze until `reopen` (below) starts a new round'.",
+          "At SKILL.md:224, change 'A frozen spec refuses every change but three' to 'Short of `reopen` (below), a frozen spec refuses every change but three'.",
+          "SKILL.md:224: 'A frozen spec refuses every change but three (reopen, below, starts a new round for new behaviors):'; SKILL.md:236-237: '... stay locked after a freeze until a reopen, and so does `retest`'.",
+          "README.md:27: change 'Behaviors, scenarios, draws and `retest` stay locked.' to '... stay locked until `reopen`.'"
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Reopen's base rule covers baselines but not red, and omits that the base is fixed for the round",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "242-253",
+        "reviewer": "skill_package, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md:249-250 says to pick the base by one rule: the commit whose code the new scenarios need but whose SKILL.md lacks the new guidance. `red` also runs at that base (strap.py:388-390 `_start_commit`, used at strap.py:419). So a round that adds a mechanical behavior needs a base where that behavior's code does not exist yet; otherwise its planned nodes pass at red and `red` refuses. Once a round is open, its base cannot change. `reopen` refuses a spec that is not frozen (strap.py:910-911), `new --edit --base` on an existing spec only resumes it, and the API sets no `base`. A wrong pick therefore lasts until the next freeze. The paragraph also drops the condition step 1 states and the driver enforces: `--base` must be an ancestor of HEAD (strap.py:274-275).\n\nAlso (skill_package): SKILL.md:251-252 says 'The earlier behaviors are gated again at the next freeze', then explains only the mechanical case. Writing the new guidance changes SKILL.md and with it the content hash. `_judgment_gate` (strap.py:843-849) then needs a passing green on the current hash for every earlier judgment behavior, not only the new ones. `draw` skips behaviors already drawn (strap.py:447-449), so 'continue from step 2 for the new behaviors' never prompts green runs for the earlier ones. The session finds out only at the freeze, from `no passing green on the current hash` lines. The refreeze paragraph at SKILL.md:225-229 does state this rule for a part change; the reopen paragraph does not.\n\nAlso (overall): The SKILL.md paragraph says only that earlier behaviors are 'gated again', and spells out just the mechanical case (skips red, planned tests rerun). `_judgment_gate` requires a passing green on the current hash for every live judgment behavior, earlier rounds included. So once a round-2 SKILL.md edit changes the hash, every round-1 judgment behavior needs `run --arm green` and grades again before `freeze` passes. The paragraph also does not say that the first `freeze` after a reopen prints `| was <hash12>`; line 236 says that only for `--refreeze`. The write-plan round 2 in this PR never hit the judgment case, because round 1 had no draws or runs and the hash did not change.",
+        "fix": [
+          "After 'since baselines read the SKILL.md at `base`.' add: '`red` also runs at `base`, so a new mechanical behavior's code must not exist there yet. `--base` must be an ancestor of HEAD, and the base stays fixed until the next freeze.'",
+          "After 'and its planned tests rerun.' add: 'An earlier judgment behavior keeps its baselines but needs a passing green on the new hash: run and grade its greens as in step 10.'",
+          "Extend the paragraph: 'a judgment one needs a passing green on the new hash once a part changes (run and grade it as in step 10); the first freeze after a reopen prints `| was <hash12>` from the last round.'"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Tautological `assert sm.Round is not None` guards",
+        "file": "tests/lib/test_strap_rounds.py",
+        "lines": "3-5,32-38,49,56-60",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "`assert sm.Round is not None` (lines 49 and 57) can never fail on its own terms: a missing `Round` raises AttributeError before the comparison, and a present class is never None. At line 49 it is redundant, because lines 51-53 already fail without the `rounds` field. At line 57 it is the only line that makes the backward-compatibility test fail before the change, so it acts as a hidden red-phase guard that looks like a no-op.\n\nAlso (tests): The module docstring (lines 3-5) says a pre-`rounds` spec must dump and digest byte for byte as before. `_old_driver_digest` rebuilds the old digest from the new `sm.dump_spec` output, so it pins the driver-digest key set but not the dump text. The dump check only asserts that `rounds` is absent (line 59), and `authored_digest` is never compared for the empty-rounds case.",
+        "fix": [
+          "Delete line 49; replace line 57 with `assert \"rounds\" in sm.SkillSpec.model_fields`, which states what the guard protects.",
+          "Keep line 57 and add a one-line comment saying it makes the test fail on a model without `Round`.",
+          "Pin literal values computed at the merge base for `_spec()`: the exact `dump_spec` text and the `driver_digest` and `authored_digest` hex strings. Assert equality against them.",
+          "Narrow the module docstring to what is checked: `rounds` stays out of the dump and the driver digest."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Untested `cmd_reopen` branches: dropped ids, kept base, second round",
+        "file": "tests/scripts/test_strap_reopen.py",
+        "files": [
+          "tests/scripts/test_strap_reopen.py",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "152-209",
+        "reviewer": "tests, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The reopen tests only cover one reopen of a new-mode spec with no dropped behaviors. Three branches of `cmd_reopen` and `cmd_freeze` are untested: (1) a dropped behavior is left out of `Round.behaviors` (strap.py:913); (2) an edit-mode spec keeps its previous non-None `base` in the round (strap.py:914); (3) a second reopen appends round 3, and the next freeze names `rounds[-1]` (strap.py:890, 918).\n\nAlso (overall): `test_strap_reopen.py` covers HEAD as base and a ref that names no commit. It does not cover a valid ancestor `--base` (the path STR-1 actually used: `spec.base` set to that SHA and printed as `base <sha12>`), the 'not an ancestor of HEAD' refusal, a second reopen (round 3, two `rounds` entries), or a judgment behavior from an earlier round being refused at freeze until it gets a green on the new hash.\n\nAlso (roast): test_strap_reopen.py tests only the default base and the 'names no commit' refusal. Three paths have no test: `--base <ancestor>` landing in `base`, the 'is not an ancestor of HEAD' refusal, and a second reopen (round 3: `rounds` appended rather than replaced, `round 3` printed, and freeze's `was` read from `rounds[-1]`). The design's headline goal ('the next freeze gates every live behavior, earlier ones included') is shown for a mechanical behavior only. No test checks that a round-1 judgment behavior blocks the freeze with 'no passing green on the current hash' once a part changes after reopen. The happy path is covered; the paths most likely to regress are not.",
+        "fix": [
+          "Add a test that drops a behavior, freezes, reopens twice, and asserts: `rounds[0].behaviors` omits the dropped id, `rounds[1].base` equals the first reopen's base, the output says 'round 3', and the next freeze's 'was' names `rounds[-1]`.",
+          "Add a test that commits twice, reopens with `--base HEAD~1` and asserts `spec['base']` and the printed sha12; add the not-an-ancestor refusal; add a freeze-reopen-freeze-reopen test asserting `round 3` and `len(rounds) == 2`.",
+          "Add tests to tests/scripts/test_strap_reopen.py: reopen with `--base HEAD~1` (commit twice in the fixture) and assert `spec['base']` is that sha; reopen with a non-ancestor ref and assert the refusal; freeze, reopen, freeze, reopen, and assert two rounds plus `round 3` in the output.",
+          "Add a judgment-behavior variant: freeze a spec holding one judgment behavior, reopen, edit SKILL.md, and assert that freeze refuses with `B1: no passing green on the current hash`."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Fence claim not checked by the reopen launcher test",
+        "file": "tests/skills/test_strap_skills_reopen_contract.py",
+        "lines": "3,24-26,29-33",
+        "reviewer": "tests, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (line 3) says SKILL.md runs `reopen` through the launcher 'in a fence', and the assertion message says 'no fenced reopen command'. The code (lines 25-26) only checks that some stripped line starts with the launch text, so an unfenced prose line would pass.\n\nAlso (overall): `test_skill_names_the_round_rules` searches the whole SKILL.md for `--base` and `rounds`. `--base` was already there before this PR (SKILL.md lines 12, 82 and 86, step 1 `new --edit`), so that half of the check passes whatever the reopen paragraph says.",
+        "fix": [
+          "Track fence state while scanning the lines and require the launch line to fall between ``` markers.",
+          "Drop 'in a fence' from the docstring and 'fenced' from the assertion message.",
+          "Slice the body from `**Reopen for new behaviors.**` to `13. **Hand off.**` and assert `--base` and `rounds` inside that slice."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "README row lookup raises a bare StopIteration",
+        "file": "tests/skills/test_strap_skills_reopen_contract.py",
+        "lines": "37-38",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "`next(...)` without a default (line 37) raises StopIteration with no message when no README line names `strap-skills`, so a renamed row fails with an unexplained traceback instead of an assertion.",
+        "fix": [
+          "Use `next((... ), \"\")` followed by `assert row, \"README has no strap-skills row\"`, before the `reopen` check."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "I1",
+      "classification": "needs_follow_up",
+      "reason": "B10 drop rests on a fixture-contaminated baseline; proving lane-stop needs a round-3 strap with a clean fixture (net-new). Record-only fix runs via M2."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 262 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"2150-plan-refreeze\",\"commits_count\":10,\"first_sha\":\"b8566b58cc041a260f33a050b6aeff7f232db5c9\",\"headRefName\":\"3150-strap-skills-rewrite\",\"headRefOid\":\"d34fc5628b52e78e79dfb5a534bd5e1301dac421\",\"last_sha\":\"d34fc5628b52e78e79dfb5a534bd5e1301dac421\",\"mergeCommit\":null,\"number\":262,\"state\":\"OPEN\",\"title\":\"Feature(strap): `reopen` command\",\"url\":\"https://github.com/t968rs/operator-straps/pull/262\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "3150-strap-skills-rewrite",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "3150-strap-skills-rewrite",
+        "head_ref_name": "3150-strap-skills-rewrite",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b8566b58cc041a260f33a050b6aeff7f232db5c9",
+        "head_sha": "d34fc5628b52e78e79dfb5a534bd5e1301dac421",
+        "base_ancestor_command": "git merge-base --is-ancestor b8566b58cc041a260f33a050b6aeff7f232db5c9 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor d34fc5628b52e78e79dfb5a534bd5e1301dac421 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "2150-plan-refreeze",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - SKILL.md step 12: refreeze list now opens 'Short of reopen (below)', the locked sentence ends 'until reopen starts a new round', and the Reopen paragraph says it sets mode to edit, so a new-mode spec's baselines then read the SKILL.md at base; strap.py: docstring already qualifies it (new behaviors come only after reopen); README.md strap-skills row: 'Behaviors, scenarios, draws and `retest` stay locked until `reopen`.' (README.md:27); SKILL.md and strap.py are the other part and are not edited by this fixer"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - SKILL.md Reopen paragraph: red also runs at base so new mechanical code must not exist there, --base must be an ancestor of HEAD, and the base stays fixed until the next freeze; earlier judgment behaviors need a passing green on the new hash (draw skips them, run and grade as in step 10); first freeze after reopen ends with '| was <hash12>' of the last round; strap.py: behavior described, no code change needed"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - test_strap_reopen.py: added tests for an ancestor --base (HEAD~1 stored and printed), the not-an-ancestor refusal, and a second reopen with a dropped behavior (round 3, two rounds, rounds[1].base is the first reopen's base, B2 omitted, next freeze names rounds[-1]); strap.py: code under test unchanged for these branches"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - strap_api._refuse_fields refuses tests and kind on a behavior listed in any rounds[*].behaviors (a changed rule goes on a new behavior, which runs red); module docstring and SKILL.md Reopen paragraph say so; test added that update_behavior of B1 tests after reopen is refused; strap.py: _red_plan skip of green stays valid once proven fields are locked"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - strap.py cmd_reopen: new _reopen_base_problems refuses a base that does not descend from the previous spec.base, a part not committed at base, and parts that differ from base in the working tree (commit the frozen round first); docstring and SKILL.md Reopen paragraph state the rule; tests added for uncommitted parts and a base before the previous one"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - Added EX2 (items STR-1, spec-plan-drift/yagni) to plan 1014's DesignEvolution through evolution_api.add: (a) became B10, dropped on its recorded reason; (c) folds into B9, whose file_unchanged check covers the plan JSON only, the PIP HTML check left to a later round; live.js rebuilt (gitignored), plan check ok. Cited files: STR-1.json not re-recorded because record --cite binds only to an --also/--substitute deviation and a scope cut has none (the receipt's EX1 digest is unchanged); the frozen ActionPlan.json stays as frozen; SkillSpec.json is the frozen round 2 spec that EX2 describes."
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - strap-scenario-runner.md gains two rules and a stop condition: project drivers (plan.py, strap.py, plan_api/evolution_api heredocs) take --repo \"<TREE>\" / repo=\"<TREE>\" because they resolve the project from cwd, which starts in REPO, and only init/record-run keep --repo \"<REPO>\"; a path in the task or a fixture's plan text that points outside TREE stands for the same path under TREE; before record-run the runner runs git status --porcelain on REPO and stops with a problem: line, without restoring or recording, when a touched path shows. Cited files: SkillSpec.json R-1 is recorded run evidence sealed by reply_sha256; the plan-1014 fixture is a frozen plan whose E:/ command paths the new path rule now maps under TREE."
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - strap_models.py module docstring driver-owned list now includes rounds (plugins/harness/lib/harness_lib/strap_models.py:4)"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - reopen launcher test now requires the launch line to sit inside a ``` fence (tests/skills/test_strap_skills_reopen_contract.py, _fenced_launch); round-rule test scans only the slice from **Reopen for new behaviors.** to 13. **Hand off.** for --base, rounds and the gated-again sentence"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - README row lookup uses next(..., \"\") with assert row, \"README has no strap-skills row\" before the reopen check (tests/skills/test_strap_skills_reopen_contract.py)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - write-plan README freeze step drops the plan-folder .gitignore from the required commit and states committing it is optional since the driver rewrites it on render; .gitignore: root rule kept, now within the documented lifecycle"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "d34fc56 (working-tree snapshot; developer commits) - removed the redundant sm.Round guard in the driver-owned test, replaced the backward-compat guard with assert \"rounds\" in sm.SkillSpec.model_fields, and narrowed the module docstring to what is checked (empty rounds stays out of the dump and the driver digest)"
+    }
+  ]
+}
