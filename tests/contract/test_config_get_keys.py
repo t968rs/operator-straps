@@ -29,10 +29,11 @@ _KEY = re.compile(r"--get\s+([A-Za-z_][\w.-]*)")
 
 
 def _prompt_files() -> List[Path]:
-    """The agent files and skill files of every plugin."""
+    """The agent, command and skill markdown files of every plugin, including a skill's reference files."""
     agents = _PLUGINS.glob("*/agents/*.md")
-    skills = _PLUGINS.glob("*/skills/**/SKILL.md")
-    return sorted({*agents, *skills})
+    commands = _PLUGINS.glob("*/commands/*.md")
+    skills = _PLUGINS.glob("*/skills/**/*.md")
+    return sorted({*agents, *commands, *skills})
 
 
 def _get_keys() -> List[Tuple[str, str]]:
