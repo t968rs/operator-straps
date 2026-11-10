@@ -90,8 +90,9 @@ Whether the work is still in the code is `PLAN verify`'s question, asked before 
 A commit sequence that keeps the history readable:
 
 1. **Spec**: `Docs(plans): specify <feature>`.
-2. **Plan**: the plan JSON, its PIP and the planned tests (`git add -f` the tests folder if the project's
-   `.gitignore` excludes it): `Docs(plans): plan <feature>`.
+2. **Plan**: the plan JSON and its PIP: `Docs(plans): plan <feature>`. The planned test files under
+   `<plans>/<id>/tests/` are local references and stay out of git; each lands at its repo path, committed,
+   with the item that copies it there.
 3. **Freeze**: commit right after `freeze`: the plan JSON, the new HTML PIP, the deleted markdown PIP and the
    plan folder's `.gitignore`: `Docs(plans): freeze plan <id>`. The committed copy is also what a later
    refreeze reads to keep the plan's scheme.
