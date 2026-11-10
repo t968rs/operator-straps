@@ -2,8 +2,8 @@
 
 The skill's modules sit on the pytest ``pythonpath`` and are imported by bare name; their behavior is tested
 under ``tests/arc/``. Pinned here: every heredoc runs through the launcher line arc-straps skills use and
-calls only names its module binds, the apply heredocs dry-run before they write, and the procedure reads the
-tool's code before a fragment states anything.
+calls only names its module binds, the apply heredocs dry-run before they write, and the procedure names its
+sources (the entry module, the params model, the validator, the page and link checks and arc-meta).
 """
 from __future__ import annotations
 

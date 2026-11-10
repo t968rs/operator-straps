@@ -5,11 +5,14 @@ cannot make (one ``help_page_stale`` naming the refusal), a page a rebuild would
 (``help_page_stale``; the tracked page is read with universal newlines, so a CRLF checkout of an unchanged
 page is current) and a tool whose canonical XML holds no href naming the page (``help_page_unlinked``).
 
-``check_links`` reads every href in a tool's canonical XML. ``#...`` anchors and schemes other than ``file:``
-are skipped; a ``file:`` href under the main checkout prefix (matched ignoring case) must name a file in the
-current tree (``link_target_missing``), any other ``file:`` href is dead in production
-(``link_outside_checkout``), and an href with no scheme that is not rooted at ``/`` or ``\\`` resolves
-against Pro's temp copy of the page (``link_relative``).
+``check_links`` reads every href in a tool's canonical XML and reports one problem per defective href.
+``#...`` anchors and schemes of two or more letters other than ``file:`` (web links) are skipped. A ``file:``
+href under the main checkout prefix (matched ignoring case) must name a file in the current tree
+(``link_target_missing``); one whose path steps out of the checkout with ``..``, any other ``file:`` href, a
+drive path (``C:\\x.html``, which the URL parser reads as a one-letter scheme), an href rooted at ``/`` or
+``\\`` (UNC paths included) and an href the URL parser refuses (``http://[``) are dead in production
+(``link_outside_checkout``). An href with no scheme that is not rooted resolves against Pro's temp copy of
+the page (``link_relative``).
 
 ``__all__`` is the surface the ``harness-skill-api --file`` heredoc binds. Imports only the standard library
 and the sibling modules of the skill; nothing from arc-meta.
@@ -17,6 +20,7 @@ and the sibling modules of the skill; nothing from arc-meta.
 from __future__ import annotations
 
 import html
+import os
 import re
 from pathlib import Path
 from typing import List, Optional
@@ -70,21 +74,57 @@ def _under_prefix(href: str, prefix: str) -> bool:
     return href[:len(prefix)].lower() == prefix.lower()
 
 
+def _href_tail(href: str, prefix: str) -> str:
+    """The repo path of an href under ``prefix``: the rest, cut at ``#`` or ``?``, percent-decoded."""
+    return unquote(re.split(r"[#?]", href[len(prefix):], maxsplit=1)[0])
+
+
+def _scheme(href: str) -> Optional[str]:
+    """The scheme the URL parser reads in ``href`` (``''`` for none), or None when it refuses the href."""
+    try:
+        return urlsplit(href).scheme
+    except ValueError:
+        return None
+
+
 def _is_relative(href: str) -> bool:
     """True for an href with no scheme that is neither an anchor nor rooted at ``/`` or ``\\``."""
-    return not href.startswith(("#", "/", "\\")) and not urlsplit(href).scheme
+    return not href.startswith(("#", "/", "\\")) and _scheme(href) == ""
+
+
+def _local_problem(tool: str, href: str) -> Optional[HelpProblem]:
+    """``link_outside_checkout`` for a malformed href, a drive path (a one-letter scheme) or an href rooted
+    at ``/`` or ``\\``: none names the checkout prefix and each is dead in production; else None."""
+    scheme = _scheme(href)
+    if scheme is None:
+        return _problem(HelpProblemCode.LINK_OUTSIDE_CHECKOUT, tool, f"{href} (malformed href)")
+    if len(scheme) == 1 or href.startswith(("/", "\\")):
+        return _problem(HelpProblemCode.LINK_OUTSIDE_CHECKOUT, tool, href)
+    return None
+
+
+def _checkout_target(p: HelpPaths, tail: str) -> Optional[Path]:
+    """The path ``tail`` names under ``p.root``, or None when ``..`` (or a drive) takes it out of the tree."""
+    target = Path(os.path.normpath(p.root / tail))
+    return target if target.is_relative_to(Path(os.path.normpath(p.root))) else None
 
 
 def _link_problem(p: HelpPaths, tool: str, href: str) -> Optional[HelpProblem]:
-    """The defect of one href, or None for an anchor, a non-``file:`` link or a present target."""
+    """The defect of one href, or None for an anchor, a web link or a present target in the checkout."""
+    if href.startswith("#"):
+        return None
     if _is_relative(href):
         return _problem(HelpProblemCode.LINK_RELATIVE, tool, href)
-    if href.startswith("#") or urlsplit(href).scheme != "file":
-        return None
+    local = _local_problem(tool, href)
+    if local is not None or _scheme(href) != "file":
+        return local
     if not _under_prefix(href, p.prefix):
         return _problem(HelpProblemCode.LINK_OUTSIDE_CHECKOUT, tool, href)
-    tail = unquote(re.split(r"[#?]", href[len(p.prefix):], maxsplit=1)[0])
-    if (p.root / tail).is_file():
+    tail = _href_tail(href, p.prefix)
+    target = _checkout_target(p, tail)
+    if target is None:
+        return _problem(HelpProblemCode.LINK_OUTSIDE_CHECKOUT, tool, href)
+    if target.is_file():
         return None
     return _problem(HelpProblemCode.LINK_TARGET_MISSING, tool, tail)
 
@@ -115,9 +155,11 @@ def _is_current(target: Path, built: str) -> bool:
 
 
 def _links_page(p: HelpPaths, tool: str, page: str) -> bool:
-    """True when ``tool``'s canonical XML holds the page href, its prefix compared ignoring case."""
-    tail = p.page_href(page)[len(p.prefix):]
-    return any(_under_prefix(href, p.prefix) and href[len(p.prefix):] == tail for href in _hrefs(p, tool))
+    """True when ``tool``'s canonical XML holds an href to the page: its prefix compared ignoring case, its
+    tail compared as ``check_links`` reads it (cut at ``#`` or ``?``, percent-decoded)."""
+    tail = _href_tail(p.page_href(page), p.prefix)
+    return any(_under_prefix(href, p.prefix) and _href_tail(href, p.prefix) == tail
+               for href in _hrefs(p, tool))
 
 
 def check_help_page(page: str, repo: RepoLike = None) -> List[HelpProblem]:

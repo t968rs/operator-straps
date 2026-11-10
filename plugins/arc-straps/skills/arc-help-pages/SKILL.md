@@ -29,9 +29,10 @@ All of it lives in the project, under `help_dir` (default `tool_metadata/tool_he
   `$footer`. A missing required slot, an unknown slot or a malformed one is refused, naming the template.
 - `_fragments/<page>.html`: the hand-written source of one page. Its first line is the tool line
   `<!-- help:tool <Tool> -->`, where `<Tool>` is the archive's `<Tool>.tool` folder name. The rest is page
-  content in `<section class="panel" id="...">` blocks, each with an `id` and an `<h2>`. The two lines
+  content in `<section class="panel" id="...">` blocks, each with a unique `id` and an `<h2>`. The two lines
   `<!-- help:parameters -->` and `<!-- help:syntax -->` each stand once where the generated Parameters and
-  Python syntax sections go.
+  Python syntax sections go; their ids, `parameters` and `syntax`, are reserved, and the build refuses a
+  fragment section that uses one or repeats an id.
 - `<page>.html`: the built page. Never edit it by hand; `apply_help` writes it from the template, the
   fragment and the canonical XML, and an edited page is reported stale.
 - `img/`: images the fragments reference.
@@ -121,7 +122,7 @@ PY
 | `build_page(page)` | the page text built from its fragment, the template and the canonical XML; writes nothing |
 | `apply_help(page, apply=False)` | the dry-run or write report of `<help_dir>/<page>.html` |
 | `check_help_page(page)` | `fragment_invalid` alone for a fragment the build refuses; one `help_page_stale` alone for a page the build cannot make; otherwise `help_page_stale` (page absent or different from a rebuild; a CRLF checkout of an unchanged page is current) and `help_page_unlinked` (the fragment tool's canonical XML holds no href to this page) |
-| `check_links(tool)` | one problem per defective href in the tool's canonical XML: `link_target_missing` (a development href naming no file in the current tree), `link_outside_checkout` (any other `file:` href, dead in production), `link_relative` (no scheme and not rooted at `/` or `\`, which resolves against Pro's temp copy of the page); `#` anchors and web links are skipped |
+| `check_links(tool)` | one problem per defective href in the tool's canonical XML: `link_target_missing` (a development href naming no file in the current tree), `link_outside_checkout` (dead in production: any other `file:` href, a development href whose path leaves the checkout through `..`, a drive path such as `C:\x.html`, an href rooted at `/` or `\` including UNC paths, and an href the URL parser refuses such as `http://[`, detail `(malformed href)`), `link_relative` (no scheme and not rooted, which resolves against Pro's temp copy of the page); only `#` anchors and web links (schemes of two or more letters other than `file:`) are skipped |
 | `format_problems(problems)` | one `code \| subject \| detail` line per problem, or `clean` |
 
 ## Judgment
@@ -131,7 +132,7 @@ PY
 | The request vouches for the old page text | Re-check each claim against the code anyway; replace and name the contradicted ones. |
 | The code and the canonical XML disagree on a parameter | The generated section follows the canonical XML; fix the XML through `arc-meta` and report the mismatch. |
 | `check_links` reports `link_relative` | Replace the href with the development href of the page. |
-| `check_links` reports `link_outside_checkout` | The href names another checkout or a path outside the repository; replace it with the development href. |
+| `check_links` reports `link_outside_checkout` | The href names another checkout, a path outside the repository, a drive or rooted path, or is malformed; replace it with the development href. |
 | `check_help_page` reports `help_page_stale` after an apply | Another source changed since: rebuild; a refusal naming the canonical XML or the archive is fixed there, not in the page. |
 | The page is current but `help_page_unlinked` | Add the development href to the tool's canonical XML and apply it with `arc-meta`. |
 

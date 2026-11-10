@@ -24,9 +24,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "atbx": {"$ref": "#/$defs/optPath", "description": "Toolbox archive (.atbx); null means the one .atbx at the project root."},
-        "tool_dir": {"$ref": "#/$defs/relPath", "description": "Folder of canonical per-tool help XML, <Tool>.xml."},
-        "help_dir": {"$ref": "#/$defs/relPath", "description": "Folder of the tracked help pages, <Tool>.html, with their fragments and template."}
+        "atbx": {"$ref": "#/$defs/optPath", "description": "Toolbox archive (.atbx); null means the one .atbx at the project root. Set apart from arc_meta.atbx; this section never reads arc_meta."},
+        "tool_dir": {"$ref": "#/$defs/relPath", "description": "Folder of canonical per-tool help XML, <Tool>.xml. Set apart from arc_meta.tool_dir; this section never reads arc_meta."},
+        "help_dir": {"$ref": "#/$defs/relPath", "description": "Folder of the tracked help pages, <page>.html (the fragment stem, usually the tool name), with _fragments/, _template.html and img/."}
       }
     }
   }

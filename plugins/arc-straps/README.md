@@ -31,7 +31,8 @@ Its second skill, `arc-help-pages`, builds the longer help page a tool's "?" pag
   order (`apply_help`). A rebuild of unchanged sources is byte-identical at any checkout root.
 - **Check** (read-only): `check_help_page` reports a stale, unbuildable or unlinked page and an invalid
   fragment; `check_links` reports each href in the canonical XML whose target is missing, outside the
-  checkout or relative. The development href is the main checkout's `file:` URI plus the page path, so it is
+  checkout (drive, rooted and malformed hrefs included) or relative; only `#` anchors and web links are
+  skipped. The development href is the main checkout's `file:` URI plus the page path, so it is
   the same from any linked worktree.
 
 ## Install
@@ -45,7 +46,7 @@ claude plugin install arc-straps@operator-straps
 - **`harness` 0.56.0 or later, enabled.** The manifest declares the dependency. Every collaborator needs it
   before a project commits a `plugins` key to `.claude/harness.json`: an older harness rejects the key, and
   every harness hook then fails on load.
-- **No ArcGIS Pro.** Nothing in `arc-meta` imports arcpy; it needs the standard library and pydantic
+- **No ArcGIS Pro.** Nothing in `arc-meta` or `arc-help-pages` imports arcpy; both need the standard library and pydantic
   (`jsonschema` optional, for the full schema check under Configuration) under the harness interpreter (the one `hpy` picks; pin it with `HARNESS_PY`). A future skill that imports arcpy must
   pin an ArcGIS Pro interpreter of its own.
 
@@ -98,6 +99,11 @@ points inside the project.
         "tool_dir": "tool_metadata/tools",
         "toolbox_source": null,
         "registry": "tools/registry.json"
+      },
+      "arc_help_pages": {
+        "atbx": "MyTools.atbx",
+        "tool_dir": "tool_metadata/tools",
+        "help_dir": "tool_metadata/tool_help"
       }
     }
   }
@@ -123,7 +129,7 @@ checkout the call runs in (`root`) and the main checkout of its repository (`che
 |---|---|---|
 | `atbx` | `null` | Toolbox archive (`.atbx`). `null` means the one `.atbx` at the project root; none or several there is a config error naming this key |
 | `tool_dir` | `tool_metadata/tools` | Folder of canonical per-tool help XML, `<Tool>.xml` |
-| `help_dir` | `tool_metadata/tool_help` | Folder of the tracked help pages, `<Tool>.html` |
+| `help_dir` | `tool_metadata/tool_help` | Folder of the tracked help pages, `<page>.html` (the fragment stem, usually the tool name), with `_fragments/`, `_template.html` and `img/` |
 
 ## Apply writes
 

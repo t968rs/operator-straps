@@ -3,7 +3,8 @@
 A fragment (``<help_dir>/_fragments/<page>.html``) opens with the tool line ``<!-- help:tool <Tool> -->``;
 every later line is page content, where the two marker lines ``<!-- help:parameters -->`` and
 ``<!-- help:syntax -->`` stand for the generated Parameters and Python syntax sections. Every ``<section>``
-carries an ``id`` and an ``<h2>``, which the nav lists in page order. The template
+carries an ``id`` and an ``<h2>``, which the nav lists in page order; the ids are unique, and ``parameters``
+and ``syntax`` are reserved for the generated sections. The template
 (``<help_dir>/_template.html``) takes ``$title``, ``$summary``, ``$nav``, ``$sections`` and, optionally,
 ``$footer`` through ``string.Template``. The page names no path, time or version, so an unchanged rebuild is
 byte-identical at any root. ``apply_help`` is a dry run unless ``apply=True``; it compares pages read with
@@ -20,7 +21,7 @@ import string
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional, Set, Tuple
 
 import arc_help_pages_source as source
 from arc_help_pages_config import RepoLike, paths
@@ -36,6 +37,7 @@ SYNTAX_MARKER = "<!-- help:syntax -->"
 FOOTER = ("Built by arc-help-pages from the canonical tool help and a page fragment. "
           "Edit those sources, not this page.")
 TEMPLATE_NAME = "_template.html"
+RESERVED_IDS = ("parameters", "syntax")
 DRY_RUN = "DRY-RUN: nothing written. Re-run with apply=True to write."
 
 _TOOL_LINE = re.compile(r"<!-- help:tool (\S+) -->")
@@ -54,7 +56,8 @@ def tool_line(tool: str) -> str:
 
 def parse_fragment(page: str, text: str, repo: RepoLike = None) -> Fragment:
     """The fragment of ``page``; refused unless it names a known tool, holds both markers once and every
-    ``<section>`` has an ``id`` and an ``<h2>``."""
+    ``<section>`` has an ``id`` and an ``<h2>``; an id may not repeat or be ``parameters`` or ``syntax``,
+    which the generated sections own."""
     lines = _lines(text)
     index, tool = _find_tool_line(page, lines)
     if not source.has_tool(tool, repo):
@@ -86,12 +89,19 @@ def _find_tool_line(page: str, lines: List[str]) -> Tuple[int, str]:
 
 
 def _check_sections(page: str, html: str) -> None:
-    """Refuse a ``<section>`` without an ``id`` or without an ``<h2>``."""
+    """Refuse a ``<section>`` without an ``id`` or an ``<h2>``, with a reserved id or with a repeated id."""
+    seen: Set[str] = set()
     for number, (section_id, heading) in enumerate(_sections(html), start=1):
         if not section_id:
             raise FragmentError(f"fragment {page}: <section> {number} has no id")
         if heading is None:
             raise FragmentError(f"fragment {page}: <section id=\"{section_id}\"> has no <h2>")
+        if section_id in RESERVED_IDS:
+            raise FragmentError(f"fragment {page}: <section id=\"{section_id}\"> uses an id reserved for "
+                                f"a generated section ({', '.join(RESERVED_IDS)})")
+        if section_id in seen:
+            raise FragmentError(f"fragment {page}: <section id=\"{section_id}\"> repeats an id")
+        seen.add(section_id)
 
 
 class _SectionScan(HTMLParser):

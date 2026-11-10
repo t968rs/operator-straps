@@ -2,11 +2,13 @@
 
 ``check_help_page`` reports a page a rebuild would change (``help_page_stale``), a fragment the build refuses
 (``fragment_invalid``) and a tool whose canonical XML does not link the page (``help_page_unlinked``).
-``check_links`` reads every ``file:`` href in a tool's canonical XML: one under the checkout prefix must name
-a file in the current tree (``link_target_missing``), and any other is dead in production
-(``link_outside_checkout``). The prefix match ignores case; the checkout prefix is the main checkout's, so the
-checks agree when they run from a linked worktree. A tracked page checked out with CRLF line endings
-(``core.autocrlf``) is current when its text matches.
+``check_links`` reads every href in a tool's canonical XML: anchors and web links are skipped, a ``file:``
+href under the checkout prefix must name a file in the current tree (``link_target_missing``), any other
+``file:`` href, a ``..`` tail leaving the checkout, a drive or rooted path and a malformed href are dead in
+production (``link_outside_checkout``), and a scheme-less href not rooted at ``/`` or ``\\`` is
+``link_relative``. The prefix match ignores case; the checkout prefix is the main
+checkout's, so the checks agree when they run from a linked worktree. A tracked page checked out with CRLF
+line endings (``core.autocrlf``) is current when its text matches.
 """
 from __future__ import annotations
 
@@ -109,6 +111,26 @@ def test_check_help_page_matches_the_link_prefix_ignoring_case(make_project) -> 
     assert api.check_help_page(PAGE, repo=root) == []
 
 
+def test_check_help_page_counts_a_link_into_a_section_as_linked(make_project) -> None:
+    """The page tail is read as check_links reads it, so a ``#section`` deep link names the page."""
+    root = _project(make_project)
+    _link(root, config.paths(root).page_href(PAGE) + "#parameters")
+    api.apply_help(PAGE, apply=True, repo=root)
+    assert api.check_help_page(PAGE, repo=root) == []
+
+
+def test_check_help_page_matches_a_percent_encoded_page_href(make_project) -> None:
+    """A page name holding a space prints as ``%20`` and that href is clean for both checks."""
+    page = "demo page"
+    root = make_help_project(make_project, fragments={page: fragment()})
+    href = config.paths(root).page_href(page)
+    assert href.endswith("tool_metadata/tool_help/demo%20page.html")
+    _link(root, href)
+    api.apply_help(page, apply=True, repo=root)
+    assert api.check_help_page(page, repo=root) == []
+    assert api.check_links(TOOL, repo=root) == []
+
+
 def test_check_help_page_reports_an_invalid_fragment_alone(make_project) -> None:
     root = make_help_project(make_project, fragments={PAGE: fragment(syntax=False)})
     assert _codes(api.check_help_page(PAGE, repo=root)) == ["fragment_invalid"]
@@ -133,6 +155,39 @@ def test_check_links_reports_a_file_href_outside_the_checkout(make_project) -> N
     assert _codes(api.check_links(TOOL, repo=root)) == ["link_outside_checkout"]
 
 
+@pytest.mark.parametrize("href", ["C:\\x.html", "C:/x.html", "/x.html", "\\x.html", "\\\\server\\x.html",
+                                  "//host/x.html"])
+def test_check_links_reports_drive_and_rooted_paths_as_outside(make_project, href: str) -> None:
+    """A drive path parses as a one-letter scheme and a rooted path has none; both are dead in production."""
+    root = _project(make_project)
+    _link(root, href)
+    problems = api.check_links(TOOL, repo=root)
+    assert _codes(problems) == ["link_outside_checkout"]
+    assert problems[0].detail == href
+
+
+def test_check_links_reports_a_malformed_href_and_checks_the_next(make_project) -> None:
+    """``http://[`` makes the URL parser raise; it is one problem, and the href after it is still read."""
+    root = _project(make_project)
+    gone = config.paths(root).prefix + "tool_metadata/tool_help/gone.html"
+    _usage(root, f'<p><a href="http://[">bad</a> and <a href="{gone}">gone</a>.</p>')
+    problems = api.check_links(TOOL, repo=root)
+    assert [p.code.value for p in problems] == ["link_outside_checkout", "link_target_missing"]
+    assert "http://[" in problems[0].detail and "malformed" in problems[0].detail
+
+
+def test_check_links_reports_a_development_href_that_leaves_the_checkout(make_project) -> None:
+    """A ``..`` tail under the prefix names a file outside the tree, even when that file exists."""
+    root = _project(make_project)
+    outside = root.parent / "outside.html"
+    outside.write_text("x", encoding="utf-8")
+    href = config.paths(root).prefix + f"../{outside.name}"
+    _link(root, href)
+    problems = api.check_links(TOOL, repo=root)
+    assert _codes(problems) == ["link_outside_checkout"]
+    assert problems[0].detail == href
+
+
 def test_check_links_ignores_anchors_and_web_links(make_project) -> None:
     root = _project(make_project)
     _usage(root, '<p><a href="#top">Top</a> and <a href="https://example.com/x">web</a>.</p>')
@@ -154,6 +209,7 @@ def _lower_drive(prefix: str) -> str:
     return re.sub(r"^(file:///)([A-Za-z]):", lambda m: f"{m.group(1)}{m.group(2).lower()}:", prefix)
 
 
+@pytest.mark.cross_os
 @pytest.mark.parametrize("case", ["upper", "lower_drive"])
 def test_check_links_matches_the_prefix_ignoring_case(make_project, case: str) -> None:
     """Under a re-cased prefix the present target is clean and the absent one is missing, not outside."""

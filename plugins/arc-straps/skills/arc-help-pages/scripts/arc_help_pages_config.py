@@ -10,6 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Optional, Union
+from urllib.parse import quote
 
 from harness_lib.config import ConfigError, active, load_config
 from harness_lib.plugin_config import plugin_section
@@ -40,8 +41,8 @@ class HelpPaths:
         return self.checkout_root.as_uri() + "/"
 
     def page_href(self, page: str) -> str:
-        """The development href of ``<page>.html``: the main checkout URI plus its repo-relative path."""
-        return self.prefix + (self.help_dir / f"{page}.html").relative_to(self.root).as_posix()
+        """The development href of ``<page>.html``: the checkout URI plus its percent-encoded repo path."""
+        return self.prefix + quote((self.help_dir / f"{page}.html").relative_to(self.root).as_posix())
 
 
 def paths(repo: RepoLike = None) -> HelpPaths:

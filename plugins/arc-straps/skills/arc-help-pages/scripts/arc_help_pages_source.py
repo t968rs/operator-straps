@@ -142,7 +142,8 @@ def _collapsed(text: str) -> str:
 # --- archive --------------------------------------------------------------------------------------------
 
 def _archive_facts(p: HelpPaths, tool: str) -> Tuple[object, str]:
-    """``(tool.content, toolbox alias)`` from the archive; refused when the tool is not in it."""
+    """``(tool.content, toolbox alias)`` from the archive; refused when the tool is not in it or the archive
+    has no ``toolbox.content`` with a non-empty string alias (the Python syntax line needs it)."""
     if not p.atbx.is_file():
         raise HelpError(f"no toolbox at {p.atbx.as_posix()}")
     try:
@@ -153,8 +154,10 @@ def _archive_facts(p: HelpPaths, tool: str) -> Tuple[object, str]:
         raise HelpError(f"{p.atbx.name} is not a zip archive ({exc})") from exc
     if content is None:
         raise HelpError(f"{tool} is not a tool in {p.atbx.name}")
-    alias = toolbox.get("alias", "") if isinstance(toolbox, dict) else ""
-    return content, alias if isinstance(alias, str) else ""
+    alias = toolbox.get("alias") if isinstance(toolbox, dict) else None
+    if not isinstance(alias, str) or not alias:
+        raise HelpError(f"toolbox.content in {p.atbx.name} has no alias")
+    return content, alias
 
 
 def _decode(raw: bytes) -> str:
@@ -175,7 +178,9 @@ def _member_json(zf: zipfile.ZipFile, name: str, label: str) -> Optional[object]
 
 
 def _param_names(content: object, tool: str) -> List[str]:
-    """The ``params`` keys of ``tool.content`` in dialog order; refused unless it holds a params object."""
+    """The ``params`` keys of ``tool.content`` in dialog order; a missing ``params`` key reads as no
+    parameters (a parameterless tool omits it). Refused when ``tool.content`` is not a JSON object or its
+    ``params`` is not an object."""
     params = content.get("params", {}) if isinstance(content, dict) else None
     if not isinstance(params, dict):
         raise HelpError(f"{tool}.tool/tool.content is not a JSON object with a params object")

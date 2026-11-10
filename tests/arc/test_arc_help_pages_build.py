@@ -15,7 +15,7 @@ from typing import Optional
 import pytest
 
 import arc_help_pages_build as build
-from arc_help_pages_models import FragmentError
+from arc_help_pages_models import FragmentError, HelpError
 from arc._arc_help_project import (
     HELP_DIR, OVERVIEW, PAGE, SIGNATURE, TOOL, archive_members, fragment, make_help_project,
 )
@@ -110,6 +110,9 @@ REFUSALS = {
     "no_syntax": {"syntax": False},
     "no_section_id": {"extra": '<section class="panel"><h2>Notes</h2><p>x</p></section>'},
     "no_section_h2": {"extra": '<section class="panel" id="notes"><p>x</p></section>'},
+    "reserved_parameters_id": {"extra": '<section class="panel" id="parameters"><h2>P</h2></section>'},
+    "reserved_syntax_id": {"extra": '<section class="panel" id="syntax"><h2>S</h2></section>'},
+    "duplicate_id": {"extra": OVERVIEW},
 }
 
 
@@ -117,6 +120,12 @@ REFUSALS = {
 def test_fragment_refusals(make_project, case: str) -> None:
     root = _project(make_project, fragment(**REFUSALS[case]))
     with pytest.raises(FragmentError):
+        build.build_page(PAGE, repo=root)
+
+
+def test_archive_without_alias_is_refused(make_project) -> None:
+    root = make_help_project(make_project, members=archive_members(alias=""), fragments={PAGE: fragment()})
+    with pytest.raises(HelpError, match="has no alias"):
         build.build_page(PAGE, repo=root)
 
 
