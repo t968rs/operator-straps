@@ -8,7 +8,7 @@
   "base_sha": "5655a922081d78991aa07b3c8de549e4a2bb1249",
   "head_sha": "3565079f0ec2d10ac34378b63f2cd4a331c5eb37",
   "review_date": "2026-11-09",
-  "verdict": "NOT READY TO MERGE - critical: C1",
+  "verdict": "READY TO MERGE - 12 of 12 findings resolved, 0 bubbled",
   "stats": {
     "additions": 269,
     "deletions": 41,
@@ -35,9 +35,7 @@
     "docs/_scratch/pr_review/0255/pr255_20261110T062220Z/findings/roast.json",
     "docs/_scratch/pr_review/0255/pr255_20261110T062220Z/findings/failing_tests_1.json"
   ],
-  "bubbles": [
-    "M5"
-  ],
+  "bubbles": [],
   "strengths": [
     "Every new test is behavioral. The strap_api tests drive the real record_run/run_tree/tree_name against an activated throwaway project, and the driver tests run strap.py in-process against a git repo. Nothing is stubbed.",
     "test_record_run_redacts_machine_paths_before_hashing pins the hash-after-redaction order by recomputing sha256 over the stored reply, so redacting after hashing would fail it.",
@@ -386,6 +384,18 @@
       "status": "RESOLVED",
       "date": "2026-11-09",
       "evidence": "3565079 (working-tree snapshot; developer commits) - cmd_record_run evaluates checks on the raw stdin reply instead of the redacted recorded.reply; module docstring record-run line and Run docstring say checks see the unredacted reply; strap_api.py: record_run redaction unchanged, stored text stays redacted; SKILL.md and v0.7.1.md: no rule change for spec authors since checks see the runner's text again"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-11-09",
+      "evidence": "34e3275 (working-tree snapshot; developer commits) - Regenerated plugins/harness/schemas/SkillSpec.schema.json with tools/gen_skillspec_schema.py; the Run description line now matches strap_models.schema_text(); --check exits 0. No registered test for this file set, so no test run."
+    },
+    {
+      "id": "M5",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-09",
+      "evidence": "34e3275 (working-tree snapshot; developer commits) - closed, no action: Developer-directed: PR 255 retitled to name both the strap-skills and arc-help-pages fixes; the body (pr-sum) already covers both, and the arc-help-pages release line carries #255 (M1). No file in the tree changes for PR metadata."
     }
   ]
 }

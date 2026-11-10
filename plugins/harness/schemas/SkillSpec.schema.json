@@ -434,7 +434,7 @@
     },
     "Run": {
       "additionalProperties": false,
-      "description": "One scenario run on one arm; ``tree`` and ``start`` locate the working tree the run used.",
+      "description": "One scenario run on one arm; ``tree`` and ``start`` locate the working tree the run used.\n\n``tree`` is relative to the configured worktree root (older runs hold an absolute path), and ``reply``\nholds placeholders in place of the machine roots ``strap_api._machine_paths`` lists (the run tree, the\nworktree root, the project, the main checkout, the plugin root and the home folder). ``checks`` come\nfrom the reply before that redaction, so a ``reply_*`` check sees the paths the runner wrote.",
       "properties": {
         "id": {
           "pattern": "^R-\\d+$",
