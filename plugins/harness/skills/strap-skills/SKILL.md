@@ -239,6 +239,19 @@ writes land where `record-run` looks.
     scenario. Each save of a frozen spec seals its authored fields; a hand edit breaks the seal and every
     command refuses the spec until the edit is reverted.
 
+    **Reopen for new behaviors.** A frozen spec takes no new behavior. When the skill gains new rules, run
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" reopen <name> [--base <ref>]
+    ```
+
+    It keeps the earlier freeze in `rounds`, clears the stamp and moves `base`, printing
+    `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>`. Pick as base the commit whose code the
+    new scenarios need but whose SKILL.md lacks the new guidance, since baselines read the SKILL.md at `base`.
+    Then continue from step 2 for the new behaviors. The earlier behaviors are gated again at the next freeze:
+    a mechanical one frozen in an earlier round skips red, and its planned tests rerun. Reopening is standard
+    procedure: ask the developer for the OK, then do it.
+
 13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,
     and the `bump:` line from step 5 when one printed. The developer commits.
 
