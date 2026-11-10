@@ -36,6 +36,26 @@
     {
       "kind": "contract_test",
       "path": "tests/skills/test_write_plan_record_contract.py"
+    },
+    {
+      "kind": "contract_test",
+      "path": "tests/skills/test_write_plan_receipts_contract.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/plan_receipts.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/receipt_models.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/plan_render_html.py"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/evolution_api.py"
     }
   ],
   "behaviors": [
@@ -420,10 +440,10 @@
   "runs": [],
   "grades": [],
   "frozen": {
-    "skill_hash": "4e79dc8fb4438ac1af34c51014752435f4ff9d502a59d2d431cc944a0ddd937a",
+    "skill_hash": "3b7b3c83bc1385c14522286df650a64b3d0e65c74e35756d846a1780de8c43ab",
     "grader": "session",
-    "at": "2026-11-07T00:28:44+00:00",
-    "authored": "5c16b6408d1df2ca064ecb26a3e60cd19d6cefd320eb747dc198340bdd6753c6"
+    "at": "2026-11-10T19:24:18+00:00",
+    "authored": "b5c1dd3dec68e1b3f0b3881f3d044e1e2f470ec11c8aa1199c7b36d29c9f711c"
   },
-  "driver_digest": "a7998c453410eddb23603ab330f886da551d18802857acabe135ce6e05b289ef"
+  "driver_digest": "8b1e7b5905f1db6adb334aeadb01852117a9c2d1e0a6191793f5c3a5dfd0e12c"
 }
