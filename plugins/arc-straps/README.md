@@ -28,7 +28,8 @@ Its second skill, `arc-help-pages`, builds the longer help page a tool's "?" pag
 
 - **Build** (dry run first): `<help_dir>/<page>.html` from a hand-written fragment, the page template and the
   tool's canonical help XML, with the Parameters table and the Python syntax generated in `tool.content`
-  order (`apply_help`). A rebuild of unchanged sources is byte-identical at any checkout root.
+  order (`apply_help`); the syntax opens with the `arcpy.ImportToolbox` line that puts the toolbox alias
+  into arcpy. A rebuild of unchanged sources is byte-identical at any checkout root.
 - **Check** (read-only): `check_help_page` reports a stale, unbuildable or unlinked page and an invalid
   fragment; `check_links` reports each href in the canonical XML whose target is missing, outside the
   checkout (drive, rooted and malformed hrefs included) or relative; only `#` anchors and web links are

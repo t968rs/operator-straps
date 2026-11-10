@@ -330,7 +330,11 @@ class CheckResult(BaseModel):
 
 
 class Run(BaseModel):
-    """One scenario run on one arm; ``tree`` and ``start`` locate the working tree the run used."""
+    """One scenario run on one arm; ``tree`` and ``start`` locate the working tree the run used.
+
+    ``tree`` is relative to the configured worktree root (older runs hold an absolute path), and ``reply``
+    holds placeholders in place of machine paths, so a tracked spec names no local path.
+    """
 
     model_config = _MODEL_CONFIG
 

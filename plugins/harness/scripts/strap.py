@@ -531,16 +531,30 @@ def build_tree(start: str, fixture: Optional[Path]) -> Tuple[Path, str]:
     return tree.resolve(), commit
 
 
+def _tree(run: Run) -> Path:
+    """The run's working tree as an absolute resolved path; ``Run.tree`` holds it relative to the
+    worktree root, so the tracked spec names no machine path."""
+    tree = sa.run_tree(run)
+    if tree is None:
+        raise Refused([f"{run.id} has no working tree"])
+    return tree.resolve()
+
+
+def _live_tree(run: Run) -> Optional[Path]:
+    """The run's working tree when it exists on disk, else None."""
+    return _tree(run) if run.tree and _tree(run).is_dir() else None
+
+
 def _place(spec: SkillSpec, run: Run, scenario: Scenario) -> Tuple[SkillSpec, Run]:
     """Save ``run`` with a live tree: kept when present, rebuilt at its start, or built fresh."""
-    if run.tree and Path(run.tree).is_dir():
+    if _live_tree(run) is not None:
         return spec, run
     if run.start:
         tree, start = build_tree(run.start, None)
     else:
         tree, start = build_tree(_start_commit(spec), _fixture_dir(spec, scenario))
-    placed = run.model_copy(update={"tree": tree.as_posix(), "start": start})
     try:
+        placed = run.model_copy(update={"tree": sa.tree_name(tree), "start": start})
         return save(_put_run(spec, placed)), placed
     except Exception:
         pr.drop_tree(_root(), tree)
@@ -566,7 +580,7 @@ def recorded_block(name: str, run_id: str) -> str:
 
 def runner_row(spec: SkillSpec, run: Run) -> str:
     init = f"{launcher()} init {spec.name} --run {run.id}"
-    return "\n".join(runner_lines(spec.name, run.id, run.tree, init))
+    return "\n".join(runner_lines(spec.name, run.id, _tree(run).as_posix(), init))
 
 
 def _next_run_id(spec: SkillSpec) -> str:
@@ -600,7 +614,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 def _rewrite(text: str, source: Path, spec: SkillSpec, run: Run) -> str:
     """``text`` with the skill's variables pointing at ``source`` (and a project skill's
     ``${CLAUDE_PROJECT_DIR}`` at the run tree, where the scenario's writes must land)."""
-    return profile_of(spec).rewrite(text, source, Path(run.tree))
+    return profile_of(spec).rewrite(text, source, _tree(run))
 
 
 def _skill_text(spec: SkillSpec, run: Run) -> Optional[str]:
@@ -615,7 +629,7 @@ def _skill_text(spec: SkillSpec, run: Run) -> Optional[str]:
     if SpecMode(spec.mode) != SpecMode.EDIT:
         return None
     done = git(root, "show", f"{spec.base}:{part.path}")
-    return _rewrite(done.stdout, Path(run.tree), spec, run) if done.returncode == 0 else None
+    return _rewrite(done.stdout, _tree(run), spec, run) if done.returncode == 0 else None
 
 
 def _agent_text(spec: SkillSpec, run: Run, scenario: Scenario) -> Optional[str]:
@@ -625,20 +639,20 @@ def _agent_text(spec: SkillSpec, run: Run, scenario: Scenario) -> Optional[str]:
     """
     if scenario.role == SESSION_ROLE:
         return None
-    source = _root() if run.arm == Arm.GREEN else Path(run.tree)
+    source = _root() if run.arm == Arm.GREEN else _tree(run)
     profile = profile_of(spec)
     path = source / profile.agents_dir / f"{scenario.role}.md"
     if not path.is_file():
         return (f"{profile.agents_dir}/{scenario.role}.md is absent at the start commit; "
                 "play the role from the task alone.")
     text = path.read_text(encoding="utf-8")
-    return text if profile.plugin_dir is not None else profile.rewrite(text, source, Path(run.tree))
+    return text if profile.plugin_dir is not None else profile.rewrite(text, source, _tree(run))
 
 
 def brief(spec: SkillSpec, run: Run, scenario: Scenario) -> str:
     lines = [f"# Scenario run {run.id} | {spec.name} | {run.behavior} {run.scenario} | {run.arm.value}", "",
-             f"Working tree: {run.tree}", "Work only inside the working tree.", "", "## Task", "",
-             scenario.task.rstrip(), ""]
+             f"Working tree: {_tree(run).as_posix()}", "Work only inside the working tree.", "",
+             "## Task", "", scenario.task.rstrip(), ""]
     skill = _skill_text(spec, run) if scenario.skill_in_brief else None
     if skill is not None:
         lines += ["## Skill", "", skill.rstrip(), ""]
@@ -656,7 +670,7 @@ def _live_run(spec: SkillSpec, run_id: str) -> Run:
     run = _run_of(spec, run_id)
     if run.recorded:
         raise Refused([f"{run.id} already recorded"])
-    if not run.tree or not Path(run.tree).is_dir():
+    if _live_tree(run) is None:
         raise Refused([f"{run.id}: its tree is gone; run `run {spec.name} {run.behavior} --arm "
                        f"{run.arm.value}` to rebuild it"])
     return run
@@ -696,8 +710,9 @@ def _refuse_frozen_open_run(spec: SkillSpec, run: Run) -> None:
     """A non-green run left open at freeze: drop its tree, since nothing can record it, then refuse."""
     if spec.frozen is None or run.arm == Arm.GREEN:
         return
-    if not run.recorded and run.tree and Path(run.tree).is_dir():
-        pr.drop_tree(_root(), Path(run.tree))
+    tree = _live_tree(run)
+    if not run.recorded and tree is not None:
+        pr.drop_tree(_root(), tree)
     _refuse_frozen_baseline(spec, run.arm)
 
 
@@ -706,7 +721,7 @@ def cmd_record_run(args: argparse.Namespace) -> int:
     _refuse_frozen_open_run(spec, _run_of(spec, args.run))
     run = _live_run(spec, args.run)
     _refuse_twin(spec, run)
-    tree = Path(run.tree)
+    tree = _tree(run)
     reply = sys.stdin.read()
     changed = changed_paths(tree)
     head_moved = git_out(tree, "rev-parse", "HEAD").strip() != run.start
