@@ -1,0 +1,28 @@
+{
+  "plan_id": "1014",
+  "item": "MOD-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "9dc06d6fd7d1d68441ce460835085784e7ea9118"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_strap_rounds.py::test_round_holds_base_stamp_and_behavior_ids",
+        "tests/lib/test_strap_rounds.py::test_rounds_is_a_driver_owned_list_before_frozen",
+        "tests/lib/test_strap_rounds.py::test_empty_rounds_keep_the_old_dump_and_digests",
+        "tests/lib/test_strap_rounds.py::test_a_round_changes_the_driver_digest_but_not_the_authored_digest"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_strap_rounds.py::test_round_holds_base_stamp_and_behavior_ids tests/lib/test_strap_rounds.py::test_rounds_is_a_driver_owned_list_before_frozen tests/lib/test_strap_rounds.py::test_empty_rounds_keep_the_old_dump_and_digests tests/lib/test_strap_rounds.py::test_a_round_changes_the_driver_digest_but_not_the_authored_digest"
+    }
+  },
+  "evidence": "staged tree 9dc06d6: 4 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-10",
+  "seal": "938b36361951e8d4a39f56891b4a2c62d226303b51597f9a4b38344d85aea747"
+}

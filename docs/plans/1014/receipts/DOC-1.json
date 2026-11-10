@@ -1,0 +1,27 @@
+{
+  "plan_id": "1014",
+  "item": "DOC-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "500832320c7fd97bd8788f7bb2d83d7db0a2bf35"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_strap_skills_reopen_contract.py::test_skill_runs_reopen_through_the_launcher",
+        "tests/skills/test_strap_skills_reopen_contract.py::test_skill_names_the_round_rules",
+        "tests/skills/test_strap_skills_reopen_contract.py::test_readme_strap_row_names_reopen"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_strap_skills_reopen_contract.py::test_skill_runs_reopen_through_the_launcher tests/skills/test_strap_skills_reopen_contract.py::test_skill_names_the_round_rules tests/skills/test_strap_skills_reopen_contract.py::test_readme_strap_row_names_reopen"
+    }
+  },
+  "evidence": "staged tree 5008323: 3 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-10",
+  "seal": "4dbaff02aeb9c613a157d44a62053d7efb0a355cee1f8fc34a91d28a7a11f01e"
+}

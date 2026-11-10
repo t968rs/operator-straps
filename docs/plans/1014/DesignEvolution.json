@@ -1,0 +1,38 @@
+{
+  "plan_id": "1014",
+  "feature": "strap reopen",
+  "branch_lineage": "main-->2150-plan-refreeze",
+  "primary_documents": {
+    "plan": "docs/plans/1014_strap_reopen_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-10-strap-reopen-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "main session (STR-1)",
+      "phase": "post-exec-start",
+      "items": [
+        "STR-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "STR-1 files",
+        "indicated": "only the write-plan SkillSpec.json and SKILL.md change"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the item's action names a fixture folder its files omit",
+        "why_free_form": "the round 2 scenarios need a frozen receipts plan in their tree, laid from docs/plans/strap/write-plan/fixtures/plan-1014/"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "STR-1 also adds the plan-1014 fixture (the frozen plan JSON and its page)"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the fixture the B9 scenarios have no frozen plan to act on"
+      },
+      "date": "2026-11-10"
+    }
+  ]
+}
