@@ -11,7 +11,7 @@ import random
 import re
 import secrets
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Sequence, Union
+from typing import Callable, Dict, List, Optional, Sequence, Tuple, Union
 
 from harness_lib.strap_models import (
     Arm, Behavior, Check, CheckKind, CheckResult, DrawReason, Grade, GradeValue, Run, Scenario, SkillSpec,
@@ -85,6 +85,39 @@ def _squash(text: str) -> str:
 def quote_found(quote: str, reply: str) -> bool:
     """True when the whitespace-normalized quote is a substring of the normalized reply."""
     return _squash(quote) in _squash(reply)
+
+
+_SEP = r"[/\\]+"
+_NAME_CHAR = r"[\w.-]"
+
+
+def _path_pattern(path: str) -> Optional[re.Pattern]:
+    """A pattern for absolute ``path`` in any separator spelling; a drive path also as ``/c/...``.
+
+    A drive path matches case-insensitively; neither form matches inside a longer name. None for a path
+    with fewer than two segments, which would match too much.
+    """
+    parts = [part for part in re.split(_SEP, path) if part]
+    drive = re.fullmatch(r"([A-Za-z]):", parts[0]) if parts else None
+    rest = parts[1:] if drive else parts
+    if len(parts) < 2 or not rest:
+        return None
+    head = rf"(?:{drive.group(1)}:|/{drive.group(1)})" if drive else ""
+    body = _SEP + _SEP.join(re.escape(part) for part in rest)
+    return re.compile(rf"(?<!{_NAME_CHAR}){head}{body}(?![\w-]|\.[\w-])", re.IGNORECASE if drive else 0)
+
+
+def redact_paths(text: str, pairs: Sequence[Tuple[str, Union[str, Path]]]) -> str:
+    """``text`` with each ``(placeholder, path)`` path replaced by its placeholder, longest path first.
+
+    The longest-first order lets a path under another keep its own placeholder.
+    """
+    ordered = sorted(((holder, str(path)) for holder, path in pairs), key=lambda pair: -len(pair[1]))
+    for holder, path in ordered:
+        pattern = _path_pattern(path)
+        if pattern is not None:
+            text = pattern.sub(lambda _: holder, text)
+    return text
 
 
 def item_matches(expected: Union[bool, GradeValue], observed: Union[bool, GradeValue]) -> bool:
