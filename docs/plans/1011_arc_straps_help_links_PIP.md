@@ -350,7 +350,7 @@ Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path f
 
 ### TASK-6: arc-help-pages build: fragment parsing, template fill, Parameters, syntax, nav, apply_help
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-5
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-5
 **Files:** `plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_build.py`, `tests/arc/test_arc_help_pages_build.py`
 
 **Anchors:**
@@ -365,30 +365,33 @@ Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path f
 4. build_page(page, repo=None) -> str: reads <help_dir>/_fragments/<page>.html and <help_dir>/_template.html (UTF-8, universal newlines; HelpError when absent), source.tool_doc, render. No timestamp and no absolute path: two projects at different roots build the same bytes.
 5. apply_help(page, apply=False, repo=None) -> HelpOutcome: reads <help_dir>/<page>.html with universal newlines (a CRLF checkout under core.autocrlf compares equal; the consuming repo has core.autocrlf=true and `git ls-files --eol` shows i/lf w/crlf for its page) and compares it with the build; equal -> changed False, the file untouched, an 'UP TO DATE: ...' line; else lines naming the page as its POSIX path relative to the root (tool_metadata/tool_help/<page>.html) with the size change, ending with exactly 'DRY-RUN: nothing written. Re-run with apply=True to write.', or with apply=True writing page.encode('utf-8') bytes (LF) and an 'APPLIED ...' line. The skill prints "\n".join(apply_help(name).lines). Imports nothing from arc-meta.
 
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_template_fill_replaces_every_slot` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_nav_lists_each_section_by_id_and_h2_in_page_order` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_parameters_table_follows_tool_content_order_with_tags` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_syntax_braces_optional_params_and_lists_derived_outputs_after_it` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_rebuild_is_byte_identical_and_apply_writes_it` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_parameters]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_h2]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_id]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_syntax]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_tool_line]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[unknown_tool]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_the_build_matches_the_golden_page_wherever_the_project_sits` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_the_dry_run_report_names_the_page_and_ends_with_the_notice` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_a_crlf_checkout_of_the_page_is_up_to_date` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_the_marker_spellings_are_the_fragment_contract` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_build.py::test_the_footer_is_one_fixed_line` fails with ImportError, then passes
-- [ ] Run `python -m ruff check plugins/arc-straps tests/arc`: All checks passed!
-- [ ] Record it: `plan.py record 1011 TASK-6 --sha <sha>` or `--staged`
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_template_fill_replaces_every_slot` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_nav_lists_each_section_by_id_and_h2_in_page_order` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_parameters_table_follows_tool_content_order_with_tags` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_syntax_braces_optional_params_and_lists_derived_outputs_after_it` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_rebuild_is_byte_identical_and_apply_writes_it` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_parameters]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_h2]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_id]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_syntax]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_tool_line]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[unknown_tool]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_the_build_matches_the_golden_page_wherever_the_project_sits` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_the_dry_run_report_names_the_page_and_ends_with_the_notice` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_a_crlf_checkout_of_the_page_is_up_to_date` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_the_marker_spellings_are_the_fragment_contract` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_build.py::test_the_footer_is_one_fixed_line` fails with ImportError, then passes
+- [x] Run `python -m ruff check plugins/arc-straps tests/arc`: All checks passed!
+- [x] Record it: `plan.py record 1011 TASK-6 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree ac6fd08: 16 test node(s) passed
+
+**Recorded:** 2026-11-09, staged, tree `ac6fd08`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_build.py::test_template_fill_replaces_every_slot tests/arc/test_arc_help_pages_build.py::test_nav_lists_each_section_by_id_and_h2_in_page_order tests/arc/test_arc_help_pages_build.py::test_parameters_table_follows_tool_content_order_with_tags tests/arc/test_arc_help_pages_build.py::test_syntax_braces_optional_params_and_lists_derived_outputs_after_it tests/arc/test_arc_help_pages_build.py::test_rebuild_is_byte_identical_and_apply_writes_it tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_parameters] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_h2] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_id] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_syntax] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_tool_line] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[unknown_tool] tests/arc/test_arc_help_pages_build.py::test_the_build_matches_the_golden_page_wherever_the_project_sits tests/arc/test_arc_help_pages_build.py::test_the_dry_run_report_names_the_page_and_ends_with_the_notice tests/arc/test_arc_help_pages_build.py::test_a_crlf_checkout_of_the_page_is_up_to_date tests/arc/test_arc_help_pages_build.py::test_the_marker_spellings_are_the_fragment_contract tests/arc/test_arc_help_pages_build.py::test_the_footer_is_one_fixed_line`
 
 ### TASK-7: arc-help-pages API: help_pages, check_help_page, check_links, format_problems
 
-**Status:** PENDING | **Model:** opus | **Depends on:** TASK-6
+**Status:** COMPLETE | **Model:** opus | **Depends on:** TASK-6
 **Files:** `plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_api.py`, `tests/arc/test_arc_help_pages_api.py`, `tests/contract/test_root_separation.py`
 
 **Anchors:**
@@ -407,36 +410,39 @@ Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path f
 6. tests/contract/test_root_separation.py (planned file): the 'arc-help-pages apply_help' case runs apply_help through harness-skill-api (scripts/skill_api.py --file .../arc_help_pages_api.py <page>) on the demo help project, joins MUST_EXIT_ZERO, and test_arc_help_pages_apply_lands_in_the_project checks the page lands under the project.
 7. D9 = link_relative: check_links reports link_relative for each href that does not start with '#', has no scheme (urllib.parse.urlsplit) and does not start with '/' or '\\'; the detail names the href.
 
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_the_api_binds_the_spec_surface` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_help_pages_lists_each_fragment_stem` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_missing_or_edited_page_as_stale` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_unlinked_page` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_matches_the_link_prefix_ignoring_case` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_invalid_fragment_alone` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_missing_target` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_decodes_the_tail_and_drops_the_fragment` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_file_href_outside_the_checkout` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_ignores_anchors_and_web_links` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_the_checks_from_a_worktree_use_the_main_checkout_prefix` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_format_problems_prints_one_line_each_or_clean` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_no_module_of_the_skill_imports_arc_meta` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reads_a_crlf_page_as_current` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_counts_a_link_to_another_page_as_unlinked` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_page_it_cannot_build_as_one_problem` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[upper]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[lower_drive]` fails with ImportError, then passes
-- [ ] Test `tests/contract/test_root_separation.py::test_arc_help_pages_apply_lands_in_the_project` fails with ImportError, then passes
-- [ ] Test `tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[arc-help-pages apply_help]` fails with ImportError, then passes
-- [ ] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_reports_relative_hrefs` fails with ImportError, then passes
-- [ ] Run `python -m pytest tests/contract/test_no_repo_literals.py -q`: passed
-- [ ] Run `python -m ruff check plugins/arc-straps tests/arc`: All checks passed!
-- [ ] Record it: `plan.py record 1011 TASK-7 --sha <sha>` or `--staged`
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_the_api_binds_the_spec_surface` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_help_pages_lists_each_fragment_stem` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_missing_or_edited_page_as_stale` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_unlinked_page` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_matches_the_link_prefix_ignoring_case` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_invalid_fragment_alone` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_missing_target` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_decodes_the_tail_and_drops_the_fragment` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_file_href_outside_the_checkout` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_ignores_anchors_and_web_links` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_the_checks_from_a_worktree_use_the_main_checkout_prefix` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_format_problems_prints_one_line_each_or_clean` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_no_module_of_the_skill_imports_arc_meta` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reads_a_crlf_page_as_current` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_counts_a_link_to_another_page_as_unlinked` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_page_it_cannot_build_as_one_problem` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[upper]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[lower_drive]` fails with ImportError, then passes
+- [x] Test `tests/contract/test_root_separation.py::test_arc_help_pages_apply_lands_in_the_project` fails with ImportError, then passes
+- [x] Test `tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[arc-help-pages apply_help]` fails with ImportError, then passes
+- [x] Test `tests/arc/test_arc_help_pages_api.py::test_check_links_reports_relative_hrefs` fails with ImportError, then passes
+- [x] Run `python -m pytest tests/contract/test_no_repo_literals.py -q`: passed
+- [x] Run `python -m ruff check plugins/arc-straps tests/arc`: All checks passed!
+- [x] Record it: `plan.py record 1011 TASK-7 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree 2d54382: 21 test node(s) passed
+
+**Recorded:** 2026-11-09, staged, tree `2d54382`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_api.py::test_the_api_binds_the_spec_surface tests/arc/test_arc_help_pages_api.py::test_help_pages_lists_each_fragment_stem tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_missing_or_edited_page_as_stale tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_unlinked_page tests/arc/test_arc_help_pages_api.py::test_check_help_page_matches_the_link_prefix_ignoring_case tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_invalid_fragment_alone tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_missing_target tests/arc/test_arc_help_pages_api.py::test_check_links_decodes_the_tail_and_drops_the_fragment tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_file_href_outside_the_checkout tests/arc/test_arc_help_pages_api.py::test_check_links_ignores_anchors_and_web_links tests/arc/test_arc_help_pages_api.py::test_the_checks_from_a_worktree_use_the_main_checkout_prefix tests/arc/test_arc_help_pages_api.py::test_format_problems_prints_one_line_each_or_clean tests/arc/test_arc_help_pages_api.py::test_no_module_of_the_skill_imports_arc_meta tests/arc/test_arc_help_pages_api.py::test_check_help_page_reads_a_crlf_page_as_current tests/arc/test_arc_help_pages_api.py::test_check_help_page_counts_a_link_to_another_page_as_unlinked tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_page_it_cannot_build_as_one_problem tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[upper] tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[lower_drive] tests/contract/test_root_separation.py::test_arc_help_pages_apply_lands_in_the_project tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[arc-help-pages apply_help] tests/arc/test_arc_help_pages_api.py::test_check_links_reports_relative_hrefs`
 
 ### TASK-8: arc-help-pages SKILL.md: the procedure
 
-**Status:** PENDING | **Model:** sonnet | **Depends on:** TASK-7
+**Status:** COMPLETE | **Model:** sonnet | **Depends on:** TASK-7
 **Files:** `plugins/arc-straps/skills/arc-help-pages/SKILL.md`, `tests/skills/test_arc_help_pages_skill_contract.py`
 
 **Anchors:**
@@ -448,29 +454,32 @@ Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path f
 1. New plugins/arc-straps/skills/arc-help-pages/SKILL.md. Frontmatter: name arc-help-pages; a description starting 'Use when' that names a toolbox tool's server-hosted help page and its link from the '?' page; argument-hint '<page> [-- <guidance>]'.
 2. Body: the project content (template, fragments, built pages, img/) and the link contract (paths().page_href; the production swap happens downstream); Steps per spec Section 3 Skill procedure: (1) read the tool's code: the entry module, the params model, the validator; an existing page's text is a claim to re-check, a contradicted claim is replaced and named; (2) write or update the fragment; (3) dry-run, then apply, apply_help; (4) add or confirm the link in the tool's canonical XML and apply it with arc-meta; (5) check_help_page and check_links until both are clean. Heredocs through harness-skill-api --repo "${CLAUDE_PROJECT_DIR}" --file "${CLAUDE_SKILL_DIR}/scripts/arc_help_pages_api.py" <page> (a <Tool> heredoc for check_links); the apply heredocs are exactly print("\n".join(apply_help(name).lines)) then the apply=True form. An API table and a Hand off section. No project literal (BANNED in the test, fpm: included, R2); fragments use the help: markers <!-- help:tool <Tool> -->, <!-- help:parameters -->, <!-- help:syntax --> (D3).
 
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_frontmatter_names_the_skill_folder` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_description_says_when_to_use_it` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_every_heredoc_goes_through_the_launcher` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_an_argument_follows_the_file_path_exactly_when_name_is_read` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_heredoc_calls_are_bound_names_or_builtins` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_apply_heredocs_dry_run_then_apply` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[entry]` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[params]` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[validator]` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_page]` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_links]` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[arc_meta]` fails with ImportError, then passes
-- [ ] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_body_has_no_project_literal` fails with ImportError, then passes
-- [ ] Run `python -m pytest tests/contract/test_no_repo_literals.py -q`: passed
-- [ ] Run `claude plugin validate --strict plugins/arc-straps`: Validation passed
-- [ ] Run `python -m pytest tests/contract/test_root_separation.py -k help -q`: passed
-- [ ] Record it: `plan.py record 1011 TASK-8 --sha <sha>` or `--staged`
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_frontmatter_names_the_skill_folder` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_description_says_when_to_use_it` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_every_heredoc_goes_through_the_launcher` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_an_argument_follows_the_file_path_exactly_when_name_is_read` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_heredoc_calls_are_bound_names_or_builtins` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_apply_heredocs_dry_run_then_apply` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[entry]` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[params]` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[validator]` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_page]` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_links]` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[arc_meta]` fails with ImportError, then passes
+- [x] Test `tests/skills/test_arc_help_pages_skill_contract.py::test_body_has_no_project_literal` fails with ImportError, then passes
+- [x] Run `python -m pytest tests/contract/test_no_repo_literals.py -q`: passed
+- [x] Run `claude plugin validate --strict plugins/arc-straps`: Validation passed
+- [x] Run `python -m pytest tests/contract/test_root_separation.py -k help -q`: passed
+- [x] Record it: `plan.py record 1011 TASK-8 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree abce31b: 13 test node(s) passed
+
+**Recorded:** 2026-11-09, staged, tree `abce31b`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_arc_help_pages_skill_contract.py::test_frontmatter_names_the_skill_folder tests/skills/test_arc_help_pages_skill_contract.py::test_description_says_when_to_use_it tests/skills/test_arc_help_pages_skill_contract.py::test_every_heredoc_goes_through_the_launcher tests/skills/test_arc_help_pages_skill_contract.py::test_an_argument_follows_the_file_path_exactly_when_name_is_read tests/skills/test_arc_help_pages_skill_contract.py::test_heredoc_calls_are_bound_names_or_builtins tests/skills/test_arc_help_pages_skill_contract.py::test_apply_heredocs_dry_run_then_apply tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[entry] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[params] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[validator] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_page] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_links] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[arc_meta] tests/skills/test_arc_help_pages_skill_contract.py::test_body_has_no_project_literal`
 
 ### TASK-9: PR B release: arc-straps 0.2.0 -> 0.3.0, descriptions and READMEs name arc-help-pages
 
-**Status:** PENDING | **Model:** haiku | **Depends on:** TASK-8
+**Status:** COMPLETE | **Model:** haiku | **Depends on:** TASK-8
 **Files:** `plugins/arc-straps/.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `plugins/arc-straps/README.md`, `README.md`, `docs/RELEASES/v0.7.0.md`, `tests/contract/test_arc_help_pages_registration.py`
 
 **Anchors:**
@@ -487,10 +496,13 @@ Copy each planned file from docs/plans/1011/tests/<repo path> to its repo path f
 3. README.md:35 arc-straps row names `arc-help-pages`; README.md:577 names both skills.
 4. Release notes: while v0.7.0 is uncut, its arc-straps row becomes '| arc-straps | (new) | 0.3.0 |' plus one change line for arc-help-pages; once v0.7.0 is cut, the next release file carries '| arc-straps | 0.2.0 | 0.3.0 |' (CLAUDE.md Releases).
 
-- [ ] Test `tests/contract/test_arc_help_pages_registration.py::test_every_description_of_the_plugin_names_the_help_pages_skill` fails with AssertionError, then passes
-- [ ] Run `python -m pytest tests/contract/test_arc_help_pages_registration.py tests/contract/test_arc_straps_registration.py -q`: passed
-- [ ] Run `claude plugin validate --strict plugins/arc-straps`: Validation passed
-- [ ] Run `claude plugin validate --strict .`: Validation passed
-- [ ] Record it: `plan.py record 1011 TASK-9 --sha <sha>` or `--staged`
+- [x] Test `tests/contract/test_arc_help_pages_registration.py::test_every_description_of_the_plugin_names_the_help_pages_skill` fails with AssertionError, then passes
+- [x] Run `python -m pytest tests/contract/test_arc_help_pages_registration.py tests/contract/test_arc_straps_registration.py -q`: passed
+- [x] Run `claude plugin validate --strict plugins/arc-straps`: Validation passed
+- [x] Run `claude plugin validate --strict .`: Validation passed
+- [x] Record it: `plan.py record 1011 TASK-9 --sha <sha>` or `--staged`
 
-**Evidence:** not started
+**Evidence:** staged tree 27217eb: 1 test node(s) passed
+
+**Recorded:** 2026-11-09, staged, tree `27217eb`
+- `python -m pytest -q -p no:cacheprovider --tb=auto tests/contract/test_arc_help_pages_registration.py::test_every_description_of_the_plugin_names_the_help_pages_skill`
