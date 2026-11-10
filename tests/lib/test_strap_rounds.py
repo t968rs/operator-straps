@@ -1,8 +1,7 @@
 """``Round`` and ``SkillSpec.rounds`` of harness_lib.strap_models (plan 1014, MOD-1).
 
 A reopened spec keeps each earlier freeze as a driver-owned ``Round``. A spec written before ``rounds``
-existed must dump and digest byte for byte as before, so an empty ``rounds`` stays out of the dump and the
-digests.
+existed keeps ``rounds`` empty, and an empty ``rounds`` stays out of the dump and the driver digest.
 """
 from __future__ import annotations
 
@@ -46,7 +45,6 @@ def test_round_holds_base_stamp_and_behavior_ids() -> None:
 
 
 def test_rounds_is_a_driver_owned_list_before_frozen() -> None:
-    assert sm.Round is not None
     fields = list(sm.SkillSpec.model_fields)
     assert "rounds" in sm.DRIVER_OWNED_TOP
     assert fields.index("rounds") < fields.index("frozen")
@@ -54,7 +52,7 @@ def test_rounds_is_a_driver_owned_list_before_frozen() -> None:
 
 
 def test_empty_rounds_keep_the_old_dump_and_digests() -> None:
-    assert sm.Round is not None
+    assert "rounds" in sm.SkillSpec.model_fields
     spec = _spec()
     assert "rounds" not in json.loads(sm.dump_spec(spec))
     assert sm.driver_digest(spec) == _old_driver_digest(spec)

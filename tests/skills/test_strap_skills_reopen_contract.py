@@ -21,18 +21,32 @@ def _flat(text: str) -> str:
     return " ".join(text.split())
 
 
+def _fenced_launch(text: str) -> bool:
+    fenced = False
+    for raw in text.splitlines():
+        line = raw.strip()
+        if line.startswith("```"):
+            fenced = not fenced
+        elif fenced and line.startswith(LAUNCH):
+            return True
+    return False
+
+
 def test_skill_runs_reopen_through_the_launcher() -> None:
-    lines = [line.strip() for line in _text(SKILL).splitlines()]
-    assert any(line.startswith(LAUNCH) for line in lines), "no fenced reopen command"
+    assert _fenced_launch(_text(SKILL)), "no fenced reopen command"
 
 
 def test_skill_names_the_round_rules() -> None:
     body = _flat(_text(SKILL))
     assert "**Reopen for new behaviors.**" in body
-    assert "--base" in body and "rounds" in body
-    assert re.search(r"earlier behaviors[^.]*gated again", body), "earlier behaviors are not re-gated"
+    start = body.index("**Reopen for new behaviors.**")
+    end = body.index("13. **Hand off.**", start)
+    section = body[start:end]
+    assert "--base" in section and "rounds" in section, "reopen paragraph lacks --base or rounds"
+    assert re.search(r"earlier behaviors[^.]*gated again", section), "earlier behaviors are not re-gated"
 
 
 def test_readme_strap_row_names_reopen() -> None:
-    row = next(line for line in _text(REPO_ROOT / "README.md").splitlines() if "`strap-skills`" in line)
+    row = next((line for line in _text(REPO_ROOT / "README.md").splitlines() if "`strap-skills`" in line), "")
+    assert row, "README has no strap-skills row"
     assert "`reopen`" in row

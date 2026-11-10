@@ -207,3 +207,75 @@ def test_freeze_after_reopen_gates_every_behavior(frozen: str, reopen: Strap, st
     spec = read_spec(project)
     assert len(spec["rounds"]) == 1 and spec["frozen"] is not None
     assert {b["id"]: b["state"] for b in spec["behaviors"]} == {"B1": "green", "B2": "green"}
+
+
+def test_reopen_takes_an_ancestor_base(frozen: str, reopen: Strap, project: Path) -> None:
+    ancestor = git(project, "rev-parse", "HEAD")
+    write(project, "later.txt", "later\n")
+    commit_all(project)
+    out = ok(reopen("--base", "HEAD~1"))
+    assert f"| base {ancestor[:12]} |" in out, out
+    assert read_spec(project)["base"] == ancestor
+
+
+def test_reopen_refuses_a_base_that_is_not_an_ancestor(frozen: str, reopen: Strap, project: Path) -> None:
+    orphan = git(project, "commit-tree", "HEAD^{tree}", "-m", "orphan")
+    before = read_spec(project)
+    err = refused(reopen("--base", orphan))
+    assert has_problem(err, f"--base {orphan} is not an ancestor of HEAD"), err
+    assert read_spec(project) == before
+
+
+def test_reopen_refuses_uncommitted_parts(frozen: str, reopen: Strap, project: Path) -> None:
+    write(project, SKILL, f"---\nname: {NAME}\ndescription: Use when testing reopen.\n---\n\nChanged.\n")
+    before = read_spec(project)
+    err = refused(reopen())
+    head = git(project, "rev-parse", "HEAD")
+    assert has_problem(err, f"parts differ from base {head[:12]}; commit the frozen round first"), err
+    assert read_spec(project) == before
+
+
+def test_reopen_refuses_an_earlier_round_test_change(frozen: str, reopen: Strap,
+                                                     piped: Callable[..., Result], project: Path) -> None:
+    ok(reopen())
+    code = ('update_behavior(name, "B1", tests=[new_test("tests/test_widget.py::test_widget_exists", '
+            '"ImportError")])\n')
+    err = refused(piped(code, "api", NAME))
+    assert "B1 was frozen in an earlier round" in err, err
+    assert read_spec(project)["behaviors"][0]["tests"][0]["red"] == "AssertionError"
+
+
+def test_second_reopen_appends_a_round(frozen: str, reopen: Strap, strap: Strap,
+                                       piped: Callable[..., Result], project: Path) -> None:
+    first_base = git(project, "rev-parse", "HEAD")
+    ok(reopen())
+    ok(piped(_mechanical_code("Writes gadget.txt", "tests/test_gadget.py::test_gadget_exists"), "api", NAME))
+    ok(piped('drop_behavior(name, "B2", "out of scope")\n', "api", NAME))
+    ok(strap("freeze", NAME))
+    second = read_spec(project)["frozen"]["skill_hash"]
+    write(project, "round2.txt", "round 2\n")
+    second_base = commit_all(project)
+    out = ok(reopen())
+    assert f"| round 3 | base {second_base[:12]} | was {second[:12]}" in out, out
+    spec = read_spec(project)
+    assert len(spec["rounds"]) == 2 and spec["base"] == second_base
+    assert spec["rounds"][0]["frozen"]["skill_hash"] == frozen and spec["rounds"][0]["base"] is None
+    assert spec["rounds"][1]["base"] == first_base and spec["rounds"][1]["behaviors"] == ["B1"]
+    assert spec["rounds"][1]["frozen"]["skill_hash"] == second
+    out = ok(strap("freeze", NAME))
+    assert out.rstrip().endswith(f"| was {second[:12]}"), out
+
+
+def test_reopen_refuses_a_base_before_the_previous_one(frozen: str, reopen: Strap, strap: Strap,
+                                                       project: Path) -> None:
+    root_commit = git(project, "rev-list", "--max-parents=0", "HEAD")
+    previous = git(project, "rev-parse", "HEAD")
+    ok(reopen())
+    ok(strap("freeze", NAME))
+    write(project, "round2.txt", "round 2\n")
+    commit_all(project)
+    before = read_spec(project)
+    err = refused(reopen("--base", root_commit))
+    assert has_problem(err, f"base {root_commit[:12]} does not descend from the previous base "
+                            f"{previous[:12]}"), err
+    assert read_spec(project) == before

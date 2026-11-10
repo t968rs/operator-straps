@@ -33,6 +33,33 @@
         "free_form": "without the fixture the B9 scenarios have no frozen plan to act on"
       },
       "date": "2026-11-10"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "main session (STR-1)",
+      "phase": "post-exec-start",
+      "items": [
+        "STR-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "STR-1 action",
+        "indicated": "three judgment behaviors: (a) a lane that needs a file outside its item stops and reports; (b) a design change found mid-build goes through evolution_api.add and is cited on the record; (c) a frozen receipts plan's JSON and HTML page are never edited by hand"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the write-plan round 2 spec straps fewer behaviors than the item's action names",
+        "why_free_form": "B9 covers (b); (a) became B10, dropped on its recorded reason (the drawn baseline R-2, SC-4, already stopped and reported under the pre-receipts SKILL.md); (c) has no behavior of its own"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "STR-1 straps B9 alone: (c) folds into B9, whose file_unchanged check covers the frozen plan JSON only, so nothing checks the PIP HTML; (a) is B10, dropped"
+      },
+      "why_new_outcome": {
+        "category": "yagni",
+        "free_form": "B10's baseline already held, so a green round teaches nothing; a separate (c) behavior would repeat B9's pressure on the same frozen plan; a check on the PIP HTML is left to a later round"
+      },
+      "date": "2026-11-10"
     }
   ]
 }

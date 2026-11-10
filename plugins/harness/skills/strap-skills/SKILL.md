@@ -221,10 +221,10 @@ writes land where `record-run` looks.
     an `unclear` or missing grade, a mechanical behavior whose red was not recorded or whose planned tests fail,
     a listed part whose file is missing (take it off with `remove_part` or restore it). Fix each through the step it names. Clean, it prints `freeze [done] | <name> | <hash12> | grader <grader>`.
 
-    **Refreeze after a part change.** A frozen spec refuses every change but three: `add_part` and
-    `remove_part`, a green run (`run --arm green`, its `record-run` and grades), and the refreeze itself. A
-    changed or removed part changes the content hash, so each judgment behavior needs a passing green on the
-    new hash. `check` and `new` (on resume) print `stale: frozen at <old12>, parts now hash <new12>; ...`
+    **Refreeze after a part change.** Short of `reopen` (below), a frozen spec refuses every change but
+    three: `add_part` and `remove_part`, a green run (`run --arm green`, its `record-run` and grades), and the
+    refreeze itself. A changed or removed part changes the content hash, so each judgment behavior needs a
+    passing green on the new hash. `check` and `new` (on resume) print `stale: frozen at <old12>, parts now hash <new12>; ...`
     whenever the parts no longer hash to the frozen stamp: that line is the cue. Run and grade the greens as in
     step 10, then
 
@@ -234,8 +234,8 @@ writes land where `record-run` looks.
 
     It runs every gate of step 12 on the current content and, clean, stamps the new hash, printing
     `| was <old hash12>` at the end of the `freeze [done]` line. A refreeze is standard procedure: ask the
-    developer for the OK, then do it. Behaviors, scenarios, draws and baselines stay locked after a freeze,
-    and so does `retest`: a green that fails on a frozen spec is fixed in the skill and run again on the same
+    developer for the OK, then do it. Behaviors, scenarios, draws and baselines stay locked after a freeze
+    until `reopen` starts a new round, and so does `retest`: a green that fails on a frozen spec is fixed in the skill and run again on the same
     scenario. Each save of a frozen spec seals its authored fields; a hand edit breaks the seal and every
     command refuses the spec until the edit is reverted.
 
@@ -245,11 +245,18 @@ writes land where `record-run` looks.
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" reopen <name> [--base <ref>]
     ```
 
-    It keeps the earlier freeze in `rounds`, clears the stamp and moves `base`, printing
-    `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>`. Pick as base the commit whose code the
-    new scenarios need but whose SKILL.md lacks the new guidance, since baselines read the SKILL.md at `base`.
-    Then continue from step 2 for the new behaviors. The earlier behaviors are gated again at the next freeze:
-    a mechanical one frozen in an earlier round skips red, and its planned tests rerun. Reopening is standard
+    It keeps the earlier freeze in `rounds`, clears the stamp, sets `mode` to `edit` and moves `base`, printing
+    `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>`. From then on a baseline reads the
+    SKILL.md at `base`, also for a spec opened with `new` (whose baselines ran without the skill). Pick as base
+    the commit whose code the new scenarios need but whose SKILL.md lacks the new guidance. `red` also runs at
+    `base`, so a new mechanical behavior's code must not exist there yet. `--base` must be an ancestor of HEAD
+    and a descendant of the previous round's base, and must hold every part as the working tree has it (commit
+    the frozen round first); the base stays fixed until the next freeze. Then continue from step 2 for the new
+    behaviors. The earlier behaviors are gated again at the next freeze: a mechanical one frozen in an earlier
+    round skips red and its planned tests rerun; its `tests` and `kind` stay as proven, so a changed rule goes
+    on a new behavior. An earlier judgment behavior keeps its draws and baselines, but once a part changes it
+    needs a passing green on the new hash; `draw` skips it, so run and grade its greens as in step 10. The
+    first freeze after a reopen ends with `| was <hash12>`, the last round's hash. Reopening is standard
     procedure: ask the developer for the OK, then do it.
 
 13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,

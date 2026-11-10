@@ -93,9 +93,10 @@ A commit sequence that keeps the history readable:
 2. **Plan**: the plan JSON and its PIP: `Docs(plans): plan <feature>`. The planned test files under
    `<plans>/<id>/tests/` are local references and stay out of git; each lands at its repo path, committed,
    with the item that copies it there.
-3. **Freeze**: commit right after `freeze`: the plan JSON, the new HTML PIP, the deleted markdown PIP and the
-   plan folder's `.gitignore`: `Docs(plans): freeze plan <id>`. The committed copy is also what a later
-   refreeze reads to keep the plan's scheme.
+3. **Freeze**: commit right after `freeze`: the plan JSON, the new HTML PIP and the deleted markdown PIP:
+   `Docs(plans): freeze plan <id>`. The committed copy is also what a later refreeze reads to keep the plan's
+   scheme. Committing the plan folder's `.gitignore` is optional: the driver rewrites it on every render, so a
+   repository may ignore it instead.
 4. **Work**: one commit per item, or per wave when items land together. Record with `--staged` before the
    commit, or with `--sha <rev>` after it, and commit the receipt beside the code it describes (a receipt is
    not one of the item's files, so it never blocks the record).

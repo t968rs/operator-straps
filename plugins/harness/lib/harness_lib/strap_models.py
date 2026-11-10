@@ -2,10 +2,10 @@
 
 ``SkillSpec`` is the one JSON file (``<plans>/strap/<name>/SkillSpec.json``) the strap-skills driver and the
 author's API edit. Authored fields (behaviors, scenarios, planned tests) are the author's; the fields marked
-``driver_owned`` (draws, runs, grades, frozen, driver_digest and each behavior's state) are written only by
-``strap.py``. ``driver_digest`` fingerprints the driver-owned fields so a hand edit is detectable. Once the
-spec is frozen, ``Frozen.authored`` seals the authored fields too: every save restamps it and every load
-refuses a spec it no longer matches. This module imports no other ``harness_lib`` module.
+``driver_owned`` (draws, runs, grades, rounds, frozen, driver_digest and each behavior's state) are written
+only by ``strap.py``. ``driver_digest`` fingerprints the driver-owned fields so a hand edit is detectable.
+Once the spec is frozen, ``Frozen.authored`` seals the authored fields too: every save restamps it and every
+load refuses a spec it no longer matches. This module imports no other ``harness_lib`` module.
 """
 from __future__ import annotations
 

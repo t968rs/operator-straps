@@ -36,7 +36,8 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
     of green runs, so the new hash can earn its greens; new behaviors come only after ``reopen``.
 ``reopen <name> [--base REF]``
     Start a new round on a frozen spec: the stamp and the live behavior ids move into ``rounds``, ``frozen``
-    clears, the mode becomes edit and ``base`` moves to HEAD (or an ancestor REF). ``red`` then skips the
+    clears, the mode becomes edit and ``base`` moves to HEAD (or an ancestor REF). The new base must descend
+    from the previous one and hold every part as the working tree has it. ``red`` then skips the
     mechanical behaviors frozen green in an earlier round; the next ``freeze`` gates every live behavior.
 ``api <name>``
     Run stdin code with the public names of ``harness_lib.strap_api`` and ``name`` bound.
@@ -904,12 +905,30 @@ def cmd_freeze(args: argparse.Namespace) -> int:
 
 # --- reopen -----------------------------------------------------------------------------------------------
 
+def _reopen_base_problems(root: Path, spec: SkillSpec, base: str) -> List[str]:
+    """The new base must descend from the previous one and hold every part as the working tree has it."""
+    problems = []
+    if spec.base and git(root, "merge-base", "--is-ancestor", spec.base, base).returncode != 0:
+        problems.append(f"base {base[:12]} does not descend from the previous base {spec.base[:12]}")
+    paths = [part.path for part in spec.parts]
+    missing = [p for p in paths if git(root, "cat-file", "-e", f"{base}:{p}").returncode != 0]
+    problems += [f"{p}: not committed at base {base[:12]}; commit the frozen round first" for p in missing]
+    present = [p for p in paths if p not in missing]
+    if present and git(root, "diff", "--quiet", base, "--", *present).returncode != 0:
+        problems.append(f"parts differ from base {base[:12]}; commit the frozen round first")
+    return problems
+
+
 def cmd_reopen(args: argparse.Namespace) -> int:
     """A new round on a frozen spec: the stamp moves into ``rounds`` and ``base`` moves to the new start."""
     spec = load(args.name)
     if spec.frozen is None:
         raise Refused([f"{spec.name} is not frozen; nothing to reopen"])
-    base = _edit_base(_root(), spec.name, profile_of(spec).skill_md, args.base)
+    root = _root()
+    base = _edit_base(root, spec.name, profile_of(spec).skill_md, args.base)
+    problems = _reopen_base_problems(root, spec, base)
+    if problems:
+        raise Refused(problems)
     live = [b.id for b in spec.behaviors if b.state != BehaviorState.DROPPED]
     rounds = [*spec.rounds, Round(base=spec.base, frozen=spec.frozen, behaviors=live)]
     was = spec.frozen.skill_hash
