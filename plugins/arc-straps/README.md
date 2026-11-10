@@ -24,6 +24,16 @@ link targets: write an absolute href, since Pro renders the "?" page from a temp
 An `<a>` without an `href` or text, nested in another `<a>` or left open is refused as `unparseable`, and the
 apply calls refuse that field.
 
+Its second skill, `arc-help-pages`, builds the longer help page a tool's "?" page links to and checks the link:
+
+- **Build** (dry run first): `<help_dir>/<page>.html` from a hand-written fragment, the page template and the
+  tool's canonical help XML, with the Parameters table and the Python syntax generated in `tool.content`
+  order (`apply_help`). A rebuild of unchanged sources is byte-identical at any checkout root.
+- **Check** (read-only): `check_help_page` reports a stale, unbuildable or unlinked page and an invalid
+  fragment; `check_links` reports each href in the canonical XML whose target is missing, outside the
+  checkout or relative. The development href is the main checkout's `file:` URI plus the page path, so it is
+  the same from any linked worktree.
+
 ## Install
 
 ```

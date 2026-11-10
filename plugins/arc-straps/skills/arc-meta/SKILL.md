@@ -141,8 +141,8 @@ PY
   `<a href>` passes through to the "?" page and hovers show the link text; arc-meta does not check where a
   link points. Write an absolute href (a `file:///` URI, a web URL or a `#` fragment): Pro renders the "?" page
   from a temp copy, so a relative href breaks. An `<a>` without an `href` or text, nested in another `<a>` or
-  left open is refused (`unparseable`), and the apply calls refuse that field. A later arc-straps skill,
-  `arc-help-pages`, will build help pages and check link targets. A `<para>` holds plain text only; markup and
+  left open is refused (`unparseable`), and the apply calls refuse that field. The arc-straps skill
+  `arc-help-pages` builds help pages and checks link targets. A `<para>` holds plain text only; markup and
   links go in CDATA HTML. ASCII punctuation only.
 - **Images:** a tool's `<Tool>.tool/tool.illustration.png` in the archive is embedded by `apply_page` as
   `<Binary><Thumbnail><img src="data:image/png;base64,..."/>` in the "?" page, the element Pro's stylesheets

@@ -23,6 +23,7 @@ from _todo_helpers import CATALOG_REL, ID1, ID2, LEGACY_CATALOG, config, todo_fi
 WALK_ROOTS = ("plugins/",)
 PLUGINS = REPO_ROOT / "plugins"
 ARC_SCRIPTS = REPO_ROOT / "plugins" / "arc-straps" / "skills" / "arc-meta" / "scripts"
+HELP_SCRIPTS = REPO_ROOT / "plugins" / "arc-straps" / "skills" / "arc-help-pages" / "scripts"
 Snapshot = Dict[str, Tuple[int, int]]
 
 
@@ -191,6 +192,27 @@ def _arc_rc_args(root: Path) -> Tuple[List[str], str]:
     return argv, "print(apply_rc(name, apply=True).applied)\n"
 
 
+def _arc_help_args(root: Path) -> Tuple[List[str], str]:
+    """apply_help through the harness launcher on the demo help project written into ``root``.
+
+    Imported here for the reason ``_arc_rc_args`` gives: an import error in the arc-help-pages scripts fails
+    only this case.
+    """
+    from arc._arc_help_project import (
+        ATBX, CANONICAL, HELP_DIR, PAGE, TEMPLATE, TOOL, TOOL_DIR, archive_members, fragment, write_archive,
+    )
+
+    write_archive(root / ATBX, archive_members())
+    files = {f"{TOOL_DIR}/{TOOL}.xml": CANONICAL, f"{HELP_DIR}/_template.html": TEMPLATE,
+             f"{HELP_DIR}/_fragments/{PAGE}.html": fragment()}
+    for rel, text in files.items():
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        (root / rel).write_text(text, encoding="utf-8")
+    api = HELP_SCRIPTS / "arc_help_pages_api.py"
+    argv = ["scripts/skill_api.py", "--repo", str(root), "--file", str(api), PAGE]
+    return argv, "print(apply_help(name, apply=True).applied)\n"
+
+
 CASES = {
     "plan new": lambda r, t: (["scripts/plan.py", "--repo", str(r), "new", "Root separation", "--no-fetch"],
                               None),
@@ -228,12 +250,13 @@ CASES = {
     "docstring-dispatch": lambda r, t: (["skills/writing-docstrings/commands/docstring_dispatch.py", "-p",
                                          str(r / "src" / "a.py"), str(r / "src" / "b.py")], None),
     "arc-meta apply_rc": lambda r, t: _arc_rc_args(r),
+    "arc-help-pages apply_help": lambda r, t: _arc_help_args(r),
 }
 
 # Cases that must succeed: a refusal or a missing script would otherwise pass the snapshot check vacuously.
 MUST_EXIT_ZERO = frozenset({"strap new", "plan new", "plan_api write", "docstring-tiers",
                             "docstring-dispatch", "arc-meta apply_rc", "todo_sync retire", "todo_sync split",
-                            "todo_sync refresh", "todo_sync migrate-ids"})
+                            "todo_sync refresh", "todo_sync migrate-ids", "arc-help-pages apply_help"})
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
@@ -291,6 +314,16 @@ def test_arc_meta_apply_lands_in_the_project(project: Path) -> None:
     assert done.returncode == 0, done.stderr
     assert done.stdout.strip() == "True"
     assert (project / f"{ATBX}.bak").is_file()
+
+
+def test_arc_help_pages_apply_lands_in_the_project(project: Path) -> None:
+    from arc._arc_help_project import HELP_DIR, PAGE
+
+    script, payload = _arc_help_args(project)
+    done = _run([str(PLUGIN_ROOT / script[0]), *script[1:]], project, payload)
+    assert done.returncode == 0, done.stderr
+    assert done.stdout.strip() == "True"
+    assert (project / HELP_DIR / f"{PAGE}.html").is_file()
 
 
 TODO_OUTPUTS = {
