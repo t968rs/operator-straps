@@ -39,6 +39,10 @@ __all__ = ["count_forks", "body_lines", "current_layout", "docstring_flags", "it
 _DASHES = re.compile(r"^\s*-{3,}\s*$", re.MULTILINE)
 _LABEL = re.compile(r"^\s*[A-Z][A-Za-z ]*:\s*$", re.MULTILINE)
 _SINGLE_TICK = re.compile(r"(?<!`)`(?!`)[^`\n]+?(?<!`)`(?!`)")
+#: A full-layout ``Parameters`` header, colon or not (a dashed underline must follow it).
+_PARAMS_HEADER = re.compile(r"^\s*Parameters:?\s*$")
+#: The start of a ``name: (type) Description`` item, up to the opening parenthesis of the type.
+_PARAM_ITEM = re.compile(r"^( *)(\*{0,2}[A-Za-z_]\w*): \(")
 _CITATION = re.compile(r"report Section|PR #\d+|\(Section \d|\b[ICM]\d{1,2}\b:")
 #: A line, or a whole docstring, holding nothing but whitespace and separator characters.
 _SEPARATORS_ONLY = re.compile(r"^[\s\-=_*#~+.:;|]*$")
@@ -203,7 +207,7 @@ def docstring_flags(func: ast.AST, source_lines: Sequence[str], max_line: int) -
         flags.append(f"unknown-label={','.join(unknown)}")
     if _misaligned(raw):
         flags.append("misaligned")
-    return flags + _separator_flags(ast.get_docstring(func, clean=False))
+    return flags + _separator_flags(ast.get_docstring(func, clean=False)) + _full_flags(raw, node.lineno)
 
 
 def _separator_flags(doc: str) -> List[str]:
@@ -222,6 +226,108 @@ def _stray_separator_lines(doc: str) -> bool:
         if i == 0 or not _LABEL.match(lines[i - 1]):
             return True
     return False
+
+
+def _full_flags(raw: Sequence[str], first: int) -> List[str]:
+    """``underline-width`` and ``param-format``, each with the source lines it applies to.
+
+    ``raw`` holds the docstring's source lines and ``first`` the line number of ``raw[0]``.
+    """
+    lines = _strip_closing(raw)
+    flags = []
+    widths = [first + i for i in _short_underlines(lines)]
+    if widths:
+        flags.append(f"underline-width={widths}")
+    params = [first + i for header, section in _param_sections(lines)
+              for i in _bad_param_lines(lines, section, _indent(lines[header]) + 4)]
+    if params:
+        flags.append(f"param-format={params}")
+    return flags
+
+
+def _strip_closing(raw: Sequence[str]) -> List[str]:
+    """The lines of ``raw`` without line endings, the closing quotes cut from the last one."""
+    lines = [line.rstrip("\r\n") for line in raw]
+    last = lines[-1].rstrip()
+    if last.endswith(('"""', "'''")):
+        lines[-1] = last[:-3]
+    return lines
+
+
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
+def _short_underlines(lines: Sequence[str]) -> List[int]:
+    """Index of each dashed underline below a label whose width differs from the label's, colon included."""
+    return [i for i in range(1, len(lines)) if _DASHES.match(lines[i]) and _LABEL.match(lines[i - 1])
+            and len(lines[i].strip()) != len(lines[i - 1].strip())]
+
+
+def _is_header(lines: Sequence[str], i: int) -> bool:
+    """True when ``lines[i]`` is a label (colon or not) with a dashed underline below it."""
+    return i + 1 < len(lines) and bool(lines[i].strip()) and bool(_DASHES.match(lines[i + 1]))
+
+
+def _param_sections(lines: Sequence[str]) -> Iterator[Tuple[int, List[int]]]:
+    """``(header, items)`` per dashed ``Parameters`` section, colon or not: the header's index and the
+    indexes below its underline up to a blank line, a label, another header or the end."""
+    for i in range(len(lines) - 1):
+        if not (_PARAMS_HEADER.match(lines[i]) and _DASHES.match(lines[i + 1])):
+            continue
+        section = []
+        for j in range(i + 2, len(lines)):
+            if not lines[j].strip() or _LABEL.match(lines[j]) or _is_header(lines, j):
+                break
+            section.append(j)
+        yield i, section
+
+
+def _close_paren(line: str, start: int) -> Optional[int]:
+    """Index of the ``)`` matching the ``(`` at ``start``; ``None`` when it is never closed."""
+    depth = 0
+    for k in range(start, len(line)):
+        depth += {"(": 1, ")": -1}.get(line[k], 0)
+        if depth == 0:
+            return k
+    return None
+
+
+def _item_column(line: str, indent: int) -> Optional[int]:
+    """The description column of a ``name: (type) Description`` item at ``indent``; ``None`` for any other
+    line."""
+    head = _PARAM_ITEM.match(line)
+    if head is None or len(head.group(1)) != indent:
+        return None
+    end = _close_paren(line, head.end() - 1)
+    rest = line[end + 1:] if end is not None else ""
+    if not rest.startswith(" ") or not rest.strip():
+        return None
+    return end + 1 + _indent(rest)
+
+
+def _bad_param_lines(lines: Sequence[str], section: Sequence[int], indent: int) -> List[int]:
+    """Indexes in ``section`` off the ``name: (type) Description`` shape or off the description column.
+
+    Rules:
+        an item sits at ``indent``, its description on the same line,
+        a continuation line starts at the description column of the item above it,
+        a line after an off-shape line has no column to continue, so it is off-shape too,
+        every item is flagged when the items' descriptions start in different columns
+    """
+    bad: List[int] = []
+    items: Dict[int, int] = {}
+    column: Optional[int] = None
+    for k in section:
+        found = _item_column(lines[k], indent)
+        if found is not None:
+            items[k] = column = found
+        elif column is None or _indent(lines[k]) != column:
+            bad.append(k)
+            column = None
+    if len(set(items.values())) > 1:
+        bad.extend(items)
+    return sorted(bad)
 
 
 def _label_names(labels: Iterable[str]) -> List[str]:
