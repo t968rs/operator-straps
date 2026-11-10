@@ -13,7 +13,7 @@
     {
       "name": "arc-straps",
       "source": "./plugins/arc-straps",
-      "description": "ArcGIS Pro toolbox skills: arc-meta checks and applies tool help in a project's .atbx archive"
+      "description": "ArcGIS Pro toolbox skills: arc-meta checks and applies tool help in a project's .atbx archive; arc-help-pages builds and checks each tool's linked help page"
     },
     {
       "name": "agent-watcher",

@@ -11,12 +11,13 @@ plugin (ArcGIS Pro toolbox skills) plus eight TypeScript mods (`agent-watcher`, 
   `tests/contract/test_no_repo_literals.py` enforces the ban list.
 - **ArcGIS material lives in `arc-straps`.** A skill that needs ArcGIS Pro, arcpy or the `.atbx` format goes under
   `plugins/arc-straps/`; it reaches harness only through `harness-skill-api`, `harness_lib.config`,
-  `harness_lib.plugin_config` and `harness_lib.project` (`project_root`), and its project values live under `plugins.arc-straps` in
+  `harness_lib.plugin_config` and `harness_lib.project` (`project_root`, `main_worktree`), and its project values live under `plugins.arc-straps` in
   `.claude/harness.json`. The literal ban lifts only the arcpy pattern there (`ALLOWED_UNDER`). An
-  arc-straps key touches `plugins/arc-straps/config/defaults.json`, `config/arc-straps.schema.json`,
-  `ArcMetaPaths` and `paths()` in `arc_meta_config.py`, `_meta()` with its `_OPTIONAL` tuple (the type check
-  that runs without `jsonschema`; a nullable path joins `_OPTIONAL`), and the plugin README Configuration table; harness
-  files do not change.
+  arc-straps key touches `plugins/arc-straps/config/defaults.json`, `config/arc-straps.schema.json`, its
+  section's config module (`arc_meta_config.py` for `arc_meta`, `arc_help_pages_config.py` for
+  `arc_help_pages`): the paths dataclass (`ArcMetaPaths`, `HelpPaths`) and `paths()`, and `_meta()` or
+  `_section()` with its `_OPTIONAL` tuple (the type check that runs without `jsonschema`; a nullable path joins
+  `_OPTIONAL`), and the plugin README Configuration table; harness files do not change.
 - **Data goes to the project, code stays in the plugin.** Drivers and hooks write only under the consuming project
   (`cfg.path(...)`, `state_dir`, `artifacts.*`). `plugin_root()` is read-only.
   `tests/contract/test_root_separation.py` enforces it.

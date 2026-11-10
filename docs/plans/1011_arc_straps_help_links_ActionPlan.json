@@ -1,6 +1,7 @@
 {
   "plan_id": "1011",
   "plan_created": "2026-11-09",
+  "completed": "2026-11-09",
   "source_document": "consuming project: docs/superpowers/specs/2026-11-09-toolbox-help-links-design.md",
   "documentation": "docs/plans/1011_arc_straps_help_links_PIP.md",
   "branch": null,
@@ -562,8 +563,43 @@
       "dependencies": [
         "TASK-3.1"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 021d85f: 18 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "021d85f2817fa7855c579c79935caee4a72a2ad9"
+          },
+          "tests": {
+            "nodes": [
+              "tests/arc/test_arc_help_pages_config.py::test_defaults_resolve_every_location",
+              "tests/arc/test_arc_help_pages_config.py::test_overrides_win",
+              "tests/arc/test_arc_help_pages_config.py::test_the_section_resolves_apart_from_arc_meta",
+              "tests/arc/test_arc_help_pages_config.py::test_checkout_root_from_a_worktree_is_the_main_checkout",
+              "tests/arc/test_arc_help_pages_config.py::test_page_href_is_the_main_checkout_uri_plus_the_repo_path",
+              "tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[none]",
+              "tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[two]",
+              "tests/arc/test_arc_help_pages_config.py::test_unknown_keys_are_refused",
+              "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[section]",
+              "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[atbx]",
+              "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[help_dir]",
+              "tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[tool_dir]",
+              "tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[help_dir]",
+              "tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[atbx]",
+              "tests/arc/test_arc_help_pages_config.py::test_defaults_and_schema_carry_the_section",
+              "tests/arc/test_arc_help_pages_config.py::test_the_plugin_readme_documents_every_key",
+              "tests/arc/test_arc_help_pages_config.py::test_no_repo_reads_the_active_project",
+              "tests/arc/test_arc_help_pages_config.py::test_checkout_root_outside_git_falls_back_to_the_root"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_config.py::test_defaults_resolve_every_location tests/arc/test_arc_help_pages_config.py::test_overrides_win tests/arc/test_arc_help_pages_config.py::test_the_section_resolves_apart_from_arc_meta tests/arc/test_arc_help_pages_config.py::test_checkout_root_from_a_worktree_is_the_main_checkout tests/arc/test_arc_help_pages_config.py::test_page_href_is_the_main_checkout_uri_plus_the_repo_path tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[none] tests/arc/test_arc_help_pages_config.py::test_an_ambiguous_archive_is_refused[two] tests/arc/test_arc_help_pages_config.py::test_unknown_keys_are_refused tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[section] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[atbx] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[help_dir] tests/arc/test_arc_help_pages_config.py::test_bad_types_raise_config_error_without_jsonschema[tool_dir] tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[help_dir] tests/arc/test_arc_help_pages_config.py::test_locations_outside_the_project_are_refused[atbx] tests/arc/test_arc_help_pages_config.py::test_defaults_and_schema_carry_the_section tests/arc/test_arc_help_pages_config.py::test_the_plugin_readme_documents_every_key tests/arc/test_arc_help_pages_config.py::test_no_repo_reads_the_active_project tests/arc/test_arc_help_pages_config.py::test_checkout_root_outside_git_falls_back_to_the_root"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "8e46eb1907ad52e0e28014ff86fefaeb07cdeac6a51f99074e7673efd24022ce"
+      },
       "notes": "PR B is TASK-4 to TASK-9 (D10 = split_pr). It starts after the Gate passes in the consuming project's plan (1666 TASK-7.1): the developer follows the link from the '?' page in Pro (spec, Gate section). If the Gate fails, TASK-4 to TASK-9 are recorded --blocked and the design is revisited. The planned test files under docs/plans/1011/tests/ match the git-ignore rule docs/plans/**/*.py, so they live only in the checkout that wrote them: start PR B from that checkout, or copy them into PR B's worktree before TASK-4.",
       "model": "sonnet",
       "anchors": [
@@ -762,8 +798,32 @@
       "dependencies": [
         "TASK-4"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree bde5885: 7 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "bde5885a4887dc1b97fb17ec00ae7d18b12b2c33"
+          },
+          "tests": {
+            "nodes": [
+              "tests/arc/test_arc_help_pages_source.py::test_tool_doc_reads_the_canonical_text_and_the_archive_alias",
+              "tests/arc/test_arc_help_pages_source.py::test_params_follow_tool_content_order_not_the_canonical_order",
+              "tests/arc/test_arc_help_pages_source.py::test_param_doc_carries_the_canonical_attributes_and_reference_html",
+              "tests/arc/test_arc_help_pages_source.py::test_a_tool_content_param_missing_from_the_canonical_xml_is_refused",
+              "tests/arc/test_arc_help_pages_source.py::test_a_tool_needs_both_its_canonical_xml_and_its_archive_entry",
+              "tests/arc/test_arc_help_pages_source.py::test_records_are_frozen_and_forbid_extra_keys",
+              "tests/arc/test_arc_help_pages_source.py::test_problem_codes_spell_the_spec_values"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_source.py::test_tool_doc_reads_the_canonical_text_and_the_archive_alias tests/arc/test_arc_help_pages_source.py::test_params_follow_tool_content_order_not_the_canonical_order tests/arc/test_arc_help_pages_source.py::test_param_doc_carries_the_canonical_attributes_and_reference_html tests/arc/test_arc_help_pages_source.py::test_a_tool_content_param_missing_from_the_canonical_xml_is_refused tests/arc/test_arc_help_pages_source.py::test_a_tool_needs_both_its_canonical_xml_and_its_archive_entry tests/arc/test_arc_help_pages_source.py::test_records_are_frozen_and_forbid_extra_keys tests/arc/test_arc_help_pages_source.py::test_problem_codes_spell_the_spec_values"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "9bd0a74634c6ef7667af30db746768a63e9ea2fb22381678ca3af0751dd084b1"
+      },
       "model": "sonnet",
       "anchors": [
         {
@@ -855,8 +915,41 @@
       "dependencies": [
         "TASK-5"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree ac6fd08: 16 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "ac6fd08cecf3301ebd29b3a5822c851a52beb62c"
+          },
+          "tests": {
+            "nodes": [
+              "tests/arc/test_arc_help_pages_build.py::test_template_fill_replaces_every_slot",
+              "tests/arc/test_arc_help_pages_build.py::test_nav_lists_each_section_by_id_and_h2_in_page_order",
+              "tests/arc/test_arc_help_pages_build.py::test_parameters_table_follows_tool_content_order_with_tags",
+              "tests/arc/test_arc_help_pages_build.py::test_syntax_braces_optional_params_and_lists_derived_outputs_after_it",
+              "tests/arc/test_arc_help_pages_build.py::test_rebuild_is_byte_identical_and_apply_writes_it",
+              "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_parameters]",
+              "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_h2]",
+              "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_id]",
+              "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_syntax]",
+              "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_tool_line]",
+              "tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[unknown_tool]",
+              "tests/arc/test_arc_help_pages_build.py::test_the_build_matches_the_golden_page_wherever_the_project_sits",
+              "tests/arc/test_arc_help_pages_build.py::test_the_dry_run_report_names_the_page_and_ends_with_the_notice",
+              "tests/arc/test_arc_help_pages_build.py::test_a_crlf_checkout_of_the_page_is_up_to_date",
+              "tests/arc/test_arc_help_pages_build.py::test_the_marker_spellings_are_the_fragment_contract",
+              "tests/arc/test_arc_help_pages_build.py::test_the_footer_is_one_fixed_line"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_build.py::test_template_fill_replaces_every_slot tests/arc/test_arc_help_pages_build.py::test_nav_lists_each_section_by_id_and_h2_in_page_order tests/arc/test_arc_help_pages_build.py::test_parameters_table_follows_tool_content_order_with_tags tests/arc/test_arc_help_pages_build.py::test_syntax_braces_optional_params_and_lists_derived_outputs_after_it tests/arc/test_arc_help_pages_build.py::test_rebuild_is_byte_identical_and_apply_writes_it tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_parameters] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_h2] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_section_id] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_syntax] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[no_tool_line] tests/arc/test_arc_help_pages_build.py::test_fragment_refusals[unknown_tool] tests/arc/test_arc_help_pages_build.py::test_the_build_matches_the_golden_page_wherever_the_project_sits tests/arc/test_arc_help_pages_build.py::test_the_dry_run_report_names_the_page_and_ends_with_the_notice tests/arc/test_arc_help_pages_build.py::test_a_crlf_checkout_of_the_page_is_up_to_date tests/arc/test_arc_help_pages_build.py::test_the_marker_spellings_are_the_fragment_contract tests/arc/test_arc_help_pages_build.py::test_the_footer_is_one_fixed_line"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "cabc034d37fa7129f96cf6bc015063597bbd71278252dcb824accae3747e99ef"
+      },
       "model": "opus",
       "anchors": [
         {
@@ -957,8 +1050,46 @@
       "dependencies": [
         "TASK-6"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 2d54382: 21 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "2d543824e6a4873240b3bcd72098f49d88e1dc62"
+          },
+          "tests": {
+            "nodes": [
+              "tests/arc/test_arc_help_pages_api.py::test_the_api_binds_the_spec_surface",
+              "tests/arc/test_arc_help_pages_api.py::test_help_pages_lists_each_fragment_stem",
+              "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_missing_or_edited_page_as_stale",
+              "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_unlinked_page",
+              "tests/arc/test_arc_help_pages_api.py::test_check_help_page_matches_the_link_prefix_ignoring_case",
+              "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_invalid_fragment_alone",
+              "tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_missing_target",
+              "tests/arc/test_arc_help_pages_api.py::test_check_links_decodes_the_tail_and_drops_the_fragment",
+              "tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_file_href_outside_the_checkout",
+              "tests/arc/test_arc_help_pages_api.py::test_check_links_ignores_anchors_and_web_links",
+              "tests/arc/test_arc_help_pages_api.py::test_the_checks_from_a_worktree_use_the_main_checkout_prefix",
+              "tests/arc/test_arc_help_pages_api.py::test_format_problems_prints_one_line_each_or_clean",
+              "tests/arc/test_arc_help_pages_api.py::test_no_module_of_the_skill_imports_arc_meta",
+              "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reads_a_crlf_page_as_current",
+              "tests/arc/test_arc_help_pages_api.py::test_check_help_page_counts_a_link_to_another_page_as_unlinked",
+              "tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_page_it_cannot_build_as_one_problem",
+              "tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[upper]",
+              "tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[lower_drive]",
+              "tests/contract/test_root_separation.py::test_arc_help_pages_apply_lands_in_the_project",
+              "tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[arc-help-pages apply_help]",
+              "tests/arc/test_arc_help_pages_api.py::test_check_links_reports_relative_hrefs"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/arc/test_arc_help_pages_api.py::test_the_api_binds_the_spec_surface tests/arc/test_arc_help_pages_api.py::test_help_pages_lists_each_fragment_stem tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_missing_or_edited_page_as_stale tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_unlinked_page tests/arc/test_arc_help_pages_api.py::test_check_help_page_matches_the_link_prefix_ignoring_case tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_an_invalid_fragment_alone tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_missing_target tests/arc/test_arc_help_pages_api.py::test_check_links_decodes_the_tail_and_drops_the_fragment tests/arc/test_arc_help_pages_api.py::test_check_links_reports_a_file_href_outside_the_checkout tests/arc/test_arc_help_pages_api.py::test_check_links_ignores_anchors_and_web_links tests/arc/test_arc_help_pages_api.py::test_the_checks_from_a_worktree_use_the_main_checkout_prefix tests/arc/test_arc_help_pages_api.py::test_format_problems_prints_one_line_each_or_clean tests/arc/test_arc_help_pages_api.py::test_no_module_of_the_skill_imports_arc_meta tests/arc/test_arc_help_pages_api.py::test_check_help_page_reads_a_crlf_page_as_current tests/arc/test_arc_help_pages_api.py::test_check_help_page_counts_a_link_to_another_page_as_unlinked tests/arc/test_arc_help_pages_api.py::test_check_help_page_reports_a_page_it_cannot_build_as_one_problem tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[upper] tests/arc/test_arc_help_pages_api.py::test_check_links_matches_the_prefix_ignoring_case[lower_drive] tests/contract/test_root_separation.py::test_arc_help_pages_apply_lands_in_the_project tests/contract/test_root_separation.py::test_entry_point_writes_nothing_under_plugins[arc-help-pages apply_help] tests/arc/test_arc_help_pages_api.py::test_check_links_reports_relative_hrefs"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "4d4ae4c5ae598f437643f7f458dd6797c5dd20bbeebb914b042c730b558008e2"
+      },
       "model": "opus",
       "anchors": [
         {
@@ -1090,8 +1221,38 @@
       "dependencies": [
         "TASK-7"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree abce31b: 13 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "abce31b313ca3cbf86c1dc6bdf649e7d9950258a"
+          },
+          "tests": {
+            "nodes": [
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_frontmatter_names_the_skill_folder",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_description_says_when_to_use_it",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_every_heredoc_goes_through_the_launcher",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_an_argument_follows_the_file_path_exactly_when_name_is_read",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_heredoc_calls_are_bound_names_or_builtins",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_apply_heredocs_dry_run_then_apply",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[entry]",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[params]",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[validator]",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_page]",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_links]",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[arc_meta]",
+              "tests/skills/test_arc_help_pages_skill_contract.py::test_body_has_no_project_literal"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_arc_help_pages_skill_contract.py::test_frontmatter_names_the_skill_folder tests/skills/test_arc_help_pages_skill_contract.py::test_description_says_when_to_use_it tests/skills/test_arc_help_pages_skill_contract.py::test_every_heredoc_goes_through_the_launcher tests/skills/test_arc_help_pages_skill_contract.py::test_an_argument_follows_the_file_path_exactly_when_name_is_read tests/skills/test_arc_help_pages_skill_contract.py::test_heredoc_calls_are_bound_names_or_builtins tests/skills/test_arc_help_pages_skill_contract.py::test_apply_heredocs_dry_run_then_apply tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[entry] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[params] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[validator] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_page] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[check_links] tests/skills/test_arc_help_pages_skill_contract.py::test_the_procedure_names_its_sources_and_checks[arc_meta] tests/skills/test_arc_help_pages_skill_contract.py::test_body_has_no_project_literal"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "e581fc90a4574b81e461ca487aa3c392156760459456202bfe2fd4ef456324f7"
+      },
       "model": "sonnet",
       "anchors": [
         {
@@ -1191,8 +1352,26 @@
       "dependencies": [
         "TASK-8"
       ],
-      "status": "PENDING",
-      "evidence": "not started",
+      "status": "COMPLETE",
+      "evidence": "staged tree 27217eb: 1 test node(s) passed",
+      "verification_references": [],
+      "record": {
+        "outcome": {
+          "kind": "complete",
+          "provenance": {
+            "source": "staged",
+            "tree": "27217eb37044f6d0589260031aef381ead2babcc"
+          },
+          "tests": {
+            "nodes": [
+              "tests/contract/test_arc_help_pages_registration.py::test_every_description_of_the_plugin_names_the_help_pages_skill"
+            ],
+            "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/contract/test_arc_help_pages_registration.py::test_every_description_of_the_plugin_names_the_help_pages_skill"
+          }
+        },
+        "date": "2026-11-09",
+        "seal": "164b6b101b4a0d7a94da7080224a565de00785dcc1c93298fbf506056e6e44e8"
+      },
       "model": "haiku",
       "anchors": [
         {

@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--import-mode=importlib -p no:cacheprovider"
-pythonpath = ["plugins/harness/lib", "tests", "plugins/arc-straps/skills/arc-meta/scripts"]
+pythonpath = ["plugins/harness/lib", "tests", "plugins/arc-straps/skills/arc-meta/scripts", "plugins/arc-straps/skills/arc-help-pages/scripts"]
 markers = [
     "cross_os: exercises OS-specific behavior (shell launcher, git worktree paths, junctions); CI runs these on Windows too, every other test on Linux only",
 ]
@@ -24,7 +24,7 @@ select = ["E4", "E7", "E9", "F", "E501"]
 [tool.pylint.main]
 # Mirrors pytest's pythonpath: scripts and tests reach harness_lib and the test helpers through
 # sys.path edits at runtime, which pylint cannot follow (E0401).
-init-hook = "import sys; sys.path[:0] = ['plugins/harness/lib', 'tests', 'plugins/arc-straps/skills/arc-meta/scripts']"
+init-hook = "import sys; sys.path[:0] = ['plugins/harness/lib', 'tests', 'plugins/arc-straps/skills/arc-meta/scripts', 'plugins/arc-straps/skills/arc-help-pages/scripts']"
 
 [tool.pylint.format]
 max-line-length = 110

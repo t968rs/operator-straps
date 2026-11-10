@@ -24,6 +24,17 @@ link targets: write an absolute href, since Pro renders the "?" page from a temp
 An `<a>` without an `href` or text, nested in another `<a>` or left open is refused as `unparseable`, and the
 apply calls refuse that field.
 
+Its second skill, `arc-help-pages`, builds the longer help page a tool's "?" page links to and checks the link:
+
+- **Build** (dry run first): `<help_dir>/<page>.html` from a hand-written fragment, the page template and the
+  tool's canonical help XML, with the Parameters table and the Python syntax generated in `tool.content`
+  order (`apply_help`). A rebuild of unchanged sources is byte-identical at any checkout root.
+- **Check** (read-only): `check_help_page` reports a stale, unbuildable or unlinked page and an invalid
+  fragment; `check_links` reports each href in the canonical XML whose target is missing, outside the
+  checkout (drive, rooted and malformed hrefs included) or relative; only `#` anchors and web links are
+  skipped. The development href is the main checkout's `file:` URI plus the page path, so it is
+  the same from any linked worktree.
+
 ## Install
 
 ```
@@ -35,7 +46,7 @@ claude plugin install arc-straps@operator-straps
 - **`harness` 0.56.0 or later, enabled.** The manifest declares the dependency. Every collaborator needs it
   before a project commits a `plugins` key to `.claude/harness.json`: an older harness rejects the key, and
   every harness hook then fails on load.
-- **No ArcGIS Pro.** Nothing in `arc-meta` imports arcpy; it needs the standard library and pydantic
+- **No ArcGIS Pro.** Nothing in `arc-meta` or `arc-help-pages` imports arcpy; both need the standard library and pydantic
   (`jsonschema` optional, for the full schema check under Configuration) under the harness interpreter (the one `hpy` picks; pin it with `HARNESS_PY`). A future skill that imports arcpy must
   pin an ArcGIS Pro interpreter of its own.
 
@@ -54,7 +65,9 @@ claude plugin install arc-straps@operator-straps
   `harness_lib.plugin_config.plugin_section`, which merges this plugin's `config/defaults.json` under the
   project's `plugins.arc-straps` section and validates it against `config/arc-straps.schema.json`.
 - `harness_lib.project.project_root`, which resolves a `repo` argument inside a subfolder to its project
-  before `paths(repo)` loads that project's configuration.
+  before `paths(repo)` loads that project's configuration, and `harness_lib.project.main_worktree`, which
+  gives `arc-help-pages` the main checkout of the repository (the checkout a development href names) from a
+  linked worktree.
 
 Its tests follow the marketplace conventions: `tests/<area>/test_<name>.py` one level deep, consuming projects
 built with `make_project`, never a live checkout. `strap-skills` cannot target this plugin yet, so its
@@ -86,16 +99,37 @@ points inside the project.
         "tool_dir": "tool_metadata/tools",
         "toolbox_source": null,
         "registry": "tools/registry.json"
+      },
+      "arc_help_pages": {
+        "atbx": "MyTools.atbx",
+        "tool_dir": "tool_metadata/tools",
+        "help_dir": "tool_metadata/tool_help"
       }
     }
   }
 }
 ```
 
-The skill prints the resolved locations with `print(paths())`. A new key touches `config/defaults.json`,
-`config/arc-straps.schema.json`, `ArcMetaPaths`, `paths()` and the type checks in `_meta()` in
-`arc_meta_config.py` (a nullable path also joins `_OPTIONAL`; without `jsonschema` those checks are the only
-type validation), and this table; harness files do not change.
+The `arc-meta` skill prints the resolved locations with `print(paths())`. A new key touches
+`config/defaults.json`, `config/arc-straps.schema.json`, `ArcMetaPaths`, `paths()` and the type checks in
+`_meta()` in `arc_meta_config.py` (a nullable path also joins `_OPTIONAL`; without `jsonschema` those checks
+are the only type validation), and this table; harness files do not change. An `arc_help_pages` key touches the
+same two config files, `HelpPaths`, `paths()` and `_section()` with its `_OPTIONAL` tuple in
+`arc_help_pages_config.py`, and the `arc_help_pages` table below.
+
+### arc_help_pages
+
+`plugins.arc-straps.arc_help_pages` configures `arc-help-pages` and resolves apart from `arc_meta`: it has its
+own defaults, its own type checks (`_section()` in `arc_help_pages_config.py`) and its own archive lookup, so
+setting one section never changes the other. Paths follow the same rules as above. `paths()` also returns the
+checkout the call runs in (`root`) and the main checkout of its repository (`checkout_root`, from
+`harness_lib.project.main_worktree`; the project root itself outside git).
+
+| Key | Default | Meaning |
+|---|---|---|
+| `atbx` | `null` | Toolbox archive (`.atbx`). `null` means the one `.atbx` at the project root; none or several there is a config error naming this key |
+| `tool_dir` | `tool_metadata/tools` | Folder of canonical per-tool help XML, `<Tool>.xml` |
+| `help_dir` | `tool_metadata/tool_help` | Folder of the tracked help pages, `<page>.html` (the fragment stem, usually the tool name), with `_fragments/`, `_template.html` and `img/` |
 
 ## Apply writes
 
