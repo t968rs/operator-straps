@@ -41,7 +41,7 @@ Ids are stable (`todo-k7qf`): an edit moves ranks, never ids.
   (`TS` below stands for everything before `<subcommand>`).
 - One command per Bash call (no `&&`, `;`). Absolute paths with forward slashes. `git -C "<root>"` instead of
   `cd`. Read-only git only: `log`, `show`, `status`, `diff`, `grep`.
-- Configured paths: `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" --repo "<root>" config --get todo.catalog --get state_dir --get todo.gh.repo`
+- Configured paths: `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" --repo "<root>" config --get todo.catalog --get state_dir --get todo.gh_repo`
   prints one line per key in that order (an empty line is null). The first two are project-relative; the
   third is the `owner/name` repository issues live in (empty: the one `gh` resolves for the checkout).
 - The catalog can be large: Grep for `"id": "todo-k7qf"` (the item's id) and Read around the hit with
@@ -189,8 +189,9 @@ session's conversation had already established (or `none`). Draft exactly one it
      `path:line` in `summary`; a claim the tree neither confirms nor refutes is written as `unverified`.
    - **2:** also Grep the callers and consumers of the named symbols (into `blast_radius.consumers`), the
      tests that cover them, catalog items on the same files (named in `summary`) and open issues on the
-     subject (`gh issue list --search <terms> [--repo <todo.gh.repo>]`, read-only, with `--repo` whenever
-     the `todo.gh.repo` line is not empty; into `related_gh_issues`).
+     subject (`gh issue list --search <terms> [--repo <todo.gh_repo>]`, read-only, with `--repo` whenever
+     the `todo.gh_repo` line of the config lookup is not empty; into `related_gh_issues`). The lookup key is
+     `todo.gh_repo`; the setting a developer writes in `.claude/harness.json` is `todo.gh.repo`.
    - **3:** also `git -C "<root>" log` the files, read the PR reviews the context names, weigh the
      alternatives in `proposed_change`, add a `code_snippet` with its `path:line` header, and give every claim
      in `summary` a `path:line` or `unverified`. A Context ask to keep it short shortens the prose, never the
