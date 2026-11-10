@@ -1,7 +1,8 @@
 """arc-help-pages source: what a help page is built from, read from the canonical XML and the archive.
 
 The canonical XML gives the title, the summary and each parameter's attributes and text; the archive gives
-the parameter order (``<Tool>.tool/tool.content``) and the toolbox alias (``toolbox.content``). The records
+the parameter order (``<Tool>.tool/tool.content``), the toolbox alias (``toolbox.content``) and its own file
+name, with no folder, for the syntax section's import line. The records
 are frozen pydantic models that forbid extra keys, as arc-meta's are.
 """
 from __future__ import annotations
@@ -11,12 +12,12 @@ from pydantic import ValidationError
 
 import arc_help_pages_models as models
 import arc_help_pages_source as source
-from arc._arc_help_project import ALIAS, CANONICAL, MODE_PARAM, TOOL, TOOL_DIR, make_help_project
+from arc._arc_help_project import ALIAS, ATBX, CANONICAL, MODE_PARAM, TOOL, TOOL_DIR, make_help_project
 
 
 def test_tool_doc_reads_the_canonical_text_and_the_archive_alias(make_project) -> None:
     doc = source.tool_doc(TOOL, repo=make_help_project(make_project))
-    assert (doc.name, doc.displayname, doc.alias) == (TOOL, "Demo & Tool", ALIAS)
+    assert (doc.name, doc.displayname, doc.alias, doc.archive) == (TOOL, "Demo & Tool", ALIAS, ATBX)
     assert doc.summary == "Makes polygons."
 
 

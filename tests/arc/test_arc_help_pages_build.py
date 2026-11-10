@@ -17,7 +17,7 @@ import pytest
 import arc_help_pages_build as build
 from arc_help_pages_models import FragmentError, HelpError
 from arc._arc_help_project import (
-    HELP_DIR, OVERVIEW, PAGE, SIGNATURE, TOOL, archive_members, fragment, make_help_project,
+    ATBX, HELP_DIR, OVERVIEW, PAGE, SIGNATURE, TOOL, archive_members, fragment, make_help_project,
 )
 
 SLOTS = ("$title", "$summary", "$nav", "$sections", "$footer")
@@ -55,7 +55,11 @@ GOLDEN = (
     '<tr><td>Out <span class="tag">derived</span></td><td>Output</td><td>No description.</td>'
     '<td>GPFeatureLayer</td></tr></tbody></table></section>\n'
     '<section class="panel" id="syntax"><h2>Python syntax</h2>'
-    '<pre><code>arcpy.demo.Demo(in_poly)</code></pre><p>Derived output: <code>Out</code></p></section>\n'
+    '<pre><code>import arcpy\narcpy.ImportToolbox(r"&lt;folder&gt;\\demo_toolbox.atbx")\n'
+    'arcpy.demo.Demo(in_poly)</code></pre>'
+    '<p><code>ImportToolbox</code> adds the tools of demo_toolbox.atbx to arcpy under the toolbox alias '
+    '<code>demo</code>; &lt;folder&gt; stands for the folder that holds it.</p>'
+    '<p>Derived output: <code>Out</code></p></section>\n'
 )
 
 
@@ -101,6 +105,16 @@ def test_syntax_braces_optional_params_and_lists_derived_outputs_after_it(make_p
     syntax = _section(build.build_page(PAGE, repo=_project(make_project)), "syntax")
     assert SIGNATURE in syntax
     assert syntax.index("Out_Poly") > syntax.index(SIGNATURE)
+
+
+def test_syntax_imports_the_toolbox_by_file_name_before_the_call(make_project) -> None:
+    """``arcpy.<alias>`` exists only after ``arcpy.ImportToolbox``, so the block imports the archive first.
+    It names the archive file and no folder, which keeps the page free of paths."""
+    root = _project(make_project)
+    syntax = _section(build.build_page(PAGE, repo=root), "syntax")
+    code = syntax.partition("<code>")[2].partition("</code>")[0]
+    assert code.splitlines() == ["import arcpy", f'arcpy.ImportToolbox(r"&lt;folder&gt;\\{ATBX}")', SIGNATURE]
+    assert str(root) not in syntax and root.as_posix() not in syntax
 
 
 REFUSALS = {
