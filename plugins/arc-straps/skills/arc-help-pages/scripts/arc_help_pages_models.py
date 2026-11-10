@@ -55,7 +55,8 @@ class ParamDoc(BaseModel):
 
 
 class ToolDoc(BaseModel):
-    """What a help page is built from: titles, summary, toolbox alias and parameters in dialog order."""
+    """What a help page is built from: titles, summary, toolbox alias, the archive's file name (no folder)
+    and parameters in dialog order."""
 
     model_config = _MODEL_CONFIG
 
@@ -63,6 +64,7 @@ class ToolDoc(BaseModel):
     displayname: str
     summary: str
     alias: str
+    archive: str
     params: List[ParamDoc]
 
 

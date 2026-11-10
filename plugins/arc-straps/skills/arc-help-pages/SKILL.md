@@ -38,8 +38,10 @@ All of it lives in the project, under `help_dir` (default `tool_metadata/tool_he
 - `img/`: images the fragments reference.
 
 The build fills the generated sections from the canonical XML and `tool.content`: the Parameters table in
-dialog order with its reference text ("No description." when a parameter has none), and the one-line Python
-syntax with optional parameters in braces and derived outputs listed after it. The nav lists each section by
+dialog order with its reference text ("No description." when a parameter has none), and the Python syntax:
+`import arcpy`, `arcpy.ImportToolbox(r"<folder>\<archive file>")` (the toolbox alias exists in arcpy only
+after that call; the archive is named by file only, so the page names no path), then the call with optional
+parameters in braces, a note on the alias, and the derived outputs. The nav lists each section by
 its `id` and `<h2>` in page order. A rebuild of unchanged sources is byte-identical at any checkout root.
 
 ## Link contract
