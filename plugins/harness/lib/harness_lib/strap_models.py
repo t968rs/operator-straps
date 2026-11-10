@@ -394,6 +394,17 @@ class Frozen(BaseModel):
     authored: Optional[str] = None
 
 
+class Round(BaseModel):
+    """One earlier freeze of a reopened spec: the base the round started from, its seal and the ids of the
+    behaviors it covered."""
+
+    model_config = _MODEL_CONFIG
+
+    base: Optional[str] = None
+    frozen: Frozen
+    behaviors: List[str] = Field(default_factory=list)
+
+
 class SkillTarget(BaseModel):
     """Where a project-profile skill lands: the project's skills and agents folders, repo-relative (no
     leading slash or backslash, no drive letter)."""
@@ -422,6 +433,7 @@ class SkillSpec(BaseModel):
     draws: List[Draw] = Field(default_factory=list, json_schema_extra=_DRIVER_OWNED)
     runs: List[Run] = Field(default_factory=list, json_schema_extra=_DRIVER_OWNED)
     grades: List[Grade] = Field(default_factory=list, json_schema_extra=_DRIVER_OWNED)
+    rounds: List[Round] = Field(default_factory=list, json_schema_extra=_DRIVER_OWNED)
     frozen: Optional[Frozen] = Field(default=None, json_schema_extra=_DRIVER_OWNED)
     driver_digest: str = Field(default="", json_schema_extra=_DRIVER_OWNED)
 
@@ -489,7 +501,9 @@ def driver_digest(spec: SkillSpec) -> str:
     ``driver_digest`` itself is excluded.
     """
     dumped = _dumped(spec)
-    owned: Dict[str, Any] = {name: dumped[name] for name in DRIVER_OWNED_TOP if name != "driver_digest"}
+    owned: Dict[str, Any] = {
+        name: dumped[name] for name in DRIVER_OWNED_TOP if name != "driver_digest" and name in dumped
+    }
     owned["behavior_states"] = {
         behavior["id"]: {name: behavior[name] for name in DRIVER_OWNED_BEHAVIOR}
         for behavior in dumped["behaviors"]
@@ -498,10 +512,12 @@ def driver_digest(spec: SkillSpec) -> str:
 
 
 def _dumped(spec: SkillSpec) -> Dict[str, Any]:
-    """JSON dump of ``spec``; an unsealed stamp drops ``authored``, a harness spec drops ``target`` and a
-    scenario drops an unset ``sees_skill``, so the text and digests of a spec written before any of these
-    fields existed stay byte for byte."""
+    """JSON dump of ``spec``; an unsealed stamp drops ``authored``, a harness spec drops ``target``, a
+    scenario drops an unset ``sees_skill`` and an empty ``rounds`` is dropped, so the text and digests of a
+    spec written before any of these fields existed stay byte for byte."""
     dumped = spec.model_dump(mode="json")
+    if not dumped["rounds"]:
+        del dumped["rounds"]
     if dumped["frozen"] is not None and dumped["frozen"]["authored"] is None:
         del dumped["frozen"]["authored"]
     if dumped["target"] is None:
