@@ -72,9 +72,13 @@ before a word of it is written. The convention is
    ```
 
    Each line reports `lines=`, `forks=`, `suggest=`, `current=` and any flags (`long-lines`, `single-backticks`,
-   `citation`, `section-order`, `unknown-label`, `misaligned`, `blank`, `separator-line`). `unknown-label` names
-   a label outside the convention (`Args:`, `Logic:`); `misaligned` is a line indented left of the opening
-   `"""`. The line limit is the project's `docstrings.line_length` (default 110). A one-line brief
+   `citation`, `section-order`, `unknown-label`, `misaligned`, `blank`, `separator-line`, `underline-width`,
+   `param-format`). `unknown-label` names a label outside the convention (`Args:`, `Logic:`); `misaligned` is a
+   line indented left of the opening `"""`. `underline-width` lists dashed underlines not as wide as their
+   label, colon included. `param-format` lists the lines of a dashed `Parameters` section (colon or not) that
+   are not `name: (type) Description` items 4 spaces past the header, with every description in one column and
+   continuation lines at that column: a numpy-style `name: type` with its description below is rewritten into
+   that shape, even in a docstring kept in the full layout. The line limit is the project's `docstrings.line_length` (default 110). A one-line brief
    (`"""Summary."""`) is fine; a docstring that is blank or only separator characters is not, nor is a
    separator-only line anywhere except the dashed underline under a full-layout label.
 
@@ -149,7 +153,8 @@ No `Parameters:` section; a parameter whose behavior matters is named in double 
 
 Read `${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/docstring_format.md`, section "3. Full layout", and
 follow it: summary on the line after `"""`, then dashed `Parameters:`, `Returns:`, `Raises:` and `Example:`
-sections.
+sections. Each parameter is `name: (type)` with its description on the same line; the descriptions of a
+section start in one column, and a continuation line starts at that column.
 
 ## All tiers
 
