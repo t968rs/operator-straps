@@ -341,3 +341,35 @@ def test_strap_runs_imports_only_strap_models_and_stdlib() -> None:
     assert harness <= {"strap_models"}, harness
     foreign = {t for n in nodes for t in _foreign_tops(n)} - set(sys.stdlib_module_names)
     assert not foreign, foreign
+
+
+# --- redact_paths -----------------------------------------------------------------------------------------
+
+_TREE = "C:/Users/dev/.config/harness/worktrees/demo/plan-red-1234567"
+_ROOT = "C:/Users/dev/.config/harness/worktrees/demo"
+_PAIRS = [("<worktree_root>", _ROOT), ("<tree>", _TREE)]
+
+
+@pytest.mark.parametrize("spelling", [
+    "C:/Users/dev/.config/harness/worktrees/demo/plan-red-1234567/src/pool.py",
+    r"C:\Users\dev\.config\harness\worktrees\demo\plan-red-1234567\src/pool.py",
+    r"C:\\Users\\dev\\.config\\harness\\worktrees\\demo\\plan-red-1234567\\src/pool.py",
+    "c:/users/DEV/.config/harness/worktrees/demo/plan-red-1234567/src/pool.py",
+    "/c/Users/dev/.config/harness/worktrees/demo/plan-red-1234567/src/pool.py",
+], ids=["posix", "backslash", "doubled", "case", "git-bash"])
+def test_redact_paths_replaces_every_spelling_of_the_longest_path(spelling: str) -> None:
+    redacted = strap_runs.redact_paths(f"Scope: {spelling}: close_pool", _PAIRS)
+    assert "Users" not in redacted and "users" not in redacted, redacted
+    assert redacted.startswith("Scope: <tree>") and redacted.endswith("src/pool.py: close_pool"), redacted
+
+
+def test_redact_paths_leaves_a_longer_name_alone() -> None:
+    text = f"{_TREE}-2/a.py and {_ROOT}/other"
+    expected = "<worktree_root>/plan-red-1234567-2/a.py and <worktree_root>/other"
+    assert strap_runs.redact_paths(text, _PAIRS) == expected
+
+
+def test_redact_paths_matches_posix_paths_case_sensitively() -> None:
+    pairs = [("~", "/home/dev")]
+    redacted = strap_runs.redact_paths("/home/dev/x /home/Dev/y /home/devs", pairs)
+    assert redacted == "~/x /home/Dev/y /home/devs"
