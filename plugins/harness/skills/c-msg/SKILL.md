@@ -35,10 +35,12 @@ Exit 1 prints `problem:` lines (for example, nothing pending): report them and s
 `wrote <skeleton>` (the absolute path of `<branch>_pending.json`; use it as `<skeleton>` below), then
 `message: empty`, `message: carried` or `message: canned`, the message when one is set, and the block's diff.
 
-The skeleton has one block, and the block is the commit: do not add, drop or split paths. A carried message is a
-draft saved against the same HEAD. A canned message is fixed in advance for a set of generated files (the TODO
-files, the review artifacts; entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), and a canned
-block prints no diff.
+The skeleton has one block, and the block is the commit: do not add, drop or split paths. Build alone may add
+one: a canned set's file that appeared or vanished since capture (a regenerated TODO catalog or review artifact)
+is folded into the block. A carried message is a draft saved against the same HEAD. A canned message is fixed in
+advance for a set of generated files (the TODO files, the review artifacts; entries in
+`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`, plus the project's own sets under the
+`canned_messages` key of `.claude/harness.json`, tried first), and a canned block prints no diff.
 
 **The printed diff is the whole input:** no `git diff`, no Read of a changed file, and no second `diff` call except the one Step 2 names for a canned block with a requested change. Each
 path prints under a `=== <path> [<mode>, +A -D] ===` header as `full` (a very long diff is clipped, ending in a
