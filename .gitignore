@@ -240,3 +240,4 @@ __marimo__/
 settings.local.json
 docs/plans/**/*.py
 docs/plans/**/.gitignore
+docs/TODO/Snapshots/TODO_Snapshot*.md
