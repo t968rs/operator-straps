@@ -38,7 +38,8 @@ import os
 import re
 from dataclasses import dataclass, field, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import (TYPE_CHECKING, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple,
+                    Union)
 
 from harness_lib.review_models import Finding, FixEntry, FixReport, ReviewerReport, Severity, config_for
 
@@ -473,8 +474,8 @@ def review_document(meta: Mapping[str, object], draft: Mapping[str, object],
 
 
 def review_validator(schema_file: Path) -> Validator:
-    """Validator for the PR_REVIEW schema at ``schema_file`` over a registry of each sibling ``*.schema.json``
-    (cached per path and modification time)."""
+    """Validator for the PR_REVIEW schema at ``schema_file``; a ``$ref`` to a sibling ``*.schema.json``
+    loads that sibling on first use (cached per path and modification time)."""
     path = Path(schema_file).resolve()
     return _cached_validator(str(path), path.stat().st_mtime_ns)
 
@@ -483,15 +484,34 @@ def review_validator(schema_file: Path) -> Validator:
 def _cached_validator(schema_file: str, _mtime_ns: int) -> Validator:
     """The validator ``review_validator`` returns; ``_mtime_ns`` only keys the cache."""
     import jsonschema
-    from referencing import Registry, Resource
+    from referencing import Registry
 
     path = Path(schema_file)
     schema = json.loads(path.read_text(encoding="utf-8"))
-    registry = Registry()
-    for sibling in path.parent.glob("*.schema.json"):
-        content = json.loads(sibling.read_text(encoding="utf-8"))
-        registry = registry.with_resource(uri=sibling.name, resource=Resource.from_contents(content))
+    registry = Registry(retrieve=_sibling_retriever(path.parent))
     return jsonschema.validators.validator_for(schema)(schema, registry=registry)
+
+
+def _sibling_retriever(folder: Path) -> Callable[[str], object]:
+    """A ``referencing`` retrieve callback: the URI's last segment names a ``*.schema.json`` in ``folder``.
+
+    Only a referenced sibling is read, so an unrelated file in the folder never breaks validation, and
+    a sibling without ``$schema`` is read as draft 2020-12, the validator default.
+    """
+    from referencing import Resource
+    from referencing.exceptions import NoSuchResource
+    from referencing.jsonschema import DRAFT202012
+
+    @functools.lru_cache(maxsize=None)
+    def retrieve(uri: str) -> Resource:
+        name = uri.rsplit("/", 1)[-1]
+        sibling = folder / name
+        if not name.endswith(".schema.json") or not sibling.is_file():
+            raise NoSuchResource(ref=uri)
+        content = json.loads(sibling.read_text(encoding="utf-8"))
+        return Resource.from_contents(content, default_specification=DRAFT202012)
+
+    return retrieve
 
 
 def _schema_problems(doc: Mapping[str, object], schema_file: Path) -> List[str]:
