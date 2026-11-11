@@ -12,6 +12,9 @@ it, a behavior frozen in an earlier round keeps its ``tests`` and ``kind``. A Lo
 current round ends in a ``lock`` entry, ``strap.py lock``) refuses every operation that saves, with
 ``<name> is locked; reopen to change it``.
 
+``drop_behavior`` refuses a drawn behavior until its latest draw has a recorded, fully graded baseline that
+did not fail, so a drop followed by a re-add never replaces a draw.
+
 ``__all__`` is the surface ``skill_api.py`` binds for an api heredoc. ``record_run`` stays importable for
 ``strap.py record-run`` but is left out of it, so an api session cannot record a reply. Requires an
 activated config.
@@ -32,7 +35,7 @@ from harness_lib.strap_models import (
     Pressure, RedException, ReplyAct, Run, Scenario, SkillSpec, driver_digest, dump_spec, load_spec,
     part_path, seal_broken, sealed,
 )
-from harness_lib.strap_runs import quote_found, redact_paths
+from harness_lib.strap_runs import baseline_failed, quote_found, redact_paths
 
 __all__ = [
     "StrapError", "spec_path", "new_behavior", "new_test", "new_scenario", "new_check", "new_judged",
@@ -236,10 +239,35 @@ def update_behavior(name: str, behavior_id: str, **changes: Any) -> SkillSpec:
     return _apply(name, change)
 
 
+def _refuse_drop_before_baseline(spec: SkillSpec, behavior: Behavior) -> None:
+    """A drawn behavior drops only once its latest draw has recorded baselines, each fully graded, none of
+    which failed; otherwise a drop and a re-add would replace the draw. A behavior frozen in an earlier
+    round, or never drawn, is exempt."""
+    draws = [draw for draw in spec.draws if draw.behavior == behavior.id]
+    if not draws or any(behavior.id in done.behaviors for done in spec.rounds):
+        return
+    scenario = next(s for s in behavior.scenarios if s.id == draws[-1].scenario)
+    runs = [run for run in spec.runs if run.behavior == behavior.id and run.scenario == scenario.id
+            and run.arm == Arm.BASELINE and run.recorded]
+    if not runs:
+        raise StrapError(f"{behavior.id}: drawn {scenario.id} has no recorded baseline; draws are final, so "
+                         "run and grade it before dropping")
+    for run in runs:
+        graded = {g.item for g in spec.grades if g.run == run.id}
+        if graded < set(range(len(scenario.judged))):
+            raise StrapError(f"{behavior.id}: baseline {run.id} on {scenario.id} is ungraded; grade it "
+                             "before dropping")
+        if baseline_failed(scenario, run, spec.grades):
+            raise StrapError(f"{behavior.id}: baseline {run.id} on {scenario.id} failed as it should; only a "
+                             "behavior whose drawn baseline did not fail is dropped")
+
+
 def drop_behavior(name: str, behavior_id: str, reason: str) -> SkillSpec:
-    """Set the behavior's state to ``dropped`` with ``reason``; the one api path that writes a state."""
+    """Set the behavior's state to ``dropped`` with ``reason``; the one api path that writes a state. A
+    drawn behavior drops only after its drawn baseline is recorded, graded and did not fail."""
     def change(spec: SkillSpec) -> SkillSpec:
         index = _behavior_index(spec, behavior_id)
+        _refuse_drop_before_baseline(spec, spec.behaviors[index])
         data = spec.behaviors[index].model_dump()
         data.update(state=BehaviorState.DROPPED, dropped_reason=reason)
         return _with_behavior(spec, index, Behavior.model_validate(data))
