@@ -70,7 +70,7 @@ def test_every_outcome_seals() -> None:
 @pytest.mark.parametrize("field, value", [
     ("plan_id", "0002"),
     ("item", "TASK-2"),
-    ("evidence","commit aaaaaaa: 9 test node(s) passed"),
+    ("evidence", "commit aaaaaaa: 9 test node(s) passed"),
     ("date", "2026-11-11"),
     ("ref", "v1"),
     ("deviations", Deviations(extra_files=[ExtraFile(path="src/other.py", change="EX1")],

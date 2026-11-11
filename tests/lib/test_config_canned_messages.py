@@ -1,7 +1,8 @@
 """The ``canned_messages`` config key: a project's own canned sets, loaded as ``CannedSet`` tuples.
 
 Each set is ``{"patterns": [...], "message": "..."}``; the load keeps the project's order and refuses a
-malformed set, with ``jsonschema`` and without it (the builder's own check).
+malformed set, with ``jsonschema`` and without it (the builder's own check), and a set whose message fails the
+commit-message checks ``branch_commit_msg.py build`` runs.
 """
 from __future__ import annotations
 
@@ -47,6 +48,16 @@ def test_a_malformed_set_fails_without_jsonschema(make_project, monkeypatch, bad
     monkeypatch.setitem(sys.modules, "jsonschema", None)
     with pytest.raises(ConfigError, match="canned_messages"):
         load_config(make_project({"canned_messages": [bad]}))
+
+
+@pytest.mark.parametrize("message", [
+    "Update TODO files",
+    "Chores(todo): refresh the catalog",
+    'Chore(todo): refresh the "catalog"',
+])
+def test_a_message_failing_the_commit_checks_fails_the_load(make_project, message) -> None:
+    with pytest.raises(ConfigError, match="canned_messages/0/message"):
+        load_config(make_project({"canned_messages": [{"patterns": ["a.json"], "message": message}]}))
 
 
 def test_a_non_list_value_fails_without_jsonschema(make_project, monkeypatch) -> None:

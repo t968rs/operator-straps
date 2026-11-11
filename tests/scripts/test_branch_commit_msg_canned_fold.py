@@ -22,6 +22,8 @@ WALK_ROOTS = ()  # walks nothing; the clone lives under tmp_path
 TODO = "docs/TODO/RepoToDo.json"
 SNAPSHOT = "docs/TODO/Snapshots/TODO_Snapshot_2026_1110.md"
 CANNED_TODO = "Chore(todo): refresh TODO catalog, research stubs and snapshot"
+REPORT = "offlineTestReport.json"
+CANNED_REPORT = "Chore(tests): refresh the offline test report"
 DRAFT = "Chore: commit {key}\n\nWhy.\n  - x: y"
 Commits = Dict[int, Tuple[List[str], str]]
 
@@ -46,10 +48,9 @@ def _write(root: Path, rel: str, text: str = "x\n") -> None:
     path.write_text(text, encoding="utf-8")
 
 
-@pytest.fixture()
-def clone(make_project, tmp_path: Path) -> Path:
-    """Branch ``9999-demo`` of a clone, one commit ahead of ``main`` (``src/pkg/a.py`` changed)."""
-    upstream = make_project(files={"src/pkg/a.py": "x\n"}, name="upstream")
+def _clone(make_project, tmp_path: Path, config: Optional[dict] = None) -> Path:
+    """Branch ``9999-demo`` of a clone of a project with ``config``, one commit ahead of ``main``."""
+    upstream = make_project(config, files={"src/pkg/a.py": "x\n"}, name="upstream")
     work = tmp_path / "work"
     git(tmp_path, "clone", "-q", str(upstream), str(work))
     git(work, "checkout", "-q", "-b", "9999-demo")
@@ -57,6 +58,19 @@ def clone(make_project, tmp_path: Path) -> Path:
     git(work, "commit", "-qam", "wip")
     activate(load_config(work))
     return work
+
+
+@pytest.fixture()
+def clone(make_project, tmp_path: Path) -> Path:
+    """Branch ``9999-demo`` of a clone, one commit ahead of ``main`` (``src/pkg/a.py`` changed)."""
+    return _clone(make_project, tmp_path)
+
+
+@pytest.fixture()
+def project_clone(make_project, tmp_path: Path) -> Path:
+    """As ``clone``, on a project whose ``canned_messages`` key holds the offline test report set."""
+    config = {"canned_messages": [{"patterns": [REPORT], "message": CANNED_REPORT}]}
+    return _clone(make_project, tmp_path, config)
 
 
 def _fill(payload: Dict[str, object]) -> Dict[str, object]:
@@ -99,6 +113,22 @@ class TestFoldCanned:
         folded = fold_canned(commits, {"src/pkg/a.py", TODO}, _canned, pending=True)
         assert folded == {1: (["src/pkg/a.py", TODO], "Feature: a")}
 
+    def test_it_joins_a_canned_block_whose_message_has_trailing_space(self) -> None:
+        commits: Commits = {1: (["src/pkg/a.py"], "Feature: a"), 2: ([TODO], CANNED_TODO + "\n")}
+        folded = fold_canned(commits, {"src/pkg/a.py", TODO, SNAPSHOT}, _canned, pending=False)
+        assert folded[2] == ([TODO, SNAPSHOT], CANNED_TODO + "\n")
+        assert sorted(folded) == [1, 2]
+
+    def test_a_path_a_glob_entry_stands_for_stays_put(self) -> None:
+        commits: Commits = {1: (["src/pkg/a.py"], "Feature: a"), 2: (["docs/TODO/*.json"], CANNED_TODO)}
+        folded = fold_canned(commits, {"src/pkg/a.py", TODO}, _canned, pending=False)
+        assert folded == commits
+
+    def test_a_block_with_no_files_survives(self) -> None:
+        commits: Commits = {1: ([], "Feature: x"), 2: (["src/pkg/a.py"], "Feature: a")}
+        folded = fold_canned(commits, {"src/pkg/a.py"}, _canned, pending=False)
+        assert folded == commits
+
     def test_the_input_is_not_changed(self) -> None:
         commits: Commits = {1: (["src/pkg/a.py"], "Feature: a"), 2: ([TODO], CANNED_TODO)}
         fold_canned(commits, {"src/pkg/a.py", SNAPSHOT}, _canned, pending=False)
@@ -127,6 +157,15 @@ class TestBuildFolds:
         (clone / TODO).unlink()
         _, document = script.run_build(clone, payload)
         assert [entry.files for entry in document.commits.values()] == [["src/pkg/a.py"]]
+
+    def test_a_project_set_file_written_after_capture_builds(
+            self, script: ModuleType, project_clone: Path,
+    ) -> None:
+        payload = _fill(script.run_capture(project_clone, fetch=False))
+        _write(project_clone, REPORT)
+        _, document = script.run_build(project_clone, payload)
+        assert document.commits[2].files == [REPORT]
+        assert document.commits[2].header == CANNED_REPORT
 
     def test_another_file_written_after_capture_still_fails(self, script: ModuleType, clone: Path) -> None:
         payload = _fill(script.run_capture(clone, fetch=False))

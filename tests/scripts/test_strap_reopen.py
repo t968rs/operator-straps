@@ -249,10 +249,12 @@ def test_second_reopen_appends_a_round(frozen: str, reopen: Strap, strap: Strap,
                                        piped: Callable[..., Result], project: Path) -> None:
     first_base = git(project, "rev-parse", "HEAD")
     ok(reopen())
+    write(project, SKILL, f"---\nname: {NAME}\ndescription: Use when testing reopen.\n---\n\nRound two.\n")
     ok(piped(_mechanical_code("Writes gadget.txt", "tests/test_gadget.py::test_gadget_exists"), "api", NAME))
     ok(piped('drop_behavior(name, "B2", "out of scope")\n', "api", NAME))
     ok(strap("freeze", NAME))
     second = read_spec(project)["frozen"]["skill_hash"]
+    assert second != frozen
     write(project, "round2.txt", "round 2\n")
     second_base = commit_all(project)
     out = ok(reopen())
