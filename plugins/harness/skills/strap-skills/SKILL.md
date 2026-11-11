@@ -70,7 +70,9 @@ writes land where `record-run` looks.
   tested by scenarios. A driver wrapped around a pure-judgment skill for form's sake is a defect.
 - **The spec changes only through the API heredoc and the driver.** Never use Edit or Write on
   `SkillSpec.json`: the driver-owned fields carry a digest, a frozen spec's authored fields (parts included)
-  carry a seal, and every command refuses a spec edited by hand.
+  carry a seal, and every command refuses a spec edited by hand. On a Locked spec (step 12) a hook also
+  denies Write, Edit and the shell write shapes onto `SkillSpec.json`, the spec folder's `tests/` and
+  `fixtures/`, and every file under `freezes/`.
 - **A refusal is information.** Read the `problem:` line, fix the input it names and run the same command
   again. Never work around a refusal by changing the spec another way.
 
@@ -83,8 +85,8 @@ writes land where `record-run` looks.
    ```
 
    It prints `new [done] | <name> | ...` with the spec path. A new skill must not exist yet; `--edit` needs the
-   skill at HEAD, records `base` (HEAD, or `--base <ref>` when that is an ancestor of HEAD) and lists the
-   skill's existing files as parts. An edit's spec covers only the behaviors the edit adds or changes, and its
+   skill at HEAD, records `base` (HEAD, or `--base <ref>` when that is an ancestor of HEAD), tags it
+   `base/skill/<name>/r1` and lists the skill's existing files as parts. An edit's spec covers only the behaviors the edit adds or changes, and its
    baseline arm carries the skill as it stood at `base`. On an existing spec it prints `resume | ...`: read the
    spec and continue from the first step its draws, runs and grades leave unfinished. `--judge` is fixed once
    grading starts.
@@ -239,14 +241,58 @@ writes land where `record-run` looks.
     scenario. Each save of a frozen spec seals its authored fields; a hand edit breaks the seal and every
     command refuses the spec until the edit is reverted.
 
-    **Reopen for new behaviors.** A frozen spec takes no new behavior. When the skill gains new rules, run
+    **The ledger and its tags.** Each `freeze` and `freeze --refreeze` also writes a write-once entry file,
+    `<artifacts.plans>/freezes/skill/<name>/r<N>.<k>-freeze.json` (`N` the round, `k` the entries of every
+    kind), and tags its tree. The tree holds every part at its repo path plus the spec folder's `tests/` and
+    `fixtures/`, limited to files git does not ignore; planned tests, contract tests and `.py` fixtures are
+    usually ignored and enter the entry by sha256 only. The stamp stays in `SkillSpec.json`, the entry repeats
+    its `skill_hash`, and `check` prints `ledger:` when the two disagree. A spec frozen before the ledger
+    gets history entries for its earlier stamps (no tags) at its first ledger write (`freeze --refreeze`,
+    `reopen` or `relink`); until then `check` prints `legacy: <name> has no ledger; ...` and no tag warnings.
+    The drivers create the tags (annotated, local), never the developer, with `<stem>` as `skill/<name>`:
+    - `base/<stem>/r<N>` on the round's base (`new --edit`, `freeze` and `reopen` tag it;
+      `base/<stem>/r<N>-<m>` is the m-th relinked base);
+    - `freeze/<stem>/r<N>.<k>-tree` and `lock/<stem>/r<N>.<k>-tree` on the tree of that entry;
+    - `freeze/<stem>/r<N>.<k>-commit` and `lock/<stem>/r<N>.<k>-commit` on the commit that added the entry
+      file, once it is committed (`-commit.2`, `-commit.3` after a rewrite moved the entry to a new commit).
+
+    A command prints its status line first, then one `tag: <name> -> <sha7>` line per tag it created, then one
+    `push: git push origin <names>` line for the developer to run; tree tags never travel with
+    `push --follow-tags`. A tag name that already sits on another object refuses the command before anything
+    is written. Every `strap.py` command reconciles the ledger by tagging the commit that added each committed
+    entry file, and `check` does too (it writes refs, never files); a tag step that fails after the entry is
+    written prints `warn:` and leaves the entry for the next command. Nothing is tagged inside a scenario or
+    red tree (marker file `.harness-scenario-tree`), and tagging uses a `strap <strap@localhost>` committer
+    identity only when git has none configured. `check` also prints `untagged: <sha7> (<role>)` for a base,
+    tree or commit no tag holds and `off-history: <sha7> (base r<N>)` for a base that left HEAD's history.
+    Driver tags sit on main-line commits, so a release version is read with `git describe --match 'v*'`.
+
+    **Lock.** A frozen spec is final after
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" lock <name>
+    ```
+
+    Run it only on the developer's explicit ask, at branch end or merge, after the review. It refuses unless
+    the spec is frozen and not stale, the planned nodes of its mechanical behaviors and every `contract_test`
+    part pass, and the last freeze entry matches the stamp, with its files committed at HEAD and unchanged in
+    the working tree and its ignored files still at their sha256. It appends a `lock` entry and tags a tree
+    that is the freeze set plus `SkillSpec.json`. A Locked spec refuses `red`, `draw`, `scaffold`, `retest`,
+    `run` on either arm, `record-run`, every `api` call that saves (grades, `add_part`, `remove_part`,
+    behaviors, scenarios) and `freeze --refreeze` with `<name> is locked; reopen to change it`, and `check`
+    prints `drift: <path> differs from <tag>` for a locked file changed by any other writer. Parts
+    (SKILL.md, scripts, agents) are product code and are not write-protected; a Frozen spec settles after a
+    part change with a refreeze, a Locked one with `reopen`.
+
+    **Reopen for new behaviors.** A frozen or Locked spec takes no new behavior. When the skill gains new rules, run
 
     ```
     sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" reopen <name> [--base <ref>]
     ```
 
     It keeps the earlier freeze in `rounds`, clears the stamp, sets `mode` to `edit` and moves `base`, printing
-    `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>`. From then on a baseline reads the
+    `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>`, appends a `reopen` entry to the ledger
+    and tags the new base. From then on a baseline reads the
     SKILL.md at `base`, also for a spec opened with `new` (whose baselines ran without the skill). The base is
     the commit whose code the new scenarios need but whose SKILL.md lacks the new guidance. `red` also runs at
     `base`, so a new mechanical behavior's code must not exist there yet. `--base` must be an ancestor of HEAD
@@ -262,8 +308,21 @@ writes land where `record-run` looks.
     first freeze after a reopen ends with `| was <hash12>`, the last round's hash. Reopening is standard
     procedure: ask the developer for the OK, then do it.
 
+    **Relink after a rewrite.** After the developer rebases or squashes, a `base` that left HEAD's history
+    shows as `off-history:` in `check`, and the baseline arm can no longer read the SKILL.md there. That is
+    the cue to offer a relink, which runs on the developer's request:
+
+    ```
+    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/strap.py" relink <name> [--to <ref>]
+    ```
+
+    It matches `base` to its rewritten counterpart by `git patch-id` among HEAD's ancestors (or takes `--to`,
+    an ancestor of HEAD), re-points `base`, appends a `relink` entry and tags the new base
+    `base/skill/<name>/r<N>-<m>`; the old tags stay.
+
 13. **Hand off.** Give the developer the frozen hash, the part paths, the behaviors dropped with their reasons,
-    and the `bump:` line from step 5 when one printed. The developer commits.
+    the `bump:` line from step 5 when one printed, and the `push:` line the freeze printed. The developer
+    commits and pushes; `lock` waits for the developer's explicit ask.
 
 ## API
 
