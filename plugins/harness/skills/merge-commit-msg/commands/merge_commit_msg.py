@@ -55,7 +55,7 @@ from typing import Dict, List, Optional, Sequence, TextIO, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
-from harness_lib.canned_messages import get_canned_message  # noqa: E402
+from harness_lib.canned_messages import project_canned_message  # noqa: E402
 from harness_lib.commit_diff import cap_sections, clip_text  # noqa: E402
 from harness_lib.commit_txt import (  # noqa: E402
     filler_words,
@@ -272,7 +272,7 @@ def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequ
     """
     title, base, head = str(view["title"]), str(view["baseRefName"]), str(view["headRefName"])
     names = lineage_names(str(view.get("body") or ""), base, head)
-    canned = get_canned_message(files)
+    canned = project_canned_message(files)
     message = message_template(pr, title, names, canned, squash)
     message[0] = RETITLE_HINT if retitle else message[0]
     size = f"+{view['additions']} -{view['deletions']} across {view['changedFiles']} files"
