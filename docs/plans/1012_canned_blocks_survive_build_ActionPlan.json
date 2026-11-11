@@ -2,7 +2,7 @@
   "plan_id": "1012",
   "plan_created": "2026-11-10",
   "source_document": null,
-  "documentation": "docs/plans/1012_canned_blocks_survive_build_PIP.md",
+  "documentation": "docs/plans/1012_canned_blocks_survive_build_PIP.html",
   "branch": "1150-canned-messages",
   "base_branch": "main",
   "execution_model": "serial",
@@ -210,11 +210,12 @@
     {
       "id": "TASK-4",
       "title": "skill docs, version bump and release notes",
-      "action": "branch-commit-msg SKILL.md: Step 1 names the canned_messages key beside canned_messages.py; Step 4 says build folds a canned-set path that appeared or vanished after capture. amend-commit-msg SKILL.md: the canned-set exception names the key. Bump harness plugin.json minor; docs/RELEASES/v<next>.md row and lines. c-msg and merge-commit-msg SKILL.md stay as they are (frozen strap specs); their text stays true.",
+      "action": "branch-commit-msg SKILL.md: Step 1 names the canned_messages key beside canned_messages.py; Step 4 says build folds a canned-set path that appeared or vanished after capture. amend-commit-msg SKILL.md: the canned-set exception names the key. Bump harness plugin.json minor (0.67.0 -> 0.68.0); docs/RELEASES/v1.0.0.md (the pending release, already listing harness 0.65.1 -> 0.67.0): harness row Now 0.68.0, one change line for the canned_messages key and build folding. c-msg and merge-commit-msg SKILL.md stay as they are (frozen strap specs); their text stays true.",
       "files": [
         "plugins/harness/skills/branch-commit-msg/SKILL.md",
         "plugins/harness/skills/amend-commit-msg/SKILL.md",
-        "plugins/harness/.claude-plugin/plugin.json"
+        "plugins/harness/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.0.0.md"
       ],
       "dependencies": [
         "TASK-3"
@@ -241,7 +242,13 @@
     }
   ],
   "base_commit": "5a8ef39a2515d95da028eef5d3e9e6a8e88149ad",
-  "frozen": null,
+  "frozen": {
+    "commit": "b4e8d6bb28f3748c7aa2303a067b2c7a476a78cf",
+    "tree": "ea924ea97532457a66cd8a207db7b47e2da0c924",
+    "date": "2026-11-10",
+    "digest": "58448f73012a99b585f0bf85f9a39210bb598d4ec1ba960674358123fea808db",
+    "records": "receipts"
+  },
   "decisions": [
     {
       "id": "D1",
@@ -313,17 +320,12 @@
   "sweeps": [
     {
       "id": "S1",
-      "pattern": "get_canned_message",
+      "pattern": "^[^\"]*get_canned_message",
       "hits": {
         "plugins/harness/lib/harness_lib/canned_messages.py": "definition; gains extra=, plus project_canned_message (TASK-2)",
         "plugins/harness/scripts/branch_commit_msg.py": "five call sites switch to project_canned_message (TASK-2)",
         "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py": "render call site switches to project_canned_message (TASK-2)",
-        "tests/lib/test_canned_messages.py": "built-in LOOKUP tests; unchanged signature default keeps them",
-        "docs/TODO/RepoToDo.json": "TODO prose; no code",
-        "docs/PR_REVIEWS/0090_Featurecommit-msg_add_canned_messages_for_pre-determined_change_sets.json": "historical review record",
-        "docs/PR_REVIEWS/0094_Fixcommit-msg_pass_the_developers_--base_to_the_fork_and_keep_sav.json": "historical review record",
-        "docs/PR_REVIEWS/0160_c-msg_performance.json": "historical review record",
-        "docs/PR_REVIEWS/0164_Featuremerge-commit-msg_merge_commit_msg.py_stdin_build.json": "historical review record"
+        "tests/lib/test_canned_messages.py": "built-in LOOKUP tests; unchanged signature default keeps them"
       }
     }
   ]
