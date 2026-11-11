@@ -18,7 +18,7 @@ import pytest
 from conftest import git
 
 from harness_lib import plan_doc as pd
-from harness_lib.plan_enums import OutcomeKind, RecordSource
+from harness_lib.plan_enums import OutcomeKind, RecordScheme, RecordSource
 from harness_lib.plan_models import ItemRecord
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -83,12 +83,14 @@ def hand_set_legacy(project: Path, index: int = 0) -> None:
 
 
 def old_driver_freeze(project: Path) -> None:
-    """Make the plan look frozen by the driver before the record scheme: no ``records``, the old digest."""
-    plan = read_plan(project)
-    plan["frozen"].pop("records", None)
-    write_plan(project, plan)
-    plan["frozen"]["digest"] = pd.frozen_digest(pd.load_plan(plan_file(project)))
-    write_plan(project, plan)
+    """Make the plan look frozen by the driver before the record scheme and the ledger: an in-file stamp
+    with no ``records``, the old digest."""
+    helpers.as_legacy(project)
+
+
+def ref_names(root: Path) -> List[str]:
+    """Every ref name of the repository, sorted."""
+    return sorted(git(root, "for-each-ref", "--format=%(refname)").splitlines())
 
 
 # --- the record -------------------------------------------------------------------------------------------
@@ -96,7 +98,7 @@ def old_driver_freeze(project: Path) -> None:
 @pytest.mark.cross_os
 def test_record_sha_writes_a_sealed_record_with_tree_and_commit(run: Run, project: Path) -> None:
     fill(run, project)
-    assert read_plan(project)["frozen"]["records"] == "sealed"
+    assert helpers.stamp(project).records == RecordScheme.sealed
     sha = commit_op(project, "sub")
     code, out, err = run("record", "1", "TASK-1", "--sha", sha)
     assert code == 0, err
@@ -205,7 +207,7 @@ def test_record_sha_accepts_a_commit_unreachable_from_head(run: Run, project: Pa
 def test_record_staged_records_the_index_and_survives_the_commit(run: Run, project: Path,
                                                                  tmp_path: Path) -> None:
     fill(run, project)
-    refs = git(project, "for-each-ref")
+    refs = ref_names(project)
     write_op(project, "sub")
     git(project, "add", "src/calc.py", "tests/test_calc_sub.py")
     index_tree = git(project, "write-tree")
@@ -214,7 +216,9 @@ def test_record_staged_records_the_index_and_survives_the_commit(run: Run, proje
     provenance = item_record(project).outcome.provenance
     assert provenance.source == RecordSource.staged and provenance.tree == index_tree
     assert provenance.commit is None
-    assert git(project, "for-each-ref") == refs and trees(tmp_path) == []
+    stem = pd.load_plan(plan_file(project)).ledger
+    assert ref_names(project) == sorted([*refs, f"refs/tags/receipt/{stem}/TASK-1-tree"])
+    assert trees(tmp_path) == []
     git(project, "commit", "-q", "-m", "add sub")
     code, _, err = run("check", "1")
     assert code == 0, err
@@ -420,9 +424,7 @@ def test_a_sealed_plan_refuses_a_pasted_legacy_shape(run: Run, project: Path) ->
 
 def test_deleting_the_record_scheme_by_hand_is_a_plan_change(run: Run, project: Path) -> None:
     fill(run, project)
-    plan = read_plan(project)
-    plan["frozen"].pop("records")
-    write_plan(project, plan)
+    helpers.drop_ledger_scheme(project)
     hand_set_legacy(project)
     code, _, err = run("check", "1")
     assert code == 1 and "problem: plan changed after freeze" in err
@@ -435,8 +437,8 @@ def test_a_refreeze_keeps_the_scheme_the_committed_plan_stores(run: Run, project
     fill(run, project)
     git(project, "add", "-A")
     git(project, "commit", "-q", "-m", "plan 0001")
+    helpers.drop_ledger_scheme(project)
     plan = read_plan(project)
-    plan["frozen"].pop("records")
     plan["items"][0]["action"] = "Add sub beside add, with a changed design."
     write_plan(project, plan)
     hand_set_legacy(project)
@@ -452,8 +454,8 @@ def test_a_refreeze_seals_the_scheme_once_no_legacy_item_remains(run: Run, proje
     old_driver_freeze(project)
     hand_set_legacy(project)
     assert run("freeze", "1", "--refreeze")[0] == 0
-    assert read_plan(project)["frozen"].get("records") is None
+    assert helpers.stamp(project).records is None
     sha = commit_op(project, "sub")
     assert run("record", "1", "TASK-1", "--sha", sha)[0] == 0
     assert run("freeze", "1", "--refreeze")[0] == 0
-    assert read_plan(project)["frozen"]["records"] == "sealed"
+    assert helpers.stamp(project).records == RecordScheme.sealed

@@ -265,7 +265,7 @@ def test_second_reopen_appends_a_round(frozen: str, reopen: Strap, strap: Strap,
     assert spec["rounds"][1]["base"] == first_base and spec["rounds"][1]["behaviors"] == ["B1"]
     assert spec["rounds"][1]["frozen"]["skill_hash"] == second
     out = ok(strap("freeze", NAME))
-    assert out.rstrip().endswith(f"| was {second[:12]}"), out
+    assert out.splitlines()[0].endswith(f"| was {second[:12]}"), out
 
 
 def test_reopen_refuses_a_base_before_the_previous_one(frozen: str, reopen: Strap, strap: Strap,

@@ -16,6 +16,7 @@ from typing import Any, Dict
 from harness_lib import plan_api
 from harness_lib import plan_doc as pd
 from harness_lib import plan_receipts as prt
+from harness_lib.plan_enums import RecordScheme
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -60,7 +61,7 @@ def test_new_writes_an_html_pip_and_names_it_as_documentation(run: Run, project:
 
 def test_a_first_freeze_stores_the_receipts_scheme_and_writes_live_js(run: Run, project: Path) -> None:
     fill(run, project)
-    assert read_plan(project)["frozen"]["records"] == "receipts"
+    assert helpers.stamp(project).records == RecordScheme.receipts
     assert prt.uses_receipts(pd.load_plan(plan_file(project)))
     live = project / PLANS / "0001" / "live.js"
     assert live.read_text(encoding="utf-8").startswith("window.PLAN_LIVE = ")
@@ -69,7 +70,7 @@ def test_a_first_freeze_stores_the_receipts_scheme_and_writes_live_js(run: Run, 
 
 def test_check_passes_a_frozen_receipts_plan(run: Run, project: Path) -> None:
     fill(run, project)
-    assert read_plan(project)["frozen"]["records"] == "receipts"
+    assert helpers.stamp(project).records == RecordScheme.receipts
     assert (project / PLANS / "0001" / "live.js").is_file()
     code, out, err = run("check", "1")
     assert code == 0, err
@@ -169,14 +170,13 @@ def test_a_refreeze_of_a_receipts_plan_keeps_the_scheme(run: Run, project: Path)
     write_plan(project, plan)
     code, _, err = run("freeze", "1", "--refreeze")
     assert code == 0, err
-    assert read_plan(project)["frozen"]["records"] == "receipts" and run("check", "1")[0] == 0
+    assert helpers.stamp(project).records == RecordScheme.receipts and run("check", "1")[0] == 0
 
 
 def test_a_refreeze_keeps_receipts_when_the_scheme_is_deleted_by_hand(run: Run, project: Path) -> None:
     fill(run, project)
-    plan = read_plan(project)
-    del plan["frozen"]["records"]
-    write_plan(project, plan)
+    helpers.drop_ledger_scheme(project)
+    assert helpers.stamp(project).records is None
     code, _, err = run("freeze", "1", "--refreeze")
     assert code == 0, err
-    assert read_plan(project)["frozen"]["records"] == "receipts"
+    assert helpers.stamp(project).records == RecordScheme.receipts
