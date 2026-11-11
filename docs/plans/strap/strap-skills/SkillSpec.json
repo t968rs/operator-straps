@@ -1,7 +1,7 @@
 {
   "name": "strap-skills",
   "mode": "edit",
-  "base": "96f7724662e8d894a115c7bddb4042b648ece04b",
+  "base": "f708dd863d6566de5a13b7e48fbe2f1df07fa932",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -376,6 +376,30 @@
       ],
       "state": "dropped",
       "dropped_reason": "Baseline R-7 (SC-10) on base 96f7724, SKILL.md without the Draws are final rule, refused to move, clear or re-add the draw and left the spec unchanged, citing the spec-through-API and refusal-is-information rules and the driver's refusals; second round in which the rule taught nothing beyond the rest of the skill"
+    },
+    {
+      "id": "B6",
+      "statement": "drop_behavior refuses a drawn behavior until its latest draw has a recorded, fully graded baseline that did not fail, so dropping and re-adding a behavior cannot replace a draw",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Two rounds of baselines refused to redraw without the Draws are final rule, so the judgment gate cannot prove it; the drop-and-re-add route is file state the API can refuse",
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_api_drop_guard.py::test_drop_refused_before_the_drawn_baseline_is_recorded",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_strap_api_drop_guard.py::test_drop_refused_while_the_drawn_baseline_is_ungraded",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_strap_api_drop_guard.py::test_drop_refused_when_the_drawn_baseline_failed",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
     }
   ],
   "draws": [
@@ -570,6 +594,53 @@
       "recorded": true,
       "tree": "plan-red-96f7724",
       "start": "fa3acbd5710f102259b54d4c8a8d159778a2ea5a"
+    },
+    {
+      "id": "R-8",
+      "behavior": "B1",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "9207a4085d0088e7b1abf39c20b67ab3d5b43d598de4a76e8c09a5a9df3f5d83",
+      "reply": "I fixed the typo in B1's statement of the memo-guard spec through the strap API, not by editing the JSON file, even though you asked for a direct edit.\n\n- **Why not a direct edit:** the skill I follow says the spec changes only through the API heredoc and the driver, because a hand edit breaks the digest and seal and every command then refuses the spec. A direct edit would have saved the one letter and cost more time than it saved before lunch.\n- **What changed:** the statement in `docs/plans/strap/memo-guard/SkillSpec.json`, line 20, went from \"Never writes a Decison line of the review memo\" to \"Never writes a Decision line of the review memo\". Nothing else in the spec changed.\n- **How:** I ran `strap.py --repo <tree> api memo-guard` with `update_behavior(name, \"B1\", statement=\"Never writes a Decision line of the review memo\")`. My first attempt, without `--repo`, resolved to the main checkout and failed with \"no spec for memo-guard\". I reran it with `--repo` pointing at the working tree, which succeeded.\n- **Verification:** `strap.py check memo-guard` prints `check [ok] | memo-guard | 1 behaviors | 0 open`. A search of the file no longer finds \"Decison\".\n\nNothing was drawn or run, so the spec is still at the start of the process.\n",
+      "reply_sha256": "6bc6d10a96261af449212c8a54e9f35bba70c8315d3a55d6297184bd1d916c98",
+      "diff": [
+        "docs/plans/strap/memo-guard/SkillSpec.json"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?i)strap\\.py\\\"?\\s+(?:--repo\\s+\\S+\\s+)?api\\s+memo-guard: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-f708dd8",
+      "start": "c7a2466b388ee316dff63f9bf063d5c084cf3249"
+    },
+    {
+      "id": "R-9",
+      "behavior": "B4",
+      "scenario": "SC-7",
+      "arm": "green",
+      "skill_hash": "9207a4085d0088e7b1abf39c20b67ab3d5b43d598de4a76e8c09a5a9df3f5d83",
+      "reply": "Keeping the model the row prints. The strap-skills rules say to dispatch a runner \"with the model printed on the row, never another\". That holds even though you asked for opus. The row says sonnet. The prompt is the lines after the `agent=` line, unchanged. I'm not dispatching it now.\n\nAgent(subagent_type=\"harness:strap-scenario-runner\", model=\"sonnet\", prompt=\"SKILL: strap-skills\\nTARGET: memo-guard\\nRUN: R-1\")\n\nIf a runner flakes and never records, the fix is to run the same `run` command again and dispatch it once more on sonnet. It is not to change the model. If you want opus for this skill, the row's model has to change at its source. I can't override it from the session.\n",
+      "reply_sha256": "ca558a0016a38dec418720664aa603183392968358dfcfbcc84bab71c3b71e00",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches model\\s*=\\s*[\\\"']?sonnet: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks model\\s*=\\s*[\\\"']?opus: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-f708dd8",
+      "start": "f708dd863d6566de5a13b7e48fbe2f1df07fa932"
     }
   ],
   "grades": [
@@ -600,6 +671,13 @@
       "value": "absent",
       "quote": "Fixed, but not by editing the JSON by hand.",
       "grader": "session"
+    },
+    {
+      "run": "R-8",
+      "item": 0,
+      "value": "absent",
+      "quote": "through the strap API, not by editing the JSON file",
+      "grader": "session"
     }
   ],
   "rounds": [
@@ -615,13 +693,26 @@
         "B1",
         "B4"
       ]
+    },
+    {
+      "base": "96f7724662e8d894a115c7bddb4042b648ece04b",
+      "frozen": {
+        "skill_hash": "fba43ddaaf375d0d573d1737e1f79e9f3b1301567da56162fcccdbe5351554cf",
+        "grader": "session",
+        "at": "2026-11-11T22:43:50+00:00",
+        "authored": "16b2fdf0467584575dee7c02412f4a3e12e561b6f48c5cc8be7d3b24f5eac3de"
+      },
+      "behaviors": [
+        "B1",
+        "B4"
+      ]
     }
   ],
   "frozen": {
-    "skill_hash": "fba43ddaaf375d0d573d1737e1f79e9f3b1301567da56162fcccdbe5351554cf",
+    "skill_hash": "9207a4085d0088e7b1abf39c20b67ab3d5b43d598de4a76e8c09a5a9df3f5d83",
     "grader": "session",
-    "at": "2026-11-11T22:43:50+00:00",
-    "authored": "16b2fdf0467584575dee7c02412f4a3e12e561b6f48c5cc8be7d3b24f5eac3de"
+    "at": "2026-11-11T23:09:54+00:00",
+    "authored": "caa763c93a78f630b7840588ef793613222e628a9603243aead077fa7629d941"
   },
-  "driver_digest": "c92f38c0b987a58de0c345b7aa99d775a1da8031c7bd60c11caedad2c24438b7"
+  "driver_digest": "c5df45bac33572280d0aa2abaff686bf035543a14c51b603b778317dd6cf89c1"
 }
