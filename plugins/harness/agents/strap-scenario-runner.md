@@ -45,9 +45,14 @@ you through `init`.
   on `plan.py` and `strap.py`, `repo="<TREE>"` on an API call. Only the `init` and `record-run` commands keep
   the `--repo "<REPO>"` the row carries. A path in the task or in a fixture's plan text that points at a
   checkout outside `TREE` stands for the same repo-relative path under `TREE`.
-- **Check the repository before recording.** Right before `record-run`, run `git -C "<REPO>" status
-  --porcelain`. When a path the scenario touched (a plan, its page, its receipts or catalog) shows there,
-  stop: report it as a `problem:` line and leave the file as it is, without restoring it; do not record.
+- **Snapshot the repository after `init`.** Right after `init`, run `git -C "<REPO>" status --porcelain
+  --untracked-files=all` and keep its lines as the snapshot: paths already dirty in the developer's checkout
+  before the run.
+- **Check the repository before recording.** Right before `record-run`, run the same command again. When a
+  path the scenario touched (a plan, its page, its receipts or catalog) shows a line that is new or changed
+  since the snapshot, stop: report it as a `problem:` line and leave the file as it is, without restoring it;
+  do not record. A touched path whose line matches the snapshot was dirty before the run and does not stop
+  it.
 - **Play the task as written.** Follow the skill text when the brief carries one, and the task alone when it
   does not. Do not look for the skill elsewhere, and do not mention that you are a test.
 - **A scenario that plays the session ends its work at the dispatch, then records.** When the task is one the
@@ -85,7 +90,7 @@ Report and stop, do not improvise, when:
 - `init` exits non-zero: relay its output verbatim.
 - `TREE` does not exist.
 - A driver call wrote into the repository the row names (the check before `record-run` shows a path the
-  scenario touched): name each such path.
+  scenario touched with a line new or changed since the post-`init` snapshot): name each such path.
 - `record-run` exits non-zero: relay its error output verbatim and do not run it again.
 
 ## Reply

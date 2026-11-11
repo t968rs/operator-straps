@@ -80,9 +80,11 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
 8. **`PLAN freeze <id>`**. It refuses any check problem, any open decision, any open item with neither a test
    nor a command, any red problem, and, on a first freeze, any item not `PENDING`. A first freeze stores the
    receipts scheme: the freeze digest covers every field but `frozen`, and the freeze writes the HTML page and
-   its `live.js` (a markdown PIP gives way to them). Nothing writes a receipts plan after its freeze but a refreeze: `record` writes
-   receipts (`<plans dir>/<plan_id>/receipts/<ITEM>.json`) and `live.js`, the plan JSON and its page stay as
-   frozen, and the seal is on the receipt. `check` reports any edit to the plan, every receipt problem and the
+   its `live.js` (a plan started at this version has had the page since `new`; only the markdown PIP of a plan
+   started before receipts gives way to them). Nothing writes a receipts plan after its freeze but a
+   design change (a `write` followed by `freeze --refreeze`): `record` writes receipts
+   (`<plans dir>/<plan_id>/receipts/<ITEM>.json`) and `live.js`, the plan JSON and its page stay as frozen,
+   and the seal is on the receipt. `check` reports any edit to the plan, every receipt problem and the
    DesignEvolution catalog's problems.
 
    Plans frozen before receipts keep the sealed scheme, and nothing migrates them: after the freeze only
@@ -93,8 +95,10 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
    old `record --sha` shapes.
 
    A design change the developer asks for after the freeze, under either scheme, is a `write` of the changed
-   plan plus `freeze --refreeze`, stated to the developer; a change found during execution goes through step 9
-   instead. A refreeze is standard procedure, not a design ambiguity: ask the developer for the OK, then do it.
+   plan plus `freeze --refreeze`, stated to the developer, and an entry in the plan's DesignEvolution through
+   `evolution_api.add` (built as step 9 shows); a change found during execution goes through step 9 instead.
+   A change found in spec review, before the plan exists, is entered (phase `spec-review`) once `PLAN new`
+   has run, since `evolution_api` resolves the plan first. A refreeze is standard procedure, not a design ambiguity: ask the developer for the OK, then do it.
 
    A refreeze that changes a recorded item's files or tests breaks that item's seal (on its receipt, or on its
    record in a sealed plan) by design: the refreeze tolerates it and prints `re-record after refreeze: <ITEM>`,
@@ -179,7 +183,10 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
     test file from `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first. On a receipts
     plan take that text from `plan_api.load(<id>).items` (the page is HTML, drawn for a browser, not for a
     prompt); on a plan frozen before receipts the markdown PIP carries the same fields under the item's
-    heading.
+    heading. Each prompt also says that a lane that needs a deviation (a file outside its `files`, a test
+    node other than a planned one) stops and reports it instead of widening its own scope. The main session
+    then adds the change (step 9) once it is settled, has the deviation built, stages the lane with
+    `P2 stage <lane> --include-undeclared` and records with the citation.
 
     parallel2 stages each lane's changes uncommitted in the target and deletes the `p2/<id>` lane branch, so
     staged lane work is recorded with `PLAN record <id> <ITEM> --staged` once it is in the index, or with
@@ -214,6 +221,8 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
 - On a receipts plan, a `write` to record a change found during execution: the plan stays as frozen, the
   change goes to `DesignEvolution.json` through `evolution_api.add`, and the receipt cites it (step 9). A
   `write` after the freeze breaks the freeze digest, and `record` refuses the plan until a refreeze.
+- On a receipts plan, a lane that builds a deviation on its own: it stops and reports, and the main session
+  adds the change before the record cites it.
 - On a receipts plan, editing a DesignEvolution change a receipt already cites: `check` then asks for that
   item's `record` again.
 - Editing the plan JSON by hand, "because it is one line": `write` validates and guards, a hand edit does not

@@ -247,11 +247,14 @@ writes land where `record-run` looks.
 
     It keeps the earlier freeze in `rounds`, clears the stamp, sets `mode` to `edit` and moves `base`, printing
     `reopen [done] | <name> | round <N> | base <sha12> | was <hash12>`. From then on a baseline reads the
-    SKILL.md at `base`, also for a spec opened with `new` (whose baselines ran without the skill). Pick as base
+    SKILL.md at `base`, also for a spec opened with `new` (whose baselines ran without the skill). The base is
     the commit whose code the new scenarios need but whose SKILL.md lacks the new guidance. `red` also runs at
     `base`, so a new mechanical behavior's code must not exist there yet. `--base` must be an ancestor of HEAD
-    and a descendant of the previous round's base, and must hold every part as the working tree has it (commit
-    the frozen round first); the base stays fixed until the next freeze. Then continue from step 2 for the new
+    and a descendant of the previous round's base, and must hold every part as the working tree has it
+    (SKILL.md is a part); the base stays fixed until the next freeze. So reopen before writing the new rules:
+    commit the frozen round, reopen with the default base (HEAD), then write the SKILL.md guidance during the
+    round. When the rules are already written, commit a copy of SKILL.md without them, reopen on that commit,
+    then restore the rules in the working tree (a strip-and-restore base). Then continue from step 2 for the new
     behaviors. The earlier behaviors are gated again at the next freeze: a mechanical one frozen in an earlier
     round skips red and its planned tests rerun; its `tests` and `kind` stay as proven, so a changed rule goes
     on a new behavior. An earlier judgment behavior keeps its draws and baselines, but once a part changes it

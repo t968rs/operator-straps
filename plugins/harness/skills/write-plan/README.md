@@ -17,7 +17,9 @@ in `harness_lib/plan_models.py`, never by hand. Each item carries what the drive
 | **Decisions** (`D1`, `D2`, ... with options) | an open decision blocks the freeze; the developer picks, not the agent |
 | **Files, dependencies, model** | the item's file set, its order, and the model that implements it; `lanes` turns them into parallel waves |
 
-The PIP (the human-readable plan) is rendered from the JSON. Never edit it: the next render overwrites it.
+The PIP (the human-readable plan) is rendered from the JSON. Never edit it: the next `plan_api.write`, freeze
+or refreeze rebuilds it, and so does `render` on any plan but a frozen receipts plan (there `render` writes
+the page only when it is missing).
 
 ## Lifecycle
 
@@ -50,13 +52,15 @@ A freeze says "this is the plan we build". It refuses while `check` or `red` has
 open, or while an open item has neither a test nor a command. It stamps the plan with a digest and the commit
 it was frozen at.
 
-**After the freeze the plan JSON does not change.** Plans frozen from this version use the **receipts** scheme:
+**After the freeze the plan JSON changes only through a refreeze.** Plans frozen from this version use the **receipts** scheme:
 
 - `record` writes `<plans>/<id>/receipts/<ITEM>.json`, a sealed receipt holding the outcome, the tested tree,
   the commit (and the tag or branch name you passed, when it was not a bare SHA), the test nodes that ran, and
   any deviation. The plan JSON and the PIP are not touched.
-- The PIP becomes `NNNN_<title>_PIP.html`. Open it from disk in a browser: it reloads `<id>/live.js` every few
-  seconds, so a `record` in the terminal shows up on the page without a re-render.
+- The PIP is `NNNN_<title>_PIP.html`. A plan started at this version has the page from `new` on; only a plan
+  started before receipts swaps its markdown PIP for the page at the first freeze. Open it from disk in a
+  browser: it reloads `<id>/live.js` every few seconds, so a `record` in the terminal shows up on the page
+  without a re-render.
 - `live.js` is derived from the receipts and the DesignEvolution catalog. The driver keeps a `.gitignore` in
   the plan folder that lists it; after a pull, `PLAN render <id>` rebuilds it.
 
@@ -93,10 +97,11 @@ A commit sequence that keeps the history readable:
 2. **Plan**: the plan JSON and its PIP: `Docs(plans): plan <feature>`. The planned test files under
    `<plans>/<id>/tests/` are local references and stay out of git; each lands at its repo path, committed,
    with the item that copies it there.
-3. **Freeze**: commit right after `freeze`: the plan JSON, the new HTML PIP and the deleted markdown PIP:
-   `Docs(plans): freeze plan <id>`. The committed copy is also what a later refreeze reads to keep the plan's
-   scheme. Committing the plan folder's `.gitignore` is optional: the driver rewrites it on every render, so a
-   repository may ignore it instead.
+3. **Freeze**: commit right after `freeze`: the plan JSON and its HTML PIP (on a plan started before
+   receipts, also the markdown PIP the freeze deleted): `Docs(plans): freeze plan <id>`. The committed copy is
+   also what a later refreeze reads to keep the plan's scheme. Committing the plan folder's `.gitignore` is
+   optional: whenever the driver rebuilds `live.js` (record, freeze, render, `evolution_api`) it adds the
+   `live.js` line when the file is missing or lacks it, so a repository may ignore the file instead.
 4. **Work**: one commit per item, or per wave when items land together. Record with `--staged` before the
    commit, or with `--sha <rev>` after it, and commit the receipt beside the code it describes (a receipt is
    not one of the item's files, so it never blocks the record).
@@ -113,6 +118,11 @@ branch. The receipt's tested tree stays the evidence either way.
 `PLAN lanes <id> | parallel2.py plan -` waves the open items by dependency and file overlap. Each lane copies
 its planned test files in first, builds in its own worktree and commits there; `parallel2.py stage` lands the
 lane in the target's index uncommitted, and `PLAN record <id> <ITEM> --staged` records it from there.
+
+A lane that finds it needs a deviation (a file outside its item, a different test node) stops and reports it
+instead of building past the plan. The main session records the design change, stages the lane with
+`parallel2.py stage <lane> --include-undeclared`, and records the item with `--also` or `--substitute` and the
+`--cite` for that change.
 
 ## Related
 
