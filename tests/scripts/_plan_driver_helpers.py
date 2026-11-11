@@ -15,6 +15,7 @@ from typing import Any, Callable, Dict, List, Tuple
 import pytest
 from conftest import git
 
+from harness_lib import plan_doc as pd
 from harness_lib import plan_record
 from harness_lib.plan_enums import RecordScheme
 
@@ -81,6 +82,15 @@ def read_plan(root: Path) -> Dict[str, Any]:
 
 def write_plan(root: Path, plan: Dict[str, Any]) -> None:
     plan_file(root).write_text(json.dumps(plan, indent=2), encoding="utf-8")
+
+
+def as_sealed(project: Path) -> None:
+    """Restamp the frozen plan as frozen on the sealed scheme, the way a plan from before receipts looks."""
+    plan = read_plan(project)
+    plan["frozen"]["records"] = "sealed"
+    write_plan(project, plan)
+    plan["frozen"]["digest"] = pd.frozen_digest(pd.load_plan(plan_file(project)), RecordScheme.sealed)
+    write_plan(project, plan)
 
 
 def write_op(root: Path, name: str) -> None:

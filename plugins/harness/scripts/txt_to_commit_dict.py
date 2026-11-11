@@ -12,11 +12,12 @@ carries: ``index``, ``bucket`` (a ``Bucket``), ``file_count`` (recounted from ``
 subject line), ``message`` (verbatim, footer removed), ``body``, ``bullets`` (list of
 ``{"file", "change"}``), and ``branch``.
 
-Default CLI behavior iterates every digit-prefixed ``*.txt`` in that directory and writes a sibling
-``<stem>.ps1`` holding a ``$commitDict`` for ``commitFactory.ps1``. A file that fails validation, or
+Default CLI behavior iterates every digit-prefixed ``*.txt`` under that directory, subfolders included
+(sorted by path), and writes a sibling ``<stem>.ps1`` holding a ``$commitDict`` for ``commitFactory.ps1``. A file that fails validation, or
 whose message holds a double quote, is reported on stderr and skipped (exit 1); the double-quote skip
 applies in ``--json`` mode too. Pass an explicit target to process a single file; pass ``--json`` to
-dump the parsed document instead. The project is the git top level of ``--repo``
+dump the parsed document instead (a batch dump is keyed by each file's path under the directory, without
+the ``.txt`` suffix). The project is the git top level of ``--repo``
 (default: the working directory)::
 
     txt_to_commit_dict.py                         # batch -> .ps1
@@ -51,9 +52,17 @@ def commit_messages_dir() -> Path:
 
 
 def iter_commit_txts(folder: Optional[Path] = None) -> Iterator[Path]:
-    """Yield digit-prefixed ``*.txt`` files in ``folder`` (sorted by name)."""
+    """Yield digit-prefixed ``*.txt`` files under ``folder``, recursively, sorted by path."""
     target = folder if folder is not None else commit_messages_dir()
     yield from sorted(target.rglob(_DIGIT_TXT_GLOB))
+
+
+def _doc_key(path: Path, folder: Path) -> str:
+    """``path`` under ``folder`` as a posix path without its suffix; the stem when it lies elsewhere."""
+    try:
+        return path.relative_to(folder).with_suffix("").as_posix()
+    except ValueError:
+        return path.stem
 
 
 def txt_to_commit_dict(path: Union[str, Path], one_path_per_commit: bool = True) -> BranchCommitDocument:
@@ -66,8 +75,11 @@ def txt_to_commit_dict(path: Union[str, Path], one_path_per_commit: bool = True)
 
 
 def parse_all(folder: Optional[Path] = None) -> Dict[str, BranchCommitDocument]:
-    """Parse every digit-prefixed TXT in ``folder``, keyed by file stem."""
-    return {path.stem: txt_to_commit_dict(path) for path in iter_commit_txts(folder)}
+    """Parse every digit-prefixed TXT under ``folder``, recursively, keyed by its path relative to
+    ``folder`` without the ``.txt`` suffix (the stem for a file at the top), so nested files sharing a
+    name stay apart."""
+    target = folder if folder is not None else commit_messages_dir()
+    return {_doc_key(path, target): txt_to_commit_dict(path) for path in iter_commit_txts(target)}
 
 
 def _compose_header(commit: CommitEntry) -> str:
@@ -182,7 +194,7 @@ def _parser() -> argparse.ArgumentParser:
         "target",
         nargs="?",
         help="Path to a .txt file, or a bare branch name. Omit to batch all "
-             "digit-prefixed *.txt in the project's commit_messages directory.",
+             "digit-prefixed *.txt under the project's commit_messages directory, subfolders included.",
     )
     parser.add_argument(
         "--json",
@@ -221,7 +233,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     exit_code = 0 if len(documents) == len(loaded) else 1
 
     if args.json:
-        dumped = {path.stem: _jsonable(doc) for path, doc in documents.items()}
+        folder = commit_messages_dir()
+        dumped = {_doc_key(path, folder): _jsonable(doc) for path, doc in documents.items()}
         payload = next(iter(dumped.values()), None) if args.target else dumped
         print(json.dumps(payload, indent=args.indent, ensure_ascii=False))
         return exit_code
