@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 52,
-    "needs_decision": 32,
+    "items": 53,
+    "needs_decision": 33,
     "trackers": 0,
     "close_candidates": 24,
     "by_status": {
-      "NEEDS_DECISION": 32,
+      "NEEDS_DECISION": 33,
       "OPEN": 20
     },
     "by_impact": {
-      "dev_velocity": 28,
+      "dev_velocity": 29,
       "docs_tooling": 20,
       "maintainability": 1,
       "runtime_failure": 3,
@@ -74,12 +74,12 @@
     "by_loe": {
       "XS": 4,
       "S": 16,
-      "M": 22,
+      "M": 23,
       "L": 9,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 51,
+      "gh_issue": 52,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 1
@@ -1517,8 +1517,64 @@
       "why_ranked": "Severity 2 new review capability with an unclear scope, dev_velocity impact, M size."
     },
     {
-      "id": "todo-e7ha",
+      "id": "todo-w3ck",
       "rank": 25,
+      "title": "Driver-created local tags for every necessary, plan-referenced and base-to-freeze commit",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Choose the tag naming scheme (plan/<id>/base, plan/<id>/freeze[-N], strap/<skill>/r<N>/base, strap/<skill>/r<N>/freeze, or the off-branch names already in use), and decide whether a history rewrite moves the tags and re-points spec.base and plan base_commit (requiring a strap.py rebase-base subcommand) or leaves the old commits tagged only.",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#265",
+          "url": "https://github.com/t968rs/operator-straps/issues/265"
+        }
+      ],
+      "gh_issues": [
+        265
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Per the session: the developer wants every necessary commit, every plan-referenced commit and every base-to-freeze range tagged as standing practice, with tags created by the drivers rather than printed as suggestions or checked only. Plan base_commit (plans 1013 and 1014 use 5a8ef39) is necessary: check reads anchors and sweeps at it once an item is done (plugins/harness/scripts/plan.py:265-271). Plan frozen.commit is display only (read at plugins/harness/scripts/plan_render.py:46 and plan_render_html.py:81). Strap spec base (write-plan 9368d9e) is necessary: the baseline arm runs git show <base>:<SKILL.md> (plugins/harness/scripts/strap.py:640), runs start from it (strap.py:391) and reopen refuses a base that does not descend from it (strap.py:911-912). Strap rounds[].base is history only. The strap frozen stamp stores no commit, so a freeze tag would sit at HEAD, one commit before the commit holding the stamp. Receipt evidence holds commit SHA text or staged tree SHA text; a tree SHA cannot be pinned by a tag. Scope: plan.py new tags the plan base, freeze and --refreeze tag the freeze; strap.py new and reopen tag the round base, freeze tags the round freeze; each check warns when a necessary SHA is untagged or unreachable. Tags stay local and the developer pushes them. Building this on a follow-up branch after 2150-plan-refreeze merges, since plan.py and strap.py are parts of the write-plan and strap-skills strap specs and an earlier build would re-stale them. Related: todo-m86m / issue #264 (strap hash scope).",
+      "proposed_change": "After 2150-plan-refreeze merges, add tag creation to plan.py (plan new tags the base; freeze and --refreeze tag the freeze) and strap.py (new and reopen tag the round base; freeze tags the round freeze), using local annotated or lightweight tags that the developer pushes. Extend check to warn when a necessary SHA (plan base_commit, strap spec base, round base or freeze) is untagged or unreachable. Naming and history-rewrite handling are open (see decision_question): the candidate names are plan/<id>/base, plan/<id>/freeze[-N], strap/<skill>/r<N>/base and strap/<skill>/r<N>/freeze. A tag keeps an old commit alive after a history rewrite, but spec.base and plan base_commit still point at the orphaned commit, so a rewrite needs those fields re-pointed (no driver command sets spec.base outside reopen; a strap.py rebase-base subcommand was floated). Existing hand-made tags on the branch: write-plan-skill-spec-base -> 9368d9e (correct); plan-1014-base -> 54cf0cc, which is plan 1014's frozen.commit, not its base_commit 5a8ef39, so it needs correcting when the scheme lands.",
+      "files": [
+        "plugins/harness/scripts/plan.py",
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/scripts/plan_render.py",
+        "plugins/harness/scripts/plan_render_html.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Touches plan.py and strap.py, both parts of the write-plan and strap-skills strap specs, and the check that reads their anchors. Local tags only, so no pushed state changes.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Tag creation in two drivers, a check extension, and a decision on naming and rewrite handling before code. Scope is set by the session; the naming decision is open."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (a missing guard, with check already warning when a necessary SHA is untagged), dev_velocity impact (developer tooling less trustworthy than it needs to be), and M size, so a mid-tier tooling item."
+    },
+    {
+      "id": "todo-e7ha",
+      "rank": 26,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -1573,7 +1629,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 26,
+      "rank": 27,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -1634,7 +1690,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 27,
+      "rank": 28,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1709,7 +1765,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 28,
+      "rank": 29,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1767,7 +1823,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 29,
+      "rank": 30,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -1823,7 +1879,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 30,
+      "rank": 31,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1886,7 +1942,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 31,
+      "rank": 32,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -1946,7 +2002,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 32,
+      "rank": 33,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -2007,7 +2063,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 33,
+      "rank": 34,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2074,7 +2130,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 34,
+      "rank": 35,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2150,7 +2206,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 35,
+      "rank": 36,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -2212,7 +2268,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 36,
+      "rank": 37,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2271,7 +2327,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 37,
+      "rank": 38,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2332,7 +2388,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 38,
+      "rank": 39,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2390,7 +2446,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 39,
+      "rank": 40,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2448,7 +2504,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 40,
+      "rank": 41,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -2501,7 +2557,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 41,
+      "rank": 42,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -2555,7 +2611,7 @@
     },
     {
       "id": "todo-6za3",
-      "rank": 42,
+      "rank": 43,
       "title": "strap-scenario-runner: a dispatching scenario must still record its run",
       "kind": "skill",
       "status": "OPEN",
@@ -2610,7 +2666,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 43,
+      "rank": 44,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2666,7 +2722,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 44,
+      "rank": 45,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -2726,7 +2782,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 45,
+      "rank": 46,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2781,7 +2837,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 46,
+      "rank": 47,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2838,7 +2894,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 47,
+      "rank": 48,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2891,7 +2947,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 48,
+      "rank": 49,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2946,7 +3002,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 49,
+      "rank": 50,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -3004,7 +3060,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 50,
+      "rank": 51,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3067,7 +3123,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 51,
+      "rank": 52,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -3122,7 +3178,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 52,
+      "rank": 53,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
