@@ -89,9 +89,8 @@ def test_the_format_follows_the_record_scheme() -> None:
 
 
 def test_a_never_frozen_plan_renders_html_only_when_bound_for_receipts(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(plan_record, "scheme_for", lambda _plan: RecordScheme.receipts)
     assert prh.uses_html(plan(frozen=False))
-    monkeypatch.setattr(plan_record, "scheme_for", lambda _plan: RecordScheme.sealed)
+    monkeypatch.setattr(plan_record, "FIRST_SCHEME", RecordScheme.sealed)
     assert not prh.uses_html(plan(frozen=False))
 
 
@@ -105,9 +104,7 @@ def test_write_pip_writes_html_and_the_sidecar_for_a_receipts_plan(tmp_path: Pat
     assert (tmp_path / "0001" / "live.js").is_file()
 
 
-def test_write_pip_writes_no_sidecar_for_a_plan_not_yet_frozen(tmp_path: Path,
-                                                                monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(plan_record, "scheme_for", lambda _plan: RecordScheme.receipts)
+def test_write_pip_writes_no_sidecar_for_a_plan_not_yet_frozen(tmp_path: Path) -> None:
     written = prh.write_pip(tmp_path / NAME, plan(frozen=False))
     assert written.suffix == ".html" and not (tmp_path / "0001").exists()
 

@@ -13,11 +13,13 @@ from typing import Annotated, Any, ClassVar, Dict, List, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
+from harness_lib.evolution_models import _CHANGE_ID
 from harness_lib.plan_enums import ItemStatus
 from harness_lib.plan_models import _CLOSED, _DATE, _SHA64, SCHEMA_DIALECT, ActionItem, NonEmpty, Outcome
 
 SCHEMA_ID = "https://github.com/t968rs/operator-straps/plugins/harness/schemas/Receipt.schema.json"
 _NODE_PATTERN = r"^[^:]+\.py(::[^:]+)+$"
+ChangeId = Annotated[str, Field(pattern=_CHANGE_ID)]
 
 
 class ExtraFile(BaseModel):
@@ -26,7 +28,7 @@ class ExtraFile(BaseModel):
     model_config = _CLOSED
 
     path: NonEmpty
-    change: NonEmpty = Field(description="Id of the DesignChange that allows the file.")
+    change: ChangeId = Field(description="Id of the DesignChange that allows the file.")
 
 
 class TestSubstitution(BaseModel):
@@ -37,7 +39,7 @@ class TestSubstitution(BaseModel):
 
     planned: str = Field(pattern=_NODE_PATTERN)
     node: str = Field(pattern=_NODE_PATTERN)
-    change: NonEmpty = Field(description="Id of the DesignChange that allows the substitution.")
+    change: ChangeId = Field(description="Id of the DesignChange that allows the substitution.")
 
 
 class Deviations(BaseModel):
@@ -47,8 +49,9 @@ class Deviations(BaseModel):
 
     extra_files: List[ExtraFile] = Field(default_factory=list)
     substitutions: List[TestSubstitution] = Field(default_factory=list)
-    change_digests: Dict[str, Annotated[str, Field(pattern=_SHA64)]] = Field(
-        default_factory=dict, description="Change id -> digest of that DesignChange, for each id cited.")
+    change_digests: Dict[ChangeId, Annotated[str, Field(pattern=_SHA64)]] = Field(
+        default_factory=dict, description="Change id -> digest of that DesignChange, for each id cited.",
+        json_schema_extra={"additionalProperties": False})
 
     @property
     def cited(self) -> List[str]:
@@ -79,7 +82,7 @@ class Receipt(BaseModel):
     deviations: Deviations = Field(default_factory=Deviations)
     ref: Optional[str] = None
     date: str = Field(json_schema_extra=_DATE)
-    seal: str = Field(pattern=_SHA64, description="SHA-256 of this receipt without the seal and the item's "
+    seal: str = Field(pattern=_SHA64, description="SHA-256 of this receipt without its seal, plus the item's "
                       "planned files and tests.")
 
     @classmethod
@@ -93,7 +96,9 @@ class Receipt(BaseModel):
         return cls(**fields, seal=seal)
 
     def holds(self, plan_id: str, item: ActionItem) -> bool:
-        """The seal matches this receipt and the item's planned files and tests, for this plan and item."""
+        """The receipt names this plan and item, and the seal matches it and the item's files and tests."""
+        if self.plan_id != plan_id or self.item != item.id:
+            return False
         return _digest(self, plan_id, item) == self.seal
 
     @property
@@ -103,8 +108,13 @@ class Receipt(BaseModel):
 
     def nodes(self, item: ActionItem) -> List[str]:
         """The item's planned test nodes in plan order, each replaced by its substitute when one exists."""
-        swaps = {sub.planned: sub.node for sub in self.deviations.substitutions}
-        return [swaps.get(test.node, test.node) for test in item.tests]
+        return substituted_nodes(item, self.deviations)
+
+
+def substituted_nodes(item: ActionItem, deviations: Deviations) -> List[str]:
+    """The item's planned test nodes in plan order, each replaced by its substitute when one exists."""
+    swaps = {sub.planned: sub.node for sub in deviations.substitutions}
+    return [swaps.get(test.node, test.node) for test in item.tests]
 
 
 def _digest(receipt: Receipt, plan_id: str, item: ActionItem) -> str:

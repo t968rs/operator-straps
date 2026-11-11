@@ -7,9 +7,11 @@ sidecar sets ``window.PLAN_LIVE`` (receipts, the DesignEvolution catalog, the bu
 only the live parts: every item's status and receipt, the DesignEvolution entries linked from the items they
 name, and the build time. Without ``PLAN_LIVE`` every item reads PENDING and the page names
 ``plan.py render <plan_id>``, the command that writes the sidecar (and refreshes one left stale by a pull).
+Only a plan frozen with receipts has a sidecar: the page of a plan not frozen yet carries neither the loader
+nor that note, only a note that the live parts appear after ``plan.py freeze``.
 A ``{base}`` in a command is printed as the plan's full ``base_commit``, as in the markdown PIP.
-``write_pip`` picks the format (``uses_html``) and writes the sidecar for a frozen receipts plan;
-``refresh_pip`` is what ``plan.py render`` writes.
+``write_pip`` picks the format (``uses_html``) and writes the sidecar for a frozen receipts plan; it is what
+``plan.py new``, ``plan_api.write`` and ``freeze`` write. ``refresh_pip`` is what ``plan.py render`` writes.
 """
 from __future__ import annotations
 
@@ -55,12 +57,23 @@ def _title(plan: ActionPlan, plan_name: str) -> str:
     return f"{head}: {match['title'].replace('_', ' ')}" if match else head
 
 
-def _live_note(plan_id: str) -> str:
-    render = _code(f"plan.py render {plan_id}")
+def _live_note(plan: ActionPlan) -> str:
+    """The sidecar note of a frozen receipts plan; on any other plan, the note that live parts come later."""
+    if not plan_receipts.uses_receipts(plan):
+        return (f'<p class="note">Not frozen yet: every item reads PENDING. Receipts and design changes '
+                f"appear after {_code(f'plan.py freeze {plan.plan_id}')} writes live.js.</p>")
+    render = _code(f"plan.py render {plan.plan_id}")
     return (f'<p class="note"><span id="live-missing">No live.js beside this page, so every item reads '
             f"PENDING: run {render} to write it.</span>"
             f'<span id="live-built" hidden>live.js built <code id="live-built-at"></code>; '
             f"after a pull, run {render}.</span></p>")
+
+
+def _origin_note(plan_name: str) -> str:
+    writers = ", ".join(_code(w) for w in ("plan.py new", "plan_api.write", "plan.py freeze"))
+    return (f'<p class="note">Written by {writers} from {_code(plan_name)}; {_code("plan.py render")} '
+            "restores a missing page and its live.js. Change the JSON through the driver; edits to this file "
+            "are overwritten.</p>")
 
 
 def _header(plan: ActionPlan, plan_name: str) -> List[str]:
@@ -72,10 +85,8 @@ def _header(plan: ActionPlan, plan_name: str) -> List[str]:
             ("Base commit", _code(plan.base_commit[:7]) if plan.base_commit else "none"),
             ("Frozen", frozen_text), ("Execution model", _e(plan.execution_model))]
     cells = "".join(f"<dt>{name}</dt><dd>{value}</dd>" for name, value in rows)
-    return [f"<h1>{_e(_title(plan, plan_name))}</h1>",
-            f'<p class="note">Rendered by {_code("plan.py render")} from {_code(plan_name)}. Change the JSON '
-            "through the driver, then render again; edits to this file are overwritten.</p>",
-            _live_note(plan.plan_id), f'<dl class="head">{cells}</dl>']
+    return [f"<h1>{_e(_title(plan, plan_name))}</h1>", _origin_note(plan_name),
+            _live_note(plan), f'<dl class="head">{cells}</dl>']
 
 
 def _options(options: Iterable[DecisionOption]) -> str:
@@ -157,24 +168,35 @@ def _script(plan: ActionPlan) -> str:
 
 
 def render_pip_html(plan: ActionPlan, plan_name: str) -> str:
-    """The HTML PIP of ``plan``; ``plan_name`` is the plan file's name, shown in the header."""
+    """The HTML PIP of ``plan``; ``plan_name`` is the plan file's name, shown in the header.
+
+    The loader script that polls ``live.js`` is added only on a plan frozen with receipts.
+    """
     body = _header(plan, plan_name) + _section("Decisions", [_decision(d) for d in plan.decisions])
     body += _values(plan) + _formats(plan) + _sweeps(plan) + ["<h2>Tasks</h2>"]
     for item in plan.items:
         body += _item(plan, item)
     body += _evolution()
+    script = [_script(plan)] if plan_receipts.uses_receipts(plan) else []
     return "\n".join(["<!DOCTYPE html>", '<html lang="en">', "<head>", '<meta charset="utf-8">',
                       f"<title>{_e(_title(plan, plan_name))}</title>", f"<style>{_STYLE}</style>", "</head>",
-                      "<body>", *body, _script(plan), "</body>", "</html>"]) + "\n"
+                      "<body>", *body, *script, "</body>", "</html>"]) + "\n"
+
+
+def _keeps_markdown(plan_file: Path, plan: ActionPlan) -> bool:
+    """A plan not frozen yet whose ``documentation`` names its markdown PIP: that PIP stays the one written
+    until the first freeze moves ``documentation`` to the HTML page."""
+    doc = plan.documentation
+    return plan.frozen is None and doc is not None and Path(doc).name == pip_path(plan_file).name
 
 
 def write_pip(plan_file: Path, plan: ActionPlan) -> Path:
     """Write the PIP beside ``plan_file``; the path written.
 
     The HTML page when ``uses_html``, plus ``live.js`` once the plan is frozen with receipts; else the
-    markdown PIP.
+    markdown PIP, which a plan not frozen yet whose ``documentation`` names it also keeps.
     """
-    if not uses_html(plan):
+    if not uses_html(plan) or _keeps_markdown(plan_file, plan):
         target = pip_path(plan_file)
         target.write_text(render_pip(plan, plan_file.name), encoding="utf-8")
         return target
@@ -189,7 +211,8 @@ def refresh_pip(plan_file: Path, plan: ActionPlan) -> Path:
     """What ``plan.py render`` writes; the PIP's path.
 
     On a frozen receipts plan ``live.js`` is rebuilt and the page is written only when it is missing:
-    ``freeze`` and ``freeze --refreeze`` stay the writers of an existing page. Otherwise ``write_pip``.
+    ``freeze``, ``freeze --refreeze`` and ``plan_api.write`` (both through ``write_pip``) stay the writers
+    of an existing page. Otherwise ``write_pip``.
     """
     page = pip_html_path(plan_file)
     if plan_receipts.uses_receipts(plan) and page.exists():

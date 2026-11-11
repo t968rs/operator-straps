@@ -3,7 +3,7 @@
 ``DesignEvolutionCatalog.schema.json`` is generated from these classes (``schema_text``). Every model is
 closed (``extra="forbid"``) and every nested shape is its own class. Rules the generated schema cannot
 express live in ``DesignEvolution``'s validator: unique change ids, a ``doc`` key found in
-``primary_documents``, a ``plan`` document, and a summary finding that names a change. The tallies the old
+``primary_documents`` and a summary finding that names a change. The tallies the old
 schema stored (``by_phase`` and the like) are computed by ``DesignEvolution.counts``, so no ``category_enums``
 block exists to drift.
 """
@@ -74,7 +74,9 @@ class DesignChange(BaseModel):
     issue: ChangeIssue
     new_outcome: NewOutcome
     why_new_outcome: WhyNewOutcome
-    date: str = Field(default_factory=_today, description="Day the change was cataloged, `YYYY-MM-DD`.")
+    date: str = Field(default_factory=_today, pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+                      description="Day the change was cataloged, `YYYY-MM-DD`.",
+                      json_schema_extra={"format": "date"})
 
     def digest(self) -> str:
         """SHA-256 hex of the canonical JSON of this change (sorted keys, compact separators)."""
@@ -137,7 +139,8 @@ class DesignEvolution(BaseModel):
     pr: Optional[int] = Field(default=None, description="GitHub PR number.")
     branch_lineage: str = Field(description="Branch ancestry chain: [base]-->[parent]-->[child].")
     primary_documents: Dict[str, str] = Field(description=(
-        "Links to key design documents (spec, plan, primer, research notes); `plan` is always present."))
+        "Links to key design documents (spec, plan, primer, research notes); `plan` is always present."),
+        json_schema_extra={"required": ["plan"]})
     id_conventions: Optional[IdConventions] = None
     changes: List[DesignChange] = Field(default_factory=list, description=(
         "Design change entries, each tracing an issue from discovery through resolution."))

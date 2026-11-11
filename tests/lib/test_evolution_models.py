@@ -6,6 +6,7 @@ and a summary finding that names no change; ``counts()`` computes the tallies th
 """
 from __future__ import annotations
 
+import datetime
 from typing import Any, Dict
 
 import pytest
@@ -90,7 +91,10 @@ def test_a_change_id_without_a_known_prefix_is_refused(ident: str) -> None:
 def test_a_change_date_defaults_to_today() -> None:
     raw = change()
     raw.pop("date")
-    assert len(DesignChange.model_validate(raw).date) == len("2026-11-10")
+    before = datetime.date.today().isoformat()
+    found = DesignChange.model_validate(raw).date
+    after = datetime.date.today().isoformat()
+    assert found in {before, after}
 
 
 def test_duplicate_change_ids_are_refused() -> None:

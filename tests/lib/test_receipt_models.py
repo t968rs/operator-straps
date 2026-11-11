@@ -68,7 +68,9 @@ def test_every_outcome_seals() -> None:
 
 
 @pytest.mark.parametrize("field, value", [
-    ("evidence", "commit aaaaaaa: 9 test node(s) passed"),
+    ("plan_id", "0002"),
+    ("item", "TASK-2"),
+    ("evidence","commit aaaaaaa: 9 test node(s) passed"),
     ("date", "2026-11-11"),
     ("ref", "v1"),
     ("deviations", Deviations(extra_files=[ExtraFile(path="src/other.py", change="EX1")],
@@ -134,6 +136,16 @@ def test_deviations_bind_the_digest_of_each_cited_change() -> None:
     assert receipt.deviations.change_digests == {"EX1": DIGEST} and receipt.holds("0001", item())
     moved = deviations().model_copy(update={"change_digests": {"EX1": "0" * 64}})
     assert not receipt.model_copy(update={"deviations": moved}).holds("0001", item())
+
+
+@pytest.mark.parametrize("change", ["foo", "EX", "ex1"])
+def test_a_deviation_cites_a_catalog_change_id(change: str) -> None:
+    with pytest.raises(ValidationError):
+        ExtraFile(path="src/helper.py", change=change)
+    with pytest.raises(ValidationError):
+        TestSubstitution(planned=NODE, node=OTHER, change=change)
+    with pytest.raises(ValidationError, match="should match pattern"):
+        Deviations(change_digests={change: DIGEST})
 
 
 def test_deviations_refuse_a_citation_without_its_digest() -> None:
