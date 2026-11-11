@@ -147,10 +147,15 @@ class Context(BaseModel):
 
 
 class Frozen(BaseModel):
+    """A freeze stamp: in the plan JSON on a legacy plan, read from the last ledger ``freeze`` otherwise.
+
+    A ledger stamp has no commit (the ledger records the tree alone); a legacy stamp carries both.
+    """
+
     model_config = _OPEN
 
-    commit: str = Field(pattern=_SHA40)
-    tree: str = Field(pattern=_SHA40)
+    commit: Optional[str] = Field(default=None, pattern=_SHA40)
+    tree: Optional[str] = Field(default=None, pattern=_SHA40)
     date: str = Field(json_schema_extra=_DATE)
     digest: str = Field(pattern=_SHA64)
     records: Optional[RecordScheme] = None
@@ -439,6 +444,10 @@ class ActionPlan(BaseModel):
         "classified file with none. The plans folder and the plan's own `source_document` are skipped on "
         "both sides."))
     deferred_to_future_plans: List[DeferredTopic] = Field(default_factory=list)
+    ledger: Optional[str] = Field(default=None, pattern=r"^plan/[0-9]{4}-[A-Za-z0-9-]+$", description=(
+        "Stem of the plan's freeze ledger (`plan/<id>-<slug>`), set by the first ledger freeze. With it set, "
+        "`frozen` is read from the last `freeze` entry under `<plan folder>/freezes/<stem>/` and is never "
+        "written to the JSON; a missing or empty ledger folder fails the load."))
 
     # Hash and resolved path of the file this plan was loaded from; ``plan_api.write`` saves to that file
     # and refuses a stale copy.

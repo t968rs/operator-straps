@@ -8,14 +8,17 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shutil
 from pathlib import Path
 from types import ModuleType
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import pytest
 from conftest import git
 
+from harness_lib import freeze_ledger as fl
 from harness_lib import plan_doc as pd
+from harness_lib import plan_models as pm
 from harness_lib import plan_record
 from harness_lib.plan_enums import RecordScheme
 
@@ -84,13 +87,51 @@ def write_plan(root: Path, plan: Dict[str, Any]) -> None:
     plan_file(root).write_text(json.dumps(plan, indent=2), encoding="utf-8")
 
 
+def stamp(project: Path) -> pm.Frozen:
+    """The freeze stamp of the plan as ``load_plan`` reads it: from the ledger, or the in-file one."""
+    frozen = pd.load_plan(plan_file(project)).frozen
+    assert frozen is not None, "the plan is not frozen"
+    return frozen
+
+
+def freeze_entry_file(project: Path) -> Path:
+    """The ledger file of the plan's last ``freeze`` entry."""
+    plan = pd.load_plan(plan_file(project))
+    assert plan.ledger is not None, "the plan keeps an in-file stamp"
+    folder = fl.ledger_dir(plan_file(project).parent, plan.ledger)
+    last = fl.last_freeze(fl.load_entries(folder))
+    assert last is not None, "the ledger holds no freeze"
+    return folder / fl.entry_name(last)
+
+
+def drop_ledger_scheme(project: Path) -> None:
+    """Delete the record scheme from the last ledger ``freeze`` entry by hand; the digest stays as frozen."""
+    path = freeze_entry_file(project)
+    entry = json.loads(path.read_text(encoding="utf-8"))
+    entry.pop("records")
+    path.write_text(json.dumps(entry, indent=2) + "\n", encoding="utf-8")
+
+
+def as_legacy(project: Path, records: Optional[RecordScheme] = None) -> None:
+    """Rewrite the frozen plan as one from before the ledger: an in-file stamp, no ``ledger`` or folder.
+
+    ``records`` is the scheme the stamp stores (None for a plan frozen before the record scheme). The stamp
+    names HEAD and its tree, and its digest is recomputed under ``records``.
+    """
+    plan, loaded = read_plan(project), stamp(project)
+    folder = fl.ledger_dir(plan_file(project).parent, plan.pop("ledger"))
+    shutil.rmtree(folder)
+    scheme: Dict[str, Any] = {} if records is None else {"records": records.value}
+    head, tree = git(project, "rev-parse", "HEAD"), git(project, "rev-parse", "HEAD^{tree}")
+    plan["frozen"] = {"commit": head, "tree": tree, "date": loaded.date, "digest": "0" * 64, **scheme}
+    write_plan(project, plan)
+    plan["frozen"]["digest"] = pd.frozen_digest(pd.load_plan(plan_file(project)), records)
+    write_plan(project, plan)
+
+
 def as_sealed(project: Path) -> None:
-    """Restamp the frozen plan as frozen on the sealed scheme, the way a plan from before receipts looks."""
-    plan = read_plan(project)
-    plan["frozen"]["records"] = "sealed"
-    write_plan(project, plan)
-    plan["frozen"]["digest"] = pd.frozen_digest(pd.load_plan(plan_file(project)), RecordScheme.sealed)
-    write_plan(project, plan)
+    """Rewrite the frozen plan as a legacy plan on the sealed scheme, as a plan from before receipts."""
+    as_legacy(project, RecordScheme.sealed)
 
 
 def write_op(root: Path, name: str) -> None:

@@ -47,8 +47,9 @@ def test_every_model_allows_or_forbids_extras_and_matches_patterns_like_jsonsche
 def test_a_field_the_old_schema_required_has_no_default() -> None:
     old = json.loads((FIXTURES / "ActionPlan.draft07.schema.json").read_text(encoding="utf-8"))
     attrs = json.loads((FIXTURES / "prAttributes.draft07.schema.json").read_text(encoding="utf-8"))
-    wanted = {"ActionPlan": set(old["required"]), "PrAttributes": set(attrs["required"]),
-              "Frozen": set(old["properties"]["frozen"]["required"]),
+    # A ledger stamp (plan 1015, D1) has no commit, so Frozen's commit and tree left the required set.
+    frozen = set(old["properties"]["frozen"]["required"]) - {"commit", "tree"}
+    wanted = {"ActionPlan": set(old["required"]), "PrAttributes": set(attrs["required"]), "Frozen": frozen,
               "DeferredTopic": set(old["properties"]["deferred_to_future_plans"]["items"]["required"])}
     wanted.update({OLD_OBJECTS[name]: set(old["definitions"][name]["required"]) for name in OLD_OBJECTS})
     assert {name: _required(getattr(pm, name)) for name in wanted} == wanted
