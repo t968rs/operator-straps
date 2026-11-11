@@ -98,3 +98,26 @@ in `docs/superpowers/specs/2026-11-11-freeze-tags-design.md`; the strap stamp tr
 - **strap-skills:** its next freeze is a first freeze.
 - **Release:** a harness minor version bump, with release notes.
 - **Existing hand-made tags:** left as they are.
+
+## Design review of 5beb6e0 (workflow `review-freeze-tags-spec`)
+
+Four lens reviewers (git mechanics, plan side, strap side, lock guard and doc consistency), one adversarial
+verifier per lens, and a completeness critic: 41 findings confirmed, 10 refuted, 8 more from the critic.
+Full output: workflow run `wf_c9ebe190-3c1`. The spec was amended for every confirmed finding.
+
+| Finding | Amendment | By |
+|---|---|---|
+| GIT-1, PLAN-1, STRAP-1 (critical): "tracked only" leaves first-freeze trees empty | Membership is "not gitignored"; an empty tree is refused | developer ("not gitignored" was the intent) |
+| GIT-2, STRAP-8, GUARD-12: strap tests and `.py` fixtures are ignored and unrecorded | The `ignored` sha256 map covers every ignored file of any set | session |
+| GIT-3, PLAN-11, GUARD-7, STRAP-13, CRIT-1: tag names collide across branches, renumbers, archives | Stems `plan/<no>-<slug>` and `skill/<name>`; refuse on collision before writing; plan numbers unique across branches and tags; `k` counted past existing tags | developer (skill stem: session) |
+| CRIT-2: one JSON list per subject conflicts on merge | One file per ledger entry | developer |
+| PLAN-3, GUARD-4, CRIT-5: no way to change a Locked plan | `plan.py unlock --arm` on the developer's permission, then `unlock` by the session when needed | developer |
+| CRIT-6: driver tags pollute `git describe` | Keep `refs/tags`; document `--match 'v*'` | developer |
+| CRIT-4: a rebased base cannot be re-pointed | Session-run `relink` (patch-id match or `--to`) on the developer's request | developer |
+| GIT-4, STRAP-4/5, GUARD-6, PLAN-5/13: migration history entries | `history: true`, no tags or warnings, original date; `lock` refuses a legacy plan or spec until a refreeze | session |
+| PLAN-4/6/8/9: state readers, sealed plans, a lost ledger, the `frozen` field | Readers mean frozen-or-locked; sealed plan JSON unlocked; a static `ledger` field in the plan JSON; `ActionPlan.frozen` stays (D1 hydrate) | session |
+| CRIT-3, GIT-10, STRAP-10: gates need the tree object; working tree vs HEAD; "contract tests" | Entries store blob SHAs; gates check HEAD and a clean working tree; contract tests are the mechanical nodes plus `contract_test` parts | session |
+| STRAP-2/3/6/11: strap writers, parts after Lock, write-plan parts | Every SkillSpec writer listed; `reopen` after Lock; write-plan's parts include `plan.py` and the plan library | session |
+| STRAP-7: tags created inside scenario trees | Drivers skip tagging where strap's tree marker file sits | session |
+| GUARD-1/2/3/8/10, CRIT-8: guard resolution, precedence, paths, wording | Folder early return, cwd resolution, deny first, POSIX paths, wording fixed | session |
+| GIT-5/7/8/9, CRIT-7, PLAN-7/12: tag failure, autocrlf, follow-tags, "unreachable", `at` uniqueness, scheme pin, ledger location | Refuse-before-write and `warn:` after; wording fixed; `off-history:`; reconcile keys on the entry file; `committed_scheme` reads HEAD's ledger; ledger beside the plan file's folder | session |
