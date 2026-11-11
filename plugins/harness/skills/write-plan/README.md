@@ -114,11 +114,6 @@ branch. The receipt's tested tree stays the evidence either way.
 its planned test files in first, builds in its own worktree and commits there; `parallel2.py stage` lands the
 lane in the target's index uncommitted, and `PLAN record <id> <ITEM> --staged` records it from there.
 
-A lane that finds it needs a deviation (a file outside its item, a different test node) stops and reports it
-instead of building past the plan. The main session records the design change, stages the lane with
-`parallel2.py stage <lane> --include-undeclared`, and records the item with `--also` or `--substitute` and the
-`--cite` for that change.
-
 ## Related
 
 - `SKILL.md`: the procedure the agent follows.
