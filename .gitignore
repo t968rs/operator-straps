@@ -239,5 +239,7 @@ __marimo__/
 # Artifacts / Local Env
 settings.local.json
 docs/plans/**/*.py
+# Strap scenario fixtures are tree content the runs need, Python files included.
+!docs/plans/strap/*/fixtures/**/*.py
 docs/plans/**/.gitignore
 docs/TODO/Snapshots/TODO_Snapshot*.md
