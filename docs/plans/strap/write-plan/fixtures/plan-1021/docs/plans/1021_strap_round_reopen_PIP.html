@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 1021: strap round reopen</title>
+<style>
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+code { font: 13px ui-monospace, monospace; background: var(--code); padding: 0 .25em; border-radius: 4px;
+  overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.status { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--muted); vertical-align: middle; }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<h1>Plan 1021: strap round reopen</h1>
+<p class="note">Rendered by <code>plan.py render</code> from <code>1021_strap_round_reopen_ActionPlan.json</code>. Change the JSON through the driver, then render again; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 1021</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 1021</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-10</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-10-strap-reopen-design.md</code></dd><dt>Branch</dt><dd>2150-plan-refreeze -&gt; main</dd><dt>Base commit</dt><dd><code>5a8ef39</code></dd><dt>Frozen</dt><dd>2026-11-10 at <code>88659f1</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2>Decisions</h2>
+<ul>
+<li><strong>D1</strong> How does a frozen strap spec take new behaviors? Chosen: <code>rounds</code> (reopen moves the stamp into rounds[]; one spec). Rejected: <code>archive</code> (reopen archives the folder and starts a fresh spec). Developer&#x27;s pick: history in one spec, earlier behaviors stay gated.</li>
+<li><strong>D2</strong> Which base does write-plan round 2 reopen from? Chosen: <code>pre-skill</code> (parent of the receipts SKILL.md commit: code in, guidance out). Rejected: <code>plan-base</code> (the plan base: no receipts code at all). Baselines must see the receipts code without the SKILL.md guidance; at the plan base the scenarios would fail on missing machinery, not on missing guidance.</li>
+</ul>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>harness version</td><td>0.66.0 -&gt; 0.67.0</td><td>CLAUDE.md Releases: a new command is a minor bump</td><td>-</td></tr>
+</table>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>DRIVER_OWNED_TOP</code>: <code>plugins/harness/lib/harness_lib/strap_models.py</code> (MOD-1 adds rounds to the owned set), <code>plugins/harness/schemas/README.md</code> (names the tuple, not its members; unchanged), <code>tests/lib/test_strap_models.py</code> (MOD-1 updates the owned-set assertion), <code>tests/schemas/test_skillspec_schema_drift.py</code> (derives from the tuple; passes once the schema regenerates)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-MOD-1" data-item="MOD-1">
+<h3>MOD-1: Round model and SkillSpec.rounds, byte-compatible with old specs <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/strap_models.py</code>, <code>plugins/harness/schemas/SkillSpec.schema.json</code>, <code>tests/lib/test_strap_models.py</code>, <code>tests/lib/test_strap_rounds.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/strap_models.py:384-394</code> holds <code>class Frozen(BaseModel):</code></li>
+<li><code>plugins/harness/lib/harness_lib/strap_models.py:422-426</code> holds <code>frozen: Optional[Frozen] = Field(default=None, json_schema_extra=_DRIVER_OWNED)</code></li>
+<li><code>plugins/harness/lib/harness_lib/strap_models.py:492</code> holds <code>owned: Dict[str, Any] = {name: dumped[name] for name in DRIVER_OWNED_TOP if name != &quot;driver_digest&quot;}</code></li>
+<li><code>plugins/harness/lib/harness_lib/strap_models.py:507-508</code> holds <code>if dumped[&quot;target&quot;] is None: del dumped[&quot;target&quot;]</code></li>
+<li><code>tests/lib/test_strap_models.py:288</code> holds <code>assert set(sm.DRIVER_OWNED_TOP) == {&quot;draws&quot;, &quot;runs&quot;, &quot;grades&quot;, &quot;frozen&quot;, &quot;driver_digest&quot;}</code></li>
+<li><code>tests/schemas/test_skillspec_schema_drift.py:109</code> holds <code>assert flagged == set(sm.DRIVER_OWNED_TOP)</code></li>
+</ul>
+<p class="action">In `strap_models.py` add `class Round(BaseModel)` after `Frozen` (same `_MODEL_CONFIG`): `base: Optional[str] = None`, `frozen: Frozen`, `behaviors: List[str] = Field(default_factory=list)`, docstring: one earlier freeze of a reopened spec. Add `rounds: List[Round] = Field(default_factory=list, json_schema_extra=_DRIVER_OWNED)` to `SkillSpec`, declared right before `frozen`. In `_dumped` drop `rounds` when it is empty (beside the `target` rule; extend the docstring), and in `driver_digest` read only the driver-owned names present in the dump (`if name in dumped`), so a spec written before `rounds` keeps its text, driver digest and authored digest byte for byte. Update the owned-set assertion in `tests/lib/test_strap_models.py` to include `rounds`. Regenerate `SkillSpec.schema.json` with `tools/gen_skillspec_schema.py`. Copy the planned test file first.</p>
+<ul>
+<li>Test <code>tests/lib/test_strap_rounds.py::test_round_holds_base_stamp_and_behavior_ids</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_strap_rounds.py::test_rounds_is_a_driver_owned_list_before_frozen</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_strap_rounds.py::test_empty_rounds_keep_the_old_dump_and_digests</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_strap_rounds.py::test_a_round_changes_the_driver_digest_but_not_the_authored_digest</code> fails with AttributeError, then passes</li>
+<li>Run <code>python tools/gen_skillspec_schema.py</code>: exit 0</li>
+<li>Run <code>python tools/gen_skillspec_schema.py --check</code>: exit 0</li>
+<li>Run <code>python -m pytest tests/lib/test_strap_models.py tests/schemas/test_skillspec_schema_drift.py tests/lib/test_strap_api.py -q</code>: all pass</li>
+<li>Record it: <code>plan.py record 1021 MOD-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-DRV-1" data-item="DRV-1">
+<h3>DRV-1: strap.py reopen: a new round on a frozen spec <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> MOD-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/strap.py</code>, <code>tests/scripts/test_strap_reopen.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/strap.py:31-36</code> holds <code>``freeze &lt;name&gt; [--refreeze]``</code></li>
+<li><code>plugins/harness/scripts/strap.py:260</code> holds <code>def _edit_base(root: Path, name: str, skill_rel: str, ref: Optional[str]) -&gt; str:</code></li>
+<li><code>plugins/harness/scripts/strap.py:384-386</code> holds <code>return spec.base or git_out(_root(), &quot;rev-parse&quot;, &quot;HEAD&quot;).strip()</code></li>
+<li><code>plugins/harness/scripts/strap.py:402-403</code> holds <code>items = [_red_item(b) for b in spec.behaviors if b.kind == BehaviorKind.MECHANICAL and b.state != BehaviorState.DROPPED and b.tests]</code></li>
+<li><code>plugins/harness/scripts/strap.py:882-884</code> holds <code>previous = spec.frozen if previous is not None and not args.refreeze:</code></li>
+<li><code>plugins/harness/scripts/strap.py:894</code> holds <code>was = f&quot; | was {previous.skill_hash[:12]}&quot; if previous is not None else &quot;&quot;</code></li>
+<li><code>plugins/harness/scripts/strap.py:962-966</code> holds <code>&quot;retest&quot;: cmd_retest, &quot;freeze&quot;: cmd_freeze, &quot;api&quot;: cmd_api,</code></li>
+<li><code>plugins/harness/lib/harness_lib/strap_api.py:110</code> holds <code>if spec.frozen is not None and not frozen_ok:</code></li>
+</ul>
+<p class="action">Add `cmd_reopen` and a `reopen` subparser (`--base REF`, help: ancestor of HEAD the new round starts from, default HEAD) to `strap.py`, registered in `COMMANDS`. It loads the spec (not writable), refuses an unfrozen one with `&lt;name&gt; is not frozen; nothing to reopen` before any other check, resolves the new base with `_edit_base(root, name, profile_of(spec).skill_md, args.base)`, then saves `rounds=[*rounds, Round(base=spec.base, frozen=spec.frozen, behaviors=&lt;non-dropped ids&gt;)]`, `frozen=None`, `mode=SpecMode.EDIT`, `base=&lt;new base&gt;`, and prints `reopen [done] | &lt;name&gt; | round &lt;len(rounds)+1&gt; | base &lt;sha12&gt; | was &lt;old hash12&gt;`. `_red_plan` skips mechanical behaviors in state `green` (frozen in an earlier round; their code exists at the new base). `cmd_freeze` takes `previous` from `spec.frozen`, else the last round&#x27;s stamp, so the first freeze after a reopen prints `| was &lt;hash12&gt;`; `already frozen` still checks `spec.frozen` only. Add the ``reopen &lt;name&gt; [--base REF]`` entry to the module docstring after ``freeze``, and the frozen-spec sentence there names reopen as the way to add behaviors. Copy the planned test file first; keep functions under 50 lines.</p>
+<ul>
+<li>Test <code>tests/scripts/test_strap_reopen.py::test_driver_docstring_names_reopen</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_reopen.py::test_reopen_refuses_an_unfrozen_spec</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_reopen.py::test_reopen_moves_the_stamp_into_rounds</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_reopen.py::test_reopen_refuses_a_base_that_names_no_commit</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_reopen.py::test_red_after_reopen_runs_only_the_new_behavior</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_reopen.py::test_freeze_after_reopen_gates_every_behavior</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/scripts/test_strap_gate.py tests/scripts/test_strap_driver.py -q</code>: all pass</li>
+<li>Record it: <code>plan.py record 1021 DRV-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-DOC-1" data-item="DOC-1">
+<h3>DOC-1: Document reopen in strap-skills, the README and the release notes; bump harness <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/strap-skills/SKILL.md</code>, <code>README.md</code>, <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code>, <code>tests/skills/test_strap_skills_reopen_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/strap-skills/SKILL.md:224-225</code> holds <code>**Refreeze after a part change.** A frozen spec refuses every change but three:</code></li>
+<li><code>plugins/harness/skills/strap-skills/SKILL.md:242</code> holds <code>13. **Hand off.**</code></li>
+</ul>
+<p class="action">In strap-skills SKILL.md step 12, after the Refreeze paragraph and its fence, add a paragraph opening `**Reopen for new behaviors.**`: a frozen spec takes no new behavior; when the skill gains new rules, run `strap.py reopen &lt;name&gt; [--base &lt;ref&gt;]` (a fenced launcher line, same form as the other commands). It keeps the earlier freeze in `rounds`, clears the stamp and moves `base`; pick as base the commit whose code the new scenarios need but whose SKILL.md lacks the new guidance, since baselines read the SKILL.md at `base`. Then continue from step 2 for the new behaviors; earlier behaviors are gated again at the next freeze (a mechanical one frozen in an earlier round skips red, its planned tests rerun). Reopening is standard procedure: ask the developer for the OK. In the root README strap-skills row add a bullet: `reopen` opens a new round on a frozen spec for new behaviors, earlier ones gated again at the next freeze. Bump harness 0.66.0 to 0.67.0 in plugin.json, update the v1.0.0.md plugins table (harness 0.65.1 to 0.67.0) and add a change line for strap reopen (plan 1014). Copy the planned test file first.</p>
+<ul>
+<li>Test <code>tests/skills/test_strap_skills_reopen_contract.py::test_skill_runs_reopen_through_the_launcher</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_strap_skills_reopen_contract.py::test_skill_names_the_round_rules</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_strap_skills_reopen_contract.py::test_readme_strap_row_names_reopen</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/skills/test_strap_skills_skill_contract.py -q</code>: all pass</li>
+<li>Run <code>sh &quot;E:/automation/operator-straps/plugins/harness/scripts/hpy&quot; &quot;E:/automation/operator-straps/plugins/harness/scripts/strap.py&quot; check strap-skills</code>: check [ok]</li>
+<li>Record it: <code>plan.py record 1021 DOC-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "1021/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatus(node.querySelector(".status"), receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

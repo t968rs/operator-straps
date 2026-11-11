@@ -179,7 +179,10 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
     test file from `<plans dir>/<plan_id>/tests/<repo-relative path>` to its repo path first. On a receipts
     plan take that text from `plan_api.load(<id>).items` (the page is HTML, drawn for a browser, not for a
     prompt); on a plan frozen before receipts the markdown PIP carries the same fields under the item's
-    heading.
+    heading. Each prompt also says that a lane that needs a deviation (a file outside its `files`, a test
+    node other than a planned one) stops and reports it instead of widening its own scope. The main session
+    then adds the change (step 9) once it is settled, has the deviation built, stages the lane with
+    `P2 stage <lane> --include-undeclared` and records with the citation.
 
     parallel2 stages each lane's changes uncommitted in the target and deletes the `p2/<id>` lane branch, so
     staged lane work is recorded with `PLAN record <id> <ITEM> --staged` once it is in the index, or with
@@ -214,6 +217,8 @@ run with the Bash tool from the project checkout. Every refusal is a `problem:` 
 - On a receipts plan, a `write` to record a change found during execution: the plan stays as frozen, the
   change goes to `DesignEvolution.json` through `evolution_api.add`, and the receipt cites it (step 9). A
   `write` after the freeze breaks the freeze digest, and `record` refuses the plan until a refreeze.
+- On a receipts plan, a lane that builds a deviation on its own: it stops and reports, and the main session
+  adds the change before the record cites it.
 - On a receipts plan, editing a DesignEvolution change a receipt already cites: `check` then asks for that
   item's `record` again.
 - Editing the plan JSON by hand, "because it is one line": `write` validates and guards, a hand edit does not
