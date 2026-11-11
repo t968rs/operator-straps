@@ -434,16 +434,33 @@
     },
     "Frozen": {
       "additionalProperties": true,
+      "description": "A freeze stamp: in the plan JSON on a legacy plan, read from the last ledger ``freeze`` otherwise.\n\nA ledger stamp has no commit (the ledger records the tree alone); a legacy stamp carries both.",
       "properties": {
         "commit": {
-          "pattern": "^[0-9a-f]{40}$",
-          "title": "Commit",
-          "type": "string"
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit"
         },
         "tree": {
-          "pattern": "^[0-9a-f]{40}$",
-          "title": "Tree",
-          "type": "string"
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{40}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tree"
         },
         "date": {
           "format": "date",
@@ -468,8 +485,6 @@
         }
       },
       "required": [
-        "commit",
-        "tree",
         "date",
         "digest"
       ],
@@ -1034,6 +1049,20 @@
       },
       "title": "Deferred To Future Plans",
       "type": "array"
+    },
+    "ledger": {
+      "anyOf": [
+        {
+          "pattern": "^plan/[0-9]{4}-[A-Za-z0-9-]+$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Stem of the plan's freeze ledger (`plan/<id>-<slug>`), set by the first ledger freeze. With it set, `frozen` is read from the last `freeze` entry under `<plan folder>/freezes/<stem>/` and is never written to the JSON; a missing or empty ledger folder fails the load.",
+      "title": "Ledger"
     }
   },
   "required": [

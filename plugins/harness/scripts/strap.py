@@ -10,7 +10,9 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
     the skill's existing files as parts.
 ``check <name>``
     Model, canonical form, driver digest, lint of the parts that exist, agent files of role scenarios;
-    prints ``open:`` for each judgment behavior short of scenarios.
+    prints ``open:`` for each judgment behavior short of scenarios. Reconciles the ledger's commit tags
+    (writes refs, never files) and prints ``untagged:``, ``off-history:``, ``drift:``, ``ledger:`` and
+    ``legacy:`` warnings.
 ``red <name>``
     Run the mechanical behaviors' planned tests on a throwaway tree; each must fail as planned.
 ``draw <name>``
@@ -33,14 +35,27 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
     spec and stamps the current hash, whether or not the parts changed; on a spec never frozen it is a plain
     freeze. Every listed part file must exist. A frozen spec
     takes ``run --arm green``, ``record-run`` of a green run, and through ``api`` part edits and the grades
-    of green runs, so the new hash can earn its greens; new behaviors come only after ``reopen``.
+    of green runs, so the new hash can earn its greens; new behaviors come only after ``reopen``. Each
+    freeze also writes a ``freeze`` ledger entry under ``<artifacts.plans>/freezes/skill/<name>/`` and tags
+    its tree (a spec frozen before the ledger first gets history entries).
+``lock <name>``
+    Run only on the developer's explicit ask: a Frozen spec, not stale, whose planned and contract tests
+    pass and whose last freeze's files are committed at HEAD and clean, becomes Locked (a ``lock`` entry and
+    a tagged tree that adds ``SkillSpec.json``). A Locked spec refuses every writer until ``reopen``.
 ``reopen <name> [--base REF]``
-    Start a new round on a frozen spec: the stamp and the live behavior ids move into ``rounds``, ``frozen``
-    clears, the mode becomes edit and ``base`` moves to HEAD (or an ancestor REF). The new base must descend
-    from the previous one and hold every part as the working tree has it. ``red`` then skips the
-    mechanical behaviors frozen green in an earlier round; the next ``freeze`` gates every live behavior.
+    Start a new round on a frozen or locked spec: the stamp and the live behavior ids move into ``rounds``,
+    ``frozen`` clears, the mode becomes edit and ``base`` moves to HEAD (or an ancestor REF). The new base
+    must descend from the previous one and hold every part as the working tree has it. ``red`` then skips
+    the mechanical behaviors frozen green in an earlier round; the next ``freeze`` gates every live
+    behavior. Writes a ``reopen`` entry and tags the new base.
+``relink <name> [--to REF]``
+    After a rewrite, re-point a ``base`` no longer on HEAD's history at its patch-id match (or REF), write a
+    ``relink`` entry and tag the new base.
 ``api <name>``
     Run stdin code with the public names of ``harness_lib.strap_api`` and ``name`` bound.
+
+Tags are local: each command that creates one prints ``tag: <name> -> <sha7>`` and a ``push:`` line. Inside a
+scenario tree (``freeze_git.SCENARIO_MARKER`` at the project root) no tag is created and nothing reconciled.
 
 ``--repo`` (default: the working directory) names a directory inside the project. Usage::
 
@@ -58,12 +73,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 from pydantic import ValidationError
 
+from harness_lib import freeze_git as fg
 from harness_lib import plan_red as pr
 from harness_lib import strap_api as sa
+from harness_lib import strap_lock as sl
 from harness_lib import strap_models as sm
 from harness_lib import strap_runs as sr
 from harness_lib.branch_capture import CaptureError, git, git_out
 from harness_lib.config import active, activate, load_config
+from harness_lib.freeze_ledger import LedgerError
 from harness_lib.plan_enums import ItemStatus
 from harness_lib.plan_enums import RedException as PlanRed
 from harness_lib.plan_models import ActionItem, ActionPlan, PlannedTest
@@ -76,7 +94,7 @@ from harness_lib.strap_models import (
 from harness_lib.strap_profile import Profile, new_fields, profile_of
 from harness_lib.strap_scaffold import planned_parts, render_parts
 
-PROBLEMS = (CaptureError, ValueError, OSError)
+PROBLEMS = (CaptureError, ValueError, OSError, LedgerError)
 RUNNER_AGENT = "harness:strap-scenario-runner"
 JUDGE_AGENT = "harness:strap-judge"
 AGENT_MODEL = "sonnet"
@@ -127,9 +145,9 @@ def _now() -> str:
 
 # --- spec load and save -----------------------------------------------------------------------------------
 
-def load(name: str, writable: bool = False) -> SkillSpec:
+def load(name: str, writable: bool = False, unlocked: bool = False) -> SkillSpec:
     """The stored spec; refused when missing, hand-edited in driver-owned fields or, once frozen, in authored
-    fields, or frozen (``writable``)."""
+    fields, Locked (``writable`` or ``unlocked``), or frozen (``writable``)."""
     path = sa.spec_path(name)
     if not path.is_file():
         raise Refused([f"no spec for {name} at {_rel(path)}; run new first"])
@@ -138,6 +156,8 @@ def load(name: str, writable: bool = False) -> SkillSpec:
         raise Refused([TAMPERED])
     if sm.seal_broken(spec):
         raise Refused([sm.SEAL_BROKEN])
+    if writable or unlocked:
+        sl.refuse_locked(spec)
     if writable and spec.frozen is not None:
         raise Refused([f"{name} is frozen"])
     return spec
@@ -312,10 +332,20 @@ def cmd_new(args: argparse.Namespace) -> int:
                      judge=args.judge, **fields)
     if args.edit:
         spec = spec.model_copy(update={"parts": _edit_parts(root, spec)})
+    pending = sl.base_pending(args.name, base) if base else None
+    if pending is not None:
+        sl.preflight(root, pending)
     spec = save(spec)
     detail = f"edit from {base[:12]} | {len(spec.parts)} parts" if base else "new"
     print(f"new [done] | {spec.name} | {detail} | judge {spec.judge} | {_rel(sa.spec_path(spec.name))}")
+    _print_lines(sl.commit(root, pending) if pending is not None else [])
     return 0
+
+
+def _print_lines(lines: Sequence[str]) -> None:
+    """Print the ledger's ``tag:``, ``push:`` and ``warn:`` lines, one per line, after the status line."""
+    for line in lines:
+        print(line)
 
 
 # --- check ------------------------------------------------------------------------------------------------
@@ -370,6 +400,7 @@ def spec_problems(name: str) -> Tuple[Optional[SkillSpec], List[str]]:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
+    """Report the spec's defects and warnings; reconcile writes tag refs, never files."""
     spec, problems = spec_problems(args.name)
     if spec is None or problems:
         raise Refused(problems)
@@ -380,6 +411,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     stale = stale_line(spec)
     if stale:
         print(stale)
+    _print_lines(sl.check_lines(_root(), spec))
     print(f"check [ok] | {spec.name} | {len(spec.behaviors)} behaviors | {len(short)} open")
     return 0
 
@@ -419,6 +451,7 @@ def red_results(spec: SkillSpec) -> List[pr.RedResult]:
     root = _root()
     tree = pr.make_tree(root, _start_commit(spec), active().resolve_worktree_root())
     try:
+        _mark_scenario(tree)
         pr.overlay(pr.test_sources(plan, _strap_dir(spec.name).parent), tree)
         return pr.run_red(plan, tree, sys.executable)
     finally:
@@ -527,12 +560,20 @@ def _lay_fixture(tree: Path, folder: Path) -> str:
     return commit.strip()
 
 
+def _mark_scenario(tree: Path) -> None:
+    """Write ``freeze_git.SCENARIO_MARKER`` at the root of a throwaway tree, so a driver run inside it
+    creates no tags. Written after any fixture commit and left out of ``changed_paths``, so it is never
+    committed, hashed or seen by a run's checks."""
+    (tree / fg.SCENARIO_MARKER).write_text("strap scenario tree\n", encoding="utf-8", newline="\n")
+
+
 def build_tree(start: str, fixture: Optional[Path]) -> Tuple[Path, str]:
     """A throwaway tree at ``start`` with ``fixture`` laid over it; returns the tree and its commit."""
     root = _root()
     tree = pr.make_tree(root, start, active().resolve_worktree_root())
     try:
         commit = _lay_fixture(tree, fixture) if fixture is not None else start
+        _mark_scenario(tree)
     except Exception:
         pr.drop_tree(root, tree)
         raise
@@ -598,7 +639,7 @@ def _next_run_id(spec: SkillSpec) -> str:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    spec = load(args.name)
+    spec = load(args.name, unlocked=True)
     arm = Arm(args.arm)
     _refuse_frozen_baseline(spec, arm)
     _require_skill_md(spec)
@@ -695,7 +736,8 @@ def cmd_init(args: argparse.Namespace) -> int:
 # --- record-run -------------------------------------------------------------------------------------------
 
 def changed_paths(tree: Path) -> List[str]:
-    """Paths ``git status`` reports in ``tree``, untracked files listed one by one."""
+    """Paths ``git status`` reports in ``tree``, untracked files listed one by one; the scenario marker is
+    left out."""
     entries = git_out(tree, "status", "--porcelain", "-z", "--untracked-files=all").split("\0")
     paths: List[str] = []
     skip = False
@@ -705,7 +747,7 @@ def changed_paths(tree: Path) -> List[str]:
             continue
         paths.append(entry[3:])
         skip = entry[0] in "RC"
-    return sorted(set(paths))
+    return sorted(set(paths) - {fg.SCENARIO_MARKER})
 
 
 def _refuse_twin(spec: SkillSpec, run: Run) -> None:
@@ -726,7 +768,7 @@ def _refuse_frozen_open_run(spec: SkillSpec, run: Run) -> None:
 
 
 def cmd_record_run(args: argparse.Namespace) -> int:
-    spec = load(args.name)
+    spec = load(args.name, unlocked=True)
     _refuse_frozen_open_run(spec, _run_of(spec, args.run))
     run = _live_run(spec, args.run)
     _refuse_twin(spec, run)
@@ -886,6 +928,7 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     spec, problems = spec_problems(args.name)
     if spec is None:
         raise Refused(problems)
+    sl.refuse_locked(spec)
     if spec.frozen is not None and not args.refreeze:
         raise Refused(["already frozen; after a part change, rerun freeze with --refreeze"])
     previous = spec.frozen or (spec.rounds[-1].frozen if spec.rounds else None)
@@ -896,10 +939,14 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     grader = Grader.JUDGE if spec.judge else Grader.SESSION
     live = {b.id for b in spec.behaviors if b.state != BehaviorState.DROPPED}
     frozen = Frozen(skill_hash=current, grader=grader, at=_now())
+    root = _root()
+    pending = sl.freeze_pending(root, spec, frozen)
+    sl.preflight(root, pending)
     save(spec.model_copy(update={"frozen": frozen,
                                  "behaviors": _with_states(spec, live, BehaviorState.GREEN)}))
     was = f" | was {previous.skill_hash[:12]}" if previous is not None else ""
     print(f"freeze [done] | {spec.name} | {current[:12]} | grader {grader.value}{was}")
+    _print_lines(sl.commit(root, pending))
     return 0
 
 
@@ -920,7 +967,8 @@ def _reopen_base_problems(root: Path, spec: SkillSpec, base: str) -> List[str]:
 
 
 def cmd_reopen(args: argparse.Namespace) -> int:
-    """A new round on a frozen spec: the stamp moves into ``rounds`` and ``base`` moves to the new start."""
+    """A new round on a frozen or locked spec: the stamp moves into ``rounds``, ``base`` moves to the new
+    start, a ``reopen`` entry is written and the new base tagged."""
     spec = load(args.name)
     if spec.frozen is None:
         raise Refused([f"{spec.name} is not frozen; nothing to reopen"])
@@ -929,12 +977,70 @@ def cmd_reopen(args: argparse.Namespace) -> int:
     problems = _reopen_base_problems(root, spec, base)
     if problems:
         raise Refused(problems)
+    pending = sl.reopen_pending(root, spec, base)
+    sl.preflight(root, pending)
     live = [b.id for b in spec.behaviors if b.state != BehaviorState.DROPPED]
     rounds = [*spec.rounds, Round(base=spec.base, frozen=spec.frozen, behaviors=live)]
     was = spec.frozen.skill_hash
     spec = save(spec.model_copy(update={"rounds": rounds, "frozen": None, "mode": SpecMode.EDIT,
                                         "base": base}))
     print(f"reopen [done] | {spec.name} | round {len(rounds) + 1} | base {base[:12]} | was {was[:12]}")
+    _print_lines(sl.commit(root, pending))
+    return 0
+
+
+# --- lock and relink --------------------------------------------------------------------------------------
+
+def _contract_tests_pass(spec: SkillSpec) -> bool:
+    """Each ``contract_test`` part passes on the working tree, one pytest process per part."""
+    root = _root()
+    return all(pr.run_pytest([sys.executable, *pr.PYTEST_ARGS, part.path], root).returncode == 0
+               for part in spec.parts if part.kind == PartKind.CONTRACT_TEST)
+
+
+def lock_gate(spec: SkillSpec) -> List[str]:
+    """Frozen, not stale, planned and contract tests passing, and the ledger's last freeze at HEAD."""
+    if spec.frozen is None:
+        return [f"{spec.name} is not frozen; freeze it before lock"]
+    stale = stale_line(spec)
+    if stale:
+        return [stale]
+    problems = [f"{b.id}: planned tests fail" for b in spec.behaviors
+                if b.kind == BehaviorKind.MECHANICAL and b.state != BehaviorState.DROPPED
+                and not _planned_tests_pass(b)]
+    if not _contract_tests_pass(spec):
+        problems.append(f"{spec.name}: a contract_test part fails")
+    return problems + sl.lock_problems(_root(), spec)
+
+
+def cmd_lock(args: argparse.Namespace) -> int:
+    """Lock a Frozen spec on the developer's explicit ask: a ``lock`` entry and its tagged tree."""
+    spec = load(args.name)
+    problems = lock_gate(spec)
+    if problems:
+        raise Refused(problems)
+    root = _root()
+    pending = sl.lock_pending(root, spec)
+    sl.preflight(root, pending)
+    lines = sl.commit(root, pending)
+    entry = pending.entries[-1]
+    print(f"lock [done] | {spec.name} | r{entry.round}.{entry.seq} | tree {(entry.tree or '')[:12]}")
+    _print_lines(lines)
+    return 0
+
+
+def cmd_relink(args: argparse.Namespace) -> int:
+    """Re-point a base lost to a rewrite at its patch-id match (or ``--to``), with a ``relink`` entry."""
+    spec = load(args.name)
+    root = _root()
+    new_base, match = sl.relink_target(root, spec, args.to)
+    pending = sl.relink_pending(root, spec, new_base, match)
+    sl.preflight(root, pending)
+    old = spec.base or ""
+    save(spec.model_copy(update={"base": new_base}))
+    pending = sl.relinked(root, spec, pending)
+    print(f"relink [done] | {spec.name} | base {old[:12]} -> {new_base[:12]} | {match}")
+    _print_lines(sl.commit(root, pending))
     return 0
 
 
@@ -991,8 +1097,11 @@ def _parser() -> argparse.ArgumentParser:
     freeze = _named(sub, "freeze", "Apply the final gate.")
     freeze.add_argument("--refreeze", action="store_true",
                         help="Freeze a frozen spec again after a part change; every gate runs again.")
-    reopen = _named(sub, "reopen", "Start a new round of behaviors on a frozen spec.")
+    reopen = _named(sub, "reopen", "Start a new round of behaviors on a frozen or locked spec.")
     reopen.add_argument("--base", help="Ancestor of HEAD the new round starts from (default: HEAD).")
+    _named(sub, "lock", "Lock a frozen spec (only on the developer's explicit ask).")
+    relink = _named(sub, "relink", "Re-point a base lost to a rewrite.")
+    relink.add_argument("--to", help="The commit to re-point at (default: the patch-id match on HEAD).")
     run = _named(sub, "run", "Create a scenario run and print the runner row.")
     run.add_argument("behavior", help="Behavior id, such as B1.")
     run.add_argument("--arm", required=True, choices=[arm.value for arm in Arm])
@@ -1006,7 +1115,8 @@ def _parser() -> argparse.ArgumentParser:
 COMMANDS: Dict[str, Callable[[argparse.Namespace], int]] = {
     "new": cmd_new, "check": cmd_check, "red": cmd_red, "draw": cmd_draw, "run": cmd_run, "init": cmd_init,
     "record-run": cmd_record_run, "judge-row": cmd_judge_row, "scaffold": cmd_scaffold,
-    "retest": cmd_retest, "freeze": cmd_freeze, "reopen": cmd_reopen, "api": cmd_api,
+    "retest": cmd_retest, "freeze": cmd_freeze, "reopen": cmd_reopen, "lock": cmd_lock,
+    "relink": cmd_relink, "api": cmd_api,
 }
 
 

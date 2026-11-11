@@ -8,7 +8,9 @@ stamps a fresh digest and only then writes the file. A refusal or a failed valid
 A frozen spec still takes part edits (``add_part``, ``remove_part``) and the reply and grades of a green
 run, so a part change can be proven again on the new skill hash before ``strap.py freeze --refreeze``.
 Behaviors, scenarios, draws and baselines stay locked until ``strap.py reopen`` starts a new round; after
-it, a behavior frozen in an earlier round keeps its ``tests`` and ``kind``.
+it, a behavior frozen in an earlier round keeps its ``tests`` and ``kind``. A Locked spec (its ledger's
+current round ends in a ``lock`` entry, ``strap.py lock``) refuses every operation that saves, with
+``<name> is locked; reopen to change it``.
 
 ``__all__`` is the surface ``skill_api.py`` binds for an api heredoc. ``record_run`` stays importable for
 ``strap.py record-run`` but is left out of it, so an api session cannot record a reply. Requires an
@@ -23,6 +25,7 @@ from typing import Any, Callable, Iterable, List, Optional, Sequence, Tuple, Uni
 
 from harness_lib.config import active
 from harness_lib.project import main_worktree, plugin_root
+from harness_lib.strap_lock import LockRefused, locked_problem
 from harness_lib.strap_models import (
     DRIVER_OWNED_BEHAVIOR, NAME_PATTERN, SEAL_BROKEN, SPEC_FILE, Arm, Behavior, BehaviorKind, BehaviorState,
     Check, CheckKind, Grade, Grader, GradeValue, JudgedItem, JudgmentType, Part, PartKind, PlannedTest,
@@ -100,7 +103,7 @@ def new_judged(act: Union[ReplyAct, str], of: str, baseline: Union[GradeValue, s
 
 def _load(name: str, frozen_ok: bool = False) -> SkillSpec:
     """The spec as stored; refused when missing, hand-edited in driver-owned fields or, once frozen, in
-    authored fields, or frozen (unless ``frozen_ok``)."""
+    authored fields, Locked, or frozen (unless ``frozen_ok``)."""
     path = spec_path(name)
     if not path.is_file():
         raise StrapError(f"no spec for {name} at {path.as_posix()}")
@@ -109,6 +112,12 @@ def _load(name: str, frozen_ok: bool = False) -> SkillSpec:
         raise StrapError(_TAMPERED)
     if seal_broken(spec):
         raise StrapError(SEAL_BROKEN)
+    try:
+        locked = locked_problem(spec)
+    except LockRefused as exc:
+        raise StrapError("; ".join(exc.problems)) from None
+    if locked:
+        raise StrapError(locked)
     if spec.frozen is not None and not frozen_ok:
         raise StrapError(f"{name} is frozen")
     return spec

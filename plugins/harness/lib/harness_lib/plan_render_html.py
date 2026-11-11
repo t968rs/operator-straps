@@ -78,7 +78,9 @@ def _origin_note(plan_name: str) -> str:
 
 def _header(plan: ActionPlan, plan_name: str) -> List[str]:
     frozen = plan.frozen
-    frozen_text = f"{_e(frozen.date)} at {_code(frozen.commit[:7])}" if frozen else "no"
+    # A legacy stamp names its commit; a ledger stamp has only the tree.
+    at = (frozen.commit or frozen.tree or "")[:7] if frozen else ""
+    frozen_text = f"{_e(frozen.date)} at {_code(at)}" if frozen else "no"
     rows = [("Plan created", _e(plan.plan_created)),
             ("Spec", _code(plan.source_document) if plan.source_document else "none"),
             ("Branch", f"{_e(plan.branch or 'none')} -&gt; {_e(plan.base_branch or 'none')}"),

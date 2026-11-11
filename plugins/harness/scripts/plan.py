@@ -6,10 +6,23 @@ it plans under ``<plan_id>/tests/<repo-relative path>``. Every defect is one ``p
 with exit 1; success exits 0 and writes nothing on a refusal. Every command validates the plan on load and
 refuses an invalid one with ``schema:`` lines.
 
+Freeze ledger and tags (``harness_lib.plan_lock``): a plan's freeze stamp lives in write-once entry files
+under ``<plan folder>/freezes/plan/<id>-<slug>/`` (``r1.<k>-<kind>.json``); the plan JSON carries only the
+static ``ledger`` field (that stem) and ``load_plan`` fills ``frozen`` from the last ``freeze`` entry. A plan
+is Frozen, Locked (``lock``), Locked and armed (``unlock --arm``) or Unlocked (``unlock``). Every
+tag-creating command preflights its tag names and refuses on a name already on another object before it
+writes anything; it prints ``tag: <name> -> <sha7>`` lines and one ``push: git push origin <tags>`` line
+after its status line (tags are local; the developer pushes). Every command that loads a plan reconciles
+its ledger: the commit that added each committed entry file gets ``<kind>/<stem>/r1.<k>-commit`` (a rewrite
+adds ``-commit.2``). Inside a strap scenario tree no tag is created and nothing is reconciled.
+
 ``new TITLE [--spec PATH] [--base BRANCH] [--no-fetch]``
     Write an empty plan with the next plan id, the spec path and the base commit (the merge base of the base
-    branch and HEAD, fetched from ``origin`` when the remote exists), then render its PIP. A plan bound for
-    the receipts scheme (``plan_render_html.uses_html``) gets the HTML page, named as its ``documentation``.
+    branch and HEAD, fetched from ``origin`` when the remote exists), then render its PIP and tag the base
+    ``base/plan/<id>-<slug>/r1``. The plan id is one past the highest seen in the local plans folder, in
+    the plans folder of every local and remote-tracking branch, and in every ``*/plan/<no>-*`` tag. A plan
+    bound for the receipts scheme (``plan_render_html.uses_html``) gets the HTML page, named as its
+    ``documentation``.
 
 ``check PLAN``
     Lint (item ids, dependencies, decisions, values, commands, planned test files), open every anchor, run
@@ -20,7 +33,10 @@ refuses an invalid one with ``schema:`` lines.
     the record rules, and the DesignEvolution catalog's ``schema:`` lines and plan problems are added. No
     git command judges an item: the recorded tree and commit are never compared with HEAD, so an amend, a
     squash, a rebase or a staged attach leaves the plan valid. Open decisions are listed as ``open:``
-    lines, not problems. Read-only.
+    lines, not problems. Then it reconciles and warns, never failing on a warning: ``tag:``/``push:``,
+    ``untagged: <sha7> (<role>)``, ``off-history: <sha7> (base r1)`` (the cue for ``relink``),
+    ``drift: <path> differs from <lock tag>`` on a Locked plan, or the single
+    ``legacy: plan <id> keeps an in-file stamp; migrates at its next refreeze``. Writes refs, never files.
 
 ``render PLAN``
     Write the PIP from the plan JSON. On a frozen receipts plan, rebuild ``live.js`` and write the HTML page
@@ -36,10 +52,15 @@ refuses an invalid one with ``schema:`` lines.
     checkout is never written. A receipts plan's open items are read from its receipts.
 
 ``freeze PLAN [--refreeze]``
-    Refuse while ``check`` has a problem, a decision is open, an open item has neither a test nor a command,
-    an item is not PENDING on a first freeze, or ``red`` has a problem; otherwise record HEAD, its tree, the
-    date, the record scheme and the digest. A first freeze (every item PENDING without a record), the path
-    every new plan takes, stores ``plan_record.FIRST_SCHEME``, receipts: the digest covers every field but
+    Refuse on a Locked or armed plan (unlock first), while ``check`` has a problem, a decision is open, an
+    open item has neither a test nor a command, an item is not PENDING on a first freeze, or ``red`` has a
+    problem; otherwise set ``ledger`` (before the digest, which covers it), save the plan JSON, build the
+    tree of the plan JSON and everything under ``<plan folder>/<id>/tests/`` (gitignored files go to the
+    entry's ``ignored`` sha256 map), and write a ``freeze`` entry with the tree, its files, the date, the base
+    commit, the record scheme and the digest; then tag the tree ``freeze/<stem>/r1.<k>-tree`` and the base.
+    A plan with an in-file stamp and no ledger migrates on ``--refreeze``: a history ``freeze`` entry (no
+    tree, dated from the stamp) comes first and ``frozen`` leaves the JSON. The status line names the entry
+    and its tree. A first freeze (every item PENDING without a record), the path every new plan takes, stores ``plan_record.FIRST_SCHEME``, receipts: the digest covers every field but
     ``frozen``, a ``documentation`` naming the markdown PIP moves to the HTML page (the markdown PIP is
     deleted), and the freeze writes the page and ``live.js``. A receipts plan keeps the scheme on a
     refreeze (stored, proven by the digest, or stored at HEAD; checked before the sealed rule), reads its
@@ -62,7 +83,7 @@ refuses an invalid one with ``schema:`` lines.
     Print the ``parallel2`` plan JSON of a frozen plan's open items (waves from dependencies and file
     overlap), ready for ``parallel2.py plan -``. Refuses a plan that fails the digest or the record rules.
     The open items and the record problems come from the plan's record book (its receipts on a receipts
-    plan).
+    plan). Reconcile lines go to stderr, so stdout holds the JSON alone. Writes refs, never files.
 
 ``record PLAN ITEM (--sha SHA | --staged | --start | --blocked REASON | --closed RATIONALE)
 [--also PATH] [--substitute PLANNED=NODE] [--cite ID]``
@@ -89,14 +110,36 @@ refuses an invalid one with ``schema:`` lines.
     and the substitutes are the nodes run. The deviation flags need ``--sha`` or ``--staged`` and a
     receipts plan.
 
+    A COMPLETE record then tags the tested code locally: ``receipt/<stem>/<ITEM>-commit`` on the ``--sha``
+    commit, ``receipt/<stem>/<ITEM>-tree`` on the ``--staged`` tree; a re-record on other code adds ``.2``,
+    ``.3``. Their ``tag:`` lines print, but no ``push:`` line names a receipt tag.
+
+``lock PLAN``
+    Run only on the developer's explicit ask. Refuses a plan with an in-file stamp (``freeze --refreeze``
+    migrates it first), unless the plan is Frozen with a ledger, its freeze digest holds, every file of the
+    last freeze is committed at HEAD with the frozen blob and unchanged in the working tree, and every
+    ignored file keeps its sha256. Writes a ``lock`` entry (the freeze's tree, files, ignored map, digest and
+    records) and tags ``lock/<stem>/r1.<k>-tree``.
+
+``unlock PLAN --arm REASON`` / ``unlock PLAN``
+    ``--arm`` runs on the developer's explicit OK and writes an ``arm`` entry; the plan stays Locked. A plain
+    ``unlock`` refuses without a live arm and otherwise writes ``unlock``, which uses the arm up: the plan
+    is editable again (``write``, ``freeze --refreeze``, then ``lock`` after the commit).
+
+``relink PLAN [--to REF]``
+    Run on the developer's request after a rebase: a ``base_commit`` off HEAD's history is matched to its
+    rewritten counterpart by ``git patch-id`` among HEAD's ancestors (or taken from ``--to``), re-pointed
+    through the model, a ``relink`` entry written and the new base tagged ``base/<stem>/r1-<m>``; old tags
+    stay. The freeze digest reads a relinked base as the freeze's.
+
 ``verify PLAN [--staged]``
     Run every COMPLETE item's test nodes on one throwaway detached worktree at HEAD (``--staged``: at a
     dangling commit of the index), one pytest run per item, and print ``<ITEM> pass`` or
     ``<ITEM> no tests`` for each. A failure names the item and the ``record`` call to make after the fix.
     A COMPLETE item without a valid record (no sealed record, a broken seal, or a non-legacy shape on a
-    legacy plan) fails the run without a test run and names the ``record`` call. Writes nothing. On a
-    receipts plan the COMPLETE items, their nodes (substitutes included) and a broken seal come from the
-    receipts.
+    legacy plan) fails the run without a test run and names the ``record`` call. Writes refs, never files.
+    On a receipts plan the COMPLETE items, their nodes (substitutes included) and a broken seal come from
+    the receipts.
 
 ``PLAN`` is a plan id (``7`` or ``0007``) or a path to the plan file. ``--repo`` (default: the working
 directory) names a directory inside the project. Usage::
@@ -111,6 +154,9 @@ directory) names a directory inside the project. Usage::
                                            | --closed RATIONALE)
                                            [--also PATH] [--substitute PLANNED=NODE] [--cite ID] ...
     plan.py [--repo DIR] verify PLAN [--staged]
+    plan.py [--repo DIR] lock PLAN
+    plan.py [--repo DIR] unlock PLAN [--arm REASON]
+    plan.py [--repo DIR] relink PLAN [--to REF]
 """
 from __future__ import annotations
 
@@ -140,6 +186,7 @@ from harness_lib import plan_checks as pc  # noqa: E402
 from harness_lib import plan_doc as pd  # noqa: E402
 from harness_lib import plan_lanes as plx  # noqa: E402
 from harness_lib import plan_live  # noqa: E402
+from harness_lib import plan_lock as pk  # noqa: E402
 from harness_lib import plan_models as pm  # noqa: E402
 from harness_lib import plan_receipts as prt  # noqa: E402
 from harness_lib import plan_record as prc  # noqa: E402
@@ -226,12 +273,14 @@ def cmd_new(repo: Path, args: argparse.Namespace) -> int:
     base = args.base or active().resolve_base_branch()
     base_commit = resolve_merge_base(repo, base, fetch=not args.no_fetch and has_origin(repo))
     folder = plans_dir()
-    plan_id = pd.next_plan_id(folder)
+    plan_id = pd.next_plan_id(folder, pk.seen_plan_ids(repo, folder))
     plan_file = pd.plan_path(folder, plan_id, pd.title_slug(args.title))
     raw = skeleton(plan_id, spec, base, base_commit, current_branch(repo), rel(repo, pd.pip_path(plan_file)))
     plan = pd.validate_plan(raw)
     if prh.uses_html(plan):
         plan.documentation = rel(repo, pd.pip_html_path(plan_file))
+    tags = pk.base_tags(pk.stem_of(plan_file, plan), base_commit)
+    pk.preflight(repo, tags)
     pip = save(plan_file, plan)
     tests = rel(repo, pd.planned_tests_dir(folder, plan_id))
     lib = plugin_root().as_posix() + "/lib"
@@ -241,16 +290,18 @@ def cmd_new(repo: Path, args: argparse.Namespace) -> int:
                      f"tests: {tests}/<repo-relative path>",
                      f"author: PYTHONPATH=\"{lib}\" sh \"{hpy}\" - <<'EOF'  "
                      f"(from harness_lib import plan_api; plan = plan_api.load(\"{plan_id}\"))",
-                     f"next: fill decisions, items, anchors and sweeps; then plan.py check {plan_id}"]))
+                     f"next: fill decisions, items, anchors and sweeps; then plan.py check {plan_id}",
+                     *pk.create_lines(repo, tags)]))
     return 0
 
 
 # --- check ------------------------------------------------------------------------------------------------
 
-def digest_problems(plan: pm.ActionPlan) -> List[str]:
-    """The freeze digest, under the plan's stored record scheme, no longer matches the plan."""
+def digest_problems(plan: pm.ActionPlan, folder: Path) -> List[str]:
+    """The freeze digest, under the plan's stored record scheme, no longer matches the plan; a base a
+    ``relink`` re-pointed is read as the freeze's (``plan_lock.digest_view``, ledger beside ``folder``)."""
     frozen = plan.frozen
-    if frozen is None or frozen.digest == pd.frozen_digest(plan, frozen.records):
+    if frozen is None or frozen.digest == pd.frozen_digest(pk.digest_view(plan, folder), frozen.records):
         return []
     if frozen.records == RecordScheme.receipts:
         return ["plan changed after freeze (any field but frozen: a receipts plan records its items in "
@@ -291,7 +342,7 @@ def claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
 def all_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan, book: prt.RecordBook) -> List[str]:
     """Every check of a plan that loaded: the claims (on the book's status view), the freeze digest, the
     DesignEvolution catalog of a receipts plan and the book's record problems."""
-    return (claim_problems(repo, book.view()) + digest_problems(plan)
+    return (claim_problems(repo, book.view()) + digest_problems(plan, plan_file.parent)
             + evolution_problems(plan_file.parent, plan) + book.problems())
 
 
@@ -311,14 +362,16 @@ def cmd_check(repo: Path, args: argparse.Namespace) -> int:
     problems = all_problems(repo, plan_file, plan, book)
     if problems:
         raise pd.PlanError(problems)
-    print("\n".join([check_summary(plan, book.view()), *(f"open: {d}" for d in pc.open_decisions(plan))]))
+    print("\n".join([check_summary(plan, book.view()), *(f"open: {d}" for d in pc.open_decisions(plan)),
+                     *pk.check_lines(repo, plan_file, plan)]))
     return 0
 
 
 def cmd_render(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
-    pip = prh.refresh_pip(plan_file, pd.load_plan(plan_file))
-    print(f"render [done] | {rel(repo, pip)}")
+    plan = pd.load_plan(plan_file)
+    pip = prh.refresh_pip(plan_file, plan)
+    print("\n".join([f"render [done] | {rel(repo, pip)}", *pk.reconcile_lines(repo, plan_file, plan)]))
     return 0
 
 
@@ -345,16 +398,18 @@ def red_problems(repo: Path, plan: pm.ActionPlan) -> Tuple[List[pr.RedResult], L
 
 def cmd_red(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
-    plan = book_of(plan_file, pd.load_plan(plan_file)).view()
+    loaded = pd.load_plan(plan_file)
+    plan = book_of(plan_file, loaded).view()
     results, problems = red_problems(repo, plan)
     if problems:
         raise pd.PlanError(problems)
     head = f"red [ok] | plan {plan.plan_id}"
+    tagged = pk.reconcile_lines(repo, plan_file, loaded)
     if not results:
-        print(f"{head} | no planned test nodes in open items")
+        print("\n".join([f"{head} | no planned test nodes in open items", *tagged]))
         return 0
     rows = [f"{r.item} {r.node}: {r.got} (planned {r.expected})" for r in results]
-    print("\n".join([f"{head} | {len(results)} nodes fail as planned", *rows]))
+    print("\n".join([f"{head} | {len(results)} nodes fail as planned", *rows, *tagged]))
     return 0
 
 
@@ -430,23 +485,20 @@ def freeze_problems(repo: Path, plan: pm.ActionPlan, book: prt.RecordBook,
     return problems + ([] if plan.items else ["the plan has no items"]), rerecord
 
 
-def new_frozen(repo: Path, plan: pm.ActionPlan, records: Optional[RecordScheme]) -> pm.Frozen:
-    """The freeze record at HEAD under the record scheme ``records``."""
-    head = git_out(repo, "rev-parse", "HEAD").strip()
-    tree = git_out(repo, "rev-parse", "HEAD^{tree}").strip()
-    return pm.Frozen.at(head, tree, today(), pd.frozen_digest(plan, records), records)
-
-
 def committed_scheme(repo: Path, plan_file: Path) -> Optional[str]:
-    """The record scheme the plan's copy at HEAD stores; None when HEAD holds no frozen copy of the plan."""
+    """The record scheme the plan's copy at HEAD stores (in its ``frozen`` stamp, or in the last ``freeze``
+    entry HEAD holds of its ledger when that copy carries ``ledger``); None when HEAD holds no frozen copy."""
     name = git(repo, "ls-files", "--full-name", "--", str(plan_file.resolve())).stdout.strip()
     done = git(repo, "show", f"HEAD:{name}") if name else None
     if done is None or done.returncode != 0:
         return None
     try:
-        frozen = json.loads(done.stdout).get("frozen")
+        data = json.loads(done.stdout)
+        frozen, ledger = data.get("frozen"), data.get("ledger")
     except (ValueError, AttributeError):
         return None
+    if isinstance(ledger, str):
+        return pk.head_records(repo, name, ledger)
     return frozen.get("records") if isinstance(frozen, dict) else None
 
 
@@ -481,8 +533,10 @@ def move_documentation(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> Opti
     return markdown
 
 
-def store_freeze(repo: Path, plan_file: Path, plan: pm.ActionPlan, committed: Optional[str]) -> None:
-    """Stamp the freeze record and save the raw plan with its PIP (the page and ``live.js`` on receipts).
+def store_freeze(repo: Path, plan_file: Path, plan: pm.ActionPlan, committed: Optional[str],
+                 pending: pk.Pending) -> pk.Tags:
+    """Write the ledger freeze (``plan_lock.write_freeze``) and the PIP (the page and ``live.js`` on
+    receipts); the tags to create.
 
     A first freeze that stores receipts first moves a markdown ``documentation`` to the HTML page, so the
     digest covers the new path, and deletes the superseded markdown PIP.
@@ -490,43 +544,48 @@ def store_freeze(repo: Path, plan_file: Path, plan: pm.ActionPlan, committed: Op
     first = plan.frozen is None
     scheme = prc.scheme_for(plan, committed)
     moved = move_documentation(repo, plan_file, plan) if first and scheme == RecordScheme.receipts else None
-    plan.frozen = new_frozen(repo, plan, scheme)
-    save(plan_file, plan)
+    tags = pk.write_freeze(repo, plan_file, plan, pending, scheme)
+    prh.write_pip(plan_file, plan)
     if moved is not None and moved.exists():
         moved.unlink()
+    return tags
 
 
 def cmd_freeze(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
+    pk.refuse_locked(plan_file, plan)
     committed = pin_scheme(repo, plan_file, plan)
     book = book_of(plan_file, plan)
     problems, rerecord = freeze_problems(repo, plan, book, args.refreeze)
     if problems:
         raise pd.PlanError(problems)
+    pending = pk.freeze_pending(repo, plan_file, plan)
     problems = red_problems(repo, book.view())[1]
     if problems:
         raise pd.PlanError(problems)
-    store_freeze(repo, plan_file, plan, committed)
-    print("\n".join([f"freeze [done] | plan {plan.plan_id} | at {plan.frozen.commit[:7]} | "
-                     f"{len(plan.items)} items", *(f"re-record after refreeze: {i}" for i in rerecord)]))
+    tags = store_freeze(repo, plan_file, plan, committed, pending)
+    tree = (plan.frozen.tree or "")[:7] if plan.frozen else ""
+    print("\n".join([f"freeze [done] | plan {plan.plan_id} | r{pk.ROUND}.{pending.seq} tree {tree} | "
+                     f"{len(plan.items)} items", *(f"re-record after refreeze: {i}" for i in rerecord),
+                     *pk.commit_tags(repo, plan_file, plan, tags)]))
     return 0
 
 
 # --- record -----------------------------------------------------------------------------------------------
 
-def require_frozen(plan: pm.ActionPlan) -> None:
+def require_frozen(plan: pm.ActionPlan, folder: Path) -> None:
     """The gate of ``record``: a frozen plan whose digest holds. A broken seal never blocks a record."""
     if plan.frozen is None:
         raise pd.PlanError([f"plan {plan.plan_id} is not frozen; run freeze first"])
-    problems = digest_problems(plan)
+    problems = digest_problems(plan, folder)
     if problems:
         raise pd.PlanError(problems)
 
 
-def require_valid(plan: pm.ActionPlan, book: prt.RecordBook) -> None:
-    """The gate of ``lanes``: ``require_frozen`` and the book's record problems (``lanes`` writes nothing)."""
-    require_frozen(plan)
+def require_valid(plan: pm.ActionPlan, book: prt.RecordBook, folder: Path) -> None:
+    """The gate of ``lanes``: ``require_frozen`` and the book's record problems (``lanes`` writes no file)."""
+    require_frozen(plan, folder)
     problems = book.problems()
     if problems:
         raise pd.PlanError(problems)
@@ -781,21 +840,22 @@ def deviations_of(book: prt.ReceiptBook, item: pm.ActionItem, given: Sequence[Tu
 # --- record: writers --------------------------------------------------------------------------------------
 
 def record_receipt(repo: Path, plan_file: Path, book: prt.ReceiptBook, item: pm.ActionItem,
-                   args: argparse.Namespace) -> pm.ActionPlan:
+                   args: argparse.Namespace) -> Tuple[pm.ActionPlan, pm.Outcome]:
     """Write the item's receipt and ``live.js``; the plan JSON and its PIP stay as they are. The status view
-    after the write."""
+    after the write, and the outcome recorded."""
     plan, folder = book.plan, plan_file.parent
     deviations = deviations_of(book, item, args.deviations or [])
     outcome, ref = apply_record(repo, plan, book, item, args, deviations)
     prt.write_receipt(folder, Receipt.sealed(plan.plan_id, item, outcome=outcome, date=today(),
                                              deviations=deviations, ref=ref))
     plan_live.write_live(folder, plan.plan_id)
-    return prt.book_for(folder, plan).view()
+    return prt.book_for(folder, plan).view(), outcome
 
 
 def record_sealed(repo: Path, plan_file: Path, plan: pm.ActionPlan, item: pm.ActionItem,
-                  args: argparse.Namespace) -> pm.ActionPlan:
-    """Stamp the item's sealed record into the plan and save it with its PIP; the saved plan."""
+                  args: argparse.Namespace) -> Tuple[pm.ActionPlan, pm.Outcome]:
+    """Stamp the item's sealed record into the plan and save it with its PIP; the saved plan and the
+    outcome recorded."""
     book = prt.SealedBook(plan)
     outcome, _ = apply_record(repo, plan, book, item, args, Deviations())
     prc.stamp(plan, item, outcome, today())
@@ -805,25 +865,35 @@ def record_sealed(repo: Path, plan_file: Path, plan: pm.ActionPlan, item: pm.Act
         plan.completed = None
         plan.model_fields_set.discard("completed")
     save(plan_file, plan)
-    return plan
+    return plan, outcome
+
+
+def record_tags(repo: Path, plan_file: Path, plan: pm.ActionPlan, item_id: str,
+                outcome: pm.Outcome) -> List[str]:
+    """The local receipt tag of a COMPLETE outcome's tested code, then the reconcile lines."""
+    lines = []
+    if isinstance(outcome, pm.Completed):
+        lines = pk.receipt_lines(repo, plan_file, plan, item_id, outcome.provenance)
+    return lines + pk.reconcile_lines(repo, plan_file, plan)
 
 
 def cmd_record(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
-    require_frozen(plan)
+    require_frozen(plan, plan_file.parent)
     problems = deviation_flag_problems(plan, args)
     if problems:
         raise pd.PlanError(problems)
     item = pd.item_by_id(plan, args.item)
     book = book_of(plan_file, plan)
     if isinstance(book, prt.ReceiptBook):
-        view = record_receipt(repo, plan_file, book, item, args)
+        view, outcome = record_receipt(repo, plan_file, book, item, args)
     else:
-        view = record_sealed(repo, plan_file, plan, item, args)
+        view, outcome = record_sealed(repo, plan_file, plan, item, args)
     left = [i.id for i in view.items if i.status not in DONE]
     status = pd.item_by_id(view, item.id).status
-    print(f"record [done] | {item.id} {status} | open: {', '.join(left) or 'none'}")
+    print("\n".join([f"record [done] | {item.id} {status} | open: {', '.join(left) or 'none'}",
+                     *record_tags(repo, plan_file, plan, item.id, outcome)]))
     return 0
 
 
@@ -833,11 +903,14 @@ def cmd_lanes(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
     book = book_of(plan_file, plan)
-    require_valid(plan, book)
+    require_valid(plan, book, plan_file.parent)
     target = args.target or current_branch(repo)
     if not target:
         raise CaptureError(["detached HEAD: check out the target branch or pass --target"])
     print(json.dumps(plx.lanes_plan(book.view(), target), indent=2))
+    tagged = pk.reconcile_lines(repo, plan_file, plan)
+    if tagged:  # stdout carries the lanes JSON alone
+        sys.stderr.write("\n".join(tagged) + "\n")
     return 0
 
 
@@ -904,7 +977,44 @@ def cmd_verify(repo: Path, args: argparse.Namespace) -> int:
         raise pd.PlanError(failed)
     passed = sum(1 for r in results if r.kind == VerifyKind.pass_)
     head = f"verify [ok] | plan {plan.plan_id} | {passed} item(s) pass at {verify_where(prov)}"
+    print("\n".join([head, *lines, *pk.reconcile_lines(repo, plan_file, plan)]))
+    return 0
+
+
+# --- lock, unlock, relink ---------------------------------------------------------------------------------
+
+def cmd_lock(repo: Path, args: argparse.Namespace) -> int:
+    plan_file = locate(repo, args.plan)
+    plan = pd.load_plan(plan_file)
+    problems = pk.lock_problems(repo, plan_file, plan) + digest_problems(plan, plan_file.parent)
+    if problems:
+        raise pd.PlanError(problems)
+    entry, lines = pk.lock(repo, plan_file, plan)
+    print("\n".join([f"lock [done] | plan {plan.plan_id} | r{entry.round}.{entry.seq} tree "
+                     f"{(entry.tree or '')[:7]}", *lines]))
+    return 0
+
+
+def cmd_unlock(repo: Path, args: argparse.Namespace) -> int:
+    plan_file = locate(repo, args.plan)
+    plan = pd.load_plan(plan_file)
+    entry, lines = pk.unlock(repo, plan_file, plan, args.arm)
+    if args.arm is not None:
+        head = (f"unlock [armed] | plan {plan.plan_id} | r{entry.round}.{entry.seq} | still locked; "
+                f"plan.py unlock {plan.plan_id} when the change is needed")
+    else:
+        head = (f"unlock [done] | plan {plan.plan_id} | r{entry.round}.{entry.seq} | editable: write, "
+                f"freeze --refreeze, then lock after the commit")
     print("\n".join([head, *lines]))
+    return 0
+
+
+def cmd_relink(repo: Path, args: argparse.Namespace) -> int:
+    plan_file = locate(repo, args.plan)
+    plan = pd.load_plan(plan_file)
+    entry, lines = pk.relink(repo, plan_file, plan, args.to, save)
+    print("\n".join([f"relink [done] | plan {plan.plan_id} | base {(entry.old_base or '')[:7]} -> "
+                     f"{(entry.new_base or '')[:7]} ({entry.match})", *lines]))
     return 0
 
 
@@ -948,15 +1058,29 @@ def _parser() -> argparse.ArgumentParser:
     lanes.add_argument("plan", help="Plan id or plan file.")
     lanes.add_argument("--target", help="Target branch of the lanes (default: the checked-out branch).")
     _record_parser(sub)
-    verify = sub.add_parser("verify", help="Rerun the COMPLETE items' tests at HEAD; writes nothing.")
+    verify = sub.add_parser("verify", help="Rerun the COMPLETE items' tests at HEAD; writes no file.")
     verify.add_argument("plan", help="Plan id or plan file.")
     verify.add_argument("--staged", action="store_true", help="Run them on the staged index instead.")
+    _lock_parsers(sub)
     return parser
+
+
+def _lock_parsers(sub: Any) -> None:
+    lock = sub.add_parser("lock", help="Lock a committed freeze (on the developer's explicit ask).")
+    lock.add_argument("plan", help="Plan id or plan file.")
+    unlock = sub.add_parser("unlock", help="Unlock a Locked plan: --arm REASON first, then a plain unlock.")
+    unlock.add_argument("plan", help="Plan id or plan file.")
+    unlock.add_argument("--arm", metavar="REASON",
+                        help="Arm the unlock (only on the developer's explicit OK); the plan stays Locked.")
+    relink = sub.add_parser("relink", help="Re-point a base_commit a rebase left off HEAD's history.")
+    relink.add_argument("plan", help="Plan id or plan file.")
+    relink.add_argument("--to", metavar="REF", help="The new base (default: the patch-id match on HEAD).")
 
 
 COMMANDS: Dict[str, Callable[[Path, argparse.Namespace], int]] = {
     "new": cmd_new, "check": cmd_check, "render": cmd_render, "red": cmd_red, "freeze": cmd_freeze,
-    "lanes": cmd_lanes, "record": cmd_record, "verify": cmd_verify,
+    "lanes": cmd_lanes, "record": cmd_record, "verify": cmd_verify, "lock": cmd_lock, "unlock": cmd_unlock,
+    "relink": cmd_relink,
 }
 
 

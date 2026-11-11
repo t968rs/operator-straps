@@ -5,7 +5,9 @@ parse is reported once, by the first P rule that reaches it.
 """
 from __future__ import annotations
 
+import json
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from harness_lib.plan_enums import (DONE, RULES_OPEN, ItemStatus, OutcomeKind, RecordScheme,
@@ -17,6 +19,10 @@ from harness_lib.todo_sync.sources import PlanPair, Sources, posix
 # A run of 7-40 hex characters with at least one letter: all-digit tokens (CI run ids, dates, ticket
 # numbers) are not commit SHAs.
 SHA = re.compile(r"\b(?=[0-9]*[a-f])[0-9a-f]{7,40}\b", re.IGNORECASE)
+# The plan ledger layout of ``harness_lib.freeze_ledger`` (``FREEZES_DIR``, ``plan_stem``), spelled here so
+# this module stays free of pydantic; the stem pattern is ``ActionPlan.ledger``'s.
+_FREEZES_DIR = "freezes"
+_STEM = re.compile(r"plan/[0-9]{4}-[A-Za-z0-9-]+")
 
 
 def _plan_items(src: Sources, rule: str, pair: PlanPair,
@@ -56,20 +62,44 @@ def _p1_item(pair: PlanPair, item: Dict[str, Any]) -> List[Finding]:
     return []
 
 
-def _is_receipts(pair: PlanPair) -> bool:
-    """True when the plan JSON is frozen with the receipts scheme.
+def _ledger_freeze(folder: Path) -> Optional[Dict[str, Any]]:
+    """The highest ``freeze`` entry (by round, then seq) among the JSON files of a ledger folder."""
+    best: Optional[Dict[str, Any]] = None
+    for path in sorted(folder.glob("*.json")) if folder.is_dir() else []:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(data, dict) or data.get("kind") != "freeze":
+            continue
+        key = (data.get("round"), data.get("seq"))
+        if all(isinstance(k, int) for k in key) and (best is None or key > (best["round"], best["seq"])):
+            best = data
+    return best
+
+
+def _is_receipts(src: Sources, pair: PlanPair) -> bool:
+    """True when the plan is frozen with the receipts scheme: its in-file stamp, or with a ``ledger`` field
+    the last ``freeze`` entry under ``<plan folder>/freezes/<stem>/``.
 
     The JSON shape is probed, not validated, so this module stays free of pydantic.
     """
     data = pair.plan.data if pair.plan is not None and pair.plan.ok else None
-    frozen = data.get("frozen") if isinstance(data, dict) else None
+    if not isinstance(data, dict):
+        return False
+    stem = data.get("ledger")
+    if isinstance(stem, str) and _STEM.fullmatch(stem):
+        folder = (src.root / pair.plan.rel).parent / _FREEZES_DIR / Path(*stem.split("/"))
+        frozen = _ledger_freeze(folder)
+    else:
+        frozen = data.get("frozen")
     return isinstance(frozen, dict) and frozen.get("records") == RecordScheme.receipts
 
 
 def _p1_pair(src: Sources, pair: PlanPair, out: List[Finding], rule: str = "P1") -> List[Finding]:
     """P1 findings of one pair; an unparseable plan is reported into ``out`` under ``rule``."""
     items = _plan_items(src, rule, pair, out)
-    if items is None or pair.pip is None or _is_receipts(pair):
+    if items is None or pair.pip is None or _is_receipts(src, pair):
         return []
     return [f for item in items for f in _p1_item(pair, item)]
 
@@ -151,7 +181,7 @@ def p4_sync_claim(src: Sources) -> List[Finding]:
     """P4: ``markdown_sync_status: in_sync`` is not claimed while P1 has an error for the plan."""
     out: List[Finding] = []
     for pair in src.plan_pairs():
-        if _is_receipts(pair):
+        if _is_receipts(src, pair):
             continue
         p1_errors = [f for f in _p1_pair(src, pair, out, "P4") if f.severity == "error"]
         status = pair.plan.data.get("markdown_sync_status") if p1_errors else None

@@ -43,7 +43,9 @@ def _title(plan: ActionPlan, plan_name: str) -> str:
 
 def _header(plan: ActionPlan, plan_name: str) -> List[str]:
     frozen = plan.frozen
-    frozen_text = f"{frozen.date} at {code(frozen.commit[:7])}" if frozen else "no"
+    # A legacy stamp names its commit; a ledger stamp has only the tree.
+    at = (frozen.commit or frozen.tree or "")[:7] if frozen else ""
+    frozen_text = f"{frozen.date} at {code(at)}" if frozen else "no"
     base = plan.base_commit
     return [
         _title(plan, plan_name), "",
