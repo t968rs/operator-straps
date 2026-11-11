@@ -8,7 +8,7 @@
   "base_sha": "88659f1b847e0ecb1a6740b1ca9c7a8a7ae5fd2d",
   "head_sha": "d34fc5628b52e78e79dfb5a534bd5e1301dac421",
   "review_date": "2026-11-10",
-  "verdict": "NOT READY TO MERGE - important: I1",
+  "verdict": "READY TO MERGE - 13 of 13 findings resolved, 0 bubbled",
   "stats": {
     "additions": 2123,
     "deletions": 24,
@@ -39,9 +39,7 @@
     "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/system_shape.json",
     "docs/_scratch/pr_review/0262/pr262_20261110T230134Z/findings/roast.json"
   ],
-  "bubbles": [
-    "I1"
-  ],
+  "bubbles": [],
   "strengths": [
     "SkillSpec.schema.json matches SkillSpec.model_json_schema() exactly (verified by regeneration): the new Round def and the driver_owned rounds property sit in the declared field order.",
     "Round reuses the existing Frozen def and keeps additionalProperties false, so the reopen history stays as strict as the other driver-owned records.",
@@ -453,6 +451,12 @@
       "status": "RESOLVED",
       "date": "2026-11-10",
       "evidence": "d34fc56 (working-tree snapshot; developer commits) - removed the redundant sm.Round guard in the driver-owned test, replaced the backward-compat guard with assert \"rounds\" in sm.SkillSpec.model_fields, and narrowed the module docstring to what is checked (empty rounds stays out of the dump and the driver digest)"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "a5852a7 (working-tree snapshot; developer commits) - write-plan round 3 (9368d9e base without the rule, a5852a7): B11 restates B10 on clean fixture plan-1021; baseline R-4 failed, green R-5 passed; frozen 63707d01db1e (outside fixer waves)"
     }
   ]
 }
