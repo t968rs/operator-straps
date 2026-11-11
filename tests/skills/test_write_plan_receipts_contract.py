@@ -50,3 +50,9 @@ def test_a_lane_that_needs_a_deviation_stops_and_reports_it(skill: str) -> None:
 def test_the_pip_is_an_html_page(skill: str) -> None:
     assert "_PIP.html" in skill and "live.js" in skill
     assert "The PIP markdown is rendered from the JSON" not in skill
+    assert "open it from disk in a browser" in skill
+
+
+def test_the_receipts_phrases_are_scoped_to_receipts_plans(skill: str) -> None:
+    assert "Plans frozen before receipts keep the sealed scheme" in skill
+    assert "A plan frozen before receipts keeps its markdown PIP" in skill

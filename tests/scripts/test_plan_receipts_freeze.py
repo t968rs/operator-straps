@@ -16,12 +16,13 @@ from typing import Any, Dict
 from harness_lib import plan_api
 from harness_lib import plan_doc as pd
 from harness_lib import plan_receipts as prt
-from harness_lib.plan_enums import RecordScheme
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _plan_driver_helpers as helpers  # noqa: E402
-from _plan_driver_helpers import PLANS, SUB_TEST, Run, plan_file, read_plan, write_plan  # noqa: E402
+from _plan_driver_helpers import (  # noqa: E402
+    PLANS, SUB_TEST, Run, as_sealed, plan_file, read_plan, write_plan,
+)
 
 driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
 WALK_ROOTS = ()  # walks only a make_project repo and tmp_path/trees
@@ -49,15 +50,6 @@ def fill(run: Run, project: Path, freeze: bool = True) -> None:
     if freeze:
         code, _, err = run("freeze", "1")
         assert code == 0, err
-
-
-def as_sealed(project: Path) -> None:
-    """Restamp the frozen plan as frozen on the sealed scheme, the way a plan from before receipts looks."""
-    plan = read_plan(project)
-    plan["frozen"]["records"] = "sealed"
-    write_plan(project, plan)
-    plan["frozen"]["digest"] = pd.frozen_digest(pd.load_plan(plan_file(project)), RecordScheme.sealed)
-    write_plan(project, plan)
 
 
 def test_new_writes_an_html_pip_and_names_it_as_documentation(run: Run, project: Path) -> None:

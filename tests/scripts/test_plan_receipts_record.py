@@ -18,16 +18,15 @@ from typing import Any, Dict, List, Sequence
 from conftest import git
 
 from harness_lib import evolution_api
-from harness_lib import plan_doc as pd
 from harness_lib.evolution_models import DesignChange
-from harness_lib.plan_enums import ItemStatus, RecordScheme
+from harness_lib.plan_enums import ItemStatus
 from harness_lib.receipt_models import Receipt
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _plan_driver_helpers as helpers  # noqa: E402
-from _plan_driver_helpers import (MUL_TEST, PLANS, SUB_TEST, Run, plan_file, read_plan,  # noqa: E402
-                                  write_op, write_plan)
+from _plan_driver_helpers import (MUL_TEST, PLANS, SUB_TEST, Run, as_sealed, plan_file,  # noqa: E402
+                                  read_plan, write_op, write_plan)
 
 driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
 WALK_ROOTS = ()  # walks only a make_project repo and tmp_path/trees
@@ -115,15 +114,6 @@ def commit_both(project: Path) -> str:
     git(project, "add", "tests")
     git(project, "commit", "-q", "-m", "add test_minus")
     return git(project, "rev-parse", "HEAD")
-
-
-def as_sealed(project: Path) -> None:
-    """Restamp the frozen plan as frozen on the sealed scheme, the way a plan from before receipts looks."""
-    plan = read_plan(project)
-    plan["frozen"]["records"] = "sealed"
-    write_plan(project, plan)
-    plan["frozen"]["digest"] = pd.frozen_digest(pd.load_plan(plan_file(project)), RecordScheme.sealed)
-    write_plan(project, plan)
 
 
 def test_record_writes_the_receipt_and_live_js_and_nothing_of_the_plan(run: Run, project: Path) -> None:
@@ -333,7 +323,9 @@ def test_verify_names_a_receipt_whose_seal_is_broken(run: Run, project: Path) ->
     fill(run, project)
     assert run("record", "1", "TASK-1", "--sha", commit_op(project, "sub"))[0] == 0
     path = receipt_file(project, "TASK-1")
-    path.write_text(path.read_text(encoding="utf-8").replace("2026-", "2025-"), encoding="utf-8")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["evidence"] = "commit 1234567: 9 test node(s) passed"
+    path.write_text(json.dumps(data), encoding="utf-8")
     code, _, err = run("verify", "1")
     assert code == 1 and "TASK-1" in err and "record" in err
 
