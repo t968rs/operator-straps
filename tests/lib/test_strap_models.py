@@ -285,7 +285,7 @@ def test_driver_owned_tuples_derive_from_metadata() -> None:
     """The driver-owned tuples list exactly the fields marked ``driver_owned`` in their metadata."""
     assert isinstance(sm.DRIVER_OWNED_TOP, tuple)
     assert isinstance(sm.DRIVER_OWNED_BEHAVIOR, tuple)
-    assert set(sm.DRIVER_OWNED_TOP) == {"draws", "runs", "grades", "frozen", "driver_digest"}
+    assert set(sm.DRIVER_OWNED_TOP) == {"draws", "runs", "grades", "rounds", "frozen", "driver_digest"}
     assert sm.DRIVER_OWNED_BEHAVIOR == ("state",)
     assert set(_owned(sm.SkillSpec)) == set(sm.DRIVER_OWNED_TOP)
     assert set(_owned(sm.Behavior)) == set(sm.DRIVER_OWNED_BEHAVIOR)
@@ -363,11 +363,12 @@ def test_seal_stamps_frozen_specs_and_detects_a_break() -> None:
 
 
 def test_dump_and_load_round_trip(tmp_path: Path) -> None:
-    """``dump_spec`` is the indented JSON model dump, minus a None ``target`` and each None scenario
-    ``sees_skill``, plus newline; ``load_spec`` reads it back equal."""
+    """``dump_spec`` is the indented JSON model dump, minus a None ``target``, an empty ``rounds`` and each
+    None scenario ``sees_skill``, plus newline; ``load_spec`` reads it back equal."""
     spec = sm.SkillSpec.model_validate(_spec(draws=[_draw()]))
     text = sm.dump_spec(spec)
-    expected = {key: value for key, value in spec.model_dump(mode="json").items() if key != "target"}
+    expected = {key: value for key, value in spec.model_dump(mode="json").items()
+                if key not in ("target", "rounds")}
     for behavior in expected["behaviors"]:
         for scenario in behavior["scenarios"]:
             assert scenario.pop("sees_skill") is None

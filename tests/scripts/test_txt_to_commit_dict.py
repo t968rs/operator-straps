@@ -134,6 +134,26 @@ class TestProjectFolder:
         assert not (root / "docs" / "_commit_messages" / "9999-demo.ps1").exists()
         assert (root / "docs" / "_commit_messages" / "9998-ok.ps1").is_file()
 
+    def test_parse_all_keeps_nested_namesakes_apart(self, script: ModuleType, tmp_path: Path) -> None:
+        nested = tmp_path / "archive"
+        nested.mkdir()
+        _write(tmp_path, _HYPHEN_TXT)
+        _write(nested, _HYPHEN_TXT.replace("abc123", "fed999"))
+        documents = script.parse_all(tmp_path)
+        assert sorted(documents) == ["9999-demo", "archive/9999-demo"]
+        assert documents["archive/9999-demo"].merge_base == "fed999"
+        assert documents["9999-demo"].merge_base == "abc123"
+
+    def test_cli_batch_json_keys_nested_files_by_path(
+            self, script: ModuleType, make_project: Callable[..., Path], capsys: pytest.CaptureFixture,
+    ) -> None:
+        root = make_project(files={
+            "docs/_commit_messages/9999-demo.txt": _HYPHEN_TXT,
+            "docs/_commit_messages/archive/9999-demo.txt": _HYPHEN_TXT,
+        }, name="nested")
+        assert script.main(["--repo", str(root), "--json"]) == 0
+        assert sorted(json.loads(capsys.readouterr().out)) == ["9999-demo", "archive/9999-demo"]
+
     def test_invalid_project_config_is_a_problem_line(
             self, script: ModuleType, make_project: Callable[..., Path], capsys: pytest.CaptureFixture,
     ) -> None:

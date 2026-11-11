@@ -15,6 +15,10 @@ from typing import Any, Callable, Dict, List, Tuple
 import pytest
 from conftest import git
 
+from harness_lib import plan_doc as pd
+from harness_lib import plan_record
+from harness_lib.plan_enums import RecordScheme
+
 WALK_ROOTS = ()  # walks only tmp_path/trees and a make_project repo
 Result = Tuple[int, str, str]
 Run = Callable[..., Result]
@@ -38,6 +42,15 @@ def driver(plugin_root: Path) -> ModuleType:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+@pytest.fixture()
+def sealed_first_freeze(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A first freeze stores the sealed scheme, as before receipts (D3), so the plan keeps its markdown PIP.
+
+    Suites written for the sealed and legacy schemes bind it as an autouse fixture.
+    """
+    monkeypatch.setattr(plan_record, "FIRST_SCHEME", RecordScheme.sealed)
 
 
 @pytest.fixture()
@@ -69,6 +82,15 @@ def read_plan(root: Path) -> Dict[str, Any]:
 
 def write_plan(root: Path, plan: Dict[str, Any]) -> None:
     plan_file(root).write_text(json.dumps(plan, indent=2), encoding="utf-8")
+
+
+def as_sealed(project: Path) -> None:
+    """Restamp the frozen plan as frozen on the sealed scheme, the way a plan from before receipts looks."""
+    plan = read_plan(project)
+    plan["frozen"]["records"] = "sealed"
+    write_plan(project, plan)
+    plan["frozen"]["digest"] = pd.frozen_digest(pd.load_plan(plan_file(project)), RecordScheme.sealed)
+    write_plan(project, plan)
 
 
 def write_op(root: Path, name: str) -> None:

@@ -432,6 +432,39 @@
       "title": "ReplyAct",
       "type": "string"
     },
+    "Round": {
+      "additionalProperties": false,
+      "description": "One earlier freeze of a reopened spec: the base the round started from, its seal and the ids of the\nbehaviors it covered.",
+      "properties": {
+        "base": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Base"
+        },
+        "frozen": {
+          "$ref": "#/$defs/Frozen"
+        },
+        "behaviors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Behaviors",
+          "type": "array"
+        }
+      },
+      "required": [
+        "frozen"
+      ],
+      "title": "Round",
+      "type": "object"
+    },
     "Run": {
       "additionalProperties": false,
       "description": "One scenario run on one arm; ``tree`` and ``start`` locate the working tree the run used.\n\n``tree`` is relative to the configured worktree root (older runs hold an absolute path), and ``reply``\nholds placeholders in place of the machine roots ``strap_api._machine_paths`` lists (the run tree, the\nworktree root, the project, the main checkout, the plugin root and the home folder). ``checks`` come\nfrom the reply before that redaction, so a ``reply_*`` check sees the paths the runner wrote.",
@@ -703,6 +736,14 @@
         "$ref": "#/$defs/Grade"
       },
       "title": "Grades",
+      "type": "array"
+    },
+    "rounds": {
+      "driver_owned": true,
+      "items": {
+        "$ref": "#/$defs/Round"
+      },
+      "title": "Rounds",
       "type": "array"
     },
     "frozen": {

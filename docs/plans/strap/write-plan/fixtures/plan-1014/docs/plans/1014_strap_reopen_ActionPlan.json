@@ -1,0 +1,304 @@
+{
+  "plan_id": "1014",
+  "plan_created": "2026-11-10",
+  "source_document": "docs/superpowers/specs/2026-11-10-strap-reopen-design.md",
+  "documentation": "docs/plans/1014_strap_reopen_PIP.html",
+  "branch": "2150-plan-refreeze",
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "MOD-1",
+      "title": "Round model and SkillSpec.rounds, byte-compatible with old specs",
+      "action": "In `strap_models.py` add `class Round(BaseModel)` after `Frozen` (same `_MODEL_CONFIG`): `base: Optional[str] = None`, `frozen: Frozen`, `behaviors: List[str] = Field(default_factory=list)`, docstring: one earlier freeze of a reopened spec. Add `rounds: List[Round] = Field(default_factory=list, json_schema_extra=_DRIVER_OWNED)` to `SkillSpec`, declared right before `frozen`. In `_dumped` drop `rounds` when it is empty (beside the `target` rule; extend the docstring), and in `driver_digest` read only the driver-owned names present in the dump (`if name in dumped`), so a spec written before `rounds` keeps its text, driver digest and authored digest byte for byte. Update the owned-set assertion in `tests/lib/test_strap_models.py` to include `rounds`. Regenerate `SkillSpec.schema.json` with `tools/gen_skillspec_schema.py`. Copy the planned test file first.",
+      "files": [
+        "plugins/harness/lib/harness_lib/strap_models.py",
+        "plugins/harness/schemas/SkillSpec.schema.json",
+        "tests/lib/test_strap_models.py",
+        "tests/lib/test_strap_rounds.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_models.py:384-394",
+          "expect": "class Frozen(BaseModel):"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_models.py:422-426",
+          "expect": "frozen: Optional[Frozen] = Field(default=None, json_schema_extra=_DRIVER_OWNED)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_models.py:492",
+          "expect": "owned: Dict[str, Any] = {name: dumped[name] for name in DRIVER_OWNED_TOP if name != \"driver_digest\"}"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_models.py:507-508",
+          "expect": "if dumped[\"target\"] is None: del dumped[\"target\"]"
+        },
+        {
+          "at": "tests/lib/test_strap_models.py:288",
+          "expect": "assert set(sm.DRIVER_OWNED_TOP) == {\"draws\", \"runs\", \"grades\", \"frozen\", \"driver_digest\"}"
+        },
+        {
+          "at": "tests/schemas/test_skillspec_schema_drift.py:109",
+          "expect": "assert flagged == set(sm.DRIVER_OWNED_TOP)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python tools/gen_skillspec_schema.py",
+          "expect": "exit 0",
+          "writes": [
+            "plugins/harness/schemas/SkillSpec.schema.json"
+          ]
+        },
+        {
+          "run": "python tools/gen_skillspec_schema.py --check",
+          "expect": "exit 0"
+        },
+        {
+          "run": "python -m pytest tests/lib/test_strap_models.py tests/schemas/test_skillspec_schema_drift.py tests/lib/test_strap_api.py -q",
+          "expect": "all pass"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_strap_rounds.py::test_round_holds_base_stamp_and_behavior_ids",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_strap_rounds.py::test_rounds_is_a_driver_owned_list_before_frozen",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_strap_rounds.py::test_empty_rounds_keep_the_old_dump_and_digests",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_strap_rounds.py::test_a_round_changes_the_driver_digest_but_not_the_authored_digest",
+          "red": "AttributeError"
+        }
+      ]
+    },
+    {
+      "id": "DRV-1",
+      "title": "strap.py reopen: a new round on a frozen spec",
+      "action": "Add `cmd_reopen` and a `reopen` subparser (`--base REF`, help: ancestor of HEAD the new round starts from, default HEAD) to `strap.py`, registered in `COMMANDS`. It loads the spec (not writable), refuses an unfrozen one with `<name> is not frozen; nothing to reopen` before any other check, resolves the new base with `_edit_base(root, name, profile_of(spec).skill_md, args.base)`, then saves `rounds=[*rounds, Round(base=spec.base, frozen=spec.frozen, behaviors=<non-dropped ids>)]`, `frozen=None`, `mode=SpecMode.EDIT`, `base=<new base>`, and prints `reopen [done] | <name> | round <len(rounds)+1> | base <sha12> | was <old hash12>`. `_red_plan` skips mechanical behaviors in state `green` (frozen in an earlier round; their code exists at the new base). `cmd_freeze` takes `previous` from `spec.frozen`, else the last round's stamp, so the first freeze after a reopen prints `| was <hash12>`; `already frozen` still checks `spec.frozen` only. Add the ``reopen <name> [--base REF]`` entry to the module docstring after ``freeze``, and the frozen-spec sentence there names reopen as the way to add behaviors. Copy the planned test file first; keep functions under 50 lines.",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "tests/scripts/test_strap_reopen.py"
+      ],
+      "dependencies": [
+        "MOD-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/scripts/strap.py:31-36",
+          "expect": "``freeze <name> [--refreeze]``"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:260",
+          "expect": "def _edit_base(root: Path, name: str, skill_rel: str, ref: Optional[str]) -> str:"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:384-386",
+          "expect": "return spec.base or git_out(_root(), \"rev-parse\", \"HEAD\").strip()"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:402-403",
+          "expect": "items = [_red_item(b) for b in spec.behaviors if b.kind == BehaviorKind.MECHANICAL and b.state != BehaviorState.DROPPED and b.tests]"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:882-884",
+          "expect": "previous = spec.frozen if previous is not None and not args.refreeze:"
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:894",
+          "expect": "was = f\" | was {previous.skill_hash[:12]}\" if previous is not None else \"\""
+        },
+        {
+          "at": "plugins/harness/scripts/strap.py:962-966",
+          "expect": "\"retest\": cmd_retest, \"freeze\": cmd_freeze, \"api\": cmd_api,"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/strap_api.py:110",
+          "expect": "if spec.frozen is not None and not frozen_ok:"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/scripts/test_strap_gate.py tests/scripts/test_strap_driver.py -q",
+          "expect": "all pass"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/scripts/test_strap_reopen.py::test_driver_docstring_names_reopen",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_reopen.py::test_reopen_refuses_an_unfrozen_spec",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_reopen.py::test_reopen_moves_the_stamp_into_rounds",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_reopen.py::test_reopen_refuses_a_base_that_names_no_commit",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_reopen.py::test_red_after_reopen_runs_only_the_new_behavior",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_strap_reopen.py::test_freeze_after_reopen_gates_every_behavior",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "DOC-1",
+      "title": "Document reopen in strap-skills, the README and the release notes; bump harness",
+      "action": "In strap-skills SKILL.md step 12, after the Refreeze paragraph and its fence, add a paragraph opening `**Reopen for new behaviors.**`: a frozen spec takes no new behavior; when the skill gains new rules, run `strap.py reopen <name> [--base <ref>]` (a fenced launcher line, same form as the other commands). It keeps the earlier freeze in `rounds`, clears the stamp and moves `base`; pick as base the commit whose code the new scenarios need but whose SKILL.md lacks the new guidance, since baselines read the SKILL.md at `base`. Then continue from step 2 for the new behaviors; earlier behaviors are gated again at the next freeze (a mechanical one frozen in an earlier round skips red, its planned tests rerun). Reopening is standard procedure: ask the developer for the OK. In the root README strap-skills row add a bullet: `reopen` opens a new round on a frozen spec for new behaviors, earlier ones gated again at the next freeze. Bump harness 0.66.0 to 0.67.0 in plugin.json, update the v1.0.0.md plugins table (harness 0.65.1 to 0.67.0) and add a change line for strap reopen (plan 1014). Copy the planned test file first.",
+      "files": [
+        "plugins/harness/skills/strap-skills/SKILL.md",
+        "README.md",
+        "plugins/harness/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.0.0.md",
+        "tests/skills/test_strap_skills_reopen_contract.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/strap-skills/SKILL.md:224-225",
+          "expect": "**Refreeze after a part change.** A frozen spec refuses every change but three:"
+        },
+        {
+          "at": "plugins/harness/skills/strap-skills/SKILL.md:242",
+          "expect": "13. **Hand off.**"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_strap_skills_skill_contract.py -q",
+          "expect": "all pass"
+        },
+        {
+          "run": "sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" \"E:/automation/operator-straps/plugins/harness/scripts/strap.py\" check strap-skills",
+          "expect": "check [ok]"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_strap_skills_reopen_contract.py::test_skill_runs_reopen_through_the_launcher",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_reopen_contract.py::test_skill_names_the_round_rules",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_strap_skills_reopen_contract.py::test_readme_strap_row_names_reopen",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "STR-1",
+      "title": "Strap round 2 of write-plan: the receipts judgment behaviors",
+      "action": "Inline in the main session, never a parallel2 lane (runner agents run one at a time). With the developer's OK, `reopen write-plan --base <D2 base>`. Add judgment behaviors (discipline, two or more scenarios each, three or more pressures, fixtures under docs/plans/strap/write-plan/fixtures/ holding a really frozen receipts plan): (a) a lane that needs a file outside its item stops and reports instead of building past the plan; (b) a design change found mid-build goes through `evolution_api.add` and is cited with `record --also/--substitute --cite`, never a hand edit of the frozen plan; (c) a frozen receipts plan's JSON and HTML page are never edited by hand. check, draw, baselines, grades, SKILL.md changes only where a baseline shows a gap, greens, grades, then freeze.",
+      "files": [
+        "docs/plans/strap/write-plan/SkillSpec.json",
+        "plugins/harness/skills/write-plan/SKILL.md"
+      ],
+      "dependencies": [
+        "DRV-1",
+        "DOC-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "commands": [
+        {
+          "run": "sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" \"E:/automation/operator-straps/plugins/harness/scripts/strap.py\" reopen write-plan --base <D2 base>",
+          "expect": "reopen [done] | write-plan | round 2"
+        },
+        {
+          "run": "sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" \"E:/automation/operator-straps/plugins/harness/scripts/strap.py\" freeze write-plan",
+          "expect": "freeze [done] | write-plan"
+        }
+      ]
+    }
+  ],
+  "base_commit": "5a8ef39a2515d95da028eef5d3e9e6a8e88149ad",
+  "frozen": {
+    "commit": "88659f1b847e0ecb1a6740b1ca9c7a8a7ae5fd2d",
+    "tree": "e97e691f178ad01f4d9e86ab1bd17e992241eb49",
+    "date": "2026-11-10",
+    "digest": "7007e237ccf6daee5e097d77f4f612375efe9ae3a9ec82962f484df6c208beb0",
+    "records": "receipts"
+  },
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "How does a frozen strap spec take new behaviors?",
+      "options": [
+        {
+          "id": "rounds",
+          "summary": "reopen moves the stamp into rounds[]; one spec"
+        },
+        {
+          "id": "archive",
+          "summary": "reopen archives the folder and starts a fresh spec"
+        }
+      ],
+      "chosen": "rounds",
+      "rationale": "Developer's pick: history in one spec, earlier behaviors stay gated."
+    },
+    {
+      "id": "D2",
+      "question": "Which base does write-plan round 2 reopen from?",
+      "options": [
+        {
+          "id": "pre-skill",
+          "summary": "parent of the receipts SKILL.md commit: code in, guidance out"
+        },
+        {
+          "id": "plan-base",
+          "summary": "the plan base: no receipts code at all"
+        }
+      ],
+      "chosen": "pre-skill",
+      "rationale": "Baselines must see the receipts code without the SKILL.md guidance; at the plan base the scenarios would fail on missing machinery, not on missing guidance."
+    }
+  ],
+  "values": [
+    {
+      "name": "harness version",
+      "value": "0.66.0 -> 0.67.0",
+      "source": "CLAUDE.md Releases: a new command is a minor bump"
+    }
+  ],
+  "formats": [],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "DRIVER_OWNED_TOP",
+      "hits": {
+        "plugins/harness/lib/harness_lib/strap_models.py": "MOD-1 adds rounds to the owned set",
+        "tests/lib/test_strap_models.py": "MOD-1 updates the owned-set assertion",
+        "tests/schemas/test_skillspec_schema_drift.py": "derives from the tuple; passes once the schema regenerates",
+        "plugins/harness/schemas/README.md": "names the tuple, not its members; unchanged"
+      }
+    }
+  ]
+}

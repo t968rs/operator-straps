@@ -28,8 +28,14 @@ from _plan_driver_helpers import (MUL_TEST, PLANS, SUB_TEST, Run, plan_file, rea
                                   write_op, write_plan)
 
 driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
+sealed_first_freeze = helpers.sealed_first_freeze
 WALK_ROOTS = ()  # walks only a make_project repo and tmp_path/trees
 LEGACY_REFS = ["a" * 40, "tree " + "b" * 40]
+
+
+@pytest.fixture(autouse=True)
+def _sealed_first(sealed_first_freeze: None) -> None:
+    """Every test here runs with a first freeze storing the sealed scheme (D3)."""
 
 
 def item_record(root: Path, index: int = 0) -> ItemRecord:

@@ -79,7 +79,8 @@ the configured `schemas_dir`. Work that is not tracked explicitly is work going 
   `CLOSED_NO_ACTION` requires a rationale.
 - For a plan `plan.py` does not record, anchor plan-state verification on the tree SHA
   (`git rev-parse HEAD^{tree}`), which survives rebase; fall back to the commit SHA for older plans. A plan
-  `plan.py` records carries its own sealed record per item, never compared with HEAD.
+  `plan.py` records carries a sealed record per item (a receipt beside the plan, or a record in the JSON of
+  a plan frozen before receipts), never compared with HEAD.
 - **File touch list:** before changing code, list the files to touch with a rationale mapped to plan items.
 - **Refactoring preservation:** ordered structures stay ordered, validation stays validated, indices stay
   indexed. Audit what the original did beyond the obvious before simplifying.
@@ -115,9 +116,12 @@ Skills outside this plugin apply when installed.
 
 - Planning documents live under the configured `artifacts.planning_prefixes`; research notes under
   `artifacts.research`.
-- Spec or plan changes that alter the design are catalogued in a `DesignEvolution.json` beside the plan's
-  research notes, conforming to `catalogs/DesignEvolutionCatalog.schema.json` (resolved through the pinned
-  schemas first, then the plugin's). Lint, guard, helper-extraction and rename changes stay out.
+- Spec or plan changes that alter the design go to `<artifacts.plans>/NNNN/DesignEvolution.json` through
+  `evolution_api`, conforming to `catalogs/DesignEvolutionCatalog.schema.json` (resolved through the pinned
+  schemas first, then the plugin's); a receipt that differs from its item cites one of those changes. Lint,
+  guard, helper-extraction and rename changes stay out. `evolution_api` resolves the plan first, so a change
+  found before the plan exists is entered (phase `spec-review`) once `plan.py new` has run. A design change
+  the developer asks for after the freeze is entered too, alongside its `write` and `freeze --refreeze`.
 
 ## Writing conventions
 

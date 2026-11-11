@@ -19,6 +19,7 @@ from harness_lib.todo_sync.pip_sections import PipDoc, parse_pip
 TERMINAL_RESEARCH = frozenset({"FULLY_IMPLEMENTED", "NOT_APPLICABLE"})
 PLAN_SUFFIX = "_ActionPlan.json"
 PIP_SUFFIX = "_PIP.md"
+PIP_HTML_SUFFIX = "_PIP.html"
 HEADER = re.compile(r"^<!-- todo-snapshot source=(?P<source>.+?) top=(?P<top>\d+) "
                     r"rows_sha256=(?P<sha>[0-9a-f]{64}) rendered=(?P<rendered>\d{4}-\d{2}-\d{2}) -->$")
 _STATUS = re.compile(r"^status:(.*)$")
@@ -61,7 +62,10 @@ class Stub:
 
 @dataclass(frozen=True)
 class PlanPair:
-    """An ``<prefix>_ActionPlan.json`` and ``<prefix>_PIP.md`` pair; either side may be absent."""
+    """An ``<prefix>_ActionPlan.json`` and ``<prefix>_PIP.md`` or ``_PIP.html`` pair; either side may be absent.
+
+    ``pip`` is parsed for a markdown PIP only.
+    """
 
     prefix: str
     plan: Optional[JsonFile]
@@ -229,14 +233,17 @@ class Sources:
         if not folder.is_dir():
             return []
         names = {p.name for p in folder.iterdir() if p.is_file()}
-        prefixes = sorted({n[:-len(s)] for n in names for s in (PLAN_SUFFIX, PIP_SUFFIX) if n.endswith(s)})
+        suffixes = (PLAN_SUFFIX, PIP_SUFFIX, PIP_HTML_SUFFIX)
+        prefixes = sorted({n[:-len(s)] for n in names for s in suffixes if n.endswith(s)})
         return [self._pair(folder, p, names) for p in prefixes]
 
     def _pair(self, folder: Path, prefix: str, names: Set[str]) -> PlanPair:
         plan_name, pip_name = prefix + PLAN_SUFFIX, prefix + PIP_SUFFIX
         plan = read_json(self.root, self.rel(folder / plan_name)) if plan_name in names else None
         if pip_name not in names:
-            return PlanPair(prefix, plan, None, None)
+            html_name = prefix + PIP_HTML_SUFFIX
+            html_rel = self.rel(folder / html_name) if html_name in names else None
+            return PlanPair(prefix, plan, html_rel, None)
         pip_path = folder / pip_name
         try:
             doc = parse_pip(pip_path.read_text(encoding="utf-8", errors="replace"))

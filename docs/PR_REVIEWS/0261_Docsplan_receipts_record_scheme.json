@@ -1,0 +1,1001 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 261,
+  "pr_title": "Docs(plan): `receipts` record scheme",
+  "branch": "2150-plan-refreeze",
+  "base_branch": "1150-canned-messages",
+  "base_sha": "e6382ab59ca47b20231fc66b3aa86ce2c0513c8b",
+  "head_sha": "54cf0cca282b12fecb5eaaaea388185d19c17b5e",
+  "review_date": "2026-11-10",
+  "verdict": "READY TO MERGE - 36 of 36 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 10487,
+    "deletions": 30167,
+    "files_changed": 147,
+    "source": {
+      "additions": 9980,
+      "deletions": 610,
+      "files_changed": 75
+    }
+  },
+  "reviewers": [
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0261/pr261_20261111T052045Z/findings/config.json",
+    "docs/_scratch/pr_review/0261/pr261_20261111T052045Z/findings/tests.json",
+    "docs/_scratch/pr_review/0261/pr261_20261111T052045Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0261/pr261_20261111T052045Z/findings/docs.json",
+    "docs/_scratch/pr_review/0261/pr261_20261111T052045Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0261/pr261_20261111T052045Z/findings/overall.json",
+    "docs/_scratch/pr_review/0261/pr261_20261111T052045Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0261/pr261_20261111T052045Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "DesignEvolutionCatalog.schema.json and Receipt.schema.json are now generated from pydantic models, with tools/gen_plan_schema.py --check and tests/contract/test_evolution_receipt_schema_generated.py guarding drift, which removes the old hand-kept category_enums sync hazard.",
+    "Receipt.schema.json uses a discriminated oneOf on outcome.kind with closed, required-field shapes, and the Provenance description says plainly that the commit/staged rule is enforced by the model, not the schema.",
+    "The SkillSpec Round def and the rounds property marked driver_owned follow the existing generated-schema convention, and an empty rounds is dropped from the dump so older spec digests stay byte-stable.",
+    "Change id descriptions dropped the old vendor-specific reviewer names, and the id pattern widened from 1-2 digits to any sequence number.",
+    "The receipt seal tests parametrize over every sealed field (evidence, date, ref, deviations), cover changes to the planned files or tests, and check the plan/item binding, so each part of the seal is pinned on its own.",
+    "The driver suites (test_plan_receipts_freeze, test_plan_receipts_record, test_strap_reopen) are true integration tests: they run the real driver against a make_project git repo, with no stubbed helpers.",
+    "The legacy suites keep the pre-receipts behavior through a single named fixture (sealed_first_freeze) that patches FIRST_SCHEME, a knob read at call time, instead of re-forking the fixtures.",
+    "Every new walking test declares a WALK_ROOTS = () marker, so tools/select_tests.py keeps PR selection narrow.",
+    "test_plan_receipts.py checks that a cited DesignChange edited after the record breaks the receipt (change_digests), both at the library level and through `plan.py check`.",
+    "test_strap_rounds pins backward compatibility: an empty `rounds` reproduces the old driver digest computed independently in the test.",
+    "The RecordBook protocol (SealedBook/ReceiptBook) gives check, red, freeze, record, lanes and verify one interface, so the receipts scheme slots in without forking each command.",
+    "frozen_digest wraps the receipts scheme so a hand-deleted records key still moves the digest, and pin_scheme reuses the stored/digest/HEAD triple for both schemes.",
+    "Receipt seals bind the item's planned files and tests, so a refreeze that moves them breaks the receipt, and receipt_split tolerates exactly those seals while still checking their citations.",
+    "Deviation flags use an order-preserving argparse action and refuse an uncited deviation, a bare --cite and a substitution whose PLANNED node is not planned, each with a precise message.",
+    "The HTML page builds every live element with textContent and escapes the embedded config (`<` -> \\u003c), so receipt and catalog text cannot inject markup.",
+    "strap reopen checks ancestry and that every part is committed unchanged at the new base before moving the stamp into rounds; empty rounds are dropped from the dump so older spec digests stay byte for byte.",
+    "write-plan SKILL.md scopes every receipts rule to receipts plans and keeps the sealed-scheme text for older plans, and carries the step renumber through to the 'rules of step 10' cross-reference.",
+    "The evolution_api heredoc in write-plan step 9 matches evolution_api, evolution_models and evolution_enums field for field (next_id/add signatures, ChangePhase.post_exec_start, IssueCategory.signature_mismatch, OutcomeCategory.execution_blocker, every nested class).",
+    "plan.py check passes on plans 1013 and 1014, and the frozen receipts digests of plan 1014 and the plan-1021 fixture both verify.",
+    "The STR-1 receipt and DesignEvolution EX1 show the deviation flow end to end: two --also files cited to EX1 with its digest bound in change_digests.",
+    "The schemas README Migration entry gives concrete steps (move the catalog, add plan_id, drop category_enums, drop or replace the pin), and the Receipt entry matches receipt_models (outcome kinds, deviations, seal scope).",
+    "The new write-plan README explains the lifecycle, commit sequence, tag handling and lane deviations for the developer, separate from the agent procedure.",
+    "write-plan's renumbering is consistent: the new step 9 (DesignEvolution) and step 10 (hand off) are cited correctly at SKILL.md:96, 125 and 218, and in no stale place.",
+    "The write-plan evolution_api heredoc matches the code exactly: next_id(plan, prefix), add(plan, DesignChange), the ChangePhase.post_exec_start, IssueCategory.signature_mismatch and OutcomeCategory.execution_blocker members, the ChangeOriginal/ChangeIssue/NewOutcome/WhyNewOutcome fields, and the primary_documents keys (`plan` always, `spec` when the plan has one).",
+    "The strap-skills reopen paragraph matches cmd_reopen field for field. This covers the printed `reopen [done] | ... | round N | base ... | was ...` line, the descendant and parts-committed checks in _reopen_base_problems, mode set to edit, red skipping GREEN mechanical behaviors (_red_plan), and update_behavior refusing proven fields after a round (_LOCKED_AFTER_ROUND).",
+    "write-plan README's relative links (../../scripts/plan.py, ../../lib/harness_lib/*_models.py, ../parallel2/README.md) all resolve. Its deviation-flag table matches plan.py's documented --also/--substitute/--cite semantics.",
+    "Cross-references outside the skill folders were updated with the change: the root README rows for write-plan and strap-skills, the HARNESS_RULES DesignEvolution location, the PLANS_PIP_Template HTML note and the scenario runner's --repo rule for plan/evolution drivers.",
+    "The RecordBook protocol (SealedBook, ReceiptBook) gives every plan.py command (check, red, freeze, lanes, record, verify) one status source for either scheme, instead of scattering scheme branches through the driver.",
+    "The receipt seal binds the plan id, the item id and the item's planned files and tests. Receipt tests cover each way it can break: a field edit, a copy to another item or plan, a file or test change, and a change to a cited change's digest.",
+    "Cited DesignChange digests stored in the receipt make a later catalog edit surface as a check problem with the exact record command to rerun (D8).",
+    "DesignEvolution and Receipt schemas are generated from the models. gen_plan_schema.py --check covers all three schemas, and contract tests pin the committed files.",
+    "Byte stability is preserved for existing specs: an empty `rounds` stays out of the dump and the driver digest, and test_strap_rounds recomputes the old digest to prove it.",
+    "Driver tests are behavioral. They run real git repos, real throwaway worktrees and real pytest runs through main(), with no mock-chain wiring.",
+    "The HTML page escapes all plan text server-side, its loader uses textContent only, and the embedded config JSON escapes '<', so plan text cannot inject markup or script.",
+    "The legacy and sealed suites keep running unchanged through a single FIRST_SCHEME fixture, which leaves the older code paths covered.",
+    "Spec deviations are recorded as plan decisions instead of being silently dropped (D4 todo-watch unchanged), and the reopen round rules are documented, enforced (strap_api locks tests and kind) and tested.",
+    "The receipts, DesignEvolution and SkillSpec schemas are all generated from their models, and tools/gen_plan_schema.py plus test_evolution_receipt_schema_generated.py pin each committed file, so schema drift fails a test.",
+    "write-plan SKILL.md, the new write-plan README and the plan.py docstring agree on the receipts rules (seal contents, deviation flags with `--cite`, the lane stop-and-report rule, a refreeze only for a design change the developer asks for).",
+    "The strap reopen rules read the same in strap.py's docstring, strap_api's module docstring, the strap-skills SKILL.md paragraph, the README row and the release notes, and the code matches: `_red_plan` skips GREEN, `_refuse_fields` locks tests and kind, and `cmd_freeze` takes `| was` from the last round.",
+    "The spec deviations are recorded where the process says they go: todo-watch left unchanged is decision D4 in plan 1013, the sidecar ignore through a driver-written .gitignore is D9, and plan 1014's extra fixture files cite EX1 in DesignEvolution.json with a matching digest in the STR-1 receipt.",
+    "Version and release bookkeeping is consistent: plugin.json 0.67.0, the release table 0.65.1 -> 0.67.0 measured from the v0.7.0 tag, and the schemas README migration entry for the breaking DesignEvolution change.",
+    "The RecordBook protocol (D10) gives plan.py one branch point: check, red, freeze, lanes, verify and the dependency gate all read status through book_for, so a forgotten call site cannot judge a receipts item by the sealed rules.",
+    "Receipt seals bind the item's planned files and tests, so a refreeze that moves them breaks exactly those receipts, and receipt_split tolerates and names them the way the sealed scheme already does.",
+    "The HTML PIP escapes every static string with html.escape, draws live data only through textContent, and escapes '<' in the inline config JSON. The committed 1014 page and the 1021 fixture page match render_pip_html byte for byte.",
+    "Old SkillSpecs stay byte-identical: an empty rounds list is left out of the dump and the driver digest, and test_strap_rounds pins the old digest formula.",
+    "The driver suites are behavioral on real make_project git repos: record, substitution, the dependency gate, lanes, red, verify and refreeze all run end to end with no stubbed collaborators.",
+    "plan.py check passes on plans 1013 (sealed) and 1014 (receipts) at the PR head, and the 1021 fixture's freeze digest holds under the receipts scheme.",
+    "gen_plan_schema.py now generates and drift-checks all three model-generated schemas, pinned by a contract test that runs --check."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "uses_html test stubs scheme_for and asserts the stub's answer",
+        "file": "tests/lib/test_plan_render_html.py",
+        "files": [
+          "tests/lib/test_plan_render_html.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py"
+        ],
+        "lines": "91-95,108-112",
+        "reviewer": "roast, tests",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_a_never_frozen_plan_renders_html_only_when_bound_for_receipts monkeypatches plan_record.scheme_for to return receipts, then sealed, and asserts uses_html echoes it. That checks only that uses_html calls scheme_for and compares to receipts. first_freeze and FIRST_SCHEME, the logic that decides the PIP format of a never-frozen plan, never run. A mock-chain wiring test: green as long as the call stays in place, whatever scheme_for actually decides. The stub in test_write_pip_writes_no_sidecar_for_a_plan_not_yet_frozen (lines 108-112) does nothing: the real scheme_for already returns receipts for that all-PENDING plan.\n\nAlso (tests): Two tests replace plan_record.scheme_for with a lambda: the one claiming that a never-frozen plan renders HTML only when bound for receipts, and the no-sidecar write_pip test. With the stub in place, uses_html is reduced to an `== receipts` comparison, and the real first_freeze -> FIRST_SCHEME route (the one the docstring at line 6-7 describes and the driver suites rely on) is never exercised here. plan_record documents FIRST_SCHEME as the knob tests should set, read at call time (plan_record.py:125).",
+        "fix": [
+          "Drop the scheme_for stubs. Assert prh.uses_html(plan(frozen=False)) with the real FIRST_SCHEME (receipts), then monkeypatch plan_record.FIRST_SCHEME to RecordScheme.sealed (the D3 seam the driver suites already use) and assert not prh.uses_html(plan(frozen=False)). Remove the scheme_for monkeypatch from test_write_pip_writes_no_sidecar_for_a_plan_not_yet_frozen as well.",
+          "Replace monkeypatch.setattr(plan_record, \"scheme_for\", ...) with monkeypatch.setattr(plan_record, \"FIRST_SCHEME\", RecordScheme.receipts / RecordScheme.sealed), so the real scheme_for decides."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Generated ActionPlan schema descriptions contradict the receipts digest and PIP name",
+        "file": "plugins/harness/lib/harness_lib/plan_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/todo_sync/sources.py"
+        ],
+        "lines": "395,399-401,419-423",
+        "reviewer": "system_shape, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PR regenerates ActionPlan.schema.json (adding the `receipts` enum value and the `.html` pip_document pattern) but leaves three model descriptions in plan_models.py unchanged. All three ship in the generated schema. (1) `ActionPlan.frozen` (plan_models.py:419-423) says the digest covers every field except item status, evidence, verification_references and record and the top-level completed/frozen/markdown sync fields, and that `plan.py check` reports only edits outside those fields. Under `receipts`, which is now the default first-freeze scheme, `plan_doc.frozen_digest` hashes every field but `frozen`, and `digest_problems` reports any edit. (2) `plan_id` (399-401) says the file prefix pairs `_ActionPlan.json` with `_PIP.md` only. (3) The `ActionPlan` docstring (395) says the JSON is the source of truth for items, evidence and verification, but on a receipts plan the evidence lives in receipts. The schemas README calls these models the one definition of a plan, so the schema now disagrees with the skill, the README and the driver.\n\nAlso (overall): ActionPlan.plan_id's description says the id prefixes `{plan_id}_{Title}_ActionPlan.json` and `{plan_id}_{Title}_PIP.md`. The frozen description says the digest covers every field except the item execution fields and completed/frozen/markdown fields. Under receipts, frozen_digest hashes every field but frozen. These descriptions are generated into ActionPlan.schema.json. todo_sync's PlanPair docstring also names only `_PIP.md`, while _pair now stores a `_PIP.html` path in pip_rel.",
+        "fix": [
+          "Update the three descriptions in plugins/harness/lib/harness_lib/plan_models.py: `frozen` names both digests (receipts: every field but `frozen`; sealed/legacy: the current exclusions), `plan_id` names `_PIP.md` or `_PIP.html`, and the class docstring says status and evidence live in receipts on a receipts plan. Then run `python tools/gen_plan_schema.py` to regenerate plugins/harness/schemas/ActionPlan.schema.json.",
+          "Mention `_PIP.html` in plan_id's description and add the receipts digest rule to frozen's description, then run tools/gen_plan_schema.py. Update the PlanPair docstring to say the PIP may be `_PIP.md` or `_PIP.html` (pip is parsed for markdown only)."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "schemas README still describes the sealed scheme as the plan workflow",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/rules/HARNESS_RULES.md"
+        ],
+        "lines": "54,61,214-242,270-273",
+        "reviewer": "system_shape, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The PR adds the Receipt and DesignEvolution sections to plugins/harness/schemas/README.md but leaves its ActionPlan, Workflow and Validation sections on the pre-receipts flow, which is no longer the default. Line 54 says `frozen.records` is `\"sealed\"` unless a legacy item remains, but `plan_record.scheme_for` stores `FIRST_SCHEME` (receipts) on every first freeze. Lines 222 and 225 say `plan.py render` writes the PIP markdown, but `plan.py new` and `plan_api.write` already write `_PIP.html` for a plan bound for receipts (`plan_render_html.uses_html`). Line 237 says to run `plan.py render` after each record so the PIP shows the new status, but on a receipts plan `record` writes the receipt and `live.js` and `render` never rewrites an existing page. Line 242 says `record` is the only way an item's status or evidence changes in the JSON. Line 271 says the JSON is the source of truth for progress and must be updated when execution deviates. Line 272 says COMPLETE always carries `items[].record`. On a receipts plan the items stay PENDING in the JSON for good, the outcome lives in `NNNN/receipts/<ITEM>.json`, and a deviation goes to DesignEvolution.json while the plan JSON stays untouched (write-plan SKILL.md step 9, `digest_problems` in plan.py). Line 271 tells a reader to do what the skill forbids.\n\nAlso (skill_package): This PR adds the Receipt and DesignEvolution sections to plugins/harness/schemas/README.md, but its write-plan Workflow (Step 2 and Step 3, lines 214-242) is unchanged. It still says that `plan.py render` 'writes the PIP markdown from the JSON' (line 222) and that 'The PIP markdown is rendered from the JSON' (line 225). It also says that a render after `record` makes 'the PIP reflect the new status' (line 237), and that `record` seals each status into the plan (line 242). The workflow does not mention receipts, `live.js`, DesignEvolution or the `--also`/`--substitute`/`--cite` flags, all of which write-plan SKILL.md steps 8-9 now define. HARNESS_RULES.md:81-82 likewise says that a plan `plan.py` records 'carries its own sealed record per item'. On a receipts plan, the seal lives in `<plans>/<id>/receipts/<ITEM>.json` instead.",
+        "fix": [
+          "Scope the existing sealed-scheme statements to plans frozen before receipts and add the receipts flow beside them: line 54 says a first freeze stores `receipts` (sealed or unset only on plans frozen earlier); Step 2 says the PIP is the HTML page written by `new`/`write`/`freeze`; Step 3 says `record` writes the receipt and `live.js`, with no render step; lines 271-272 say that on a receipts plan the JSON stays as frozen, status comes from the sealed receipt, and a deviation is cited from DesignEvolution.json.",
+          "schemas/README.md Workflow: line 222 becomes '(writes the PIP from the JSON: HTML with live.js on a receipts plan, markdown on a plan frozen before receipts)'. Line 225 says the same of the PIP. Line 237 becomes '(rebuilds live.js; a sealed plan's markdown PIP is rewritten)'. Add one line to Step 3 saying that `record` writes `<plans>/<id>/receipts/<ITEM>.json` on a receipts plan, and that a deviation needs `--also`/`--substitute` plus a `--cite` of a change added through `evolution_api.add`. HARNESS_RULES.md:82: change 'carries its own sealed record per item' to 'carries a sealed record per item (a receipt beside the plan, or a record in the JSON of a plan frozen before receipts)'."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "DesignEvolution migration steps leave every old catalog invalid",
+        "file": "plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/evolution_models.py"
+        ],
+        "lines": "127-164,187-214,292",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "The regenerated catalog schema is closed at every level: the top level allows only plan_id..summary (line 292), EvolutionSummary allows only highest_impact_finding, most_embarrassing_finding and lessons (lines 127-164), and IdConventions allows only comment and prefixes (lines 187-214). The old schema required summary.total_changes_cataloged, by_phase, by_issue_category and by_why_new_outcome_category, and allowed top-level $schema and _comment and id_conventions._comment plus prefix keys held directly on id_conventions. So every catalog that validated before still fails after the documented migration (move the file, add plan_id, drop category_enums): the summary tallies, $schema, _comment and the flat id_conventions keys are all rejected. The release notes and the schemas README Migration entry give those three steps as the complete fix.",
+        "fix": [
+          "Extend the migration text in docs/RELEASES/v1.0.0.md (Breaking changes) and plugins/harness/schemas/README.md (Migration, 'Receipts and a plan-bound DesignEvolution') to name every step: drop top-level $schema and _comment, drop summary.total_changes_cataloged/by_phase/by_issue_category/by_why_new_outcome_category (DesignEvolution.counts computes them), and move id_conventions prefix keys under id_conventions.prefixes with _comment renamed to comment.",
+          "Or have evolution_doc load an old catalog through a one-time migration (strip the dropped keys, nest the prefixes) so the documented three steps are enough, and say so in the Migration entry."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "plan.py reads receipts and the catalog from artifacts.plans but writes them beside the plan file",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_receipts.py",
+          "plugins/harness/lib/harness_lib/plan_render_html.py",
+          "plugins/harness/lib/harness_lib/evolution_api.py"
+        ],
+        "lines": "192-194,254-262,777-787",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "`locate` accepts a plan file path anywhere (plan.py:169-176), and `record_receipt` writes the receipt and live.js into `plan_file.parent` (plan.py:781) and `write_pip` writes live.js there too. But `book_of` builds every record book from `plans_dir()` (plan.py:192-194) and `evolution_problems` reads the catalog from `plans_dir()` (plan.py:259). For a plan addressed by a path outside the active `artifacts.plans` (a linked worktree's plan, which `plan_api` explicitly supports), `record` gates dependencies and `check`/`freeze`/`lanes`/`verify` judge items against a different receipts folder and catalog from the one `record` and `evolution_api` write. The result is wrong statuses and dependency refusals, with no error.\n\nAlso (overall): PLAN can be a path to the plan file (locate()). book_of() and evolution_problems() read receipts and the DesignEvolution catalog from the configured plans_dir(). record_receipt() writes the receipt and live.js under plan_file.parent and rebuilds its view from there. write_pip/refresh_pip and evolution_api._save also write under plan_file.parent. For a plan file outside artifacts.plans, record writes a receipt that check, verify, lanes and the dependency gate never read. Those commands read <plans>/<id>/receipts of whichever plan has that id in the configured folder instead.",
+        "fix": [
+          "Pass the plan file's folder through: `book_of(plan, plan_file.parent)` -> `prt.book_for(plan_file.parent, plan)` at every call site (check, red, freeze, record, lanes, verify), and have `evolution_problems` take the same folder for `ed.catalog_path`.",
+          "Or make `locate` refuse a plan file outside `plans_dir()` so the two roots cannot differ.",
+          "Thread the plan folder through: book_of(plan_file.parent, plan) and evolution_problems(plan_file.parent, plan) in every cmd_*, so reads and writes share one root.",
+          "Or make locate() refuse a plan file whose parent is not plans_dir(), so a single root is guaranteed."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Reopen paragraph asks for a base whose SKILL.md lacks the new rules, which the parts check refuses",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "242-254",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "strap-skills SKILL.md says 'When the skill gains new rules, run reopen' and 'Pick as base the commit whose code the new scenarios need but whose SKILL.md lacks the new guidance', and in the same paragraph that --base 'must hold every part as the working tree has it'. SKILL.md is a part (kind skill_md), and strap.py _reopen_base_problems (strap.py:913-918) refuses any base where a part differs from the working tree. So once the new rules are in the working-tree SKILL.md (the case the paragraph opens with, and the order write-plan round 2 used: base b7c6209, the parent of the SKILL.md commit), no base without the guidance is accepted. The refusal hint 'commit the frozen round first' then points to the wrong fix. The only path that works is the one round 3 used: reopen before writing the rules, or reopen on a commit that strips them (9368d9e) and restore them afterwards. The text describes neither.\n\nAlso (roast): The paragraph tells the author to pick as base the commit whose SKILL.md lacks the new guidance. Two sentences later it requires the base to hold every part as the working tree has it, and SKILL.md is a part. Once the guidance is written, every such base is refused with 'parts differ from base'. Round 3 needed strip-and-restore commits (9368d9e, a5852a7) to get past this. The paragraph names neither the order (reopen before the guidance is written) nor that workaround.",
+        "fix": [
+          "State the order in the Reopen paragraph: reopen before writing the new rules (base = HEAD with the frozen round committed), then write the SKILL.md guidance during the round; when the rules are already written, commit a copy of SKILL.md without them, reopen on that commit, then restore the rules (the strip-and-restore base of write-plan round 3).",
+          "Have the 'parts differ from base' refusal in strap.py name the SKILL.md case and the strip-and-restore route, not just 'commit the frozen round first'.",
+          "State that reopen runs before the new guidance is written, so the base matches the working tree; and that proving guidance already written takes a commit that strips it, a reopen there, and a later restore."
+        ]
+      },
+      {
+        "id": "I6",
+        "name": "Seal-break test stops working on 2027-01-01",
+        "file": "tests/scripts/test_plan_receipts_record.py",
+        "files": [
+          "tests/scripts/test_plan_receipts_record.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "332-338",
+        "reviewer": "tests, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "test_verify_names_a_receipt_whose_seal_is_broken tampers with the receipt by replacing \"2026-\" with \"2025-\". The driver stamps the receipt date with today() (plugins/harness/scripts/plan.py:784), and no other receipt field can hold \"2026-\" (the hashes are hex, and the evidence is \"commit <sha7>: ...\"). From 2027-01-01 the replace changes nothing, the seal still holds, `verify` exits 0, and the `code == 1` assertion fails. The suite has a time bomb that goes off at the next year boundary.\n\nAlso (overall): test_verify_names_a_receipt_whose_seal_is_broken breaks the seal with path.read_text().replace(\"2026-\", \"2025-\"). The receipt's date comes from plan.py's today(), and nothing else in the receipt contains \"2026-\" (SHAs are hex, the evidence has no date). From 2027-01-01 the replace changes nothing, so the seal still holds, verify exits 0, and `assert code == 1` fails. The suite breaks on a calendar date, not on a code change.\n\nAlso (roast): test_verify_names_a_receipt_whose_seal_is_broken breaks the seal with replace(\"2026-\", \"2025-\") on a receipt whose date is plan.py's today(). The SHA and the evidence hold no '2026-', so from 2027-01-01 the replace changes nothing, the seal holds, verify runs the tests and exits 0, and the assertion code == 1 fails. That gives it about seven weeks.",
+        "fix": [
+          "Tamper with a field that does not depend on the date, the way test_check_flags_a_hand_edited_receipt does at line 156-159: load the JSON, set data[\"evidence\"] = \"commit 1234567: 9 test node(s) passed\", and write it back.",
+          "Or read the stored date and replace that exact value: data = json.loads(...); data[\"date\"] = \"1999-01-01\"; write it back.",
+          "Break the seal in a way that does not depend on the date, as test_check_flags_a_hand_edited_receipt does: load the JSON, set data[\"date\"] = \"2000-01-01\" (or change evidence), and write it back.",
+          "Replace the receipt's actual date value (json.loads(...)[\"date\"]) with a fixed different date instead of a hard-coded year prefix.",
+          "Load the receipt JSON, change a sealed field that does not depend on the date (for example data['evidence'] = 'commit 1234567: 9 test node(s) passed', as test_check_flags_a_hand_edited_receipt does at lines 156-159) and write it back."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release notes feature lines lack their PR numbers",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "47,54",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "In docs/RELEASES/v1.0.0.md every earlier change line starts with its PR number (#253, #255, #257). The two feature lines this branch adds do not: the strap reopen line (54) merged as #262 (commit c1252a3), and the receipts line (47) ships in #261. The release body is this file, so a reader cannot get from those two lines to their PRs.",
+        "fix": [
+          "Prefix line 47 with `#261` and line 54 with `#262`."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Superseded v0.7.1 release notes left beside v1.0.0",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "files": [
+          "docs/RELEASES/v1.0.0.md",
+          "docs/RELEASES/v0.7.1.md"
+        ],
+        "lines": "63",
+        "reviewer": "docs, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "v1.0.0.md:63 says docs/RELEASES/v0.7.1.md is superseded and that v1.0.0.md carries its four change lines, but v0.7.1.md stays in the tree unchanged, still headed '# v0.7.1 (proposed)' with harness 0.65.1 -> 0.65.4. The project keeps one notes file per suggested release, and the developer cuts releases from these files, so the stale proposal can be cut by mistake. Its change lines duplicate v1.0.0.md:27-46.\n\nAlso (overall): docs/RELEASES/v1.0.0.md says `docs/RELEASES/v0.7.1.md` is superseded and carries its four change lines from the same v0.7.0 base. v0.7.1.md is unchanged at the PR head, so two proposed next releases sit side by side. The one-file-per-release rule in CLAUDE.md expects a single proposed release.",
+        "fix": [
+          "Delete docs/RELEASES/v0.7.1.md, whose change lines now live in v1.0.0.md.",
+          "Or retitle it '# v0.7.1 (superseded by v1.0.0)' so it cannot be cut.",
+          "Delete docs/RELEASES/v0.7.1.md in this branch.",
+          "Or add a 'Superseded by v1.0.0' line at the top of v0.7.1.md so the developer cutting the release picks the right body."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Plan 1014's receipts trail misses the review fixes that shipped with DRV-1",
+        "file": "docs/plans/1014/DesignEvolution.json",
+        "files": [
+          "docs/plans/1014/DesignEvolution.json",
+          "docs/plans/1014/receipts/DRV-1.json",
+          "plugins/harness/lib/harness_lib/strap_api.py",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "9-64",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "The DRV-1 receipt records staged tree 95deec0. That tree has neither the _reopen_base_problems check in strap.py nor the _LOCKED_AFTER_ROUND rule in strap_api.py, and the strap-scenario-runner agent change is not in it either. All three landed afterwards as PR 262 review fixes. strap_api.py and the agent are outside DRV-1's files, and DesignEvolution 1014 holds only EX1/EX2, so the first receipts plan does not account for its own behavior changes. The trail is exactly what the receipts scheme exists to keep. Not a code defect: check passes by design (the spec's non-goal: undeclared files are not detected).",
+        "fix": [
+          "Add a CX change (phase post-exec-start, external review) to plan 1014's DesignEvolution through evolution_api.add naming DRV-1, then record DRV-1 again at HEAD with --also plugins/harness/lib/harness_lib/strap_api.py --also plugins/harness/agents/strap-scenario-runner.md --cite CX1."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Plan 1014 and its fixtures carry machine-absolute launcher paths",
+        "file": "docs/plans/1014_strap_reopen_ActionPlan.json",
+        "files": [
+          "docs/plans/1014_strap_reopen_ActionPlan.json",
+          "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_ActionPlan.json",
+          "docs/plans/strap/write-plan/fixtures/plan-1021/docs/plans/1021_strap_round_reopen_ActionPlan.json",
+          "docs/plans/1014_strap_reopen_PIP.html",
+          "plugins/harness/agents/strap-scenario-runner.md"
+        ],
+        "lines": "196,232,236",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "Commands in docs/plans/1014_strap_reopen_ActionPlan.json (lines 196, 232, 236) run `sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" ...`. They render into the PIP page and are copied byte for byte into the write-plan fixtures (plan-1014, and plan-1021 at line 198). The strap-scenario-runner gained a rule (strap-scenario-runner.md:46-47) to translate such paths into TREE, which papers over the leak in the fixture instead of removing it. A tracked plan that names one developer's checkout breaks on any other machine, and `check` rejects a hard-coded SHA but not an absolute path.",
+        "fix": [
+          "Write plan commands with repo-relative launchers (`sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py ...`) and regenerate the two fixtures from the corrected text (plan 1014 itself needs a refreeze, which leaves its receipts sealed since commands are outside the seal).",
+          "Add a `check` rule that rejects an absolute path to the project checkout in `commands[].run`, the way it rejects commit SHAs."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Runner's pre-record repository check cannot tell a leak from existing changes",
+        "file": "plugins/harness/agents/strap-scenario-runner.md",
+        "lines": "48-50,87-88",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "strap-scenario-runner.md:48-50 runs `git -C <REPO> status --porcelain` before record-run and stops without recording when a path the scenario touched shows there. Paths that were already dirty in the developer's checkout before the run (an uncommitted plan, page or catalog in the strap session) show up the same way, so a clean run is refused and never recorded. A real leak into a path that was already dirty is also indistinguishable.",
+        "fix": [
+          "Have the runner take a porcelain snapshot of REPO right after `init` and stop only on touched paths that are new or changed since that snapshot; or have `init` print the snapshot so the comparison is exact."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "evolution_api.add reports a duplicate change id alone, against 'every problem at once'",
+        "file": "plugins/harness/lib/harness_lib/evolution_api.py",
+        "lines": "7-8,103-112",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring (evolution_api.py:7-8) says `add` refuses a duplicate change id and an unknown change item with every problem at once. `add` raises on a duplicate id at line 109-110 before `_save` runs `_problems`, so a change that is both a duplicate and names an unknown item reports only the duplicate. The model validator (`_duplicate_ids`) would already report the duplicate inside `_problems`.",
+        "fix": [
+          "Drop the early `evo.find(change.id)` raise and let `_save`/`_problems` report the duplicate together with the item problems.",
+          "Or reword the docstring to say a duplicate id is refused first."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Duplicated catalog loader and substitute-node mapping",
+        "file": "plugins/harness/lib/harness_lib/plan_live.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_live.py",
+          "plugins/harness/lib/harness_lib/plan_receipts.py",
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/receipt_models.py"
+        ],
+        "lines": "40-45",
+        "reviewer": "system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Two pieces of logic are duplicated. `plan_live._catalog` (plan_live.py:40-45) and `plan_receipts._catalog` (plan_receipts.py:238-243) are the same function. `plan.py run_nodes` (549-552) repeats `Receipt.nodes` (receipt_models.py:104-107), and its own docstring cites that method. When two copies of a rule exist, one gets changed without the other: for example, how a broken catalog is treated, or how a substitute replaces a planned node, which `verify` and `record` must agree on.\n\nAlso (roast): plan_live._catalog and plan_receipts._catalog have the same body: load_evolution(catalog_path(...)), with None on PlanError. Change one, such as letting check surface a broken catalog, and the page and the record book disagree about what 'no catalog' means.",
+        "fix": [
+          "Keep one `_catalog`, for example a public `load_catalog_or_none` in `evolution_doc` that both modules call. Move the substitution mapping onto `Deviations` (for example `Deviations.nodes(item)`) and have both `Receipt.nodes` and plan.py `run_nodes` call it.",
+          "Move one public helper (for example evolution_doc.load_or_none(plans_dir, plan_id)) next to load_evolution and call it from both modules, deleting the two private copies."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "HTML PIP of an unfrozen plan points at a render command that never writes live.js",
+        "file": "plugins/harness/lib/harness_lib/plan_render_html.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_render_html.py",
+          "plugins/harness/lib/harness_lib/plan_api.py",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "8-9,58-63,171-198",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "`uses_html` (plan_render_html.py:37-41) gives every never-frozen plan bound for receipts the HTML page, and `_live_note` (58-63) always tells the reader to run `plan.py render <id>` to write live.js. The module docstring (8-9) calls render the command that writes the sidecar. On an unfrozen plan, `refresh_pip` falls through to `write_pip`, which writes live.js only when `uses_receipts` (183-184), so following the page's instruction never clears the note. The page also polls a missing file every 3 s.\n\nAlso (runtime): For an unfrozen plan created before this change (documentation names `_PIP.md`), `write_pip` (plan_render_html.py:171-185), called from `plan_api.write` and `plan.py render`, now writes only `_PIP.html`. The markdown PIP that `documentation` names is no longer rewritten until `freeze` moves and deletes it (`store_freeze`), so authoring edits never reach the document the plan points at. The same docstrings say only `freeze`/`--refreeze` write an existing page (plan.py render doc, `refresh_pip` 191-192), but `plan_api.write` also rewrites it through `write_pip`.\n\nAlso (overall): _live_note puts this on every page: 'No live.js beside this page, so every item reads PENDING: run plan.py render NNNN to write it.' The module docstring repeats the claim. On a plan that is bound for receipts but not frozen yet (every plan after `new`), render goes through refresh_pip to write_pip, which writes live.js only when uses_receipts(plan) is true, so only on a frozen plan. Running the suggested command leaves the note in place.\n\nAlso (overall): refresh_pip's docstring says ``freeze`` and ``freeze --refreeze`` stay the writers of an existing page. The plan.py docstring for render says 'freeze and --refreeze write an existing page'. plan_api.write calls write_pip unconditionally. On a frozen receipts plan, that rewrites the frozen HTML page from the unrefrozen JSON before any refreeze runs.",
+        "fix": [
+          "Render the live note (and the loader script) only when `plan_receipts.uses_receipts(plan)`. Otherwise print a note that the plan is not frozen yet.",
+          "Or write live.js for any page `uses_html` selects, and align the module docstring.",
+          "In `write_pip`, when `uses_html` and the plan is unfrozen, apply the `move_documentation` rule (repoint `documentation`, remove the markdown PIP) or keep writing the markdown PIP until the first freeze.",
+          "Update the `refresh_pip` and plan.py `render` docstrings to name `plan_api.write` as a writer of an existing page.",
+          "Have write_pip write live.js for any HTML page (drop the uses_receipts guard), so render always produces the sidecar the page asks for.",
+          "Or render a different note on an unfrozen page (for example: live parts appear after plan.py freeze), and update the module docstring to match.",
+          "Name plan_api.write among the writers of an existing page in the refresh_pip docstring and in the plan.py render paragraph.",
+          "Or have plan_api.write leave an existing page of a frozen receipts plan alone (call refresh_pip), so the documented contract holds."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "HTML PIP text names render behavior the code does not have",
+        "file": "plugins/harness/lib/harness_lib/plan_render_html.py",
+        "lines": "58-63,76-78",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "`render_pip_html` always emits `_live_note`, which tells the reader 'No live.js beside this page ... run plan.py render <id> to write it'. Before the freeze, `plan.py render` goes through `refresh_pip` -> `write_pip`, which writes `live.js` only when `plan_receipts.uses_receipts` (frozen with receipts). So during the whole authoring phase (new, write, check, red, decisions, PIP review at hand-off) the page names a command that never writes the sidecar; `test_write_pip_writes_no_sidecar_for_a_plan_not_yet_frozen` pins that behavior. The header note (76-77) says the page is 'Rendered by plan.py render' and to 'render again' after a JSON change. On a frozen receipts plan, `refresh_pip` leaves an existing page alone (freeze and `plan_api.write` write it), so the page text describes behavior `render` does not have.",
+        "fix": [
+          "Emit `_live_note` only when `plan.frozen` stores receipts (or word it as 'live.js appears after the freeze'), and change the header note to say the page is written by `plan.py new`, `plan_api.write` and `freeze`, with `plan.py render` restoring a missing page and its `live.js`."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Receipt seal does not cover the stored plan_id, against the module contract",
+        "file": "plugins/harness/lib/harness_lib/receipt_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/receipt_models.py",
+          "plugins/harness/lib/harness_lib/plan_receipts.py",
+          "tests/lib/test_receipt_models.py"
+        ],
+        "lines": "95-97,110-117",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "receipt_models.py:4-6 says the seal covers every receipt field but itself, so a hand edit breaks it. `_digest` (receipt_models.py:112-113) overwrites the dumped `plan_id` and `item` with the arguments before hashing, and `holds` passes the plan's own id. A hand edit of a receipt's `plan_id` therefore leaves the seal holding, and nothing compares the stored `plan_id` with the plan. `item` is caught only by the file-stem check in `plan_receipts._read_receipt`.\n\nAlso (roast): _digest overwrites the dumped plan_id and item with the caller's values (body.update(plan_id=plan_id, item=item.id)), so the seal binds the plan being checked, not the plan_id the file stores. item is compared with the file stem at load, but plan_id is compared nowhere: a hand edit of a receipt's plan_id to '9999' passes check, verify and the gates. The module docstring and spec 'Seal' say a hand edit of any receipt field breaks the seal. The parametrized seal test (test_receipt_models.py:70-76) leaves plan_id out, which is why nothing caught it.",
+        "fix": [
+          "In `Receipt.holds`, also require `self.plan_id == plan_id and self.item == item.id` before comparing the digest.",
+          "Or hash the stored fields as they are (drop `body.update`) and keep the binding through the explicit equality check.",
+          "In plan_receipts._read_receipt (or receipt_problems), report a receipt whose plan_id differs from the plan's id, as the item-versus-stem rule already does; existing seals stay valid. Add ('plan_id', '0002') coverage through a check-level test.",
+          "Or seal the stored fields as written and bind the plan and item as separate payload keys; this changes every digest, so the plan 1014 receipts would need to be recorded again."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "HARNESS_RULES says a plan.py plan carries its sealed record per item",
+        "file": "plugins/harness/rules/HARNESS_RULES.md",
+        "lines": "79-81",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The PR rewrites the Plans and specs rule for receipts but leaves the Agent accountability bullet at HARNESS_RULES.md:79-81, 'A plan `plan.py` records carries its own sealed record per item, never compared with HEAD.' Under the receipts scheme the plan JSON carries no record; each item's sealed record is its receipt file under `<plans>/NNNN/receipts/`. This rules file is injected into every session, so the stale line goes to every agent.",
+        "fix": [
+          "Reword to: 'A plan `plan.py` records carries a sealed record per item (its receipt file on a receipts plan, `items[].record` on a plan frozen before receipts), never compared with HEAD.'"
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "HARNESS_RULES routes every spec or plan design change to a plan catalog that may not exist yet",
+        "file": "plugins/harness/rules/HARNESS_RULES.md",
+        "files": [
+          "plugins/harness/rules/HARNESS_RULES.md",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/evolution_api.py"
+        ],
+        "lines": "118-121",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "HARNESS_RULES.md:118-121 says spec or plan changes that alter the design 'go to <artifacts.plans>/NNNN/DesignEvolution.json through evolution_api'. evolution_api.add resolves and loads the plan first (evolution_api.py:103-107), so a spec-review change before `plan.py new` has nowhere to go. The spec covers this case ('entered once the plan exists', plan-receipts design, Models section); the rule does not. The rule also covers a design change the developer asks for after the freeze, but write-plan step 8 (SKILL.md:95-97) routes that change through write plus refreeze and never says to add a DesignChange for it. An agent following the rule and an agent following the skill do different things.",
+        "fix": [
+          "Add to the rule that a change found before the plan exists is entered (phase spec-review) once `plan.py new` has run, and state whether a refreeze design change also gets a DesignChange; mirror that answer in write-plan step 8."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "pip_document pattern pins docs/PLANS while the plans folder is configurable",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py"
+        ],
+        "lines": "671",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "The widened pip_document pattern still hardcodes ^docs/PLANS/, but PIPs are written under the configured artifacts.plans folder. This repo sets artifacts.plans to docs/plans (.claude/harness.json:7), so its own HTML PIP docs/plans/1014_strap_reopen_PIP.html cannot be recorded in pip_document. Nothing writes the field today, so the impact is limited to hand-set values.",
+        "fix": [
+          "Relax the pattern in plugins/harness/lib/harness_lib/plan_models.py:174 to r\"^.+_PIP\\.(md|html)$\" and check the folder against cfg artifacts.plans in plan.py, then regenerate with python tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "plan_id description still names only the markdown PIP",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py"
+        ],
+        "lines": "866",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The plan_id description says the id prefixes `{plan_id}_{Title}_PIP.md`, while this change makes the PIP HTML for plans frozen with the new version (pip_document now accepts .html at line 671, and docs/plans/1014_strap_reopen_PIP.html is one).",
+        "fix": [
+          "In plugins/harness/lib/harness_lib/plan_models.py:401 change the text to \"`{plan_id}_{Title}_PIP.md` or `_PIP.html`\" and regenerate with python tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Receipts docs name harness 0.66.0, a version this PR never ships",
+        "file": "plugins/harness/schemas/PLANS_PIP_Template.md",
+        "files": [
+          "plugins/harness/schemas/PLANS_PIP_Template.md",
+          "plugins/harness/schemas/README.md",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "7",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "PLANS_PIP_Template.md:7 ('plans frozen from harness 0.66.0') and the schemas README Migration entry at :329 ('harness 0.66.0') name 0.66.0. plugin.json is 0.67.0 and the v1.0.0 table runs harness 0.65.1 -> 0.67.0, so no published version is 0.66.0. v1.0.0.md:61 also says plan 1012 on the base branch bumps harness, so 0.66.0 could end up naming a release without receipts. The template note also says 'frozen from': under D6, a plan started with `new` on this version already gets the HTML page before any freeze.\n\nAlso (roast): PLANS_PIP_Template.md and the schemas README Migration entry say HTML PIPs and receipts start at 'harness 0.66.0'. This PR moves plugin.json from 0.65.4 to 0.67.0 and the v1.0.0 table lists harness 0.65.1 -> 0.67.0, so no consumer ever installs 0.66.0.",
+        "fix": [
+          "Change both references to the version that ships the receipts scheme (0.67.0 today, rechecked after plan 1012's bump is reconciled), and say 'plans started or first frozen from harness <version>' in PLANS_PIP_Template.md.",
+          "Replace 'harness 0.66.0' with 'harness 0.67.0' in both files."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "DesignEvolution schema entry omits the required discovered_by field",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/evolution_models.py",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "194-198,200",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "schemas/README.md:200 lists what a change carries: id, phase, items[], original, issue, new_outcome and why_new_outcome. DesignChange.discovered_by is required (evolution_models.py:70), and date is stored with a default of today (:77). A reader building a change from this list gets a validation error.\n\nAlso (system_shape): The new schemas README section (line 198) says, under 'Base relationship', that the catalog is plan-bound and that `primary_documents` always holds the `plan`. The release notes (v1.0.0.md:8-10) call that a breaking schema change. The generated DesignEvolutionCatalog.schema.json does not express it: `primary_documents` is a plain string map, and the `plan` key, unique change ids, doc keys within `primary_documents` and summary ids that name a change are enforced only by the `DesignEvolution._consistent` validator in evolution_models.py. A project that validates with the JSON schema alone (a pinned copy, a jsonschema-only tool) accepts a catalog the models refuse. The TodoCatalog section already lists its 'cross-record rules the schema cannot express'; this section should do the same.",
+        "fix": [
+          "List `discovered_by` among the required fields and `date` (default today) in the 'A change carries' sentence.",
+          "Add a sentence to the DesignEvolution section: the `plan` key, unique change ids, doc keys within `primary_documents` and summary finding ids are model-validator rules (`evolution_models.DesignEvolution`), not expressed in the generated schema."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Receipt change ids accept strings no catalog can hold",
+        "file": "plugins/harness/schemas/Receipt.schema.json",
+        "files": [
+          "plugins/harness/schemas/Receipt.schema.json",
+          "plugins/harness/lib/harness_lib/receipt_models.py"
+        ],
+        "lines": "98-106,120-125,234-239",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "ExtraFile.change and TestSubstitution.change are only minLength 1, and the change_digests keys are unconstrained, while a DesignChange id must match ^(S|PR|P|EX|CX)[0-9]+$. A receipt validated by the schema alone accepts a citation such as 'foo' that no catalog can contain; only plan.py's citation check catches it. PassedTests.nodes likewise lacks the node pattern TestSubstitution uses.",
+        "fix": [
+          "In plugins/harness/lib/harness_lib/receipt_models.py, constrain change ids with the catalog pattern (import evolution_models._CHANGE_ID or a shared constant) on ExtraFile.change, TestSubstitution.change and the change_digests key type (Dict[Annotated[str, Field(pattern=...)], ...] emits propertyNames), and regenerate with python tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Receipt seal description says the planned files and tests are excluded",
+        "file": "plugins/harness/schemas/Receipt.schema.json",
+        "files": [
+          "plugins/harness/schemas/Receipt.schema.json",
+          "plugins/harness/lib/harness_lib/receipt_models.py"
+        ],
+        "lines": "313-318",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The seal description reads 'SHA-256 of this receipt without the seal and the item's planned files and tests', which parses as excluding the planned files and tests. receipt_models._digest (lines 110-117) and the module docstring do the opposite: the payload adds item.files and item.tests to the receipt body.",
+        "fix": [
+          "In plugins/harness/lib/harness_lib/receipt_models.py:82-83 change the description to \"SHA-256 of this receipt without its seal, plus the item's planned files and tests.\" and regenerate with python tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Catalog change date is described as YYYY-MM-DD but unconstrained",
+        "file": "plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/evolution_models.py"
+        ],
+        "lines": "108-112",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "DesignChange.date is described as '`YYYY-MM-DD`' but carries neither a pattern nor format: date, so the model and the schema accept any string. Receipt.date and the ActionPlan dates use the shared _DATE extra (format: date) for the same kind of value.",
+        "fix": [
+          "Give DesignChange.date in plugins/harness/lib/harness_lib/evolution_models.py:77 a pattern of r\"^[0-9]{4}-[0-9]{2}-[0-9]{2}$\" (the model enforces it) or json_schema_extra={\"format\": \"date\"} to match Receipt.date, then regenerate with python tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Catalog primary_documents does not require the plan key the schema could express",
+        "file": "plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+        "files": [
+          "plugins/harness/schemas/catalogs/DesignEvolutionCatalog.schema.json",
+          "plugins/harness/lib/harness_lib/evolution_models.py"
+        ],
+        "lines": "337-344",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The evolution_models docstring (lines 4-6) lists 'a plan document' among the rules the generated schema cannot express, and the primary_documents description promises `plan` is always present, but JSON Schema expresses it directly with required: [\"plan\"] on the object. A project that validates a catalog with the schema alone (HARNESS_RULES.md tells agents to resolve this schema) accepts a catalog without the plan document that evolution_api refuses.",
+        "fix": [
+          "Add json_schema_extra={\"required\": [\"plan\"]} to the primary_documents Field in plugins/harness/lib/harness_lib/evolution_models.py:139-140, drop 'a plan document' from the module docstring's cannot-express list, and regenerate with python tools/gen_plan_schema.py."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "plan.py freeze docstring opens with the sealed scheme as the general rule",
+        "file": "plugins/harness/scripts/plan.py",
+        "lines": "36-54",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "The `freeze` section of the plan.py module docstring (36-42) still says the freeze records 'the digest of every field but the execution fields' and 'The scheme is `sealed` unless an item record moved still carries the legacy shape'. Only six lines later (48-51) does it say that a first freeze stores `FIRST_SCHEME`, receipts, with a digest over every field but `frozen`. That is the path every new plan takes. `--help` prints only the first line, but a reader of the docstring gets the old rule first and its replacement as an afterthought.",
+        "fix": [
+          "Lead the freeze paragraph with the first-freeze rule (receipts, digest over every field but `frozen`), then describe the sealed and legacy rules as applying to plans frozen before receipts."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "Duplicated helpers: run_nodes repeats Receipt.nodes, _catalog appears twice",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/receipt_models.py",
+          "plugins/harness/lib/harness_lib/plan_live.py",
+          "plugins/harness/lib/harness_lib/plan_receipts.py"
+        ],
+        "lines": "549-552",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "`plan.py run_nodes` (549-552) is a line-for-line copy of `Receipt.nodes` (receipt_models.py:104-107), and its docstring names the original. `plan_live._catalog` (plan_live.py:40-45) duplicates `plan_receipts._catalog` (plan_receipts.py:238-243). Duplicated substitution logic can drift between the nodes `record` runs and the nodes `verify` reads.\n\nAlso (roast): plan.py run_nodes builds the same swap map over the same item.tests as Receipt.nodes, and its docstring even points there. Receipt.nodes has no caller outside its test, so the substitution rule lives in two places and only the untested-by-name one runs.",
+        "fix": [
+          "Move the swap into one function in receipt_models (for example `substituted_nodes(item, deviations)`), have `Receipt.nodes` and `plan.py` call it, and import `plan_receipts._catalog` (made public) in `plan_live`.",
+          "Put the swap on Deviations (for example Deviations.nodes(item)), call it from plan.py's record path, and have Receipt.nodes delegate to it or delete Receipt.nodes and move its test to the shared helper."
+        ]
+      },
+      {
+        "id": "M23",
+        "name": "rglob makes iter_commit_txts recursive while its docstrings say one folder, and stem keys collide",
+        "file": "plugins/harness/scripts/txt_to_commit_dict.py",
+        "files": [
+          "plugins/harness/scripts/txt_to_commit_dict.py",
+          "tests/scripts/test_txt_to_commit_dict.py"
+        ],
+        "lines": "15-16,53-56,68-70,138-143,224",
+        "reviewer": "runtime, overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "txt_to_commit_dict.py:56 switched to `rglob`, but `iter_commit_txts` still documents files 'in folder (sorted by name)' (54), the module and CLI help say 'in that directory' (15, 184-185), and the sort is now by full path. `parse_all` (70) and the `--json` batch dump (224) key results by `path.stem`, so two digit-prefixed TXT files with the same name in different subfolders silently overwrite each other.\n\nAlso (overall): iter_commit_txts switched from glob to rglob. Its docstring still says the files are 'in folder (sorted by name)' and are now sorted by full path. The module docstring still says the batch run iterates the *.txt files 'in that directory'. parse_all keys documents by path.stem, so two nested files with one stem (for example an archived copy of a branch's TXT) collide, and the later one silently replaces the earlier. _resolve_path still resolves a bare branch name at the top level only, so batch mode sees nested files and the single-target form does not. No test covers a nested folder.\n\nAlso (system_shape): `iter_commit_txts` now uses `rglob`, so it recurses into subfolders and sorts by full path. Its docstring (line 54) still says 'files in folder (sorted by name)', and the module docstring (line 15) still says the CLI iterates every digit-prefixed `*.txt` 'in that directory'. A file in a subfolder now sorts by its folder before its name.\n\nAlso (roast): glob became rglob (commit dd92dce), so batch mode and parse_all now pick up digit-prefixed TXT files in every subfolder. No test covers the nested case. The module and function docstrings still say 'in that directory', 'in folder' and 'sorted by name' (the sort is now by full path). parse_all keys by path.stem, so two nested files with the same name (an archived copy, say) silently overwrite each other.",
+        "fix": [
+          "Key `parse_all` and the `--json` dump by the path relative to the folder (`path.relative_to(target).as_posix()`), and update the docstrings and CLI help to say subfolders are included.",
+          "Or revert to `glob` if recursion was not intended.",
+          "Update both docstrings to say 'under folder, recursively, sorted by path'. Key parse_all by the path relative to the folder, or refuse duplicate stems. Make _resolve_path search nested folders as batch mode does. Add a test with a nested TXT.",
+          "Update both docstrings: 'every digit-prefixed `*.txt` under `folder`, recursively, sorted by path'.",
+          "Add a test with a nested folder, update the three docstrings, and key parse_all by the path relative to the folder (or refuse a duplicate stem with a ValueError)."
+        ]
+      },
+      {
+        "id": "M24",
+        "name": "write-plan README says things the driver does not do",
+        "file": "plugins/harness/skills/write-plan/README.md",
+        "files": [
+          "plugins/harness/skills/write-plan/README.md",
+          "plugins/harness/lib/harness_lib/plan_render_html.py",
+          "plugins/harness/lib/harness_lib/plan_live.py",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/schemas/PLANS_PIP_Template.md",
+          "plugins/harness/schemas/README.md"
+        ],
+        "lines": "20,53-61,96-99",
+        "reviewer": "docs, skill_package, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Three claims in the developer README disagree with the code. (1) Line 20: 'Never edit it: the next render overwrites it.' On a frozen receipts plan, render writes the page only when it is missing (plan_render_html.refresh_pip, plan_render_html.py:188-196), so a hand edit survives every render until a refreeze. (2) Line 96: the freeze commit holds 'the new HTML PIP and the deleted markdown PIP'. Under D6, `new` writes the HTML page for a plan bound for receipts, so only a plan started before receipts has a markdown PIP to delete. (3) Line 98: 'the driver rewrites it on every render'. plan_live._ignore_live (plan_live.py:56-61) writes the plan folder's .gitignore only when live.js is not already listed.\n\nAlso (skill_package): README.md:96 tells the developer to commit 'the new HTML PIP and the deleted markdown PIP' at freeze. On a plan started at this version, `plan.py new` and `plan_api.write` already write the HTML page: `uses_html` (plan_render_html.py:37-41) is true for an unfrozen plan whose `scheme_for` is receipts, and `scheme_for` returns `FIRST_SCHEME` (receipts) on a first freeze. So no markdown PIP exists to delete, and the page was already committed at step 2. Only a plan started before receipts loses a markdown PIP. Separately, README.md:20 says 'the next render overwrites it', but README.md:43 and plan.py:25-27 (`refresh_pip`) say that `render` on a frozen receipts plan writes the page only when it is missing.\n\nAlso (overall): README line 98 says committing the plan folder's .gitignore is optional because 'the driver rewrites it on every render'. plan_live._ignore_live appends `live.js` only when that line is missing, and it runs only when live.js is rebuilt (record, evolution_api, freeze, render of a frozen receipts plan). A render of an unfrozen plan never touches it.\n\nAlso (system_shape): `plan.py new` sets `documentation` to `_PIP.html` and writes the HTML page whenever `uses_html` holds. For an unfrozen plan that is `scheme_for` -> `first_freeze` -> `FIRST_SCHEME` (receipts), so every new plan has an HTML PIP from the start. A markdown PIP that the freeze deletes (`move_documentation`) exists only for a plan started before this version. Several docs describe it the other way. write-plan README:58 says 'The PIP becomes NNNN_<title>_PIP.html' after the freeze, and README:96-97 says the freeze commit carries 'the new HTML PIP and the deleted markdown PIP'. SKILL.md:82-83 says the freeze writes the page and 'a markdown PIP gives way to them'. PLANS_PIP_Template.md:7 says 'plans frozen from harness 0.66.0 render the PIP as an HTML page'. README:98-99 also says the driver 'rewrites' the plan folder's .gitignore 'on every render', but `plan_live._ignore_live` only appends `live.js` when it is missing, on any `write_live` call.",
+        "fix": [
+          "Line 20: 'Never edit it: a refreeze rewrites it (and, on a plan not yet frozen, every write or render does).' Line 96: 'the plan JSON and the HTML PIP (plus the deleted markdown PIP, for a plan started before receipts)'. Line 98: 'the driver writes it again whenever live.js is rebuilt and the file is missing or lacks the line'.",
+          "README.md:96: change 'the plan JSON, the new HTML PIP and the deleted markdown PIP' to 'the plan JSON and its HTML PIP (on a plan started before receipts, also the markdown PIP the freeze deleted)'. README.md:20: change 'the next render overwrites it' to 'the next `write`, render or refreeze rebuilds it'.",
+          "Reword to: the driver restores the `live.js` line whenever it rebuilds live.js (record, render, freeze, evolution_api), so a repository may ignore the file instead.",
+          "State that plans started from this version have the HTML page from `new` on, and that only a plan started earlier swaps its markdown PIP at the first freeze. In the commit sequence, drop 'the deleted markdown PIP' from the default freeze commit or mark it as the case of an older plan. Say the driver adds `live.js` to the folder's .gitignore whenever it writes the sidecar."
+        ]
+      },
+      {
+        "id": "M25",
+        "name": "write-plan says nothing but a refreeze writes a frozen receipts plan, then prescribes a write before it",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/skills/write-plan/README.md"
+        ],
+        "lines": "83,95-96,218-219",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:83 states 'Nothing writes a receipts plan after its freeze but a refreeze', yet SKILL.md:95-96 prescribes 'a `write` of the changed plan plus `freeze --refreeze`', and Common mistakes (SKILL.md:218-219) says a `write` after the freeze breaks the freeze digest. Both describe `plan_api.write` writing the frozen plan, and the code agrees: `plan_api.write` calls `write_pip`, which rewrites the HTML page of a frozen receipts plan. README.md:53 makes the same absolute claim ('After the freeze the plan JSON does not change'), and README.md:63-64 then tells the developer to change the plan through `plan_api.write` before the refreeze. An agent reading line 83 literally could treat the step 8 design-change path as forbidden.",
+        "fix": [
+          "SKILL.md:83: change 'Nothing writes a receipts plan after its freeze but a refreeze:' to 'Nothing writes a receipts plan after its freeze but a design change (a `write` followed by `freeze --refreeze`):'. Keep the lower-cased phrase 'nothing writes a receipts plan after its freeze', which tests/skills/test_write_plan_receipts_contract.py:23 pins. README.md:53: change 'After the freeze the plan JSON does not change.' to 'After the freeze the plan JSON changes only through a refreeze.'"
+        ]
+      },
+      {
+        "id": "M26",
+        "name": "Date-default test checks only the string length",
+        "file": "tests/lib/test_evolution_models.py",
+        "lines": "90-93",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_a_change_date_defaults_to_today promises that the default is today, but it asserts only len(date) == 10. A fixed default such as \"1970-01-01\", or any 10-character string, would pass.",
+        "fix": [
+          "Assert DesignChange.model_validate(raw).date in {before, after}, where before and after are datetime.date.today().isoformat() taken just before and just after the call (so a midnight rollover is tolerated)."
+        ]
+      },
+      {
+        "id": "M27",
+        "name": "Receipts-skip tests have no sealed control and leave a parameter unused",
+        "file": "tests/lib/test_todo_sync_rules_plans_receipts.py",
+        "lines": "18-33",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "receipts_files takes a `records` parameter, but no caller passes it, so nothing shows that P1 and P4 skip a plan because it uses receipts rather than because it is frozen. The P4 test also sets markdown_sync_status to \"in_sync\", which the base fixture already holds (tests/lib/_todo_helpers.py:64), and line 21 resets an item to the PENDING it already has. Both are no-ops, so test_p4_skips_a_receipts_plan has no proof that this fixture would produce a P4 finding at all. The module docstring says P1 and P4 skip such a plan, but nothing shows a non-receipts frozen plan would be flagged.",
+        "fix": [
+          "Parametrize test_p1_skips_a_receipts_plan and test_p4_skips_a_receipts_plan over records in (\"receipts\", \"sealed\"). Assert no findings for receipts and at least one finding for sealed, so the skip is pinned to the scheme.",
+          "Or drop the unused `records` parameter and the no-op assignments, and add one sealed-plan control test per rule."
+        ]
+      },
+      {
+        "id": "M28",
+        "name": "as_sealed helper is copied verbatim into two suites",
+        "file": "tests/scripts/test_plan_receipts_record.py",
+        "files": [
+          "tests/scripts/test_plan_receipts_record.py",
+          "tests/scripts/test_plan_receipts_freeze.py",
+          "tests/scripts/_plan_driver_helpers.py"
+        ],
+        "lines": "120-126",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "as_sealed (it re-stamps a frozen plan as sealed and recomputes the digest) appears identically in test_plan_receipts_freeze.py:54-60 and test_plan_receipts_record.py:120-126. Both suites already import from _plan_driver_helpers, which now holds the related sealed_first_freeze fixture. If one copy changes, the other drifts.",
+        "fix": [
+          "Move as_sealed into tests/scripts/_plan_driver_helpers.py (it needs plan_doc and RecordScheme, which the helper module can import), import it in both suites, and delete the local copies."
+        ]
+      },
+      {
+        "id": "M29",
+        "name": "write-plan contract docstring claims checks the tests do not make",
+        "file": "tests/skills/test_write_plan_receipts_contract.py",
+        "files": [
+          "tests/skills/test_write_plan_receipts_contract.py",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ],
+        "lines": "1-7",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The module docstring says the PIP is an HTML page opened from disk and that the receipts phrases are scoped to receipts plans, because plans frozen before receipts keep sealed records. No test asserts the open-from-disk wording or the sealed-plan scoping, so the skill could drop either without any test failing.",
+        "fix": [
+          "Add assertions for the scoping phrase and for the open-from-disk wording, using the exact text in plugins/harness/skills/write-plan/SKILL.md.",
+          "Or trim the docstring to the claims the tests check."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M4",
+      "classification": "architectural_ambiguity",
+      "reason": "Needs the OK to refreeze plan 1014, and a call on regenerating strap fixtures plan-1014/plan-1021 that recorded write-plan runs played on (vs the runner's path translation)."
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 261 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"1150-canned-messages\",\"commits_count\":18,\"first_sha\":\"b3abaad9a54b3f8b94a73a597beb1819e8ab3b13\",\"headRefName\":\"2150-plan-refreeze\",\"headRefOid\":\"54cf0cca282b12fecb5eaaaea388185d19c17b5e\",\"last_sha\":\"54cf0cca282b12fecb5eaaaea388185d19c17b5e\",\"mergeCommit\":null,\"number\":261,\"state\":\"OPEN\",\"title\":\"Docs(plan): `receipts` record scheme\",\"url\":\"https://github.com/t968rs/operator-straps/pull/261\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "2150-plan-refreeze",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "2150-plan-refreeze",
+        "head_ref_name": "2150-plan-refreeze",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "b3abaad9a54b3f8b94a73a597beb1819e8ab3b13",
+        "head_sha": "54cf0cca282b12fecb5eaaaea388185d19c17b5e",
+        "base_ancestor_command": "git merge-base --is-ancestor b3abaad9a54b3f8b94a73a597beb1819e8ab3b13 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 54cf0cca282b12fecb5eaaaea388185d19c17b5e HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "1150-canned-messages",
+        "result": "OK (recorded; not the configured base main)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - Prefixed the receipts change line with #261 and the strap reopen line with #262"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - add no longer raises early on a duplicate id; _save/_problems reports the duplicate (model validator) together with the item problems, matching the docstring"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - schemas README: frozen.records says a first freeze stores receipts, Status rules and Validation scope the sealed record and JSON-as-truth rules to plans frozen before receipts and add the receipts flow (receipt, JSON stays as frozen, deviation cited from DesignEvolution.json), Workflow Step 2/3 describe the HTML PIP with live.js, record writing receipts and live.js, and --also/--substitute/--cite; HARNESS_RULES names a receipt or an in-JSON record; write-plan SKILL.md already describes receipts (lines 20-23, 82-133); plan.py only cited (digest_problems), no edit"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - Release notes Breaking changes and schemas README Migration now name every step: drop top-level $schema and _comment, keep only the three finding/lessons keys under summary (tallies come from DesignEvolution.counts), move id_conventions prefix keys under prefixes and rename _comment to comment; the catalog schema and evolution_models define the closed shape the text describes, no edit"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - plan.py book_of and evolution_problems take the plan file's folder (book_of(plan_file, plan), evolution_problems(plan_file.parent, plan), threaded through all_problems) at every call site (check, red, freeze, record, lanes, verify), so reads share the root record and evolution_api write to; plan_receipts, plan_render_html and evolution_api already write under plan_file.parent, no edit"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - Fix lives in tests/lib/test_plan_render_html.py (other fixer's part); plan_render_html.uses_html already defers to the real plan_record.scheme_for/FIRST_SCHEME, so the module needs no edit; test_a_never_frozen_plan_renders_html_only_when_bound_for_receipts asserts uses_html with the real FIRST_SCHEME (receipts), then patches plan_record.FIRST_SCHEME to RecordScheme.sealed; the scheme_for stub is gone. The scheme_for stub is also removed from test_write_pip_writes_no_sidecar_for_a_plan_not_yet_frozen."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - pip_document pattern relaxed to ^.+_PIP\\.(md|html)$ in PrAttributes, schema regenerated; the optional folder check in plugins/harness/scripts/plan.py was not added (outside the file set; plan.py does not read pip_document today)"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - plan_id description names `{plan_id}_{Title}_PIP.md` or `_PIP.html`, schema regenerated"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - frozen description names the receipts digest (every field but frozen, any edit reported) beside the sealed/unset exclusions; plan_id names _PIP.html; ActionPlan docstring says receipts plans keep status and evidence in receipt files; schema regenerated; PlanPair docstring names _PIP.md or _PIP.html and notes pip is parsed for markdown only"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - evolution_api.add put CX1 (post-exec-start, PR 262 review) naming DRV-1 in plan 1014's catalog; DRV-1 recorded again at HEAD 54cf0cc with --also strap_api.py --also strap-scenario-runner.md --cite CX1 (6 nodes passed); strap_api.py, strap.py: cited by the receipt and CX1, the code at HEAD already holds the fixes, no edit"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - runner takes a `git status --porcelain --untracked-files=all` snapshot of REPO right after init and, before record-run, stops only on a touched path whose line is new or changed since the snapshot; stop condition updated to match"
+    },
+    {
+      "id": "M23",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - parse_all and the batch --json dump key by the path relative to the folder without .txt (_doc_key; top-level keys stay the stem), module/function docstrings and CLI help say subfolders are included, sorted by path; two tests cover nested namesakes in parse_all and the --json batch"
+    },
+    {
+      "id": "M25",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - README.md:53 now says 'After the freeze the plan JSON changes only through a refreeze.'; write-plan step 8 now reads 'Nothing writes a receipts plan after its freeze but a design change (a write followed by freeze --refreeze)', keeping the pinned lower-cased phrase; README part belongs to another fixer"
+    },
+    {
+      "id": "M26",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - test_a_change_date_defaults_to_today asserts the default date is in {today before, today after} the call"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - Reopen paragraph states SKILL.md is a part and gives the order: commit the frozen round, reopen at HEAD, then write the guidance; when the rules are already written, commit SKILL.md without them, reopen there, restore them (strip-and-restore base); strap.py: refusal text left as is, the SKILL.md route resolves the issue and test_strap_reopen.py pins that message"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - PLANS_PIP_Template.md:7 now reads 'plans started or first frozen from harness 0.67.0' in place of 'plans frozen from harness 0.66.0'; the schemas README and v1.0.0.md entries belong to the other part.; Schemas README Migration entry now names harness 0.67.0 instead of 0.66.0; v1.0.0.md: no 0.66.0 reference, its table already reads 0.65.1 -> 0.67.0"
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - receipt_models.py: the swap moved into module function substituted_nodes(item, deviations); Receipt.nodes delegates to it. plan_live.py: the local _catalog copy and its now-unused imports are removed; build_live calls plan_receipts._catalog (prt._catalog). plan.py run_nodes and the plan_receipts _catalog rename belong to the other part.; plan_receipts.py: already present, plan_receipts._catalog (line 238) is the single copy and plan_live.build_live now calls prt._catalog; renaming it public would break plan_live, which belongs to the other part; plan.py: run_nodes removed; the record path calls receipt_models.substituted_nodes (the shared helper Receipt.nodes delegates to), imported beside Deviations and Receipt"
+    },
+    {
+      "id": "M28",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - test_plan_receipts_record.py: local as_sealed removed, now imported from _plan_driver_helpers (which holds as_sealed at line 87); unused pd and RecordScheme imports dropped.; Moved as_sealed into _plan_driver_helpers.py (imports plan_doc as pd); test_plan_receipts_freeze.py imports it and drops its local copy and the now-unused RecordScheme import"
+    },
+    {
+      "id": "I6",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - test_verify_names_a_receipt_whose_seal_is_broken tampers by loading the receipt JSON and setting data['evidence'] to 'commit 1234567: 9 test node(s) passed', as test_check_flags_a_hand_edited_receipt does; no date-prefix replace remains.; plan.py part: no edit; today() stamping the receipt date is correct behavior, the date-independent tamper belongs in tests/scripts/test_plan_receipts_record.py (other part)"
+    },
+    {
+      "id": "M27",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - Renamed receipts_files to frozen_files(records) without the no-op status reset; parametrized the P1 and P4 tests over receipts (no findings) and sealed (flagged) so the skip is pinned to the scheme; dropped the no-op markdown_sync_status assignment; docstring names the sealed control"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - Receipt.holds now requires the stored plan_id and item to equal the plan's id and the item's id before comparing the digest, so a hand edit of plan_id breaks the receipt; seal parametrize test gains ('plan_id', '0002') and ('item', 'TASK-2'); plan_receipts.py: receipt_problems and receipt_holds already route through Receipt.holds, so the mismatch reports there with no edit"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - ExtraFile.change, TestSubstitution.change and the change_digests keys use a ChangeId type built on evolution_models._CHANGE_ID (change_digests also sets additionalProperties false beside the emitted patternProperties); Receipt.schema.json regenerated with tools/gen_plan_schema.py; new test refuses 'foo', 'EX', 'ex1'; PassedTests.nodes lives in plan_models, outside this file set"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - DesignEvolutionCatalog.schema.json: regenerated with tools/gen_plan_schema.py, no drift because the DesignChange.date edit in evolution_models (the other part) had not landed yet; that part's regeneration rewrites this file, and gen_plan_schema.py --check catches a stale copy; DesignChange.date gets pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ (model enforces it) and format: date; schemas regenerated with tools/gen_plan_schema.py; docs/plans/1014 catalog still loads"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - DesignEvolutionCatalog.schema.json: regenerated with tools/gen_plan_schema.py, no drift because the primary_documents required-plan edit in evolution_models (the other part) had not landed yet; that part's regeneration rewrites this file, and gen_plan_schema.py --check catches a stale copy; primary_documents Field gets json_schema_extra required: [plan]; module docstring drops 'a plan document' from the cannot-express list (the validator keeps its check); schemas regenerated with tools/gen_plan_schema.py"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - plan_render_html: the live.js note and loader script render only when uses_receipts (an unfrozen page says live parts appear after plan.py freeze); write_pip keeps writing the markdown PIP for an unfrozen plan whose documentation names it (_keeps_markdown) until the first freeze moves it; module and refresh_pip docstrings, plan_api.write docstring and plan.py render paragraph name plan_api.write among the writers of an existing page"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - plan_render_html: _live_note emits the render/live.js text only on a frozen receipts plan, else a 'not frozen yet' note naming plan.py freeze; header note (_origin_note) says the page is written by plan.py new, plan_api.write and plan.py freeze, with plan.py render restoring a missing page and its live.js"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - plan.py freeze docstring now leads with the first-freeze receipts rule (digest over every field but frozen, documentation move, page and live.js) and the receipts refreeze rule, then a separate paragraph for the sealed and legacy rules of plans frozen before receipts"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - HARNESS_RULES Plans and specs rule now says a pre-plan change is entered (phase spec-review) once plan.py new has run, and a post-freeze developer design change is entered alongside its write and refreeze; write-plan step 8 mirrors both; evolution_api.py: cited only, add resolves the plan first (lines 103-110), no edit needed"
+    },
+    {
+      "id": "M29",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - contract test now asserts the open-from-disk wording and the sealed-plan scoping phrases ('Plans frozen before receipts keep the sealed scheme', 'A plan frozen before receipts keeps its markdown PIP'); SKILL.md: cited only, already holds the asserted text"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - Retitled v0.7.1.md to '# v0.7.1 (superseded by v1.0.0)' with a do-not-cut line pointing at v1.0.0.md; v1.0.0.md release note now says the old file is retitled so it cannot be cut"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - DesignEvolution README section lists discovered_by among the required change fields, items[] and date (default today) as defaulted, and adds a cross-record-rules sentence naming the model-validator checks the generated schema cannot express; evolution_models.py: cited source of the rules, no edit; v1.0.0.md: breaking-change text stays accurate, no edit"
+    },
+    {
+      "id": "M24",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - README: line 20 names the real PIP writers (write, freeze, refreeze; render except on a frozen receipts plan), the freeze bullet says new plans have the HTML page from new and only older plans swap a markdown PIP, the freeze commit lists the markdown deletion only for older plans, and the .gitignore note says the driver adds the live.js line when it rebuilds live.js; SKILL.md step 8 says the same about the markdown PIP; plan_render_html.py, plan_live.py: cited code, behavior unchanged; PLANS_PIP_Template.md:7 and schemas/README.md:227 already accurate"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - one catalog loader (plan_receipts._catalog, called by plan_live.build_live) and one substitution helper (receipt_models.substituted_nodes, used by Receipt.nodes and plan.py record); the copies are gone (outside fixer waves)"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - HARNESS_RULES.md:80-83 says a plan.py plan carries a sealed record per item: a receipt beside the plan, or a record in the JSON of a plan frozen before receipts (outside fixer waves)"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - Receipt.seal description reads 'SHA-256 of this receipt without its seal, plus the item's planned files and tests.' in receipt_models.py and the regenerated Receipt.schema.json (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-10",
+      "evidence": "54cf0cc (working-tree snapshot; developer commits) - plan 1014 commands use repo-relative launchers (sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py ...); refrozen with the developer's OK, check and verify pass, receipts hold; strap fixtures plan-1014 and plan-1021 left as recorded (runner path translation), per the developer (outside fixer waves)"
+    }
+  ]
+}

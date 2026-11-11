@@ -12,6 +12,8 @@
   "todo": {
     "folder": "docs/TODO"
   },
+
+  "auto_title": true,
   "strap": {"target": "harness"},
   "commit_buckets": [
     {"bucket": "Planning", "prefixes": ["docs/plans/"], "names": ["CLAUDE.md"]},

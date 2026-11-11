@@ -7,7 +7,8 @@ stamps a fresh digest and only then writes the file. A refusal or a failed valid
 
 A frozen spec still takes part edits (``add_part``, ``remove_part``) and the reply and grades of a green
 run, so a part change can be proven again on the new skill hash before ``strap.py freeze --refreeze``.
-Behaviors, scenarios, draws and baselines stay locked.
+Behaviors, scenarios, draws and baselines stay locked until ``strap.py reopen`` starts a new round; after
+it, a behavior frozen in an earlier round keeps its ``tests`` and ``kind``.
 
 ``__all__`` is the surface ``skill_api.py`` binds for an api heredoc. ``record_run`` stays importable for
 ``strap.py record-run`` but is left out of it, so an api session cannot record a reply. Requires an
@@ -37,6 +38,7 @@ __all__ = [
 
 _TAMPERED = "driver-owned fields changed outside strap.py"
 _LOCKED_WHEN_DRAWN = ("scenarios", "kind", "type")
+_LOCKED_AFTER_ROUND = ("tests", "kind")
 _BEHAVIOR_PREFIX = "B"
 _SCENARIO_PREFIX = "SC-"
 _JUDGE_SPEC = "judge spec: grade with grader='judge'"
@@ -197,8 +199,10 @@ def add_behavior(name: str, behavior: Behavior) -> SkillSpec:
 
 
 def _refuse_fields(spec: SkillSpec, behavior_id: str, fields: Iterable[str]) -> None:
-    """Refuse driver-owned fields, the assigned id, and the locked fields of a drawn behavior."""
+    """Refuse driver-owned fields, the assigned id, the locked fields of a drawn behavior, and the proven
+    fields of a behavior frozen in an earlier round (``red`` skips it, so changed tests would go unproven)."""
     drawn = any(draw.behavior == behavior_id for draw in spec.draws)
+    earlier = any(behavior_id in done.behaviors for done in spec.rounds)
     for field in fields:
         if field in DRIVER_OWNED_BEHAVIOR:
             raise StrapError(f"{field} is driver-owned")
@@ -206,6 +210,9 @@ def _refuse_fields(spec: SkillSpec, behavior_id: str, fields: Iterable[str]) -> 
             raise StrapError("id is assigned by add_behavior")
         if drawn and field in _LOCKED_WHEN_DRAWN:
             raise StrapError(f"{behavior_id} is drawn")
+        if earlier and field in _LOCKED_AFTER_ROUND:
+            raise StrapError(f"{behavior_id} was frozen in an earlier round; its {field} stays as proven, "
+                             "so a changed rule goes on a new behavior")
 
 
 def update_behavior(name: str, behavior_id: str, **changes: Any) -> SkillSpec:
