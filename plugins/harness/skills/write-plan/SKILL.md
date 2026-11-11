@@ -180,7 +180,8 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    `off-history:` in `check`. That is the cue to offer a relink, which runs on the developer's request:
    `PLAN relink <id> [--to REF]`. It matches `base_commit` to its rewritten counterpart by `git patch-id`
    among HEAD's ancestors (or takes `--to`), re-points `base_commit`, appends a `relink` entry and tags the
-   new base `base/<stem>/r1-<m>`; the old tags stay.
+   new base `base/<stem>/r1-<m>`; the old tags stay. The entry re-records the frozen or locked files with the
+   plan JSON's new blob, so a relink leaves the plan Frozen or Locked and `check` reports no `drift:` for it.
 
    **What a record proves.** On a receipts plan, `record` seals each status it writes into the item's
    receipt: a sha256 over the receipt without its seal (outcome, date, evidence, and the deviations with the
