@@ -30,9 +30,9 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 </head>
 <body>
 <h1>Plan 1014: strap reopen</h1>
-<p class="note">Rendered by <code>plan.py render</code> from <code>1014_strap_reopen_ActionPlan.json</code>. Change the JSON through the driver, then render again; edits to this file are overwritten.</p>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>1014_strap_reopen_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
 <p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 1014</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 1014</code>.</span></p>
-<dl class="head"><dt>Plan created</dt><dd>2026-11-10</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-10-strap-reopen-design.md</code></dd><dt>Branch</dt><dd>2150-plan-refreeze -&gt; main</dd><dt>Base commit</dt><dd><code>5a8ef39</code></dd><dt>Frozen</dt><dd>2026-11-10 at <code>88659f1</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-10</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-10-strap-reopen-design.md</code></dd><dt>Branch</dt><dd>2150-plan-refreeze -&gt; main</dd><dt>Base commit</dt><dd><code>5a8ef39</code></dd><dt>Frozen</dt><dd>2026-11-10 at <code>54cf0cc</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
 <h2>Decisions</h2>
 <ul>
 <li><strong>D1</strong> How does a frozen strap spec take new behaviors? Chosen: <code>rounds</code> (reopen moves the stamp into rounds[]; one spec). Rejected: <code>archive</code> (reopen archives the folder and starts a fresh spec). Developer&#x27;s pick: history in one spec, earlier behaviors stay gated.</li>
@@ -119,7 +119,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li>Test <code>tests/skills/test_strap_skills_reopen_contract.py::test_skill_names_the_round_rules</code> fails with AssertionError, then passes</li>
 <li>Test <code>tests/skills/test_strap_skills_reopen_contract.py::test_readme_strap_row_names_reopen</code> fails with AssertionError, then passes</li>
 <li>Run <code>python -m pytest tests/skills/test_strap_skills_skill_contract.py -q</code>: all pass</li>
-<li>Run <code>sh &quot;E:/automation/operator-straps/plugins/harness/scripts/hpy&quot; &quot;E:/automation/operator-straps/plugins/harness/scripts/strap.py&quot; check strap-skills</code>: check [ok]</li>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check strap-skills</code>: check [ok]</li>
 <li>Record it: <code>plan.py record 1014 DOC-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
 </ul>
 <div class="receipt"><p class="note">No receipt.</p></div>
@@ -131,8 +131,8 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <p><strong>Files:</strong> <code>docs/plans/strap/write-plan/SkillSpec.json</code>, <code>plugins/harness/skills/write-plan/SKILL.md</code></p>
 <p class="action">Inline in the main session, never a parallel2 lane (runner agents run one at a time). With the developer&#x27;s OK, `reopen write-plan --base &lt;D2 base&gt;`. Add judgment behaviors (discipline, two or more scenarios each, three or more pressures, fixtures under docs/plans/strap/write-plan/fixtures/ holding a really frozen receipts plan): (a) a lane that needs a file outside its item stops and reports instead of building past the plan; (b) a design change found mid-build goes through `evolution_api.add` and is cited with `record --also/--substitute --cite`, never a hand edit of the frozen plan; (c) a frozen receipts plan&#x27;s JSON and HTML page are never edited by hand. check, draw, baselines, grades, SKILL.md changes only where a baseline shows a gap, greens, grades, then freeze.</p>
 <ul>
-<li>Run <code>sh &quot;E:/automation/operator-straps/plugins/harness/scripts/hpy&quot; &quot;E:/automation/operator-straps/plugins/harness/scripts/strap.py&quot; reopen write-plan --base &lt;D2 base&gt;</code>: reopen [done] | write-plan | round 2</li>
-<li>Run <code>sh &quot;E:/automation/operator-straps/plugins/harness/scripts/hpy&quot; &quot;E:/automation/operator-straps/plugins/harness/scripts/strap.py&quot; freeze write-plan</code>: freeze [done] | write-plan</li>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py reopen write-plan --base &lt;D2 base&gt;</code>: reopen [done] | write-plan | round 2</li>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze write-plan</code>: freeze [done] | write-plan</li>
 <li>Record it: <code>plan.py record 1014 STR-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
 </ul>
 <div class="receipt"><p class="note">No receipt.</p></div>

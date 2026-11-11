@@ -60,6 +60,33 @@
         "free_form": "B10's baseline already held, so a green round teaches nothing; a separate (c) behavior would repeat B9's pressure on the same frozen plan; a check on the PIP HTML is left to a later round"
       },
       "date": "2026-11-10"
+    },
+    {
+      "id": "CX1",
+      "discovered_by": "PR 262 review",
+      "phase": "post-exec-start",
+      "items": [
+        "DRV-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "DRV-1 files",
+        "indicated": "only plugins/harness/scripts/strap.py and tests/scripts/test_strap_reopen.py change"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "review fixes to reopen landed in files DRV-1 does not list",
+        "why_free_form": "the PR 262 review found that reopen accepted a base whose parts differ from the working tree, that strap_api let a behavior's tests and kind change after a round, and that the strap-scenario-runner agent could record a scenario that leaked into the repository; the fixes added _reopen_base_problems to strap.py, _LOCKED_AFTER_ROUND to strap_api.py and a pre-record repository check to the agent, after DRV-1 was recorded on staged tree 95deec0"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "DRV-1 also changes plugins/harness/lib/harness_lib/strap_api.py and plugins/harness/agents/strap-scenario-runner.md, and is recorded again at the commit that holds the review fixes"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the base check, the locked fields and the runner check, a reopened round can test the wrong code or record a leaking scenario; the receipt names the files so the trail covers them"
+      },
+      "date": "2026-11-10"
     }
   ]
 }

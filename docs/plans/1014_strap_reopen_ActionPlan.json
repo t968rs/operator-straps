@@ -193,7 +193,7 @@
           "expect": "all pass"
         },
         {
-          "run": "sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" \"E:/automation/operator-straps/plugins/harness/scripts/strap.py\" check strap-skills",
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check strap-skills",
           "expect": "check [ok]"
         }
       ],
@@ -229,11 +229,11 @@
       "model": "opus",
       "commands": [
         {
-          "run": "sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" \"E:/automation/operator-straps/plugins/harness/scripts/strap.py\" reopen write-plan --base <D2 base>",
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py reopen write-plan --base <D2 base>",
           "expect": "reopen [done] | write-plan | round 2"
         },
         {
-          "run": "sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" \"E:/automation/operator-straps/plugins/harness/scripts/strap.py\" freeze write-plan",
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze write-plan",
           "expect": "freeze [done] | write-plan"
         }
       ]
@@ -241,10 +241,10 @@
   ],
   "base_commit": "5a8ef39a2515d95da028eef5d3e9e6a8e88149ad",
   "frozen": {
-    "commit": "88659f1b847e0ecb1a6740b1ca9c7a8a7ae5fd2d",
-    "tree": "e97e691f178ad01f4d9e86ab1bd17e992241eb49",
+    "commit": "54cf0cca282b12fecb5eaaaea388185d19c17b5e",
+    "tree": "481e4d40f8db41fc30dce3cf4578edfc4ed612f2",
     "date": "2026-11-10",
-    "digest": "7007e237ccf6daee5e097d77f4f612375efe9ae3a9ec82962f484df6c208beb0",
+    "digest": "b3eedf764020445ccbd121a3ce5fd8222c19717a6cf39058c8a1cd1b017317e3",
     "records": "receipts"
   },
   "decisions": [
