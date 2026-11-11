@@ -195,7 +195,7 @@
           "expect": "all pass"
         },
         {
-          "run": "sh \"E:/automation/operator-straps/plugins/harness/scripts/hpy\" \"E:/automation/operator-straps/plugins/harness/scripts/strap.py\" check strap-skills",
+          "run": "sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check strap-skills",
           "expect": "check [ok]"
         }
       ],
@@ -220,7 +220,7 @@
     "commit": "88659f1b847e0ecb1a6740b1ca9c7a8a7ae5fd2d",
     "tree": "e97e691f178ad01f4d9e86ab1bd17e992241eb49",
     "date": "2026-11-10",
-    "digest": "2ab76a0f03b2f24556e003e51ecbeda356978c667b8cddf161f90774839dfdce",
+    "digest": "281c18554812b9e7a456e9eea6421b4a76dccc8404f0b1e76d21b3ecb6b96d77",
     "records": "receipts"
   },
   "decisions": [
