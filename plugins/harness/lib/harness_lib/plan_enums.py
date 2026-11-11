@@ -73,6 +73,7 @@ class RecordScheme(StrEnum):
     """How a frozen plan's items prove their status; unset means the legacy references still pass."""
 
     sealed = "sealed"
+    receipts = "receipts"
 
 
 class RecordProblemKind(StrEnum):

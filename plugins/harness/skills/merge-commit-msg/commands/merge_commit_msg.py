@@ -12,9 +12,10 @@ against a type list). Any other mode token is refused. Both modes write ``PR<N>_
 ``capture N [squash]``
     Read PR N through ``gh`` (shape, commit headlines, changed files, one ``gh pr diff``), the branch's
     commit-message TXT when one exists, the PR's review JSON (``artifacts.reviews``) and the canned message
-    for the changed files (``harness_lib.canned_messages``). Print the facts (the mode among them) and the
-    PR's diff (one section per file under ``DIFF_SECTION_CHARS`` characters, the whole under
-    ``DIFF_CHAR_BUDGET``: a section past the budget keeps its ``diff --git`` header), then a ``text`` fence
+    for the changed files (``harness_lib.canned_messages``, the project's ``canned_messages`` sets first).
+    Print the facts (the mode among them) and the PR's diff (one section per file under
+    ``DIFF_SECTION_CHARS`` characters, the whole under ``DIFF_CHAR_BUDGET``: a section past the budget keeps
+    its ``diff --git`` header), then a ``text`` fence
     holding the message skeleton with the subject of the mode, lineage and review lines already filled in.
     Writes no file. Exits 1 when the PR is not open or its title cannot head the subject of the mode; with
     ``--auto-title`` such a title adds a ``- Title problem:`` fact instead, and the subject line of the
@@ -55,7 +56,7 @@ from typing import Dict, List, Optional, Sequence, TextIO, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
-from harness_lib.canned_messages import get_canned_message  # noqa: E402
+from harness_lib.canned_messages import project_canned_message  # noqa: E402
 from harness_lib.commit_diff import cap_sections, clip_text  # noqa: E402
 from harness_lib.commit_txt import (  # noqa: E402
     filler_words,
@@ -272,7 +273,7 @@ def render(pr: int, view: Dict[str, object], files: Sequence[str], commits: Sequ
     """
     title, base, head = str(view["title"]), str(view["baseRefName"]), str(view["headRefName"])
     names = lineage_names(str(view.get("body") or ""), base, head)
-    canned = get_canned_message(files)
+    canned = project_canned_message(files)
     message = message_template(pr, title, names, canned, squash)
     message[0] = RETITLE_HINT if retitle else message[0]
     size = f"+{view['additions']} -{view['deletions']} across {view['changedFiles']} files"

@@ -1,0 +1,92 @@
+{
+  "plan_id": "1014",
+  "feature": "strap reopen",
+  "branch_lineage": "main-->2150-plan-refreeze",
+  "primary_documents": {
+    "plan": "docs/plans/1014_strap_reopen_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-10-strap-reopen-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "main session (STR-1)",
+      "phase": "post-exec-start",
+      "items": [
+        "STR-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "STR-1 files",
+        "indicated": "only the write-plan SkillSpec.json and SKILL.md change"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the item's action names a fixture folder its files omit",
+        "why_free_form": "the round 2 scenarios need a frozen receipts plan in their tree, laid from docs/plans/strap/write-plan/fixtures/plan-1014/"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "STR-1 also adds the plan-1014 fixture (the frozen plan JSON and its page)"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the fixture the B9 scenarios have no frozen plan to act on"
+      },
+      "date": "2026-11-10"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "main session (STR-1)",
+      "phase": "post-exec-start",
+      "items": [
+        "STR-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "STR-1 action",
+        "indicated": "three judgment behaviors: (a) a lane that needs a file outside its item stops and reports; (b) a design change found mid-build goes through evolution_api.add and is cited on the record; (c) a frozen receipts plan's JSON and HTML page are never edited by hand"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the write-plan round 2 spec straps fewer behaviors than the item's action names",
+        "why_free_form": "B9 covers (b); (a) became B10, dropped on its recorded reason (the drawn baseline R-2, SC-4, already stopped and reported under the pre-receipts SKILL.md); (c) has no behavior of its own"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "STR-1 straps B9 alone: (c) folds into B9, whose file_unchanged check covers the frozen plan JSON only, so nothing checks the PIP HTML; (a) is B10, dropped"
+      },
+      "why_new_outcome": {
+        "category": "yagni",
+        "free_form": "B10's baseline already held, so a green round teaches nothing; a separate (c) behavior would repeat B9's pressure on the same frozen plan; a check on the PIP HTML is left to a later round"
+      },
+      "date": "2026-11-10"
+    },
+    {
+      "id": "CX1",
+      "discovered_by": "PR 262 review",
+      "phase": "post-exec-start",
+      "items": [
+        "DRV-1"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "DRV-1 files",
+        "indicated": "only plugins/harness/scripts/strap.py and tests/scripts/test_strap_reopen.py change"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "review fixes to reopen landed in files DRV-1 does not list",
+        "why_free_form": "the PR 262 review found that reopen accepted a base whose parts differ from the working tree, that strap_api let a behavior's tests and kind change after a round, and that the strap-scenario-runner agent could record a scenario that leaked into the repository; the fixes added _reopen_base_problems to strap.py, _LOCKED_AFTER_ROUND to strap_api.py and a pre-record repository check to the agent, after DRV-1 was recorded on staged tree 95deec0"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "DRV-1 also changes plugins/harness/lib/harness_lib/strap_api.py and plugins/harness/agents/strap-scenario-runner.md, and is recorded again at the commit that holds the review fixes"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the base check, the locked fields and the runner check, a reopened round can test the wrong code or record a leaking scenario; the receipt names the files so the trail covers them"
+      },
+      "date": "2026-11-10"
+    }
+  ]
+}

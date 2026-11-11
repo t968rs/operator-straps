@@ -64,6 +64,7 @@
   "docstrings": {
     "line_length": 110
   },
+  "canned_messages": [],
   "todo": {
     "folder": null,
     "catalog": "RepoToDo.json",

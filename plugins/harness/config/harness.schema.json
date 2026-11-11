@@ -106,6 +106,19 @@
         }
       }
     },
+    "canned_messages": {
+      "type": "array",
+      "description": "The project's own canned commit messages, tried in order before the plugin's built-in sets: a change takes a set's message when every changed file matches one of its patterns. A pattern holding a / matches the whole repo-relative path, any other pattern the file name (fnmatch, case-sensitive); fnmatch * crosses /, so docs/*.md also matches nested files. message must pass the commit-message checks build runs (the Word(scope): summary subject with Feature, Fix, Refactor, Test, Build, Docs or Chore; no double quotes, vendor names or filler); the load refuses a set that fails them. A file a set covers that appears or vanishes between capture and build is folded into the blocks (harness_lib.canned_fold) without the coverage check, so a set should cover generated files only. Read by branch-commit-msg, amend-commit-msg, c-msg and merge-commit-msg.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["patterns", "message"],
+        "properties": {
+          "patterns": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    },
     "auto_approve_python_c": {"type": "boolean", "description": "Auto-approve `python -c` Bash commands in this project."},
     "auto_title": {"type": "boolean", "description": "Default of --auto-title for merge-commit-msg capture and pr-sum capture: true lets them rename a PR whose title fails the Word(scope): summary check; --auto-title or --no-auto-title on one run overrides it."},
     "worktree_root": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}], "description": "Directory linked worktrees are created under; a leading ~ expands and {repo} is the main checkout's folder name. null: ~/.config/harness/worktrees/{repo}."},

@@ -60,8 +60,8 @@ A block emptied this way counts as touched: read its old message in the TXT bein
 same stem beside `<skeleton>`), check it against `diff --block`, and restate it in Step 4 with a bullet for
 the new path.
 
-Exception: a block holding only the files of a canned set (`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`)
-comes back with the canned message instead of an empty one. Keep that canned message as it stands and add no
+Exception: a block holding only the files of a canned set (`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`,
+or a project set under the `canned_messages` key of `.claude/harness.json`) comes back with the canned message instead of an empty one. Keep that canned message as it stands and add no
 bullets, unless the change text names that block: a change that names it rewrites it in Step 4.
 
 ## Step 2: Plan the change

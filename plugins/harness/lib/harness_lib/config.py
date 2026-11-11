@@ -166,6 +166,14 @@ class TodoConfig:
 
 
 @dataclass(frozen=True)
+class CannedSet:
+    """One project canned set: the file patterns a change must stay within, and its commit message."""
+
+    patterns: Tuple[str, ...]
+    message: str
+
+
+@dataclass(frozen=True)
 class HarnessConfig:
     """Merged, validated harness configuration for one project root."""
 
@@ -195,6 +203,7 @@ class HarnessConfig:
     todo: TodoConfig
     strap: StrapConfig
     plugins: Tuple[Tuple[str, str], ...]
+    canned_messages: Tuple[CannedSet, ...] = ()
 
     def plugin(self, name: str) -> Dict[str, Any]:
         """A fresh copy of the ``plugins.<name>`` section; empty when the project sets none."""
@@ -324,6 +333,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
         strap=_strap(m["strap"]),
         plugins=_plugins(m["plugins"]),
+        canned_messages=_canned_messages(m["canned_messages"]),
     )
 
 
@@ -351,6 +361,44 @@ def _plugins(p: Dict[str, Any]) -> Tuple[Tuple[str, str], ...]:
     if bad:
         raise ConfigError(f"plugins: sections {bad} must be objects")
     return tuple((name, json.dumps(p[name], sort_keys=True)) for name in sorted(p))
+
+
+def _canned_messages(raw: Any) -> Tuple[CannedSet, ...]:
+    """``canned_messages`` as ``CannedSet`` tuples in the project's order, checked also on a load without
+    ``jsonschema``."""
+    if not isinstance(raw, list):
+        raise ConfigError("canned_messages: must be a list")
+    return tuple(_canned_set(entry, f"canned_messages/{n}") for n, entry in enumerate(raw))
+
+
+def _canned_set(entry: Any, where: str) -> CannedSet:
+    """One ``{patterns, message}`` object; ConfigError on any other shape."""
+    if not isinstance(entry, dict) or set(entry) != {"patterns", "message"}:
+        raise ConfigError(f"{where}: must be an object with exactly the keys patterns and message")
+    patterns, message = entry["patterns"], entry["message"]
+    if not isinstance(patterns, list) or not patterns or not all(isinstance(p, str) and p for p in patterns):
+        raise ConfigError(f"{where}/patterns: must be a non-empty list of non-empty strings")
+    if not isinstance(message, str) or not message:
+        raise ConfigError(f"{where}/message: must be a non-empty string")
+    _check_canned_message(message, f"{where}/message")
+    return CannedSet(tuple(patterns), message)
+
+
+def _check_canned_message(message: str, where: str) -> None:
+    """ConfigError listing every commit-message check ``message`` fails (``commit_txt.message_problems``).
+
+    ``branch_commit_msg.py build`` runs the same checks on every block, so a set holding a failing message
+    would break each build it prefills. The imports stay local: ``commit_txt`` imports this module.
+    """
+    from harness_lib.branch_commits import BranchCommitDocument, Bucket, CommitEntry
+    from harness_lib.commit_txt import message_problems, strip_footer
+
+    text = strip_footer(message)
+    header = text.splitlines()[0].strip() if text else ""
+    entry = CommitEntry(index=1, bucket=Bucket.OTHER, header=header, message=text)
+    problems = message_problems(BranchCommitDocument(commits={1: entry}))
+    if problems:
+        raise ConfigError(f"{where}: " + "; ".join(p.removeprefix("commit 1: ") for p in problems))
 
 
 def _require_group(pattern: str, group: str, where: str) -> None:

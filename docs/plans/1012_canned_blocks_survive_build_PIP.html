@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 1012: canned blocks survive build</title>
+<style>
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+code { font: 13px ui-monospace, monospace; background: var(--code); padding: 0 .25em; border-radius: 4px;
+  overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.status { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--muted); vertical-align: middle; }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<h1>Plan 1012: canned blocks survive build</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>1012_canned_blocks_survive_build_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 1012</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 1012</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-10</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>1150-canned-messages -&gt; main</dd><dt>Base commit</dt><dd><code>5a8ef39</code></dd><dt>Frozen</dt><dd>2026-11-10 at <code>b4e8d6b</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2>Decisions</h2>
+<ul>
+<li><strong>D1</strong> Shape of the project canned-set key Chosen: <code>list</code> (top-level canned_messages: list of {patterns, message}). Rejected: <code>map</code> (object mapping message -&gt; patterns). Mirrors LOOKUP (patterns -&gt; message) and commit_buckets (ordered list of objects); order is the precedence, which an object cannot carry reliably.</li>
+<li><strong>D2</strong> Precedence of project sets against the plugin LOOKUP Chosen: <code>project-first</code> (project sets tried before LOOKUP). Rejected: <code>plugin-first</code> (LOOKUP tried before project sets). A project can then replace a built-in message for the same files; the built-in sets still answer when no project set covers the change.</li>
+<li><strong>D3</strong> Where build puts a canned path that appeared after capture Chosen: <code>fold</code> (join the block already carrying that canned message, else a new canned block at the end; pending: block 1). Rejected: <code>ignore</code> (leave it out of the TXT and skip it in coverage). The TXT then lists every changed file, so the developer stages the regenerated file with its fixed message; ignoring it would leave an unlisted change behind.</li>
+<li><strong>D4</strong> A canned path in the skeleton that vanished before build Chosen: <code>drop</code> (drop it; drop a block left empty). Rejected: <code>fail</code> (keep the &#x27;matches nothing&#x27; problem). Same rule as an appearance: a canned file&#x27;s churn has no effect on the run.</li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>^[^&quot;]*get_canned_message</code>: <code>plugins/harness/lib/harness_lib/canned_messages.py</code> (definition; gains extra=, plus project_canned_message (TASK-2)), <code>plugins/harness/scripts/branch_commit_msg.py</code> (five call sites switch to project_canned_message (TASK-2)), <code>plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py</code> (render call site switches to project_canned_message (TASK-2)), <code>tests/lib/test_canned_messages.py</code> (built-in LOOKUP tests; unchanged signature default keeps them)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: canned_messages config key <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/config/defaults.json</code>, <code>plugins/harness/config/harness.schema.json</code>, <code>plugins/harness/lib/harness_lib/config.py</code>, <code>README.md</code>, <code>tests/lib/test_config_canned_messages.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/config.py:196-197</code> holds <code>strap: StrapConfig plugins: Tuple[Tuple[str, str], ...]</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:323-326</code> holds <code>runlogs=_runlogs(m[&quot;runlogs&quot;]), docstrings=_docstrings(m[&quot;docstrings&quot;]),</code></li>
+<li><code>plugins/harness/lib/harness_lib/config.py:388-390</code> holds <code>def _docstrings(d: Dict[str, Any]) -&gt; DocstringsConfig:</code></li>
+<li><code>plugins/harness/config/defaults.json:64-66</code> holds <code>&quot;docstrings&quot;: { &quot;line_length&quot;: 110 },</code></li>
+</ul>
+<p class="action">Add top-level `canned_messages` (default []) in four places: defaults.json; harness.schema.json (array of objects, additionalProperties false, required patterns + message, patterns minItems 1 of non-empty strings, message minLength 1); config.py: frozen dataclass CannedSet(patterns: Tuple[str, ...], message: str), HarnessConfig.canned_messages: Tuple[CannedSet, ...] = () as the last field, builder _canned_messages(raw) raising ConfigError(&#x27;canned_messages...&#x27;) on any malformed shape (the check without jsonschema), wired in _build; README key table row.</p>
+<ul>
+<li>Test <code>tests/lib/test_config_canned_messages.py::test_project_sets_load_in_order</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_config_canned_messages.py::test_a_malformed_set_fails_the_load</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_config_canned_messages.py::test_a_malformed_set_fails_without_jsonschema</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_config_canned_messages.py::test_a_non_list_value_fails_without_jsonschema</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_config_canned_messages.py::test_the_default_is_no_project_sets</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1012 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: project canned sets reach every canned lookup <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/canned_messages.py</code>, <code>plugins/harness/scripts/branch_commit_msg.py</code>, <code>plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py</code>, <code>tests/scripts/test_project_canned_messages.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/canned_messages.py:54</code> holds <code>def get_canned_message(changed_files: Iterable[str]) -&gt; Optional[str]:</code></li>
+<li><code>plugins/harness/scripts/branch_commit_msg.py:305</code> holds <code>return message or get_canned_message(paths) or &quot;&quot;</code></li>
+<li><code>plugins/harness/scripts/branch_commit_msg.py:353</code> holds <code>return &quot;canned&quot; if message == get_canned_message(paths) else &quot;carried&quot;</code></li>
+<li><code>plugins/harness/scripts/branch_commit_msg.py:598</code> holds <code>canned = get_canned_message(commit.files)</code></li>
+<li><code>plugins/harness/scripts/branch_commit_msg.py:828</code> holds <code>print(get_canned_message(paths) or &quot;canned: none&quot;)</code></li>
+<li><code>plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:275</code> holds <code>canned = get_canned_message(files)</code></li>
+</ul>
+<p class="action">canned_messages.py: get_canned_message(changed_files, extra=()) tries each extra CannedSet (patterns, message) before LOOKUP; add project_canned_message(changed_files) reading active().canned_messages inside the function; module docstring drops the &#x27;reads no config&#x27; claim for the project half. Switch the call sites to project_canned_message: branch_commit_msg.py _prefilled, message_state, _receipt_line, _cmd_canned; merge_commit_msg.py render.</p>
+<ul>
+<li>Test <code>tests/scripts/test_project_canned_messages.py::test_an_extra_set_gives_its_message</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_project_canned_messages.py::test_an_extra_set_wins_over_the_built_in_one</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_project_canned_messages.py::test_a_mix_across_two_sets_has_no_message</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_project_canned_messages.py::test_the_project_lookup_reads_the_active_config</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_project_canned_messages.py::test_capture_prefills_a_project_set_block</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_project_canned_messages.py::test_merge_capture_prefills_a_project_set_prose</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1012 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: build folds canned paths that appear or vanish after capture <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/canned_fold.py</code>, <code>plugins/harness/scripts/branch_commit_msg.py</code>, <code>tests/scripts/test_branch_commit_msg_canned_fold.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/branch_commit_msg.py:562-566</code> holds <code>document = document_from_payload(payload, notes) if document.pending and document.merge_base != head:</code></li>
+<li><code>plugins/harness/lib/harness_lib/commit_grouping.py:537</code> holds <code>problems.extend(f&quot;{path!r} is in no commit&quot; for path in sorted(captured - set(owners)))</code></li>
+<li><code>plugins/harness/lib/harness_lib/commit_grouping.py:297</code> holds <code>def expand_entry(entry: str, captured: Set[str]) -&gt; Set[str]:</code></li>
+</ul>
+<p class="action">New harness_lib/canned_fold.py: fold_canned(commits, captured, canned, pending) -&gt; new CommitDict (input untouched). Vanished: a non-glob entry outside `captured` whose path canned() covers drops; an emptied block drops. Appeared: each captured path no entry expands to (expand_entry) and canned([path]) covers, in sorted order, joins block 1 when pending, else the first block whose message equals canned(files + [path]), else a new block at max key + 1 with the canned message. run_build captures once, folds the payload commits with project_canned_message before building the document, and passes the same capture to coverage_problems (a helper keeps run_build under 50 lines).</p>
+<ul>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_an_appeared_canned_path_gets_a_new_block</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_an_appeared_canned_path_joins_its_canned_block</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_two_appeared_paths_of_one_set_share_one_new_block</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_a_vanished_canned_path_drops_and_its_empty_block_goes</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_a_pending_document_folds_into_its_one_block</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_the_input_is_not_changed</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_canned_file_written_after_capture_builds</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_it_joins_the_canned_block_capture_made</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_canned_file_deleted_after_capture_builds</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_another_file_written_after_capture_still_fails</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_pending_build_takes_the_canned_file_into_its_block</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1012 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: skill docs, version bump and release notes <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-3</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/branch-commit-msg/SKILL.md</code>, <code>plugins/harness/skills/amend-commit-msg/SKILL.md</code>, <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/branch-commit-msg/SKILL.md:166</code> holds <code>Exit 1: each `problem:` line names a commit and a defect.</code></li>
+<li><code>plugins/harness/skills/amend-commit-msg/SKILL.md:63</code> holds <code>Exception: a block holding only the files of a canned set</code></li>
+</ul>
+<p class="action">branch-commit-msg SKILL.md: Step 1 names the canned_messages key beside canned_messages.py; Step 4 says build folds a canned-set path that appeared or vanished after capture. amend-commit-msg SKILL.md: the canned-set exception names the key. Bump harness plugin.json minor (0.67.0 -&gt; 0.68.0); docs/RELEASES/v1.0.0.md (the pending release, already listing harness 0.65.1 -&gt; 0.67.0): harness row Now 0.68.0, one change line for the canned_messages key and build folding. c-msg and merge-commit-msg SKILL.md stay as they are (frozen strap specs); their text stays true.</p>
+<ul>
+<li>Run <code>python -m pytest tests/skills/test_canned_message_skill_contract.py tests/skills/test_branch_commit_msg_skill_contract.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 1012 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "1012/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatus(node.querySelector(".status"), receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

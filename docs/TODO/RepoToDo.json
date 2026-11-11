@@ -56,32 +56,33 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 50,
-    "needs_decision": 30,
+    "items": 55,
+    "needs_decision": 34,
     "trackers": 0,
     "close_candidates": 24,
     "by_status": {
-      "NEEDS_DECISION": 30,
-      "OPEN": 20
+      "NEEDS_DECISION": 34,
+      "OPEN": 21
     },
     "by_impact": {
-      "dev_velocity": 27,
-      "docs_tooling": 19,
+      "dev_velocity": 29,
+      "docs_tooling": 20,
       "maintainability": 1,
-      "runtime_failure": 3,
-      "data_correctness": 0
+      "runtime_failure": 4,
+      "data_correctness": 1
     },
     "by_loe": {
       "XS": 4,
-      "S": 16,
-      "M": 22,
-      "L": 7,
+      "S": 17,
+      "M": 23,
+      "L": 10,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 50,
+      "gh_issue": 52,
       "impl_stub": 0,
-      "research_folder": 0
+      "research_folder": 0,
+      "note": 3
     },
     "merged_items": 0
   },
@@ -147,8 +148,61 @@
       "why_ranked": "Severity 3 block of post-forcepush in any project without superpowers-lt, runtime_failure impact, S size."
     },
     {
-      "id": "todo-p52r",
+      "id": "todo-dtd5",
       "rank": 2,
+      "title": "plan.py freeze cannot pass a sweep whose hits include a file deleted after the plan base",
+      "kind": "bug",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Which fix: (a) let a classified file that is absent from one side pass (classification marked deleted or added), or (b) skip the history folders (artifacts.reviews and the other artifacts.* folders) from sweep hits?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "note",
+          "ref": "2026-11-10"
+        }
+      ],
+      "gh_issues": [],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Per the session: freezing plan 1012 (docs/plans/1012_canned_blocks_survive_build_ActionPlan.json, branch 1150-canned-messages, base 5a8ef39) failed. Sweep S1 (get_canned_message) hit four docs/PR_REVIEWS/*.json files that existed at the base and were deleted from the tree by commit 21df329. `plan.py check` (tree) reports them as 'classified but has no hit' when they are dropped from the classification, and `plan.py freeze` (which also checks sweeps at the base) reports 'at base 5a8ef39: ... has hits but no classification' when they are kept. No classification set satisfies both. The comparison is in sweep_problems (plugins/harness/lib/harness_lib/plan_checks.py:288), which compares hits to classifications exactly on each side; sweep_hits (plan_checks.py:242) skips only the plans folder and the plan's source_document. Workaround used: S1 pattern narrowed to `^[^\"]*get_canned_message` so JSON-string lines drop out; plan 1012 then froze at b4e8d6b.",
+      "proposed_change": "Choose one fix. (a) Let a classified file that is absent from one side pass in sweep_problems, for example a classification marked deleted or added, so a file that existed only at the base or only in the tree is accepted when it is classified that way. (b) Skip the history folders (artifacts.reviews and the other artifacts.* folders todo_sync retire already skips) in sweep_hits, so retired review records stop counting as hits. Add a test in tests/ that freezes a plan whose sweep hits a file deleted after the base.",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_checks.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "sweep_problems and sweep_hits are shared by plan.py check and plan.py freeze, so either fix changes both paths; no shipped output changes.",
+        "consumers": [
+          "plan.py check (tree)",
+          "plan.py freeze (base and tree)"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Change is confined to two functions in plan_checks.py plus one test; the option choice is the open cost."
+      },
+      "impact": "runtime_failure",
+      "severity": 3,
+      "priority": {
+        "score": 2.5174,
+        "components": {
+          "impact_weight": 1.3,
+          "value": 3.9,
+          "loe_points": 2,
+          "blast_factor": 1.2,
+          "cost": 2.4,
+          "base_score": 2.5174,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 (a failing result on a supported but uncommon input), runtime_failure impact (freeze aborts on a valid plan), size S, blast M."
+    },
+    {
+      "id": "todo-p52r",
+      "rank": 3,
       "title": "writing-docstrings: numpy-style parameter blocks kept instead of the full layout",
       "kind": "bug",
       "status": "OPEN",
@@ -207,7 +261,7 @@
     },
     {
       "id": "todo-afq8",
-      "rank": 3,
+      "rank": 4,
       "title": "merge-commit-msg: relax the squash title check to capitalized, not the branch name, no leading digits, no trailing separator",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -268,7 +322,7 @@
     },
     {
       "id": "todo-c69j",
-      "rank": 4,
+      "rank": 5,
       "title": "a-w: attach refuses whenever the target checkout has any tracked change",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -324,7 +378,7 @@
     },
     {
       "id": "todo-7jb6",
-      "rank": 5,
+      "rank": 6,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -378,7 +432,7 @@
     },
     {
       "id": "todo-sp4v",
-      "rank": 6,
+      "rank": 7,
       "title": "pr-review: let a trivial judgment fix run cheaper (amend regrades fix_kind, or lower fixer effort)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -435,7 +489,7 @@
     },
     {
       "id": "todo-7vfg",
-      "rank": 7,
+      "rank": 8,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -495,7 +549,7 @@
     },
     {
       "id": "todo-ys3k",
-      "rank": 8,
+      "rank": 9,
       "title": "todo-watch / session-bookmark: session.compact handler skipped when another mod runs first",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -552,7 +606,7 @@
     },
     {
       "id": "todo-rst5",
-      "rank": 9,
+      "rank": 10,
       "title": "todo_sync add: accept catalog_entry_ids so a new item can cite a research entry (clears T4)",
       "kind": "feature",
       "status": "OPEN",
@@ -612,7 +666,7 @@
     },
     {
       "id": "todo-9yns",
-      "rank": 10,
+      "rank": 11,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "kind": "feature",
       "status": "OPEN",
@@ -673,7 +727,7 @@
     },
     {
       "id": "todo-92yf",
-      "rank": 11,
+      "rank": 12,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -733,7 +787,7 @@
     },
     {
       "id": "todo-jrz2",
-      "rank": 12,
+      "rank": 13,
       "title": "Stop hooks: cut launch cost (stdlib constants module, one dispatcher, optional schema skip)",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -795,7 +849,7 @@
     },
     {
       "id": "todo-8ywz",
-      "rank": 13,
+      "rank": 14,
       "title": "pr-review: stats headline counts machine-generated exclusions",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -856,7 +910,7 @@
     },
     {
       "id": "todo-45fq",
-      "rank": 14,
+      "rank": 15,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -915,7 +969,7 @@
     },
     {
       "id": "todo-kj3z",
-      "rank": 15,
+      "rank": 16,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -972,7 +1026,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 16,
+      "rank": 17,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -1032,7 +1086,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 17,
+      "rank": 18,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1091,7 +1145,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 18,
+      "rank": 19,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "kind": "feature",
       "status": "OPEN",
@@ -1150,7 +1204,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 19,
+      "rank": 20,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1212,7 +1266,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 20,
+      "rank": 21,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "kind": "skill",
       "status": "OPEN",
@@ -1271,7 +1325,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 21,
+      "rank": 22,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1335,7 +1389,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 22,
+      "rank": 23,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "kind": "feature",
       "status": "OPEN",
@@ -1394,7 +1448,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 23,
+      "rank": 24,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1455,7 +1509,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 24,
+      "rank": 25,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1516,8 +1570,64 @@
       "why_ranked": "Severity 2 new review capability with an unclear scope, dev_velocity impact, M size."
     },
     {
+      "id": "todo-w3ck",
+      "rank": 26,
+      "title": "Driver-created local tags for every necessary, plan-referenced and base-to-freeze commit",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Choose the tag naming scheme (plan/<id>/base, plan/<id>/freeze[-N], strap/<skill>/r<N>/base, strap/<skill>/r<N>/freeze, or the off-branch names already in use), and decide whether a history rewrite moves the tags and re-points spec.base and plan base_commit (requiring a strap.py rebase-base subcommand) or leaves the old commits tagged only.",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#265",
+          "url": "https://github.com/t968rs/operator-straps/issues/265"
+        }
+      ],
+      "gh_issues": [
+        265
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Per the session: the developer wants every necessary commit, every plan-referenced commit and every base-to-freeze range tagged as standing practice, with tags created by the drivers rather than printed as suggestions or checked only. Plan base_commit (plans 1013 and 1014 use 5a8ef39) is necessary: check reads anchors and sweeps at it once an item is done (plugins/harness/scripts/plan.py:265-271). Plan frozen.commit is display only (read at plugins/harness/scripts/plan_render.py:46 and plan_render_html.py:81). Strap spec base (write-plan 9368d9e) is necessary: the baseline arm runs git show <base>:<SKILL.md> (plugins/harness/scripts/strap.py:640), runs start from it (strap.py:391) and reopen refuses a base that does not descend from it (strap.py:911-912). Strap rounds[].base is history only. The strap frozen stamp stores no commit, so a freeze tag would sit at HEAD, one commit before the commit holding the stamp. Receipt evidence holds commit SHA text or staged tree SHA text; a tree SHA cannot be pinned by a tag. Scope: plan.py new tags the plan base, freeze and --refreeze tag the freeze; strap.py new and reopen tag the round base, freeze tags the round freeze; each check warns when a necessary SHA is untagged or unreachable. Tags stay local and the developer pushes them. Building this on a follow-up branch after 2150-plan-refreeze merges, since plan.py and strap.py are parts of the write-plan and strap-skills strap specs and an earlier build would re-stale them. Related: todo-m86m / issue #264 (strap hash scope).",
+      "proposed_change": "After 2150-plan-refreeze merges, add tag creation to plan.py (plan new tags the base; freeze and --refreeze tag the freeze) and strap.py (new and reopen tag the round base; freeze tags the round freeze), using local annotated tags that the developer pushes. Decided: the drivers create annotated tags (git tag -a, with a message naming the plan or strap round and the SHA role), not lightweight ones, because git push --follow-tags and the push.followTags setting carry only annotated tags that point at commits the push includes; lightweight tags are ignored, and a tag on a commit outside the pushed branch never follows and still needs git push origin <tag>. Still open: the naming scheme and history-rewrite handling. Extend check to warn when a necessary SHA (plan base_commit, strap spec base, round base or freeze) is untagged or unreachable. Naming and history-rewrite handling are open (see decision_question): the candidate names are plan/<id>/base, plan/<id>/freeze[-N], strap/<skill>/r<N>/base and strap/<skill>/r<N>/freeze. A tag keeps an old commit alive after a history rewrite, but spec.base and plan base_commit still point at the orphaned commit, so a rewrite needs those fields re-pointed (no driver command sets spec.base outside reopen; a strap.py rebase-base subcommand was floated). Existing hand-made tags on the branch: write-plan-skill-spec-base -> 9368d9e (correct); plan-1014-base -> 54cf0cc, which is plan 1014's frozen.commit, not its base_commit 5a8ef39, so it needs correcting when the scheme lands.",
+      "files": [
+        "plugins/harness/scripts/plan.py",
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/scripts/plan_render.py",
+        "plugins/harness/scripts/plan_render_html.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Touches plan.py and strap.py, both parts of the write-plan and strap-skills strap specs, and the check that reads their anchors. Local tags only, so no pushed state changes.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Tag creation in two drivers, a check extension, and a decision on naming and rewrite handling before code. Scope is set by the session; the naming decision is open."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (a missing guard, with check already warning when a necessary SHA is untagged), dev_velocity impact (developer tooling less trustworthy than it needs to be), and M size, so a mid-tier tooling item."
+    },
+    {
       "id": "todo-e7ha",
-      "rank": 25,
+      "rank": 27,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -1572,7 +1682,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 26,
+      "rank": 28,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -1632,8 +1742,56 @@
       "why_ranked": "Severity 2 dangling REQUIRED step, docs_tooling impact, S size."
     },
     {
+      "id": "todo-6g9h",
+      "rank": 29,
+      "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
+      "kind": "bug",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "note",
+          "ref": "2026-11-11"
+        }
+      ],
+      "gh_issues": [],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Deferred PR 266 review findings, per the session, to one item because every fix edits a write-plan strap part (docs/plans/strap/write-plan/SkillSpec.json, frozen skill_hash 38d6a5a1f9d1, currently fresh), so the fixes force a strap round: prove greens, then freeze --refreeze. Findings (review: docs/PR_REVIEWS/0266_Featureharness_canned_messages_project_sets_and_build.json; line numbers per the session, unverified in this run): M6 evolution_api._save (evolution_api.py:79-86) writes live.js for an unfrozen or sealed plan, contradicting plan.py:28 and plan_render_html.py:10-11. M7 the pip_document pattern at plan_models.py:174 (ActionPlan.schema.json:668-680) now admits absolute and backslash paths. M12 plan.py:476-483 markdown-PIP detection differs between _keeps_markdown (file name) and move_documentation (whole value). M15 write-plan README.md:31-34 lifecycle diagram routes a design change to evolution_api.add instead of a refreeze. M16 write-plan README.md:45 Render row disagrees with its own PIP paragraph (render writes only live.js on a frozen receipts plan). M17 write-plan SKILL.md:97-101 and 142-143 step 9 example shows only the EX id prefix and post_exec_start phase.",
+      "proposed_change": "M6: guard the live.js write with plan_receipts.uses_receipts, or reword the docstrings at plan.py:28 and plan_render_html.py:10-11 (choose one). M7: add a relative-path lookahead to the pip_document pattern in plan_models.py:174 and regenerate ActionPlan.schema.json with tools/gen_plan_schema.py. M12: use one markdown-PIP predicate in _keeps_markdown and move_documentation. M15: reword write-plan README.md:31-34 so a design change routes to a refreeze. M16: reword the README.md:45 Render row to match its PIP paragraph. M17: name the S/P/PR/EX prefix per phase in SKILL.md step 9, or add a DesignChange validator tying prefix to phase. Run the strap round (greens, then freeze --refreeze) for the SkillSpec.json edits. This item is the tracker for closeout --deferred on M6, M7, M12, M15, M16, M17.",
+      "files": [],
+      "blast_radius": {
+        "level": "L",
+        "reasoning": "Touches the plan library (evolution_api, plan, plan_render_html, plan_models), the ActionPlan schema regenerated from plan_models, and the write-plan skill spec, README and SKILL prose; a strap refreeze follows.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "Six findings across code, a regenerated schema, two write-plan docs and a frozen skill spec that needs a strap round with greens and freeze --refreeze."
+      },
+      "impact": "data_correctness",
+      "severity": 2,
+      "priority": {
+        "score": 0.8083,
+        "components": {
+          "impact_weight": 1.4,
+          "value": 2.8,
+          "loe_points": 8,
+          "blast_factor": 1.5,
+          "cost": 12.0,
+          "base_score": 0.8083,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (a missing guard and docs that contradict the code, no common-path wrong output), data_correctness impact, LoE L with a blast radius of L."
+    },
+    {
       "id": "todo-nr8j",
-      "rank": 27,
+      "rank": 30,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1708,7 +1866,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 28,
+      "rank": 31,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1766,7 +1924,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 29,
+      "rank": 32,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -1822,7 +1980,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 30,
+      "rank": 33,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1885,7 +2043,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 31,
+      "rank": 34,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -1945,7 +2103,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 32,
+      "rank": 35,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -2006,7 +2164,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 33,
+      "rank": 36,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2072,8 +2230,84 @@
       "why_ranked": "Severity 2 missing capability with a concrete cost (discarded findings and repeated reviews), dev_velocity impact, L size."
     },
     {
+      "id": "todo-m86m",
+      "rank": 37,
+      "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Which hash scope should strap use: (A) one runner-read hash, chosen by a per-part flag that defaults by kind; (B) a rule based on kind alone, after retagging parts; (C) two hashes, where a runner hash pins greens and an all-parts hash raises a drift line that a test-only refreeze clears; or (D) keep the hash and only fix the stale wording? And does a driver whose printed lines the SKILL.md quotes count as runner-read?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#264",
+          "url": "https://github.com/t968rs/operator-straps/issues/264"
+        }
+      ],
+      "gh_issues": [
+        264
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Developer note: fix the strap side first, because it causes the most refreezes. Judgment greens would hash only the parts a runner sees (SKILL.md, README, agent files), and CI's mechanical tests would cover library and driver parts. Before the change, a plan.py fix makes write-plan stale, and clearing it takes 2 runner greens and a refreeze. After it, the same fix needs nothing beyond CI. This changes what the content hash means, so it is a design item, not a ready fix. Origin, per the session: the session reviewed whether the write-plan receipts rewrite (issue 258, spec docs/superpowers/specs/2026-11-10-plan-receipts-design.md, branch 2150-plan-refreeze, not on main) meets its goal that a frozen plan is never written during execution. Plan freezes mostly hold: plan 1014 was frozen once at 88659f1, and mid-build changes went to EX1/EX2 in docs/plans/1014/DesignEvolution.json. Most refreeze churn on this lineage comes from the strap skill-spec freeze, which the rewrite does not touch. Cause: plugins/harness/scripts/strap.py:219-221 `skill_hash` hashes every listed part through plugins/harness/lib/harness_lib/strap_runs.py:24-34 `content_hash`, so one changed byte in any part (library module, driver or contract test) moves the hash. strap.py:224-232 `stale_line` then prints `stale: frozen at <old>, parts now hash <new>; prove greens then freeze --refreeze`. Checked on 2026-11-10 by running this checkout's `strap.py check` on each spec: 5 of the 8 specs under docs/plans/strap/ are stale: add-todo (5422c856e8fa -> 1cf10e2e8d8e), c-msg (67c817fe42db -> 7072c6396257), merge-commit-msg (a474c565ad45 -> ec925d971a76), review-local (8538f7298472 -> 579fe2d58a9c) and todo-edit (0fd83b8e96f8 -> 1bab6480cca1). write-plan and writing-docstrings are current. strap-skills has no frozen stamp, so check prints no stale line for it. Parts and live judgment behaviors per spec (counted from each SkillSpec.json): add-todo 6/2, c-msg 7/0, merge-commit-msg 4/0, review-local 8/3, strap-skills 12/0, todo-edit 3/0, write-plan 14/2, writing-docstrings 8/3. c-msg, merge-commit-msg and todo-edit have no judgment behavior, so the `prove greens` wording misleads for them: their refreeze only reruns planned tests (strap.py:856-868 `_planned_tests_pass` / `_mechanical_gate`). write-plan lists 14 parts: SKILL.md, README.md, two contract tests, plus ten code parts: plan.py, plan_models.py, plan_enums.py, plan_doc.py, plan_record.py, plan_render.py, plan_receipts.py, receipt_models.py, plan_render_html.py and evolution_api.py. The receipts rewrite added the last four. Concrete cost: PR 262 review M1 (docs/PR_REVIEWS/0262_Featurestrap_reopen_command.json:171, resolved at d34fc56) changed one sentence of plugins/harness/skills/write-plan/README.md. That moved the write-plan hash from d3fd6c04afdb to 63707d01db1e and forced green R-6 (B9, SC-1; docs/plans/strap/write-plan/SkillSpec.json:802-806) before the round-3 freeze at 63707d01db1e (SkillSpec.json:877). The note counts README as runner-read, so that run would still be required under the proposal; the saving applies to library and driver edits. Whether a runner ever opens README is unverified: a run brief carries the SKILL.md (plugins/harness/lib/harness_lib/strap_models.py:250-253 `skill_in_brief`). Hash consumers in strap.py: `_needs` :472-477 (one green per scenario and hash), `cmd_run` :608-613 (pins a new run to the current hash), `_refuse_twin` :711-715, `cmd_retest` :800-802 (refuses while the hash equals the failed green's), `_passed_greens` :829-831 and `_judgment_gate` :834-853 (freeze needs a passing green on the current hash), `cmd_freeze` :892-898 (stamps `Frozen.skill_hash`), `stale_line` (printed by `new` on resume at :257 and by `check` at :380), and `cmd_reopen` :933-934 (moves the stamp into `rounds`). `Frozen.authored` (strap_models.py:384-394, digest at :532-541) seals the authored fields. Those fields include the parts list but not part contents, so a change of hash scope leaves the seal alone unless `Part` gains a field. Part kinds cannot pick the runner-read set as they stand. write-plan tags both plan_enums.py and README.md as `reference`, and merge-commit-msg tags commands/merge_commit_msg.py as `reference` (strap_models.py:73-82 `PartKind`). No test gates on staleness: the `stale` hit in tests/contract/test_root_separation.py:180-188 concerns an ArcGIS toolbox, not strap. The rule text lives in plugins/harness/skills/strap-skills/SKILL.md:62-64 (green pinned to the content hash of every part file) and :224-236 (refreeze after a part change). Related catalog items on strap.py: todo-v55s (#178, scenario tree branch), todo-7sfy (comparison arm) and todo-66qe (#254, recorder paths). Per the session: re-proving a rule that is already written needs a strip-and-restore base (write-plan round 3, 9368d9e then a5852a7).",
+      "proposed_change": "Start with a short design pass, then implement the option the developer picks. Before/after trace of each hash consumer under the runner-read scope: (1) Green pinning (`_needs`, `cmd_run`, `_refuse_twin`). Before: any part edit makes every judgment behavior need a new green. After: only an edit to a runner-read part does. (2) `cmd_retest`. Before: a library or driver fix changes the hash, so a failed green can be retested. After: the hash stays the same, so `retest` would refuse `skill unchanged` even after the real fix. Retest must compare the all-parts hash, or the design must accept the refusal. (3) Freeze gate (`_judgment_gate`, `_mechanical_gate`). Greens are checked on the runner hash, and planned tests still run at freeze. (4) `stale_line` in `check` and `new`. It fires only on runner-part edits. Drift in mechanical parts goes silent (A) or gets its own `drift:` line (C). Also fix the wording for specs with no judgment behavior, which have no greens to prove. (5) `Frozen` stamp and `rounds`. Existing stamps hold the all-parts hash, so a switch in meaning makes every frozen spec stale at once. Add a scope field to `Frozen` and `Run`. Compare old stamps under the old rule until their next refreeze. Have `_dumped` (strap_models.py:515-529) drop the field at its default so the authored digests of existing specs stay byte for byte. Update plugins/harness/schemas/SkillSpec.schema.json (:223, :488). (6) `Frozen.authored` seal. It is unchanged unless `Part` gains a flag; a flag needs the same default-drop in `_dumped`. Options: (A) Add a per-part `runner_reads` flag. It defaults by kind: skill_md and agent true; models, api, driver and contract_test false; reference set explicitly. Greens pin to the hash of the flagged parts. This matches the note's After: a plan.py fix needs only CI. (B) Use kind alone, after adding kinds such as `library` and `doc` and retagging every spec. This needs no new field, but a mis-tag silently drops a part from the hash. (C) Keep two hashes. The runner hash pins greens. The all-parts hash raises a `drift:` line, and a refreeze clears it by rerunning planned tests with no greens. This keeps a record, but every library fix still costs a refreeze. (D) Keep today's hash and fix only the stale wording. Recommendation: A, with a scope version on the stamp and retest comparing the all-parts hash. Accepted risk: a driver change that alters lines the SKILL.md tells the session to read would get past the greens. Close that gap with contract tests that pin those lines, which CI runs, or by flagging that driver `runner_reads`. Then update strap-skills SKILL.md (Rules :62-64 and step 12 :224-236). Add tests to tests/lib/test_strap_runs.py, tests/scripts/test_strap_gate.py and tests/scripts/test_strap_reopen.py covering: a library-only edit leaves the spec current, a runner-part edit makes it stale, an old stamp compares under the old scope, and retest unblocks after a driver fix.",
+      "code_snippet": "plugins/harness/scripts/strap.py:219\ndef skill_hash(spec: SkillSpec) -> str:\n    \"\"\"Content hash of every part file, read from the project's working tree.\"\"\"\n    return sr.content_hash(_root(), [part.path for part in spec.parts])\n\n\ndef stale_line(spec: SkillSpec) -> Optional[str]:\n    ...\n    return (f\"stale: frozen at {spec.frozen.skill_hash[:12]}, parts now hash {current[:12]}; \"\n            \"prove greens then freeze --refreeze\")",
+      "files": [
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/lib/harness_lib/strap_runs.py",
+        "plugins/harness/lib/harness_lib/strap_models.py",
+        "plugins/harness/schemas/SkillSpec.schema.json",
+        "plugins/harness/skills/strap-skills/SKILL.md",
+        "tests/lib/test_strap_runs.py",
+        "tests/scripts/test_strap_gate.py",
+        "tests/scripts/test_strap_reopen.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Changes what the content hash means for every strap consumer in strap.py, and adds a scope field to the Frozen and Run models and the schema. All 7 frozen specs under docs/plans/strap/ need a migration rule so they do not go stale at once.",
+        "consumers": [
+          "plugins/harness/scripts/strap.py:_needs",
+          "plugins/harness/scripts/strap.py:cmd_run",
+          "plugins/harness/scripts/strap.py:_refuse_twin",
+          "plugins/harness/scripts/strap.py:cmd_retest",
+          "plugins/harness/scripts/strap.py:_passed_greens",
+          "plugins/harness/scripts/strap.py:_judgment_gate",
+          "plugins/harness/scripts/strap.py:cmd_freeze",
+          "plugins/harness/scripts/strap.py:stale_line",
+          "plugins/harness/scripts/strap.py:cmd_new",
+          "plugins/harness/scripts/strap.py:cmd_check",
+          "plugins/harness/scripts/strap.py:cmd_reopen",
+          "plugins/harness/lib/harness_lib/strap_models.py:Frozen",
+          "plugins/harness/lib/harness_lib/strap_models.py:authored_digest",
+          "docs/plans/strap/*/SkillSpec.json"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "A design pass, then a hash-scope change across strap.py, strap_runs and strap_models, a schema field with a byte-stable default, a migration rule for existing stamps, a retest fix, a SKILL.md rewrite of the pinning rule and step 12, and tests in three files."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 for debt with a concrete cost (five stale frozen specs and forced green reruns), impact dev_velocity because only the strap tooling slows down and no output changes, and size L for a design pass plus a hash-scope migration across strap.py, its models, schema and docs."
+    },
+    {
       "id": "todo-zj3h",
-      "rank": 34,
+      "rank": 38,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -2135,7 +2369,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 35,
+      "rank": 39,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2194,7 +2428,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 36,
+      "rank": 40,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2255,7 +2489,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 37,
+      "rank": 41,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2313,7 +2547,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 38,
+      "rank": 42,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2371,7 +2605,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 39,
+      "rank": 43,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -2424,7 +2658,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 40,
+      "rank": 44,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -2478,7 +2712,7 @@
     },
     {
       "id": "todo-6za3",
-      "rank": 41,
+      "rank": 45,
       "title": "strap-scenario-runner: a dispatching scenario must still record its run",
       "kind": "skill",
       "status": "OPEN",
@@ -2533,7 +2767,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 42,
+      "rank": 46,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2589,7 +2823,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 43,
+      "rank": 47,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -2649,7 +2883,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 44,
+      "rank": 48,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2704,7 +2938,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 45,
+      "rank": 49,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2761,7 +2995,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 46,
+      "rank": 50,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2814,7 +3048,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 47,
+      "rank": 51,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2869,7 +3103,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 48,
+      "rank": 52,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -2926,8 +3160,71 @@
       "why_ranked": "Severity 1 hygiene audit, maintainability impact, M size."
     },
     {
+      "id": "todo-c7s9",
+      "rank": 53,
+      "title": "Plan receipts: decide how an unplanned item is declared and recorded",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Must an unplanned item be fully usable before it is built (shown PENDING on the HTML PIP, scheduled as a parallel2 lane, dependency-gated, its planned tests run red first), or is recording it after the work is done enough?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "note",
+          "ref": "2026-11-10"
+        }
+      ],
+      "gh_issues": [],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Per the session (research level 0, not re-read in this run): the receipt seal hashes the receipt with its plan item's frozen files and tests (plugins/harness/lib/harness_lib/receipt_models.py:110-117); check reports a receipt for an unknown item as 'names no item of plan' (plugins/harness/lib/harness_lib/plan_receipts.py:158-160); status_view walks only plan.items, so lanes, verify, the dependency gate and the HTML PIP never see an extra item; DesignChange.items is validated against the plan's item ids (plugins/harness/lib/harness_lib/evolution_models.py:72). A receipt can declare only two deviations today: an extra file (--also) and a substituted test node (--substitute), each citing a DesignChange. Work nobody planned (a missing item) still needs plan_api.write plus freeze --refreeze, so the receipts goal that a frozen plan is never written during execution (spec docs/superpowers/specs/2026-11-10-plan-receipts-design.md, issue 258, branch 2150-plan-refreeze, not on main) has a gap for missing items. Two smaller gaps of the same kind are unbuilt: dropping a planned test node with no replacement, and correcting a wrong dependency. The four line citations above are unverified in this run. Related local item: todo-m86m (issue 264, strap content-hash scope). Local only, no issue, by developer choice.",
+      "proposed_change": "Not decided; the developer chose not to design or build this now. Candidates: (A, lead per the session) the DesignChange carries the new item's definition (files, tests, dependencies), validated and digested like the rest of the catalog, with a later edit forcing a re-record; (B) a self-describing receipt that carries the item's files and tests, recordable only after the work; (C) a separate addenda file. Open question: must an unplanned item be fully usable before it is built, or is recording it after the work enough? Effect on typical plan-writing workflows. If usable before build: the item shows PENDING on the HTML PIP, plan.py schedules it as a parallel2 lane, the dependency gate applies, and its planned tests run red first; the main session writes the DesignChange before work starts, which adds a step to serial inline execution; a lane that finds the gap must stop and report a deviation, since only the main session writes the catalog, so discovery by a lane costs a round trip. If recordable after the work: discovery by the main session or by a lane is written at the end; no PIP PENDING state, no lane scheduling and no dependency gate for the item, and no red-first evidence unless the receipt carries it, so the seal covers what was written rather than what was planned; serial inline work needs no pre-declaration, and a lane still hands its record to the main session. The PIP and verify show the item only as a receipt after the fact in this case. The dropped-test-node and wrong-dependency gaps split the same way. Constraint: the change alters the write-plan SKILL.md, which needs another reopen round of the write-plan strap spec (docs/plans/strap/write-plan/SkillSpec.json, round 3 frozen at 63707d01db1e, base 9368d9e); the base commit lacks the new text.",
+      "files": [
+        "plugins/harness/lib/harness_lib/receipt_models.py",
+        "plugins/harness/lib/harness_lib/plan_receipts.py",
+        "plugins/harness/lib/harness_lib/evolution_models.py",
+        "docs/superpowers/specs/2026-11-10-plan-receipts-design.md",
+        "docs/plans/strap/write-plan/SkillSpec.json"
+      ],
+      "blast_radius": {
+        "level": "L",
+        "reasoning": "Touches receipt sealing, receipt checks, DesignChange validation, status_view consumers and the write-plan skill spec; the catalog and receipt schemas both change under any candidate.",
+        "consumers": [
+          "plugins/harness/lib/harness_lib/receipt_models.py",
+          "plugins/harness/lib/harness_lib/plan_receipts.py",
+          "plugins/harness/lib/harness_lib/evolution_models.py",
+          "status_view (HTML PIP)",
+          "plan.py lane scheduling",
+          "verify",
+          "dependency gate",
+          "write-plan SKILL.md via the write-plan strap spec reopen"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "A new declaration path across receipts, the DesignChange schema, status_view, lanes and the verify and PIP paths, plus a write-plan spec reopen round; the design choice itself is open and sizes the build."
+      },
+      "impact": "docs_tooling",
+      "severity": 2,
+      "priority": {
+        "score": 0.3464,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 1.2,
+          "loe_points": 8,
+          "blast_factor": 1.5,
+          "cost": 12.0,
+          "base_score": 0.3464,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (a missing-item gap with a workaround through plan_api.write and refreeze), docs_tooling impact (agent planning tooling), and L size."
+    },
+    {
       "id": "todo-3ckt",
-      "rank": 49,
+      "rank": 54,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -2982,7 +3279,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 50,
+      "rank": 55,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",

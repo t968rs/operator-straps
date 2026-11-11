@@ -1,0 +1,30 @@
+{
+  "plan_id": "1014",
+  "item": "STR-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "93c5ba7c98e1dccaf767c60247dd055f02e75c6b"
+    }
+  },
+  "evidence": "staged tree 93c5ba7",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_ActionPlan.json",
+        "change": "EX1"
+      },
+      {
+        "path": "docs/plans/strap/write-plan/fixtures/plan-1014/docs/plans/1014_strap_reopen_PIP.html",
+        "change": "EX1"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX1": "058ff89f035b1891854b6d822b5aebbe37b2e97466498c8e1e78d5affd5049d5"
+    }
+  },
+  "date": "2026-11-10",
+  "seal": "449625cdc4fb8ed4facd54b2557c99b65e313734bfe393948b8e0c58ba91c0df"
+}

@@ -60,8 +60,9 @@ there.
 The skeleton holds `merge_base`, `split`, `captured` (status, path, old_path, bucket, added, deleted) and
 `commits` — `{"1": [[paths], "message"], ...}` in landing order. Blocks from an existing TXT keep their grouping
 and message; a new or emptied block has `""`, except a block holding only the files of a canned set (the TODO
-files, the review artifacts; entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), which capture
-fills with the canned message. Add `--fresh` to ignore the existing TXT: the plan is rebuilt from the rules alone
+files, the review artifacts; entries in `${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`, plus the
+project's own sets under the `canned_messages` key of `.claude/harness.json`, tried first), which capture fills
+with the canned message. Add `--fresh` to ignore the existing TXT: the plan is rebuilt from the rules alone
 and every message is `""` except a canned block's. Use it only when the existing grouping is wrong (an over-split
 block, a stale split), or when the developer asks for a replan.
 
@@ -162,6 +163,11 @@ that prints the changed lines back.
 ```bash
 sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/branch_commit_msg.py" build "<skeleton>"
 ```
+
+Build captures the branch again first and folds in a canned set's file that appeared or vanished since capture
+(a regenerated TODO catalog or review artifact): it joins the block already carrying that canned message (the
+one block of a pending skeleton), else a new canned block at the end, and a vanished one drops with any block
+it leaves empty. Any other file that changed since capture still fails coverage.
 
 Exit 1: each `problem:` line names a commit and a defect. Fix the message with `message` (Step 3) and rerun. Exit 0 writes the TXT named in
 the Step 1 table beside the skeleton (same stem, `.txt`) and prints the receipt. When that TXT already exists and its content changes, the old copy is kept as

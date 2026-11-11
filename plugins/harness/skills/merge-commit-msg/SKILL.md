@@ -54,8 +54,9 @@ The `- Mode: merge` or `- Mode: squash` fact names the mode capture ran in (squa
 subject per mode, title verbatim (`Merge PR #N -- <title>` with an ASCII separator, or `<title> (#N)` in
 squash mode), `Branch lineage:`, the `Review artifacts:` and `Includes N review fixes (...)` lines when a
 review JSON exists, and, for a PR made only of generated files whose message is fixed in advance (entries in
-`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`), the canned message as the prose. Keep those lines
-as they stand.
+`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/canned_messages.py`, plus the project's own sets under the
+`canned_messages` key of `.claude/harness.json`, tried first), the canned message as the prose. Keep those
+lines as they stand.
 
 **`--auto-title`** is the developer's consent to rename the PR. Use it only when the invocation carries it.
 `"auto_title": true` in the project's `.claude/harness.json` is the same consent given once for every run:

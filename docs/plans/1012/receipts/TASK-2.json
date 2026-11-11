@@ -1,0 +1,30 @@
+{
+  "plan_id": "1012",
+  "item": "TASK-2",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "6f518a7aedd960f36c93fa3b050fe00ea5e5f770"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_project_canned_messages.py::test_an_extra_set_gives_its_message",
+        "tests/scripts/test_project_canned_messages.py::test_an_extra_set_wins_over_the_built_in_one",
+        "tests/scripts/test_project_canned_messages.py::test_a_mix_across_two_sets_has_no_message",
+        "tests/scripts/test_project_canned_messages.py::test_the_project_lookup_reads_the_active_config",
+        "tests/scripts/test_project_canned_messages.py::test_capture_prefills_a_project_set_block",
+        "tests/scripts/test_project_canned_messages.py::test_merge_capture_prefills_a_project_set_prose"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_project_canned_messages.py::test_an_extra_set_gives_its_message tests/scripts/test_project_canned_messages.py::test_an_extra_set_wins_over_the_built_in_one tests/scripts/test_project_canned_messages.py::test_a_mix_across_two_sets_has_no_message tests/scripts/test_project_canned_messages.py::test_the_project_lookup_reads_the_active_config tests/scripts/test_project_canned_messages.py::test_capture_prefills_a_project_set_block tests/scripts/test_project_canned_messages.py::test_merge_capture_prefills_a_project_set_prose"
+    }
+  },
+  "evidence": "staged tree 6f518a7: 6 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-10",
+  "seal": "0a3ad2991a5b066dec29f63e12682dd3661207ef38504e1b66809faf6a632cc0"
+}
