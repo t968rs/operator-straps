@@ -1,0 +1,32 @@
+{
+  "plan_id": "1015",
+  "item": "GIT-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "d72e653bd76b609ea8af434410ade3030298375f"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_freeze_git.py::test_build_tree_holds_not_ignored_paths",
+        "tests/lib/test_freeze_git.py::test_build_tree_refuses_empty_set",
+        "tests/lib/test_freeze_git.py::test_tag_names_pass_check_ref_format",
+        "tests/lib/test_freeze_git.py::test_preflight_and_ensure_tag_refuse_other_target",
+        "tests/lib/test_freeze_git.py::test_reconcile_tags_the_commit_adding_the_entry_file",
+        "tests/lib/test_freeze_git.py::test_reconcile_adds_second_tag_after_rewrite",
+        "tests/lib/test_freeze_git.py::test_reconcile_skips_history_entries",
+        "tests/lib/test_freeze_git.py::test_patch_id_match_finds_rewritten_base"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_freeze_git.py::test_build_tree_holds_not_ignored_paths tests/lib/test_freeze_git.py::test_build_tree_refuses_empty_set tests/lib/test_freeze_git.py::test_tag_names_pass_check_ref_format tests/lib/test_freeze_git.py::test_preflight_and_ensure_tag_refuse_other_target tests/lib/test_freeze_git.py::test_reconcile_tags_the_commit_adding_the_entry_file tests/lib/test_freeze_git.py::test_reconcile_adds_second_tag_after_rewrite tests/lib/test_freeze_git.py::test_reconcile_skips_history_entries tests/lib/test_freeze_git.py::test_patch_id_match_finds_rewritten_base"
+    }
+  },
+  "evidence": "staged tree d72e653: 8 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-11",
+  "seal": "d3b111402d5106132cebcfe87a111af25f176cc408705e79c3beafd5bb4d4862"
+}

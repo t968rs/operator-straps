@@ -1,0 +1,40 @@
+{
+  "plan_id": "1015",
+  "item": "PLN-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "6e3e96b792d84618b8cfa6790baec29fb8d9dc5b"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_plan_lock.py::test_freeze_writes_ledger_and_tree_tag",
+        "tests/scripts/test_plan_lock.py::test_freeze_refuses_on_tag_collision",
+        "tests/scripts/test_plan_lock.py::test_lock_requires_committed_freeze",
+        "tests/scripts/test_plan_lock.py::test_unlock_needs_arm_then_allows_refreeze",
+        "tests/scripts/test_plan_lock.py::test_new_number_skips_branches_and_tags",
+        "tests/scripts/test_plan_lock.py::test_check_reconciles_commit_tag_and_reports_drift",
+        "tests/scripts/test_plan_lock.py::test_legacy_plan_migrates_on_refreeze",
+        "tests/scripts/test_plan_lock.py::test_relink_repoints_base_commit",
+        "tests/scripts/test_plan_lock.py::test_record_tags_receipt_locally"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_plan_lock.py::test_freeze_writes_ledger_and_tree_tag tests/scripts/test_plan_lock.py::test_freeze_refuses_on_tag_collision tests/scripts/test_plan_lock.py::test_lock_requires_committed_freeze tests/scripts/test_plan_lock.py::test_unlock_needs_arm_then_allows_refreeze tests/scripts/test_plan_lock.py::test_new_number_skips_branches_and_tags tests/scripts/test_plan_lock.py::test_check_reconciles_commit_tag_and_reports_drift tests/scripts/test_plan_lock.py::test_legacy_plan_migrates_on_refreeze tests/scripts/test_plan_lock.py::test_relink_repoints_base_commit tests/scripts/test_plan_lock.py::test_record_tags_receipt_locally"
+    }
+  },
+  "evidence": "staged tree 6e3e96b: 9 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "tests/scripts/test_plan_relink_lock.py",
+        "change": "EX4"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX4": "3c985e6b95692712bc8827ec51ab659344c33e15ac466993233feafa2bc9dd1f"
+    }
+  },
+  "date": "2026-11-11",
+  "seal": "02d5e3142018a744665ad6d082556d5d38e53dcb80c5ff1e0c623f1329c9d5ef"
+}

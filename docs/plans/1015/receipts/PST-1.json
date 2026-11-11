@@ -1,0 +1,31 @@
+{
+  "plan_id": "1015",
+  "item": "PST-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "59f6a27c337839bc9c6c4b4c03e698cb26f6fe58"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_plan_ledger_state.py::test_load_plan_hydrates_frozen_from_ledger",
+        "tests/lib/test_plan_ledger_state.py::test_save_plan_omits_frozen_when_ledger_exists",
+        "tests/lib/test_plan_ledger_state.py::test_missing_ledger_folder_is_a_problem",
+        "tests/lib/test_plan_ledger_state.py::test_legacy_plan_keeps_in_file_stamp",
+        "tests/lib/test_plan_ledger_state.py::test_write_refuses_locked_plan",
+        "tests/lib/test_plan_ledger_state.py::test_rules_plans_reads_receipts_scheme_from_ledger",
+        "tests/lib/test_plan_ledger_state.py::test_render_frozen_text_without_commit"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_plan_ledger_state.py::test_load_plan_hydrates_frozen_from_ledger tests/lib/test_plan_ledger_state.py::test_save_plan_omits_frozen_when_ledger_exists tests/lib/test_plan_ledger_state.py::test_missing_ledger_folder_is_a_problem tests/lib/test_plan_ledger_state.py::test_legacy_plan_keeps_in_file_stamp tests/lib/test_plan_ledger_state.py::test_write_refuses_locked_plan tests/lib/test_plan_ledger_state.py::test_rules_plans_reads_receipts_scheme_from_ledger tests/lib/test_plan_ledger_state.py::test_render_frozen_text_without_commit"
+    }
+  },
+  "evidence": "staged tree 59f6a27: 7 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-11",
+  "seal": "ee3463343de2634144586d091256e7ef5f49159ac2f83a946bde08c96cd6fde9"
+}
