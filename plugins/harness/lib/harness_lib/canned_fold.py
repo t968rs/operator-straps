@@ -53,9 +53,18 @@ def _place(folded: CommitDict, path: str, canned: Canned, pending: bool) -> None
     if pending and folded:
         key = min(folded)
     else:
-        key = next((k for k in sorted(folded) if folded[k][1] == canned([*folded[k][0], path])), None)
+        key = next((k for k in sorted(folded) if _same_canned(folded[k], path, canned)), None)
     if key is None:
         folded[max(folded, default=0) + 1] = ([path], canned([path]) or "")
         return
     files, message = folded[key]
     folded[key] = ([*files, path], message)
+
+
+def _same_canned(block: Tuple[List[str], str], path: str, canned: Canned) -> bool:
+    """True when ``block``'s message, stripped, is the canned message of its files plus ``path``, stripped.
+
+    Matches the receipt's ``[canned]`` tag, which also compares stripped messages.
+    """
+    expected = canned([*block[0], path])
+    return expected is not None and (block[1] or "").strip() == expected.strip()

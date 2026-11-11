@@ -60,7 +60,7 @@ The write-plan skill (`plugins/harness/skills/write-plan/SKILL.md`) and `plugins
 **Status rules:**
 - `COMPLETE` requires a sealed proof of the tested tree — never a claim. On a receipts plan the proof is the item's receipt (`<artifacts.plans>/NNNN/receipts/<ITEM>.json`) and the item stays `PENDING` in the JSON; on a plan frozen before receipts it is the item's `record` (legacy, on plans frozen before the record scheme: the `[<40-hex commit>, "tree <40-hex>"]` shape in `verification_references`)
 - `CLOSED_NO_ACTION` requires written rationale
-- `IN_PROGRESS` / `PENDING` are transient; every item must terminate in COMPLETE or CLOSED_NO_ACTION
+- `IN_PROGRESS` / `PENDING` are transient; every item must terminate in COMPLETE or CLOSED_NO_ACTION (in its receipt on a receipts plan, in the JSON on a plan frozen before receipts)
 - Two record rules sit in the models only, since the generated schema cannot express them: a `commit` provenance names its commit and a `staged` one names none (checked when `plan.py` loads the plan), and an item's `status` agrees with its record's outcome (checked by `plan.py check`). The schema hook validates with `jsonschema` alone, so it passes a plan that breaks either rule
 
 ### 3. PR attributes (a model, no schema file)
@@ -199,7 +199,7 @@ Cross-record rules the schema cannot express that `todo_sync` rules T6-T10 check
 
 **Base relationship:** Standalone, closed (`additionalProperties: false`). Plan-bound: `plan_id` (4 digits) is required, and `primary_documents` always holds the `plan`. A change requires `id` (`S`, `PR`, `P`, `EX` or `CX` plus a number), `discovered_by`, `phase`, `original`, `issue`, `new_outcome` and `why_new_outcome`, and carries `items[]` (the plan items it touches, default empty) and `date` (`YYYY-MM-DD`, default today). The `category_enums` block is gone: the issue categories are an enum in the models.
 
-**Cross-record rules the schema cannot express:** the `plan` key in `primary_documents`, unique change ids, each change's `original.doc` and `new_outcome.doc` naming a key of `primary_documents`, and summary finding ids that name a change are checked by the model validator (`evolution_models.DesignEvolution`), not by the generated schema. A tool that validates with the JSON schema alone accepts a catalog the models refuse; write through `evolution_api`.
+**Cross-record rules the schema cannot express:** unique change ids, each change's `original.doc` and `new_outcome.doc` naming a key of `primary_documents`, and summary finding ids that name a change are checked by the model validator (`evolution_models.DesignEvolution`), not by the generated schema. A tool that validates with the JSON schema alone accepts a catalog the models refuse; write through `evolution_api`.
 
 ---
 
@@ -221,7 +221,7 @@ Read docs/PR_REVIEWS/{NNNN}_*.json
   → plan_api.load("<id>")                     (author items, execution_model, pr_attributes[] as models)
   → plan_api.write(plan.model_copy(update=..., deep=True))   (validates, then writes)
   → plan.py check / red / freeze <id>
-  → plan.py render <id>                       (writes the PIP from the JSON: HTML with live.js on a receipts plan, markdown on a plan frozen before receipts)
+  → plan.py render <id>                       (a frozen receipts plan: rebuilds live.js, and the HTML page only when missing; a plan frozen before receipts: rewrites the markdown PIP)
 ```
 
 The ActionPlan JSON is never edited by hand: every change goes through `plan_api.write`, which validates the whole plan before it touches the file. The PIP is rendered from the JSON and never edited by hand: on a plan bound for receipts it is the `_PIP.html` page that `plan.py new`, `plan_api.write` and `plan.py freeze` write, with a derived `live.js` sidecar; on a plan frozen before receipts it is the markdown PIP.
@@ -277,7 +277,7 @@ Catalogs are spec/plan-time artifacts — they inform the ActionPlan but don't r
 - On a plan frozen before receipts, `status: COMPLETE` always carries a sealed `record` (`items[].record`: the tested tree, the commit when there was one, the test run when the item has tests, and the seal). On a plan frozen before the record scheme (`frozen.records` unset), `plan.py check` instead accepts `verification_references` of the shape `[<40-hex commit>, "tree <40-hex>", ...]`; todo_sync rule P2, on any plan, accepts a commit SHA in `evidence` or `verification_references`, or a record shaped as a COMPLETE record (64-hex seal, provenance tree); it does not recompute the seal or read `frozen.records`, which `plan.py check` does
 - `status: CLOSED_NO_ACTION` always carries rationale, sealed in its `record` on a plan whose `frozen.records` is `"sealed"`
 - `verification_references[]` is the legacy proof list: `record` no longer writes it, and `plan.py check` reads it only on plans frozen before the record scheme (todo_sync rule P2 still reads it on any plan)
-- `markdown_section` should point to the Markdown section that expands the JSON item's evidence/details
+- On a plan with a Markdown PIP (frozen before receipts), `markdown_section` should point to the Markdown section that expands the JSON item's evidence/details
 - `files[]` matches the actual changes in the recorded tree
 - Every item terminates in `COMPLETE` or `CLOSED_NO_ACTION` before the plan closes
 

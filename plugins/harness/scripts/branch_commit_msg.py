@@ -506,12 +506,21 @@ def _commit_dict(payload: Mapping[str, object]) -> CommitDict:
     return {_block_key(key): _block_value(key, value) for key, value in raw.items()}
 
 
-def document_from_payload(payload: Mapping[str, object], notes: Sequence[str] = ()) -> BranchCommitDocument:
-    """Construct the ``BranchCommitDocument`` a skeleton describes; the inverse of ``skeleton_payload``."""
-    return document_from_commit_dict(
-        _commit_dict(payload), payload.get("branch"), str(payload.get("merge_base") or "") or None, notes,
-        pending=bool(payload.get("pending")),
-    )
+def document_from_payload(
+        payload: Mapping[str, object], notes: Sequence[str] = (),
+        captures: Optional[Sequence[CapturedPath]] = None,
+) -> BranchCommitDocument:
+    """Construct the ``BranchCommitDocument`` a skeleton describes; the inverse of ``skeleton_payload``.
+
+    With ``captures``, the blocks are first folded against them for canned-set paths
+    (``harness_lib.canned_fold``).
+    """
+    commits = _commit_dict(payload)
+    pending = bool(payload.get("pending"))
+    if captures is not None:
+        commits = fold_canned(commits, captured_set(captures), project_canned_message, pending)
+    merge_base = str(payload.get("merge_base") or "") or None
+    return document_from_commit_dict(commits, payload.get("branch"), merge_base, notes, pending=pending)
 
 
 def _validation_problems(document: BranchCommitDocument) -> List[str]:
@@ -544,18 +553,6 @@ def edit_problems(document: BranchCommitDocument) -> List[str]:
     return bullet_problems(commits)
 
 
-def _folded_document(
-        payload: Mapping[str, object], notes: Sequence[str], captures: Optional[Sequence[CapturedPath]],
-) -> BranchCommitDocument:
-    """The skeleton's document, its blocks folded against ``captures`` for canned-set paths when given."""
-    commits = _commit_dict(payload)
-    pending = bool(payload.get("pending"))
-    if captures is not None:
-        commits = fold_canned(commits, captured_set(captures), project_canned_message, pending)
-    merge_base = str(payload.get("merge_base") or "") or None
-    return document_from_commit_dict(commits, payload.get("branch"), merge_base, notes, pending=pending)
-
-
 def run_build(
         repo: Path, payload: Mapping[str, object], out: Optional[Path] = None,
 ) -> Tuple[Path, BranchCommitDocument]:
@@ -577,7 +574,7 @@ def run_build(
     if payload.get("pending") and merge_base != head:
         raise BuildError(["HEAD moved since capture; rerun capture --pending"])
     captures = capture_branch(repo, merge_base) if merge_base else None
-    document = _folded_document(payload, notes, captures)
+    document = document_from_payload(payload, notes, captures)
     problems = _validation_problems(document)
     problems += coverage_problems(document, captures) if captures is not None else []
     problems += message_problems(document)

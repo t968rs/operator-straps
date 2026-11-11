@@ -108,7 +108,7 @@
     },
     "canned_messages": {
       "type": "array",
-      "description": "The project's own canned commit messages, tried in order before the plugin's built-in sets: a change takes a set's message when every changed file matches one of its patterns. A pattern holding a / matches the whole repo-relative path, any other pattern the file name (fnmatch, case-sensitive). Read by branch-commit-msg, c-msg and merge-commit-msg.",
+      "description": "The project's own canned commit messages, tried in order before the plugin's built-in sets: a change takes a set's message when every changed file matches one of its patterns. A pattern holding a / matches the whole repo-relative path, any other pattern the file name (fnmatch, case-sensitive); fnmatch * crosses /, so docs/*.md also matches nested files. message must pass the commit-message checks build runs (the Word(scope): summary subject with Feature, Fix, Refactor, Test, Build, Docs or Chore; no double quotes, vendor names or filler); the load refuses a set that fails them. A file a set covers that appears or vanishes between capture and build is folded into the blocks (harness_lib.canned_fold) without the coverage check, so a set should cover generated files only. Read by branch-commit-msg, amend-commit-msg, c-msg and merge-commit-msg.",
       "items": {
         "type": "object",
         "additionalProperties": false,

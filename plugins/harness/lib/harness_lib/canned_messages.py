@@ -8,14 +8,18 @@ touching only some of the files still qualifies and one touching any other file 
 The entries use the plugin's default file names (``config/defaults.json``: the ``todo`` names, ``matrix_path``
 and ``agent_usage_path``) and, for review artifacts, the default folders (``artifacts.reviews``,
 ``artifacts.summaries``). ``LOOKUP`` reads no config: it is a fixed, read-only table, so a built-in message
-never depends on which project is active, and a project that renames those files, or moves the review artifacts
-away from the defaults, gets no built-in message and drafts one as usual (an accepted limitation, not a drift
-bug).
+never depends on which project is active, and a project that renames those files, or moves the review
+artifacts away from the defaults, gets no built-in message and drafts one as usual (an accepted limitation, not
+a drift bug).
 
 A project adds its own sets with the ``canned_messages`` config key. ``get_canned_message`` takes them as
 ``extra`` and tries them, in order, before ``LOOKUP``, so a project set can replace a built-in message for the
 same files; ``project_canned_message`` reads them from the active configuration and is what the commit-message
-drivers call.
+drivers call. The config load refuses a set whose message fails the commit-message checks ``build`` runs. A
+project set also drives build-time folding: a file it covers that appears or vanishes between capture and
+build is folded into the blocks (``harness_lib.canned_fold``) without the coverage check, so a set should
+cover generated files only. Patterns use ``fnmatch``, whose ``*`` crosses ``/``: ``docs/*.md`` also matches
+nested files.
 """
 from __future__ import annotations
 
@@ -75,6 +79,10 @@ def project_canned_message(changed_files: Iterable[str]) -> Optional[str]:
     return get_canned_message(changed_files, extra=active().canned_messages)
 
 
-def has_canned_message(changed_files: Iterable[str]) -> bool:
-    """True when ``get_canned_message`` finds a message for the change set."""
-    return get_canned_message(changed_files) is not None
+def has_canned_message(changed_files: Iterable[str], extra: Sequence[CannedSet] = ()) -> bool:
+    """True when ``get_canned_message`` finds a message for the change set.
+
+    Only the built-in ``LOOKUP`` is checked unless ``extra`` is given; pass ``active().canned_messages`` to
+    match what the drivers' ``project_canned_message`` finds.
+    """
+    return get_canned_message(changed_files, extra) is not None

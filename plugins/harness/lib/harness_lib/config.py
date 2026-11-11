@@ -380,7 +380,25 @@ def _canned_set(entry: Any, where: str) -> CannedSet:
         raise ConfigError(f"{where}/patterns: must be a non-empty list of non-empty strings")
     if not isinstance(message, str) or not message:
         raise ConfigError(f"{where}/message: must be a non-empty string")
+    _check_canned_message(message, f"{where}/message")
     return CannedSet(tuple(patterns), message)
+
+
+def _check_canned_message(message: str, where: str) -> None:
+    """ConfigError listing every commit-message check ``message`` fails (``commit_txt.message_problems``).
+
+    ``branch_commit_msg.py build`` runs the same checks on every block, so a set holding a failing message
+    would break each build it prefills. The imports stay local: ``commit_txt`` imports this module.
+    """
+    from harness_lib.branch_commits import BranchCommitDocument, Bucket, CommitEntry
+    from harness_lib.commit_txt import message_problems, strip_footer
+
+    text = strip_footer(message)
+    header = text.splitlines()[0].strip() if text else ""
+    entry = CommitEntry(index=1, bucket=Bucket.OTHER, header=header, message=text)
+    problems = message_problems(BranchCommitDocument(commits={1: entry}))
+    if problems:
+        raise ConfigError(f"{where}: " + "; ".join(p.removeprefix("commit 1: ") for p in problems))
 
 
 def _require_group(pattern: str, group: str, where: str) -> None:
