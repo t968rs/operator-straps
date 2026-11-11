@@ -116,7 +116,8 @@ from harness_lib.branch_capture import (
     untracked_paths,
 )
 from harness_lib.branch_commits import BranchCommitDocument, Bucket, CommitEntry
-from harness_lib.canned_messages import get_canned_message
+from harness_lib.canned_fold import fold_canned
+from harness_lib.canned_messages import project_canned_message
 from harness_lib.commit_diff import DiffStat, fit_sections, plan_reads
 from harness_lib.commit_regroup import bullet_problems, move_paths
 from harness_lib.commit_grouping import (
@@ -302,7 +303,7 @@ def pending_txt_path(repo: Path, branch: str) -> Path:
 def _prefilled(paths: Sequence[str], message: str) -> str:
     """``message`` when set, else the canned message for a block whose every path falls in one canned set (``""``
     when none)."""
-    return message or get_canned_message(paths) or ""
+    return message or project_canned_message(paths) or ""
 
 
 def _pending_message(path: Path, head: str, paths: Sequence[str]) -> str:
@@ -350,7 +351,7 @@ def message_state(paths: Sequence[str], message: str) -> str:
     """``empty``, ``canned`` (the canned message of ``paths``) or ``carried`` (a saved draft)."""
     if not message:
         return "empty"
-    return "canned" if message == get_canned_message(paths) else "carried"
+    return "canned" if message == project_canned_message(paths) else "carried"
 
 
 def pending_report(
@@ -543,6 +544,18 @@ def edit_problems(document: BranchCommitDocument) -> List[str]:
     return bullet_problems(commits)
 
 
+def _folded_document(
+        payload: Mapping[str, object], notes: Sequence[str], captures: Optional[Sequence[CapturedPath]],
+) -> BranchCommitDocument:
+    """The skeleton's document, its blocks folded against ``captures`` for canned-set paths when given."""
+    commits = _commit_dict(payload)
+    pending = bool(payload.get("pending"))
+    if captures is not None:
+        commits = fold_canned(commits, captured_set(captures), project_canned_message, pending)
+    merge_base = str(payload.get("merge_base") or "") or None
+    return document_from_commit_dict(commits, payload.get("branch"), merge_base, notes, pending=pending)
+
+
 def run_build(
         repo: Path, payload: Mapping[str, object], out: Optional[Path] = None,
 ) -> Tuple[Path, BranchCommitDocument]:
@@ -550,6 +563,8 @@ def run_build(
 
     Any defect raises ``BuildError``; an ``"edit": true`` skeleton also has its bullets checked against
     its blocks. A pending skeleton whose ``merge_base`` is no longer HEAD raises before any validation.
+    Canned-set paths that appeared or vanished since capture are folded into the blocks first
+    (``harness_lib.canned_fold``).
     """
     branch = current_branch(repo)
     if payload.get("branch") != branch:
@@ -559,11 +574,12 @@ def run_build(
     merge_base = str(payload.get("merge_base") or "")
     head = git_out(repo, "rev-parse", "HEAD").strip()
     notes = [f"Messaged-through: {head}", f"Split: {payload.get('split', '')}"]
-    document = document_from_payload(payload, notes)
-    if document.pending and document.merge_base != head:
+    if payload.get("pending") and merge_base != head:
         raise BuildError(["HEAD moved since capture; rerun capture --pending"])
+    captures = capture_branch(repo, merge_base) if merge_base else None
+    document = _folded_document(payload, notes, captures)
     problems = _validation_problems(document)
-    problems += coverage_problems(document, capture_branch(repo, merge_base)) if merge_base else []
+    problems += coverage_problems(document, captures) if captures is not None else []
     problems += message_problems(document)
     problems += edit_problems(document) if payload.get("edit") else []
     if problems:
@@ -595,7 +611,7 @@ FINAL_LINE = f"Final as saved: relay this receipt unchanged. {CHANGE_ROUTE}"
 
 def _receipt_line(key: int, commit: CommitEntry) -> str:
     """``<key>. <header>``, tagged `` [canned]`` when the message is the canned one for the block's files."""
-    canned = get_canned_message(commit.files)
+    canned = project_canned_message(commit.files)
     tag = " [canned]" if canned is not None and commit.message.strip() == canned.strip() else ""
     return f"{key}. {commit.header}{tag}"
 
@@ -825,7 +841,7 @@ def _cmd_canned(repo: Path, args: argparse.Namespace) -> int:
     if not args.paths and sys.stdin.isatty():
         raise BuildError(["canned: give paths as arguments or pipe one per line on stdin"])
     paths = args.paths or [line.strip() for line in sys.stdin if line.strip()]
-    print(get_canned_message(paths) or "canned: none")
+    print(project_canned_message(paths) or "canned: none")
     return 0
 
 

@@ -1,0 +1,35 @@
+{
+  "plan_id": "1012",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "3f65e62c66834ed1e67a3f6c96040e9d6eaf364f"
+    },
+    "tests": {
+      "nodes": [
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_an_appeared_canned_path_gets_a_new_block",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_an_appeared_canned_path_joins_its_canned_block",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_two_appeared_paths_of_one_set_share_one_new_block",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_a_vanished_canned_path_drops_and_its_empty_block_goes",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_a_pending_document_folds_into_its_one_block",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_the_input_is_not_changed",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_canned_file_written_after_capture_builds",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_it_joins_the_canned_block_capture_made",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_canned_file_deleted_after_capture_builds",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_another_file_written_after_capture_still_fails",
+        "tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_pending_build_takes_the_canned_file_into_its_block"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_an_appeared_canned_path_gets_a_new_block tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_an_appeared_canned_path_joins_its_canned_block tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_two_appeared_paths_of_one_set_share_one_new_block tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_a_vanished_canned_path_drops_and_its_empty_block_goes tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_a_pending_document_folds_into_its_one_block tests/scripts/test_branch_commit_msg_canned_fold.py::TestFoldCanned::test_the_input_is_not_changed tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_canned_file_written_after_capture_builds tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_it_joins_the_canned_block_capture_made tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_canned_file_deleted_after_capture_builds tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_another_file_written_after_capture_still_fails tests/scripts/test_branch_commit_msg_canned_fold.py::TestBuildFolds::test_a_pending_build_takes_the_canned_file_into_its_block"
+    }
+  },
+  "evidence": "staged tree 3f65e62: 11 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-10",
+  "seal": "78959aa12c56fc5d6a16025a17b94159d53f5680733216e61e784ac58332d5bb"
+}
