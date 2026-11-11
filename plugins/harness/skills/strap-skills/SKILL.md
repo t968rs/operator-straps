@@ -54,6 +54,9 @@ writes land where `record-run` looks.
   with a recorded baseline that showed the tempted move and a green that passed on the current content hash; a
   mechanical one only when its planned tests failed red as planned and now pass. Never call the skill done
   before `freeze [done]`.
+- **Draws are final.** The driver picks each scenario at random and appends the seed. `draw` never replaces a
+  draw, and the session never chooses which scenario runs. Once a behavior is drawn its scenarios, kind and
+  type are locked; `add_scenario` stays open, since a new scenario is undrawn.
 - **Recorded runs are final.** One recorded run per behavior, scenario, arm and content hash. A run whose
   runner never recorded may be dispatched again; a recorded one never.
 - **Green is pinned to the content hash** of every part file. Any edit to a part after a green leaves that green
