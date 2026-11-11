@@ -8,7 +8,7 @@
   "base_sha": "5a8ef39a2515d95da028eef5d3e9e6a8e88149ad",
   "head_sha": "b3fd7e01979e337af887ea159851a3ba1dafe8ca",
   "review_date": "2026-11-11",
-  "verdict": "NOT READY TO MERGE - important: I1, I2, I3, I4, I5",
+  "verdict": "READY TO MERGE - 22 of 22 findings resolved, 0 bubbled",
   "stats": {
     "additions": 13114,
     "deletions": 30266,
@@ -37,17 +37,7 @@
     "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/overall.json",
     "docs/_scratch/pr_review/0266/pr266_20261111T065602Z/findings/system_shape.json"
   ],
-  "bubbles": [
-    "I1",
-    "I2",
-    "M6",
-    "M7",
-    "M12",
-    "M15",
-    "M16",
-    "M17",
-    "M13"
-  ],
+  "bubbles": [],
   "strengths": [
     "The canned_messages key lands in all four required places (defaults.json, harness.schema.json, CannedSet plus `_canned_messages` in config.py, README key row), and the loader re-checks the shape without jsonschema.",
     "Receipt, ActionPlan, SkillSpec and DesignEvolutionCatalog schemas are generated from their pydantic models and guarded by byte-level drift tests, so the committed JSON cannot silently diverge from the models.",
@@ -564,5 +554,139 @@
         "result": "OK (recorded; configured base)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - README Canned messages section gains a bullet on project sets under canned_messages (tried first, load-checked) and build folding; the rename bullet now points to a project set; key row lists amend-commit-msg"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - canned_messages docstring, schema description and README key row state that files a project set covers are folded at build (harness_lib.canned_fold) without the coverage check, so a set should cover generated files only"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - has_canned_message takes extra: Sequence[CannedSet] = () passed to get_canned_message; docstring states only LOOKUP is checked unless extra is given"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - config.py _canned_set runs new _check_canned_message (commit_txt.message_problems on a built entry, local imports to avoid the cycle) and raises ConfigError at canned_messages/N/message; test covers three non-conforming messages; schema description and README row document the message rule, fnmatch * crossing /, and amend-commit-msg; canned_messages.py docstring notes the load check and the fnmatch caveat"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - _place now matches a block through new _same_canned, comparing stripped messages as _receipt_line does; trailing-newline unit case added; branch_commit_msg.py: _receipt_line already strips, cited only"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - document_from_payload takes optional captures and runs fold_canned; run_build calls it and the duplicate _folded_document is deleted, leaving one payload parser; canned_fold.py and test_branch_commit_msg.py: callers unchanged, no edit needed"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - added project_clone fixture (canned_messages offlineTestReport set) and a TestBuildFolds case writing the report after capture, plus TestFoldCanned cases for a glob-covered canned path and an empty-files block; branch_commit_msg.py and canned_fold.py: code under test, no edit needed"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - schemas/README.md:63 qualified the COMPLETE/CLOSED_NO_ACTION terminal rule per receipts vs pre-receipts plans; :280 scoped markdown_section to a plan with a Markdown PIP (frozen before receipts)"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - schemas/README.md:202 dropped the 'the plan key in primary_documents' item from the validator-only list; the generated catalog schema already requires plan"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - schemas/README.md:224 reworded the plan.py render annotation to the frozen-receipts (live.js rebuild, HTML only when missing) and pre-receipts (markdown rewrite) behavior; no edit here: plan.py render docstring (lines 25-29) already states the frozen receipts behavior (rebuilds live.js, writes the HTML page only when missing); the wrong annotation at schemas/README.md:224 is fixed by the other part's fixer"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - docs/RELEASES/v1.0.0.md:63 canned-messages line prefixed with #266; the 'Notes for the release' section (branch bookkeeping) dropped"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - tests/lib/test_receipt_models.py:73 added the missing space after the comma in the evidence parametrize row"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - tests/scripts/test_strap_reopen.py: SKILL rewritten to 'Round two.' after the first reopen and before its freeze, and assert second != frozen added after the freeze read; strap.py skill_hash unchanged (fix lives in the test)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - Re-laid the plan-1014 fixture JSON and page from the live frozen plan 1014 (repo-relative strap.py commands, digest b3eedf7 verified); rewrote the plan-1021 fixture check command to repo-relative in JSON and page and refroze its receipts digest (281c185, recomputed with plan_doc.frozen_digest); no drive-letter path remains under the fixtures, and the SkillSpec does not pin fixture content. strap-scenario-runner.md: no edit, its TREE rule stays as a general guard for task paths."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - c-msg SKILL.md and merge-commit-msg SKILL.md name the project canned_messages sets (tried first) beside canned_messages.py, c-msg notes build folding a regenerated canned file into the block, merge_commit_msg.py capture docstring names the project sets first; README.md: amend-commit-msg already present in the canned_messages key row (README.md:501)"
+    },
+    {
+      "id": "I1",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (working-tree snapshot; developer commits) - closed, no action: Merge strategy only: the developer merges PR 266 with a merge commit, so 9368d9e and b7c6209 stay reachable from main"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "4be7f5e (developer-confirmed defer) - Deferred to the next write-plan strap round to keep the spec fresh at 38d6a5a; todo-6g9h"
+    }
+  ]
 }

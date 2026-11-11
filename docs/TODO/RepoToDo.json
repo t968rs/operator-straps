@@ -56,33 +56,33 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 54,
+    "items": 55,
     "needs_decision": 34,
     "trackers": 0,
     "close_candidates": 24,
     "by_status": {
       "NEEDS_DECISION": 34,
-      "OPEN": 20
+      "OPEN": 21
     },
     "by_impact": {
       "dev_velocity": 29,
       "docs_tooling": 20,
       "maintainability": 1,
       "runtime_failure": 4,
-      "data_correctness": 0
+      "data_correctness": 1
     },
     "by_loe": {
       "XS": 4,
       "S": 17,
       "M": 23,
-      "L": 9,
+      "L": 10,
       "XL": 1
     },
     "sources_absorbed": {
       "gh_issue": 52,
       "impl_stub": 0,
       "research_folder": 0,
-      "note": 2
+      "note": 3
     },
     "merged_items": 0
   },
@@ -1742,8 +1742,56 @@
       "why_ranked": "Severity 2 dangling REQUIRED step, docs_tooling impact, S size."
     },
     {
-      "id": "todo-nr8j",
+      "id": "todo-6g9h",
       "rank": 29,
+      "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
+      "kind": "bug",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "note",
+          "ref": "2026-11-11"
+        }
+      ],
+      "gh_issues": [],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Deferred PR 266 review findings, per the session, to one item because every fix edits a write-plan strap part (docs/plans/strap/write-plan/SkillSpec.json, frozen skill_hash 38d6a5a1f9d1, currently fresh), so the fixes force a strap round: prove greens, then freeze --refreeze. Findings (review: docs/PR_REVIEWS/0266_Featureharness_canned_messages_project_sets_and_build.json; line numbers per the session, unverified in this run): M6 evolution_api._save (evolution_api.py:79-86) writes live.js for an unfrozen or sealed plan, contradicting plan.py:28 and plan_render_html.py:10-11. M7 the pip_document pattern at plan_models.py:174 (ActionPlan.schema.json:668-680) now admits absolute and backslash paths. M12 plan.py:476-483 markdown-PIP detection differs between _keeps_markdown (file name) and move_documentation (whole value). M15 write-plan README.md:31-34 lifecycle diagram routes a design change to evolution_api.add instead of a refreeze. M16 write-plan README.md:45 Render row disagrees with its own PIP paragraph (render writes only live.js on a frozen receipts plan). M17 write-plan SKILL.md:97-101 and 142-143 step 9 example shows only the EX id prefix and post_exec_start phase.",
+      "proposed_change": "M6: guard the live.js write with plan_receipts.uses_receipts, or reword the docstrings at plan.py:28 and plan_render_html.py:10-11 (choose one). M7: add a relative-path lookahead to the pip_document pattern in plan_models.py:174 and regenerate ActionPlan.schema.json with tools/gen_plan_schema.py. M12: use one markdown-PIP predicate in _keeps_markdown and move_documentation. M15: reword write-plan README.md:31-34 so a design change routes to a refreeze. M16: reword the README.md:45 Render row to match its PIP paragraph. M17: name the S/P/PR/EX prefix per phase in SKILL.md step 9, or add a DesignChange validator tying prefix to phase. Run the strap round (greens, then freeze --refreeze) for the SkillSpec.json edits. This item is the tracker for closeout --deferred on M6, M7, M12, M15, M16, M17.",
+      "files": [],
+      "blast_radius": {
+        "level": "L",
+        "reasoning": "Touches the plan library (evolution_api, plan, plan_render_html, plan_models), the ActionPlan schema regenerated from plan_models, and the write-plan skill spec, README and SKILL prose; a strap refreeze follows.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "Six findings across code, a regenerated schema, two write-plan docs and a frozen skill spec that needs a strap round with greens and freeze --refreeze."
+      },
+      "impact": "data_correctness",
+      "severity": 2,
+      "priority": {
+        "score": 0.8083,
+        "components": {
+          "impact_weight": 1.4,
+          "value": 2.8,
+          "loe_points": 8,
+          "blast_factor": 1.5,
+          "cost": 12.0,
+          "base_score": 0.8083,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (a missing guard and docs that contradict the code, no common-path wrong output), data_correctness impact, LoE L with a blast radius of L."
+    },
+    {
+      "id": "todo-nr8j",
+      "rank": 30,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1818,7 +1866,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 30,
+      "rank": 31,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1876,7 +1924,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 31,
+      "rank": 32,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -1932,7 +1980,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 32,
+      "rank": 33,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1995,7 +2043,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 33,
+      "rank": 34,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -2055,7 +2103,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 34,
+      "rank": 35,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -2116,7 +2164,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 35,
+      "rank": 36,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2183,7 +2231,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 36,
+      "rank": 37,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2259,7 +2307,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 37,
+      "rank": 38,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -2321,7 +2369,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 38,
+      "rank": 39,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2380,7 +2428,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 39,
+      "rank": 40,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2441,7 +2489,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 40,
+      "rank": 41,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2499,7 +2547,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 41,
+      "rank": 42,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2557,7 +2605,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 42,
+      "rank": 43,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -2610,7 +2658,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 43,
+      "rank": 44,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -2664,7 +2712,7 @@
     },
     {
       "id": "todo-6za3",
-      "rank": 44,
+      "rank": 45,
       "title": "strap-scenario-runner: a dispatching scenario must still record its run",
       "kind": "skill",
       "status": "OPEN",
@@ -2719,7 +2767,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 45,
+      "rank": 46,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2775,7 +2823,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 46,
+      "rank": 47,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -2835,7 +2883,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 47,
+      "rank": 48,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2890,7 +2938,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 48,
+      "rank": 49,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2947,7 +2995,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 49,
+      "rank": 50,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3000,7 +3048,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 50,
+      "rank": 51,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3055,7 +3103,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 51,
+      "rank": 52,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -3113,7 +3161,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 52,
+      "rank": 53,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3176,7 +3224,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 53,
+      "rank": 54,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -3231,7 +3279,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 54,
+      "rank": 55,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
