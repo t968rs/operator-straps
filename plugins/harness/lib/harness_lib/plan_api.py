@@ -131,7 +131,11 @@ def _problems(plan: pm.ActionPlan, path: Path, raw: Dict[str, Any]) -> List[str]
 
 
 def write(plan: pm.ActionPlan, repo: Repo = None) -> pm.ActionPlan:
-    """Validate ``plan``, save its JSON and PIP and return it re-validated; else refuse with every problem."""
+    """Validate ``plan``, save its JSON and PIP and return it re-validated; else refuse with every problem.
+
+    The PIP goes through ``write_pip``, so an existing HTML page (a frozen receipts plan's too) is rewritten
+    from the saved JSON, as ``freeze`` does.
+    """
     _activate(repo)
     path = _target(plan)
     raw = pd.plan_dict(plan)

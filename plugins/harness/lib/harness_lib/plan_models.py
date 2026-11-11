@@ -171,7 +171,7 @@ class PrAttributes(BaseModel):
     review_doc: Optional[str] = Field(default=None, pattern=r"^docs/PR_REVIEWS/.+\.json$")
     branch: str
     base_branch: str
-    pip_document: Optional[str] = Field(default=None, pattern=r"^docs/PLANS/.+_PIP\.(md|html)$")
+    pip_document: Optional[str] = Field(default=None, pattern=r"^.+_PIP\.(md|html)$")
     merged_at: Optional[str] = Field(default=None, json_schema_extra=_DATE)
 
 
@@ -392,13 +392,16 @@ def _no_default(schema: Dict[str, Any]) -> None:
 
 
 class ActionPlan(BaseModel):
-    """A unified execution plan: JSON is the source of truth for items, evidence and verification."""
+    """A unified execution plan: JSON is the source of truth for items, evidence and verification.
+
+    On a plan frozen under the ``receipts`` scheme, item status and evidence live in receipt files instead.
+    """
 
     model_config = _OPEN
 
     plan_id: str = Field(pattern=r"^[0-9]{4}$", description=(
         "Zero-padded 4-digit sequential plan number, also the filename prefix: "
-        "`{plan_id}_{Title}_ActionPlan.json` and `{plan_id}_{Title}_PIP.md`."))
+        "`{plan_id}_{Title}_ActionPlan.json` and `{plan_id}_{Title}_PIP.md` or `_PIP.html`."))
     plan_created: str = Field(json_schema_extra=_DATE)
     completed: Annotated[Optional[str], Mutable()] = Field(default=None, json_schema_extra=_DATE)
     source_document: Optional[str] = None
@@ -417,10 +420,12 @@ class ActionPlan(BaseModel):
         "Commit the plan was written against: the merge base of the base branch and HEAD, recorded by "
         "`plan.py new`. Commands name `{base}` instead of a SHA."))
     frozen: Annotated[Optional[Frozen], Mutable()] = Field(default=None, description=(
-        "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest of every field "
-        "except item status, evidence, verification_references and record, and the top-level completed, "
-        "frozen, markdown_sync_status and markdown_last_updated; a set `records` scheme is folded into the "
-        "digest. `plan.py check` reports any later edit outside those fields."))
+        "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest. Under the "
+        "`receipts` scheme the digest covers every field but `frozen` and `plan.py check` reports any later "
+        "edit. Under `sealed` or an unset scheme it covers every field except item status, evidence, "
+        "verification_references and record, and the top-level completed, frozen, markdown_sync_status and "
+        "markdown_last_updated, and `plan.py check` reports any later edit outside those fields. A set "
+        "`records` scheme is folded into the digest."))
     decisions: List[Decision] = Field(default_factory=list, description=(
         "Design questions the plan settles. `chosen` null means open, which blocks `plan.py freeze`. "
         "Every option not chosen counts as rejected."))

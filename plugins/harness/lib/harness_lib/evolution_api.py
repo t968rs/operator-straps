@@ -106,8 +106,6 @@ def add(plan: PlanRef, change: DesignChange, repo: Repo = None) -> DesignEvoluti
     plan_file = _plan_file(plan)
     plan_doc = pd.load_plan(plan_file)
     evo = _load(plan_doc, plan_file)
-    if evo.find(change.id) is not None:
-        raise pd.PlanError([f"change {change.id} is already in the catalog of plan {plan_doc.plan_id}"])
     grown = evo.model_copy(update={"changes": [*evo.changes, change]}, deep=True)
     return _save(grown, plan_doc, plan_file)
 

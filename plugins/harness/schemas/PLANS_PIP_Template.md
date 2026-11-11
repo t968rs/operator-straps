@@ -4,7 +4,7 @@
 **Companion ActionPlan:** `<plans dir>/{PLAN_ID}_{Title}_ActionPlan.json`
 **Schema:** `ActionPlan.schema.json`, generated from the plan models (`harness_lib/plan_models.py`; its `PrAttributes` model describes each `pr_attributes[]` entry), read by the schema hook from the project's pinned schemas directory when present, else the harness plugin's `schemas/`
 
-> **HTML from this version:** plans frozen from harness 0.66.0 render the PIP as an HTML page with a derived `live.js` sidecar, kept out of git by the `.gitignore` the driver writes in the plan folder; this template describes the markdown PIP of earlier plans.
+> **HTML from this version:** plans started or first frozen from harness 0.67.0 render the PIP as an HTML page with a derived `live.js` sidecar, kept out of git by the `.gitignore` the driver writes in the plan folder; this template describes the markdown PIP of earlier plans.
 
 > **PLAN_ID** is a zero-padded 4-digit sequence number (e.g., `0001`, `0023`) that counts up within `<plans dir>`. The same number prefixes both the PIP markdown and the ActionPlan JSON for a plan.
 

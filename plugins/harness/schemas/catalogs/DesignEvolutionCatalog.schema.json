@@ -107,6 +107,8 @@
         },
         "date": {
           "description": "Day the change was cataloged, `YYYY-MM-DD`.",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
           "title": "Date",
           "type": "string"
         }
@@ -339,6 +341,9 @@
         "type": "string"
       },
       "description": "Links to key design documents (spec, plan, primer, research notes); `plan` is always present.",
+      "required": [
+        "plan"
+      ],
       "title": "Primary Documents",
       "type": "object"
     },

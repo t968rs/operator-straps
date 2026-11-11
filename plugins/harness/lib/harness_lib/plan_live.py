@@ -12,10 +12,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from harness_lib import evolution_doc as ed
 from harness_lib import plan_receipts as prt
 from harness_lib.evolution_models import DesignEvolution
-from harness_lib.plan_doc import PlanError
 from harness_lib.receipt_models import Receipt
 
 LIVE_NAME = "live.js"
@@ -37,19 +35,11 @@ def live_path(plans_dir: Path, plan_id: str) -> Path:
     return plans_dir / plan_id / LIVE_NAME
 
 
-def _catalog(plans_dir: Path, plan_id: str) -> Optional[DesignEvolution]:
-    """The plan's catalog; None when absent or invalid, so a hand-broken catalog never blocks the page."""
-    try:
-        return ed.load_evolution(ed.catalog_path(plans_dir, plan_id))
-    except PlanError:
-        return None
-
-
 def build_live(plans_dir: Path, plan_id: str) -> PlanLive:
     """The current payload: every receipt that loads, sorted by item id, and the catalog."""
     receipts = sorted(prt.load_receipts(plans_dir, plan_id).receipts.values(), key=lambda r: r.item)
     built = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return PlanLive(receipts=receipts, evolution=_catalog(plans_dir, plan_id), built=built)
+    return PlanLive(receipts=receipts, evolution=prt._catalog(plans_dir, plan_id), built=built)
 
 
 def _ignore_live(folder: Path) -> None:

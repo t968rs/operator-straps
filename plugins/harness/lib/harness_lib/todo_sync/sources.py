@@ -62,7 +62,10 @@ class Stub:
 
 @dataclass(frozen=True)
 class PlanPair:
-    """An ``<prefix>_ActionPlan.json`` and ``<prefix>_PIP.md`` pair; either side may be absent."""
+    """An ``<prefix>_ActionPlan.json`` and ``<prefix>_PIP.md`` or ``_PIP.html`` pair; either side may be absent.
+
+    ``pip`` is parsed for a markdown PIP only.
+    """
 
     prefix: str
     plan: Optional[JsonFile]

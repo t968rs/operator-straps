@@ -96,11 +96,14 @@
           "type": "array"
         },
         "change_digests": {
-          "additionalProperties": {
-            "pattern": "^[0-9a-f]{64}$",
-            "type": "string"
-          },
+          "additionalProperties": false,
           "description": "Change id -> digest of that DesignChange, for each id cited.",
+          "patternProperties": {
+            "^(S|PR|P|EX|CX)[0-9]+$": {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            }
+          },
           "title": "Change Digests",
           "type": "object"
         }
@@ -119,7 +122,7 @@
         },
         "change": {
           "description": "Id of the DesignChange that allows the file.",
-          "minLength": 1,
+          "pattern": "^(S|PR|P|EX|CX)[0-9]+$",
           "title": "Change",
           "type": "string"
         }
@@ -233,7 +236,7 @@
         },
         "change": {
           "description": "Id of the DesignChange that allows the substitution.",
-          "minLength": 1,
+          "pattern": "^(S|PR|P|EX|CX)[0-9]+$",
           "title": "Change",
           "type": "string"
         }
@@ -311,7 +314,7 @@
       "type": "string"
     },
     "seal": {
-      "description": "SHA-256 of this receipt without the seal and the item's planned files and tests.",
+      "description": "SHA-256 of this receipt without its seal, plus the item's planned files and tests.",
       "pattern": "^[0-9a-f]{64}$",
       "title": "Seal",
       "type": "string"

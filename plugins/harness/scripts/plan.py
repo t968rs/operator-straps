@@ -24,7 +24,9 @@ refuses an invalid one with ``schema:`` lines.
 
 ``render PLAN``
     Write the PIP from the plan JSON. On a frozen receipts plan, rebuild ``live.js`` and write the HTML page
-    only when it is missing: ``freeze`` and ``--refreeze`` write an existing page.
+    only when it is missing: ``freeze``, ``--refreeze`` and ``plan_api.write`` write an existing page. A
+    plan not frozen yet has no ``live.js``; its page says the live parts appear after ``freeze``, and one
+    whose ``documentation`` still names the markdown PIP keeps that PIP until the first freeze.
 
 ``red PLAN``
     Copy the planned test files onto a throwaway detached worktree at HEAD, run every open item's test
@@ -36,22 +38,25 @@ refuses an invalid one with ``schema:`` lines.
 ``freeze PLAN [--refreeze]``
     Refuse while ``check`` has a problem, a decision is open, an open item has neither a test nor a command,
     an item is not PENDING on a first freeze, or ``red`` has a problem; otherwise record HEAD, its tree, the
-    date, the record scheme and the digest of every field but the execution fields (the ``Mutable`` fields
-    of ``harness_lib.plan_models``): the item status, evidence, verification references and record and the
-    plan's completed, frozen and markdown sync fields. The scheme is ``sealed`` unless an item ``record``
-    moved still carries the legacy shape, and a sealed plan stays sealed: a refreeze of a plan whose stored
-    scheme is sealed, whose digest proves the scheme was deleted by hand, or whose copy at HEAD stores the
-    sealed scheme (a hand edit that deletes the scheme and changes a digested field) judges its items as
-    sealed. Only a plan whose deleted scheme was never committed can be judged as legacy again. A
-    refreeze tolerates a record whose seal no longer matches (an item whose files or tests changed) and
-    prints ``re-record after refreeze: <ITEM>`` for each; on a sealed plan a non-PENDING item without a
-    record still refuses. A first freeze (every item PENDING without a record) stores
-    ``plan_record.FIRST_SCHEME``, receipts: the digest then covers every field but ``frozen``, a
-    ``documentation`` naming the markdown PIP moves to the HTML page (the markdown PIP is deleted), and the
-    freeze writes the page and ``live.js``. A receipts plan keeps the scheme the way a sealed one does
-    (stored, proven by the digest, or stored at HEAD; checked before the sealed rule), reads its item states
-    from its receipts, tolerates a receipt whose seal the refreeze broke the same way, refuses every other
+    date, the record scheme and the digest. A first freeze (every item PENDING without a record), the path
+    every new plan takes, stores ``plan_record.FIRST_SCHEME``, receipts: the digest covers every field but
+    ``frozen``, a ``documentation`` naming the markdown PIP moves to the HTML page (the markdown PIP is
+    deleted), and the freeze writes the page and ``live.js``. A receipts plan keeps the scheme on a
+    refreeze (stored, proven by the digest, or stored at HEAD; checked before the sealed rule), reads its
+    item states from its receipts, tolerates a receipt whose seal the refreeze broke (printing
+    ``re-record after refreeze: <ITEM>``, as below), refuses every other
     receipt problem, and saves the plan JSON itself, never the status view.
+
+    Plans frozen before receipts keep their own rules. Their digest covers every field but the execution
+    fields (the ``Mutable`` fields of ``harness_lib.plan_models``): the item status, evidence, verification
+    references and record and the plan's completed, frozen and markdown sync fields. Their scheme is
+    ``sealed`` unless an item ``record`` moved still carries the legacy shape, and a sealed plan stays
+    sealed: a refreeze of a plan whose stored scheme is sealed, whose digest proves the scheme was deleted
+    by hand, or whose copy at HEAD stores the sealed scheme (a hand edit that deletes the scheme and changes
+    a digested field) judges its items as sealed. Only a plan whose deleted scheme was never committed can
+    be judged as legacy again. A refreeze tolerates a record whose seal no longer matches (an item whose
+    files or tests changed) and prints ``re-record after refreeze: <ITEM>`` for each; on a sealed plan a
+    non-PENDING item without a record still refuses.
 
 ``lanes PLAN [--target BRANCH]``
     Print the ``parallel2`` plan JSON of a frozen plan's open items (waves from dependencies and file
@@ -146,7 +151,7 @@ from harness_lib.config import ConfigError, active, activate, load_config  # noq
 from harness_lib.plan_enums import (DONE, ItemStatus, OutcomeKind, RecordProblemKind,  # noqa: E402
                                     RecordScheme, RecordSource, VerifyKind)
 from harness_lib.project import plugin_root, project_root  # noqa: E402
-from harness_lib.receipt_models import Deviations, Receipt  # noqa: E402
+from harness_lib.receipt_models import Deviations, Receipt, substituted_nodes  # noqa: E402
 
 PROBLEMS = (pd.PlanError, pl.PlanError, CaptureError, ConfigError)
 # The fixed identity of the dangling index snapshots ``record --staged`` and ``verify --staged`` test on.
@@ -189,9 +194,13 @@ def save(plan_file: Path, plan: pm.ActionPlan) -> Path:
     return prh.write_pip(plan_file, plan)
 
 
-def book_of(plan: pm.ActionPlan) -> prt.RecordBook:
-    """The plan's record book (D10): its receipts on a receipts plan, its own sealed records otherwise."""
-    return prt.book_for(plans_dir(), plan)
+def book_of(plan_file: Path, plan: pm.ActionPlan) -> prt.RecordBook:
+    """The plan's record book (D10): its receipts on a receipts plan, its own sealed records otherwise.
+
+    Receipts are read beside ``plan_file``, the folder ``record`` writes them to, so a plan addressed by a
+    path outside ``artifacts.plans`` reads and writes one receipts folder.
+    """
+    return prt.book_for(plan_file.parent, plan)
 
 
 # --- new --------------------------------------------------------------------------------------------------
@@ -251,12 +260,13 @@ def digest_problems(plan: pm.ActionPlan) -> List[str]:
             "restore it, or rerun freeze --refreeze"]
 
 
-def evolution_problems(plan: pm.ActionPlan) -> List[str]:
-    """On a receipts plan, the DesignEvolution catalog's ``schema:`` lines, else its ``plan_problems``."""
+def evolution_problems(folder: Path, plan: pm.ActionPlan) -> List[str]:
+    """On a receipts plan, the DesignEvolution catalog's ``schema:`` lines, else its ``plan_problems``;
+    the catalog is read under ``folder``, the plan file's folder ``evolution_api`` writes it to."""
     if not prt.uses_receipts(plan):
         return []
     try:
-        evolution = ed.load_evolution(ed.catalog_path(plans_dir(), plan.plan_id))
+        evolution = ed.load_evolution(ed.catalog_path(folder, plan.plan_id))
     except pd.PlanError as exc:
         return exc.problems
     return [] if evolution is None else ed.plan_problems(evolution, plan)
@@ -278,11 +288,11 @@ def claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
             + pc.sweep_problems(plan, repo, active().artifacts.plans, rev))
 
 
-def all_problems(repo: Path, plan: pm.ActionPlan, book: prt.RecordBook) -> List[str]:
+def all_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan, book: prt.RecordBook) -> List[str]:
     """Every check of a plan that loaded: the claims (on the book's status view), the freeze digest, the
     DesignEvolution catalog of a receipts plan and the book's record problems."""
-    return (claim_problems(repo, book.view()) + digest_problems(plan) + evolution_problems(plan)
-            + book.problems())
+    return (claim_problems(repo, book.view()) + digest_problems(plan)
+            + evolution_problems(plan_file.parent, plan) + book.problems())
 
 
 def check_summary(plan: pm.ActionPlan, view: pm.ActionPlan) -> str:
@@ -295,9 +305,10 @@ def check_summary(plan: pm.ActionPlan, view: pm.ActionPlan) -> str:
 
 
 def cmd_check(repo: Path, args: argparse.Namespace) -> int:
-    plan = pd.load_plan(locate(repo, args.plan))
-    book = book_of(plan)
-    problems = all_problems(repo, plan, book)
+    plan_file = locate(repo, args.plan)
+    plan = pd.load_plan(plan_file)
+    book = book_of(plan_file, plan)
+    problems = all_problems(repo, plan_file, plan, book)
     if problems:
         raise pd.PlanError(problems)
     print("\n".join([check_summary(plan, book.view()), *(f"open: {d}" for d in pc.open_decisions(plan))]))
@@ -333,7 +344,8 @@ def red_problems(repo: Path, plan: pm.ActionPlan) -> Tuple[List[pr.RedResult], L
 
 
 def cmd_red(repo: Path, args: argparse.Namespace) -> int:
-    plan = book_of(pd.load_plan(locate(repo, args.plan))).view()
+    plan_file = locate(repo, args.plan)
+    plan = book_of(plan_file, pd.load_plan(plan_file)).view()
     results, problems = red_problems(repo, plan)
     if problems:
         raise pd.PlanError(problems)
@@ -488,7 +500,7 @@ def cmd_freeze(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
     committed = pin_scheme(repo, plan_file, plan)
-    book = book_of(plan)
+    book = book_of(plan_file, plan)
     problems, rerecord = freeze_problems(repo, plan, book, args.refreeze)
     if problems:
         raise pd.PlanError(problems)
@@ -544,12 +556,6 @@ def deviation_paths(item: pm.ActionItem, deviations: Deviations) -> List[str]:
     extra = [entry.path for entry in deviations.extra_files]
     swapped = [plx.node_file(sub.node) for sub in deviations.substitutions]
     return list(dict.fromkeys([*item_paths(item), *extra, *swapped]))
-
-
-def run_nodes(item: pm.ActionItem, deviations: Deviations) -> List[str]:
-    """The item's planned nodes in plan order, each replaced by its substitute (``Receipt.nodes``)."""
-    swaps = {sub.planned: sub.node for sub in deviations.substitutions}
-    return [swaps.get(test.node, test.node) for test in item.tests]
 
 
 def resolve_commit(repo: Path, sha: str) -> str:
@@ -656,7 +662,7 @@ def complete(repo: Path, plan: pm.ActionPlan, book: prt.RecordBook, item: pm.Act
     problems = commit_problems(repo, plan, item.id, deviation_paths(item, deviations), prov)
     if problems:
         raise pd.PlanError(problems)
-    tests = run_tests(repo, item.id, run_nodes(item, deviations), prov)
+    tests = run_tests(repo, item.id, substituted_nodes(item, deviations), prov)
     return pm.Completed.of(prov, tests), revision_ref(args.sha, prov)
 
 
@@ -810,7 +816,7 @@ def cmd_record(repo: Path, args: argparse.Namespace) -> int:
     if problems:
         raise pd.PlanError(problems)
     item = pd.item_by_id(plan, args.item)
-    book = book_of(plan)
+    book = book_of(plan_file, plan)
     if isinstance(book, prt.ReceiptBook):
         view = record_receipt(repo, plan_file, book, item, args)
     else:
@@ -824,8 +830,9 @@ def cmd_record(repo: Path, args: argparse.Namespace) -> int:
 # --- lanes ------------------------------------------------------------------------------------------------
 
 def cmd_lanes(repo: Path, args: argparse.Namespace) -> int:
-    plan = pd.load_plan(locate(repo, args.plan))
-    book = book_of(plan)
+    plan_file = locate(repo, args.plan)
+    plan = pd.load_plan(plan_file)
+    book = book_of(plan_file, plan)
     require_valid(plan, book)
     target = args.target or current_branch(repo)
     if not target:
@@ -885,9 +892,10 @@ def verify_items(repo: Path, book: prt.RecordBook, prov: pm.Provenance) -> List[
 
 
 def cmd_verify(repo: Path, args: argparse.Namespace) -> int:
-    plan = pd.load_plan(locate(repo, args.plan))
+    plan_file = locate(repo, args.plan)
+    plan = pd.load_plan(plan_file)
     prov = verify_target(repo, args.staged)
-    results = verify_items(repo, book_of(plan), prov)
+    results = verify_items(repo, book_of(plan_file, plan), prov)
     lines = [str(r) for r in results if not r.failed]
     failed = [str(r) for r in results if r.failed]
     if failed:
