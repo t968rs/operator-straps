@@ -160,6 +160,11 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
 - **Re-grade reviewer severity by blast radius** with `amend --regrade <ID>=<severity>` before `build`. Count the
   callers the contract change reaches. A "minor" label on a return-type, annotation-widening or raises-vs-returns
   change with more than ~5 callers is almost never minor.
+- **Re-grade the fix kind by the fix, not the finding.** A `judgment` issue whose fix options already state
+  the exact edit (one line, a rename, a reworded sentence, with nothing left to choose) takes
+  `amend --regrade <ID>=mechanical` before `build`, so a `haiku` fixer applies it instead of `opus`. The
+  id and severity stay. A `mechanical` issue whose fix still needs a choice between options, or reading code
+  beyond the cited lines, takes `<ID>=judgment`. GitHub review folds arrive as `judgment`, so check them.
 - **A missing mention is a documentation gap.** A finding whose only ground is that the commit messages or PR
   description omit a change regrades to `minor`, whatever the reviewer called it; the fixer brief bars a revert
   on that ground. A code-level defect in the same hunk is graded on its own. A revert or deletion of code the

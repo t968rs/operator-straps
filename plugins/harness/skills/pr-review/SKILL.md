@@ -42,7 +42,7 @@ roots and registry (`tests.*`), the structural guard suites and brief pointers (
 | `block --agent ID` | 2, 5 | Reprints an agent's return block from its recorded report |
 | `fold --source ID --kind external\|tests\|developer\|adhoc (--from-gh-review URL \| --findings FILE\|-) [--severity S]` | 3, 5 | Records an outside review as `findings/<ID>.json` (same Finding model reviewers use) and registers it in `plan.json` `folded`; a GitHub review maps one `judgment` finding per inline comment (default `minor`). Before `build` it is `merge` input. After `build` it appends the source's issues to the review with fresh ids (per severity, after the highest existing; nothing renumbered or auto-merged, merge candidates printed as a note), recomputes the verdict, keeps the phase inside an open Phase 5 pass (`fix-plan` / `fix`, else sets `consolidate`) and prints the added rows; re-folding a source already in the built review is refused, and so is any fold into a review whose Phase 4 first run failed (`pre_fix_time` pending) |
 | `merge [--force]` | 3 | Merges the slot reports, then the folded sources, into `draft.json`, assigns ids, prints the issue table and merge candidates; an unregistered `findings/*.json` is a problem |
-| `amend [--regrade I3=minor ...] [--merge I3+I7 ...]` | 3 | Applies severity regrades and merges to the draft, logs them, reprints the table |
+| `amend [--regrade I3=minor ...] [--merge I3+I7 ...]` | 3 | Applies severity regrades (`I3=mechanical` or `I3=judgment` sets the fix kind in place) and merges to the draft, logs them, reprints the table |
 | `build [--replace] [--waive-head-ancestry]` | 3 | Runs the Phase 4 first run, writes `<reviews>/<NNNN>_<slug>.json` with `pre_fix_time` inserted, records `build_head`. `--waive-head-ancestry` accepts a first run whose only STOP is a head-ancestry desync (Phase 4 waiver) |
 | `bubble ID --classification C --reason R` | 5 | Adds a bubble, recomputes the verdict |
 | `bubbles` | 5 | Prints fixer bubbles not yet in the review (read-only) |
@@ -380,13 +380,15 @@ The review JSON is the source of truth, written only by `build`; the chat summar
    ids only), then closeout (Phase 5 pass open: no second run)`. Re-folding a source already in the built review is
    refused with its ids; fold new findings under a new `--source` id.
 1. **`merge`.** `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" merge --pr <N>` merges the reports of the run's slots
-   into `draft.json` and prints one line per issue (`I3 important path:lines [slots] name`), then the
+   into `draft.json` and prints one line per issue (`I3 important judgment path:lines [slots] name`), then the
    `merge candidates:` pairs, then the strengths count. Findings sharing a primary file whose line ranges lie within 3
    lines of each other merge automatically, every pair in a merged group, never by chaining (highest severity wins, `judgment` beats `mechanical`, every slot is
    credited); findings without lines never auto-merge. Ids are numbered per severity by file, first line, name. A
    missing report is a problem naming the slot: re-dispatch that slot's row, then rerun `merge`.
-2. **`amend` (only when the table needs it).** Two judgment calls, made from the printed table:
+2. **`amend` (only when the table needs it).** Three judgment calls, made from the printed table:
    - **Regrade by blast radius** (operating rules, "Grading and verifying findings"): `--regrade I3=minor`.
+   - **Regrade the fix kind by the fix** (same section): `--regrade I3=mechanical` when a `judgment` issue's
+     fix is an exact edit, so a `haiku` fixer takes it; the id and severity stay.
    - **Merge candidates that are the same defect:** `--merge I3+I7` (the first id is kept).
 
    `amend` logs each operation in the draft and reprints the table; `merge` refuses to overwrite an amended draft
