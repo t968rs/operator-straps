@@ -83,9 +83,9 @@ export const leadingHeader = (prompt: string): Header => {
  * only since every dispatch is tracked (Decision D5).
  */
 export const DEFINED_AGENTS = [
-  'harness:bubble-memo-investigator', 'harness:bubble-memo-reviewer', 'harness:docstring-writer',
-  'harness:messenger', 'harness:pr-fixer', 'harness:pr-reviewer', 'harness:pr-team-fixer',
-  'harness:pr-team-orchestrator', 'harness:roast-my-code', 'harness:strap-judge',
+  'harness:adversarial-reviewer', 'harness:bubble-memo-investigator', 'harness:bubble-memo-reviewer',
+  'harness:docstring-writer', 'harness:messenger', 'harness:pr-fixer', 'harness:pr-reviewer',
+  'harness:pr-team-fixer', 'harness:pr-team-orchestrator', 'harness:roast-my-code', 'harness:strap-judge',
   'harness:strap-scenario-runner', 'harness:todo-editor',
 ] as const
 
