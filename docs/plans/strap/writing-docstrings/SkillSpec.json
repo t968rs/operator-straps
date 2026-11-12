@@ -1,7 +1,7 @@
 {
   "name": "writing-docstrings",
   "mode": "edit",
-  "base": "7f5aedff216db7c02e3531eaa98f26206c3f7944",
+  "base": "f8c9877885b27ba54a1ba84af608347c9c1bcd9f",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -396,7 +396,7 @@
     },
     {
       "id": "B8",
-      "statement": "The docstring-writer agent file's Reply section opens each file with a '<path>: <n> rewritten, <n> kept' line, lists no rewritten symbols or per-symbol tier lines, and omits an empty heading instead of writing 'none'",
+      "statement": "The docstring-writer agent file's Reply section opens each file with a '<path>: <n> rewritten, <n> kept' line, lists no rewritten symbols and no tier line outside 'Tier overrides:', and omits an empty heading instead of writing 'none'",
       "kind": "mechanical",
       "type": null,
       "rationale": "The reply form is text in the agent file; a contract test reads its Reply section",
@@ -1209,13 +1209,32 @@
         "B5",
         "B7"
       ]
+    },
+    {
+      "base": "7f5aedff216db7c02e3531eaa98f26206c3f7944",
+      "frozen": {
+        "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+        "grader": "session",
+        "at": "2026-11-12T06:19:29+00:00",
+        "authored": "77e694ff9e784e17d6f15846a1019aac54f47f8122a0f7bbfcf790100b09e1e1"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B7",
+        "B8",
+        "B9"
+      ]
     }
   ],
   "frozen": {
     "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
     "grader": "session",
-    "at": "2026-11-12T06:19:29+00:00",
-    "authored": "77e694ff9e784e17d6f15846a1019aac54f47f8122a0f7bbfcf790100b09e1e1"
+    "at": "2026-11-12T07:28:19+00:00",
+    "authored": "8b1d971d5dd1f056999cbe3db4975f3c3383284da2d1752af143a7a2a27560fd"
   },
-  "driver_digest": "c53bd6f88b0c0d06ba45858f8d061bbfc689992fc8308c2cf73a7088b77e7e3c"
+  "driver_digest": "bbfccdd6595b101fc407c8231768e5826387f9501134b77e05822343c6837d82"
 }
