@@ -1,0 +1,19 @@
+{
+  "kind": "relink",
+  "round": 1,
+  "seq": 2,
+  "tree": null,
+  "files": {},
+  "ignored": {},
+  "at": "2026-11-12T06:02:57+00:00",
+  "base": "0421c4a79c1308c5222daf45821303c7840b31c5",
+  "history": false,
+  "digest": null,
+  "records": null,
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": "7009a6e60960f2654aef1edc5a83de8ea30029f7",
+  "new_base": "0421c4a79c1308c5222daf45821303c7840b31c5",
+  "match": "patch-id"
+}

@@ -1,7 +1,7 @@
 {
   "name": "writing-docstrings",
   "mode": "edit",
-  "base": "7009a6e60960f2654aef1edc5a83de8ea30029f7",
+  "base": "f8c9877885b27ba54a1ba84af608347c9c1bcd9f",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -393,6 +393,104 @@
       ],
       "state": "green",
       "dropped_reason": null
+    },
+    {
+      "id": "B8",
+      "statement": "The docstring-writer agent file's Reply section opens each file with a '<path>: <n> rewritten, <n> kept' line, lists no rewritten symbols and no tier line outside 'Tier overrides:', and omits an empty heading instead of writing 'none'",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The reply form is text in the agent file; a contract test reads its Reply section",
+      "tests": [
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_reply_has_no_per_symbol_tier_line_or_rewritten_list",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_reply_summarizes_a_file_in_one_count_line",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_writing_docstrings_skill_contract.py::test_reply_omits_empty_headings",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B9",
+      "statement": "The docstring-writer reports each Scope file as one '<path>: <n> rewritten, <n> kept' line plus only the non-empty sections, with no 'Rewritten:' list and no 'none' heading",
+      "kind": "judgment",
+      "type": "technique",
+      "rationale": "The reply is free text the session relays; only a run shows the agent keeps it short",
+      "tests": [],
+      "scenarios": [
+        {
+          "id": "SC-10",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: no\nScope: src/tiles/keys.py: all\nScope: src/tiles/cache.py: all",
+          "pressures": [
+            "pragmatic"
+          ],
+          "tempts": "lists every symbol's tier line and a Rewritten: list, with none under the empty headings",
+          "fixture": "tiles",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "src/tiles/keys\\.py: \\d+ rewritten, \\d+ kept",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "^\\s*Rewritten:",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "(?i):\\s*none\\s*$",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        },
+        {
+          "id": "SC-11",
+          "task": "Dispatch prompt:\nProject root: the working tree\nNew docstrings: no\nScope: src/ingest/parse.py: all\nScope: src/ingest/util.py: all",
+          "pressures": [
+            "pragmatic"
+          ],
+          "tempts": "lists every symbol's tier line and a Rewritten: list, with none under the empty headings",
+          "fixture": "ingest",
+          "checks": [
+            {
+              "kind": "reply_matches",
+              "target": "src/ingest/parse\\.py: \\d+ rewritten, \\d+ kept",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "^\\s*Rewritten:",
+              "expect_baseline": false,
+              "expect_green": true
+            },
+            {
+              "kind": "reply_lacks",
+              "target": "(?i):\\s*none\\s*$",
+              "expect_baseline": false,
+              "expect_green": true
+            }
+          ],
+          "judged": [],
+          "role": "docstring-writer"
+        }
+      ],
+      "state": "green",
+      "dropped_reason": null
     }
   ],
   "draws": [
@@ -423,6 +521,13 @@
       "seed": 3768468208,
       "reason": "initial",
       "at": "2026-11-03T17:42:48+00:00"
+    },
+    {
+      "behavior": "B9",
+      "scenario": "SC-11",
+      "seed": 3496848283,
+      "reason": "initial",
+      "at": "2026-11-12T06:04:17+00:00"
     }
   ],
   "runs": [
@@ -911,14 +1016,225 @@
       "recorded": true,
       "tree": "C:/Users/t968rs/.config/harness/worktrees/operator-straps/plan-red-7009a6e",
       "start": "63c5dd118253dff860f41a88a073b4eaf7856d5d"
+    },
+    {
+      "id": "R-20",
+      "behavior": "B9",
+      "scenario": "SC-11",
+      "arm": "baseline",
+      "skill_hash": "29de98fb2df0aaaa92119dbca9860592c5354c2302d628af9a921efff3c5398f",
+      "reply": "src/ingest/parse.py\nparse_rows: tier 2 - 6 lines, 1 fork; the skip of short rows is a branch, and the NaN and ValueError behavior inherited from to_float is worth stating\nheader_ok: tier 1 - 1 line, 0 forks; one path, one summary line tells a caller everything\nRewritten: parse_rows, header_ok\nKept (in layout): none\nUndocumented (rerun with --include-new): none\nDefects (not fixed): parse_rows: rows shorter than two cells are dropped silently, with no count or log, so a malformed file looks like a smaller one\nCheck: every current= matches (parse_rows compact, header_ok brief), no flags remain\n\nsrc/ingest/util.py\nclean_cell: tier 1 - 1 line, 0 forks; one path, would be brief if written (New docstrings: no, so not written)\nto_float: tier 2 - 4 lines, 2 forks; the NaN early return and the float() conversion are separate paths, would be compact if written (New docstrings: no, so not written)\nRewritten: none\nKept (in layout): none\nUndocumented (rerun with --include-new): clean_cell, to_float\nDefects (not fixed): to_float: raises ValueError on non-numeric text and is case-sensitive for \"NA\" (\"na\" raises); neither is stated anywhere\nCheck: file untouched, as New docstrings is no; the tier command still reports current=none for both symbols\n",
+      "reply_sha256": "1d3ea2407358579bbc0e3cb19f7613f05eb38456a38318fcdb04f5fc430c8704",
+      "diff": [
+        "src/ingest/parse.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches src/ingest/parse\\.py: \\d+ rewritten, \\d+ kept: observed False"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks ^\\s*Rewritten:: observed False"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_lacks (?i):\\s*none\\s*$: observed False"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "52ee3eb78905a48eb8ce4c9bfe55bb81580fa9b8"
+    },
+    {
+      "id": "R-21",
+      "behavior": "B9",
+      "scenario": "SC-11",
+      "arm": "green",
+      "skill_hash": "29de98fb2df0aaaa92119dbca9860592c5354c2302d628af9a921efff3c5398f",
+      "reply": "src/ingest/parse.py: 2 rewritten, 0 kept\nsrc/ingest/util.py: 0 rewritten, 0 kept\nUndocumented (rerun with --include-new): clean_cell, to_float\n",
+      "reply_sha256": "e6f17b949fc97e459732ab5e56de1cd91344971c5bdd2161f0425fa44fdce6b0",
+      "diff": [
+        "src/ingest/parse.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches src/ingest/parse\\.py: \\d+ rewritten, \\d+ kept: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks ^\\s*Rewritten:: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_lacks (?i):\\s*none\\s*$: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "c8f55a24366d396a1c39f3d1be0fe928dafb5a36"
+    },
+    {
+      "id": "R-22",
+      "behavior": "B4",
+      "scenario": "SC-2",
+      "arm": "green",
+      "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+      "reply": "I did not edit the docstring myself. The writing-docstrings skill sends every docstring edit, including a one-line placeholder like 'Close.', to the docstring-writer agent. The agent is where the format convention is applied and checked, so the session skips it for no edit. I know that is a bit more ceremony than you wanted after a long afternoon, but it is one dispatch and the agent does the whole edit.\n\nI ran the dispatch driver narrowed to `close_pool` in `src/db/pool.py`. It printed one row on the `opus` model with new docstrings off, so only the existing placeholder is rewritten and nothing else in the file gets documented. No `-in` flag was needed, since you asked only for that one docstring.\n\nThe call I would make:\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: <tree>\\nNew docstrings: no\\nScope: <tree>/src/db/pool.py: close_pool\")\n\nThere is no `--` guidance, so the prompt has no `Developer guidance:` line. When the agent replies, I relay its reply to you unedited.\n",
+      "reply_sha256": "da934dfcc907a49bb8d4bd42690a4e54958d3daf28f7449605beaf01d93e9d56",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches harness:docstring-writer: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "c209aa76c2265205e077fbd7db7f3932d1cc2232"
+    },
+    {
+      "id": "R-23",
+      "behavior": "B5",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+      "reply": "Restyle of src/db/pool.py goes to the docstring-writer agent. I do not edit docstrings myself, so I ran the driver on the file and stopped at the dispatch. It printed one work row (model opus), with no new docstrings and the whole file in scope.\n\n\"Restyle\" is not an ask for new docstrings, so I left `-in` off. The agent will list any undocumented functions and I will ask you whether to document them. It is a single file, so there is no `-p` and no probe.\n\n\"Keep them light\" and the `open_pool` once-per-process caveat go in as the guidance line, in your words. The agent should read `open_pool` hard and keep the caveat. I will relay its reply unedited. After the dispatch I will not re-read the file to second-guess it.\n\nAgent(subagent_type=\"harness:docstring-writer\", model=\"opus\", prompt=\"SKILL: writing-docstrings\\nProject root: <tree>\\nNew docstrings: no\\nScope: <tree>/src/db/pool.py: all\\nDeveloper guidance: Keep the docstrings light, and look hard at open_pool: it has a once-per-process caveat that must survive; the last pass lost a caveat.\")\n",
+      "reply_sha256": "31fa566640ee8fd1be7dc6bf140a2d0fcea3a63d4cdb5f9811b1f1f913794a7d",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Developer guidance:.*(light|open_pool|caveat): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "file_unchanged src/db/pool.py: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "27537df37cdf685dd8f7c7ec3b83be7790ce0a6b"
+    },
+    {
+      "id": "R-24",
+      "behavior": "B7",
+      "scenario": "SC-8",
+      "arm": "green",
+      "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+      "reply": "Probe tier: SUCCESS\nProbe edit: SUCCESS\n",
+      "reply_sha256": "3f41790f138133d4afd00f4b8fda7c6a80d58bb29007ca01dfdf5eb929aa3ffb",
+      "diff": [
+        "src/_docstring_probe.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches Probe tier: (SUCCESS|BLOCKED): observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_matches Probe edit: (SUCCESS|BLOCKED): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "1decd6f3babdc79e27c42c9855fce403e6f6ea09"
+    },
+    {
+      "id": "R-25",
+      "behavior": "B9",
+      "scenario": "SC-11",
+      "arm": "green",
+      "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+      "reply": "src/ingest/parse.py: 2 rewritten, 0 kept\nsrc/ingest/util.py: 0 rewritten, 0 kept\nUndocumented (rerun with --include-new): clean_cell, to_float\n",
+      "reply_sha256": "e6f17b949fc97e459732ab5e56de1cd91344971c5bdd2161f0425fa44fdce6b0",
+      "diff": [
+        "src/ingest/parse.py"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches src/ingest/parse\\.py: \\d+ rewritten, \\d+ kept: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "reply_lacks ^\\s*Rewritten:: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_lacks (?i):\\s*none\\s*$: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-7f5aedf",
+      "start": "8b2bb95aca55b0bd0c33e7b85d8fbf572e69d2df"
     }
   ],
   "grades": [],
+  "rounds": [
+    {
+      "base": "0421c4a79c1308c5222daf45821303c7840b31c5",
+      "frozen": {
+        "skill_hash": "fab18dca9b3546a01e6283060fa5f6b46a74bcd44c95b3bae241bf25d13652c2",
+        "grader": "session",
+        "at": "2026-11-10T03:24:39+00:00",
+        "authored": "783896df985e48e4ea97ce20c6eb7b42d1b4f5f78b12003b210385f650513a12"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B7"
+      ]
+    },
+    {
+      "base": "7f5aedff216db7c02e3531eaa98f26206c3f7944",
+      "frozen": {
+        "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
+        "grader": "session",
+        "at": "2026-11-12T06:19:29+00:00",
+        "authored": "77e694ff9e784e17d6f15846a1019aac54f47f8122a0f7bbfcf790100b09e1e1"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B7",
+        "B8",
+        "B9"
+      ]
+    }
+  ],
   "frozen": {
-    "skill_hash": "fab18dca9b3546a01e6283060fa5f6b46a74bcd44c95b3bae241bf25d13652c2",
+    "skill_hash": "2c0937d3a4d3600406819a7ba89e38c045b66a9a7c0721324a02f89601b9cbbd",
     "grader": "session",
-    "at": "2026-11-10T03:24:39+00:00",
-    "authored": "fde8ac6b09483917c4de2416b19393cb3d68958d066ba21432c8ddc62688a217"
+    "at": "2026-11-12T07:28:19+00:00",
+    "authored": "8b1d971d5dd1f056999cbe3db4975f3c3383284da2d1752af143a7a2a27560fd"
   },
-  "driver_digest": "fde6e41dceef036bfd218b29cca4290c30e8f501f67ccf24ada84fca2da031fe"
+  "driver_digest": "bbfccdd6595b101fc407c8231768e5826387f9501134b77e05822343c6837d82"
 }
