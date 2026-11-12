@@ -56,30 +56,30 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 57,
+    "items": 56,
     "needs_decision": 33,
     "trackers": 0,
-    "close_candidates": 25,
+    "close_candidates": 26,
     "by_status": {
       "NEEDS_DECISION": 33,
-      "OPEN": 24
+      "OPEN": 23
     },
     "by_impact": {
       "dev_velocity": 29,
-      "docs_tooling": 22,
+      "docs_tooling": 21,
       "maintainability": 1,
       "runtime_failure": 4,
       "data_correctness": 1
     },
     "by_loe": {
-      "XS": 4,
+      "XS": 3,
       "S": 17,
       "M": 25,
       "L": 10,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 51,
+      "gh_issue": 50,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 6
@@ -2705,63 +2705,8 @@
       "why_ranked": "Severity 1 hygiene, docs_tooling impact, XS size."
     },
     {
-      "id": "todo-6za3",
-      "rank": 45,
-      "title": "strap-scenario-runner: a dispatching scenario must still record its run",
-      "kind": "skill",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#194",
-          "url": "https://github.com/t968rs/operator-straps/issues/194"
-        }
-      ],
-      "gh_issues": [
-        194
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The issue (created 2026-11-03T17:53Z) quotes a session blaming the runner's wording at strap-scenario-runner.md:43-46 for a scenario that stopped at the dispatch without recording. Checked: c857744 (2026-11-03, merged through PR #207, f163fe4) reworded that rule, and plugins/harness/agents/strap-scenario-runner.md:44-48 now reads 'A scenario that plays the session ends its work at the dispatch, then records ... stopping at the dispatch never skips the record'. No test under tests/ pins that sentence, and no strap run since the change is recorded here, so whether it fixes the reported R-5 run is unverified.",
-      "proposed_change": "Rerun a dispatching scenario (the R-5 case of the portable write-skill run) on the published plugin to confirm the runner records after the dispatch line; add a contract test pinning the record-after-dispatch sentence of plugins/harness/agents/strap-scenario-runner.md; then close #194 against c857744.",
-      "files": [
-        "plugins/harness/agents/strap-scenario-runner.md"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "The strap-skills scenario runner only.",
-        "consumers": [
-          "plugins/harness/skills/strap-skills/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "XS",
-        "reasoning": "One confirming run and a one-assertion contract test."
-      },
-      "impact": "docs_tooling",
-      "severity": 1,
-      "priority": {
-        "score": 0.6,
-        "components": {
-          "impact_weight": 0.6,
-          "value": 0.6,
-          "loe_points": 1,
-          "blast_factor": 1.0,
-          "cost": 1.0,
-          "base_score": 0.6,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 1 since the wording fix likely landed in c857744, docs_tooling impact, XS size."
-    },
-    {
       "id": "todo-3aye",
-      "rank": 46,
+      "rank": 45,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2817,7 +2762,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 47,
+      "rank": 46,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -2877,7 +2822,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 48,
+      "rank": 47,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2932,7 +2877,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 49,
+      "rank": 48,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -2983,7 +2928,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 50,
+      "rank": 49,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3040,7 +2985,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 51,
+      "rank": 50,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3093,7 +3038,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 52,
+      "rank": 51,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3148,7 +3093,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 53,
+      "rank": 52,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -3206,7 +3151,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 54,
+      "rank": 53,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3269,7 +3214,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 55,
+      "rank": 54,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -3324,7 +3269,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 56,
+      "rank": 55,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -3375,7 +3320,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 57,
+      "rank": 56,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3662,6 +3607,15 @@
       "evidence": "`gh pr view 253` reports MERGED at 2026-11-10T06:04:12Z as merge commit 5655a92 (\"Merge PR #253 -- bug writing docstrings\"), on main (`git branch -a --contains 5655a92`). Its commit 3d675b3 adds the param-format and underline-width flags to plugins/harness/lib/harness_lib/writing_docstrings_api.py, and 85db9f6 documents the full-layout Parameters format and the numpy restyle rule in plugins/harness/skills/writing-docstrings/docstring_format.md and plugins/harness/agents/docstring-writer.md (both on main). `gh issue view 246` already reports CLOSED (2026-11-10T06:04:13Z). The catalog item for #246 was retired in this run; the untested agent restyle is tracked as todo-nau4.",
       "recommended_action": "Already closed on GitHub by PR #253 (merge 5655a92); drop this candidate.",
       "related_todo_ids": []
+    },
+    {
+      "number": 194,
+      "title": "BUG: Strap Scenario Runner Wording",
+      "url": "https://github.com/t968rs/operator-straps/issues/194",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "c857744 (\"Fix(agents): update session end behavior to record run\") rewords the dispatch rule; `gh pr view 207` reports MERGED at 2026-11-04T17:01:52Z as merge commit f163fe4, and `git branch -a --contains c857744` lists main. plugins/harness/agents/strap-scenario-runner.md:58-61 now reads 'A scenario that plays the session ends its work at the dispatch, then records ... stopping at the dispatch never ...'. No test under tests/ pins that sentence. `gh issue view 194` already reports CLOSED (2026-11-12T07:46:29Z). The catalog item for #194 was retired in this run.",
+      "recommended_action": "Already closed on GitHub; the fix landed in c857744 through PR #207 (merge f163fe4); drop this candidate.",
+      "related_todo_ids": []
     }
   ],
   "retired_ids": [
@@ -3673,7 +3627,8 @@
     "todo-2n9s",
     "todo-7zrw",
     "todo-fmt6",
-    "todo-p52r"
+    "todo-p52r",
+    "todo-6za3"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",
