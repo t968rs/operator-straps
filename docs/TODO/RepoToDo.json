@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 56,
+    "items": 57,
     "needs_decision": 34,
     "trackers": 0,
     "close_candidates": 24,
     "by_status": {
       "NEEDS_DECISION": 34,
-      "OPEN": 22
+      "OPEN": 23
     },
     "by_impact": {
-      "dev_velocity": 29,
+      "dev_velocity": 30,
       "docs_tooling": 21,
       "maintainability": 1,
       "runtime_failure": 4,
@@ -74,7 +74,7 @@
     "by_loe": {
       "XS": 4,
       "S": 18,
-      "M": 23,
+      "M": 24,
       "L": 10,
       "XL": 1
     },
@@ -82,7 +82,7 @@
       "gh_issue": 52,
       "impl_stub": 0,
       "research_folder": 0,
-      "note": 4
+      "note": 5
     },
     "merged_items": 0
   },
@@ -2987,8 +2987,59 @@
       "why_ranked": "Severity 1 test gap for working behavior, dev_velocity impact, M size."
     },
     {
-      "id": "todo-5xr3",
+      "id": "todo-hnp3",
       "rank": 50,
+      "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
+      "kind": "test",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "note",
+          "ref": "2026-11-12"
+        }
+      ],
+      "gh_issues": [],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "per the session: SC-10 and SC-11 in B9 (docs/plans/strap/writing-docstrings/SkillSpec.json, B9 around lines 422-493; file exists, lines not read at research level 0) only require the count line and forbid '^\\s*Rewritten:' and ':\\s*none\\s*$'. A reply that prints '<symbol>: tier <n> - ...' per symbol passes all three, so a green R-25 cannot catch a regression to per-symbol tier lines. The gap came from PR 274 review M2 (docs/PR_REVIEWS/0274_Docsstrap_writing-docstrings_round_2_relink_reopen_new_repl.json). Drawn scenarios lock their checks, so the fix is a new behavior rather than an edit to SC-10 or SC-11.",
+      "proposed_change": "per the session: in the next reopen round, add a behavior whose reply_lacks check is '^\\s*[A-Za-z_][\\w.]*: tier \\d' with expect_baseline false and expect_green true. Its baseline must read plugins/harness/agents/docstring-writer.md without the short-reply rules, so it needs a strip-and-restore base commit, because reopen requires parts at base to match the working tree. The developer deferred this at PR 274 as minor and chose to fold it into the next reopen round. Any refreeze follows the plan-change SOP.",
+      "files": [
+        "docs/plans/strap/writing-docstrings/SkillSpec.json",
+        "plugins/harness/agents/docstring-writer.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Touches only the writing-docstrings plan spec and its freeze ledger; no shipped output changes. Consumers are the spec's own checks.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "New behavior with its own baseline, a strip-and-restore base commit, a reopen round and a refreeze."
+      },
+      "impact": "dev_velocity",
+      "severity": 1,
+      "priority": {
+        "score": 0.5,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 1.0,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.5,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 (a test gap for working behavior), impact dev_velocity (the check is less trustworthy but no output changes), size M (new behavior, base commit and refreeze)."
+    },
+    {
+      "id": "todo-5xr3",
+      "rank": 51,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3045,7 +3096,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 51,
+      "rank": 52,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3098,7 +3149,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 52,
+      "rank": 53,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3153,7 +3204,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 53,
+      "rank": 54,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -3211,7 +3262,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 54,
+      "rank": 55,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3274,7 +3325,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 55,
+      "rank": 56,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -3329,7 +3380,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 56,
+      "rank": 57,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
