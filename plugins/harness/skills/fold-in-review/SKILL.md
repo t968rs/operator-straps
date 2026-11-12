@@ -146,6 +146,10 @@ EOF
   second run, `waves` for the new ids, `closeout`; inside an open Phase 5 pass, `waves` for the new ids, then
   `closeout`.
 - A fold refused for `Phase 4 first run has not succeeded` waits for `build --replace`.
+- In an `-a` (`--adversarial`) run, folded findings are not refuted: the findings refuters check only the
+  reviewer and code-refuter slots, so a fold's findings count as upheld at merge; the verification in section
+  3b is their only check, and the developer can still `refute` a folded issue after `build` (once Phase 4 has
+  passed).
 
 ## 5. Report
 

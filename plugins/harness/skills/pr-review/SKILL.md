@@ -2,7 +2,7 @@
 name: pr-review
 description: Use when requesting agent-driven code review on a PR, when consolidating reviewer findings into a
   verdict JSON, or when fixes from a prior review still need to be applied on the correct branch.
-argument-hint: "<PR number> [--roast yes|no|roll] [--no-fetch] [-- <guidance>]"
+argument-hint: "<PR number> [--roast yes|no|roll] [-a|--adversarial] [--no-fetch] [-- <guidance>]"
 ---
 
 # PR Review
@@ -10,11 +10,18 @@ argument-hint: "<PR number> [--roast yes|no|roll] [--no-fetch] [-- <guidance>]"
 Arguments: `$ARGUMENTS`
 
 Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
-it: the PR number and the `capture` flags (`--roast`, `--no-fetch`), passed to `capture` unchanged. After it: the
-guidance (a focus, a file to check hard, a constraint on fixes). The main session applies it to its own
-judgment calls, and it rides on every reviewer and fixer dispatch prompt as the final `Developer guidance:`
-line (see Prompt and brief contract). It never reaches a script command and never changes a lens, a severity
-rule or the record contract.
+it: the PR number and the `capture` flags (`--roast`, `-a` / `--adversarial`, `--no-fetch`), passed to `capture`
+unchanged. After it: the guidance (a focus, a file to check hard, a constraint on fixes). The main session
+applies it to its own judgment calls. It rides on every reviewer and fixer dispatch prompt as the final
+`Developer guidance:` line (see Prompt and brief contract); under `-a` the reviewer and refuter prompts get it
+through `args.guidance` instead (Phase 2, Under `-a`), while the fixer rows still carry the line. It never
+reaches a `pr_review.py` command and never changes a lens, a severity rule or the record contract.
+
+`-a` / `--adversarial` is a plain on/off flag (no dice). The run adds code refuters, which attack the PR's
+code, and one findings refuter per reviewer slot and per code refuter, which opens the code each of that slot's
+findings cites and refutes the findings the code does not bear out; one Workflow call dispatches them all. An
+issue whose every finding a findings refuter refuted closes as `REFUTED` at `build` and gets no fixer; the
+developer overrules with `unrefute`. Without `-a` nothing of this exists and the run is unchanged.
 
 ## Overview
 
@@ -38,22 +45,27 @@ roots and registry (`tests.*`), the structural guard suites and brief pointers (
 
 | Subcommand | Phase | Does |
 |---|---|---|
-| `capture [--roast yes\|no\|roll] [--no-fetch] [--allow-closed]` | 1 | PR metadata, structural guards, review buckets, lens triggers, slot plan, reviewer briefs and diffs under `<scratch>/<NNNN>/<RUN_ID>/`; prints one `agent=harness:pr-reviewer model=<m>` dispatch row per slot |
-| `block --agent ID` | 2, 5 | Reprints an agent's return block from its recorded report |
+| `capture [--roast yes\|no\|roll] [-a] [--no-fetch] [--allow-closed]` | 1 | PR metadata, structural guards, review buckets, lens triggers, slot plan, reviewer briefs and diffs under `<scratch>/<NNNN>/<RUN_ID>/`; prints one `agent=harness:pr-reviewer model=<m>` dispatch row per slot. With `-a` (`--adversarial`) it also plans the code and findings refuters, writes their briefs, records `adversarial` in `plan.json` and a pending `dispatch_time.adversarial_check`, and prints one Workflow row (`scriptPath=<abs>`, `args=<one-line JSON>`) instead of the dispatch rows; it is refused before the run starts when the plugin's Workflow script is missing or the governing review schema (a pinned copy first) lacks `REFUTED`, `BUBBLED` or `NOT_RESOLVED` |
+| `init --agent adv_refute_<t> --run-id ID` | 2 | A findings refuter's first step, run by the refuter agent, never by the session: refuses a run id that is not `current` and a target that has not recorded (`reviewer <t> has not recorded`); prints each target finding once per key as `[<finding_key>] <severity> <name> <file>:<lines>`; a target without findings gets an empty refutation report and `no findings: done` |
+| `block --agent ID` | 2, 5 | Reprints an agent's return block from its recorded report; for `adv_refute_<t>`, the refutation block plus each entry's key, verdict and evidence |
 | `fold --source ID --kind external\|tests\|developer\|adhoc (--from-gh-review URL \| --findings FILE\|-) [--severity S]` | 3, 5 | Records an outside review as `findings/<ID>.json` (same Finding model reviewers use) and registers it in `plan.json` `folded`; a GitHub review maps one `judgment` finding per inline comment (default `minor`). Before `build` it is `merge` input. After `build` it appends the source's issues to the review with fresh ids (per severity, after the highest existing; nothing renumbered or auto-merged, merge candidates printed as a note), recomputes the verdict, keeps the phase inside an open Phase 5 pass (`fix-plan` / `fix`, else sets `consolidate`) and prints the added rows; re-folding a source already in the built review is refused, and so is any fold into a review whose Phase 4 first run failed (`pre_fix_time` pending) |
-| `merge [--force]` | 3 | Merges the slot reports, then the folded sources, into `draft.json`, assigns ids, prints the issue table and merge candidates; an unregistered `findings/*.json` is a problem |
+| `merge [--force]` | 3 | Merges the slot reports, then the folded sources, into `draft.json`, assigns ids, prints the issue table and merge candidates; an unregistered `findings/*.json` is a problem. Under `-a` the code refuters' reports join the merge, every refute slot needs `refutations/<target>.json` matching the target's current report (else `refutation stale: rerun adv_refute_<target>`, and no draft is written), an issue whose every finding was refuted carries `refuted`, the table gains a `refuted` / `upheld` column and a mixed group's refuted findings print as `note:` lines |
 | `amend [--regrade I3=minor\|I3=mechanical ...] [--merge I3+I7 ...]` | 3 | Applies severity regrades (`I3=minor` moves the severity), fix-kind regrades (`I3=mechanical` or `I3=judgment` sets the fix kind in place) and merges to the draft, logs them, reprints the table |
-| `build [--replace] [--waive-head-ancestry]` | 3 | Runs the Phase 4 first run, writes `<reviews>/<NNNN>_<slug>.json` with `pre_fix_time` inserted, records `build_head`. `--waive-head-ancestry` accepts a first run whose only STOP is a head-ancestry desync (Phase 4 waiver) |
-| `bubble ID --classification C --reason R` | 5 | Adds a bubble, recomputes the verdict |
+| `build [--replace] [--waive-head-ancestry]` | 3 | Runs the Phase 4 first run, writes `<reviews>/<NNNN>_<slug>.json` with `pre_fix_time` inserted, records `build_head`. `--waive-head-ancestry` accepts a first run whose only STOP is a head-ancestry desync (Phase 4 waiver). A draft issue carrying `refuted` becomes a `REFUTED` resolution and a `refuted: <id> (<evidence first line>)` line; under `-a` `build` first repeats merge's refutation check, then completes `adversarial_check` (build-time counts and `refuted_ids`) |
+| `refute ID --evidence TEXT` | 5 | Developer overrule: closes one built-review issue as `REFUTED`, any time after `build` (Phase 4 first run passed), with or without `-a`; refused for an unknown id or one whose latest status already closes it; the phase stays (`done` stays `done`); under `-a` the id joins `adversarial_check.refuted_ids` |
+| `unrefute ID (--bubble --classification C --reason R \| --fix [--reason R])` | 5 | Developer overrule of a refutation (latest status `REFUTED`, else refused; Phase 4 first run passed): `--fix` appends `NOT_RESOLVED` (default evidence `refutation overruled`) so the next `waves` plans the id, and `done` moves to `fix`; `--bubble` appends `BUBBLED` and bubbles the id as `bubble` does (phase `fix-plan`). Clears the id's `refuted` mark in `draft.json`; under `-a` the id joins `adversarial_check.unrefuted_ids` |
+| `bubble ID --classification C --reason R` | 5 | Adds a bubble, recomputes the verdict. An id whose latest status is `NOT_RESOLVED` also gains a `BUBBLED` resolution; a `REFUTED` id is refused, naming `unrefute` |
 | `bubbles` | 5 | Prints fixer bubbles not yet in the review (read-only) |
-| `waves [--ids I3,M2]` | 5 | Plans fix waves, writes fixer briefs, prints `agent=harness:pr-fixer model=<m>` rows per wave |
+| `waves [--ids I3,M2]` | 5 | Plans fix waves, writes fixer briefs, prints `agent=harness:pr-fixer model=<m>` rows per wave; a `REFUTED` id never gets a fixer, and naming one in `--ids` is refused, naming `unrefute` |
 | `closeout [--closed M17="rationale" ...] [--deferred I4="decision; tracker" ...]` | 5 | Validates fixer reports against the working tree, writes resolutions and verdict, prints the Phase 5 line, then any `hint:` lines, then any slow tests held out of the fix waves that the changes since `build_head` reach (the `deferred tests:` block, unrelated to `--deferred`). `--deferred` records a developer-confirmed defer of an issue |
 | `closeout --resolved I5="what changed"` | 5 | Resolves a fix in the tree that no accepted fixer entry records (developer-directed work, or a fixer edit closeout rejected); one of the issue's files must have changed since `build_head` |
 
 Each successful subcommand writes the run's position to `plan.json` `phase`: `review` (capture, fold before
-build), `consolidate` (merge, amend, build, fold after build outside an open Phase 5 pass), `fix-plan` (bubble),
-`fix` (waves; closeout with problems or undispositioned ids), `done` (closeout with every issue id dispositioned).
-A fold after build inside an open pass keeps `fix-plan` / `fix`, so only `bubble` and `waves` open a pass.
+build), `consolidate` (merge, amend, build, fold after build outside an open Phase 5 pass), `fix-plan` (bubble,
+`unrefute --bubble`), `fix` (waves; closeout with problems or undispositioned ids; `unrefute --fix` from `done`),
+`done` (closeout with every issue id dispositioned). `init` and `refute` leave the phase as it is.
+A fold after build inside an open pass keeps `fix-plan` / `fix`, so only `bubble`, `waves` and `unrefute` (as
+listed) open a pass.
 
 Every failure exits 1 with one `problem: ...` line per defect on stderr. An exit 1 is a STOP unless the step below
 names the recovery. Every write to the review JSON goes through one writer that validates against
@@ -135,14 +147,22 @@ any fixes.** The review itself does not touch code, so branch state at dispatch 
 One exception: the structural guard suite (Check 2) runs in the working tree, so when it applies `capture` requires the
 PR head checked out (see Check 2).
 
-Run, with `--roast roll` for a normal review (the 50/50 dice; `yes` / `no` force it):
+**Before running `capture` with `-a`:** an `-a` run is dispatched by the `Workflow` tool, and no script can see
+the session's tools. When the session has no `Workflow` tool, print
+`problem: -a needs the Workflow tool, which this session does not have; rerun without -a or in a session that has it`
+and do not run `capture`.
+
+Run, with `--roast roll` for a normal review (the 50/50 dice; `yes` / `no` force it), and `-a` only when the
+invocation carried it:
 
 ```bash
-sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" capture --pr <N> --roast roll
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" capture --pr <N> --roast roll [-a]
 ```
 
 `capture` starts a fresh run directory (`<scratch>/<NNNN>/<RUN_ID>/`, machine-generated and exempt through the seeded exclusions file; `current`
 names the active run) and makes both checks below. **Exit 1 is a STOP:** do not dispatch reviewers; follow Stop Recovery.
+`capture -a` also refuses, before the run starts (`current` unmoved), when the plugin's Workflow script is
+missing or the governing review schema lacks the adversarial statuses.
 
 ### Check 1 — PR metadata
 
@@ -185,7 +205,8 @@ not in review-ready state, and reviewers writing READY TO MERGE while a structur
 
 Only runs if `capture` exited 0. If it exited 1, STOP and report — do not proceed to Phase 2 under any circumstance.
 
-**Dispatch every row `capture` printed, in ONE message**, one `Agent` call per row:
+**Dispatch every row `capture` printed, in ONE message**, one `Agent` call per row (an `-a` run prints no rows;
+see Under `-a` below):
 
 ```
 Agent(subagent_type="harness:pr-reviewer", model=<model from the row>, prompt=<the row's prompt, verbatim>)
@@ -199,11 +220,69 @@ report, not to patch.
 The draft Write needs permission: without an allow rule for Write under the scratch run directory, a default-mode
 session stops each parallel slot on a Write prompt. When Write is denied, the reviewer records through `record_add`.
 
+### Under `-a`: one Workflow call
+
+`capture -a` prints the status line (with `adversarial: <C> code refuter(s), <F> findings refuter(s)`), its
+`note:` lines, then `run the Workflow tool once with the scriptPath and args below, unchanged except args.guidance
+(null, or the developer's guidance text); dispatch no Agent rows:` and the Workflow row:
+
+```
+scriptPath=<abs path to the plugin's workflows/adversarial-review.js>
+args={"run_key": "...", "run_id": "...", "guidance": null, "reviewers": [...], "code": [...], "refute": [...]}
+```
+
+**Make one `Workflow` call** with `scriptPath` and `args` exactly as printed, and no `Agent` call for any slot:
+
+```
+Workflow(scriptPath=<the printed path>, args=<the printed JSON>)
+```
+
+The rules of the Agent rows hold for the row: no edit to a prompt, model or agent type, no added, dropped,
+merged or re-scoped entry, and a plan that looks wrong is a problem to report. **The one named exception is
+`args.guidance`:** capture prints `null`; when the invocation carried guidance, set it to the guidance text, and
+the script appends `Developer guidance: <text>` (whitespace folded) to every reviewer and refuter prompt. No
+other field is touched.
+
+What the script runs, from `args` alone (it holds no model, agent type or prompt of its own):
+
+- **Review pipeline:** each reviewer slot (`harness:pr-reviewer`, the slot's model), then that slot's findings
+  refuter `adv_refute_<slot>`.
+- **Attack pipeline**, in parallel with it: each code refuter (`adv_code` or `adv_code_<scope>`), then its
+  findings refuter. With no code to attack there is no code refuter (a `note:` says so) and the findings
+  refuters still check every reviewer slot.
+- Every refuter is `harness:adversarial-reviewer`. A code refuter's attack text joins the issue summary as
+  `Attack: <text>`.
+- A slot that fails, or replies with a `problem:` line, gets no findings refuter: the pipeline stops for that
+  entry.
+
+**Agent count.** An `-a` run dispatches `2(R + C)` agents, `R` reviewer slots and `C` code refuters, each with
+one findings refuter. In the worst case `R <= 10 + N` (`N` triggered project lenses) and `C <= 3`, so
+`2(R + C) <= 26 + 2N`.
+
+**Phase 3 trigger.** Phase 3 starts once the Workflow result has arrived (its return, or its completion
+notification) and every recovery dispatch for a `returned: false` entry has returned.
+
+**The result** is one entry per `args` entry, `{"id": ..., "returned": true|false}`, plus `"orphan": true` on a
+findings refuter whose target is not in `args`. A `problem:` reply counts as not returned.
+
+**Recovery** of an entry with `returned: false` (an `orphan: true` entry is not recovered): dispatch it as a
+plain `Agent` call with that entry's `agentType`, `model` and `prompt` from the printed `args`, verbatim; when
+the session set `args.guidance`, append a final line `Developer guidance: <text>`, runs of whitespace folded
+to one space, as the script does. Reviewer or code refuter first, and only after it returns, its findings
+refuter (a refuter whose target has not recorded fails fast: its `init` exits 1 with
+`reviewer <slot> has not recorded`). Run every recovery before `merge`; `merge` refuses a refute slot without
+refutations, and one whose target re-recorded after it (`refutation stale: rerun adv_refute_<target>`):
+re-dispatch that refuter entry, then rerun `merge`.
+
 ### Model floor (reviewer dispatch)
 
 The script picks each slot's model: `opus` by default, `sonnet` when a path-bucket slot holds exactly one file. Always
 pass the row's `model` explicitly, never inherit the main session's. `haiku` never reviews — it under-calls Critical
 findings; it is reserved for mechanical Phase 5 fixers. Effort is inherited from the main session.
+
+| Agent | Model |
+|---|---|
+| refuter (`-a` only) | `opus`, from its `args` entry |
 
 ### Slot plan — what `capture` applies
 
@@ -342,8 +421,10 @@ reviewers do their job.
 Once the last reviewer returns, this skill records the reviewer outcome and the verified envelope in the consolidated
 verdict file.
 
-**Temporal gate (mandatory):** Phase 3 begins **IMMEDIATELY** when the last reviewer returns. The atomic close is
-`merge`, `amend` (only when needed) and `build`, in one turn, with **no user-facing text before `build` returns**.
+**Temporal gate (mandatory):** Phase 3 begins **IMMEDIATELY** when the last reviewer returns (under `-a`, once
+the Workflow result has arrived and every recovery dispatch for a `returned: false` entry has returned). The
+atomic close is `merge`, `amend` (only when needed) and `build`, in one turn, with **no user-facing text before
+`build` returns**.
 The review JSON is the source of truth, written only by `build`; the chat summary is a view onto it.
 
 - **No heartbeats.** A "reviewers returned, building the verdict now" line is a protocol violation, not a courtesy.
@@ -386,6 +467,15 @@ The review JSON is the source of truth, written only by `build`; the chat summar
    lines of each other merge automatically, every pair in a merged group, never by chaining (highest severity wins, `judgment` beats `mechanical`, every slot is
    credited); findings without lines never auto-merge. Ids are numbered per severity by file, first line, name. A
    missing report is a problem naming the slot: re-dispatch that slot's row, then rerun `merge`.
+
+   **Under `-a`, read the `refuted` column.** Each row gains `refuted` or `upheld` after the fix kind
+   (`I3 important judgment refuted path:lines [slots] name`). A `refuted` issue is one whose every finding a
+   findings refuter refuted: `build` closes it as `REFUTED` with the refuter's evidence and it gets no fixer.
+   An issue with refuted and upheld findings is built from the upheld ones, and each refuted finding leaves a
+   `note: <id>: refuted (<slot>) <name>: <evidence>` line. Folded sources are never refuted. Regrades and merges
+   concern the upheld rows; an `amend --merge` of a refuted and an upheld issue yields an upheld issue. A
+   refutation is not overruled before `build`; the developer overrules it afterwards with `unrefute` (Phase 5).
+   A missing refutation report, or a stale one, is the recovery problem of Phase 2 (Under `-a`).
 2. **`amend` (only when the table needs it).** Three judgment calls, made from the printed table:
    - **Regrade by blast radius** (operating rules, "Grading and verifying findings"): `--regrade I3=minor`.
    - **Regrade the fix kind by the fix** (same section): `--regrade I3=mechanical` when a `judgment` issue's
@@ -404,7 +494,10 @@ The review JSON is the source of truth, written only by `build`; the chat summar
    `<reviews>/<NNNN>_<slug>.json` (4-digit zero-padded PR number, title slug). It checks for stragglers, runs the
    Phase 4 first run (`phase4_branch_safety.py <N>`, no `--second-run`), inserts its JSON as
    `verification_log.pre_fix_time` in memory, then validates and writes the review once and records `build_head`.
-   It prints the path, verdict and counts.
+   It prints the path, verdict and counts, then one `refuted: <id> (<evidence first line>)` line per issue it
+   closed as `REFUTED`. Under `-a` it first repeats merge's refutation check and completes
+   `adversarial_check`; its `counts` and `result` are build-time figures that later overrules never change
+   (only `refuted_ids` and `unrefuted_ids` track `refute` / `unrefute`).
    - **Straggler problem:** any other `<reviews>/<NNNN>_*.json` or `<NNN>_*.json` is reported before writing. A
      reviewer-written file broke the ownership clause: confirm its findings are in the draft (re-dispatch the slot if
      not), delete it, rerun `build`. A same-named file is overwritten only with `--replace`; any other existing review
@@ -427,6 +520,11 @@ The review JSON is the source of truth, written only by `build`; the chat summar
    - `dev_commit` is `git merge-base HEAD <configured base branch>` (`base_branch`, else the branch `origin/HEAD`
      points at, else `main`) plus a ` -- <branch-label> (<tag>)` suffix, captured once per run.
    - Validate each row with `jsonschema.validate(row, schema)` BEFORE appending; never append an invalid row.
+
+   Under `-a` the slots run in the Workflow, whose agents return no `Agent` result and no note: the
+   `agent-watcher` mod writes one row per workflow slot when the Workflow call runs (`dispatch_shape: "workflow"`,
+   counts 0, `notes` naming `unobserved: workflow agent`), and the session appends no row for those slots.
+   Without the mod, the workflow slots have no rows and (h) is met for them.
 
    **The attempt is mandatory; the failure is forgivable.** A disk or lock error is logged and tolerated; omitting
    the attempt is a Phase 3 failure.
@@ -462,7 +560,8 @@ fixed at its source (a report, the draft, the branch), never by hand-editing the
 
 - **(a)** `build` exited 0 and the review exists at `<reviews>/<NNNN>_<slug>.json`.
 - **(b)** The file passed `build`'s writer gate: schema, Layer 2 pending rule, issue-count check, hook run.
-- **(c)** Every Phase 2 slot has a report in the run directory and is credited in `reviewers`.
+- **(c)** Every Phase 2 slot has a report in the run directory and is credited in `reviewers` (under `-a`, every
+  code refuter too, and every refute slot has a current refutation report).
 - **(d)** The `verdict` matches `^(READY TO MERGE|NOT READY TO MERGE)(.*)$` and is the derived value, naming the
   blocking ids when NOT READY.
 - **(e)** `verification_log.dispatch_time.pr_metadata_check.stdout` is the raw `gh pr view` output from
@@ -472,7 +571,8 @@ fixed at its source (a report, the draft, the branch), never by hand-editing the
   not the pending literal.
 - **(h)** **Reviewer statistics rows were appended (or the attempt was made and failed)** per Step 4: the
   `agent-watcher` ownership note on the reviewer results (the mod makes the attempt and records its failures),
-  else the manual append. Skipping the attempt is a Phase 3 failure.
+  else the manual append; under `-a` the mod's `workflow` rows cover the workflow slots, and without the mod (h)
+  is met for them with no row. Skipping the attempt is a Phase 3 failure.
 
 If ANY of (a)-(h) is not satisfied, Phase 3 is NOT done. Do not emit the user summary (Step 5). Do not claim
 completion. Fix the missing piece first.
@@ -480,20 +580,24 @@ completion. Fix the missing piece first.
 ### Verdict re-evaluation rule
 
 The `verdict` is derived from the current `issues`, `post_review_resolutions`, `bubbles` and `bubble_up`, never a
-frozen snapshot. One function computes it for `build`, `bubble` and `closeout`, and each recomputes it in the same
-write that changed the state. The rule matches the hook's issue-count check, which rejects READY while any id is
-undispositioned:
+frozen snapshot. One function computes it for `build`, `bubble`, `refute`, `unrefute` and `closeout`, and each
+recomputes it in the same write that changed the state. The rule matches the hook's issue-count check, which
+rejects READY while any id is undispositioned:
 
 1. **Orphan check.** A resolution or disposition id that names no issue is a writer error: the command fails and
    writes nothing.
-2. **Unresolved** = no resolution, or a resolution whose status is not `RESOLVED` / `CLOSED_NO_ACTION`.
-   `DOWNGRADED_TO_*` is unresolved: the issue still needs action, at a lower severity.
+2. **Unresolved** = no resolution, or a latest resolution whose status is not `RESOLVED` / `CLOSED_NO_ACTION` /
+   `REFUTED` (the closing statuses). `DOWNGRADED_TO_*` is unresolved: the issue still needs action, at a lower
+   severity. `BUBBLED` and `NOT_RESOLVED` (an overruled refutation) are unresolved too.
 3. The verdict, first match wins:
    - any unresolved **critical** → `NOT READY TO MERGE - critical: C1, C2`
    - else any unresolved **important** → `NOT READY TO MERGE - important: I1, I4`
-   - else any id not dispositioned (no resolution, not in `bubbles`, not in `bubble_up`) →
+   - else any id not dispositioned (not closed, not in `bubbles`, not in `bubble_up`; a latest `NOT_RESOLVED`
+     keeps an id undispositioned whatever the bubble channels say) →
      `NOT READY TO MERGE - minor findings pending Phase 5: M1, M3`
-   - else `READY TO MERGE - <R> of <T> findings resolved, <B> bubbled`
+   - else `READY TO MERGE - <R> of <T> findings resolved, <B> bubbled`, plus `, <K> refuted` when `K > 0`. `R`
+     counts the closed ids that are not `REFUTED`, `K` the `REFUTED` ones, so refuted ids are counted apart from
+     resolved ones (`READY TO MERGE - 1 of 2 findings resolved, 0 bubbled, 1 refuted`).
 4. **Phase 4 override (outside steps 1-3).** When `build` runs the Phase 4 first run and it fails, a READY verdict
    becomes `NOT READY TO MERGE - Phase 4 first run failed: <reason>`. The derived forms above do not cover this case,
    and `build` applies it. A pending `pre_fix_time` allows no READY verdict (done criterion (g) above).
@@ -588,13 +692,16 @@ the plugin's `validate_pr_json_schema.py`) when the matching PR_REVIEW JSON show
 (b) **bubble-accounted closeout** — every issue id is dispositioned across `post_review_resolutions[]`, the
 transient `bubbles` array, and the `bubble_up` ledger (any resolutions present still need SHA evidence; bubbled
 items need none). Shape (b) clears the sentinel even when `verdict` stays `NOT READY TO MERGE` because Important
-items are bubbled for the developer — the agent has done its part. Both shapes share one id-set predicate
-(`harness_lib.validation.id_handling.all_issues_dispositioned` / `disposition_ids`), so the gate and the issue-count check never
-drift. **No agent action is required to clear the sentinel** — every review write by `pr_review.py` (`build`,
-`bubble`, `closeout`) runs that hook after the write, so Rule 5's `closeout` triggers cleanup. Stale sentinels
-(older than 24 hours) are auto-ignored by the Stop hook with a warning; manual cleanup deletes only the single
-stale file that warning names (`rm <state_dir>/pr-review/.phase5_pending_<PR>`). Never glob: other sessions'
-hot sentinels share the folder.
+items are bubbled for the developer — the agent has done its part. `REFUTED`, `BUBBLED` and `NOT_RESOLVED`
+entries need no SHA and are never shape (a) SHA evidence (neither shape counts them as resolutions); for shape
+(b) a latest `REFUTED` dispositions its id, a latest `BUBBLED` counts only through `bubbles` / `bubble_up`, and
+a latest `NOT_RESOLVED` keeps the id open. Both shapes share one id-set predicate
+(`harness_lib.validation.id_handling.all_issues_dispositioned` / `disposition_ids`), so the gate and the
+issue-count check never drift. **No agent action is required to clear the sentinel** — every review write by
+`pr_review.py` (`build`, `bubble`, `refute`, `unrefute`, `closeout`) runs that hook after the write, so Rule 5's
+`closeout` triggers cleanup. Stale sentinels (older than 24 hours) are auto-ignored by the Stop hook with a
+warning; manual cleanup deletes only the single stale file that warning names
+(`rm <state_dir>/pr-review/.phase5_pending_<PR>`). Never glob: other sessions' hot sentinels share the folder.
 
 The first-run invocation (inside `build`) does NOT pass `--second-run` and does NOT write the sentinel — only the
 Phase 5 entry point arms the dispatch-completion gate.
@@ -803,7 +910,8 @@ the plan to the user is Phase 3's deferral pattern shifted to the fix step. **If
 dispatch rows, you have context to dispatch.** The user reviews the *result*, not the *intent*.
 
 **Rule 2 — Fixes run in `harness:pr-fixer` subagents planned by `waves`.** Fixes are NOT main-session work, and fixer prompts
-are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fixed issues as units:
+are never hand-written. `waves` plans the undispositioned, non-held, not-yet-fixed issues as units (a `REFUTED`
+issue is closed and gets no fixer; an overruled one, latest status `NOT_RESOLVED`, is open and gets one):
 
 - **Parts and whole issues.** A mechanical multi-file issue splits into one single-file part per file, owned by that
   file's fixer, so one id can appear in several fixers of a wave (the brief shows `Your part` / `Other parts`). A
@@ -936,15 +1044,43 @@ re-plans a split issue for its missing parts only and a rejected issue whole. A 
 problem of an id stops once that id ends a closeout `RESOLVED` or `CLOSED_NO_ACTION` by any path, the same
 closeout included; a rejected bubble, `--closed`, `--deferred` or `--resolved` problem stays until its cause is
 gone (re-dispatch the fixer, or drop the flag). `waves --ids` (which re-plans the named ids whole) is for bubble
-answers.
+answers. A `--resolved` id whose latest status is `REFUTED` is refused, naming `unrefute`, before anything is
+written; the done line counts refuted ids apart from resolved ones (`, <K> refuted` only when `K > 0`).
+
+**Rule 6 — `refute` and `unrefute` are the developer's overrules.** Both run only when the developer asks, on
+any review (with or without `-a`), any time after `build`; like `bubble` and `waves`, they refuse while the
+Phase 4 first run has not passed (`pre_fix_time` pending). Each reads the issue from the built review, prints
+`<action> <id> (<tier>) <name> <file>:<lines> | verdict: <v>`, recomputes the verdict in one validated write and
+runs the hook.
+
+- `refute <ID> --evidence "<path:line opened and what it showed>"` closes an open id as `REFUTED`; the id gets no
+  fixer, leaves `bubbles` (its `bubble_up` entry stays) and the phase is unchanged.
+- `unrefute <ID> --fix [--reason R]` appends `NOT_RESOLVED`: the id is open again and the next `waves` plans a
+  fixer for it. The phase moves from `done` to `fix`; after Step 0 skipped Phase 5 it stays `consolidate`
+  (`waves` and `closeout` need only the passed Phase 4 first run and `build_head`, never a phase). After a
+  completed closeout, or after Step 0 skipped Phase 5, re-enter at Step 1 (the second run arms the sentinel),
+  then `waves` for the id, its wave and `closeout` (Steps 3-8); mid-pass, plan `waves` for the id and
+  continue to `closeout`.
+- `unrefute <ID> --bubble --classification <C> --reason "<R>"` appends `BUBBLED` and bubbles the id; the phase
+  becomes `fix-plan`, and only a `closeout` that leaves no problem and no undispositioned id sets `done` again.
+  After a completed closeout, or after Step 0 skipped Phase 5, re-enter at Step 5: surface the bubble, fold in
+  the answer (Step 6; a fix-as-directed id first takes Step 1, the second run, before `waves --ids <ID>`), then
+  `closeout` (Step 7) and Step 8. Mid-pass, Step 5 surfaces it like any other bubble.
+
+`REFUTED`, `BUBBLED` and `NOT_RESOLVED` are never hand-written; only the scripts write them: `build`, `refute`
+and `unrefute`, plus every bubble writer (`bubble`, a fixer bubble at `closeout`, and `review_edit.py bubble`),
+which appends `BUBBLED` to an id whose latest status is `NOT_RESOLVED`. `closeout --closed` / `--deferred` take
+none of them.
 
 ### Order enforcement (Phase 5 atomic close)
 
 Mandatory sequence; entry is automatic once Phase 3's atomic close lands:
 
-0. **No issues, no Phase 5.** A review with zero issues has an empty work queue: skip Steps 1-7 (the second run
-   would arm a sentinel nothing can clear) and go to Step 8 with 0 issues resolved. Step 8 prints the terminal line
-   `Phase 5 [done] | 0 issues resolved | verdict: <v> | next: stop`; no `closeout` runs.
+0. **No unrefuted issues, no Phase 5.** A review with zero issues, or one whose every issue `build` closed as
+   `REFUTED`, has an empty work queue: skip Steps 1-7 (the second run would arm a sentinel nothing can clear)
+   and go to Step 8 with 0 issues resolved. Step 8 prints the terminal line
+   `Phase 5 [done] | 0 issues resolved | verdict: <v> | next: stop` (`0 issues resolved, <K> refuted` when `K`
+   issues were refuted); no `closeout` runs.
 1. **Phase 4 second run:** `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/skills/pr-review/commands/phase4_branch_safety.py" --second-run <N>`.
    Any failed check is a STOP (Stop Recovery), except the head-ancestry desync the operating rules waive (only
    `sha_ancestry_check` failed, `base_ancestor_exit == 0`): proceed, noting that the sentinel was not armed.
@@ -957,14 +1093,18 @@ Mandatory sequence; entry is automatic once Phase 3's atomic close lands:
    the Rule 4.5 audit: failures go to a `waves --ids` follow-up wave, survivors are surfaced in Step 5 (`closeout`
    records them).
 5. **Surface bubbles.** If `bubbles` or the surviving fixer bubbles are non-empty, list each id with its
-   classification, reason and fix options — the one sanctioned Phase 5 pause (Rule 4's "design ambiguity" stop). No
-   bubbles: no pause, go to Step 7.
+   classification, reason and fix options — the one sanctioned Phase 5 pause (Rule 4's "design ambiguity" stop).
+   The pause also lists every refuted id (latest status `REFUTED`) with its evidence, so the developer sees what
+   to overrule (`unrefute <ID> --fix` or `--bubble`, Rule 6). No bubbles: no pause (refuted ids alone never
+   pause), go to Step 7.
 6. **Fold in the answers.** Fix-as-directed ids: `waves --ids <ids>` and dispatch that follow-up wave. Closed ids:
    carried to Step 7 as `--closed ID="rationale"`. Developer-confirmed defers: `--deferred ID="decision; tracker"`
    (recorded `RESOLVED` with the decision and tracker as evidence, plus a `bubble_up` entry).
 7. **`closeout`** (Rule 5).
 8. **Terminal step.** User-facing summary, opening with the line `closeout` printed:
-   `Phase 5 [done] | <N> issues resolved | verdict: <v> | next: stop`. `closeout` prints it only on exit 0, with
+   `Phase 5 [done] | <N> issues resolved | verdict: <v> | next: stop` (`<N> issues resolved, <K> refuted` when
+   `K > 0`; `N` excludes the refuted ids). When Step 5 did not pause, the summary lists the refuted ids with
+   their evidence. `closeout` prints the line only on exit 0, with
    every planned fixer reported and every planned id recorded; a `[blocked]` line sends the run back through Rule 5's problem recovery.
    When the changes since `build_head` (commits, working tree and untracked files: fixer, `--resolved` and developer
    edits alike) reach deferred tests, `closeout` follows the line, done or blocked, with a `deferred tests:` block
@@ -979,7 +1119,7 @@ skip Step 1, plan `waves` for the new ids and continue to `closeout`. The `next:
 matching path.
 
 **Steps 1–4, 6 and 7 emit no user-facing text before the terminal line; Step 5 is the only sanctioned mid-phase pause (skipped when no
-bubbles survive the audit).** Step 0 routes a zero-issue review straight to Step 8, so Step 8 is its only terminal line. Step 8 is the **only true terminal** of the pr-review skill — the one step after which
+bubbles survive the audit).** Step 0 routes a review with no unrefuted issues straight to Step 8, so Step 8 is its only terminal line. Step 8 is the **only true terminal** of the pr-review skill — the one step after which
 control yields to the user. Phase 3 Step 5's "terminal step" designation names a user-visible artifact, not a yield
 point (see Terminal-step convention near the top of this skill). A "ready to dispatch" heartbeat before Step 4 is the
 canonical Phase 5 deferral failure. Default to autonomy; pause only on Rule 4 forks.
@@ -1049,9 +1189,12 @@ Example report format:
 
 - `harness:pr-reviewer` agent (`${CLAUDE_PLUGIN_ROOT}/agents/pr-reviewer.md`) — every Phase 2 slot, roast included
 - `harness:pr-fixer` agent (`${CLAUDE_PLUGIN_ROOT}/agents/pr-fixer.md`) — every Phase 5 fixer row
+- `harness:adversarial-reviewer` agent (`${CLAUDE_PLUGIN_ROOT}/agents/adversarial-reviewer.md`) — every code and
+  findings refuter of an `-a` run, dispatched by the `${CLAUDE_PLUGIN_ROOT}/workflows/adversarial-review.js`
+  Workflow script (or by a recovery `Agent` call)
 
 **Alternative:** `harness:pr-team` — for large multi-bucket PRs where main-session context must be bounded; it wraps this
-skill's phase logic in a shimmed parallel dispatch and keeps strict lens additivity.
+skill's phase logic in a shimmed parallel dispatch and keeps strict lens additivity. It takes no `-a`.
 
 ## Troubleshooting
 
