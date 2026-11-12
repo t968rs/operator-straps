@@ -76,7 +76,7 @@ from harness_lib.config import ConfigError, active, activate, load_config
 from harness_lib.project import main_worktree, project_root
 
 PROBLEMS = (pl.PlanError, CaptureError, ConfigError)
-MAX_PARALLEL_ADDS = 8
+MAX_PARALLEL_CHECKOUTS = 8
 SNAPSHOT_IDENTITY = {
     "GIT_AUTHOR_NAME": "parallel2", "GIT_AUTHOR_EMAIL": "parallel2@localhost",
     "GIT_COMMITTER_NAME": "parallel2", "GIT_COMMITTER_EMAIL": "parallel2@localhost",
@@ -294,20 +294,34 @@ def assign_worktrees(batch: Sequence[pl.Lane]) -> List[pl.Lane]:
 
 
 def add_worktree(repo: Path, item: pl.Lane, base_sha: str) -> Optional[str]:
-    """Cut one lane's branch and worktree; the problem text on a failure, else None."""
-    done = git(repo, "worktree", "add", "-b", str(item.branch), str(item.worktree), base_sha)
+    """Register one lane's branch and worktree, files not yet checked out; the problem text, else None."""
+    done = git(repo, "worktree", "add", "--no-checkout", "-b", str(item.branch), str(item.worktree), base_sha)
     return None if done.returncode == 0 else f"lane {item.id}: git worktree add failed: {done.stderr.strip()}"
 
 
+def populate_worktree(item: pl.Lane) -> Optional[str]:
+    """Check out a registered lane worktree's files at its HEAD; the problem text, else None."""
+    done = git(Path(str(item.worktree)), "reset", "--hard", "-q")
+    return None if done.returncode == 0 else f"lane {item.id}: git reset --hard failed: {done.stderr.strip()}"
+
+
 def create_worktrees(repo: Path, batch: Sequence[pl.Lane], base_sha: str) -> None:
-    """Cut every implement lane's branch and worktree at once; on any failure, undo all this call made."""
+    """Cut every implement lane's branch and worktree; on any failure, undo all this call made.
+
+    Registration runs one lane at a time: concurrent ``git worktree add`` calls race on ``.git/worktrees``,
+    where one can read another's half-written ``commondir`` and die. The checkout, the slow part, runs
+    in parallel, since each worktree has its own index.
+    """
     items = assign_worktrees(batch)
     if not items:
         return
-    with ThreadPoolExecutor(max_workers=min(len(items), MAX_PARALLEL_ADDS)) as pool:
-        problems = list(pool.map(lambda item: add_worktree(repo, item, base_sha), items))
+    problems = [add_worktree(repo, item, base_sha) for item in items]
+    added = [item for item, problem in zip(items, problems) if problem is None]
+    if not any(problems):
+        with ThreadPoolExecutor(max_workers=min(len(items), MAX_PARALLEL_CHECKOUTS)) as pool:
+            problems = list(pool.map(populate_worktree, items))
     if any(problems):
-        for item in (i for i, problem in zip(items, problems) if problem is None):
+        for item in added:
             remove_worktree(repo, item, force=True)
         raise CaptureError([problem for problem in problems if problem])
 
