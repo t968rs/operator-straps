@@ -3,7 +3,7 @@ name: review-local
 description: Use when committed work on a local branch needs the agent-driven review procedure (reviewer
   fan-out, verdict JSON, fix waves) before any PR exists, such as after a plan item or before opening the PR.
   Triggers on "review-local", "review my branch before the PR", "local review of main..HEAD".
-argument-hint: "<BASE..HEAD> [--pr local-<label>] [--title <T>] [--plan <path>] [--roast yes|no|roll] [-- <guidance>]"
+argument-hint: "<BASE..HEAD> [--pr local-<label>] [--title <T>] [--plan <path>] [--roast yes|no|roll] [-a|--adversarial] [-- <guidance>]"
 ---
 
 # Review Local
@@ -11,11 +11,13 @@ argument-hint: "<BASE..HEAD> [--pr local-<label>] [--title <T>] [--plan <path>] 
 Arguments: `$ARGUMENTS`
 
 Split them at the first standalone `--` token, per `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`. Before
-it: the range `BASE..HEAD` (default `<configured base branch>..HEAD`) and the `capture` flags (`--pr
-local-<label>`, `--title`, `--plan`, `--roast`), passed to `capture` unchanged. After it: the guidance (a focus, a file to
-check hard, a constraint on fixes). It rides on every reviewer and fixer prompt as the final `Developer
-guidance:` line and shapes the session's own judgment calls. It never adds, drops or replaces a slot, a lens,
-a severity rule, the record contract or a phase.
+it: the range `BASE..HEAD` (default `<configured base branch>..HEAD`) and the `capture` flags
+(`--pr local-<label>`, `--title`, `--plan`, `--roast`, `-a` / `--adversarial`), passed to `capture`
+unchanged. After it: the guidance (a focus, a file to check hard, a constraint on fixes). It rides on every
+reviewer and fixer prompt as the final `Developer guidance:` line; under `-a` the reviewer and refuter prompts
+get it through `args.guidance` instead, while the fixer rows still carry the line. It shapes the session's
+own judgment calls and never reaches a `pr_review.py` command. It never adds, drops or replaces a slot, a
+lens, a severity rule, the record contract or a phase.
 
 This is the pr-review procedure over a committed local range with no GitHub PR: the same driver, reviewer and
 fixer agents, merge, verdict, fix waves and closeout. Git supplies what a PR read would; the PR-only checks drop
@@ -34,6 +36,7 @@ sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.
 | Phase 4 | branch, base and SHAs from gh | the same five checks against the captured `plan.json`: current branch, still on the captured branch, clean tree, merge base and head ancestors of HEAD, base recorded |
 | Outside reviews | `fold --from-gh-review` or `--findings` | `fold --findings` only (`--from-gh-review` is refused) |
 | Matrix rows | recorded | none: the `agent-watcher` mod shows the run as `local review local-<label>` and records no matrix rows |
+| `-a` / `--adversarial` | `capture --pr <N> -a` | `capture --range BASE..HEAD -a`: the same code and findings refuters, one Workflow call, `REFUTED` issues and `refute` / `unrefute` overrules, under the `local-<label>` key |
 
 Every subcommand prints `problem:` lines and exits 1 on failure; an exit 1 is a STOP unless a step below names the
 recovery. **REQUIRED:** read `${CLAUDE_PLUGIN_ROOT}/skills/pr-review/operating_rules.md` before Step 3: it holds the
@@ -69,15 +72,19 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
 
 ## Steps
 
-1. **Capture.**
+1. **Capture.** Before running `capture` with `-a` (passed only when the developer asked for it): with no
+   `Workflow` tool in the session, print
+   `problem: -a needs the Workflow tool, which this session does not have; rerun without -a or in a session that has it`
+   and do not run `capture`.
 
    ```bash
-   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" capture --range <BASE..HEAD> --roast roll [--pr local-<label>] [--title <T>] [--plan <path>]
+   sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" capture --range <BASE..HEAD> --roast roll [-a] [--pr local-<label>] [--title <T>] [--plan <path>]
    ```
 
    It resolves the range with git, plans the slots (the pr-review bucket, lens and roast rules), runs the
    structural guards when they apply, writes the briefs and prints `capture [done] | local review
-   local-<label> | ...`, then one row per slot: `agent=harness:pr-reviewer model=<m>` and the prompt. `--plan`
+   local-<label> | ...`, then one row per slot: `agent=harness:pr-reviewer model=<m>` and the prompt (under
+   `-a`, one Workflow row instead: Step 2). `--plan`
    names the plan or spec the change implements in every brief. Use the printed key as `--pr` from here on.
    A `--pr` that is a PR number is refused; a range end that names no commit is a problem to fix, not to guess.
    A range end on no local branch (a SHA, a tag, `HEAD~1`, a remote-tracking ref, a detached checkout) is
@@ -88,17 +95,27 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
    `Agent(subagent_type="harness:pr-reviewer", model=<row model>, prompt=<row prompt>)`.
    A reply without its return block is recovered with `block --pr local-<label> --agent <ID>`; a slot with no
    report is dispatched again with its row.
+
+   **Under `-a`** capture prints one Workflow row (`scriptPath=`, `args=`) instead of Agent rows. Follow
+   pr-review Phase 2, "Under `-a`": one `Workflow` call with the row as printed (only `args.guidance` may
+   be set), the recovery of `returned: false` entries and of a stale refutation, with `--pr local-<label>` on
+   every command. Step 3 starts once the Workflow result has arrived (its completion notification; the call
+   itself returns at once with a task id, which is not the result) and every recovery dispatch for a
+   `returned: false` entry has returned.
 3. **Consolidate in one turn, no text before `build` returns.**
    `merge --pr local-<label>`, then `amend` only when the printed table needs a regrade (`--regrade I3=minor`,
    by blast radius; `--regrade I3=mechanical` when a judgment issue's fix is an exact edit) or a merge of candidates that are one defect (`--merge I3+I7`), then
    `build --pr local-<label>`. `build` writes `<reviews>/LOCAL_<label>_<slug>.json`, runs the Phase 4 first run
-   and prints the path, verdict and counts. A first-run STOP leaves the review NOT READY with `pre_fix_time`
-   pending: settle it (Rules; Stop Recovery), then `build --pr local-<label> --replace`. A straggler
-   `LOCAL_<label>_*.json` is folded in or removed before `build`.
+   and prints the path, verdict and counts. Under `-a` the `merge` table carries a `refuted` / `upheld`
+   column; `build` closes each `refuted` issue as `REFUTED` (no fixer) and prints a
+   `refuted: <id> (<evidence first line>)` line per id. A first-run STOP leaves the review NOT READY with
+   `pre_fix_time` pending: settle it (Rules; Stop Recovery), then `build --pr local-<label> --replace`. A
+   straggler `LOCAL_<label>_*.json` is folded in or removed before `build`.
 4. **Report the build line, then continue.** One line: `Phase 3 [done] | Phase 4 first-run [done] | Phase 5
    entry: automatic | next: Phase 4 second-run + fix dispatch`, the verdict and counts, then straight into
-   Step 5 in the same turn. A review with zero issues ends here with `Phase 5 [done] | 0 issues resolved |
-   verdict: <v> | next: stop`.
+   Step 5 in the same turn. A review with no unrefuted issues (zero issues, or every issue `REFUTED`) ends
+   here with `Phase 5 [done] | 0 issues resolved | verdict: <v> | next: stop`
+   (`0 issues resolved, <K> refuted` when `K` were refuted).
 5. **Phase 4 second run.**
 
    ```bash
@@ -118,13 +135,20 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
    (`Agent(subagent_type="harness:pr-fixer", model=<row model>, prompt=<row prompt>)`), each later wave after
    the previous one returns. After the last wave, `bubbles --pr local-<label>` lists the fixers' bubbles; audit
    them the same way. Surviving bubbles are the one pause: list each id with its classification, reason and
-   fix options and ask. Fix-as-directed answers go through `waves --pr local-<label> --ids <ids>`.
+   fix options and ask, plus every refuted id with its evidence. Fix-as-directed answers go through
+   `waves --pr local-<label> --ids <ids>`. A refuted id gets no fixer. The developer's overrules
+   (`refute --pr local-<label> <ID> --evidence "<text>"`, `unrefute --pr local-<label> <ID> --fix` or
+   `--bubble --classification <C> --reason "<R>"`), their preconditions and the re-entry after them follow
+   pr-review Phase 5 Rule 6, whose steps map here as: its Step 0 is this skill's Step 4 early end, its Step 1
+   (second run) is Step 5, its Steps 2-6 (audit, waves, bubble pause) are Step 6, and its Steps 7-8 are
+   Steps 7-8.
 7. **Close out.** `closeout --pr local-<label> [--closed ID="rationale" ...] [--deferred ID="decision; tracker"
    ...] [--resolved ID="what changed" ...]`. A `[blocked]` line lists problems: settle each, as its `hint:`
    lines and the operating rules route it, and rerun `closeout`.
 8. **Terminal step.** The summary opens with the line `closeout` printed: `Phase 5 [done] | <N> issues
-   resolved | verdict: <v> | next: stop`, carries any `deferred tests:` block verbatim, and ends with the
-   review path. The developer commits; a `READY TO MERGE` verdict means the branch is ready for its PR.
+   resolved | verdict: <v> | next: stop` (`, <K> refuted` after the count when `K > 0`), lists the refuted
+   ids with their evidence when Step 6 did not pause, carries any `deferred tests:` block verbatim, and ends
+   with the review path. The developer commits; a `READY TO MERGE` verdict means the branch is ready for its PR.
 
 ## Stop Recovery
 
@@ -134,12 +158,15 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
   branch>` for a branch mismatch; commit or stash for a dirty tree (Rules); recapture when the captured head
   is no longer an ancestor of HEAD (history was rewritten). Rerun `build --pr local-<label> --replace` for a
   first-run STOP, the `--second-run` command for a second-run STOP. No fixer is dispatched until it passes.
-- **A failed record or missing block:** `block --pr local-<label> --agent <ID>`, else dispatch the row again.
+- **A failed record or missing block:** `block --pr local-<label> --agent <ID>`, else dispatch the row again
+  (under `-a`, the failed `args` entry as a plain `Agent` call, Step 2).
 
 ## Related
 
 - `${CLAUDE_PLUGIN_ROOT}/skills/pr-review/operating_rules.md`: review-JSON fields, grading, Phase 5 order.
 - `${CLAUDE_PLUGIN_ROOT}/skills/pr-review/SKILL.md`: the PR form of this procedure.
-- `${CLAUDE_PLUGIN_ROOT}/agents/pr-reviewer.md` and `pr-fixer.md`: the agents every row dispatches.
+- `${CLAUDE_PLUGIN_ROOT}/agents/pr-reviewer.md` and `pr-fixer.md`: the agents every row dispatches;
+  `adversarial-reviewer.md`: the refuter the `-a` Workflow dispatches.
+- `README.md` in this folder: the developer's view of a local review.
 - `harness:fold-in-review`: folds developer notes or pasted output into the run as `--findings`, under the
   `local-<label>` key (`fold --pr local-<label> ...`).

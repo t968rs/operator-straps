@@ -152,6 +152,18 @@ describe('stampMemo', () => {
     expect(out.text).toContain(`${DECISION_PREFIX}CLOSED_NO_ACTION, 2026-10-30. not needed`)
   })
 
+  test('a bubbled id whose latest status is REFUTED stamps with its own status word', async () => {
+    const out = stampMemo(base, [resolved('I1', 'refuted: a.py:2 returns 2', { status: 'REFUTED' })])
+    expect(out.stamped).toEqual(['I1'])
+    expect(out.text).toContain(row('I1', STATUS_DECIDED, 'REFUTED 2026-10-29: refuted: a.py:2 returns 2', '-'))
+    expect(out.text).toContain(`${DECISION_PREFIX}REFUTED, 2026-10-29. refuted: a.py:2 returns 2`)
+  })
+
+  test('REFUTED then NOT_RESOLVED leaves the row Open', async () => {
+    const rs = [resolved('I1', 'e', { status: 'REFUTED' }), resolved('I1', 'e', { status: 'NOT_RESOLVED' })]
+    expect(stampMemo(base, rs)).toEqual({ text: base, stamped: [] })
+  })
+
   test('a second run changes nothing', async () => {
     const once = stampMemo(base, [resolved('I1', 'x #3'), resolved('M2', 'y')])
     expect(once.stamped).toEqual(['I1', 'M2'])

@@ -4,7 +4,8 @@
 Pins three contracts:
   1. Every row of a vendored sample JSONL (``tests/fixtures/``) validates against the schema.
   2. The `dispatch_shape` field is required and accepts `parallel` (Phase 2 reviewer
-     fan-out) or `inline` (orchestrator running solo, no fan-out).
+     fan-out), `inline` (orchestrator running solo, no fan-out) or `workflow` (a slot of a
+     pr-review -a Workflow run, written by agent-watcher with zero counts).
   3. Unknown values are rejected, and the field cannot be omitted.
 
 A project's live matrix (``<project>/<matrix_path>``) is that project's data; its rows are not
@@ -101,6 +102,15 @@ def test_inline_dispatch_shape_validates():
     schema = _load_schema()
     row = _minimal_valid_row()
     row["dispatch_shape"] = "inline"
+    jsonschema.validate(row, schema)  # must not raise
+
+
+def test_workflow_dispatch_shape_validates():
+    """A zero-count row with dispatch_shape='workflow' (an agent-watcher -a Workflow slot) validates."""
+    schema = _load_schema()
+    row = _minimal_valid_row()
+    row.update(dispatch_shape="workflow", verdict_prefix="N/A (unobserved)",
+               notes="agent-watcher auto row; refuter; unobserved: workflow agent")
     jsonschema.validate(row, schema)  # must not raise
 
 

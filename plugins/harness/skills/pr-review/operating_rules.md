@@ -5,7 +5,7 @@ whose dispatch order its own Step 4.5 defines. `pr-team` does not run `pr_review
 `bubble_up` ledger only through `scripts/review_edit.py <JSON> resolve-file ... --bubble-ups ...` at its Step 7 (its
 bubbles live in the `<runtime_dir>/bubble_ups.json` sidecar until then), and uses other `review_edit.py`
 subcommands only for the fields the "Review JSON fields" section lists as uncovered; rules naming `fold`, `waves`,
-`build`, `bubble`, `amend` or `closeout` do not apply to it.
+`build`, `bubble`, `amend`, `closeout`, `refute`, `unrefute` or `-a` do not apply to it.
 Where a rule here names a step order, it overrides the literal order in `pr-review/SKILL.md`.
 
 ## Review JSON fields
@@ -18,7 +18,10 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
 - **No `follow_ups` field exists.** Net-new deferred work is a `bubble_up` entry with `classification:
   needs_follow_up`. The schema root has no extra-property slot.
 - **`post_review_resolutions[]`** gets an entry only after closure: a fix landed AND validated (`RESOLVED`), or the
-  developer explicitly closed it (`CLOSED_NO_ACTION`). Bubbled items, FAILed fixers and skipped items get no entry.
+  developer explicitly closed it (`CLOSED_NO_ACTION`), or a refutation closed it (`REFUTED`). Bubbled items,
+  FAILed fixers and skipped items get no entry, except the `BUBBLED` and `NOT_RESOLVED` entries the scripts
+  write: `unrefute`, and every bubble writer (`bubble`, a fixer bubble at `closeout`, `review_edit.py bubble`)
+  on an id whose latest status is `NOT_RESOLVED` (status enum below).
   A fixer's DONE block is a claim; `closeout` validates it (every file the entry lists changed since `build_head` and
   lies in that fixer's file set or is new) and writes the entry. A fixer resolves only the ids its planned parts
   assign it; a split issue resolves only when its fixers' entries together cover every planned part.
@@ -32,22 +35,38 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   decision and the tracker, plus its `bubble_up` entry: `closeout --deferred ID="decision; tracker"` writes both. An
   unconfirmed defer stays bubbled. `CLOSED_NO_ACTION` means
   no action at all (intended behavior, or superseded by the developer's own work).
-- **Status enum:** `RESOLVED`, `DOWNGRADED_TO_MINOR`, `DOWNGRADED_TO_IMPORTANT`, `CLOSED_NO_ACTION`. Put framing
-  such as "pushed back" in `evidence`, never in `status`.
+- **Status enum:** `RESOLVED`, `DOWNGRADED_TO_MINOR`, `DOWNGRADED_TO_IMPORTANT`, `CLOSED_NO_ACTION`, `REFUTED`,
+  `BUBBLED`, `NOT_RESOLVED`. Put framing such as "pushed back" in `evidence`, never in `status`. The latest
+  entry per id decides its state.
+- **`REFUTED` is closing**, like `RESOLVED` and `CLOSED_NO_ACTION`, for the verdict and for Phase 5: `build`
+  writes it for an issue whose every finding a findings refuter of an `-a` run refuted (evidence: the
+  `path:line` the refuter opened and what it showed, stored repo-relative), and `refute` writes it for the
+  developer. A refuted issue gets no fixer.
+- **`BUBBLED` and `NOT_RESOLVED` are non-closing**: each records a refutation the developer overruled
+  (`unrefute --bubble` appends `BUBBLED` and bubbles the id; `unrefute --fix` appends `NOT_RESOLVED` and the
+  next `waves` plans a fixer), and the latest-status rule reopens the id. A latest `NOT_RESOLVED` keeps the id
+  open even when `bubbles` or `bubble_up` names it. None of the three is ever hand-written. The commands and
+  their preconditions: pr-review SKILL.md, Phase 5 Rule 6.
 - **Evidence must START with a SHA** (`^[0-9a-f]{7,40}( |$)`) for the Phase 5 sentinel to clear. `closeout`
   generates `<HEAD short sha> (working-tree snapshot; developer commits) - <what changed>`; a hand-written entry
-  follows the same form.
-- **The verdict is derived, never typed.** `build`, `bubble` and `closeout` recompute it with one function aligned
-  with the hook's issue-count check: unresolved critical, else unresolved important, else any undispositioned id
-  (`NOT READY TO MERGE - minor findings pending Phase 5: ...`), else `READY TO MERGE - <R> of <T> findings resolved,
-  <B> bubbled`. One override sits outside that function: when the Phase 4 first run fails inside `build`, the review
-  is still written, but a READY verdict becomes `NOT READY TO MERGE - Phase 4 first run failed: <reason>` and
-  `build` exits 1. After a hand edit by the developer, the next script write recomputes it.
+  follows the same form. For the sentinel's two closeout shapes (pr-review SKILL.md, Phase 4):
+  `REFUTED`, `BUBBLED` and `NOT_RESOLVED` entries need no SHA and are never shape (a) SHA evidence (neither
+  shape counts them as resolutions); for shape (b) a latest `REFUTED` dispositions its id, a latest `BUBBLED`
+  counts only through `bubbles` / `bubble_up`, and a latest `NOT_RESOLVED` keeps the id open.
+- **The verdict is derived, never typed.** `build`, `bubble`, `refute`, `unrefute` and `closeout` recompute it
+  with one function aligned with the hook's issue-count check: unresolved critical, else unresolved important,
+  else any undispositioned id (`NOT READY TO MERGE - minor findings pending Phase 5: ...`), else
+  `READY TO MERGE - <R> of <T> findings resolved, <B> bubbled`, followed by `, <K> refuted` only when `K > 0`
+  (`R` counts the closed ids whose latest status is not `REFUTED`, `K` the ids whose latest status is
+  `REFUTED`). One override sits outside that function: when the Phase 4 first run fails inside `build`, the
+  review is still written, but a READY verdict becomes `NOT READY TO MERGE - Phase 4 first run failed:
+  <reason>` and `build` exits 1. After a hand edit by the developer, the next script write recomputes it.
 - **JSON string values that describe `"` or `\`** (mojibake, shell quoting, regex) use escape-sequence text, never the
   rendered glyph. The agent never hand-edits the review JSON. In `pr-review`, every agent write goes through a
   `pr_review.py` subcommand, which validates the whole document before replacing it, and resolutions, defers,
-  bubbles, regrades and merges always go through `closeout`, `bubble` and `amend`, which check the evidence and
-  write the verdict; in `pr-team` they go through `review_edit.py resolve-file` alone (see the top of this file).
+  bubbles, regrades, merges and overrules always go through `closeout`, `bubble`, `amend`, `refute` and
+  `unrefute`, which check the evidence and write the verdict; in `pr-team` they go through
+  `review_edit.py resolve-file` alone (see the top of this file).
   An edit no subcommand covers (a reviewer, a strength, `shas`, `review-date`, `stats`) goes through
   `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/review_edit.py" <review JSON> --recompute
   <subcommand> ...` (`harness_lib.review_edit`: one editor per root field, validated byte-stable write), never
@@ -67,6 +86,9 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   test results, the developer, or ad-hoc feedback (`--findings <FILE>` or `-`), each under its own snake_case
   `--source` and the matching `--kind`. Folded findings are validated by the same Finding model reviewers use and
   merge like a slot; never paste outside findings into the draft or the review JSON by hand.
+- **Folded findings are not refuted.** Under `-a` the findings refuters check only reviewer and code-refuter
+  slots, so a folded source's findings count as upheld at `merge` (the developer can still `refute` an issue
+  after `build`).
 - **Regrade after folding (folds before `build`).** A GitHub review's comments arrive at one `--severity`
   (default `minor`); grade each by blast radius with `amend --regrade` after `merge`.
 - **Grade before a post-build fold.** After `build`, `amend` does not run, so the fold's severity and fix kind are
@@ -143,7 +165,8 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
 
 - The Phase 5 sentinel `<project>/<state_dir>/pr-review/.phase5_pending_<PR>` (`state_dir` from
   `.claude/harness.json`) is a dotfile; check it with `ls -la`, not `ls | grep`.
-- Script writes (`build`, `bubble`, `closeout`) run the hook themselves. If the sentinel survives a valid closeout,
+- Script writes (`build`, `bubble`, `refute`, `unrefute`, `closeout`) run the hook themselves. If the sentinel
+  survives a valid closeout,
   run the plugin's schema hook from the project checkout:
 
   ```bash

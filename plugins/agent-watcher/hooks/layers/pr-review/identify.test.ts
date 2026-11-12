@@ -21,3 +21,32 @@ describe('identify: a foreign SKILL header is never claimed (Decision D9)', () =
     })
   })
 })
+
+describe('identify: adversarial refuters are pr-review slots', () => {
+  const ADV = 'harness:adversarial-reviewer'
+  const refuter = (id: string, role: string, pr = 'PR: 1526\n'): string =>
+    `AGENT_ID: ${id}\nAGENT_ROLE: ${role}\nRUN_ID: ${RUN}\n${pr}`
+
+  test('a findings refuter and a code refuter are claimed in the review phase', async () => {
+    expect(identify(ADV, refuter('adv_refute_runtime', 'refuter'), BASE)).toEqual({
+      runId: RUN, skill: 'pr-review', agentId: 'adv_refute_runtime', role: 'refuter', pr: 1526, runtimeDir: null,
+      phase: 'review',
+    })
+    expect(identify(ADV, refuter('adv_code', 'code_refuter'), BASE)).toMatchObject({
+      skill: 'pr-review', agentId: 'adv_code', role: 'code_refuter', phase: 'review',
+    })
+  })
+
+  test('a local run key is kept', async () => {
+    const local = refuter('adv_code_tests', 'code_refuter', 'PR: local-fix-band\n')
+    expect(identify(ADV, local.replace(RUN, 'local-fix-band_20261009T120000Z'), BASE)).toMatchObject({
+      pr: 'local-fix-band', role: 'code_refuter',
+    })
+  })
+
+  test('a refuter role without a PR line, a spaced role or another skill is not claimed', async () => {
+    expect(identify(ADV, refuter('adv_code', 'code_refuter', ''), BASE)).toBeUndefined()
+    expect(identify(ADV, refuter('adv_code', 'code refuter'), BASE)).toBeUndefined()
+    expect(identify(ADV, `SKILL: bubble-memo\n${refuter('adv_code', 'code_refuter')}`, BASE)).toBeUndefined()
+  })
+})

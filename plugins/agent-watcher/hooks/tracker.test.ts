@@ -288,6 +288,103 @@ describe('matrix rows', () => {
   })
 })
 
+describe('matrix rows of an adversarial Workflow call (agents the mod cannot tie to a slot)', () => {
+  const LOCAL_RUN = 'local-fix-band_20261009T120000Z'
+  const MARKER_FILE = `${ROOT}/docs/_scratch/pr_review/1526/${RUN}/.workflow_rows`
+  const slotEntry = (id: string, model: string | null = 'opus') =>
+    ({ id, agentType: 'x', model, prompt: reviewerPrompt(id, 'PR: 1526') })
+  const argsFor = (runKey: string, runId = RUN) => ({
+    run_key: runKey, run_id: runId, guidance: null, reviewers: [slotEntry('runtime')], code: [slotEntry('adv_code')],
+    refute: [{ ...slotEntry('adv_refute_runtime'), target: 'runtime' }],
+  })
+  const workflowWorld = (on: On, answer: unknown = { result: { taskId: 'w1' }, text: 'launched' }): Seen => {
+    const seen = world(on, () => completed(doneBlock(ZERO)))
+    on('tool.call', { tool: 'Workflow' }, () => answer as never)
+    return seen
+  }
+  const runWorkflow = ($: Engine, args: unknown, extra: Record<string, unknown> = {}) =>
+    $.tool.call({ tool: 'Workflow', scriptPath: '/p/workflows/adversarial-review.js', args, ...extra } as never)
+
+  test('one zero-count workflow row per planned slot, written at the call', async ($, on) => {
+    const seen = workflowWorld(on)
+    await runWorkflow($, argsFor('1526'))
+    const rows = matrixRows(seen)
+    expect(rows.map(r => r.cell)).toEqual(['pr1526_runtime', 'pr1526_adv_code', 'pr1526_adv_refute_runtime'])
+    expect(rows[1]).toMatchObject({
+      dispatch_shape: 'workflow', tokens: 0, tool_uses: 0, duration_s: 0, model_family: 'opus',
+      dev_commit: `${SHA} -- dev (agent-watcher auto)`, notes: 'agent-watcher auto row; code_refuter; unobserved: workflow agent',
+    })
+    expect(seen.agentCalls).toBe(0)
+    expect(seen.files.get(MARKER_FILE)?.text.startsWith('attempted ')).toBe(true)
+  })
+
+  test('args given as JSON text are read the same way', async ($, on) => {
+    const seen = workflowWorld(on)
+    await runWorkflow($, JSON.stringify(argsFor('1526')))
+    expect(matrixRows(seen)).toHaveLength(3)
+  })
+
+  test('rows are written once per run id: the same args twice give 3 rows, not 6', async ($, on) => {
+    const seen = workflowWorld(on)
+    await runWorkflow($, argsFor('1526'))
+    await runWorkflow($, argsFor('1526'))
+    expect(matrixRows(seen)).toHaveLength(3)
+  })
+
+  test('a resume call (resumeFromRunId) writes no rows', async ($, on) => {
+    const seen = workflowWorld(on)
+    await runWorkflow($, argsFor('1526'), { resumeFromRunId: 'wf_1' })
+    expect(seen.files.has(MATRIX)).toBe(false)
+    expect(seen.files.has(MARKER_FILE)).toBe(false)
+  })
+
+  test('no rows for a local key, other args or a subagent call', async ($, on) => {
+    const seen = workflowWorld(on)
+    await runWorkflow($, argsFor('local-fix-band', LOCAL_RUN))
+    await runWorkflow($, { draftDir: 'x' })
+    await runWorkflow($, argsFor('1526'), { agentId: 'loop-w' })
+    expect(seen.files.has(MATRIX)).toBe(false)
+  })
+
+  test('a refused Workflow call logs no rows', async ($, on) => {
+    const seen = workflowWorld(on, { deny: 'not allowed' })
+    await runWorkflow($, argsFor('1526')).catch(() => undefined)
+    expect(seen.files.has(MATRIX)).toBe(false)
+  })
+
+  test('a result carrying error (a failed syntax check) did not launch: no rows', async ($, on) => {
+    const seen = workflowWorld(on, { result: { error: 'SyntaxError: x' }, text: 'syntax check failed' })
+    await runWorkflow($, argsFor('1526'))
+    expect(seen.files.has(MATRIX)).toBe(false)
+    expect(seen.files.has(MARKER_FILE)).toBe(false)
+  })
+
+  test('an isError answer logs no rows', async ($, on) => {
+    const seen = workflowWorld(on, { result: 'boom', text: 'boom', isError: true })
+    await runWorkflow($, argsFor('1526')).catch(() => undefined)
+    expect(seen.files.has(MATRIX)).toBe(false)
+  })
+
+  test('a slot with no model fails R4: no row for it, toasted, the other rows land', async ($, on) => {
+    const seen = workflowWorld(on)
+    await runWorkflow($, { ...argsFor('1526'), code: [slotEntry('adv_code', null)] })
+    expect(matrixRows(seen).map(r => r.cell)).toEqual(['pr1526_runtime', 'pr1526_adv_refute_runtime'])
+    expect(seen.toasts.join('\n')).toContain('pr1526_adv_code: model_family')
+  })
+
+  test('a refuter recovered as a plain Agent call logs a pr-review usage row and no matrix row', async ($, on) => {
+    const seen = workflowWorld(on)
+    const prompt = `AGENT_ID: adv_refute_runtime\nAGENT_ROLE: refuter\nRUN_ID: ${RUN}\nPR: 1526`
+    await dispatch($, prompt, 'harness:adversarial-reviewer')
+    writeReview(seen, { verdict: 'READY TO MERGE', issues: {} })
+    await mainTurnEnd($, 't1')
+    expect(usageRows(seen)[0]).toMatchObject({
+      skill: 'pr-review', role: 'refuter', agent_id: 'adv_refute_runtime', subagent_type: 'harness:adversarial-reviewer',
+    })
+    expect(seen.files.has(MATRIX)).toBe(false)
+  })
+})
+
 describe('agent usage rows', () => {
   const PR_DIR = `${ROOT}/docs/_scratch/pr_review/1526`
   const fixerPrompt = (id: string) => `AGENT_ID: ${id}\nAGENT_ROLE: fixer\nRUN_ID: ${RUN}\nPR: 1526`

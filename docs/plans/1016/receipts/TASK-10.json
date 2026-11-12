@@ -1,0 +1,34 @@
+{
+  "plan_id": "1016",
+  "item": "TASK-10",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "993af95bdebc36e636cd26390a619a8d606c8ece"
+    },
+    "tests": {
+      "nodes": [
+        "tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[agent-watcher-bubbles]",
+        "tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[bubble-stamp-review]",
+        "tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[bubble-stamp-memo]"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[agent-watcher-bubbles] tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[bubble-stamp-review] tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[bubble-stamp-memo]"
+    }
+  },
+  "evidence": "staged tree 993af95: 3 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": ".claude-plugin/marketplace.json",
+        "change": "EX3"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX3": "e622b2a6caebdcc87b45ceeb9647f1232f188d396db80ced4743d563bf4f87d5"
+    }
+  },
+  "date": "2026-11-12",
+  "seal": "7b6a86af396a1099d60a0156d5bf3ea8cf0792738171ed5c9cc43e58e3117b0e"
+}

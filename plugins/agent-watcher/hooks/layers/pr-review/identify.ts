@@ -5,7 +5,8 @@ import { keyOfRunId, toRunKey } from './runKey'
 /**
  * Which pr-team / pr-review `Agent` dispatch a prompt header names (the harness pr-team skill's
  * `canonical_prompt_template.md` and the rows `pr_review.py` prints): `RUN_ID`, then `MODE` for the pr-team
- * orchestrator and fixer agents, else `AGENT_ID` / `AGENT_ROLE` for a reviewer or fixer slot. Pure: no `$`.
+ * orchestrator and fixer agents, else `AGENT_ID` / `AGENT_ROLE` for a reviewer, fixer or (pr-review only)
+ * refuter slot. Pure: no `$`.
  */
 
 /** Phase, agent id and role per pr-team agent family and MODE. */
@@ -38,17 +39,30 @@ const runtimeDirOf = (h: Header, runId: string, runtimeBase: string): string => 
 }
 
 /**
+ * The `AGENT_ROLE` values of pr-review's adversarial refuters (harness `review_briefs.py` `REFUTER_ROLE`,
+ * `CODE_REFUTER_ROLE`, pinned by `tests/mods/test_agent_watcher_adversarial_mirror.py`; agent
+ * `harness:adversarial-reviewer`): one token each, so they match ROLE_PATTERN.
+ */
+export const REFUTER_ROLES = ['refuter', 'code_refuter'] as const
+const REFUTERS: readonly string[] = REFUTER_ROLES
+
+/** Roles a slot dispatch may carry: reviewer and fixer anywhere, a refuter only with a `PR:` line. */
+const isSlotRole = (role: string | undefined, isReview: boolean): role is string =>
+  role === 'reviewer' || role === 'fixer' || (isReview && REFUTERS.includes(role ?? ''))
+
+/**
  * A slot dispatch (`AGENT_ID:` / `AGENT_ROLE:`): pr-review when a `PR:` line is present. The `PR:` value is
- * the run key, a PR number or a review-local `local-<label>` key.
+ * the run key, a PR number or a review-local `local-<label>` key. A refuter (findings or code) is a
+ * pr-review slot of the review phase; pr-team has none.
  */
 const slotDispatch = (h: Header, runId: string, runtimeBase: string): Dispatch | undefined => {
   const { AGENT_ID: agentId, AGENT_ROLE: role } = h
-  if (!agentId || (role !== 'reviewer' && role !== 'fixer')) return undefined
   const isReview = h.PR !== undefined
+  if (!agentId || !isSlotRole(role, isReview)) return undefined
   const pr = (isReview ? toRunKey(h.PR) : null) ?? keyOfRunId(runId)
   const skill: Skill = isReview ? 'pr-review' : 'pr-team'
   const runtimeDir = isReview ? null : runtimeDirOf(h, runId, runtimeBase)
-  return { runId, skill, agentId, role, pr, runtimeDir, phase: role === 'reviewer' ? 'review' : 'fix' }
+  return { runId, skill, agentId, role, pr, runtimeDir, phase: role === 'fixer' ? 'fix' : 'review' }
 }
 
 /** The skills whose dispatches the layer claims; a header naming another (`SKILL:`) is never claimed. */

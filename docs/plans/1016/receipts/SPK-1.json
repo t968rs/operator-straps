@@ -1,0 +1,21 @@
+{
+  "plan_id": "1016",
+  "item": "SPK-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "commit",
+      "tree": "a75d3d4c634b971377bdf6213a018966f79cd606",
+      "commit": "33db9acb086499f217262eef4ce60829d4a676c8"
+    }
+  },
+  "evidence": "commit 33db9ac",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "ref": "HEAD",
+  "date": "2026-11-12",
+  "seal": "86d56bc13e97197b03e526ba3f6a4437dc078fd0d06a93a08ba635a451c9108e"
+}

@@ -58,13 +58,14 @@
       "type": "string",
       "enum": [
         "parallel",
-        "inline"
+        "inline",
+        "workflow"
       ],
-      "description": "Whether this row was produced by a parallel-dispatched Phase 2 reviewer subagent (`parallel`) or by an orchestrator running inline with no fan-out (`inline`). Inline rows record the orchestrator's own usage envelope; parallel rows record one row per dispatched reviewer. Required so downstream analysis can pivot on dispatch shape without inferring it from the cell name."
+      "description": "Whether this row was produced by a parallel-dispatched Phase 2 reviewer subagent (`parallel`), by an orchestrator running inline with no fan-out (`inline`), or for one slot of a pr-review `-a` Workflow run (`workflow`). Inline rows record the orchestrator's own usage envelope; parallel rows record one row per dispatched reviewer; workflow rows are written by the agent-watcher mod from the main session's Workflow call, one per planned slot, with `tokens`, `tool_uses`, `duration_s` and the counts 0 and `notes` naming `unobserved: workflow agent`. Required so downstream analysis can pivot on dispatch shape without inferring it from the cell name."
     },
     "tokens": {
       "type": "integer",
-      "description": "Input + output + cache read + cache creation tokens. Rows the agent-watcher mod writes (`notes` starting `agent-watcher auto row`) sum them over every model request of the subagent invocation; rows it wrote before 0.7.0 hold, for a foreground dispatch, its last request's count instead, and nothing in the row dates it. Rows the pr-team orchestrator writes without the mod (its Step 5) carry the reviewer's self-reported figure, or 0.",
+      "description": "Input + output + cache read + cache creation tokens. Rows the agent-watcher mod writes (`notes` starting `agent-watcher auto row`) sum them over every model request of the subagent invocation, except `workflow` rows (dispatch_shape `workflow`, notes naming `unobserved: workflow agent`), which hold 0 because the slot is not observed; rows it wrote before 0.7.0 hold, for a foreground dispatch, its last request's count instead, and nothing in the row dates it. Rows the pr-team orchestrator writes without the mod (its Step 5) carry the reviewer's self-reported figure, or 0.",
       "minimum": 0
     },
     "tool_uses": {
@@ -111,7 +112,7 @@
     },
     "verdict_prefix": {
       "type": "string",
-      "description": "First clause of the reviewer's verdict line. Conventional values: `READY TO MERGE`, `NOT READY TO MERGE`, `N/A (bailed)`. Free-form OK; downstream pivots key off the prefix string."
+      "description": "First clause of the reviewer's verdict line. Conventional values: `READY TO MERGE`, `NOT READY TO MERGE`, `N/A (bailed)`, `N/A (unobserved)` (a `workflow` row, written before any verdict exists). Free-form OK; downstream pivots key off the prefix string."
     },
     "notes": {
       "type": "string",

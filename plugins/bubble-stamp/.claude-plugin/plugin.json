@@ -1,7 +1,7 @@
 {
   "name": "bubble-stamp",
-  "version": "0.2.0",
-  "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION) into the bubble memo, PR_<N>_Bubbles.md",
+  "version": "0.3.0",
+  "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION, REFUTED) into the bubble memo, PR_<N>_Bubbles.md",
   "author": {
     "name": "Kevin Gabelman"
   },

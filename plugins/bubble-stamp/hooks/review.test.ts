@@ -52,7 +52,7 @@ describe('latestResolutions', () => {
 })
 
 describe('closedResolutions (the closedOf rule)', () => {
-  test('only ids whose latest status is RESOLVED or CLOSED_NO_ACTION', async () => {
+  test('only ids whose latest status is a closing one; a later non-closing entry reopens', async () => {
     const text = review([
       res('C1', 'RESOLVED'), res('I1', 'CLOSED_NO_ACTION'), res('I2', 'RESOLVED'), res('I2', 'UNRESOLVED'),
       res('M1', 'DOWNGRADED_TO_IMPORTANT'), res('M2', 'DOWNGRADED_TO_MINOR'),
@@ -64,6 +64,16 @@ describe('closedResolutions (the closedOf rule)', () => {
     const text = review([res('I1', 'UNRESOLVED'), res('I1', 'CLOSED_NO_ACTION', '2026-10-05', 'not needed')])
     expect(closedResolutions(text)).toEqual([
       { id: 'I1', status: 'CLOSED_NO_ACTION', date: '2026-10-05', evidence: 'not needed' },
+    ])
+  })
+
+  test('a latest REFUTED closes; REFUTED then NOT_RESOLVED or BUBBLED reopens', async () => {
+    const text = review([
+      res('I1', 'REFUTED', '2026-11-12', 'refuted: a.py:2 returns 2'), res('I2', 'REFUTED'), res('I2', 'NOT_RESOLVED'),
+      res('M1', 'REFUTED'), res('M1', 'BUBBLED'),
+    ])
+    expect(closedResolutions(text)).toEqual([
+      { id: 'I1', status: 'REFUTED', date: '2026-11-12', evidence: 'refuted: a.py:2 returns 2' },
     ])
   })
 

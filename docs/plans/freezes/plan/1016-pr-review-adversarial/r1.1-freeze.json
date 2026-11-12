@@ -1,0 +1,31 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 1,
+  "tree": "8641a71b37867ddd9852ec7abba97eefbc7ce528",
+  "files": {
+    "docs/plans/1016_pr_review_adversarial_ActionPlan.json": "9680ddd8dc126f8a5f745ee2b71977a84e5cae00"
+  },
+  "ignored": {
+    "docs/plans/1016/tests/tests/contract/test_adversarial_workflow.py": "2299d9c94a20f10bbacf7d9ecd19530a1e79002f4a2f0b371b4ab77c4391824e",
+    "docs/plans/1016/tests/tests/hooks/test_schema_hook_refuted.py": "fdc50d7868b45f1dcd9b372be331aa4030a998ff0e9cbbcf576f5023fbfff23e",
+    "docs/plans/1016/tests/tests/lib/test_review_adversarial.py": "1592a07941952910b6d17841c3dc30f84663c4dd5417f7f2b9dbd588416837b9",
+    "docs/plans/1016/tests/tests/lib/test_review_adversarial_models.py": "b173c65e0658bfd89447c9103e010013c99ae4224aa358d21e15bba105a9dd15",
+    "docs/plans/1016/tests/tests/lib/test_review_merge_adversarial.py": "8a9c3b2621348d5ad3a5354a3814057d3acf657a50964fd15599ffbed7141187",
+    "docs/plans/1016/tests/tests/mods/test_closed_status_mirror.py": "9a9d2c918aa8aecad23c9a57992916d88be98d5f26b38fab1ec18ccb56270d99",
+    "docs/plans/1016/tests/tests/schemas/test_pr_review_schema_adversarial.py": "2cf7de836aeec801adf9b02fe6fdbf96bc6de91d32d06c347945b3987ead53c1",
+    "docs/plans/1016/tests/tests/scripts/test_pr_review_adversarial.py": "ebe56824478d932d8d2a41f2784f9842f1b09c2a8f268924f1ec16271c5a405c",
+    "docs/plans/1016/tests/tests/skills/test_pr_review_adversarial_docs.py": "2b70c87a9a04750a5b190443870df6c03fda211ca4a90bed0ad71ecfcd6d51b6"
+  },
+  "at": "2026-11-12T17:10:46+00:00",
+  "base": "c4cda8a6e33f2f6f4e3e0dd00449f2e40b277464",
+  "history": false,
+  "digest": "6b745d7056b3b0d54abe2903c499a92c070bda2519c3ad29f8a0040160d1b067",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}

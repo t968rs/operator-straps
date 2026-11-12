@@ -1,13 +1,17 @@
 /**
  * Review-JSON reading for the bubble guard: a port of the harness library's `validation/id_handling.py`
- * (`issue_ids`, `disposition_ids`, `all_issues_dispositioned`) plus file selection. Pure: no `$`.
+ * (`issue_ids`, `all_issues_dispositioned`, `latest_statuses`, `reopened_ids`) plus file
+ * selection. Pure: no `$`.
  */
 
 import { reviewPrefix, runName, type RunKey } from './runKey'
 
 /**
  * The parts of a consolidated review JSON (`<artifacts.reviews>/*.json`) the watch reads. `closed`: ids
- * whose latest `post_review_resolutions[]` status is `RESOLVED` or `CLOSED_NO_ACTION`.
+ * whose latest `post_review_resolutions[]` status is `RESOLVED`, `CLOSED_NO_ACTION` or `REFUTED` (the
+ * `review_merge.CLOSED_STATUSES` set; `BUBBLED` and `NOT_RESOLVED` stay open). `dispositioned`: ids any
+ * channel names; a latest `BUBBLED` counts only through `bubbles[]` / `bubble_up[]`, and a latest
+ * `NOT_RESOLVED` never counts, even when `bubbles[]` or `bubble_up[]` names the id.
  */
 export type ReviewDoc = {
   verdict: string | null
@@ -50,34 +54,49 @@ const issueIdsOf = (doc: Record<string, unknown>): string[] => {
 const bubblesOf = (doc: Record<string, unknown>): string[] =>
   list(doc.bubbles).filter((b): b is string => typeof b === 'string')
 
-const dispositionedOf = (doc: Record<string, unknown>): string[] => [
-  ...list(doc.post_review_resolutions).map(idOf).filter(isDefined),
-  ...bubblesOf(doc),
-  ...list(doc.bubble_up).map(idOf).filter(isDefined),
-]
+const CLOSING_STATUSES: readonly unknown[] = ['RESOLVED', 'CLOSED_NO_ACTION', 'REFUTED']
+const REOPENED_STATUS = 'NOT_RESOLVED'
+const BUBBLE_ONLY_STATUSES: readonly unknown[] = ['BUBBLED', REOPENED_STATUS]
 
-const CLOSING_STATUSES: readonly unknown[] = ['RESOLVED', 'CLOSED_NO_ACTION']
+type Latest = ReadonlyMap<string, unknown>
 
-/** Ids whose last resolution entry carries a closing status; a later non-closing entry reopens. */
-const closedOf = (doc: Record<string, unknown>): string[] => {
+/** The last resolution status per id, ids in first-appearance order (`id_handling.latest_statuses`). */
+const latestStatusesOf = (doc: Record<string, unknown>): Map<string, unknown> => {
   const latest = new Map<string, unknown>()
   for (const entry of list(doc.post_review_resolutions)) {
     const id = idOf(entry)
     if (id !== undefined && isRecord(entry)) latest.set(id, entry.status)
   }
-  return [...latest].filter(([, status]) => CLOSING_STATUSES.includes(status)).map(([id]) => id)
+  return latest
 }
+
+/**
+ * The `id_handling.all_issues_dispositioned` settled set: resolution ids whose latest status is neither
+ * `BUBBLED` nor `NOT_RESOLVED`, then the `bubbles` and `bubble_up` ids, less every id whose latest status
+ * is `NOT_RESOLVED` (`reopened_ids`), whatever else names it.
+ */
+const dispositionedOf = (doc: Record<string, unknown>, latest: Latest): string[] =>
+  [
+    ...[...latest].filter(([, status]) => !BUBBLE_ONLY_STATUSES.includes(status)).map(([id]) => id),
+    ...bubblesOf(doc),
+    ...list(doc.bubble_up).map(idOf).filter(isDefined),
+  ].filter(id => latest.get(id) !== REOPENED_STATUS)
+
+/** Ids whose last resolution entry carries a closing status; a later non-closing entry reopens. */
+const closedOf = (latest: Latest): string[] =>
+  [...latest].filter(([, status]) => CLOSING_STATUSES.includes(status)).map(([id]) => id)
 
 /** The review parts, or undefined when the text is not a JSON object. */
 export const readReview = (text: string): ReviewDoc | undefined => {
   const doc = parseObject(text)
   if (doc === undefined) return undefined
+  const latest = latestStatusesOf(doc)
   return {
     verdict: typeof doc.verdict === 'string' ? doc.verdict : null,
     issueIds: uniq(issueIdsOf(doc)),
-    dispositioned: uniq(dispositionedOf(doc)),
+    dispositioned: uniq(dispositionedOf(doc, latest)),
     bubbles: uniq(bubblesOf(doc)),
-    closed: closedOf(doc),
+    closed: closedOf(latest),
   }
 }
 

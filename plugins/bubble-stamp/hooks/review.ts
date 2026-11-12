@@ -37,7 +37,7 @@ export const reviewPrefix = (key: RunKey): string | undefined => {
   return isLocalKey(key) ? `${REVIEW_PREFIX}${key.slice(LOCAL_PREFIX.length)}_` : undefined
 }
 
-const CLOSING_STATUSES: readonly string[] = ['RESOLVED', 'CLOSED_NO_ACTION']
+const CLOSING_STATUSES: readonly string[] = ['RESOLVED', 'CLOSED_NO_ACTION', 'REFUTED']
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v)
@@ -71,7 +71,10 @@ export const latestResolutions = (text: string): Resolution[] | undefined => {
   return [...latest.values()]
 }
 
-/** The latest resolutions whose status is `RESOLVED` or `CLOSED_NO_ACTION`; a later non-closing entry reopens. */
+/**
+ * The latest resolutions whose status is `RESOLVED`, `CLOSED_NO_ACTION` or `REFUTED` (the
+ * `review_merge.CLOSED_STATUSES` set); a later non-closing entry (`BUBBLED`, `NOT_RESOLVED` or any other) reopens.
+ */
 export const closedResolutions = (text: string): Resolution[] | undefined =>
   latestResolutions(text)?.filter(r => CLOSING_STATUSES.includes(r.status))
 

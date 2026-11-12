@@ -1,0 +1,67 @@
+{
+  "plan_id": "1016",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "7c221c98b8db9afa1d2d6493631294c3a12875bb"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_review_merge_adversarial.py::test_merge_findings_traced_maps_each_issue_to_its_findings",
+        "tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_marks_a_fully_refuted_issue",
+        "tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_keeps_an_issue_with_one_upheld_finding",
+        "tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_mixed_group_takes_its_shape_from_upheld_findings",
+        "tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_folds_the_attack_into_the_summary",
+        "tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_counts_a_source_without_refutations_as_upheld",
+        "tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_without_refutations_equals_merge_findings",
+        "tests/lib/test_review_merge_adversarial.py::test_refuted_resolutions_build_one_entry_per_refuted_issue",
+        "tests/lib/test_review_merge_adversarial.py::test_strip_refuted_drops_only_the_key_and_copies",
+        "tests/lib/test_review_merge_adversarial.py::test_merge_ids_keeps_refuted_only_when_every_issue_is",
+        "tests/lib/test_review_merge_adversarial.py::test_review_document_writes_refuted_resolutions_and_strips_the_key",
+        "tests/lib/test_review_merge_adversarial.py::test_review_document_all_refuted_is_held_and_validates",
+        "tests/lib/test_review_merge_adversarial.py::test_issue_info_returns_the_issue_and_refuses_an_unknown_id",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[open]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[after-fix-overrule]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[after-bubble-overrule]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[resolved]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[closed-no-action]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[already-refuted]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[unknown-id]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_bubble_appends_bubbled_and_bubbles_the_id",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_fix_appends_not_resolved_and_reopens_the_id",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[never-refuted]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[already-fix]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[already-bubbled]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[resolved]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[unknown-mode]",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[unknown-id]",
+        "tests/lib/test_review_merge_adversarial.py::test_ready_verdict_counts_refuted_ids_apart",
+        "tests/lib/test_review_merge_adversarial.py::test_merge_ids_mixed_group_takes_its_shape_from_upheld_issues",
+        "tests/lib/test_review_merge_adversarial.py::test_bubble_refute_then_unrefute_fix_leaves_the_id_undispositioned",
+        "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_fix_drops_the_id_from_bubbles_and_keeps_bubble_up"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_review_merge_adversarial.py::test_merge_findings_traced_maps_each_issue_to_its_findings tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_marks_a_fully_refuted_issue tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_keeps_an_issue_with_one_upheld_finding tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_mixed_group_takes_its_shape_from_upheld_findings tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_folds_the_attack_into_the_summary tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_counts_a_source_without_refutations_as_upheld tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_without_refutations_equals_merge_findings tests/lib/test_review_merge_adversarial.py::test_refuted_resolutions_build_one_entry_per_refuted_issue tests/lib/test_review_merge_adversarial.py::test_strip_refuted_drops_only_the_key_and_copies tests/lib/test_review_merge_adversarial.py::test_merge_ids_keeps_refuted_only_when_every_issue_is tests/lib/test_review_merge_adversarial.py::test_review_document_writes_refuted_resolutions_and_strips_the_key tests/lib/test_review_merge_adversarial.py::test_review_document_all_refuted_is_held_and_validates tests/lib/test_review_merge_adversarial.py::test_issue_info_returns_the_issue_and_refuses_an_unknown_id tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[open] tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[after-fix-overrule] tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[after-bubble-overrule] tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[resolved] tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[closed-no-action] tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[already-refuted] tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[unknown-id] tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_bubble_appends_bubbled_and_bubbles_the_id tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_fix_appends_not_resolved_and_reopens_the_id tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[never-refuted] tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[already-fix] tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[already-bubbled] tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[resolved] tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[unknown-mode] tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[unknown-id] tests/lib/test_review_merge_adversarial.py::test_ready_verdict_counts_refuted_ids_apart tests/lib/test_review_merge_adversarial.py::test_merge_ids_mixed_group_takes_its_shape_from_upheld_issues tests/lib/test_review_merge_adversarial.py::test_bubble_refute_then_unrefute_fix_leaves_the_id_undispositioned tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_fix_drops_the_id_from_bubbles_and_keeps_bubble_up"
+    }
+  },
+  "evidence": "staged tree 7c221c9: 32 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/harness/lib/harness_lib/validation/pr_json_validation.py",
+        "change": "EX2"
+      },
+      {
+        "path": "tests/schemas/test_validation_helpers.py",
+        "change": "EX2"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX2": "e49d99380aff8ed9a5fe5203071b9001ffdfcca861547fcc9ae02beb3cc39fbe"
+    }
+  },
+  "date": "2026-11-12",
+  "seal": "fdf8f4cfd7a80d2fdb9b6651d6ec926eb2a17d44041a894789928fe2a5112a47"
+}

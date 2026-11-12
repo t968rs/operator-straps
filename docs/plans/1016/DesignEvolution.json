@@ -1,0 +1,517 @@
+{
+  "plan_id": "1016",
+  "feature": "pr review adversarial",
+  "branch_lineage": "main-->1155-local-review-strapping",
+  "primary_documents": {
+    "plan": "docs/plans/1016_pr_review_adversarial_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-12-pr-review-adversarial-design.md"
+  },
+  "changes": [
+    {
+      "id": "S1",
+      "discovered_by": "spec review (four dimensions, adversarially verified)",
+      "phase": "spec-review",
+      "items": [
+        "SPK-1",
+        "TASK-1",
+        "TASK-2",
+        "TASK-3",
+        "TASK-4",
+        "TASK-5",
+        "TASK-6",
+        "TASK-7",
+        "TASK-8",
+        "TASK-9",
+        "TASK-10"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "whole document, pre-review draft",
+        "indicated": "pr-review --adversarial design before review: amend --unrefute before build, index-keyed refutations, no spike, no plan-path classification table"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "31 findings (S1-S31)",
+        "why_free_form": "The review found 31 gaps: Phase 5 detection after a refuting build (S1), the overrule window (S2), the closed-status consumer trace (S3), the hook's Layer 2 and Layer 3 rules (S4, S13), mixed-group merges (S5, S6), stale refutations (S7), the attack field (S8), discovery and layout (S9), plan-path state (S10), schema versioning (S11, S12), the missing Workflow tool (S14), unverified Workflow API facts (S15), agent-watcher (S16), recovery (S17), guidance (S18), agent count (S19), the strap round (S20), tests (S21) and more (S22-S31)."
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "Every finding accepted with the resolution sheet's fix; the frozen spec's Review resolutions table maps each finding to its section; SPK-1, TASK-9 and TASK-10 join the plan"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "The plan items, values and planned tests follow the resolved spec, not the draft."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "S2",
+      "discovered_by": "developer (answer to D5)",
+      "phase": "spec-review",
+      "items": [
+        "TASK-4",
+        "TASK-5",
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decisions D5; review finding S2",
+        "indicated": "the developer overrules a refutation with amend --unrefute before build, or (the review's fix) a post-build unrefute --reason appending one UNREFUTED entry"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "overrule window too narrow",
+        "why_free_form": "Phase 3 runs merge, amend and build in one turn with no developer-facing text before build, so a pre-build overrule never happens; a post-build-only unrefute cannot add a refutation the developer wants on a review built without -a."
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "D5 anytime: a driver pipeline, refute --pr <key> <ID> --evidence (adds REFUTED) and unrefute --pr <key> <ID> (--bubble --classification C --reason R | --fix [--reason R]), both reading the built review object, any phase after build, with or without -a; amend --unrefute dropped"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "Developer answer; Phase 3 stays atomic and the overrule works in either direction."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "S3",
+      "discovered_by": "spec review (S3), following the developer's D5",
+      "phase": "spec-review",
+      "items": [
+        "TASK-10"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decisions D11; REFUTED as a closed status (TS mirrors row)",
+        "indicated": "the TS closed-status mirrors stay RESOLVED / CLOSED_NO_ACTION: a refuted id is settled before waves and never bubbled"
+      },
+      "issue": {
+        "category": "dyad-drift",
+        "why_categorical": "mirror misses a closing status",
+        "why_free_form": "Under D5 the developer can refute a bubbled id after build, so its latest status can be REFUTED; agent-watcher bubbles.ts:59, bubble-stamp review.ts:40 and memo.ts:38 would keep showing a decided bubble as open."
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "D11 add-refuted: the three mirrors gain REFUTED; agent-watcher and bubble-stamp versions bump; their TS tests and release rows move (TASK-10)"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "The mirrors must agree with review_merge.CLOSED_STATUSES once REFUTED can follow a bubble."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "S4",
+      "discovered_by": "developer (answer to D12)",
+      "phase": "spec-review",
+      "items": [
+        "TASK-1",
+        "TASK-4",
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decisions D12; review findings S2, S3, S11",
+        "indicated": "an unrefute appends one non-closing UNREFUTED status"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "one status, two routes",
+        "why_free_form": "An overruled refutation goes either to the bubble workflow or to a Phase 5 fixer; one UNREFUTED status cannot say which, so waves and the bubble path could not route the id."
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "Two non-closing statuses appended: BUBBLED (then the existing bubble path) and NOT_RESOLVED (open; the next waves plans a fixer). No UNREFUTED status."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "Developer answer; append-only, the latest-status rule reopens the id."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "S5",
+      "discovered_by": "plan writer (planned hook tests, after the spec froze)",
+      "phase": "spec-review",
+      "items": [
+        "TASK-1"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Phase 5 and the hook; Sequencing (TASK-1 scope)",
+        "indicated": "TASK-1 changes _named_ids, _pending_problems, the hook's _incoherent and _closeout_reason; id_handling is not named"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "second copy of the disposition rule",
+        "why_free_form": "The hook's _closeout_reason gates on validation.id_handling.all_issues_dispositioned, which counts any resolution as a disposition. Without the NOT_RESOLVED rule there, an id refuted and then overruled with unrefute --fix counts as dispositioned and the Phase 5 sentinel clears before its fix lands."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-1 files include plugins/harness/lib/harness_lib/validation/id_handling.py: all_issues_dispositioned treats an id whose latest status is NOT_RESOLVED as open, the _named_ids rule; disposition_ids (the orphan check's input) stays as is"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "test_refutation_overruled_to_a_fix_keeps_the_sentinel_until_the_fix cannot pass without it; the spec is frozen, so the plan carries the change."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "P1",
+      "discovered_by": "plan review (plan vs code, and planned tests)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-1",
+        "TASK-4",
+        "TASK-5",
+        "TASK-10"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1, TASK-4, TASK-10 actions (round 2)",
+        "indicated": "_named_ids reads the latest status everywhere; a bubble entry settles an id whatever its latest status; merge_ids keeps _combine's first-record shape; the TS mirrors only gain REFUTED; bubble-stamp stamping unqualified; KNOWN_VERSIONS left implicit"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "latest-status rule leaked or missed",
+        "why_free_form": "A2: bubble -> refute -> unrefute --fix left the id in bubble_up (and bubbles), so _settled_ids, wave_inputs and disposition_ids called it settled and no fixer was planned. A4: a latest-status _named_ids would drop REFUTED -> NOT_RESOLVED ids from the orphan guard and review_edit._disposed_ids. A5: amend --merge took name and summary from the kept (possibly refuted) issue, against S5. A3: agent-watcher bubbles.ts ports all_issues_dispositioned, so it needed the NOT_RESOLVED rule too. A11: memo.ts never unstamps a Decided row. A1: KNOWN_VERSIONS is single-version and tests/lib/test_review_edit.py pins 2.2.0 twice."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "A latest NOT_RESOLVED is open regardless of bubble entries (_settled_ids, all_issues_dispositioned, bubbles.ts dispositionedOf); apply_refute drops the id from bubbles through _without_closed_bubbles and apply_unrefute --fix removes it from bubbles, bubble_up kept as history; a raw _entry_ids backs the orphan guard and _disposed_ids; merge_ids takes name, summary and fix_kind from upheld issues; the memo stamp limit is stated and its unstamp deferred; KNOWN_VERSIONS stays single-version with the test_review_edit literals moved to rmg.SCHEMA_VERSION"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "Each cite was checked against the code; the plan's rules now agree with the D5 pipeline in every disposition reader, Python and TypeScript, and the planned tests pin each case."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "P2",
+      "discovered_by": "developer answer on D6",
+      "phase": "plan-review",
+      "items": [
+        "SPK-1",
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "D6; TASK-9 action; deferred topic 'D6 follow-through beyond TASK-9'",
+        "indicated": "D6 open among watcher, shape, exempt and result; TASK-9 carried a matrix rule per option; result would have had the session pass the Workflow output file to a driver command"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "open decision blocked freeze",
+        "why_free_form": "result and shape need an in-session step after the Workflow completes (the Workflow call returns at launch, so no hook sees its end) and a read of a session temp file. agent-watcher already tallies usage per agentId from turn.step, turn.complete and tool.call, independent of the Agent tool."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "D6 = watcher: the pr-review layer binds a Workflow agent's agentId to its slot at its first pr_review.py Bash call naming the slot and run, rows come from tracker.ts per-agentId tallies with dispatch_shape 'workflow'; an unobserved count is 0 and named in notes; with no agentId events at all, one row per planned slot from the Workflow tool.call args. SPK-1 assumption 7 now probes those hooks; the D6 deferred topic is dropped."
+      },
+      "why_new_outcome": {
+        "category": "yagni",
+        "free_form": "Developer: a row the watcher can record beats more precision by another route; no session step, no output-file read, no driver command."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX1",
+      "discovered_by": "TASK-1 lane quality review (Q1)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-4",
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1 action (latest NOT_RESOLVED is open regardless of bubble entries)",
+        "indicated": "_settled_ids drops every reopened id whatever bubbles say; the bubble writers (_apply_bubbles, review_edit.add_bubble, pr_review bubble) only add the id to bubbles"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "a reopened id can never settle again",
+        "why_free_form": "REFUTED -> NOT_RESOLVED (unrefute --fix) -> a Phase 5 fixer or the developer bubbles the id: the latest status stays NOT_RESOLVED, so the verdict stays NOT READY, waves skip the id as bubbled and the Layer 3 sentinel never clears."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "_apply_bubbles and review_edit.add_bubble (TASK-4) and pr_review's bubble command (TASK-5) also append a BUBBLED resolution entry when the id's latest status is NOT_RESOLVED, so the latest status becomes BUBBLED and settles through the bubble entry"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "Developer chose append-BUBBLED over refusing the bubble or leaving the id stuck."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "TASK-1 lane reviews (Q3 / I1)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-4"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1 action (disposition_ids stays raw for the orphan check)",
+        "indicated": "pr_json_validation.validate_issue_counts reads the raw disposition_ids for both the orphan check and the READY unaccounted check"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "READY passes with a reopened id",
+        "why_free_form": "A hand-written READY verdict whose issue has latest status NOT_RESOLVED passes tabulation, since the unaccounted check counts any resolution entry."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-4 also changes plugins/harness/lib/harness_lib/validation/pr_json_validation.py: the READY unaccounted check subtracts reopened_ids; the orphan check stays raw; a test covers it"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "Developer chose to fix it in TASK-4 as a recorded deviation, cited with --also."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "TASK-10 lane reviews (S2 / Q7)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-10"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-10 files",
+        "indicated": "bubble-stamp plugin.json changes for the version bump only; marketplace.json is in no item"
+      },
+      "issue": {
+        "category": "dyad-drift",
+        "why_categorical": "stale description in two copies",
+        "why_free_form": "plugins/bubble-stamp/.claude-plugin/plugin.json and .claude-plugin/marketplace.json both describe the stamping statuses as (RESOLVED, CLOSED_NO_ACTION); REFUTED now stamps too, and changing one copy alone leaves them drifted."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-10 changes both descriptions to (RESOLVED, CLOSED_NO_ACTION, REFUTED) together; .claude-plugin/marketplace.json is recorded with --also"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "The descriptions must name the statuses the mod now stamps."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX4",
+      "discovered_by": "SPK-1 spike (docs/RESEARCH/pr-review/1016_workflow_spike.md)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-9 action (D6 watcher)",
+        "indicated": "the pr-review layer binds a Workflow agent's agentId to its slot at its first pr_review.py Bash call and writes its matrix row from tracker.ts per-agentId tallies; the planned-slot rows are a fallback used only when SPK-1 shows no agentId events"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "SPK-1 assumption 7 refuted",
+        "why_free_form": "Two workflow agents (harness:spike-probe, one Bash and one Write each) left zero rows in docs/_harness/agent_usage.jsonl, checked right after completion and again later: agent-watcher's turn.complete, turn.step and tool.call hooks never record Workflow agents, so the slot binding and per-agentId tallies have nothing to read."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-9 implements only the fallback: one matrix row per planned slot from the main session's Workflow tool.call args, dispatch_shape 'workflow', counts 0, notes 'unobserved: workflow agent'. No agentId binding in layer.ts and no tracker.ts change; the refuter role in identify.ts and the release line stay"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "Developer chose fallback only: keep one row per slot with zero counts and an unobserved note."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX5",
+      "discovered_by": "TASK-5 lane quality review (Q1)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 record calls; TASK-5 refuter briefs",
+        "indicated": "refutation evidence and attack text are stored as the agent writes them; the brief has the agent open files under the absolute repo path"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "absolute paths reach tracked data",
+        "why_free_form": "A refuter citing the absolute path:line it opened puts a local path into draft.json, the REFUTED evidence of the tracked review JSON and the build output."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-5 also changes plugins/harness/lib/harness_lib/review_models.py: record_refutations and record_attacks strip the repo root prefix from evidence and attack text, the way Finding.file is normalized; the refuter briefs ask for a repo-relative path:line"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "Tracked logs and rows never carry local or absolute paths."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX6",
+      "discovered_by": "TASK-5 lane and its spec review (S5)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-5 dependencies",
+        "indicated": "TASK-5 depends on TASK-3, TASK-4 and SPK-1"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "planned nodes need another item's file",
+        "why_free_form": "35 of TASK-5's 43 planned nodes run capture -a, which refuses when plugins/harness/workflows/adversarial-review.js (TASK-6) is missing."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-5 is staged and recorded together with TASK-6, on an index holding both"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "The nodes pass only with the Workflow script present."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX7",
+      "discovered_by": "TASK-5 lane and its spec review (S6)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5",
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Refute and unrefute",
+        "indicated": "refute / unrefute run any time after build (consolidate, fix-plan, fix, done)"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "an overrule would strand a failed Phase 4 run",
+        "why_free_form": "After a failed Phase 4 the phase is still consolidate; a developer REFUTED entry or a cleared draft mark makes phase5_state refuse build --replace, the one recovery."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "refute and unrefute require Phase 4 to have passed (require_phase4), as bubble and waves do; TASK-7's skill prose states it"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "Keeps build --replace available after a Phase 4 stop."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX8",
+      "discovered_by": "developer request during execution",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-7 files",
+        "indicated": "TASK-7 edits review-local/SKILL.md only; the skill has no user-facing README"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "no developer-facing doc for review-local",
+        "why_free_form": "review-local's only doc is SKILL.md, the agent's procedure. A developer choosing between review-local and pr-review, or reading what --adversarial adds, has no page written for them."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-7 also adds plugins/harness/skills/review-local/README.md, a user-facing page in the shape of skills/parallel2/README.md: what a local review does, when to use it over pr-review, its arguments (--roast, -a, -- guidance), what it writes and where, and the phases as a developer sees them"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "Developer asked for a user-facing README for review-local alongside the TASK-7 skill docs."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX9",
+      "discovered_by": "TASK-7 lane (open item 1)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-9 files; pr-review SKILL.md Phase 3 Step 4 and done criterion (h)",
+        "indicated": "TASK-9 changes agent-watcher only; the pr-review skill describes matrix rows through the agent-watcher note or a manual append"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "skill prose misses the workflow rows",
+        "why_free_form": "Under -a the manual append needs token and duration counts that Workflow agents never expose, and the prose does not say the watcher writes the fallback rows (EX4)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-9 also edits plugins/harness/skills/pr-review/SKILL.md: under -a the watcher writes one row per workflow slot (dispatch_shape workflow, counts 0, notes unobserved: workflow agent) and the session appends no row for those slots"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "Developer chose to land the prose line with the TASK-9 code it describes."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX10",
+      "discovered_by": "TASK-9 lane (tests/mods/test_agent_watcher_matrix_contract.py)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-9 files",
+        "indicated": "matrixRow.ts DISPATCH_SHAPES gains 'workflow'; the harness matrix schema and its README are not in TASK-9's files"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "a mirrored enum outside the item's files",
+        "why_free_form": "test_agent_watcher_matrix_contract::test_dispatch_shapes_match pins the TS DISPATCH_SHAPES to dispatch_shape.enum in pr_review_invocation_test_matrix.schema.json, so adding 'workflow' on the TS side alone fails it, and the mod's rows would fail schema validation."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-9 also changes plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json (enum and description gain workflow), plugins/harness/schemas/README.md (dispatch_shape values) and tests/schemas/test_pr_review_invocation_test_matrix_schema.py (a workflow row validates)"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "The planned contract test passes only with the schema enum mirrored."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX11",
+      "discovered_by": "TASK-9 lane spec and quality reviews",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-9 files",
+        "indicated": "identify.ts claims the refuter roles and matrixRow.ts reads the Workflow args keys; no test pins either to the Python producer, and the agent-watcher role lists stay as they were"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "unpinned mirrors and stale role lists",
+        "why_free_form": "A rename of review_briefs CODE_REFUTER_ROLE / REFUTER_ROLE or of the keys review_adversarial.workflow_args emits would silently stop refuter claims and workflow rows while every TS test passes. agent-watcher types/index.d.ts AgentRec.role and schemas/agent_usage.schema.json role still list only reviewer, fixer, orchestrator, planner and closer for pr-review runs."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-9 also adds tests/mods/test_agent_watcher_adversarial_mirror.py (REFUTER_ROLES and WORKFLOW_GROUPS pinned to the Python producer) and adds refuter / code_refuter to plugins/agent-watcher/types/index.d.ts and plugins/harness/schemas/agent_usage.schema.json"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "Mirrored contracts get a pin test; documented role lists match the roles the mod records."
+      },
+      "date": "2026-11-12"
+    }
+  ]
+}

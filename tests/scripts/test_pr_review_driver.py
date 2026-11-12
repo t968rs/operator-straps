@@ -912,6 +912,22 @@ class TestBubble:
                     "--reason", "stale") == 1
         assert "M1: already closed" in capsys.readouterr().err and path.read_bytes() == before
 
+    def test_bubble_of_a_reopened_id_appends_bubbled(self, script: ModuleType,
+                                                     monkeypatch: pytest.MonkeyPatch,
+                                                     pr_repo: Tuple[Path, str]) -> None:
+        """EX1: bubbling an id whose latest resolution is NOT_RESOLVED appends a BUBBLED entry."""
+        clone, head = pr_repo
+        path = _built(script, monkeypatch, clone, head)
+        assert _run(script, clone, "refute", "--pr", str(_PR), "M1", "--evidence", "src/pkg/a.py:1 ok") == 0
+        assert _run(script, clone, "unrefute", "--pr", str(_PR), "M1", "--fix") == 0
+        assert _run(script, clone, "bubble", "--pr", str(_PR), "M1", "--classification", "out_of_scope",
+                    "--reason", "belongs to another PR") == 0
+        doc = json.loads(path.read_text(encoding="utf-8"))
+        statuses = [(r["status"], r["evidence"]) for r in doc["post_review_resolutions"]]
+        assert statuses[1:] == [("NOT_RESOLVED", "refutation overruled"),
+                                ("BUBBLED", "belongs to another PR")]
+        assert doc["bubbles"] == ["M1"] and rmg.undispositioned_ids(doc) == []
+
     def test_phase4_failure_blocks_bubble(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
                                           pr_repo: Tuple[Path, str], capsys: pytest.CaptureFixture) -> None:
         clone, head = pr_repo
@@ -927,6 +943,31 @@ class TestBubble:
                     "--reason", "r") == 1
         assert "problem:" in capsys.readouterr().err
         assert path.read_bytes() == before and _plan(clone)["phase"] == phase
+
+
+class TestRefuterEvidence:
+    def test_record_strips_the_repo_root_from_evidence_and_attack(self, script: ModuleType,
+                                                                   monkeypatch: pytest.MonkeyPatch,
+                                                                   pr_repo: Tuple[Path, str]) -> None:
+        """EX5: refuter ``evidence`` and code-refuter ``attack`` text lose the repo root prefix, forward or
+        backslash form (any case on Windows), before the report is written."""
+        clone, head = pr_repo
+        assert _capture(script, monkeypatch, clone, head) == 0
+        posix = clone.resolve().as_posix()
+        back = posix.replace("/", "\\")
+        upper = posix.upper() if os.name == "nt" else posix
+        rm.record(_PR, "runtime", [_finding("src/pkg/a.py")], repo=clone)
+        run = rm.run_dir(_PR, clone)
+        key = rm.finding_key(rm.load_report(run / "findings" / "runtime.json").findings[0])
+        evidence = f"{posix}/src/pkg/a.py:1 shows f0 and {back}\\src\\pkg\\b.py:2 and {upper}/docs/a.md:1"
+        rm.record_refutations(_PR, "adv_refute_runtime", "runtime",
+                              [{"key": key, "verdict": "refuted", "evidence": evidence}], repo=clone)
+        rm.record_attacks(_PR, "adv_code", [_finding("src/pkg/a.py", attack=f"call {posix}/src/pkg/a.py:1")],
+                          repo=clone)
+        stored = rm.load_refutations(run / "refutations" / "runtime.json").refutations[0].evidence
+        assert stored == "src/pkg/a.py:1 shows f0 and src\\pkg\\b.py:2 and docs/a.md:1"
+        attack = rm.load_report(run / "findings" / "adv_code.json").findings[0]
+        assert attack.attack == "call src/pkg/a.py:1"  # type: ignore[attr-defined]
 
 
 class TestWavesAndCloseout:

@@ -105,6 +105,13 @@ or more fix options, a repo-relative `file` (optionally `lines` and `also`), and
   free text under `<login>_review_body`; reusing `<login>_review` would replace the inline-comment fold before
   `build` and is refused after it.
 - **Mixed input is several folds**, one per kind: notes plus a pasted traceback fold as `developer` and `tests`.
+- **In an `-a` run, folded findings are not refuted.** They count as upheld (at merge before `build`; a
+  post-build fold is appended unrefuted), and the skill's own verification is their only check; the developer
+  can `refute` a folded issue after `build`.
+- **A claim that matches a refuted issue is not a plain duplicate.** After `build`, a verified claim whose
+  matching issue's latest status is `REFUTED` is reported as `matches refuted <id>` with the refuter's
+  evidence, and the skill offers `unrefute <id> --fix` (or `--bubble`); the refuted issue gets no fixer until
+  it is overruled.
 
 ## When the driver refuses
 

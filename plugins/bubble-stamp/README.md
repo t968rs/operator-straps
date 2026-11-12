@@ -47,7 +47,8 @@ one string test; an idle turn costs one `stat` per active memo. There is no poll
 
 ## Stamp rule
 
-For each id whose latest `post_review_resolutions[]` entry is `RESOLVED` or `CLOSED_NO_ACTION` and whose index
+For each id whose latest `post_review_resolutions[]` entry is `RESOLVED`, `CLOSED_NO_ACTION` or `REFUTED` (the
+harness `review_merge.CLOSED_STATUSES` set, pinned by `tests/mods/test_closed_status_mirror.py`) and whose index
 row is `Open`:
 
 - index Status becomes `Decided`;
@@ -57,12 +58,13 @@ row is `Open`:
 - the entry's `- **Decision:** open` line becomes `- **Decision:** <STATUS>, <date>. <evidence>`.
 
 Nothing else in the file changes, and a second run changes nothing. A later entry of any other status reopens an
-id, so `DOWNGRADED_TO_*` never stamps. The memo is re-read immediately before the write and stamped afresh when
-it moved; it is written only when its text changed. A memo that exists but cannot be read is never overwritten;
-a refused read or write is retried at the next trigger. A memo deleted while active (its read fails and a `stat`
-fails too) leaves the active set. A refused folder listing keeps the active set as it was. A memo already
-active whose read the host refuses at a listing stays active; a new memo whose read is refused is picked up at a
-later listing. A memo that parsed and has no `Open` row, or lacks the anchors, is dropped. One toast per check names the ids stamped.
+id, so `DOWNGRADED_TO_*`, `BUBBLED` and `NOT_RESOLVED` never stamp. The memo is re-read immediately before the
+write and stamped afresh when it moved; it is written only when its text changed. A memo that exists but cannot
+be read is never overwritten; a refused read or write is retried at the next trigger. A memo deleted while
+active (its read fails and a `stat` fails too) leaves the active set. A refused folder listing keeps the active
+set as it was. A memo already active whose read the host refuses at a listing stays active; a new memo whose
+read is refused is picked up at a later listing. A memo that parsed and has no `Open` row, or lacks the
+anchors, is dropped. One toast per check names the ids stamped.
 
 `tests/mods/test_bubble_stamp_anchors_contract.py` pins the anchors the mod matches (table header, status words,
 Decision line prefix, entry heading pattern) to `harness_lib/bubble_memo.py`.
@@ -80,6 +82,9 @@ Decision line prefix, entry heading pattern) to `harness_lib/bubble_memo.py`.
 - A stale `Open` row (an id renamed in the review JSON) keeps its memo active, at the cost of one `stat` per
   turn. The developer settles it by hand.
 - Only the newest review JSON of a PR is watched; resolutions kept in an older one stay unstamped.
+- Stamping is one-way. A row stamped `Decided` by a `REFUTED` entry stays `Decided` after `pr_review.py
+  unrefute`, in either mode (`--bubble` appends `BUBBLED`, `--fix` appends `NOT_RESOLVED`), reopens the id;
+  the unstamp is deferred. The developer resets the row to `Open` by hand.
 - A subagent's turn end is not a trigger; its shell and file tool calls are.
 - Triggers are not coalesced: each matching shell call lists the folder and checks the memos, even when
   several arrive together (they run one after another).

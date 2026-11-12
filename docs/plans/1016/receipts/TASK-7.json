@@ -1,0 +1,48 @@
+{
+  "plan_id": "1016",
+  "item": "TASK-7",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "3f5f4f929036f75645e4c85961d56287f480c4c2"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_argument_hint_names_the_flag",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_capture_row_names_the_flag",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_dispatches_a_workflow_with_a_script_path",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_names_the_guidance_exception",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_lists_refute_and_unrefute_subcommands_not_an_amend_flag",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_model_floor_covers_the_refuter",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_states_the_worst_case_agent_count",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_operating_rules_define_the_three_new_statuses",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_operating_rules_name_the_overrule_commands",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_review_local_argument_hint_names_the_flag",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_review_local_capture_line_carries_the_flag",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_review_local_has_an_under_a_paragraph",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_fold_in_review_says_folded_findings_are_not_refuted",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_the_flag_is_pr_reviews_not_pr_teams",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_schemas_readme_names_the_new_version",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_harness_plugin_version_is_bumped",
+        "tests/skills/test_pr_review_adversarial_docs.py::test_a_release_note_names_the_flag"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_argument_hint_names_the_flag tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_capture_row_names_the_flag tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_dispatches_a_workflow_with_a_script_path tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_names_the_guidance_exception tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_lists_refute_and_unrefute_subcommands_not_an_amend_flag tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_model_floor_covers_the_refuter tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_states_the_worst_case_agent_count tests/skills/test_pr_review_adversarial_docs.py::test_operating_rules_define_the_three_new_statuses tests/skills/test_pr_review_adversarial_docs.py::test_operating_rules_name_the_overrule_commands tests/skills/test_pr_review_adversarial_docs.py::test_review_local_argument_hint_names_the_flag tests/skills/test_pr_review_adversarial_docs.py::test_review_local_capture_line_carries_the_flag tests/skills/test_pr_review_adversarial_docs.py::test_review_local_has_an_under_a_paragraph tests/skills/test_pr_review_adversarial_docs.py::test_fold_in_review_says_folded_findings_are_not_refuted tests/skills/test_pr_review_adversarial_docs.py::test_the_flag_is_pr_reviews_not_pr_teams tests/skills/test_pr_review_adversarial_docs.py::test_schemas_readme_names_the_new_version tests/skills/test_pr_review_adversarial_docs.py::test_harness_plugin_version_is_bumped tests/skills/test_pr_review_adversarial_docs.py::test_a_release_note_names_the_flag"
+    }
+  },
+  "evidence": "staged tree 3f5f4f9: 17 test node(s) passed",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/harness/skills/review-local/README.md",
+        "change": "EX8"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX8": "6fe0628cf7f447a39178e61d8a07395adc3fece76a87f91e925f3ef3bf4e3d9a"
+    }
+  },
+  "date": "2026-11-12",
+  "seal": "6523e79a5727e442187da5709116d15a2504797a6d4ca0777573625ff839b00e"
+}

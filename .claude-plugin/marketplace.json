@@ -53,7 +53,7 @@
     {
       "name": "bubble-stamp",
       "source": "./plugins/bubble-stamp",
-      "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION) into the bubble memo, PR_<N>_Bubbles.md"
+      "description": "Stamps recorded pr-review decisions (RESOLVED, CLOSED_NO_ACTION, REFUTED) into the bubble memo, PR_<N>_Bubbles.md"
     },
     {
       "name": "parallel2-lanes",

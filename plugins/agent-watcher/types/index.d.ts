@@ -21,7 +21,8 @@ export type AgentRec = {
    */
   id: string
   /**
-   * `reviewer`, `fixer`, `orchestrator`, `planner` or `closer` in a layer's run; an unclaimed dispatch's header
+   * `reviewer`, `fixer`, `orchestrator`, `planner` or `closer` in a layer's run, or for pr-review `-a` a
+   * `refuter` or `code_refuter` re-dispatched as an `Agent` call; an unclaimed dispatch's header
    * `AGENT_ROLE:`, else `other`.
    */
   role: string
@@ -81,7 +82,7 @@ export type Run = {
   bubbled: string[]
   /**
    * `review_json` (pr-review): the review's `bubbles[]` plus ids bubbled in the run's `fixes/*.json`
-   * that no RESOLVED / CLOSED_NO_ACTION resolution closes.
+   * that no RESOLVED / CLOSED_NO_ACTION / REFUTED resolution closes.
    */
   bubbledFrom: 'closer' | 'bubble_ups' | 'review_json' | 'none'
   verdict: string | null

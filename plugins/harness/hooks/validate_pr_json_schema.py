@@ -11,7 +11,7 @@ resolve through ``schema_path`` (a project-pinned copy first, else the plugin co
 Review targets get three further layers after the schema check:
 
 - Layer 2 (incoherence): a ``pending`` ``pre_fix_time`` alongside a READY TO MERGE verdict or any
-  ``post_review_resolutions`` blocks.
+  ``post_review_resolutions`` entry other than ``REFUTED`` / ``BUBBLED`` / ``NOT_RESOLVED`` blocks.
 - Layer 3 (sentinel cleanup): a Phase 5 closeout deletes ``<state_dir>/pr-review/.phase5_pending_<PR>``.
   Never blocks.
 - Issue-count tabulation (``validate_issue_counts``) blocks on unaccounted or orphan issue ids.
@@ -211,29 +211,35 @@ def _schema_check(file_path: str, schema_file: Path, cfg: HarnessConfig,
 
 
 def _incoherent(file_path: str, data: Dict[str, Any], schema: Dict[str, Any]) -> bool:
-    """Layer 2: a still-pending pre_fix_time cannot coexist with a READY verdict or resolutions."""
+    """Layer 2: a still-pending pre_fix_time cannot coexist with a READY verdict or resolutions; REFUTED,
+    BUBBLED and NOT_RESOLVED entries are exempt (build writes REFUTED entries before Phase 4)."""
+    from harness_lib.validation.id_handling import counted_resolutions
+
     verification_log = data.get("verification_log") or {}
     if verification_log.get("pre_fix_time") != _pending_literal(schema):
         return False
     verdict = data.get("verdict") or ""
-    if not (verdict.startswith("READY TO MERGE") or data.get("post_review_resolutions")):
+    resolutions = counted_resolutions(data.get("post_review_resolutions") or [])
+    if not (verdict.startswith("READY TO MERGE") or resolutions):
         return False
     pr_value = data.get("pr", "<PR>")
     sys.stderr.write(f"PR_REVIEW INCOHERENCE in {file_path}\n")
     sys.stderr.write("  pre_fix_time is still the \"pending\" string but the JSON has progressed "
                      "past Phase 4\n")
-    sys.stderr.write("  (verdict starts with \"READY TO MERGE\" and/or post_review_resolutions is "
-                     "populated).\n")
+    sys.stderr.write("  (verdict starts with \"READY TO MERGE\" and/or post_review_resolutions holds "
+                     "an entry other than REFUTED / BUBBLED / NOT_RESOLVED).\n")
     sys.stderr.write(f"  Run: {_PHASE4_COMMAND} {pr_value}\n")
     sys.stderr.write("  and Edit pre_fix_time with the script's stdout before completing the review.\n")
     return True
 
 
 def _closeout_reason(data: Dict[str, Any]) -> Optional[str]:
-    """Why the review counts as a Phase 5 closeout, or None when it does not."""
-    from harness_lib.validation.id_handling import all_issues_dispositioned
+    """Why the review counts as a Phase 5 closeout, or None when it does not. A REFUTED entry dispositions
+    its id through ``all_issues_dispositioned``, a latest BUBBLED counts only through bubbles / bubble_up,
+    a latest NOT_RESOLVED never counts; none of the three counts as a resolution or as SHA evidence."""
+    from harness_lib.validation.id_handling import all_issues_dispositioned, counted_resolutions
 
-    resolutions = data.get("post_review_resolutions") or []
+    resolutions = counted_resolutions(data.get("post_review_resolutions") or [])
     verdict = data.get("verdict") or ""
     has_sha_evidence = any(
         isinstance(r, dict)

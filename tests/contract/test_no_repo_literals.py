@@ -15,7 +15,8 @@ from conftest import REPO_ROOT
 
 WALK_ROOTS = ("plugins/",)
 PLUGINS = REPO_ROOT / "plugins"
-TEXT_SUFFIXES = {".py", ".md", ".json", ".jsonl", ".ts", ".tsx", ".sh", ".txt", ".yaml", ".yml", ".tmpl"}
+TEXT_SUFFIXES = {".py", ".md", ".json", ".jsonl", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".sh", ".txt",
+                 ".yaml", ".yml", ".tmpl"}
 SKIP_DIRS = {"node_modules", "__pycache__", ".claude-plugin-cache"}
 
 BANNED: Tuple[Tuple[str, re.Pattern], ...] = (
@@ -37,8 +38,9 @@ ALLOWED_UNDER: Dict[str, Tuple[str, ...]] = {"project domain library": ("plugins
 
 # Agents ship namespaced; a dispatch naming the bare id resolves to nothing once installed.
 BARE_AGENT = re.compile(
-    r"subagent_type[\"'`]?\s*[:=]\s*[\"'`]?(?!harness:)(pr-reviewer|pr-fixer|pr-team-orchestrator|pr-team-fixer"
-    r"|messenger|roast-my-code|strap-scenario-runner|strap-judge)\b")
+    r"(?:subagent_type|agentType)[\"'`]?\s*[:=]\s*[\"'`]?(?!harness:)"
+    r"(pr-reviewer|pr-fixer|pr-team-orchestrator|pr-team-fixer|messenger|roast-my-code|strap-scenario-runner"
+    r"|strap-judge|adversarial-reviewer)\b")
 
 
 def _plugin_files() -> Iterator[Path]:

@@ -113,8 +113,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+      # Pinned: 2.1.323 tightened the engine types, and the mod test files fail validate --strict under it.
+      # Raise the pin together with the test-file type fixes.
       - if: ${{ steps.select.outputs.plugins == 'true' }}
-        run: npm install -g @anthropic-ai/claude-code
+        run: npm install -g @anthropic-ai/claude-code@2.1.322
       - name: validate (strict)
         if: ${{ steps.select.outputs.plugins == 'true' }}
         run: |

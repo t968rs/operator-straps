@@ -1,0 +1,762 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": 281,
+  "pr_title": "local review strapping",
+  "branch": "1155-local-review-strapping",
+  "base_branch": "main",
+  "base_sha": "c4cda8a6e33f2f6f4e3e0dd00449f2e40b277464",
+  "head_sha": "524369bf76c9061fd17fd250a3cd1b3731c7ecd3",
+  "review_date": "2026-11-12",
+  "verdict": "READY TO MERGE - 29 of 29 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 10746,
+    "deletions": 372,
+    "files_changed": 79,
+    "source": {
+      "additions": 10706,
+      "deletions": 372,
+      "files_changed": 78
+    }
+  },
+  "reviewers": [
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0281/pr281_20261112T214506Z/findings/config.json",
+    "docs/_scratch/pr_review/0281/pr281_20261112T214506Z/findings/tests.json",
+    "docs/_scratch/pr_review/0281/pr281_20261112T214506Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0281/pr281_20261112T214506Z/findings/docs.json",
+    "docs/_scratch/pr_review/0281/pr281_20261112T214506Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0281/pr281_20261112T214506Z/findings/overall.json",
+    "docs/_scratch/pr_review/0281/pr281_20261112T214506Z/findings/system_shape.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "adversarial_check is optional and the three statuses only widen an enum, so the 2.2.0 -> 2.3.0 minor bump with no sweep matches the README's version-bump protocol, and the README records the bump.",
+    "review_adversarial.schema_problem pins the three adversarial statuses against the shipped schema enum, so an -a run refuses to start against a schema that lacks them.",
+    "Workflow matrix rows stay distinguishable from measured ones by dispatch_shape, verdict_prefix 'N/A (unobserved)' and notes, and matrixRow.ts mirrors the new enum value in DISPATCH_SHAPES.",
+    "The post_review_resolution status description spells out closing vs non-closing semantics and the latest-entry-wins rule, which refuted_now and with_overrule implement.",
+    "test_pr_review_adversarial.py drives capture -a, merge, build, refute/unrefute, waves and closeout against a real git repo built by make_project. It stubs only the Phase 4 subprocess, the run-id clock and the script locator, so it is fully behavioral.",
+    "test_schema_hook_refuted.py runs the real validate_pr_json_schema.py hook as a child process. It pins the Layer 2 exemption and both sides of Layer 3, including that a REFUTED entry's SHA-shaped evidence never clears a READY review.",
+    "Content-keyed refutations are tested where they matter: stale-report refusal in merge, the missing/extra/duplicate key-set refusals, and report_digest that ignores strengths.",
+    "test_closed_status_mirror.py and test_agent_watcher_adversarial_mirror.py pin the TS copies of CLOSED_STATUSES, the refuter roles and the Workflow arg keys to the Python constants, so mod drift fails in CI.",
+    "tracker.test.ts covers the Workflow-row edge cases: refused, isError and syntax-error results, resume calls, duplicate calls with the same run id, local keys, subagent calls and a slot with no model.",
+    "bubbles.ts dispositionedOf/closedOf mirror id_handling.all_issues_dispositioned and review_merge.CLOSED_STATUSES exactly, including the latest-BUBBLED-only-through-channels and NOT_RESOLVED-never-counts rules.",
+    "Refutations are pinned to the target report by report_digest, and merge and build both refuse a stale or missing refutation, so a re-recorded reviewer report cannot be silently judged by old verdicts.",
+    "capture -a refuses before the run pointer moves when the Workflow script is missing or the governing (possibly pinned) schema lacks an adversarial status.",
+    "phase5_state ignores only build-written REFUTED entries that the draft still marks, so build --replace stays idempotent while a developer refute/unrefute correctly counts as Phase 5 begun.",
+    "merge_adversarial lets the upheld findings shape a mixed group and keeps the refuted findings' evidence as notes, and it returns exactly merge_findings when nothing is refuted.",
+    "pr-review SKILL.md's subcommand table, the pr_review.py module docstring and the code agree on the refute/unrefute contract: preconditions (require_phase4, latest REFUTED), default evidence 'refutation overruled', phase moves (done to fix, fix-plan for --bubble) and the printed overrule line.",
+    "The verdict and sentinel rules for REFUTED / BUBBLED / NOT_RESOLVED are stated once and mirrored consistently across operating_rules.md, the schemas README, the agent-watcher R1/R6 rows and the bubble-stamp stamp rule, each naming the pinning test.",
+    "agent-watcher README documents the Workflow matrix rows exactly as layer.ts and matrixRow.ts implement them (launch filter, resumeFromRunId skip, .workflow_rows marker, notes and verdict_prefix literals), including the honest caveat that a recovered reviewer's cell appears twice.",
+    "The new review-local README gives the developer-side view with concrete values that match the code (SMALL_PR_FILES 20, frozen/locked/armed ledger states, adv_code_<runtime|tests|plans>, the 2(R + C) agent count).",
+    "RELEASES v1.0.0 version table matches the plugin.json bumps at base and head (agent-watcher 0.8.1 to 0.9.0, bubble-stamp 0.2.0 to 0.3.0, harness to 0.71.0), and the Unchanged list was updated to match.",
+    "The -a claims in the three skills match the driver: the capture WORKFLOW_STEP text, the `adversarial:` status segment, the `phase5_line` refuted count, `init`'s `no findings: done`, the stale-refutation problem and SMALL_PR_FILES=20 for the pooled adv_code slot all agree with pr_review.py and review_adversarial.py.",
+    "review-local maps pr-review Phase 5 Rule 6's step numbers onto its own steps (Step 0 -> Step 4 early end, Step 1 -> Step 5, Steps 2-6 -> Step 6), so delegating the overrule procedure leaves no dangling step reference.",
+    "The REFUTED / BUBBLED / NOT_RESOLVED semantics (closing vs non-closing, latest-status rule, sentinel shapes a and b) are stated the same way in pr-review SKILL.md, operating_rules.md and the bubble-stamp README.",
+    "The 'no matrix rows' claim for local runs still holds under -a: agent-watcher's workflow-row writer skips local keys (layer.ts:201), as review-local and its README state.",
+    "Every cross-link added is live: agents/adversarial-reviewer.md, workflows/adversarial-review.js and the review-local README all exist at the head.",
+    "The worst-case agent count 2(R + C) <= 26 + 2N is derived consistently: 5 bucket slots + OVERALL, roast, system shape, per-skill-package and coordinated-multi-artifact give R <= 10 + N, and C <= 3.",
+    "The latest-status rule (REFUTED closing, BUBBLED / NOT_RESOLVED non-closing, a latest NOT_RESOLVED open whatever the bubble channels say) is applied consistently across id_handling, review_merge, the schema hook's Layer 2 / Layer 3, pr_json_validation and the agent-watcher bubbles.ts port.",
+    "tests/scripts/test_pr_review_adversarial.py drives the real driver end to end on make_project repos (capture -a, init, stale refutation refusal, build --replace after a Phase 4 STOP, refute / unrefute in both modes, waves skipping a refuted id), stubbing only the Phase 4 subprocess and run-id clock.",
+    "capture -a refuses a missing Workflow script or a pinned schema lacking the new statuses before start_run, so current never moves, and both refusals are tested.",
+    "Refuter evidence and attack text are stripped of the repo root at validation (strip_root), keeping machine paths out of the tracked review JSON.",
+    "TS mirrors of CLOSED_STATUSES and the refuter roles are pinned to the Python source by tests/mods/test_closed_status_mirror.py and the adversarial mirror test.",
+    "The Workflow script stays thin (no model literal, no clock or process access), with a contract test enforcing it; all slot data flows from capture's args.",
+    "phase5_state ignores only refuter-written REFUTED entries still marked in draft.json, preserving build --replace as the Phase 4 recovery while refusing it after a developer overrule.",
+    "Every plan deviation (EX1-EX11) is recorded in DesignEvolution.json with its cause and the developer's choice, and receipts tie each item to a staged tree.",
+    "The closed-status vocabulary is pinned across Python and both TS mods: tests/mods/test_closed_status_mirror.py reads CLOSING_STATUSES / STAMPING from bubbles.ts, review.ts and memo.ts and compares them to review_merge.CLOSED_STATUSES, and the READMEs cite that test.",
+    "Schema 2.3.0 moved in lockstep: schema $version, review_merge.SCHEMA_VERSION, the schemas README version line and bump-protocol entry, with test_schemas_readme_names_the_new_version asserting the README string equals SCHEMA_VERSION.",
+    "The READY line format (`, <K> refuted` only when K > 0, R excluding refuted ids) reads the same in pr-review SKILL.md, operating_rules.md, review-local SKILL.md and README, and review_merge._ready_text.",
+    "The documented worst case 2(R + C) <= 26 + 2N matches worst_case_agents: 5 slotted buckets + 3 lenses + 2 scope lenses + N, plus 3 scope code refuters.",
+    "Version story is coherent: plugin.json versions (agent-watcher 0.9.0, bubble-stamp 0.3.0, harness 0.71.0), the v1.0.0 Plugins table and Unchanged list, and the marketplace bubble-stamp description all agree.",
+    "agent-watcher's Workflow-arg reading is pinned to review_adversarial.workflow_args by test_agent_watcher_adversarial_mirror.py, and the README, the matrix schema enum/description and the SKILL Step 4 text all describe the same zero-count `workflow` row."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "Workflow-args mirror pins constants the parser never reads",
+        "file": "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts",
+        "files": [
+          "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts",
+          "tests/mods/test_agent_watcher_adversarial_mirror.py"
+        ],
+        "lines": "86-93,114-115,123-124,136-138",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "matrixRow.ts declares WORKFLOW_ARG_KEYS ('run_key', 'run_id') and WORKFLOW_SLOT_KEYS ('id', 'model') as the keys the mod reads (doc comment at :86-88), and tests/mods/test_agent_watcher_adversarial_mirror.py pins them to review_adversarial.workflow_args, its docstring claiming it 'fails when either side changes without the other'. But neither constant is referenced anywhere: matchedKey reads a.run_key / a.run_id literally (:123-124), workflowPlan reads a.reviewers and a.run_id literally (:136, :138), and groupSlots reads e.id / e.model literally (:114-115). Only WORKFLOW_GROUPS / WORKFLOW_ROLES feed the code (:137). A rename in workflow_args that is mirrored by updating the TS constants passes the pin test while workflowPlan keeps reading the old keys and silently logs no Workflow rows: exactly the drift EX11 added the test to stop.",
+        "fix": [
+          "Make the parser read through the pinned constants: destructure `const [RUN_KEY, RUN_ID] = WORKFLOW_ARG_KEYS` and `const [SLOT_ID, SLOT_MODEL] = WORKFLOW_SLOT_KEYS`, then use a[RUN_KEY], a[RUN_ID], a[WORKFLOW_GROUPS[0]] and e[SLOT_ID], e[SLOT_MODEL] in matchedKey, workflowPlan and groupSlots, so the pinned list is the list read.",
+          "Or drop WORKFLOW_ARG_KEYS / WORKFLOW_SLOT_KEYS and have the mirror test parse the literal property reads out of matrixRow.ts (a.<key>, e.<key>) instead of the unused constants."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "unrefute --fix does not reopen an id a fixer bubbled before the refute",
+        "file": "plugins/harness/lib/harness_lib/review_edit.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_edit.py",
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "564-582",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "apply_unrefute('fix') appends NOT_RESOLVED and drops the id from bubbles, and its docstring (and the pr_review.py docstring: 'so the next waves plans it') promise that Phase 5 waves see it open. That fails for an id a fixer bubbled before the developer refuted it, a path refute allows, since a bubble adds no closing status. Sequence: a fixer bubbles I3 (fixes/<fixer>.json keeps the bubble), the developer runs `refute I3`, then `unrefute I3 --fix`. On the next `waves`, wave_inputs -> _follow_up adds counted_bubbles(reports, parts) to `done`, so I3 is never planned (pr_review.py:1711). On the next `closeout`, apply_closeout replays every fixer report (closeout_review loads all of fixes/), and _apply_bubbles sees I3 as not closed. reopened_bubble_entry then appends BUBBLED and re-adds I3 to bubbles and bubble_up (review_merge.py:960-980). This silently turns the developer's --fix overrule back into a bubble.",
+        "fix": [
+          "Have _follow_up / counted_bubbles leave out ids whose latest status is NOT_RESOLVED, and have _apply_bubbles skip a fixer bubble for an id whose latest resolution is NOT_RESOLVED and is dated after the bubble's wave. One way to decide that: compare against the resolution index of the id's REFUTED entry, or record the waves that came before the overrule in the NOT_RESOLVED entry.",
+          "Refuse `refute` for an id a planned fixer has already bubbled (counted_bubbles over the run's fix reports), naming `bubble`/`closeout --closed` as the route instead, so the sequence cannot arise."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "fold-in-review drops a verified claim as a duplicate of an issue that is closed REFUTED",
+        "file": "plugins/harness/skills/fold-in-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/fold-in-review/SKILL.md",
+          "plugins/harness/skills/fold-in-review/README.md"
+        ],
+        "lines": "104-106,149-152,154-158",
+        "reviewer": "skill_package, docs",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Section 3b Deduplicate says that after build a claim an existing issue already states is skipped and its id named, and Section 5 reports it as `duplicate of <id>`. Since this PR, an existing issue can be closed as REFUTED (by an -a build or by `refute`): it gets no fixer and counts closed in the verdict. A developer note that restates it, and that the 3b verification confirms in the tree, is then dropped as a duplicate, and the report line does not say the id is refuted. The developer reads `duplicate of I3`, assumes the defect is queued, and the verified defect ships. The new -a bullet at lines 149-152 covers only the opposite direction (refuting a folded issue), not a fold that contradicts a refutation.\n\nAlso (docs): fold-in-review SKILL.md:149-152 says that under -a 'the verification in section 3b is their only check'. A GitHub review fold is verified under section 3a's 'Verify first' (lines 76-81) and only goes through 3b when comments need splitting, so a URL fold has no 3b check at all. The same bullet says a fold's findings 'count as upheld at merge', while a post-build fold never goes through merge (it is appended to the built review directly, line 145).\n\nAlso (skill_package): The added bullet says a fold's findings get no check besides 'the verification in section 3b'. But a GitHub URL fold whose comments all hold is verified in section 3a ('Verify first') and folded by URL without passing through 3b. The bullet also says the developer can `refute` a folded issue 'once Phase 4 has passed'. Phase 4 has two runs, and `refute` needs only the first run (pr-review SKILL.md:55, Rule 6: `pre_fix_time` not pending), not the second-run pass.",
+        "fix": [
+          "In Section 3b Deduplicate, add: when the matching issue's latest status is REFUTED and the claim verifies, do not skip it silently; report `matches refuted <id> (<refuter evidence>)` and offer the developer `unrefute <id> --fix` (or `--bubble`) per pr-review Phase 5 Rule 6. Add that reason to the Section 5 dropped-item reasons.",
+          "Alternatively, fold the verified claim under a new source id when its match is REFUTED, so it becomes an open issue with a fixer, and name the refuted id in its summary.",
+          "Reword to: 'the verification in section 3a or 3b is their only check', and 'count as upheld (at merge before build; a post-build fold is appended unrefuted)'.",
+          "Reword to: `the verification in sections 3a and 3b is their only check, and the developer can still refute a folded issue after build (once the Phase 4 first run has passed)`."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "Phase 3 trigger names the Workflow call's own return, which SPK-1 showed is only the launch ack",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/skills/review-local/SKILL.md"
+        ],
+        "lines": "262-263,424-425",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "pr-review SKILL.md:262-263 (and review-local SKILL.md:102-103) say Phase 3 starts once the Workflow result has arrived, '(its return, or its completion notification)'. SPK-1 (docs/RESEARCH/pr-review/1016_workflow_spike.md:73-81) confirmed the Workflow call returns at once with 'Workflow launched in background. Task ID: ...' and the result arrives only as the later task-notification. Read literally, the immediate return satisfies the trigger, so a session can run `merge` while the workflow is still running. `merge` then refuses for missing refutations or reports, and the recovery prose (SKILL.md:268-276, and the missing-report rule in Phase 3 Step 1) tells the session to re-dispatch those entries as plain Agent calls, which races the still-running workflow agents and records duplicate reports. The script's result is the `{id, returned}` list (adversarial-review.js:64-72), which only the completion notification carries.",
+        "fix": [
+          "Replace '(its return, or its completion notification)' with '(its completion notification; the call itself returns at once with a task id, which is not the result)' in pr-review SKILL.md:262-263 and review-local SKILL.md:102-103, and make the Temporal gate at pr-review SKILL.md:424-425 name the completion notification the same way."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "Lone latest BUBBLED rule untested in Python and its TS mirror unpinned",
+        "file": "tests/hooks/test_schema_hook_refuted.py",
+        "files": [
+          "tests/hooks/test_schema_hook_refuted.py",
+          "plugins/harness/lib/harness_lib/validation/id_handling.py",
+          "tests/mods/test_closed_status_mirror.py",
+          "plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts"
+        ],
+        "lines": "141-206",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "id_handling.all_issues_dispositioned (id_handling.py:83-98) drops an id whose latest resolution is BUBBLED from the resolution channel, so it counts only through bubbles/bubble_up; this decides whether the Layer 3 hook clears the Phase 5 sentinel. No Python test covers it: test_schema_hook_refuted.py pairs every BUBBLED entry with a bubble_up entry (lines 168-181), and the NOT_RESOLVED cases cover only the reopen rule. Removing \"BUBBLED\" from the status filter at id_handling.py:96 would let a review whose id was never bubbled clear the sentinel, and no Python test would fail. The TS port in bubbles.ts (BUBBLE_ONLY_STATUSES, REOPENED_STATUS at lines 58-59) has a behavioral test (bubbles.test.ts 'a latest BUBBLED counts only through bubbles or bubble_up'), but test_closed_status_mirror.py pins only CLOSING_STATUSES / STAMPING, so the two sides can drift apart without failing a test.",
+        "fix": [
+          "Add a Layer 3 case to tests/hooks/test_schema_hook_refuted.py: I1 REFUTED, M1 REFUTED then BUBBLED, empty bubbles and bubble_up, a READY verdict; assert the sentinel stays armed. Keep the existing paired case as the positive control.",
+          "Expose the bubble-only statuses as a constant in id_handling (for example BUBBLE_ONLY_STATUSES = (\"BUBBLED\", REOPENED_STATUS)), use it at line 96, and extend tests/mods/test_closed_status_mirror.py to read bubbles.ts BUBBLE_ONLY_STATUSES and compare it with that constant."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Root README row credits -a to both pr-review and pr-team",
+        "file": "README.md",
+        "lines": "19",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "README.md:19, the 'Review a PR' row, lists '`pr-review` or `pr-team`' and then says '`-a` adds code and findings refuters'. pr-team takes no -a (pr-review SKILL.md Related section, operating_rules.md:8, RELEASES v1.0.0), so the row suggests a flag pr-team does not have.",
+        "fix": [
+          "Change the sentence to '`pr-review -a` adds code and findings refuters (pr-team takes no `-a`); ...'."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Spike report keeps a pasted chat hand-off with second-person text and a stale claim about leftover files",
+        "file": "docs/RESEARCH/pr-review/1016_workflow_spike.md",
+        "files": [
+          "docs/RESEARCH/pr-review/1016_workflow_spike.md",
+          "docs/plans/1016/DesignEvolution.json"
+        ],
+        "lines": "8,33,95,113-146",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "docs/RESEARCH/pr-review/1016_workflow_spike.md:113-146 ('\"Outgoing\" Message to Session') is a pasted agent reply: it repeats the Summary table (lines 15-26) in box-drawing characters, addresses the reader as 'your prompt', and line 146 says plugins/harness/agents/spike-probe.md and plugins/harness/workflows/spike-probe.js 'are still in place', but neither is tracked or present at the PR head (only workflows/adversarial-review.js exists).\n\nAlso (docs): docs/RESEARCH/pr-review/1016_workflow_spike.md carries the local checkout path 'E:/automation/operator-straps/...' at lines 8, 33, 114 and 121. A tracked research doc then records one developer's drive layout; the plan's own artifacts (docs/plans/1016/**) carry none, and the design's EX entries strip the repo root from stored evidence for the same reason.\n\nAlso (overall): The section '\"Outgoing\" Message to Session' (:113-146) is the agent's chat reply pasted verbatim, a box-drawing table repeating the Summary table above plus housekeeping notes about throwaway files. Separately, section 7 says the usage-log check 'ran once ... a delayed write was not ruled out' (:95), while DesignEvolution EX4 cites the spike as 'checked right after completion and again later'; one of the two records is wrong.\n\nAlso (system_shape): docs/RESEARCH/pr-review/1016_workflow_spike.md:113-146 is the agent's reply to the session pasted in: a heading '\"Outgoing\" Message to Session', a box-drawing table that repeats the Summary table at :17-26, second-person text ('per your prompt', 'your prompt names'), and a closing note that 'the throwaway files are still in place: plugins/harness/agents/spike-probe.md, plugins/harness/workflows/spike-probe.js'. Neither file exists at the PR head, so that line is false now. The report also embeds absolute machine paths (:8, :33, :114, :121) where the rest of the doc tree uses repo-relative paths.",
+        "fix": [
+          "Delete lines 113-146; if the untested points matter, keep lines 143-144 as a short 'Untested' section in third person.",
+          "Keep the section but replace line 146 with a note that the throwaway probe files were removed before commit, and drop the duplicated box table.",
+          "Replace the absolute prefix with a repo-relative form ('plugins/harness/workflows/spike-probe.js', 'text_root=<checkout>/plugins/harness') at lines 8, 33, 114 and 121.",
+          "Drop the pasted transcript section, and either add the later re-check (time and line count) to section 7 or correct EX4's wording to match the single check.",
+          "Delete lines 113-146 (leftover transcript; the Summary table and sections 1-8 already hold every result) and replace the absolute paths at :8 and :33 with repo-relative ones (`plugins/harness/workflows/spike-probe.js`, `plugins/harness`).",
+          "Keep the transcript but rewrite it as a short third-person 'Follow-up' note stating the probe files and drafts were removed before merge, with repo-relative paths."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "todo-zes6 summary says the adversarial modules do not exist yet, which the same PR contradicts",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "1667",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The new pr-team follow-up item's summary (docs/TODO/RepoToDo.json:1667) states 'plugins/harness/lib/harness_lib/review_adversarial.py is absent (ls confirmed), and merge_adversarial (review_merge.py) and the refute / unrefute subcommands of pr_review.py are planned by TASK-3, TASK-4 and TASK-5'. At the PR head all three exist (review_adversarial.py, review_merge.merge_adversarial, pr_review.py _cmd_refute/_cmd_unrefute), so the item reads stale on merge. todo-kex8 (line 1462), the item this PR implements, also still reads NEEDS_DECISION although D1-D5 and D12 are answered in the spec.\n\nAlso (overall): todo-zes6 states that review_adversarial.py is absent ('ls confirmed') and that merge_adversarial and the refute / unrefute subcommands are only planned by TASK-3..TASK-5. All of them exist at this head, so the tracked item misinforms whoever picks it up.\n\nAlso (system_shape): The new follow-up item todo-zes6 states 'The reuse targets do not exist yet on this branch: plugins/harness/lib/harness_lib/review_adversarial.py is absent (ls confirmed), and merge_adversarial (review_merge.py) and the refute / unrefute subcommands of pr_review.py are planned by TASK-3, TASK-4 and TASK-5'. At the PR head all three ship (review_adversarial.py, review_merge.merge_adversarial, pr_review.py refute/unrefute). Anyone picking the item up after merge reads a false premise. The parent item todo-kex8 (line 1462-1468) also still reads NEEDS_DECISION with a decision question the spec's D1-D14 answered.",
+        "fix": [
+          "Rewrite that sentence of todo-zes6's summary to say the reuse targets landed with plan 1016 (review_adversarial.py, review_merge.merge_adversarial, pr_review.py refute / unrefute), and move todo-kex8 out of NEEDS_DECISION (or close it with its tracker) per the TODO workflow.",
+          "Rewrite the summary's 'Checked' sentence to cite the landed modules (review_adversarial.py, review_merge.merge_adversarial, pr_review.py refute / unrefute) instead of their planned state.",
+          "Reword the todo-zes6 summary to say review_adversarial, merge_adversarial and refute / unrefute landed with #252 (plan 1016) and are the reuse targets; drop 'after todo-kex8 lands' from proposed_change. Optionally move todo-kex8 out of NEEDS_DECISION, or leave it for the post-merge todo sync."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "agent-watcher R6 and bubbles.ts header still credit id_handling.disposition_ids for the dispositioned set",
+        "file": "plugins/agent-watcher/README.md",
+        "files": [
+          "plugins/agent-watcher/README.md",
+          "plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts"
+        ],
+        "lines": "102",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "README R6 (State trigger) says the check follows 'the id_handling.disposition_ids rule' and then lists exceptions (latest NOT_RESOLVED never counts, latest BUBBLED counts only through bubbles[] / bubble_up[]). Those exceptions are exactly id_handling.all_issues_dispositioned, which is what bubbles.ts dispositionedOf now ports (its own docstring and the v1.0.0 release line both say all_issues_dispositioned). disposition_ids is the any-channel set and no longer has a port in the mod, yet the bubbles.ts module header still lists it among the ported functions. A reader who opens id_handling.disposition_ids to check R6 finds a rule that counts a latest-NOT_RESOLVED id as dispositioned, the opposite of what the mod does.",
+        "fix": [
+          "README R6: replace '(the id_handling.disposition_ids rule), except that ...' with '(the id_handling.all_issues_dispositioned settled set: ...)' keeping the three status clauses; in bubbles.ts lines 2-3 drop `disposition_ids` from the list of ported functions."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "stampMemo docstring sentence is garbled",
+        "file": "plugins/bubble-stamp/hooks/memo.ts",
+        "lines": "144-146",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "'a row stamped `Decided` by a `REFUTED` entry stays `Decided` after `pr_review.py unrefute`, in either mode (`--bubble` or `--fix`), reopens the id' has two main verbs and no connector, so it is unclear whether stamping or unrefute does the reopening.",
+        "fix": [
+          "Reword to: 'a row stamped `Decided` by a `REFUTED` entry stays `Decided` after `pr_review.py unrefute` reopens the id (either mode, `--bubble` or `--fix`); the unstamp is deferred.'"
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "adversarial-reviewer description says it writes only its draft, but the body allows probe files",
+        "file": "plugins/harness/agents/adversarial-reviewer.md",
+        "lines": "7,76-81",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The frontmatter description (adversarial-reviewer.md:7) says the agent is 'Read-only on the repository (it writes only its draft file)', while the operating rules (lines 76-81) let Write touch the draft and files under `<run dir>/probes/`, and the code refuter runs probes at the PR head (line 44). The dispatcher-facing description understates what the agent writes.",
+        "fix": [
+          "Change line 7 to 'Read-only on the repository (it writes only its draft file and probe files under the run directory's probes/ folder)'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Code-refuter slot suffix called a bucket in the agent and docstring, a scope everywhere else",
+        "file": "plugins/harness/agents/adversarial-reviewer.md",
+        "files": [
+          "plugins/harness/agents/adversarial-reviewer.md",
+          "plugins/harness/lib/harness_lib/review_adversarial.py"
+        ],
+        "lines": "31",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "adversarial-reviewer.md:31 names the code refuter id `adv_code_<bucket>` and review_adversarial._code_slots (review_adversarial.py:266) says 'one adv_code_<bucket> per bucket'. The suffix is a SCOPE_BUCKETS entry, and `plans` is not a review_plan.PathBucket, so `adv_code_plans` is no bucket. pr-review SKILL.md, the schema (`adv_code_<runtime|tests|plans>`), the release note and review-local README all say `<scope>`.",
+        "fix": [
+          "adversarial-reviewer.md:31: `adv_code` or `adv_code_<scope>` (`runtime`, `tests` or `plans`); review_adversarial.py:266: 'one adv_code_<scope> per non-empty scope'."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "Hook docstrings misstate when and how adversarial statuses apply",
+        "file": "plugins/harness/hooks/validate_pr_json_schema.py",
+        "lines": "213-215,236-239",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "_incoherent (validate_pr_json_schema.py:214-215) says 'build and refute / unrefute write them before Phase 4'. refute and unrefute go through _overrule_target -> require_phase4 (pr_review.py:723-729, 2087-2093), which refuses them while pre_fix_time is pending, so only build writes such an entry (REFUTED) before Phase 4. _closeout_reason (236-239) says 'REFUTED, BUBBLED and NOT_RESOLVED entries disposition ids (through all_issues_dispositioned)', but all_issues_dispositioned never counts a latest NOT_RESOLVED and counts a latest BUBBLED only through bubbles/bubble_up (id_handling.py).",
+        "fix": [
+          "_incoherent docstring: 'REFUTED, BUBBLED and NOT_RESOLVED entries are exempt (build writes REFUTED entries before Phase 4)'. _closeout_reason docstring: 'a REFUTED entry dispositions its id through all_issues_dispositioned, a latest BUBBLED counts only through bubbles / bubble_up, a latest NOT_RESOLVED never counts; none of the three counts as a resolution or as SHA evidence'."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "_named_ids rewritten but unreachable in production",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "tests/lib/test_review_merge_adversarial.py"
+        ],
+        "lines": "438-444",
+        "reviewer": "runtime, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The PR rewires compute_verdict and review_edit._disposed_ids to the new _mentioned_ids and gives _named_ids new semantics (minus reopened_ids). Its own docstring says 'No production caller'. The only reference is tests/lib/test_review_merge_adversarial.py:113-115, so the function is dead code kept alive by a test, and a second id-set predicate that can drift from _settled_ids.\n\nAlso (overall): The PR moves compute_verdict and review_edit._disposed_ids to _mentioned_ids and rewrites _named_ids to subtract reopened_ids, while its own docstring states 'No production caller'. The only callers are two asserts in tests/lib/test_review_merge_adversarial.py:113,115, so the function exists only to be tested and its NOT_RESOLVED rule duplicates what _settled_ids already enforces in production.\n\nAlso (system_shape): The PR switched review_edit._disposed_ids and the compute_verdict orphan check to the new `_mentioned_ids`, then kept and modified `_named_ids` (review_merge.py:438-443) with the docstring 'No production caller'. Its only callers are two assertions in tests/lib/test_review_merge_adversarial.py:113-115, so the tests pin a function nothing uses, and a third id-set helper sits beside `_mentioned_ids` and `_settled_ids` with semantics (any channel minus reopened) that no rule in the docs describes.",
+        "fix": [
+          "Delete _named_ids and its two assertions in tests/lib/test_review_merge_adversarial.py; _settled_ids and _mentioned_ids cover both uses.",
+          "If the predicate is wanted, give it a production caller and drop the 'No production caller' note.",
+          "Delete review_merge._named_ids and point the two asserts in test_not_resolved_latest_status_is_no_disposition at _settled_ids / undispositioned_ids (already asserted two lines below).",
+          "Or, if a named helper is wanted, route a production reader through it so it is not dead.",
+          "Delete `_named_ids` and the two assertions that call it (test_review_merge_adversarial.py:113-115); `_settled_ids` already covers the reopened rule and has its own tests."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "adversarial_check description and result example lag the writer",
+        "file": "plugins/harness/schemas/PR_REVIEW.schema.json",
+        "files": [
+          "plugins/harness/schemas/PR_REVIEW.schema.json",
+          "plugins/harness/lib/harness_lib/review_adversarial.py"
+        ],
+        "lines": "318,350-375",
+        "reviewer": "config, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The adversarial_check description says build 'adds counts and refuted_ids', but review_adversarial.complete_check (plugins/harness/lib/harness_lib/review_adversarial.py:320-321) also writes an empty unrefuted_ids and replaces result. The result example 'OK (2 checked, 1 refuted)' matches neither string the code emits: capture writes 'PENDING (<n> code refuters, <m> findings refuters)' (review_adversarial.py:308) and build writes 'OK (<n> checked, <m> refuted, <k> code findings)'. The schemas README (Section 1, verification_log shape contract) already states the accurate sequence, so the schema text is the one out of step.\n\nAlso (config): counts.findings_checked / findings_refuted / findings_upheld / code_findings have no descriptions. complete_check's docstring (review_adversarial.py:315-316) stresses that checked and refuted count refuter verdict entries, a different unit from refuted_ids (issue ids), so findings_refuted need not equal len(refuted_ids); a reader of the schema alone would assume they match. findings_upheld is also derived (checked - refuted), which the schema does not say.\n\nAlso (overall): The result example reads 'OK (2 checked, 1 refuted)' while review_adversarial.complete_check writes 'OK (N checked, M refuted, K code findings)' and capture writes 'PENDING (C code refuters, F findings refuters)'. The entry description says build adds counts and refuted_ids, but complete_check also writes unrefuted_ids: [] (as schemas/README.md correctly states).\n\nAlso (system_shape): PR_REVIEW.schema.json:318 says 'build adds counts and refuted_ids', but review_adversarial.complete_check (review_adversarial.py:311-321) also writes `unrefuted_ids: []` and replaces `result`. The `result` example at :352, 'OK (2 checked, 1 refuted)', is a shape the code never produces: build writes 'OK (<n> checked, <m> refuted, <k> code findings)' and capture writes 'PENDING (<c> code refuters, <f> findings refuters)' (review_adversarial.py:308). The schemas README (verification_log contract) describes the build step correctly, so the schema is the one that drifted.",
+        "fix": [
+          "Line 318: change to 'Capture writes applies, workflow, code_slots, refute_slots and a PENDING result; build adds counts, refuted_ids and an empty unrefuted_ids and rewrites result as OK (...); refute and unrefute update refuted_ids and unrefuted_ids only, counts and result keep the build-time figures.'",
+          "Line 352: change the example to \"'PENDING (1 code refuters, 2 findings refuters)' at capture, 'OK (2 checked, 1 refuted, 0 code findings)' after build\".",
+          "Add a description to each counts property: findings_checked = 'verdict entries across the findings refuters' reports'; findings_refuted = 'refuted verdict entries (not issue ids; may differ from len(refuted_ids))'; findings_upheld = 'findings_checked - findings_refuted'; code_findings = 'findings across the code refuters' reports'.",
+          "Change the result description to the two real forms ('PENDING (<C> code refuters, <F> findings refuters)' at capture, 'OK (<N> checked, <M> refuted, <K> code findings)' at build) and make the entry description say build adds counts, refuted_ids and an empty unrefuted_ids.",
+          "Schema :318: 'build adds counts, refuted_ids and an empty unrefuted_ids and sets result'; :352: give both real forms, e.g. 'PENDING (2 code refuters, 5 findings refuters)' at capture, 'OK (12 checked, 3 refuted, 4 code findings)' after build."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "agent_usage top-level description omits the refuter roles",
+        "file": "plugins/harness/schemas/agent_usage.schema.json",
+        "files": [
+          "plugins/harness/schemas/agent_usage.schema.json",
+          "plugins/agent-watcher/hooks/layers/pr-review/identify.ts"
+        ],
+        "lines": "5",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The role description now lists refuter / code_refuter for a pr-review -a refuter dispatched as an Agent call, and identify.ts claims those dispatches for the pr-review run (REFUTER_ROLES, identify.ts:46). The schema's top-level description still lists the run-owned roles as '(reviewer, fixer, orchestrator, planner, closer)' and calls any other dispatch a generic row, so it reads as if a refuter row were generic.",
+        "fix": [
+          "Line 5: change '(reviewer, fixer, orchestrator, planner, closer)' to '(reviewer, fixer, orchestrator, planner, closer, and a pr-review -a refuter or code_refuter)'."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "Matrix tokens description contradicts the new workflow rows",
+        "file": "plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json",
+        "files": [
+          "plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json",
+          "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts",
+          "plugins/harness/schemas/README.md"
+        ],
+        "lines": "68",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "tokens says rows the agent-watcher writes ('notes' starting 'agent-watcher auto row') sum tokens over every model request. The new workflow rows also start their notes with 'agent-watcher auto row' (matrixRow.ts:148) but hold tokens 0 because the slot is unobserved, as the dispatch_shape description at line 64 says. A rollup that trusts the tokens contract by the notes prefix averages those zeros in as measured cost.",
+        "fix": [
+          "Line 68: append 'except `workflow` rows (dispatch_shape `workflow`, notes naming `unobserved: workflow agent`), which hold 0 because the slot is not observed'."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "closeout --deferred / --closed silently skip a REFUTED id",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "2154-2158",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "_cmd_closeout refuses only --resolved ids whose latest status is REFUTED (pr_review.py:2154-2158). --deferred and --closed on such an id reach _apply_deferred / _apply_closed, which treat REFUTED as already closed (CLOSED_STATUSES) and append nothing with no problem line: a developer-confirmed defer of a refuted id loses its RESOLVED defer entry and its needs_follow_up bubble_up entry silently. The spec's 'A silent skip' anti-goal names only bubble and --resolved, but the same dropped-decision case applies here.",
+        "fix": [
+          "Extend the refusal in _cmd_closeout to the --deferred (and --closed) ids in ra.refuted_now(doc), with the same refuted_problem text naming unrefute, before anything is written.",
+          "Or have _apply_deferred return a problem for an id whose latest status is REFUTED instead of skipping it."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "fold-in-review README not updated for -a runs",
+        "file": "plugins/harness/skills/fold-in-review/README.md",
+        "lines": "94-107",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md gained the rule that folded findings are never refuted in an -a run and count as upheld at merge, and operating_rules.md gained the same rule. The skill's developer-facing README.md, which lists the 'Rules worth knowing', mentions neither -a, refutation, nor the developer's `refute` overrule for a folded issue. The review-local README this PR adds states 'Folded findings are never refuted', so the fold skill's own README is the one place that omits it.",
+        "fix": [
+          "Add a bullet to README.md 'Rules worth knowing': `In an -a run, folded findings are not refuted: they count as upheld at merge, and the skill's own verification is their only check; the developer can refute a folded issue after build.`"
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Model floor gains a one-row Agent/Model table that covers only refuters",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "277-285",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The added table under 'Model floor (reviewer dispatch)' has one row, `refuter (-a only) | opus, from its args entry`, placed after prose that gives the reviewer models (opus, sonnet for a one-file bucket slot, never haiku). An `Agent | Model` table reads as the complete model map, yet it leaves out the reviewer slots, and it does not say whether 'refuter' means code refuters, findings refuters or both. The review-local README says both run opus.",
+        "fix": [
+          "Replace the table with one sentence: `Every refuter of an -a run (code and findings refuters) runs opus, from its args entry.`",
+          "Or complete the table with the reviewer rows (opus default, sonnet for a one-file path-bucket slot), and name the row 'code and findings refuters (-a only)'."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "Prompt and brief contract still describes only reviewer prompts with AGENT_ROLE: reviewer",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "350-366",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "The 'Prompt and brief contract' section says each dispatch prompt is the four header lines with `AGENT_ROLE: reviewer`, and that every reviewer and fixer prompt gains the `Developer guidance:` line. Under -a the Workflow args carry refuter prompts with `AGENT_ROLE: code_refuter` or `AGENT_ROLE: refuter` (review_briefs.py:306-307), and the reviewer and refuter prompts get guidance from the Workflow script through args.guidance, not as a dispatched line. The skill's intro (lines 16-17) states the guidance exception, but the contract section itself was not updated, so the two parts of the skill disagree.",
+        "fix": [
+          "Add one sentence after the prompt block: `Under -a, code refuter and findings refuter prompts carry AGENT_ROLE: code_refuter / refuter with their own briefs, and the Workflow script appends the guidance line (Phase 2, Under -a).`"
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "Workflow lists deliberately skipped repeat refuters as failures to recover",
+        "file": "plugins/harness/workflows/adversarial-review.js",
+        "files": [
+          "plugins/harness/workflows/adversarial-review.js",
+          "plugins/harness/skills/pr-review/SKILL.md"
+        ],
+        "lines": "53-57,64-71",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Line 57 logs refute entries that repeat a target as 'not run', but row() flags only orphans. So `failed` (line 69) includes the repeats (returned false, no orphan flag), and line 71 tells the session to 'recover with a plain Agent dispatch' for agents the script chose not to run.\n\nAlso (overall): adversarial-review.js logs refute entries repeating a target as 'not run' (:53-57), but row() only flags orphans, so a repeat comes back {returned: false} without a flag, lands in `failed`, and the final log tells the session to 'recover with a plain Agent dispatch' (:69-71); the pr-review SKILL recovery rule excludes only orphan entries, so the session would run the entry the script just declared not run. capture never emits repeats today, so this is latent.",
+        "fix": [
+          "Track repeats in a Set like orphans, mark their rows `repeat: true`, and exclude them from `failed` (`!r.returned && !r.orphan && !r.repeat`).",
+          "Collect the repeats in a Set and mark them in row() like orphans (e.g. `repeat: true`), excluding them from `failed`; add the flag to the SKILL's result description."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Coherent-case hook test also passes on the hook's silent exit-0 paths",
+        "file": "tests/hooks/test_schema_hook_refuted.py",
+        "lines": "115-122",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_pending_review_with_overrule_entries_is_coherent asserts only returncode 0 and no 'INCOHERENCE'. validate_pr_json_schema.py also returns 0 without running Layer 2 on a schema setup error (_schema_check line 207-209) and when the target is not recognized as a review (_validate_target lines 292-297). A regression into either path would leave the test green. The sibling incoherent tests show the path is recognized today but do not protect this case.",
+        "fix": [
+          "Also assert 'setup error' not in result.stderr. Or, since a coherent NOT READY review with no armed sentinel writes nothing, assert result.stderr == ''."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Hand-rolled try/except/else in place of pytest.raises",
+        "file": "tests/lib/test_review_adversarial.py",
+        "lines": "384-394",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_a_project_lens_may_not_take_the_adv_prefix catches ValueError, copies the message and sets an empty string in the else branch so the final 'name in message' assert fails. pytest.raises(ValueError, match=re.escape(name)) does the same in one line, and its failure message says that nothing raised.",
+        "fix": [
+          "Replace lines 388-394 with: with pytest.raises(ValueError, match=re.escape(name)): rp._check_project_lens(lens)"
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Schema version hard-coded where sibling tests use SCHEMA_VERSION",
+        "file": "tests/lib/test_review_merge.py",
+        "lines": "406",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "TestReviewDocument asserts doc[\"version\"] == \"2.3.0\". In the same PR, test_review_edit.py switched its literal to rmg.SCHEMA_VERSION, and test_pr_review_schema_adversarial.py already pins SCHEMA_VERSION against the schema's $version. The literal adds no protection and breaks on the next schema bump.",
+        "fix": [
+          "Replace \"2.3.0\" with rmg.SCHEMA_VERSION at tests/lib/test_review_merge.py:406."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "Mixed-group merge_adversarial test duplicated in test_review_merge.py",
+        "file": "tests/lib/test_review_merge.py",
+        "files": [
+          "tests/lib/test_review_merge.py",
+          "tests/lib/test_review_merge_adversarial.py"
+        ],
+        "lines": "653-670",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "TestMergeAdversarialMixedGroup.test_refuted_finding_leaves_only_its_evidence builds the same scenario as test_review_merge_adversarial.py::test_merge_adversarial_mixed_group_takes_its_shape_from_upheld_findings (lines 204-216): a refuted runtime finding and an upheld overall finding on one file merge into a single issue shaped by the upheld one, and the notes carry the refuted evidence. The PR adds a dedicated adversarial merge module, but this copy lives in the general merge tests. Its stricter full-dict assert (no 'also', no refuted severity) is the only part the other test lacks.",
+        "fix": [
+          "Move the full-dict equality assert into test_merge_adversarial_mixed_group_takes_its_shape_from_upheld_findings (give the refuted finding an 'also' entry there) and delete TestMergeAdversarialMixedGroup from test_review_merge.py, dropping the now-unused Refutation, RefutationReport, finding_key and report_digest imports."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "'only new closed status' test cannot catch another new status",
+        "file": "tests/lib/test_review_merge_adversarial.py",
+        "lines": "89-95",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_refuted_is_the_only_new_closed_status checks that REFUTED is in CLOSED_STATUSES and that BUBBLED and NOT_RESOLVED are not. A different status added to CLOSED_STATUSES would still pass, so the name claims more than the asserts check. test_closed_status_mirror.py compares the TS arrays with CLOSED_STATUSES but does not pin CLOSED_STATUSES itself.",
+        "fix": [
+          "Add assert set(rmg.CLOSED_STATUSES) == {\"RESOLVED\", \"CLOSED_NO_ACTION\", \"REFUTED\"} to the test (it can replace the three membership asserts)."
+        ]
+      },
+      {
+        "id": "M23",
+        "name": "Test pins _named_ids, which has no production caller",
+        "file": "tests/lib/test_review_merge_adversarial.py",
+        "files": [
+          "tests/lib/test_review_merge_adversarial.py",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "112-119",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_not_resolved_latest_status_is_no_disposition asserts on rmg._named_ids (lines 113 and 115). This PR moved its only callers (review_edit._disposed_ids and the orphan check) to _mentioned_ids, and its docstring at review_merge.py:438-443 now says 'No production caller'. The test is that function's only user, so it keeps dead code alive and points readers at a disposition rule no shipped path applies. The same test's undispositioned_ids and compute_verdict asserts (lines 116-119) already cover the live behavior.",
+        "fix": [
+          "Delete the two rmg._named_ids asserts (lines 113-115) and keep the undispositioned_ids and compute_verdict asserts; delete the dead _named_ids from review_merge.py:438-443.",
+          "If _named_ids is meant to stay, give it a production caller, and keep the asserts only once it has one."
+        ]
+      },
+      {
+        "id": "M24",
+        "name": "Mirror docstring overstates the 'either side' failure",
+        "file": "tests/mods/test_agent_watcher_adversarial_mirror.py",
+        "lines": "8",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring says the test 'fails when either side changes without the other'. The checks are one-way: test_the_keys_read_are_keys_workflow_args_writes asserts the keys the mod reads are a subset of the keys workflow_args writes, and test_every_slot_entry_carries_the_slot_keys does the same per entry. A key the library adds, which the mod never reads, passes. The subset rule is the right contract, but the docstring describes a stronger one.",
+        "fix": [
+          "Reword line 8 to: 'This test fails when the mod reads a role, group or key the library no longer writes.'"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 281 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":21,\"first_sha\":\"6a6444738113495e8afe1a4adba20ad1c199138b\",\"headRefName\":\"1155-local-review-strapping\",\"headRefOid\":\"524369bf76c9061fd17fd250a3cd1b3731c7ecd3\",\"last_sha\":\"524369bf76c9061fd17fd250a3cd1b3731c7ecd3\",\"mergeCommit\":null,\"number\":281,\"state\":\"OPEN\",\"title\":\"local review strapping\",\"url\":\"https://github.com/t968rs/operator-straps/pull/281\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1155-local-review-strapping",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1155-local-review-strapping",
+        "head_ref_name": "1155-local-review-strapping",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "6a6444738113495e8afe1a4adba20ad1c199138b",
+        "head_sha": "524369bf76c9061fd17fd250a3cd1b3731c7ecd3",
+        "base_ancestor_command": "git merge-base --is-ancestor 6a6444738113495e8afe1a4adba20ad1c199138b HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 524369bf76c9061fd17fd250a3cd1b3731c7ecd3 HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - replaced the one-row Agent/Model table under 'Model floor (reviewer dispatch)' with one sentence: every refuter of an -a run (code and findings refuters) runs opus, from its args entry"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - added a paragraph after the Developer guidance prompt block: under -a, code refuter and findings refuter prompts carry AGENT_ROLE code_refuter / refuter with their own briefs, and the Workflow script appends the guidance line (Phase 2, Under -a)"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - SKILL result description now names the repeat flag (repeat: true on a findings refuter whose target an earlier entry covers, never run by the script); recovery excludes orphan and repeat entries. The script side (adversarial-review.js:56, 67, 70) already marks repeats and excludes them from failed, owned by the other part; repeat refuters tracked in a Set, marked repeat: true in row(), and excluded from failed (!r.returned && !r.orphan && !r.repeat); the SKILL recovery rule is the other part's fix"
+    },
+    {
+      "id": "M24",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - module docstring line 8 now reads: this test fails when the mod reads a role, group or key the library no longer writes"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - option 1 applies to the parser in matrixRow.ts (other part); the pin test already asserts WORKFLOW_ARG_KEYS and WORKFLOW_SLOT_KEYS against workflow_args, so no edit in this part's test file; matrixRow.ts reads through the pinned constants: RUN_KEY, RUN_ID from WORKFLOW_ARG_KEYS and SLOT_ID, SLOT_MODEL from WORKFLOW_SLOT_KEYS, used in matchedKey, workflowPlan (reviewers read as WORKFLOW_GROUPS[0]) and groupSlots."
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - Phase 3 trigger and temporal gate now name the Workflow completion notification; the call itself returns at once with a task id, which is not the result; review-local Step 2 under -a: Step 3 now starts on the Workflow completion notification, and the text states the call itself returns at once with a task id, which is not the result"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - README R6 now credits the id_handling.all_issues_dispositioned settled set and keeps the NOT_RESOLVED / BUBBLED / REFUTED clauses, instead of id_handling.disposition_ids; bubbles.ts module header no longer lists disposition_ids among the ported id_handling functions"
+    },
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - deleted the dead _named_ids helper (no production caller); _mentioned_ids and _settled_ids cover both uses; Removed the two review_merge._named_ids asserts from test_not_resolved_latest_status_is_no_disposition (tests/lib/test_review_merge_adversarial.py:112-118); undispositioned_ids and compute_verdict asserts remain. The function itself is removed by the review_merge.py part."
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - _cmd_closeout refuses --resolved, --deferred and --closed ids whose latest status is REFUTED (new closeout_refusals, same refuted_problem text naming unrefute) before anything is written; review_merge.py: _apply_deferred / _apply_closed need no change since the driver refuses first"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - Rules worth knowing gains a bullet: in an -a run folded findings are not refuted, count as upheld, the skill's verification is their only check, and the developer can refute a folded issue after build"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - refute now refuses an id a planned fixer of the run bubbled (counted_bubbles over fixes/, new fixer_bubbled_problem naming bubble / closeout --closed), so unrefute --fix can no longer be undone by waves or a closeout bubble replay; review_edit.py and review_merge.py: apply_unrefute and _apply_bubbles hold once the sequence cannot arise"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - SKILL.md 3b Deduplicate reports a verified claim matching a REFUTED issue as `matches refuted <id> (<refuter evidence>)` with an unrefute --fix / --bubble offer, Section 5 lists that reason, and the -a bullet now says sections 3a or 3b, upheld at merge before build / appended unrefuted after, and the Phase 4 first run; README gains the matching rule"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - stampMemo docstring reworded: a row stays Decided after pr_review.py unrefute reopens the id (either mode, --bubble or --fix); the unstamp is deferred"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - adversarial-reviewer description now says it writes only its draft file and probe files under the run directory's probes/ folder"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - adversarial-reviewer code refuter id now reads adv_code_<scope> (runtime, tests or plans) instead of adv_code_<bucket>; _code_slots docstring now says 'one adv_code_<scope> per non-empty scope' instead of '<bucket> per bucket'; adversarial-reviewer.md belongs to another fixer"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - coherent-case hook test also asserts no 'setup error' in stderr, so the schema setup-error exit-0 path no longer passes it"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - added Layer 3 test test_a_lone_latest_bubbled_keeps_the_sentinel (I1 REFUTED, M1 REFUTED then BUBBLED, empty bubbles and bubble_up, READY verdict; sentinel stays armed), paired case kept as positive control; id_handling.py, test_closed_status_mirror.py, bubbles.ts: the test option resolves the issue, so no constant or mirror change"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - README.md:19 'Review a PR' row now reads '`pr-review -a` adds code and findings refuters (`pr-team` takes no `-a`)'."
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - No edit in this part. The fix line is pr_review_invocation_test_matrix.schema.json:68 (schema part). matrixRow.ts:144-149 (buildWorkflowRow, notes prefix and zero tokens) cited only.; tokens description excepts workflow rows (dispatch_shape workflow, notes naming unobserved: workflow agent), which hold 0; README tokens paragraph gets the same workflow exception."
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - test_merge_adversarial_mixed_group_takes_its_shape_from_upheld_findings now gives the refuted finding also=['docs/x.md'] and asserts the full issue dict (no 'also', no refuted severity or key). TestMergeAdversarialMixedGroup removal in test_review_merge.py is the other part.; Deleted the duplicate TestMergeAdversarialMixedGroup from test_review_merge.py and dropped the now-unused Refutation, RefutationReport, finding_key and report_digest imports; moving the full-dict assert into test_review_merge_adversarial.py is the other fixer's part"
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - test_refuted_is_the_only_new_closed_status now asserts set(rmg.CLOSED_STATUSES) == {'RESOLVED', 'CLOSED_NO_ACTION', 'REFUTED'} in place of the three membership asserts."
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - complete_check docstring now names the empty unrefuted_ids and the OK result replacing the capture-time PENDING one, so the writer states what the schema text must match; the code already emits the two real result forms and the schema text belongs to another fixer; adversarial_check description now lists capture (PENDING result), build (counts, refuted_ids, empty unrefuted_ids, result rewritten as OK) and refute/unrefute (ids only); result description gives the PENDING and OK forms with examples; counts.findings_checked, findings_refuted, findings_upheld and code_findings gained descriptions."
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - TestReviewDocument asserts doc['version'] == rmg.SCHEMA_VERSION instead of the literal '2.3.0'"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - _incoherent docstring now exempts REFUTED, BUBBLED and NOT_RESOLVED and names build as the only pre-Phase-4 writer of REFUTED; _closeout_reason docstring states that a REFUTED entry dispositions its id through all_issues_dispositioned, a latest BUBBLED counts only through bubbles / bubble_up, a latest NOT_RESOLVED never counts, and none counts as a resolution or SHA evidence."
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - top-level description lists a pr-review -a refuter or code_refuter among the run-owned roles."
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - try/except/else replaced by pytest.raises(ValueError, match=re.escape(name)) in test_a_project_lens_may_not_take_the_adv_prefix"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - todo-zes6 summary now cites review_adversarial.py, review_merge.merge_adversarial and pr_review.py refute / unrefute as landed with plan 1016; proposed_change drops the after-todo-kex8 prefix (todo-editor refresh) (outside fixer waves)"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - spike report: pasted session hand-off removed, absolute paths made checkout-relative, section 7 records the later recheck that ruled out a delayed write (DesignEvolution EX4 kept as committed) (outside fixer waves)"
+    },
+    {
+      "id": "M23",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "524369b (working-tree snapshot; developer commits) - _named_ids deleted from review_merge.py and its two asserts dropped from test_review_merge_adversarial.py (wave 3, with M9) (outside fixer waves)"
+    }
+  ]
+}
