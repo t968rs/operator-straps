@@ -295,6 +295,33 @@
         "free_form": "The descriptions must name the statuses the mod now stamps."
       },
       "date": "2026-11-12"
+    },
+    {
+      "id": "EX4",
+      "discovered_by": "SPK-1 spike (docs/RESEARCH/pr-review/1016_workflow_spike.md)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-9 action (D6 watcher)",
+        "indicated": "the pr-review layer binds a Workflow agent's agentId to its slot at its first pr_review.py Bash call and writes its matrix row from tracker.ts per-agentId tallies; the planned-slot rows are a fallback used only when SPK-1 shows no agentId events"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "SPK-1 assumption 7 refuted",
+        "why_free_form": "Two workflow agents (harness:spike-probe, one Bash and one Write each) left zero rows in docs/_harness/agent_usage.jsonl, checked right after completion and again later: agent-watcher's turn.complete, turn.step and tool.call hooks never record Workflow agents, so the slot binding and per-agentId tallies have nothing to read."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-9 implements only the fallback: one matrix row per planned slot from the main session's Workflow tool.call args, dispatch_shape 'workflow', counts 0, notes 'unobserved: workflow agent'. No agentId binding in layer.ts and no tracker.ts change; the refuter role in identify.ts and the release line stay"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "Developer chose fallback only: keep one row per slot with zero counts and an unobserved note."
+      },
+      "date": "2026-11-12"
     }
   ]
 }
