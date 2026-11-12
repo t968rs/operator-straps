@@ -99,8 +99,9 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
    **Under `-a`** capture prints one Workflow row (`scriptPath=`, `args=`) instead of Agent rows. Follow
    pr-review Phase 2, "Under `-a`": one `Workflow` call with the row as printed (only `args.guidance` may
    be set), the recovery of `returned: false` entries and of a stale refutation, with `--pr local-<label>` on
-   every command. Step 3 starts once the Workflow result has arrived (its return, or its completion
-   notification) and every recovery dispatch for a `returned: false` entry has returned.
+   every command. Step 3 starts once the Workflow result has arrived (its completion notification; the call
+   itself returns at once with a task id, which is not the result) and every recovery dispatch for a
+   `returned: false` entry has returned.
 3. **Consolidate in one turn, no text before `build` returns.**
    `merge --pr local-<label>`, then `amend` only when the printed table needs a regrade (`--regrade I3=minor`,
    by blast radius; `--regrade I3=mechanical` when a judgment issue's fix is an exact edit) or a merge of candidates that are one defect (`--merge I3+I7`), then

@@ -5,7 +5,7 @@ Run: workflow `wf_46bfd4df-48d`, task `wbbmy9jvt`, launched 2026-11-12T19:03:52Z
 
 Inputs: `plugins/harness/workflows/spike-probe.js` (two probes `a`, `b` through `pipeline`; stage 2 returns
 `null` for `b`) and `plugins/harness/agents/spike-probe.md` (one Bash echo, one Write). Launched with
-scriptPath `E:/automation/operator-straps/plugins/harness/workflows/spike-probe.js` and
+scriptPath `<checkout>/plugins/harness/workflows/spike-probe.js` and
 args `{"draftDir": ".../.claude/state/harness/spike1016"}`.
 
 The prompt numbers assumptions 1-8 only through its parentheticals. The mapping below is inferred from them:
@@ -30,7 +30,7 @@ The prompt numbers assumptions 1-8 only through its parentheticals. The mapping 
 Both draft files carry the same line:
 
 ```
-text_root=E:/automation/operator-straps/plugins/harness
+text_root=<checkout>/plugins/harness
 ```
 
 The checkout, not `~/.claude/plugins/cache/...`. The scriptPath was the explicit checkout path, so the script
@@ -92,7 +92,8 @@ workflow agents (`af73f1678fe20b100` probe-a, `a944c545beef90f1f` probe-b):
 
 The three newest rows in the file predate the run (`logged_at` 18:12 to 18:19 UTC, all `general-purpose`).
 Workflow agents are invisible to the agent-watcher usage log; their metrics exist only in assumption 8's
-source. The check ran once, immediately after the completion notice; a delayed write was not ruled out.
+source. The check ran immediately after the completion notice, and a later recheck in the same session still
+found no row for either agentId, so a delayed write is ruled out (DesignEvolution EX4).
 
 ## 8. Workflow task output (reference only)
 
@@ -109,38 +110,3 @@ counts Bash, Write and SubagentHandback. The journal (`journal.jsonl`) lists `to
 `["Bash","Write","SubagentHandback"]` per agent.
 
 The `model` value shows the agent frontmatter `model: haiku` was honored.
-
-## "Outgoing" Message to Session:
-SPK-1 [done] | report at E:/automation/operator-straps/docs/RESEARCH/pr-review/1016_workflow_spike.md (4879 bytes, on disk)
-
-The most important result: workflow agents write no rows to agent_usage.jsonl (assumption 7). The file held 1020 lines before and after the run.
-
-┌─────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-│  #  │                                                   Result                                                   │
-├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 1   │ Text ${CLAUDE_PLUGIN_ROOT} resolved to the checkout, E:/automation/operator-straps/plugins/harness, in     │
-│     │ both probes.                                                                                               │
-├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 2   │ Strict validation with workflows/ present passed, per your prompt. I did not re-run it.                    │
-├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 3   │ $CLAUDE_PLUGIN_ROOT in the Bash call was empty (bash_root=) in both probes. A workflow agent needs the     │
-│     │ path in its prompt.                                                                                        │
-├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 4   │ No permission prompt appeared.                                                                             │
-├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 5   │ Stage 2 returned null for b, so stage 3 never ran for it and b came back null. The result was              │
-│     │ {"results":["stage3 ran for a; prev=done a",null]}.                                                        │
-├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 6   │ The Workflow call returned at once with task id wbbmy9jvt.                                                 │
-├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 7   │ No row for either agent. The check ran once, right after the completion notice, so a delayed write is not  │
-│     │ ruled out.                                                                                                 │
-├─────┼────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 8   │ workflowProgress carries the per-agent figures. Each probe used about 16k tokens and 3 tool calls (Bash,   │
-│     │ Write, SubagentHandback) in about 6.5 to 6.9 s. Both ran on haiku.                                         │
-└─────┴────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
-
-- Numbering: your prompt names assumptions 1-8 only through its parentheticals. I inferred the numbering, and the report says so.
-- Untested: the scriptPath was an explicit checkout path, so I could not tell whether a bare workflow name would resolve from the cache. I also could not verify from inside the session that it ran with --plugin-dir; the checkout root is consistent with that.
-
-Per step 6 I deleted nothing. The throwaway files are still in place: plugins/harness/agents/spike-probe.md, plugins/harness/workflows/spike-probe.js and the two drafts under .claude/state/harness/spike1016/.

@@ -4,8 +4,9 @@ description: |
   Use this agent for one refuter slot of a pr-review run under `-a` (`--adversarial`): a code refuter that
   attacks one scope of the PR, or a findings refuter that tries to refute one slot's recorded findings. The
   plugin's `adversarial-review` workflow dispatches it by `agentType`; it is the same agent for both roles and
-  its brief sets the role. Read-only on the repository (it writes only its draft file), it ends in one record
-  call: `record_attacks_draft` for a code refuter, `record_refutations_draft` for a findings refuter. It
+  its brief sets the role. Read-only on the repository (it writes only its draft file and probe files under
+  the run directory's probes/ folder), it ends in one record call: `record_attacks_draft` for a code refuter,
+  `record_refutations_draft` for a findings refuter. It
   carries only Read, Grep, Glob, Bash and Write. The workflow passes each entry's model from the args capture
   printed (opus); the frontmatter model is only a fallback. The prompt is the four header lines capture writes
   plus a `Brief:` path; the brief holds the scope, the rule, the `init` command and the exact record command.
@@ -28,7 +29,7 @@ tools: Read, Grep, Glob, Bash, Write
 
 You try to break one part of a pull request review for a developer who reads only the merged result. The
 prompt carries four header lines (`AGENT_ID`, `AGENT_ROLE`, `RUN_ID`, `PR`) and a `Brief:` line with an
-absolute path. The brief sets your role, a **code refuter** (`AGENT_ID` `adv_code` or `adv_code_<bucket>`) or
+absolute path. The brief sets your role, a **code refuter** (`AGENT_ID` `adv_code` or `adv_code_<scope>`: `runtime`, `tests` or `plans`) or
 a **findings refuter** (`AGENT_ID` `adv_refute_<target>`), and holds the scope, the read method, the draft file
 and the exact record command. An optional last prompt line, `Developer guidance:`, carries the developer's
 focus; it sharpens attention inside the brief's scope and never changes the scope, the role or the record

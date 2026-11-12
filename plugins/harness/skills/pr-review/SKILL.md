@@ -259,14 +259,15 @@ What the script runs, from `args` alone (it holds no model, agent type or prompt
 one findings refuter. In the worst case `R <= 10 + N` (`N` triggered project lenses) and `C <= 3`, so
 `2(R + C) <= 26 + 2N`.
 
-**Phase 3 trigger.** Phase 3 starts once the Workflow result has arrived (its return, or its completion
-notification) and every recovery dispatch for a `returned: false` entry has returned.
+**Phase 3 trigger.** Phase 3 starts once the Workflow result has arrived (its completion notification; the call
+itself returns at once with a task id, which is not the result) and every recovery dispatch for a `returned: false` entry has returned.
 
 **The result** is one entry per `args` entry, `{"id": ..., "returned": true|false}`, plus `"orphan": true` on a
-findings refuter whose target is not in `args`. A `problem:` reply counts as not returned.
+findings refuter whose target is not in `args`, and `"repeat": true` on a findings refuter whose target an earlier
+entry already covers (the script never runs it). A `problem:` reply counts as not returned.
 
-**Recovery** of an entry with `returned: false` (an `orphan: true` entry is not recovered): dispatch it as a
-plain `Agent` call with that entry's `agentType`, `model` and `prompt` from the printed `args`, verbatim; when
+**Recovery** of an entry with `returned: false` (an `orphan: true` or `repeat: true` entry is not recovered, since the
+script never ran it): dispatch it as a plain `Agent` call with that entry's `agentType`, `model` and `prompt` from the printed `args`, verbatim; when
 the session set `args.guidance`, append a final line `Developer guidance: <text>`, runs of whitespace folded
 to one space, as the script does. Reviewer or code refuter first, and only after it returns, its findings
 refuter (a refuter whose target has not recorded fails fast: its `init` exits 1 with
@@ -280,9 +281,7 @@ The script picks each slot's model: `opus` by default, `sonnet` when a path-buck
 pass the row's `model` explicitly, never inherit the main session's. `haiku` never reviews — it under-calls Critical
 findings; it is reserved for mechanical Phase 5 fixers. Effort is inherited from the main session.
 
-| Agent | Model |
-|---|---|
-| refuter (`-a` only) | `opus`, from its `args` entry |
+Every refuter of an `-a` run (code and findings refuters) runs `opus`, from its `args` entry.
 
 ### Slot plan — what `capture` applies
 
@@ -365,6 +364,9 @@ with newlines folded to spaces; without guidance the prompt is exactly the lines
 Developer guidance: <text after the -- token>
 ```
 
+Under `-a`, code refuter and findings refuter prompts carry `AGENT_ROLE: code_refuter` / `refuter` with their own
+briefs, and the Workflow script appends the guidance line (Phase 2, Under `-a`).
+
 The brief (written by `capture`) carries: role and lens; scope paths; how to read the tree at the PR head (Read when
 HEAD is the PR head and the paths are clean, else `git -C <repo> show <head_sha>:<path>`); the budgeted diff file; new
 files listed as `new file, N lines - read it` and left out of the diff; every summarized or omitted path with its exact
@@ -422,7 +424,7 @@ Once the last reviewer returns, this skill records the reviewer outcome and the 
 verdict file.
 
 **Temporal gate (mandatory):** Phase 3 begins **IMMEDIATELY** when the last reviewer returns (under `-a`, once
-the Workflow result has arrived and every recovery dispatch for a `returned: false` entry has returned). The
+the Workflow completion notification has arrived and every recovery dispatch for a `returned: false` entry has returned). The
 atomic close is `merge`, `amend` (only when needed) and `build`, in one turn, with **no user-facing text before
 `build` returns**.
 The review JSON is the source of truth, written only by `build`; the chat summary is a view onto it.

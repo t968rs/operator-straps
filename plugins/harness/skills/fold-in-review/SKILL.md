@@ -103,7 +103,11 @@ run here keeps the pasted output as its evidence; the summary says so.
 
 **Deduplicate.** Before `build`, `merge` prints merge candidates; fold anyway and join duplicates with
 `amend --merge`. After `build` nothing merges: skip any claim an existing issue (the review JSON at `plan.json`
-`review_path`) already states and name that id to the developer.
+`review_path`) already states and name that id to the developer. When that issue's latest
+`post_review_resolutions` status is `REFUTED` and the claim verifies, the skip is not silent: report
+`matches refuted <id> (<refuter evidence>)`, quoting the `REFUTED` entry, and offer the developer
+`unrefute <id> --fix` (or `--bubble`) per `harness:pr-review` Phase 5 Rule 6; a refuted issue gets no fixer
+until it is overruled.
 
 **Write each finding** with these fields; every field but `lines` and `also` is required, and a missing
 `severity` falls back to `--severity` (`minor`):
@@ -147,12 +151,13 @@ EOF
   `closeout`.
 - A fold refused for `Phase 4 first run has not succeeded` waits for `build --replace`.
 - In an `-a` (`--adversarial`) run, folded findings are not refuted: the findings refuters check only the
-  reviewer and code-refuter slots, so a fold's findings count as upheld at merge; the verification in section
-  3b is their only check, and the developer can still `refute` a folded issue after `build` (once Phase 4 has
-  passed).
+  reviewer and code-refuter slots, so a fold's findings count as upheld (at merge before `build`; a post-build
+  fold is appended unrefuted); the verification in section 3a or 3b is their only check, and the developer can
+  still `refute` a folded issue after `build` (once the Phase 4 first run has passed).
 
 ## 5. Report
 
 Open with a status line: `fold [done] | <source> (<kind>) | <n> folded, <m> dropped | ids: <list>`. Then one row per
 folded issue (id, severity, file) and one line per dropped item with its reason: not confirmed, no longer
-reproduces, duplicate of `<id>`, opinion without a checkable defect.
+reproduces, duplicate of `<id>`, matches refuted `<id>` (with the refuter evidence and the `unrefute` offer),
+opinion without a checkable defect.
