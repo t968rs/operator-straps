@@ -1,0 +1,38 @@
+{
+  "plan_id": "1016",
+  "item": "TASK-6",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "2474356006b72820cfb6e22f17c445ea03e4579e"
+    },
+    "tests": {
+      "nodes": [
+        "tests/contract/test_adversarial_workflow.py::test_script_sits_at_the_named_path",
+        "tests/contract/test_adversarial_workflow.py::test_meta_is_the_first_statement_and_a_pure_literal",
+        "tests/contract/test_adversarial_workflow.py::test_meta_names_the_workflow",
+        "tests/contract/test_adversarial_workflow.py::test_phases_match_the_meta_entries",
+        "tests/contract/test_adversarial_workflow.py::test_agent_types_name_existing_plugin_agents",
+        "tests/contract/test_adversarial_workflow.py::test_script_reads_every_slot_and_the_guidance_from_args",
+        "tests/contract/test_adversarial_workflow.py::test_script_uses_no_clock_randomness_modules_or_process",
+        "tests/contract/test_adversarial_workflow.py::test_script_names_no_machine_path",
+        "tests/contract/test_adversarial_workflow.py::test_script_holds_no_model_literal",
+        "tests/contract/test_adversarial_workflow.py::test_agent_frontmatter_names_the_agent_its_tools_and_opus",
+        "tests/contract/test_adversarial_workflow.py::test_agent_body_names_both_roles_init_and_the_record_calls",
+        "tests/contract/test_adversarial_workflow.py::test_agent_body_bans_repository_writes_through_bash",
+        "tests/contract/test_adversarial_workflow.py::test_the_literal_scan_reads_js_files",
+        "tests/contract/test_adversarial_workflow.py::test_agent_watcher_knows_the_agent"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/contract/test_adversarial_workflow.py::test_script_sits_at_the_named_path tests/contract/test_adversarial_workflow.py::test_meta_is_the_first_statement_and_a_pure_literal tests/contract/test_adversarial_workflow.py::test_meta_names_the_workflow tests/contract/test_adversarial_workflow.py::test_phases_match_the_meta_entries tests/contract/test_adversarial_workflow.py::test_agent_types_name_existing_plugin_agents tests/contract/test_adversarial_workflow.py::test_script_reads_every_slot_and_the_guidance_from_args tests/contract/test_adversarial_workflow.py::test_script_uses_no_clock_randomness_modules_or_process tests/contract/test_adversarial_workflow.py::test_script_names_no_machine_path tests/contract/test_adversarial_workflow.py::test_script_holds_no_model_literal tests/contract/test_adversarial_workflow.py::test_agent_frontmatter_names_the_agent_its_tools_and_opus tests/contract/test_adversarial_workflow.py::test_agent_body_names_both_roles_init_and_the_record_calls tests/contract/test_adversarial_workflow.py::test_agent_body_bans_repository_writes_through_bash tests/contract/test_adversarial_workflow.py::test_the_literal_scan_reads_js_files tests/contract/test_adversarial_workflow.py::test_agent_watcher_knows_the_agent"
+    }
+  },
+  "evidence": "staged tree 2474356: 14 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-12",
+  "seal": "cad24be08ba8eaf055b3cb227430393ba17536dffd769f8c62a8c5585dbc3937"
+}

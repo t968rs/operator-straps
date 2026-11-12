@@ -404,6 +404,33 @@
         "free_form": "Keeps build --replace available after a Phase 4 stop."
       },
       "date": "2026-11-12"
+    },
+    {
+      "id": "EX8",
+      "discovered_by": "developer request during execution",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-7 files",
+        "indicated": "TASK-7 edits review-local/SKILL.md only; the skill has no user-facing README"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "no developer-facing doc for review-local",
+        "why_free_form": "review-local's only doc is SKILL.md, the agent's procedure. A developer choosing between review-local and pr-review, or reading what --adversarial adds, has no page written for them."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-7 also adds plugins/harness/skills/review-local/README.md, a user-facing page in the shape of skills/parallel2/README.md: what a local review does, when to use it over pr-review, its arguments (--roast, -a, -- guidance), what it writes and where, and the phases as a developer sees them"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "Developer asked for a user-facing README for review-local alongside the TASK-7 skill docs."
+      },
+      "date": "2026-11-12"
     }
   ]
 }
