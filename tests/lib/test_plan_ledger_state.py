@@ -9,9 +9,6 @@ set. A legacy plan (in-file stamp, no ``ledger``) loads and saves as before, and
 whose commit is unset. ``plan_api.write`` refuses a Locked plan, armed or not, naming ``unlock --arm``. The
 renderers print ``<date> at <tree7>`` for a ledger stamp, and the todo_sync P1 rule reads the receipts
 scheme from the ledger's last freeze.
-
-Every test that needs ``harness_lib.freeze_ledger`` imports it inside its body, so collection succeeds
-before the module exists and the test fails with ImportError.
 """
 from __future__ import annotations
 

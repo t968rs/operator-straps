@@ -175,7 +175,7 @@ def test_freeze_refuses_an_item_nothing_proves(run: Run,
 
 
 @pytest.mark.cross_os
-def test_freeze_records_head_and_renders(run: Run, filled: Fill,
+def test_freeze_records_the_scoped_tree_and_renders(run: Run, filled: Fill,
                                          project: Path) -> None:
     """The stamp is the ledger's: no commit, the scoped tree of the plan files rather than HEAD's tree."""
     filled()

@@ -13,8 +13,9 @@ is Frozen, Locked (``lock``), Locked and armed (``unlock --arm``) or Unlocked (`
 tag-creating command preflights its tag names and refuses on a name already on another object before it
 writes anything; it prints ``tag: <name> -> <sha7>`` lines and one ``push: git push origin <tags>`` line
 after its status line (tags are local; the developer pushes). Every command that loads a plan reconciles
-its ledger: the commit that added each committed entry file gets ``<kind>/<stem>/r1.<k>-commit`` (a rewrite
-adds ``-commit.2``). Inside a strap scenario tree no tag is created and nothing is reconciled.
+its ledger after its own work, when that work succeeds (a refused command never reaches it): the commit
+that added each committed entry file gets ``<kind>/<stem>/r1.<k>-commit`` (a rewrite adds ``-commit.2``).
+Inside a strap scenario tree no tag is created and nothing is reconciled.
 
 ``new TITLE [--spec PATH] [--base BRANCH] [--no-fetch]``
     Write an empty plan with the next plan id, the spec path and the base commit (the merge base of the base
@@ -60,9 +61,10 @@ adds ``-commit.2``). Inside a strap scenario tree no tag is created and nothing 
     commit, the record scheme and the digest; then tag the tree ``freeze/<stem>/r1.<k>-tree`` and the base.
     A plan with an in-file stamp and no ledger migrates on ``--refreeze``: a history ``freeze`` entry (no
     tree, dated from the stamp) comes first and ``frozen`` leaves the JSON. The status line names the entry
-    and its tree. A first freeze (every item PENDING without a record), the path every new plan takes, stores ``plan_record.FIRST_SCHEME``, receipts: the digest covers every field but
-    ``frozen``, a ``documentation`` naming the markdown PIP moves to the HTML page (the markdown PIP is
-    deleted), and the freeze writes the page and ``live.js``. A receipts plan keeps the scheme on a
+    and its tree. A first freeze (every item PENDING without a record), the path every new plan takes,
+    stores ``plan_record.FIRST_SCHEME``, receipts: the digest covers every field but ``frozen``, a
+    ``documentation`` naming the markdown PIP moves to the HTML page (the markdown PIP is deleted), and the
+    freeze writes the page and ``live.js``. A receipts plan keeps the scheme on a
     refreeze (stored, proven by the digest, or stored at HEAD; checked before the sealed rule), reads its
     item states from its receipts, tolerates a receipt whose seal the refreeze broke (printing
     ``re-record after refreeze: <ITEM>``, as below), refuses every other
@@ -115,10 +117,10 @@ adds ``-commit.2``). Inside a strap scenario tree no tag is created and nothing 
     ``.3``. Their ``tag:`` lines print, but no ``push:`` line names a receipt tag.
 
 ``lock PLAN``
-    Run only on the developer's explicit ask. Refuses a plan with an in-file stamp (``freeze --refreeze``
-    migrates it first), unless the plan is Frozen with a ledger, its freeze digest holds, every file of the
-    last freeze is committed at HEAD with the frozen blob and unchanged in the working tree, and every
-    ignored file keeps its sha256. Writes a ``lock`` entry (the freeze's tree, files, ignored map, digest and
+    Run only on the developer's explicit ask. Refuses unless the plan is Frozen with a ledger (an in-file
+    stamp migrates on ``freeze --refreeze`` first), its freeze digest holds, every file of the last freeze
+    is committed at HEAD with the frozen blob and unchanged in the working tree, and every ignored file
+    keeps its sha256. Writes a ``lock`` entry (the freeze's tree, files, ignored map, digest and
     records) and tags ``lock/<stem>/r1.<k>-tree``.
 
 ``unlock PLAN --arm REASON`` / ``unlock PLAN``

@@ -2,13 +2,14 @@
 
 Asymmetric: ``SkillSpec.json`` keeps ``frozen``, ``rounds`` and the ``authored`` seal; the ledger under
 ``<artifacts.plans>/freezes/skill/<name>/`` records each freeze tree, lock, reopen and relink. Locked is
-read from the ledger alone: the highest entry of the spec's current round (``len(rounds) + 1``) is a
-``lock``.
+read from the ledger alone: the state of the entries of the spec's current round (``len(rounds) + 1``) is
+Locked, a ``lock`` optionally followed by ``relink`` entries.
 
 A command works out a ``Pending`` (the entries it will write and the tags it will create) before it writes
 anything, preflights every tag name, and only then saves the spec and calls ``commit``. Inside a scenario
 tree (``freeze_git.SCENARIO_MARKER`` at the project root) entries are still written, but no tag is created
-and nothing is reconciled. This module never saves a spec; ``strap.py`` does. Requires an activated config.
+and nothing is reconciled. This module never saves a spec; ``strap.py`` does, and hands ``commit`` the
+spec's earlier bytes to put back when an entry write fails. Requires an activated config.
 """
 from __future__ import annotations
 
@@ -28,7 +29,7 @@ from harness_lib.freeze_ledger import EntryKind, LedgerEntry
 from harness_lib.strap_models import SPEC_FILE, Frozen, SkillSpec
 
 LOCKED = "{name} is locked; reopen to change it"
-LEGACY = "legacy: {name} has no ledger; one starts at its next freeze, refreeze or reopen"
+LEGACY = "legacy: {name} has no ledger; one starts at its next freeze --refreeze, reopen or relink"
 SET_DIRS = ("tests", "fixtures")
 FALLBACK_TAGGER = {"GIT_COMMITTER_NAME": "strap", "GIT_COMMITTER_EMAIL": "strap@localhost"}
 
@@ -193,7 +194,11 @@ def _tree_tag(name: str, entry: LedgerEntry) -> str:
 
 
 def freeze_pending(root: Path, spec: SkillSpec, frozen: Frozen) -> Pending:
-    """The ``freeze`` entry of ``frozen`` (after any history entries) and its tree and base tags."""
+    """The ``freeze`` entry of ``frozen`` (after any history entries) and its tree and base tags.
+
+    No base tag is requested when a ``base/<stem>/r<N>`` or relinked ``r<N>-<m>`` tag already holds
+    ``spec.base``: after a relink the plain name stays on the old base and is never re-targeted.
+    """
     found = entries(spec.name)
     if is_locked(spec, found):
         raise LockRefused([LOCKED.format(name=spec.name)])
@@ -205,7 +210,7 @@ def freeze_pending(root: Path, spec: SkillSpec, frozen: Frozen) -> Pending:
                         ignored=snap.ignored, at=frozen.at, base=spec.base, skill_hash=frozen.skill_hash,
                         grader=frozen.grader.value)
     tags = {_tree_tag(spec.name, entry): (snap.tree, f"{spec.name}: freeze r{round_}.{entry.seq} tree")}
-    if spec.base:
+    if spec.base and not _base_held(root, spec.name, round_, spec.base):
         tags[fg.base_tag(stem(spec.name), round_)] = (spec.base, f"{spec.name}: base of round {round_}")
     return Pending(spec.name, [*earlier, entry], tags)
 
@@ -241,6 +246,14 @@ def _base_ms(root: Path, name: str, round_: int) -> List[int]:
     pattern = re.compile(rf"^{re.escape(prefix)}(?:-(\d+))?$")
     names = git(root, "tag", "--list", f"{prefix}*").stdout.split()
     return [int(match.group(1) or 1) for line in names if (match := pattern.match(line))]
+
+
+def _base_held(root: Path, name: str, round_: int, base: str) -> bool:
+    """True when an existing ``base/<stem>/r<N>`` or ``base/<stem>/r<N>-<m>`` tag peels to ``base``."""
+    prefix = fg.base_tag(stem(name), round_)
+    pattern = re.compile(rf"^{re.escape(prefix)}(?:-\d+)?$")
+    names = git(root, "tag", "--list", f"{prefix}*").stdout.split()
+    return any(_peel(root, line) == base for line in names if pattern.match(line))
 
 
 def relink_pending(root: Path, spec: SkillSpec, new_base: str, match: str) -> Pending:
@@ -356,12 +369,23 @@ def _entry_stem(name: str, entry: LedgerEntry) -> str:
     return f"{entry.kind.value}/{stem(name)}/r{entry.round}.{entry.seq}"
 
 
-def commit(root: Path, pending: Pending) -> List[str]:
-    """Write the entries, create the tags and reconcile; return the ``tag:``, ``push:`` and ``warn:``
-    lines."""
+def _write_entries(pending: Pending, restore: Optional[Tuple[Path, bytes]]) -> None:
+    """Write ``pending``'s entries; a failed write puts ``restore``'s bytes back at its path, then raises."""
     target = folder(pending.name)
-    for entry in pending.entries:
-        fl.write_entry(target, entry)
+    try:
+        for entry in pending.entries:
+            fl.write_entry(target, entry)
+    except (fl.LedgerError, OSError):
+        if restore is not None:
+            restore[0].write_bytes(restore[1])
+        raise
+
+
+def commit(root: Path, pending: Pending, restore: Optional[Tuple[Path, bytes]] = None) -> List[str]:
+    """Write the entries, create the tags and reconcile; return the ``tag:``, ``push:`` and ``warn:``
+    lines. ``restore`` is the spec file and its bytes before the command saved it, put back when an entry
+    write fails so the spec never moves without its ledger entry."""
+    _write_entries(pending, restore)
     if fg.in_scenario_tree(root):
         return []
     created, warns = _create(root, pending.tags)
@@ -410,8 +434,18 @@ def _file_problems(root: Path, last: LedgerEntry) -> List[str]:
     return problems
 
 
+def _spec_problems(root: Path, spec: SkillSpec) -> List[str]:
+    """``SkillSpec.json`` changed since HEAD: the lock tree takes it from the working tree, so it must sit
+    in a commit."""
+    own = _rel(root, _spec_dir(spec.name) / SPEC_FILE)
+    if _head_blobs(root, [own]).get(own) == worktree_blobs(root, [own]).get(own):
+        return []
+    return [f"{own}: differs from HEAD; commit the spec first"]
+
+
 def lock_problems(root: Path, spec: SkillSpec) -> List[str]:
-    """The ledger part of the lock gate: a last freeze matching the stamp, its files at HEAD and clean."""
+    """The ledger part of the lock gate: a last freeze matching the stamp, its files and ``SkillSpec.json``
+    at HEAD and clean."""
     found = entries(spec.name)
     if is_locked(spec, found):
         return [f"{spec.name} is already locked"]
@@ -419,7 +453,7 @@ def lock_problems(root: Path, spec: SkillSpec) -> List[str]:
     last = fl.last_freeze(found)
     if problems or last is None:
         return problems
-    return _file_problems(root, last)
+    return _file_problems(root, last) + _spec_problems(root, spec)
 
 
 # --- relink -----------------------------------------------------------------------------------------------

@@ -7,8 +7,7 @@ none a directory prefix of another. ``preflight`` and ``ensure_tag`` refuse a na
 ``reconcile`` tags the commit that added an entry file, adds a ``.N`` tag when a rewrite left no tagged
 commit on HEAD's history, and never tags a history entry. ``patch_id_match`` finds a rewritten base.
 
-Every repository is a throwaway one under ``tmp_path``; the module is imported inside each test, so each
-fails with ImportError until it exists.
+Every repository is a throwaway one under ``tmp_path``.
 """
 from __future__ import annotations
 

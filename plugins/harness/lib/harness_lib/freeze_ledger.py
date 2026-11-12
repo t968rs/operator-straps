@@ -13,9 +13,11 @@ import json
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Dict, Iterable, List, Optional
+from typing import Annotated, Dict, Iterable, List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+
+from harness_lib.plan_enums import RecordScheme
 
 FREEZES_DIR = "freezes"
 SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
@@ -77,13 +79,13 @@ class LedgerEntry(BaseModel):
     base: Optional[Sha40] = None
     history: bool = False
     digest: Optional[Sha64] = None
-    records: Optional[str] = None
+    records: Optional[RecordScheme] = None
     skill_hash: Optional[Sha64] = None
     grader: Optional[str] = None
     reason: Optional[str] = None
     old_base: Optional[Sha40] = None
     new_base: Optional[Sha40] = None
-    match: Optional[str] = None
+    match: Optional[Literal["patch-id", "ref"]] = None
 
     @field_validator("at")
     @classmethod

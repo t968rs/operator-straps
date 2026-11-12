@@ -1,8 +1,6 @@
 """``harness_lib.freeze_ledger``: the per-entry freeze ledger (plan 1015, LED-1).
 
 One JSON file per entry, named ``r<N>.<k>-<kind>.json`` under ``ledger_dir(plans_dir, stem)``.
-Each test imports the module inside its body, so collection succeeds before the module exists and the
-test itself fails with ImportError.
 """
 from __future__ import annotations
 

@@ -54,8 +54,10 @@ The spec lives at ``<artifacts.plans>/strap/<name>/SkillSpec.json``. Authored fi
 ``api <name>``
     Run stdin code with the public names of ``harness_lib.strap_api`` and ``name`` bound.
 
-Tags are local: each command that creates one prints ``tag: <name> -> <sha7>`` and a ``push:`` line. Inside a
-scenario tree (``freeze_git.SCENARIO_MARKER`` at the project root) no tag is created and nothing reconciled.
+Tags are local: each command that creates one prints ``tag: <name> -> <sha7>`` and a ``push:`` line. Only
+``check`` and the ledger writers (``new --edit``, ``freeze``, ``reopen``, ``lock``, ``relink``) reconcile the
+ledger's commit tags; the other commands leave them to the next of those. Inside a scenario tree
+(``freeze_git.SCENARIO_MARKER`` at the project root) no tag is created and nothing reconciled.
 
 ``--repo`` (default: the working directory) names a directory inside the project. Usage::
 
@@ -171,6 +173,12 @@ def save(spec: SkillSpec) -> SkillSpec:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(sm.dump_spec(stamped), encoding="utf-8", newline="\n")
     return stamped
+
+
+def spec_bytes(name: str) -> Tuple[Path, bytes]:
+    """The spec file and its bytes, for ``strap_lock.commit`` to put back when an entry write fails."""
+    path = sa.spec_path(name)
+    return path, path.read_bytes()
 
 
 # --- lookups ----------------------------------------------------------------------------------------------
@@ -562,9 +570,26 @@ def _lay_fixture(tree: Path, folder: Path) -> str:
 
 def _mark_scenario(tree: Path) -> None:
     """Write ``freeze_git.SCENARIO_MARKER`` at the root of a throwaway tree, so a driver run inside it
-    creates no tags. Written after any fixture commit and left out of ``changed_paths``, so it is never
-    committed, hashed or seen by a run's checks."""
+    creates no tags. Written after any fixture commit and ignored through ``info/exclude``, so the runner's
+    ``git status`` stays clean and ``git add -A`` skips it; ``changed_paths`` also leaves it out, so it is
+    never committed, hashed or seen by a run's checks."""
     (tree / fg.SCENARIO_MARKER).write_text("strap scenario tree\n", encoding="utf-8", newline="\n")
+    _exclude_marker(tree)
+
+
+def _exclude_marker(tree: Path) -> None:
+    """Name the root marker in the ``info/exclude`` git reads for ``tree`` (the repository's shared one for
+    a linked worktree), once; the anchored pattern matches only a worktree root."""
+    found = Path(git_out(tree, "rev-parse", "--git-path", "info/exclude").strip())
+    path = found if found.is_absolute() else tree / found
+    line = f"/{fg.SCENARIO_MARKER}"
+    text = path.read_text(encoding="utf-8") if path.is_file() else ""
+    if line in text.splitlines():
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lead = "\n" if text and not text.endswith("\n") else ""
+    with open(path, "a", encoding="utf-8", newline="\n") as handle:
+        handle.write(f"{lead}{line}\n")
 
 
 def build_tree(start: str, fixture: Optional[Path]) -> Tuple[Path, str]:
@@ -942,11 +967,13 @@ def cmd_freeze(args: argparse.Namespace) -> int:
     root = _root()
     pending = sl.freeze_pending(root, spec, frozen)
     sl.preflight(root, pending)
+    before = spec_bytes(spec.name)
     save(spec.model_copy(update={"frozen": frozen,
                                  "behaviors": _with_states(spec, live, BehaviorState.GREEN)}))
+    lines = sl.commit(root, pending, before)
     was = f" | was {previous.skill_hash[:12]}" if previous is not None else ""
     print(f"freeze [done] | {spec.name} | {current[:12]} | grader {grader.value}{was}")
-    _print_lines(sl.commit(root, pending))
+    _print_lines(lines)
     return 0
 
 
@@ -982,10 +1009,12 @@ def cmd_reopen(args: argparse.Namespace) -> int:
     live = [b.id for b in spec.behaviors if b.state != BehaviorState.DROPPED]
     rounds = [*spec.rounds, Round(base=spec.base, frozen=spec.frozen, behaviors=live)]
     was = spec.frozen.skill_hash
+    before = spec_bytes(spec.name)
     spec = save(spec.model_copy(update={"rounds": rounds, "frozen": None, "mode": SpecMode.EDIT,
                                         "base": base}))
+    lines = sl.commit(root, pending, before)
     print(f"reopen [done] | {spec.name} | round {len(rounds) + 1} | base {base[:12]} | was {was[:12]}")
-    _print_lines(sl.commit(root, pending))
+    _print_lines(lines)
     return 0
 
 
@@ -1037,10 +1066,16 @@ def cmd_relink(args: argparse.Namespace) -> int:
     pending = sl.relink_pending(root, spec, new_base, match)
     sl.preflight(root, pending)
     old = spec.base or ""
+    before = spec_bytes(spec.name)
     save(spec.model_copy(update={"base": new_base}))
-    pending = sl.relinked(root, spec, pending)
+    try:
+        pending = sl.relinked(root, spec, pending)
+    except sl.LockRefused:
+        before[0].write_bytes(before[1])
+        raise
+    lines = sl.commit(root, pending, before)
     print(f"relink [done] | {spec.name} | base {old[:12]} -> {new_base[:12]} | {match}")
-    _print_lines(sl.commit(root, pending))
+    _print_lines(lines)
     return 0
 
 

@@ -2,7 +2,8 @@
 
 A plan's freeze stamp lives in ``<plan folder>/freezes/plan/<id>-<slug>/``, one write-once entry file per
 ``freeze``, ``lock``, ``arm``, ``unlock`` or ``relink``; the plan JSON carries only the static ``ledger``
-field (the stem). The stem's slug is the plan file's title slug, underscores as hyphens, lower case. Plans
+field (the stem). The stem's slug is the plan file's title slug in lower case, each run of characters
+outside ``[a-z0-9]`` (underscores among them) one hyphen. Plans
 have one round, so every entry is ``r1.<k>``. A ``relink`` entry re-records the held files with the plan
 JSON's new blob, so the lock gate and ``drift:`` compare against the relinked plan.
 
@@ -59,8 +60,12 @@ def now() -> str:
 
 
 def stem_slug(title_slug: str) -> str:
-    """A ``pd.title_slug`` as a stem slug: underscores as hyphens, lower case."""
-    return title_slug.replace("_", "-").lower()
+    """A title slug as a stem slug: lower case, each run of characters outside ``[a-z0-9]`` one hyphen.
+
+    The result always fits the ``ledger`` pattern, even for a hand-named plan file whose title holds a dot,
+    a plus sign or a non-ASCII letter.
+    """
+    return re.sub(r"[^a-z0-9]+", "-", title_slug.lower()).strip("-")
 
 
 def file_slug(plan_file: Path) -> str:
@@ -163,9 +168,23 @@ def _entry_stem(stem: str, entry: LedgerEntry) -> str:
     return f"{entry.kind.value}/{stem}/r{entry.round}.{entry.seq}"
 
 
-def base_tags(stem: str, base: str) -> Tags:
-    """The round-1 base tag of ``stem`` on ``base``; empty without a base."""
-    return {fg.base_tag(stem, ROUND): (base, f"{stem}: base of round {ROUND}")} if base else {}
+def base_tags(stem: str, base: str, repo: Optional[Path] = None) -> Tags:
+    """The round-1 base tag of ``stem`` on ``base``; empty without a base.
+
+    With ``repo``, also empty when a ``base/<stem>/r1`` or relinked ``base/<stem>/r1-<m>`` tag already peels
+    to ``base``: after a relink the plain name stays on the old base and is never re-targeted.
+    """
+    if not base or (repo is not None and base_held(repo, stem, base)):
+        return {}
+    return {fg.base_tag(stem, ROUND): (base, f"{stem}: base of round {ROUND}")}
+
+
+def base_held(repo: Path, stem: str, base: str) -> bool:
+    """True when an existing ``base/<stem>/r1`` or ``base/<stem>/r1-<m>`` tag peels to ``base``."""
+    prefix = fg.base_tag(stem, ROUND)
+    pattern = re.compile(rf"^{re.escape(prefix)}(?:-\d+)?$")
+    names = git(repo, "tag", "--list", f"{prefix}*").stdout.split()
+    return any(_peel(repo, name) == base for name in names if pattern.match(name))
 
 
 def _peel(repo: Path, name: str) -> Optional[str]:
@@ -291,12 +310,15 @@ def history(repo: Path, stem: str, plan: pm.ActionPlan, found: Sequence[LedgerEn
 
 
 def freeze_pending(repo: Path, plan_file: Path, plan: pm.ActionPlan) -> Pending:
-    """The freeze's stem, history entries, sequence and base tag, preflighted; nothing is written."""
+    """The freeze's stem, history entries, sequence and base tag, preflighted; nothing is written.
+
+    No base tag is requested when a round-1 base tag (a relinked one included) already holds the base.
+    """
     stem = stem_of(plan_file, plan)
     found = entries_of(plan_file, plan)
     earlier = history(repo, stem, plan, found)
     seq = _seq(repo, stem, [*found, *earlier])
-    pending = Pending(stem, earlier, seq, base_tags(stem, plan.base_commit))
+    pending = Pending(stem, earlier, seq, base_tags(stem, plan.base_commit, repo))
     preflight(repo, pending.tags, [tree_tag(stem, EntryKind.freeze.value, seq)])
     return pending
 

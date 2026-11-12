@@ -149,7 +149,8 @@ class Context(BaseModel):
 class Frozen(BaseModel):
     """A freeze stamp: in the plan JSON on a legacy plan, read from the last ledger ``freeze`` otherwise.
 
-    A ledger stamp has no commit (the ledger records the tree alone); a legacy stamp carries both.
+    A ledger stamp has no commit (the ledger records the tree alone); a legacy stamp was written with both,
+    but the model requires neither, so both fields are optional for every stamp.
     """
 
     model_config = _OPEN
@@ -161,8 +162,9 @@ class Frozen(BaseModel):
     records: Optional[RecordScheme] = None
 
     @classmethod
-    def at(cls, commit: str, tree: str, date: str, digest: str, records: Optional[RecordScheme]) -> "Frozen":
-        """A freeze record; ``records`` is set only when given, so the dump writes no null key."""
+    def at(cls, commit: Optional[str], tree: Optional[str], date: str, digest: str,
+           records: Optional[RecordScheme]) -> "Frozen":
+        """A freeze stamp; ``records`` is set only when given, so the dump writes no null key."""
         scheme: Dict[str, Any] = {} if records is None else {"records": records}
         return cls(commit=commit, tree=tree, date=date, digest=digest, **scheme)
 
@@ -425,7 +427,9 @@ class ActionPlan(BaseModel):
         "Commit the plan was written against: the merge base of the base branch and HEAD, recorded by "
         "`plan.py new`. Commands name `{base}` instead of a SHA."))
     frozen: Annotated[Optional[Frozen], Mutable()] = Field(default=None, description=(
-        "Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest. Under the "
+        "On a legacy plan, set by `plan.py freeze` in the JSON (commit, tree, digest); on a plan with "
+        "`ledger`, read from the last ledger `freeze` entry (tree and digest, no commit) and never written. "
+        "Under the "
         "`receipts` scheme the digest covers every field but `frozen` and `plan.py check` reports any later "
         "edit. Under `sealed` or an unset scheme it covers every field except item status, evidence, "
         "verification_references and record, and the top-level completed, frozen, markdown_sync_status and "

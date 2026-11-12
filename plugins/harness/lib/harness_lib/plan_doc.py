@@ -141,9 +141,8 @@ def load_plan(path: Path) -> pm.ActionPlan:
 
 def _ledger_stamp(stem: str, entry: fl.LedgerEntry) -> pm.Frozen:
     """The stamp a ledger ``freeze`` entry stands for: no commit, its tree, the day of ``at``, digest."""
-    scheme: Dict[str, Any] = {} if entry.records is None else {"records": entry.records}
     try:
-        return pm.Frozen(commit=None, tree=entry.tree, date=entry.at[:10], digest=entry.digest, **scheme)
+        return pm.Frozen.at(None, entry.tree, entry.at[:10], entry.digest, entry.records)
     except ValidationError as exc:
         name = fl.entry_name(entry)
         raise PlanError([f"ledger {stem} {name}: {line}" for line in schema_lines(exc)]) from exc

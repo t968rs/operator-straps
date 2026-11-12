@@ -2,8 +2,8 @@
 
 Both functions are driver entry points: they activate the project named by ``repo`` (default: the working
 directory) themselves, since a heredoc has no driver to do it. ``load`` returns the validated ``ActionPlan``;
-nested models built in the heredoc validate as they are constructed, and ``model_copy`` does not, so ``write``
-validates the dump of the whole plan again before it touches a file.
+nested models built in the heredoc validate as they are constructed, and ``model_copy`` does not, so
+``write`` validates the dump of the whole plan again before it touches a file.
 
 ``write`` saves to the file ``load`` read (a plan loaded from a linked worktree is written there, not into
 the active project), and refuses (all problems at once, nothing written) an unknown plan id, a plan that was
@@ -11,8 +11,8 @@ not loaded or whose file changed since, a Locked plan (armed or not; ``plan.py u
 ``plan_id``, ``base_commit``, ``frozen`` or ``ledger`` (``plan.py new`` and ``freeze`` own them; a ledger
 plan's ``frozen`` is the stamp ``load`` hydrated from its ledger), an extra key at the plan or item level the
 file does not already carry (a misspelled field), a duplicate item id and, on a frozen plan, any change to an
-execution field (only ``plan.py record`` sets those). Without pydantic at the floor ``doctor.REQUIRED_MODULES`` names, the
-import prints one ``problem:`` line and exits 1.
+execution field (only ``plan.py record`` sets those). Without pydantic at the floor
+``doctor.REQUIRED_MODULES`` names, the import prints one ``problem:`` line and exits 1.
 """
 from __future__ import annotations
 

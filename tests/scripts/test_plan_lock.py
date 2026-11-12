@@ -8,8 +8,7 @@ freeze; a Locked plan refuses ``freeze --refreeze`` until ``unlock --arm REASON`
 commit that added an entry and reports drift of a Locked plan; a plan with an in-file stamp migrates to the
 ledger on refreeze; ``relink`` re-points a rewritten ``base_commit``; ``record`` tags the tested code locally.
 
-Every test but ``test_new_number_skips_branches_and_tags`` imports ``harness_lib.freeze_ledger`` first, so
-it fails with ImportError before the work. The driver runs in-process through ``main`` with ``--repo``.
+The driver runs in-process through ``main`` with ``--repo``.
 """
 from __future__ import annotations
 
@@ -28,54 +27,17 @@ from harness_lib.plan_enums import RecordScheme
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _plan_driver_helpers as helpers  # noqa: E402
-from _plan_driver_helpers import (PLANS, SUB_TEST, Run, plan_file, read_plan, write_op,  # noqa: E402
-                                  write_plan)
+from _plan_driver_helpers import PLANS, Run, plan_file, read_plan, write_op, write_plan  # noqa: E402
+from _plan_lock_helpers import (PLANNED, STEM, advance_main, commit_all, entries, fill, kind_of,  # noqa: E402
+                                ledger_folder, plan_rel, prefixed, rewrite_base, tag_target)
 
 driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
 WALK_ROOTS = ()  # walks only a make_project repo
 HEX40 = re.compile(r"^[0-9a-f]{40}$")
 HEX64 = re.compile(r"^[0-9a-f]{64}$")
-STEM = "plan/0001-add-operators"
 LEDGER_DIR = f"{PLANS}/freezes/{STEM}"
-PLANNED = f"{PLANS}/0001/tests/tests/test_calc_sub.py"
 LEGACY_DATE = "2026-11-01"
 LEGACY = "legacy: plan 0001 keeps an in-file stamp; migrates at its next refreeze"
-
-
-def _item() -> Dict[str, Any]:
-    return {"id": "TASK-1", "title": "Add sub", "action": "Add sub beside add.", "status": "PENDING",
-            "evidence": "not started", "files": ["src/calc.py", "tests/test_calc_sub.py"],
-            "anchors": [{"at": "src/calc.py:1", "expect": "def add(a, b):"}],
-            "tests": [{"node": "tests/test_calc_sub.py::test_sub", "red": "ImportError"}]}
-
-
-def commit_all(project: Path, message: str) -> str:
-    """Stage every change, commit it and return the new HEAD."""
-    git(project, "add", "-A")
-    git(project, "commit", "-q", "-m", message)
-    return git(project, "rev-parse", "HEAD")
-
-
-def fill(run: Run, project: Path, freeze: bool = True) -> str:
-    """``new`` and the planned test, committed as the skeleton; then TASK-1, and a freeze unless told not to.
-
-    The committed skeleton makes the plan JSON and the planned test tracked, so the frozen plan JSON differs
-    from HEAD until it is committed. Returns the freeze's stdout, or '' without a freeze.
-    """
-    code, _, err = run("new", "Add operators", "--spec", "docs/spec.md")
-    assert code == 0, err
-    planned = project / PLANNED
-    planned.parent.mkdir(parents=True, exist_ok=True)
-    planned.write_text(SUB_TEST, encoding="utf-8")
-    commit_all(project, "plan 0001 skeleton")
-    plan = read_plan(project)
-    plan["items"] = [_item()]
-    write_plan(project, plan)
-    if not freeze:
-        return ""
-    code, out, err = run("freeze", "1")
-    assert code == 0, err
-    return out
 
 
 def lock_committed(run: Run, project: Path) -> str:
@@ -87,39 +49,12 @@ def lock_committed(run: Run, project: Path) -> str:
     return sha
 
 
-def kind_of(entry: Any) -> str:
-    return getattr(entry.kind, "value", entry.kind)
-
-
 def value_of(field: Any) -> Any:
     return getattr(field, "value", field)
 
 
-def ledger_folder(fl: Any, project: Path) -> Path:
-    return fl.ledger_dir(project / PLANS, STEM)
-
-
-def entries(fl: Any, project: Path) -> List[Any]:
-    return list(fl.load_entries(ledger_folder(fl, project)))
-
-
-def tag_target(project: Path, name: str) -> str:
-    """The object the tag ``name`` peels to, or '' when no such tag exists."""
-    if git(project, "tag", "--list", name) != name:
-        return ""
-    return git(project, "rev-parse", f"refs/tags/{name}^{{}}")
-
-
 def tags(project: Path) -> List[str]:
     return git(project, "tag", "--list").splitlines()
-
-
-def plan_rel(project: Path) -> str:
-    return plan_file(project).relative_to(project).as_posix()
-
-
-def prefixed(text: str, prefix: str) -> List[str]:
-    return [line for line in text.splitlines() if line.startswith(prefix)]
 
 
 @pytest.mark.cross_os
@@ -298,24 +233,6 @@ def test_legacy_plan_migrates_on_refreeze(run: Run, project: Path) -> None:
     assert tag_target(project, f"freeze/{STEM}/r1.2-tree") == fresh.tree
     assert f"freeze/{STEM}/r1.1-tree" not in tags(project)
     assert tag_target(project, f"base/{STEM}/r1") == plan["base_commit"]
-
-
-def advance_main(project: Path) -> str:
-    """Commit a note on ``main`` and fast-forward ``feat-x`` to it, so the base commit is not the root."""
-    git(project, "checkout", "-q", "main")
-    (project / "docs" / "notes.md").write_text("notes\n", encoding="utf-8")
-    base = commit_all(project, "notes")
-    git(project, "checkout", "-q", "feat-x")
-    git(project, "merge", "-q", "--ff-only", "main")
-    return base
-
-
-def rewrite_base(project: Path, old: str) -> str:
-    """Replace ``old`` by a commit with its tree and parent under another message, and replay ``feat-x``
-    on it, as a rebase does; returns the replacement, which has ``old``'s patch-id."""
-    new = git(project, "commit-tree", f"{old}^{{tree}}", "-p", f"{old}^", "-m", "notes, reworded")
-    git(project, "rebase", "-q", "--onto", new, old, "feat-x")
-    return new
 
 
 def test_relink_repoints_base_commit(run: Run, project: Path) -> None:
