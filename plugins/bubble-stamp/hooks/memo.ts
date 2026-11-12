@@ -35,7 +35,7 @@ export type Memo = {
 
 export type StampResult = { text: string; stamped: string[] }
 
-const STAMPING: readonly string[] = ['RESOLVED', 'CLOSED_NO_ACTION']
+const STAMPING: readonly string[] = ['RESOLVED', 'CLOSED_NO_ACTION', 'REFUTED']
 const HEADING = new RegExp(`^${ENTRY_PREFIX}(${ENTRY_ID_PATTERN})\\.(?:\\s|$)`)
 const RULE_CELLS = /^[-: ]*$/
 const UNESCAPED_PIPE = /(?<!\\)\|/
@@ -138,11 +138,13 @@ const openDecisionAt = (memo: Memo, lines: readonly string[], id: string): numbe
 }
 
 /**
- * Stamp each `Open` index row whose latest resolution (the last one given per id) is `RESOLVED` or
- * `CLOSED_NO_ACTION`: Status to `Decided`, the Decision and Tracked in cells, and the entry's open Decision
- * line. Nothing else changes, and every line keeps its own ending; a `Decided` row is never touched, so a
- * second run changes nothing. A Tracked in cell the developer filled stays unless the evidence names a `#<n>`.
- * The text is returned as given when nothing stamps or the memo lacks the anchors.
+ * Stamp each `Open` index row whose latest resolution (the last one given per id) is `RESOLVED`,
+ * `CLOSED_NO_ACTION` or `REFUTED`: Status to `Decided`, the Decision and Tracked in cells, and the entry's
+ * open Decision line. Nothing else changes, and every line keeps its own ending; a `Decided` row is never
+ * touched, so a second run changes nothing. Stamping is one-way: a row stamped `Decided` by a `REFUTED`
+ * entry stays `Decided` after `pr_review.py unrefute`, in either mode (`--bubble` or `--fix`), reopens the
+ * id; the unstamp is deferred. A Tracked in cell the developer filled stays unless the evidence names a
+ * `#<n>`. The text is returned as given when nothing stamps or the memo lacks the anchors.
  */
 export const stampMemo = (text: string, resolutions: readonly Resolution[]): StampResult => {
   const memo = parseMemo(text)

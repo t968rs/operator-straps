@@ -3,6 +3,7 @@ from typing import Any, Dict, Iterable, Set
 
 from harness_lib.validation.id_handling import disposition_ids as _disposition_ids
 from harness_lib.validation.id_handling import issue_ids as _issue_ids
+from harness_lib.validation.id_handling import reopened_ids as _reopened_ids
 
 
 class IssueTabulationError(Exception):
@@ -39,7 +40,9 @@ def validate_issue_counts(report: Dict[str, Any]) -> None:
         regardless of verdict (catches typos / stale references);
       * a "READY TO MERGE" verdict additionally requires every issue id to be
         accounted for — a READY closeout that leaves any issue undispositioned
-        is incoherent, even when nothing was dispositioned at all;
+        is incoherent, even when nothing was dispositioned at all; an id whose
+        latest resolution is ``NOT_RESOLVED`` (``id_handling.reopened_ids``) is
+        not accounted for here, whatever else names it;
       * a "NOT READY TO MERGE" review with no orphans is still open: partial or
         zero disposition is valid;
       * a clean review (no issues) is never tabulated.
@@ -51,6 +54,7 @@ def validate_issue_counts(report: Dict[str, Any]) -> None:
     dispositioned = _disposition_ids(report)
     verdict = report.get("verdict") or ""
     orphans = dispositioned - issue_ids
-    unaccounted: Set[str] = issue_ids - dispositioned if verdict.startswith("READY TO MERGE") else set()
+    accounted = dispositioned - _reopened_ids(report.get("post_review_resolutions") or [])
+    unaccounted: Set[str] = issue_ids - accounted if verdict.startswith("READY TO MERGE") else set()
     if unaccounted or orphans:
         raise IssueTabulationError(unaccounted=unaccounted, orphans=orphans)

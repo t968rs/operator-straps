@@ -1,6 +1,6 @@
 {
   "name": "agent-watcher",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "description": "Logs every agent dispatch and forked skill with engine-measured usage rows; tracks pr-review / pr-team runs: Phase 5 band, matrix rows, bubble Stop guard",
   "author": {
     "name": "Kevin Gabelman"

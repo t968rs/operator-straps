@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
-  "$version": "2.2.0",
+  "$version": "2.3.0",
   "title": "PR Code Review Output",
   "description": "Standard schema for code review results produced by agent reviewers",
   "type": "object",
@@ -312,6 +312,82 @@
                       "description": "One of: 'OK (N passed)' if applies=true and all guards green; 'SKIPPED (no CICD/test-infra paths in PR)' if applies=false; 'STOP - guards red' if any guard failed (this halts dispatch)."
                     }
                   }
+                },
+                "adversarial_check": {
+                  "type": "object",
+                  "description": "Optional; written only by an --adversarial (-a) run, absent otherwise. Capture writes applies, workflow, code_slots, refute_slots and result; build adds counts and refuted_ids; refute and unrefute update refuted_ids and unrefuted_ids.",
+                  "required": [
+                    "applies",
+                    "workflow",
+                    "code_slots",
+                    "refute_slots",
+                    "result"
+                  ],
+                  "properties": {
+                    "applies": {
+                      "type": "boolean",
+                      "const": true,
+                      "description": "Always true: the entry exists only for an --adversarial run."
+                    },
+                    "workflow": {
+                      "type": "string",
+                      "description": "The Workflow script the run dispatched, relative to the plugin root."
+                    },
+                    "code_slots": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Code refuter slot ids (adv_code or adv_code_<runtime|tests|plans>)."
+                    },
+                    "refute_slots": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Findings refuter slot ids (adv_refute_<target>)."
+                    },
+                    "result": {
+                      "type": "string",
+                      "description": "Short status line, e.g. 'OK (2 checked, 1 refuted)'."
+                    },
+                    "counts": {
+                      "type": "object",
+                      "description": "Written by build.",
+                      "properties": {
+                        "findings_checked": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "findings_refuted": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "findings_upheld": {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        "code_findings": {
+                          "type": "integer",
+                          "minimum": 0
+                        }
+                      }
+                    },
+                    "refuted_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Issue ids whose latest resolution is REFUTED."
+                    },
+                    "unrefuted_ids": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "description": "Issue ids whose refutation the developer overruled (BUBBLED or NOT_RESOLVED)."
+                    }
+                  }
                 }
               }
             },
@@ -556,9 +632,12 @@
             "RESOLVED",
             "DOWNGRADED_TO_MINOR",
             "DOWNGRADED_TO_IMPORTANT",
-            "CLOSED_NO_ACTION"
+            "CLOSED_NO_ACTION",
+            "REFUTED",
+            "BUBBLED",
+            "NOT_RESOLVED"
           ],
-          "description": "RESOLVED = fixed in session; DOWNGRADED = severity reduced with rationale; CLOSED_NO_ACTION = not applicable or excluded"
+          "description": "RESOLVED = fixed in session; DOWNGRADED = severity reduced with rationale; CLOSED_NO_ACTION = not applicable or excluded; REFUTED (closing) = refuted by the adversarial findings refuter at build, or by the developer through refute; evidence is the refuter's or the developer's case; BUBBLED (non-closing) = a refutation overruled by the developer and routed to the bubble workflow; NOT_RESOLVED (non-closing) = a refutation overruled by the developer and routed to Phase 5 waves. The latest entry for an id decides its state."
         },
         "date": {
           "type": "string",

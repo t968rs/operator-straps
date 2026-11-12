@@ -81,7 +81,7 @@ export type Run = {
   bubbled: string[]
   /**
    * `review_json` (pr-review): the review's `bubbles[]` plus ids bubbled in the run's `fixes/*.json`
-   * that no RESOLVED / CLOSED_NO_ACTION resolution closes.
+   * that no RESOLVED / CLOSED_NO_ACTION / REFUTED resolution closes.
    */
   bubbledFrom: 'closer' | 'bubble_ups' | 'review_json' | 'none'
   verdict: string | null

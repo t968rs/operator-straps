@@ -28,9 +28,9 @@ The `validate_pr_json_schema.py` hook validates review and plan writes against t
 Structure of an agent code-review verdict:
 
 - PR metadata (number, title, branch, base/head SHAs, review_date, reviewers)
-- Root metadata (REQUIRED): `schema_ref` (repo-relative path to canonical schema) + `version` (semver, currently "2.2.0")
+- Root metadata (REQUIRED): `schema_ref` (repo-relative path to canonical schema) + `version` (semver, currently "2.3.0")
 
-**Version bump protocol:** any change to the schema that breaks existing PR_REVIEWS JSONs (new required field, type change, removed property) requires a major version bump. `2.0.0` reflects the `fix: string → array[string]` migration completed in PR #1216; `2.1.0` adds the optional issue field `fix_kind` (non-breaking, so no sweep); `2.2.0` adds the optional `stats.source` sub-object (non-breaking, so no sweep). When bumping a major version, sweep all existing PR_REVIEWS JSONs in the same PR.
+**Version bump protocol:** any change to the schema that breaks existing PR_REVIEWS JSONs (new required field, type change, removed property) requires a major version bump. `2.0.0` reflects the `fix: string → array[string]` migration completed in PR #1216; `2.1.0` adds the optional issue field `fix_kind` (non-breaking, so no sweep); `2.2.0` adds the optional `stats.source` sub-object (non-breaking, so no sweep); `2.3.0` adds the resolution statuses `REFUTED` (closing), `BUBBLED` and `NOT_RESOLVED` (non-closing) and the optional `verification_log.dispatch_time.adversarial_check` entry written by `--adversarial` runs (non-breaking, so no sweep). When bumping a major version, sweep all existing PR_REVIEWS JSONs in the same PR.
 
 - Aggregated stats (additions, deletions, files_changed), plus the optional `source` sub-object: the same three counts without the machine-generated paths (the project's exclusions file plus the harness output patterns, both off when `exclusions` is null, and the Artifact commit bucket)
 - `verdict` — must match `^(READY TO MERGE|NOT READY TO MERGE)(.*)$`. The string `NEEDS FIXES` is NOT permitted; that wording exists only in skill prose.

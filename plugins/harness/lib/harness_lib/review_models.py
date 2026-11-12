@@ -2,7 +2,9 @@
 
 Reviewers record through ``record_draft`` (or ``record``) and fixers through ``record_fixes_draft`` (or
 ``record_fixes``), normally once, from the heredoc their brief carries. ``record_add`` is the exception: it
-appends to a reviewer's report across several calls. Each replacing call validates every item before writing
+appends to a reviewer's report across several calls. Under ``--adversarial``, code refuters (``adv_code*``)
+record through ``record_attacks(_draft)`` and findings refuters through ``record_refutations(_draft)``,
+which writes ``refutations/<target>.json``. Each replacing call validates every item before writing
 anything, replaces the agent's report under the run directory
 (``<project>/<artifacts.scratch>/<NNNN or local-<label>>/<RUN_ID>/``, named by the ``run_id`` argument,
 else by ``current``), and prints the agent's return-contract block (the pr-team skill's
@@ -12,7 +14,9 @@ path); without one, the project is ``harness_lib.config.active()``'s root.
 """
 from __future__ import annotations
 
+import collections
 import functools
+import hashlib
 import json
 import os
 import re
@@ -37,6 +41,13 @@ if TYPE_CHECKING:
     from harness_lib.config import HarnessConfig
 
 AGENT_ID = re.compile(r"^[a-z0-9]+(_[a-z0-9]+)*$")
+ADVERSARIAL_WORKFLOW = "workflows/adversarial-review.js"
+ADVERSARIAL_AGENT = "harness:adversarial-reviewer"
+REFUTER_MODEL = "opus"
+CODE_REFUTER_PREFIX = "adv_code"
+FINDINGS_REFUTER_PREFIX = "adv_refute_"
+_KEY_LENGTH = 12
+KEY_PATTERN = rf"^[0-9a-f]{{{_KEY_LENGTH}}}$"
 _LOCAL_RUN = (rf"{re.escape(LOCAL_PREFIX)}(?=[^_]{{1,{LABEL_MAX}}}_)"
               rf"{LABEL_PATTERN.strip('^$')}")
 RUN_ID = re.compile(rf"^(pr\d{{1,7}}|{_LOCAL_RUN})_\d{{8}}T\d{{6}}Z$")
@@ -259,6 +270,156 @@ class ReviewerReport(BaseModel):
         return {s: sum(1 for f in self.findings if f.severity is s) for s in Severity}
 
 
+class AttackFinding(Finding):
+    """A code refuter's finding: a ``Finding`` plus the ``attack`` that breaks the code (the failing
+    input, the broken call path, or the test that would fail)."""
+
+    attack: str = Field(min_length=1)
+
+    @field_validator("attack")
+    @classmethod
+    def _attack(cls, value: str) -> str:
+        """Attack stripped; blank rejected."""
+        return _non_empty((value,), "attack")[0]
+
+
+class CodeRefuterReport(ReviewerReport):
+    """Everything one code refuter (an ``adv_code*`` slot) recorded: attack findings and strengths."""
+
+    findings: Tuple[AttackFinding, ...] = ()
+
+
+class RefutationVerdict(str, Enum):
+    """A findings refuter's verdict on one finding."""
+
+    refuted = "refuted"
+    upheld = "upheld"
+
+
+class Refutation(BaseModel):
+    """One findings-refuter verdict on the finding whose ``finding_key`` is ``key``.
+
+    A refuted entry carries ``evidence``: the ``path:line`` opened and what it showed.
+    """
+
+    model_config = _MODEL_CONFIG
+
+    key: str = Field(pattern=KEY_PATTERN)
+    verdict: RefutationVerdict
+    evidence: str = ""
+
+    @field_validator("key", mode="before")
+    @classmethod
+    def _key(cls, value: object) -> object:
+        """Key stripped of whitespace and one pair of surrounding square brackets, then lowercased."""
+        if not isinstance(value, str):
+            return value
+        text = value.strip()
+        if text.startswith("[") and text.endswith("]"):
+            text = text[1:-1]
+        return text.lower()
+
+    @field_validator("evidence", mode="before")
+    @classmethod
+    def _evidence(cls, value: object) -> object:
+        """Evidence collapsed to one line."""
+        return _one_line(value)
+
+    @model_validator(mode="after")
+    def _refuted_has_evidence(self) -> Refutation:
+        """A refuted verdict needs non-blank evidence."""
+        if self.verdict is RefutationVerdict.refuted and not self.evidence:
+            raise ValueError(f"refutation {self.key}: a refuted verdict needs evidence")
+        return self
+
+
+def _repeated(keys: Sequence[str]) -> List[str]:
+    """Values occurring more than once in ``keys``, sorted."""
+    return sorted(k for k, n in collections.Counter(keys).items() if n > 1)
+
+
+def _check_refuter_pair(refuter: str, target: str) -> None:
+    """Raise unless ``refuter`` is ``adv_refute_<target>``."""
+    if refuter != f"{FINDINGS_REFUTER_PREFIX}{target}":
+        raise ValueError(f"refuter id {refuter!r} does not match target {target!r}: "
+                         f"expected {FINDINGS_REFUTER_PREFIX}{target}")
+
+
+class RefutationReport(BaseModel):
+    """A findings refuter's verdicts on each distinct finding key of ``target``, exactly once, keyed to
+    the target report's ``report_digest`` at record time; ``refuter`` is ``adv_refute_<target>``."""
+
+    model_config = _MODEL_CONFIG
+
+    refuter: str
+    target: str
+    report_digest: str = Field(pattern=KEY_PATTERN)
+    refutations: Tuple[Refutation, ...] = ()
+
+    @field_validator("refuter", "target")
+    @classmethod
+    def _ids(cls, value: str) -> str:
+        """Refuter and target ids are snake_case agent ids."""
+        return _agent_id(value)
+
+    @model_validator(mode="after")
+    def _refuter_matches_target(self) -> RefutationReport:
+        """The refuter id is ``adv_refute_<target>``."""
+        _check_refuter_pair(self.refuter, self.target)
+        return self
+
+    @model_validator(mode="after")
+    def _unique_keys(self) -> RefutationReport:
+        """A finding key appears once across the refutations."""
+        repeated = _repeated([r.key for r in self.refutations])
+        if repeated:
+            raise ValueError(f"finding keys refuted more than once: {', '.join(repeated)}")
+        return self
+
+    def counts(self) -> Dict[RefutationVerdict, int]:
+        """Refutations per verdict, every verdict present."""
+        return {v: sum(1 for r in self.refutations if r.verdict is v) for v in RefutationVerdict}
+
+
+def is_code_refuter(agent: str) -> bool:
+    """True when ``agent`` is the code-refuter id ``adv_code`` or starts with ``adv_code_``."""
+    return agent == CODE_REFUTER_PREFIX or agent.startswith(CODE_REFUTER_PREFIX + "_")
+
+
+def _finding_model(agent: str) -> Type[Finding]:
+    """``AttackFinding`` for a code-refuter id, else ``Finding``."""
+    return AttackFinding if is_code_refuter(agent) else Finding
+
+
+def _report_model(agent: str) -> Type[ReviewerReport]:
+    """``CodeRefuterReport`` for a code-refuter id, else ``ReviewerReport``."""
+    return CodeRefuterReport if is_code_refuter(agent) else ReviewerReport
+
+
+def _digest(payload: object) -> str:
+    """First ``_KEY_LENGTH`` hex characters of sha256 over ``payload`` as sorted-key JSON."""
+    text = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:_KEY_LENGTH]
+
+
+def finding_key(finding: Finding) -> str:
+    """Content key of ``finding``: 12 hex characters of sha256 over its canonical JSON.
+
+    The hash covers every dumped field, defaults included, so a new defaulted field on ``Finding``
+    changes every key.
+    """
+    return _digest(finding.model_dump(mode="json"))
+
+
+def report_digest(report: ReviewerReport) -> str:
+    """Content digest of ``report``'s findings list (strengths do not move it).
+
+    The hash covers every dumped field of each finding, defaults included, so a new defaulted field on
+    ``Finding`` changes every digest.
+    """
+    return _digest([f.model_dump(mode="json") for f in report.findings])
+
+
 class FixEntry(BaseModel):
     """One issue a fixer claims fixed, with the files it edited.
 
@@ -410,6 +571,17 @@ def reviewer_block(report: ReviewerReport, output: str) -> str:
     ])
 
 
+def refutation_block(report: RefutationReport, output: str) -> str:
+    """Findings-refuter DONE block in the ``reviewer_block`` shape, counting verdicts."""
+    counts = report.counts()
+    return "\n".join([
+        "---", "SIGNAL: DONE", "AGENT_ROLE: refuter",
+        f"COUNTS: refutations={len(report.refutations)} refuted={counts[RefutationVerdict.refuted]} "
+        f"upheld={counts[RefutationVerdict.upheld]}",
+        f"OUTPUT: {output}", "---",
+    ])
+
+
 def _fail_reason(report: FixReport) -> str:
     """One-line FAIL reason (at most 200 characters) naming any bubbled ids."""
     bubbled = ",".join(b.id for b in report.bubbled)
@@ -480,17 +652,29 @@ def _load(model: Type[_M], path: Path) -> _M:
     return model.model_validate_json(path.read_text(encoding="utf-8"))
 
 
+def _reviewer_id(agent: str) -> str:
+    """``agent`` when it is a snake_case id outside ``adv_refute_*``; raise otherwise."""
+    _agent_id(agent)
+    if agent.startswith(FINDINGS_REFUTER_PREFIX):
+        raise ValueError(f"agent id {agent!r} is a findings refuter id; findings refuters record through "
+                         f"record_refutations or record_refutations_draft")
+    return agent
+
+
 def record(pr: RunKey, reviewer: str, findings: Sequence[Mapping[str, object]] = (),
            strengths: Sequence[str] = (), *, repo: Optional[Path] = None,
            run_id: Optional[str] = None) -> str:
     """Validate, write ``findings/<reviewer>.json`` (replacing), re-read it, print and return the block.
 
-    ``run_id`` names the run directory; without it the run ``current`` names receives the report.
+    ``run_id`` names the run directory; without it the run ``current`` names receives the report. A
+    ``reviewer`` id of ``adv_code`` or ``adv_code_*`` is validated as a ``CodeRefuterReport`` (every
+    finding needs an ``attack``); an ``adv_refute_*`` id is refused.
     """
+    _reviewer_id(reviewer)
     root = _repo(repo)
-    built = _validate_items(Finding, findings, "finding", root)
+    built = _validate_items(_finding_model(reviewer), findings, "finding", root)
     try:
-        report = ReviewerReport(reviewer=reviewer, findings=built, strengths=tuple(strengths))
+        report = _report_model(reviewer)(reviewer=reviewer, findings=built, strengths=tuple(strengths))
     except ValidationError as exc:
         raise ValueError(_error_text(exc)) from exc
     path, output = _report_path(pr, "findings", report.reviewer, root, run_id)
@@ -526,7 +710,7 @@ def draft_path(pr: RunKey, agent: str, repo: Optional[Path] = None, run_id: Opti
     return run_dir(pr, repo, run_id) / "drafts" / f"{agent}.json"
 
 
-def _read_draft(path: Path, keys: Tuple[str, str]) -> Dict[str, list]:
+def _read_draft(path: Path, keys: Tuple[str, ...]) -> Dict[str, list]:
     """The draft at ``path`` as ``{key: list}`` for each of ``keys`` (missing keys read as empty lists)."""
     try:
         data = json.loads(path.read_text(encoding="utf-8-sig"))
@@ -547,6 +731,7 @@ def record_draft(pr: RunKey, reviewer: str, *, repo: Optional[Path] = None,
 
     The payload travels through a file instead of the command line, so its size never reaches the shell.
     """
+    _reviewer_id(reviewer)
     draft = _read_draft(draft_path(pr, reviewer, repo, run_id), ("findings", "strengths"))
     return record(pr, reviewer, draft["findings"], draft["strengths"], repo=repo, run_id=run_id)
 
@@ -566,18 +751,135 @@ def record_add(pr: RunKey, reviewer: str, findings: Sequence[Mapping[str, object
     Builds a report in several small calls; an item identical to one already recorded is skipped, so a
     retried call adds nothing twice. ``record`` and ``record_draft`` still replace the whole report.
     """
+    _reviewer_id(reviewer)
     root = _repo(repo)
-    added = _validate_items(Finding, findings, "finding", root)
+    added = _validate_items(_finding_model(reviewer), findings, "finding", root)
     path, _ = _report_path(pr, "findings", reviewer, root, run_id)
-    old = load_report(path) if path.is_file() else ReviewerReport(reviewer=reviewer)
+    old = load_report(path) if path.is_file() else _report_model(reviewer)(reviewer=reviewer)
     merged = list(dict.fromkeys([*old.findings, *added]))
     kept = list(dict.fromkeys([*old.strengths, *(s.strip() if isinstance(s, str) else s for s in strengths)]))
     return record(pr, reviewer, [f.model_dump(mode="json") for f in merged], kept, repo=repo, run_id=run_id)
 
 
+def _stored_reviewer(text: str) -> str:
+    """The ``reviewer`` id in report JSON ``text``; empty when the text does not parse to one."""
+    try:
+        data = json.loads(text)
+    except ValueError:
+        return ""
+    reviewer = data.get("reviewer") if isinstance(data, dict) else None
+    return reviewer if isinstance(reviewer, str) else ""
+
+
 def load_report(path: Path) -> ReviewerReport:
-    """The ``ReviewerReport`` stored at ``path``."""
-    return _load(ReviewerReport, path)
+    """The report stored at ``path``: a ``CodeRefuterReport`` when its reviewer id starts with
+    ``adv_code``, else a ``ReviewerReport``."""
+    text = path.read_text(encoding="utf-8")
+    return _report_model(_stored_reviewer(text)).model_validate_json(text)
+
+
+def _code_refuter_id(agent: str) -> str:
+    """``agent`` when it starts with ``adv_code``; raise otherwise."""
+    if not is_code_refuter(agent):
+        raise ValueError(f"agent id {agent!r} is not a code refuter id (must start with "
+                         f"{CODE_REFUTER_PREFIX!r}); reviewers record through record or record_draft")
+    return agent
+
+
+def record_attacks(pr: RunKey, refuter: str, findings: Sequence[Mapping[str, object]] = (),
+                   strengths: Sequence[str] = (), *, repo: Optional[Path] = None,
+                   run_id: Optional[str] = None) -> str:
+    """The code refuter's ``record``: refuse an id outside ``adv_code*``, then write
+    ``findings/<refuter>.json`` as a ``CodeRefuterReport``, print and return the block."""
+    _code_refuter_id(refuter)
+    return record(pr, refuter, findings, strengths, repo=repo, run_id=run_id)
+
+
+def record_attacks_draft(pr: RunKey, refuter: str, *, repo: Optional[Path] = None,
+                         run_id: Optional[str] = None) -> str:
+    """``record_attacks`` with the findings and strengths read from ``draft_path``."""
+    _code_refuter_id(refuter)
+    draft = _read_draft(draft_path(pr, refuter, repo, run_id), ("findings", "strengths"))
+    return record_attacks(pr, refuter, draft["findings"], draft["strengths"], repo=repo, run_id=run_id)
+
+
+def _target_report(pr: RunKey, target: str, root: Path, run_id: Optional[str]) -> ReviewerReport:
+    """The recorded report of slot ``target``; ``ValueError`` when the slot has not recorded."""
+    path, _ = _report_path(pr, "findings", target, root, run_id)
+    if not path.is_file():
+        raise ValueError(f"reviewer {target} has not recorded")
+    return load_report(path)
+
+
+def _refutation_ids(refuter: str, target: str) -> None:
+    """Raise unless both ids are snake_case agent ids and ``refuter`` is ``adv_refute_<target>``."""
+    _agent_id(refuter)
+    _agent_id(target)
+    _check_refuter_pair(refuter, target)
+
+
+def _coverage_problems(target: ReviewerReport, keys: Sequence[str]) -> List[str]:
+    """Missing keys (with finding names), keys not in ``target``, and repeated keys, one text each."""
+    names: Dict[str, str] = {}
+    for finding in target.findings:
+        names.setdefault(finding_key(finding), finding.name)
+    missing = [f"{k} ({names[k]})" for k in sorted(set(names) - set(keys))]
+    extra = sorted(set(keys) - set(names))
+    repeated = _repeated(keys)
+    problems = [f"missing: {', '.join(missing)}"] if missing else []
+    if extra:
+        problems.append(f"not in the target: {', '.join(extra)}")
+    if repeated:
+        problems.append(f"repeated: {', '.join(repeated)} (identical findings share one key; give one "
+                        f"entry per key)")
+    return problems
+
+
+def _check_coverage(target: ReviewerReport, entries: Sequence[Refutation]) -> None:
+    """Raise unless the entry keys name each distinct finding key of ``target``, exactly once, and
+    nothing else."""
+    problems = _coverage_problems(target, [e.key for e in entries])
+    if problems:
+        raise ValueError(f"refutations must cover each distinct finding key of {target.reviewer}, "
+                         f"exactly once; " + "; ".join(problems))
+
+
+def record_refutations(pr: RunKey, refuter: str, target: str, entries: Sequence[Mapping[str, object]] = (),
+                       *, repo: Optional[Path] = None, run_id: Optional[str] = None) -> str:
+    """Validate, write ``refutations/<target>.json`` (replacing), re-read it, print and return the block.
+
+    ``refuter`` is ``adv_refute_<target>``. ``entries`` are ``{key, verdict, evidence}`` mappings that
+    must name each distinct finding key of the target's recorded report, exactly once; the target's
+    ``report_digest`` is stored alongside them. A target that has not recorded is refused.
+    """
+    _refutation_ids(refuter, target)
+    root = _repo(repo)
+    report_of_target = _target_report(pr, target, root, run_id)
+    built = _validate_items(Refutation, entries, "refutation", root)
+    _check_coverage(report_of_target, built)
+    try:
+        report = RefutationReport(refuter=refuter, target=target,
+                                  report_digest=report_digest(report_of_target), refutations=built)
+    except ValidationError as exc:
+        raise ValueError(_error_text(exc)) from exc
+    path, output = _report_path(pr, "refutations", report.target, root, run_id)
+    _atomic_write(path, report.model_dump_json(indent=2) + "\n")
+    block = refutation_block(load_refutations(path), output)
+    _emit(block)
+    return block
+
+
+def record_refutations_draft(pr: RunKey, refuter: str, target: str, *, repo: Optional[Path] = None,
+                             run_id: Optional[str] = None) -> str:
+    """``record_refutations`` with the entries read from ``draft_path`` (a ``{refutations}`` object)."""
+    _refutation_ids(refuter, target)
+    draft = _read_draft(draft_path(pr, refuter, repo, run_id), ("refutations",))
+    return record_refutations(pr, refuter, target, draft["refutations"], repo=repo, run_id=run_id)
+
+
+def load_refutations(path: Path) -> RefutationReport:
+    """The ``RefutationReport`` stored at ``path``."""
+    return _load(RefutationReport, path)
 
 
 def load_fix_reports(directory: Path) -> Tuple[FixReport, ...]:

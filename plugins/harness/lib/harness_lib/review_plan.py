@@ -38,6 +38,9 @@ SKILLS_SEGMENT = "skills"
 SKILL_FILE = "SKILL.md"
 #: Top-level folders always searched for a skill's cross-references; each skill root's top folder joins them.
 SKILL_GREP_ROOTS = (".claude", "docs", ".github")
+#: Prefixes checked against project lens names, reserved so no lens slot id collides with an adversarial
+#: refuter id (``adv_code``, ``adv_refute_<target>``); ``_LENS_NAME`` already rejects the underscore form.
+RESERVED_LENS_PREFIXES = ("adv-", "adv_")
 
 _CONFIG_NAMES = ("pyproject.toml",)
 _RUNTIME_SUFFIXES = (".py", ".ts", ".tsx", ".js", ".sh", ".ps1")
@@ -330,8 +333,12 @@ def _check_skip_lenses(row: Mapping[str, object], lens_names: frozenset) -> None
 def _check_project_lens(lens: Mapping[str, object]) -> None:
     """Raise ``ValueError`` unless ``lens`` has a free lowercase-hyphenated name, a scope template and
     trigger ``path_globs``. A name is taken when its slot id is a member's, or when it spells a bucket,
-    lens or scope member's value or name (it would resolve to that member)."""
+    lens or scope member's value or name (it would resolve to that member). The ``adv-`` and ``adv_``
+    prefixes are reserved for the adversarial refuter slots."""
     name = str(lens.get("name", ""))
+    if name.startswith(RESERVED_LENS_PREFIXES):
+        raise ValueError(f"project lens name {name!r} takes a prefix reserved for adversarial refuter slots "
+                         f"({' or '.join(RESERVED_LENS_PREFIXES)})")
     if not _LENS_NAME.match(name) or lens_slot_id(name) in _RESERVED_SLOT_IDS or name in _RESERVED_NAMES:
         raise ValueError(f"project lens name {name!r} must be lowercase-hyphenated and not a reserved slot "
                          "or member name")
