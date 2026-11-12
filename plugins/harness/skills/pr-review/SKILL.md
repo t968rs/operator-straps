@@ -23,7 +23,7 @@ JSON (Phase 3), branch safety before any code change (Phase 4), fix waves and cl
 
 The plugin's `scripts/pr_review.py` owns the mechanics; this skill states the procedure and the rules the script
 enforces. The main session runs the subcommands, dispatches the rows they print, and makes the judgment calls the
-script cannot: severity regrades, merge candidates, the bubble audit, and the conversation with the developer.
+script cannot: severity and fix-kind regrades, merge candidates, the bubble audit, and the conversation with the developer.
 Reviewers and fixers never write JSON; each records once through the typed API in its brief.
 
 ```bash
@@ -42,7 +42,7 @@ roots and registry (`tests.*`), the structural guard suites and brief pointers (
 | `block --agent ID` | 2, 5 | Reprints an agent's return block from its recorded report |
 | `fold --source ID --kind external\|tests\|developer\|adhoc (--from-gh-review URL \| --findings FILE\|-) [--severity S]` | 3, 5 | Records an outside review as `findings/<ID>.json` (same Finding model reviewers use) and registers it in `plan.json` `folded`; a GitHub review maps one `judgment` finding per inline comment (default `minor`). Before `build` it is `merge` input. After `build` it appends the source's issues to the review with fresh ids (per severity, after the highest existing; nothing renumbered or auto-merged, merge candidates printed as a note), recomputes the verdict, keeps the phase inside an open Phase 5 pass (`fix-plan` / `fix`, else sets `consolidate`) and prints the added rows; re-folding a source already in the built review is refused, and so is any fold into a review whose Phase 4 first run failed (`pre_fix_time` pending) |
 | `merge [--force]` | 3 | Merges the slot reports, then the folded sources, into `draft.json`, assigns ids, prints the issue table and merge candidates; an unregistered `findings/*.json` is a problem |
-| `amend [--regrade I3=minor ...] [--merge I3+I7 ...]` | 3 | Applies severity regrades (`I3=mechanical` or `I3=judgment` sets the fix kind in place) and merges to the draft, logs them, reprints the table |
+| `amend [--regrade I3=minor\|I3=mechanical ...] [--merge I3+I7 ...]` | 3 | Applies severity regrades (`I3=minor` moves the severity), fix-kind regrades (`I3=mechanical` or `I3=judgment` sets the fix kind in place) and merges to the draft, logs them, reprints the table |
 | `build [--replace] [--waive-head-ancestry]` | 3 | Runs the Phase 4 first run, writes `<reviews>/<NNNN>_<slug>.json` with `pre_fix_time` inserted, records `build_head`. `--waive-head-ancestry` accepts a first run whose only STOP is a head-ancestry desync (Phase 4 waiver) |
 | `bubble ID --classification C --reason R` | 5 | Adds a bubble, recomputes the verdict |
 | `bubbles` | 5 | Prints fixer bubbles not yet in the review (read-only) |
@@ -370,9 +370,10 @@ The review JSON is the source of truth, written only by `build`; the chat summar
    (`--force` when the draft was amended); `build` refuses a draft missing a folded source. `fold` also works
    after a successful `build`, at any point of Phase 5 (a review whose Phase 4 first run failed refuses it until
    `build --replace` lands). **Grade before a post-build fold:** `amend` does not run after `build`, so the
-   severity the fold records is final. When the review's comments differ in blast radius, convert them to a
-   `--findings` file with a per-finding `severity`; otherwise pass the matching `--severity` (never the default
-   for a comment that reports a critical or important defect). The fold appends the source's issues to the
+   severity and the fix kind the fold records are final. A GitHub review's comments arrive as `judgment`; when
+   they differ in blast radius or an exact-edit comment should reach a `haiku` fixer, convert them to a
+   `--findings` file with a per-finding `severity` and `fix_kind` (`mechanical` or `judgment`); otherwise pass the
+   matching `--severity` (never the default for a comment that reports a critical or important defect). The fold appends the source's issues to the
    review with fresh ids (per severity, after the highest existing; existing ids never renumber, nothing
    auto-merges, so merge candidates print as a note), credits the source, recomputes the verdict, keeps the
    phase inside an open Phase 5 pass (else sets `consolidate`) and prints the added rows
@@ -388,8 +389,13 @@ The review JSON is the source of truth, written only by `build`; the chat summar
 2. **`amend` (only when the table needs it).** Three judgment calls, made from the printed table:
    - **Regrade by blast radius** (operating rules, "Grading and verifying findings"): `--regrade I3=minor`.
    - **Regrade the fix kind by the fix** (same section): `--regrade I3=mechanical` when a `judgment` issue's
-     fix is an exact edit, so a `haiku` fixer takes it; the id and severity stay.
+     fix is an exact edit, so it can join a `haiku` fixer (a fixer runs `haiku` only when every unit it holds is
+     mechanical; a mechanical multi-file issue also splits per file); the id and severity stay.
    - **Merge candidates that are the same defect:** `--merge I3+I7` (the first id is kept).
+
+   Operations run in the order given: merge candidates and regrade severity first, then set the fix kind on the
+   resulting id, since a merge with a `judgment` issue makes the kept issue `judgment` and a severity regrade
+   renumbers the id.
 
    `amend` logs each operation in the draft and reprints the table; `merge` refuses to overwrite an amended draft
    without `--force`. Once `build` has written the review, `merge` and `amend` both refuse (a draft change would

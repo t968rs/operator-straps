@@ -781,9 +781,10 @@ def _amend_one(issues: List[Dict[str, object]], kind: str, value: str) -> Tuple[
     ``merge`` (``I3+I7``) operation; return issues and a note."""
     if kind == "regrade":
         issue_id, _, severity = value.partition("=")
-        if severity.strip() in rmg.FIX_KINDS:
-            out = rmg.set_fix_kind(issues, issue_id.strip(), severity.strip())
-            return out, f"{issue_id.strip()} -> {severity.strip()}"
+        kind_value = severity.strip().lower()
+        if kind_value in rmg.FIX_KINDS:
+            out = rmg.set_fix_kind(issues, issue_id.strip(), kind_value)
+            return out, f"{issue_id.strip()} -> {kind_value}"
         before = {str(i["id"]) for i in issues}
         out = rmg.regrade(issues, issue_id.strip(), severity.strip())
         new = sorted({str(i["id"]) for i in out} - before)

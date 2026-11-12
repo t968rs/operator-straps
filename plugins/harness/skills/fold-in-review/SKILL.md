@@ -141,7 +141,7 @@ EOF
 
 - **Before `build`:** the fold prints `draft.json predates this fold` when a draft exists. Continue the
   `harness:pr-review` Phase 3 sequence: `merge` (`merge --force` when the draft was amended), `amend --regrade
-  <ID>=<severity>` for each folded issue by blast radius, `build`. The issue is credited as `<source> (<kind>)`.
+  <ID>=<severity>` for each folded issue by blast radius (and `<ID>=mechanical` when its fix is an exact edit), `build`. The issue is credited as `<source> (<kind>)`.
 - **After `build`:** the fold prints the added ids, the new verdict and a `next:` line. Follow it: the Phase 4
   second run, `waves` for the new ids, `closeout`; inside an open Phase 5 pass, `waves` for the new ids, then
   `closeout`.

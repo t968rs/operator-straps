@@ -273,6 +273,17 @@ def _built(script: ModuleType, monkeypatch: pytest.MonkeyPatch, clone: Path, hea
     return clone / "docs" / "PR_REVIEWS" / _REVIEW_NAME
 
 
+def _fixer_rows(script: ModuleType, monkeypatch: pytest.MonkeyPatch, clone: Path,
+                capsys: pytest.CaptureFixture) -> List[str]:
+    """Build the merged draft, run ``waves`` and return its ``agent=harness:pr-fixer`` rows."""
+    _phase4(monkeypatch, script)
+    assert _run(script, clone, "build", "--pr", str(_PR)) == 0
+    capsys.readouterr()
+    assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+    lines = capsys.readouterr().out.splitlines()
+    return [line for line in lines if line.startswith("agent=harness:pr-fixer")]
+
+
 def _heredoc(text: str) -> str:
     """Body of the first ``sh "<plugin>/scripts/hpy" - <<'EOF'`` heredoc in ``text``."""
     match = re.search(r"sh \"[^\"\n]*/scripts/hpy\" - <<'EOF'\n(.*?)\nEOF\n", text, re.S)
@@ -676,11 +687,47 @@ class TestMergeAndAmend:
         _record_all(clone, [_finding("src/pkg/a.py", "4", fix_kind="judgment")])
         assert _run(script, clone, "merge", "--pr", str(_PR)) == 0
         assert _run(script, clone, "amend", "--pr", str(_PR), "--regrade", "M1=mechanical") == 0
-        _phase4(monkeypatch, script)
-        assert _run(script, clone, "build", "--pr", str(_PR)) == 0
+        assert _fixer_rows(script, monkeypatch, clone, capsys) == ["agent=harness:pr-fixer model=haiku"]
+
+    def test_unregraded_judgment_finding_routes_the_fixer_to_opus(self, script: ModuleType,
+                                                                  monkeypatch: pytest.MonkeyPatch,
+                                                                  pr_repo: Tuple[Path, str],
+                                                                  capsys: pytest.CaptureFixture) -> None:
+        clone, head = pr_repo
+        _capture(script, monkeypatch, clone, head)
+        _record_all(clone, [_finding("src/pkg/a.py", "4", fix_kind="judgment")])
+        assert _run(script, clone, "merge", "--pr", str(_PR)) == 0
+        assert _fixer_rows(script, monkeypatch, clone, capsys) == ["agent=harness:pr-fixer model=opus"]
+
+    def test_amend_regrades_mechanical_to_judgment_and_routes_to_opus(
+            self, script: ModuleType, monkeypatch: pytest.MonkeyPatch, pr_repo: Tuple[Path, str],
+            capsys: pytest.CaptureFixture) -> None:
+        clone, head = pr_repo
+        _capture(script, monkeypatch, clone, head)
+        _record_all(clone, [_finding("src/pkg/a.py", "4")])
+        assert _run(script, clone, "merge", "--pr", str(_PR)) == 0
         capsys.readouterr()
-        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
-        assert "agent=harness:pr-fixer model=haiku" in capsys.readouterr().out.splitlines()
+        assert _run(script, clone, "amend", "--pr", str(_PR), "--regrade", "M1=judgment") == 0
+        out = capsys.readouterr().out
+        draft = json.loads((rm.run_dir(_PR, clone) / "draft.json").read_text(encoding="utf-8"))
+        assert [(i["id"], i["fix_kind"]) for i in draft["issues"]] == [("M1", "judgment")]
+        assert "M1 minor judgment src/pkg/a.py:4 [runtime]" in out
+        assert _fixer_rows(script, monkeypatch, clone, capsys) == ["agent=harness:pr-fixer model=opus"]
+
+    def test_amend_fix_kind_on_a_missing_id_is_refused(self, script: ModuleType,
+                                                       monkeypatch: pytest.MonkeyPatch,
+                                                       pr_repo: Tuple[Path, str],
+                                                       capsys: pytest.CaptureFixture) -> None:
+        clone, head = pr_repo
+        _capture(script, monkeypatch, clone, head)
+        _record_all(clone, [_finding("src/pkg/a.py", "4")])
+        assert _run(script, clone, "merge", "--pr", str(_PR)) == 0
+        draft_path = rm.run_dir(_PR, clone) / "draft.json"
+        before = draft_path.read_text(encoding="utf-8")
+        capsys.readouterr()
+        assert _run(script, clone, "amend", "--pr", str(_PR), "--regrade", "I9=mechanical") == 1
+        assert "no issue I9" in capsys.readouterr().err
+        assert draft_path.read_text(encoding="utf-8") == before
 
     def test_block_reprints(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
                             pr_repo: Tuple[Path, str], capsys: pytest.CaptureFixture) -> None:

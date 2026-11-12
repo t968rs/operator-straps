@@ -411,7 +411,7 @@ def set_fix_kind(issues: Sequence[Issue], issue_id: str, fix_kind: str) -> List[
         raise ValueError(f"unknown fix kind {fix_kind!r} (expected {' or '.join(FIX_KINDS)})")
     out = _flat(issues)
     moving = _find(out, issue_id)
-    if moving.get("fix_kind", "judgment") == fix_kind:
+    if (moving.get("fix_kind") or "judgment") == fix_kind:
         raise ValueError(f"{issue_id} is already {fix_kind}")
     moving["fix_kind"] = fix_kind
     return out

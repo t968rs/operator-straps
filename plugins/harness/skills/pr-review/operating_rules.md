@@ -69,9 +69,9 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   merge like a slot; never paste outside findings into the draft or the review JSON by hand.
 - **Regrade after folding (folds before `build`).** A GitHub review's comments arrive at one `--severity`
   (default `minor`); grade each by blast radius with `amend --regrade` after `merge`.
-- **Grade before a post-build fold.** After `build`, `amend` does not run, so the fold's severity is final. When
-  the comments differ in blast radius, convert the review to a `--findings` file with a per-finding `severity`;
-  otherwise pass the matching `--severity`. A comment reporting a critical or important defect never lands at the
+- **Grade before a post-build fold.** After `build`, `amend` does not run, so the fold's severity and fix kind are
+  final. When the comments differ in blast radius or fix kind, convert the review to a `--findings` file with a
+  per-finding `severity` and `fix_kind`; otherwise pass the matching `--severity`. A comment reporting a critical or important defect never lands at the
   default `minor`.
 - **Fold after `merge` means `merge` again** (`--force` when amended); `build` refuses a draft missing a folded
   source.
@@ -162,9 +162,13 @@ Where a rule here names a step order, it overrides the literal order in `pr-revi
   change with more than ~5 callers is almost never minor.
 - **Re-grade the fix kind by the fix, not the finding.** A `judgment` issue whose fix options already state
   the exact edit (one line, a rename, a reworded sentence, with nothing left to choose) takes
-  `amend --regrade <ID>=mechanical` before `build`, so a `haiku` fixer applies it instead of `opus`. The
-  id and severity stay. A `mechanical` issue whose fix still needs a choice between options, or reading code
-  beyond the cited lines, takes `<ID>=judgment`. GitHub review folds arrive as `judgment`, so check them.
+  `amend --regrade <ID>=mechanical` before `build`, so it can go to a `haiku` fixer (a fixer runs `haiku` only
+  when every unit it holds is mechanical; a mechanical multi-file issue also splits per file). The id and
+  severity stay. A `mechanical` issue whose fix still needs a choice between options, or reading code beyond the
+  cited lines, takes `<ID>=judgment`. GitHub review folds before `build` arrive as `judgment`, so check them with
+  `amend`; a fold after `build` takes its fix kind from the `--findings` file. `amend` runs operations in the
+  order given: merge candidates and regrade severity first, then set the fix kind on the resulting id, since a
+  merge with a `judgment` issue makes the kept issue `judgment` and a severity regrade renumbers the id.
 - **A missing mention is a documentation gap.** A finding whose only ground is that the commit messages or PR
   description omit a change regrades to `minor`, whatever the reviewer called it; the fixer brief bars a revert
   on that ground. A code-level defect in the same hunk is graded on its own. A revert or deletion of code the

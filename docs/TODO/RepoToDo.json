@@ -3395,8 +3395,8 @@
       "title": "pr-review: batch and dedupe fixer test commands (one pytest per brief)",
       "url": "https://github.com/t968rs/operator-straps/issues/153",
       "current_state": "LIKELY_RESOLVED",
-      "evidence": "The main change landed in 23d5f6c (\"Fix(pr-review): batch and dedupe fixer test commands into one pytest run\", \"Refs #153\", on main). The optional point (a trivial judgment fix running cheaper) landed as an `amend --regrade` fix-kind form: 757277a (\"Fix(pr-review): allow amend to set issue fix kind\"; plugins/harness/lib/harness_lib/review_merge.py:404-416 `set_fix_kind`, driver tests in tests/scripts/test_pr_review_driver.py) and 8cd9cae (\"Feat(pr-review): regrade issue fix kind in place\", SKILL.md and operating_rules.md, harness 0.70.0). Both sit only on branch 1154-pr-review-mini-fixes (`git branch --all --contains 757277a`); no PR is open for it yet.",
-      "recommended_action": "Close as completed once branch 1154-pr-review-mini-fixes merges to main (23d5f6c plus 757277a and 8cd9cae); the PR body can say \"Closes #153\".",
+      "evidence": "The main change landed in 23d5f6c (\"Fix(pr-review): batch and dedupe fixer test commands into one pytest run\", \"Refs #153\", on main). The optional point (a trivial judgment fix running cheaper) landed as an `amend --regrade` fix-kind form: 757277a (\"Fix(pr-review): allow amend to set issue fix kind\"; plugins/harness/lib/harness_lib/review_merge.py:404-417 `set_fix_kind`, driver tests in tests/scripts/test_pr_review_driver.py) and 8cd9cae (\"Feat(pr-review): regrade issue fix kind in place\", SKILL.md and operating_rules.md, harness 0.70.0). Both sit only on branch 1154-pr-review-mini-fixes (`git branch --all --contains 757277a`); PR #276 carries them.",
+      "recommended_action": "Close as completed when PR #276 merges to main; its body can say \"Closes #153\".",
       "related_todo_ids": []
     },
     {
