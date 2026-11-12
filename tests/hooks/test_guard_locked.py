@@ -5,29 +5,35 @@
 (``freeze_ledger.locked_files``), for the Write and Edit tools and, best-effort, for Bash and PowerShell
 commands. Ledgers are the LED-1 store: one JSON file per entry under ``<plans>/freezes/<stem>/``, with stems
 ``plan/<no>-<slug>`` and ``skill/<name>``. Every path outside ``<artifacts.plans>`` passes at once, locked or
-not, and a target written with backslashes is normalized before the test. The hook and
-``harness_lib.freeze_ledger`` (LED-1) are loaded inside each test, so before the work the behavior tests fail
-with ImportError and the registration test fails on its asserts.
+not, and a target written with backslashes is normalized before the test. A plan whose lock carries the
+``sealed`` scheme or no scheme keeps its plan JSON writable, since ``record`` still writes it, while its other
+locked files stay denied. Removals and moves count as writes: ``rm``, ``unlink``, ``git rm``, the ``mv`` and
+``git mv`` sources, ``Remove-Item`` and its aliases and the ``Move-Item`` source, on a ledger entry or a
+Locked path. The three dispatchers (``write_pretool.py``, ``bash_pretool.py``, ``powershell_pretool.py``)
+are called by path to show the guard's deny reaches the session and outranks an allow the other composed
+hook gives.
 """
 from __future__ import annotations
 
 import hashlib
-import importlib
 import importlib.util
 import json
-import re
+import os
 import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any, Dict, List, Optional, Tuple
 
+import pytest
+
 from conftest import PLUGIN_ROOT
+
+from harness_lib import freeze_ledger
 
 HOOKS = PLUGIN_ROOT / "hooks"
 GUARD = HOOKS / "guard_locked.py"
 HOOKS_JSON = HOOKS / "hooks.json"
 DISPATCHERS = ("bash_pretool.py", "write_pretool.py", "powershell_pretool.py")
-_IMPORTS_GUARD = re.compile(r"^\s*(?:import\s+guard_locked\b|from\s+guard_locked\s+import\b)", re.MULTILINE)
 
 PLANS = "docs/PLANS"
 LOCKED_PLAN = f"{PLANS}/0001_demo_ActionPlan.json"
@@ -46,17 +52,13 @@ _AT = "2026-11-11T10:00:00+00:00"
 
 
 def _load() -> Tuple[ModuleType, ModuleType]:
-    """``(guard_locked, freeze_ledger)``; ImportError until GRD-1 and LED-1 are built."""
-    if not GUARD.is_file():
-        raise ImportError(f"{GUARD.name} is not built yet (plan 1015 GRD-1)")
-    ledger = importlib.import_module("harness_lib.freeze_ledger")
+    """``(guard_locked, freeze_ledger)``: the hook loaded by path and the ledger module."""
     spec = importlib.util.spec_from_file_location("guard_locked", GUARD)
-    if spec is None or spec.loader is None:
-        raise ImportError(f"cannot load {GUARD}")
+    assert spec is not None and spec.loader is not None, GUARD
     module = importlib.util.module_from_spec(spec)
     sys.modules["guard_locked"] = module
     spec.loader.exec_module(module)
-    return module, ledger
+    return module, freeze_ledger
 
 
 def _blob(text: str) -> str:
@@ -171,6 +173,7 @@ def _backslashed(rel: str) -> str:
     return rel.replace("/", "\\")
 
 
+@pytest.mark.cross_os
 def test_write_to_locked_plan_json_is_denied(make_project, monkeypatch) -> None:
     root, guard, _ = _project(make_project, monkeypatch)
     out = _output(guard, _write(root, LOCKED_PLAN))
@@ -220,6 +223,7 @@ def test_ledger_files_always_denied(make_project, monkeypatch) -> None:
     assert _decision(guard, _pwsh(root, f"Set-Content -Path {skill_lock} -Value x")) == "deny"
 
 
+@pytest.mark.cross_os
 def test_bash_and_powershell_writes_matched(make_project, monkeypatch) -> None:
     root, guard, _ = _project(make_project, monkeypatch)
     absolute = (root / LOCKED_PLAN).as_posix()
@@ -236,6 +240,57 @@ def test_bash_and_powershell_writes_matched(make_project, monkeypatch) -> None:
                     f"echo x > {UNLOCKED_PLAN}", f"echo x > {OUTSIDE}"):
         assert _decision(guard, _bash(root, command)) is None, command
     assert _decision(guard, _pwsh(root, f"Get-Content -Path {LOCKED_PLAN}")) is None
+
+
+def _removal_commands(target: str) -> Tuple[List[str], List[str]]:
+    """Bash and PowerShell commands that remove ``target`` or move it away."""
+    bash = [f"rm {target}", f"rm -f {target}", f"unlink {target}", f"mv {target} /tmp/x.json",
+            f"mv -t /tmp {target}", f"git rm -q {target}", f"git mv {target} {OUTSIDE}"]
+    pwsh = [f"Remove-Item {target}", f"Remove-Item -LiteralPath {target} -Force", f"ri {target}",
+            f"del {_backslashed(target)}", f"erase {target}", f"rm -r {target}",
+            f"Move-Item {target} {OUTSIDE}", f"Move-Item -Path {target} -Destination /tmp/x.json"]
+    return bash, pwsh
+
+
+def test_removals_and_move_sources_denied(make_project, monkeypatch) -> None:
+    """A removed or moved ledger entry or Locked file undoes the lock as surely as a write."""
+    root, guard, _ = _project(make_project, monkeypatch)
+    entry = f"{PLANS}/freezes/plan/0001-demo/r1.2-lock.json"
+    assert (root / entry).is_file()
+    for target in (entry, LOCKED_PLAN, PLANNED_TEST):
+        bash, pwsh = _removal_commands(target)
+        for command in bash:
+            assert _decision(guard, _bash(root, command)) == "deny", command
+        for command in pwsh:
+            assert _decision(guard, _pwsh(root, command)) == "deny", command
+    assert _decision(guard, _bash(root, f"rm -r {PLANS}/freezes")) == "deny"
+    assert _decision(guard, _pwsh(root, f"Remove-Item -Recurse {PLANS}/freezes/plan")) == "deny"
+
+
+def test_removals_of_unlocked_paths_and_copy_sources_pass(make_project, monkeypatch) -> None:
+    root, guard, _ = _project(make_project, monkeypatch)
+    bash, pwsh = _removal_commands(FROZEN_PLAN)
+    bash += [f"rm {OUTSIDE}", f"cp {LOCKED_PLAN} /tmp/copy.json", f"git rm --cached {LOCKED_PLAN}"]
+    for command in bash:
+        assert _decision(guard, _bash(root, command)) is None, command
+    for command in pwsh + [f"Remove-Item {OUTSIDE}", f"Copy-Item {LOCKED_PLAN} /tmp/copy.json"]:
+        assert _decision(guard, _pwsh(root, command)) is None, command
+
+
+@pytest.mark.cross_os
+@pytest.mark.skipif(os.name != "nt", reason="drive paths and the case rule are Windows-only")
+def test_windows_case_and_git_bash_drive_paths_denied(make_project, monkeypatch) -> None:
+    """``Docs/Plans/...`` matches ``docs/PLANS`` on Windows, and ``/c/...`` is the ``C:`` drive."""
+    root, guard, _ = _project(make_project, monkeypatch)
+    assert _decision(guard, _write(root, LOCKED_PLAN.lower())) == "deny"
+    assert _decision(guard, _write(root, "Docs/Plans/freezes/plan/0001-demo/r1.2-lock.json")) == "deny"
+    posix = root.as_posix()
+    msys = f"/{posix[0].lower()}{posix[2:]}"
+    assert _decision(guard, _bash(root, f"echo x > {msys}/{LOCKED_PLAN}")) == "deny"
+    assert _decision(guard, _bash(root, f"rm {msys}/{PLANS}/freezes/plan/0001-demo/r1.2-lock.json")) == "deny"
+    cygwin = {"file_path": f"/cygdrive{msys}/{PLANNED_TEST}", "content": "x"}
+    assert _decision(guard, _payload(root, "Write", cygwin)) == "deny"
+    assert _decision(guard, _bash(root, f"echo x > {msys}/{OUTSIDE}")) is None
 
 
 def _scheme_entries(ledger: ModuleType, plan: str, test: str, records: Optional[str]) -> List[Any]:
@@ -277,14 +332,78 @@ def _pretool_commands() -> Dict[str, List[str]]:
             for group in data["hooks"]["PreToolUse"]}
 
 
-def test_dispatchers_registered_and_compose_guard_locked() -> None:
+def test_dispatchers_registered_for_their_matchers() -> None:
     commands = _pretool_commands()
     write_edit, powershell = commands.get("Write|Edit", []), commands.get("PowerShell", [])
     assert any("/hooks/write_pretool.py" in c for c in write_edit), write_edit
     assert not any("/hooks/guard_commit_txt.py" in c for c in write_edit), write_edit
     assert any("/hooks/powershell_pretool.py" in c for c in powershell), powershell
     assert not any("/hooks/powershell_allow_shapes.py" in c for c in powershell), powershell
-    for name in DISPATCHERS:
-        path = HOOKS / name
-        assert path.is_file(), name
-        assert _IMPORTS_GUARD.search(path.read_text(encoding="utf-8")), f"{name} does not import guard_locked"
+    assert all((HOOKS / name).is_file() for name in DISPATCHERS), DISPATCHERS
+
+
+def _hook(name: str) -> ModuleType:
+    """The hook script ``name`` under the plugin's hooks folder, loaded by path."""
+    spec = importlib.util.spec_from_file_location(name[: -len(".py")], HOOKS / name)
+    assert spec is not None and spec.loader is not None, name
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _hook_output(name: str, payload: Dict[str, Any]) -> Optional[Dict[str, str]]:
+    raw = _hook(name).decide(payload)
+    return None if raw is None else json.loads(raw)["hookSpecificOutput"]
+
+
+def _assert_lock_deny(out: Optional[Dict[str, str]], label: str) -> None:
+    assert out is not None and out["permissionDecision"] == "deny", (label, out)
+    assert "is locked by" in out["permissionDecisionReason"], (label, out)
+
+
+def _allow_rules(root: Path, tmp_path: Path, monkeypatch) -> None:
+    """Allow rules under which the allow-shapes hooks approve ``echo | tee`` and a Set-Content pipe."""
+    rules = ["Bash(echo *)", "Bash(tee *)", "PowerShell(Write-Output *)", "PowerShell(Set-Content *)"]
+    settings = root / ".claude" / "settings.json"
+    settings.parent.mkdir(parents=True, exist_ok=True)
+    settings.write_text(json.dumps({"permissions": {"allow": rules}}), encoding="utf-8")
+    user = tmp_path / "user-config"
+    user.mkdir(exist_ok=True)
+    monkeypatch.setenv("CLAUDE_PROJECT_DIR", str(root))
+    monkeypatch.setenv("CLAUDE_CONFIG_DIR", str(user))
+    monkeypatch.delenv("CLAUDE_PLUGIN_OPTION_BASH_DISCIPLINE", raising=False)
+
+
+def test_write_pretool_applies_the_lock_deny(make_project, monkeypatch) -> None:
+    root, _, written = _project(make_project, monkeypatch)
+    ledger_file = written[0].relative_to(root).as_posix()
+    for payload in (_write(root, LOCKED_PLAN), _edit(root, PLANNED_TEST), _write(root, ledger_file)):
+        _assert_lock_deny(_hook_output("write_pretool.py", payload), payload["tool_input"]["file_path"])
+    assert _hook_output("write_pretool.py", _write(root, FROZEN_PLAN)) is None
+
+
+def test_bash_pretool_lock_deny_outranks_the_shapes_allow(make_project, monkeypatch, tmp_path) -> None:
+    root, _, written = _project(make_project, monkeypatch)
+    _allow_rules(root, tmp_path, monkeypatch)
+    ledger_file = written[0].relative_to(root).as_posix()
+    _assert_lock_deny(_hook_output("bash_pretool.py", _bash(root, f"echo x > {ledger_file}")), ledger_file)
+    piped = _bash(root, f"echo x | tee {PLANNED_TEST}")
+    shapes = _hook_output("bash_allow_shapes.py", piped)
+    assert shapes is not None and shapes["permissionDecision"] == "allow", shapes
+    _assert_lock_deny(_hook_output("bash_pretool.py", piped), PLANNED_TEST)
+    control = _hook_output("bash_pretool.py", _bash(root, f"echo x | tee {OUTSIDE}"))
+    assert control is not None and control["permissionDecision"] == "allow", control
+
+
+def test_powershell_pretool_lock_deny_outranks_the_shapes_allow(make_project, monkeypatch, tmp_path) -> None:
+    root, _, _ = _project(make_project, monkeypatch)
+    _allow_rules(root, tmp_path, monkeypatch)
+    direct = _pwsh(root, f"Set-Content -Path {LOCKED_PLAN} -Value x")
+    _assert_lock_deny(_hook_output("powershell_pretool.py", direct), LOCKED_PLAN)
+    piped = _pwsh(root, f"Write-Output x | Set-Content -Path {LOCKED_PLAN}")
+    shapes = _hook_output("powershell_allow_shapes.py", piped)
+    assert shapes is not None and shapes["permissionDecision"] == "allow", shapes
+    _assert_lock_deny(_hook_output("powershell_pretool.py", piped), LOCKED_PLAN)
+    outside = _pwsh(root, f"Write-Output x | Set-Content -Path {OUTSIDE}")
+    control = _hook_output("powershell_pretool.py", outside)
+    assert control is not None and control["permissionDecision"] == "allow", control

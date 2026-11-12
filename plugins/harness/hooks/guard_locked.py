@@ -11,17 +11,25 @@ lock entry lists the path (``freeze_ledger.locked_files``). A plan whose lock ca
 or no scheme keeps its plan JSON writable, since ``record`` still writes it there.
 
 Targets: ``tool_input.file_path`` for Write and Edit; for Bash and PowerShell a best-effort read of
-``tool_input.command``: Bash ``>``/``>>``, ``tee``, ``sed -i`` and the ``cp``/``mv`` destination, PowerShell
-redirects, ``Set-Content``, ``Add-Content``, ``Out-File`` and the ``Copy-Item``/``Move-Item`` destination.
-Each target becomes a repo-relative POSIX path under the project ``load_config(project_root(cwd))`` gives;
-anything outside the plans folder returns at once, before any ledger read. A command with no write shape
-returns before the config load. Unusable payloads, an unusable config and unreadable ledgers never block.
+``tool_input.command``. Writes: Bash ``>``/``>>``, ``tee``, ``sed -i`` and the ``cp``/``mv`` destination,
+PowerShell redirects, ``Set-Content``, ``Add-Content``, ``Out-File`` and the ``Copy-Item``/``Move-Item``
+destination. Removals and moves, which undo a lock as surely as a write: Bash ``rm``/``unlink`` operands, the
+``mv`` sources, ``git rm`` (not ``--cached``) and both sides of ``git mv``; PowerShell ``Remove-Item`` and its
+aliases (``ri``, ``rm``, ``del``, ``erase``, ``rd``, ``rmdir``) and the ``Move-Item`` source. The
+``freezes/`` folder itself counts as a ledger path; a removal of a folder above it (the plans folder or its
+parents) is not caught. Each target becomes a repo-relative POSIX path under the project
+``load_config(project_root(cwd))`` gives; on Windows a Git Bash or Cygwin drive path (``/e/...``,
+``/cygdrive/e/...``) is read as ``e:/...`` first, and every prefix and lookup compares in the OS's case rule.
+Anything outside the plans folder returns at once, before any ledger read. A command with no write, removal
+or move shape returns before the config load. Unusable payloads, an unusable config and unreadable ledgers
+never block.
 """
 from __future__ import annotations
 
 import json
 import os
 import posixpath
+import re
 import shlex
 import sys
 from pathlib import Path
@@ -34,18 +42,26 @@ _PUNCTUATION = "();<>|&\n"
 _SEPARATOR_CHARS = set("();|&\n")
 _REDIRECTS = {">", ">>", ">|", "&>", "&>>"}
 _SHELL_PREFIXES = {"sudo", "command", "env", "builtin", "exec", "nohup", "time"}
-_PS_WRITERS: Dict[str, Tuple[Tuple[str, ...], int]] = {
-    "set-content": (("-path", "-literalpath"), 0),
-    "add-content": (("-path", "-literalpath"), 0),
-    "ac": (("-path", "-literalpath"), 0),
-    "out-file": (("-filepath", "-literalpath", "-path"), 0),
-    "copy-item": (("-destination",), 1),
-    "move-item": (("-destination",), 1),
+_GIT_VALUE_OPTIONS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace"}
+_MSYS_DRIVE = re.compile(r"^/(?:cygdrive/)?([A-Za-z])(?=/)")
+_PATH_PARAMS = ("-path", "-literalpath")
+# Per cmdlet: each (named parameters, positional index) slot that names a path the command writes,
+# removes or moves away.
+_PS_WRITERS: Dict[str, Tuple[Tuple[Tuple[str, ...], int], ...]] = {
+    "set-content": ((_PATH_PARAMS, 0),),
+    "add-content": ((_PATH_PARAMS, 0),),
+    "ac": ((_PATH_PARAMS, 0),),
+    "out-file": ((("-filepath", "-literalpath", "-path"), 0),),
+    "copy-item": ((("-destination",), 1),),
+    "move-item": ((("-destination",), 1), (_PATH_PARAMS, 0)),
+    "remove-item": ((_PATH_PARAMS, 0),),
 }
 for _alias, _cmdlet in (("copy", "copy-item"), ("cpi", "copy-item"), ("cp", "copy-item"),
-                        ("move", "move-item"), ("mi", "move-item"), ("mv", "move-item")):
+                        ("move", "move-item"), ("mi", "move-item"), ("mv", "move-item"),
+                        ("ri", "remove-item"), ("rm", "remove-item"), ("del", "remove-item"),
+                        ("erase", "remove-item"), ("rd", "remove-item"), ("rmdir", "remove-item")):
     _PS_WRITERS[_alias] = _PS_WRITERS[_cmdlet]
-_PS_SWITCHES = {"-force", "-nonewline", "-append", "-passthru", "-recurse", "-whatif", "-confirm",
+_PS_SWITCHES = {"-force", "-nonewline", "-append", "-passthru", "-recurse", "-r", "-whatif", "-confirm",
                 "-noclobber", "-asbytestream", "-container"}
 _WAY_IN = ("Ways in run through the drivers (scripts/plan.py and scripts/strap.py under the harness plugin "
            "root): a Locked plan changes after plan.py unlock <id> --arm REASON, run only on the "
@@ -62,7 +78,8 @@ def deny(reason: str) -> str:
 
 
 def _reason(rel: str, subject: str) -> str:
-    return f"{rel} is locked by {subject}; hand edits and shell writes of it are denied. {_WAY_IN}"
+    return (f"{rel} is locked by {subject}; hand edits, shell writes, removals and moves of it are denied. "
+            f"{_WAY_IN}")
 
 
 def _tokens(command: str, escape: str) -> List[str]:
@@ -101,8 +118,8 @@ def _operands(args: List[str]) -> List[str]:
     return [a for a in args if not a.startswith("-")]
 
 
-def _copy_targets(args: List[str]) -> List[str]:
-    """``cp``/``mv`` destinations: ``-t DIR`` or the last operand, each joined with every source name."""
+def _copy_split(args: List[str]) -> Tuple[Optional[str], List[str]]:
+    """``cp``/``mv`` destination (``-t DIR`` or the last operand) and sources; no destination when absent."""
     target, operands, i = None, [], 0
     while i < len(args):
         arg = args[i]
@@ -115,10 +132,30 @@ def _copy_targets(args: List[str]) -> List[str]:
         i += 1
     if target is None:
         if len(operands) < 2:
-            return []
+            return None, []
         target, operands = operands[-1], operands[:-1]
-    names = [posixpath.basename(s.replace("\\", "/").rstrip("/")) for s in operands]
-    return [target] + [posixpath.join(target.replace("\\", "/"), n) for n in names if n]
+    return target, operands
+
+
+def _copy_targets(args: List[str], moves: bool = False) -> List[str]:
+    """``cp``/``mv`` destinations, each joined with every source name; a move adds its sources."""
+    target, sources = _copy_split(args)
+    if target is None:
+        return []
+    names = [posixpath.basename(s.replace("\\", "/").rstrip("/")) for s in sources]
+    found = [target] + [posixpath.join(target.replace("\\", "/"), n) for n in names if n]
+    return found + sources if moves else found
+
+
+def _git_targets(args: List[str]) -> List[str]:
+    """Paths ``git rm`` removes (none under ``--cached``) and both sides of ``git mv``."""
+    i = 0
+    while i < len(args) and args[i].startswith("-"):
+        i += 2 if args[i] in _GIT_VALUE_OPTIONS else 1
+    sub, rest = (args[i], args[i + 1:]) if i < len(args) else ("", [])
+    if sub == "rm":
+        return [] if "--cached" in rest else _operands(rest)
+    return _copy_targets(rest, moves=True) if sub == "mv" else []
 
 
 def _sed_in_place(args: List[str]) -> bool:
@@ -135,13 +172,15 @@ def _bash_segment(words: List[str]) -> List[str]:
         return _operands(args)
     if name == "sed":
         return _operands(args) if _sed_in_place(args) else []
+    if name in ("rm", "unlink"):
+        return _operands(args)
     if name in ("cp", "mv"):
-        return _copy_targets(args)
-    return []
+        return _copy_targets(args, moves=name == "mv")
+    return _git_targets(args) if name == "git" else []
 
 
 def bash_targets(command: str) -> List[str]:
-    """Best-effort paths a Bash command writes."""
+    """Best-effort paths a Bash command writes, removes or moves away."""
     segments, found = _segments(_tokens(command, "\\"))
     for words in segments:
         found += _bash_segment(words)
@@ -170,19 +209,21 @@ def _ps_args(args: List[str]) -> Tuple[Dict[str, str], List[str]]:
 def _ps_segment(words: List[str]) -> List[str]:
     if words and words[0] == "&":
         words = words[1:]
-    spec = _PS_WRITERS.get(words[0].lower()) if words else None
-    if spec is None:
+    slots = _PS_WRITERS.get(words[0].lower()) if words else None
+    if slots is None:
         return []
-    params, index = spec
     named, positional = _ps_args(words[1:])
-    value = next((named[p] for p in params if p in named), None)
-    if value is None and len(positional) > index:
-        value = positional[index]
-    return [v for v in (value or "").split(",") if v.strip()]
+    found: List[str] = []
+    for params, index in slots:
+        value = next((named[p] for p in params if p in named), None)
+        if value is None and len(positional) > index:
+            value = positional[index]
+        found += [v for v in (value or "").split(",") if v.strip()]
+    return found
 
 
 def powershell_targets(command: str) -> List[str]:
-    """Best-effort paths a PowerShell command writes."""
+    """Best-effort paths a PowerShell command writes, removes or moves away."""
     segments, found = _segments(_tokens(command, "`"))
     for words in segments:
         found += _ps_segment(words)
@@ -212,9 +253,16 @@ def _under(target: Path, base: Path) -> Optional[str]:
     return t[len(b.rstrip(os.sep)) + 1:].replace(os.sep, "/")
 
 
+def _native(text: str) -> str:
+    """On Windows a Git Bash or Cygwin drive path (``/e/x``, ``/cygdrive/e/x``) as ``e:/x``; else ``text``."""
+    if os.name != "nt":
+        return text
+    return _MSYS_DRIVE.sub(lambda m: f"{m.group(1)}:", text, count=1)
+
+
 def repo_rel(raw: str, root: Path, cwd: Path) -> Optional[str]:
     """``raw`` (absolute or relative to ``cwd``, either slash) as a path relative to ``root``, else None."""
-    text = raw.strip().replace("\\", "/")
+    text = _native(raw.strip().replace("\\", "/"))
     if not text:
         return None
     path = Path(text)
@@ -262,9 +310,9 @@ def locked_paths(plans_dir: Path, plans_rel: str) -> Dict[str, str]:
 def _verdict(rels: List[str], plans_dir: Path, plans_rel: str) -> Optional[str]:
     from harness_lib.freeze_ledger import FREEZES_DIR
 
-    freezes = f"{plans_rel}/{FREEZES_DIR}/"
+    freezes = _key(f"{plans_rel}/{FREEZES_DIR}/")
     for rel in rels:
-        if rel.startswith(freezes):
+        if _key(rel + "/").startswith(freezes):
             return deny(_reason(rel, "the freeze ledger (driver-written only)"))
     locked = locked_paths(plans_dir, plans_rel)
     for rel in rels:
@@ -298,8 +346,9 @@ def decide(payload: Any) -> Optional[str]:
     if cfg is None:
         return None
     plans_rel = cfg.artifacts.plans.replace("\\", "/").strip("/")
+    prefix = _key(plans_rel + "/")
     rels = [r for r in (repo_rel(t, cfg.project_root, cwd) for t in raw)
-            if r is not None and r.startswith(plans_rel + "/")]
+            if r is not None and _key(r).startswith(prefix)]
     return _verdict(rels, cfg.path(plans_rel), plans_rel) if rels else None
 
 
