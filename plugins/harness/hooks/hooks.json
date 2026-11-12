@@ -20,13 +20,13 @@
       {
         "matcher": "PowerShell",
         "hooks": [
-          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/powershell_allow_shapes.py\""}
+          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/powershell_pretool.py\""}
         ]
       },
       {
         "matcher": "Write|Edit",
         "hooks": [
-          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_commit_txt.py\""}
+          {"type": "command", "command": "sh \"${CLAUDE_PLUGIN_ROOT}/scripts/hpy\" \"${CLAUDE_PLUGIN_ROOT}/hooks/write_pretool.py\""}
         ]
       }
     ],

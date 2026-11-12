@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 1015: freeze tags and locking</title>
+<style>
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+code { font: 13px ui-monospace, monospace; background: var(--code); padding: 0 .25em; border-radius: 4px;
+  overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.status { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--muted); vertical-align: middle; }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<h1>Plan 1015: freeze tags and locking</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>1015_freeze_tags_and_locking_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 1015</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 1015</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-11</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-11-freeze-tags-design.md</code></dd><dt>Branch</dt><dd>1151-commit-tagging -&gt; main</dd><dt>Base commit</dt><dd><code>0083e64</code></dd><dt>Frozen</dt><dd>2026-11-11 at <code>f58de32</code></dd><dt>Execution model</dt><dd>parallel2</dd></dl>
+<h2>Decisions</h2>
+<ul>
+<li><strong>D1</strong> How plan readers get the freeze stamp once it lives in the ledger Chosen: <code>hydrate</code> (load_plan fills ActionPlan.frozen from the ledger and save_plan omits it; in-memory readers stay as they are). Rejected: <code>sweep</code> (ActionPlan.frozen goes; every reader calls a ledger accessor (about 40 sites)). Developer agreed: in-memory readers stay; load_plan fills frozen from the ledger, save_plan omits it.</li>
+<li><strong>D2</strong> Where the Write|Edit and PowerShell guards compose Chosen: <code>new-dispatchers</code> (new write_pretool.py and powershell_pretool.py dispatchers, as bash_pretool.py does for Bash). Rejected: <code>extend-existing</code> (guard_commit_txt.py and powershell_allow_shapes.py become the dispatchers). Developer agreed: write_pretool.py and powershell_pretool.py, the bash_pretool.py pattern.</li>
+</ul>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>harness version</td><td>0.68.0 -&gt; 0.69.0</td><td>plugins/harness/.claude-plugin/plugin.json:3</td><td>-</td></tr>
+<tr><td>ledger folder</td><td>&lt;artifacts.plans&gt;/freezes/</td><td>spec, Freeze ledger</td><td>-</td></tr>
+<tr><td>plan id pattern refused as a skill name</td><td>^plan-[0-9]{4}$</td><td>spec, Tags; plan_models.py:402</td><td>-</td></tr>
+</table>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>(^|[^`A-Za-z0-9_])[A-Za-z_][A-Za-z0-9_]*\.frozen\b|get\(&quot;frozen&quot;\)|\[&quot;frozen&quot;\]</code>: <code>docs/TODO/RepoToDo.json</code> (no change: history or prose), <code>plugins/harness/lib/harness_lib/plan_api.py</code> (PST-1: the execution-field gate reads the hydrated stamp), <code>plugins/harness/lib/harness_lib/plan_receipts.py</code> (no change under D1 hydrate: reads ActionPlan.frozen in memory), <code>plugins/harness/lib/harness_lib/plan_record.py</code> (no change under D1 hydrate: reads ActionPlan.frozen in memory), <code>plugins/harness/lib/harness_lib/plan_render.py</code> (PST-1: frozen text without a commit), <code>plugins/harness/lib/harness_lib/plan_render_html.py</code> (PST-1: frozen text without a commit), <code>plugins/harness/lib/harness_lib/strap_api.py</code> (STR-1: SkillSpec.frozen stays (asymmetric); Locked refusals added), <code>plugins/harness/lib/harness_lib/strap_models.py</code> (no change: SkillSpec.frozen stays (asymmetric)), <code>plugins/harness/lib/harness_lib/todo_sync/rules_plans.py</code> (PST-1: receipts probe reads the ledger JSON), <code>plugins/harness/scripts/plan.py</code> (PLN-1: freeze writes the ledger; new_frozen drops HEAD), <code>plugins/harness/scripts/strap.py</code> (STR-1: Locked refusals and ledger wiring; SkillSpec.frozen stays), <code>tests/lib/test_plan_api.py</code> (TST-1: asserts the raw frozen commit a freeze no longer writes), <code>tests/lib/test_plan_models.py</code> (PST-1: the Frozen required-field compatibility pin moves), <code>tests/lib/test_plan_receipts.py</code> (no change: builds an in-file stamp without a ledger, the legacy path D1 keeps), <code>tests/lib/test_plan_record.py</code> (no change: builds an in-file stamp without a ledger, the legacy path D1 keeps), <code>tests/lib/test_plan_render_html.py</code> (no change: builds an in-file stamp without a ledger, the legacy path D1 keeps), <code>tests/lib/test_strap_api.py</code> (no change: SkillSpec.frozen stays), <code>tests/lib/test_strap_models.py</code> (no change: SkillSpec.frozen stays), <code>tests/lib/test_strap_rounds.py</code> (no change: SkillSpec.frozen stays), <code>tests/lib/test_todo_sync_rules_plans_receipts.py</code> (no change: builds an in-file stamp without a ledger, the legacy path D1 keeps), <code>tests/scripts/_plan_driver_helpers.py</code> (TST-1: legacy-plan helpers edit the raw stamp a freeze now puts in the ledger), <code>tests/scripts/test_plan_driver.py</code> (TST-1: reads the raw frozen stamp after freeze), <code>tests/scripts/test_plan_receipts_freeze.py</code> (TST-1: reads the raw frozen stamp after freeze), <code>tests/scripts/test_plan_record_driver.py</code> (TST-1: edits and reads the raw frozen stamp after freeze), <code>tests/scripts/test_strap_driver.py</code> (no change: SkillSpec.frozen stays), <code>tests/scripts/test_strap_gate.py</code> (no change: SkillSpec.frozen stays), <code>tests/scripts/test_strap_reopen.py</code> (no change: SkillSpec.frozen stays)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-LED-1" data-item="LED-1">
+<h3>LED-1: Freeze ledger model and store <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/freeze_ledger.py</code>, <code>plugins/harness/schemas/FreezeLedgerEntry.schema.json</code></p>
+<p class="action">New module harness_lib/freeze_ledger.py (pydantic models plus a store; spec sections &#x27;Freeze ledger&#x27; and &#x27;States&#x27;). One JSON file per entry, written once: &lt;ledger root&gt;/&lt;stem&gt;/r&lt;N&gt;.&lt;k&gt;-&lt;kind&gt;.json, where the stem is &#x27;plan/&lt;no&gt;-&lt;slug&gt;&#x27; or &#x27;skill/&lt;name&gt;&#x27; and the ledger root is &lt;plans&gt;/freezes. Public names: EntryKind (freeze, lock, unlock, arm, reopen, relink); LedgerState (none, frozen, locked, armed, unlocked); LedgerEntry (extra=forbid: kind, round&gt;=1, seq&gt;=1, tree Optional 40-hex, files Dict[repo path, 40-hex blob], ignored Dict[repo path, 64-hex], at ISO date-time, base Optional 40-hex, history bool=False, digest Optional 64-hex, records Optional[str], skill_hash Optional 64-hex, grader Optional[str], reason Optional[str] (arm), old_base/new_base Optional 40-hex and match Optional[str] (relink)); LedgerError(Exception) with .problems; plan_stem(plan_id, slug) -&gt; &#x27;plan/&lt;id&gt;-&lt;slug&gt;&#x27;; skill_stem(name) -&gt; &#x27;skill/&lt;name&gt;&#x27;; ledger_dir(plans_dir, stem) -&gt; &lt;plans_dir&gt;/freezes/&lt;stem&gt;; entry_name(entry) -&gt; &#x27;r&lt;N&gt;.&lt;k&gt;-&lt;kind&gt;.json&#x27;; write_entry(folder, entry) -&gt; Path (refuses with LedgerError when the file exists; LF, indent 2, trailing newline); load_entries(folder) -&gt; List[LedgerEntry] sorted by (round, seq) ([] when the folder is absent; LedgerError on an invalid file or a name that does not match its content); state(entries) -&gt; LedgerState from the highest entry (freeze -&gt; frozen, lock -&gt; locked, arm -&gt; armed, unlock -&gt; unlocked, reopen/relink -&gt; the state before them; none when empty); last_freeze(entries) -&gt; Optional[LedgerEntry]; next_seq(entries, round, taken: Iterable[int]) -&gt; one past the highest k in the round among entries and taken (tag seqs); current_round(entries); locked_files(entries, plans_rel) -&gt; sorted files and ignored keys of the last lock entry under plans_rel, empty unless locked or armed. Generate schemas/FreezeLedgerEntry.schema.json from LedgerEntry.model_json_schema() (indent 2, trailing newline). Standard library plus pydantic.</p>
+<ul>
+<li>Test <code>tests/lib/test_freeze_ledger.py::test_write_and_load_entries_round_trip</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_ledger.py::test_write_entry_refuses_existing_file</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_ledger.py::test_state_tracks_lock_arm_and_unlock</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_ledger.py::test_next_seq_counts_past_taken_tag_seqs</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_ledger.py::test_locked_files_only_under_plans_folder</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_ledger.py::test_schema_file_matches_model</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1015 LED-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-GIT-1" data-item="GIT-1">
+<h3>GIT-1: Scoped git trees, freeze tag names, tagging and reconcile <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/freeze_git.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/branch_capture.py:60-67</code> holds <code>[&quot;git&quot;, &quot;commit-tree&quot;, tree, &quot;-p&quot;, head, &quot;-m&quot;, message]</code></li>
+</ul>
+<p class="action">New module harness_lib/freeze_git.py, no dependency on freeze_ledger (callers pass plain values). members(repo, paths) -&gt; (not_ignored, ignored): not_ignored from git ls-files --cached --others --exclude-standard over the paths, ignored the rest that exist. build_tree(repo, paths) -&gt; (tree 40-hex, {path: blob 40-hex}) of the not-ignored set with WORKING-TREE content, built under a temporary GIT_INDEX_FILE (git add there, git write-tree); the real index is untouched; raises FreezeGitError on an empty set. ignored_digests(repo, paths) -&gt; {path: sha256, CRLF read as LF}. Names: base_tag(stem, round, m=1) -&gt; &#x27;base/&lt;stem&gt;/r&lt;N&gt;&#x27; or &#x27;base/&lt;stem&gt;/r&lt;N&gt;-&lt;m&gt;&#x27;; entry_tag(kind, stem, round, seq, part) -&gt; &#x27;&lt;kind&gt;/&lt;stem&gt;/r&lt;N&gt;.&lt;k&gt;-&lt;part&gt;&#x27;; commit_tag(stem, n) -&gt; &#x27;&lt;stem&gt;-commit&#x27; or &#x27;&lt;stem&gt;-commit.&lt;n&gt;&#x27;; tag_seqs(repo, stem, round) -&gt; the k values existing tags of that stem and round use. preflight(repo, wanted: Dict[name, target]) -&gt; problems for any name that exists on another object (same object is fine). ensure_tag(repo, name, target, message) -&gt; Optional[str] (annotated; None when it already peels to target; FreezeGitError otherwise). reconcile(repo, entries) where entries is a sequence of (stem_tag, entry_file_rel, history: bool): skip history; the commit that added the file (git log --diff-filter=A --reverse on HEAD&#x27;s history); tag it when no &#x27;&lt;stem_tag&gt;-commit[.N]&#x27; exists, else add the next .N only when no existing one is an ancestor of HEAD; returns (created, warn lines), never raises. patch_id_match(repo, old) -&gt; Optional commit on HEAD&#x27;s history with old&#x27;s git patch-id. in_scenario_tree(root) -&gt; True when strap&#x27;s marker file (SCENARIO_MARKER) sits at root. push_line(names).</p>
+<ul>
+<li>Test <code>tests/lib/test_freeze_git.py::test_build_tree_holds_not_ignored_paths</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git.py::test_build_tree_refuses_empty_set</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git.py::test_tag_names_pass_check_ref_format</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git.py::test_preflight_and_ensure_tag_refuse_other_target</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git.py::test_reconcile_tags_the_commit_adding_the_entry_file</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git.py::test_reconcile_adds_second_tag_after_rewrite</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git.py::test_reconcile_skips_history_entries</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git.py::test_patch_id_match_finds_rewritten_base</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1015 GIT-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-GRD-1" data-item="GRD-1">
+<h3>GRD-1: Lock guard hooks for Write/Edit, Bash and PowerShell <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> LED-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/hooks/guard_locked.py</code>, <code>plugins/harness/hooks/write_pretool.py</code>, <code>plugins/harness/hooks/powershell_pretool.py</code>, <code>plugins/harness/hooks/guard_commit_txt.py</code>, <code>plugins/harness/hooks/powershell_allow_shapes.py</code>, <code>plugins/harness/hooks/bash_pretool.py</code>, <code>plugins/harness/hooks/hooks.json</code>, <code>tests/contract/test_hooks_json_paths.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/hooks/hooks.json:27-29</code> holds <code>&quot;matcher&quot;: &quot;Write|Edit&quot;</code></li>
+<li><code>plugins/harness/hooks/hooks.json:21-23</code> holds <code>powershell_allow_shapes.py</code></li>
+<li><code>tests/contract/test_hooks_json_paths.py:31-33</code> holds <code>&quot;bash_pretool.py&quot;: [&quot;bash_discipline.py&quot;, &quot;approve_python_c.py&quot;, &quot;bash_allow_shapes.py&quot;]</code></li>
+<li><code>plugins/harness/hooks/bash_pretool.py:43</code> holds <code>HOOK_ORDER</code></li>
+<li><code>plugins/harness/hooks/guard_commit_txt.py:104</code> holds <code>def main() -&gt; int:</code></li>
+</ul>
+<p class="action">Per D2 (new dispatchers). New composed hook hooks/guard_locked.py with decide(payload) -&gt; Optional[str] (a PreToolUse deny JSON or None). Resolve the project from the payload cwd (load_config(project_root(cwd))), normalize each target to a repo-relative POSIX path, return None at once for any path outside the plans folders (a folder test, new code). Targets: Write/Edit tool_input.file_path; Bash and PowerShell tool_input.command, best-effort (Bash: sed -i, &gt; and &gt;&gt;, tee, cp/mv destination; PowerShell: Set-Content, Out-File, Add-Content, Copy-Item/Move-Item -Destination). Deny every file under freezes/, and any path freeze_ledger.locked_files gives for a Locked or armed subject (plan JSON excluded on sealed and unset-scheme plans). The deny reason names the lock, the way in (plan.py unlock --arm on the developer&#x27;s OK, then unlock; strap.py reopen) and the developer-only plan-load repair. Dispatchers, deny first: new hooks/write_pretool.py (guard_locked, then guard_commit_txt, which gains decide(payload)); bash_pretool.py runs guard_locked before every other hook (its first non-None output wins); new hooks/powershell_pretool.py (guard_locked, then powershell_allow_shapes, which gains decide(payload)). hooks.json registers the two new dispatchers in place of guard_commit_txt.py and powershell_allow_shapes.py; COMPOSED in tests/contract/test_hooks_json_paths.py names them and adds guard_locked.py under bash_pretool.py. A hook that raises counts as no decision.</p>
+<ul>
+<li>Test <code>tests/hooks/test_guard_locked.py::test_write_to_locked_plan_json_is_denied</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/hooks/test_guard_locked.py::test_unlocked_and_outside_paths_pass</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/hooks/test_guard_locked.py::test_ledger_files_always_denied</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/hooks/test_guard_locked.py::test_bash_and_powershell_writes_matched</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/hooks/test_guard_locked.py::test_dispatchers_registered_and_compose_guard_locked</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_guard_locked.py::test_sealed_plan_json_stays_writable_under_lock</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1015 GRD-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-PST-1" data-item="PST-1">
+<h3>PST-1: Plan stamp read from the ledger <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> LED-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_doc.py</code>, <code>plugins/harness/lib/harness_lib/plan_models.py</code>, <code>plugins/harness/lib/harness_lib/plan_api.py</code>, <code>plugins/harness/lib/harness_lib/plan_render.py</code>, <code>plugins/harness/lib/harness_lib/plan_render_html.py</code>, <code>plugins/harness/lib/harness_lib/todo_sync/rules_plans.py</code>, <code>plugins/harness/schemas/ActionPlan.schema.json</code>, <code>tests/lib/test_plan_models.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_doc.py:131-135</code> holds <code>def load_plan(path: Path) -&gt; pm.ActionPlan:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_doc.py:167-169</code> holds <code>def save_plan(path: Path, plan: pm.ActionPlan) -&gt; None:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_models.py:152-153</code> holds <code>commit: str = Field(pattern=_SHA40)</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_api.py:99-100</code> holds <code>if disk.get(&quot;frozen&quot;) is None:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_receipts.py:90-92</code> holds <code>return plan.frozen is not None and plan.frozen.records == RecordScheme.receipts</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:80-81</code> holds <code>frozen_text = f&quot;{_e(frozen.date)} at {_code(frozen.commit[:7])}&quot; if frozen else &quot;no&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render.py:45-46</code> holds <code>frozen_text = f&quot;{frozen.date} at {code(frozen.commit[:7])}&quot; if frozen else &quot;no&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/rules_plans.py:65-66</code> holds <code>frozen = data.get(&quot;frozen&quot;) if isinstance(data, dict) else None</code></li>
+</ul>
+<p class="action">Per D1 (hydrate). load_plan(path) reads the plan&#x27;s ledger when the JSON carries the new static &#x27;ledger&#x27; field (the stem; ActionPlan gains ledger: Optional[str]): the folder is freeze_ledger.ledger_dir(path.parent, stem); a missing or empty folder raises PlanError (&#x27;ledger &lt;stem&gt; missing&#x27;); otherwise ActionPlan.frozen is filled from the last freeze entry whenever the state is frozen, locked or armed (readers mean frozen-or-locked) and also when unlocked (the stamp of the last freeze), as Frozen(commit=None, tree=entry.tree, date=entry.at[:10], digest, records). save_plan omits &#x27;frozen&#x27; when &#x27;ledger&#x27; is set. Frozen.commit and Frozen.tree become Optional (legacy plans keep both); ActionPlan.frozen stays a Mutable field, so MUTABLE_TOP and every legacy digest are unchanged; regenerate schemas/ActionPlan.schema.json and move the Frozen required-field pin in tests/lib/test_plan_models.py. plan_api: _OWNERS adds &#x27;ledger&#x27; (plan.py freeze); the execution-field gate compares the hydrated stamp; write refuses a Locked or armed plan (&#x27;locked; plan.py unlock --arm needs the developer&#x27;s OK&#x27;). plan_render and plan_render_html print &#x27;&lt;date&gt; at &lt;tree7&gt;&#x27; for a ledger stamp. todo_sync/rules_plans._is_receipts reads the ledger&#x27;s entry files when &#x27;ledger&#x27; is set (JSON probe only; the module stays pydantic-free).</p>
+<ul>
+<li>Test <code>tests/lib/test_plan_ledger_state.py::test_load_plan_hydrates_frozen_from_ledger</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_plan_ledger_state.py::test_save_plan_omits_frozen_when_ledger_exists</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_plan_ledger_state.py::test_missing_ledger_folder_is_a_problem</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_plan_ledger_state.py::test_legacy_plan_keeps_in_file_stamp</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_ledger_state.py::test_write_refuses_locked_plan</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_plan_ledger_state.py::test_rules_plans_reads_receipts_scheme_from_ledger</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_plan_ledger_state.py::test_render_frozen_text_without_commit</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1015 PST-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-STR-1" data-item="STR-1">
+<h3>STR-1: strap.py ledger entries, tree tags, lock and Locked refusals <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> LED-1, GIT-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/strap.py</code>, <code>plugins/harness/lib/harness_lib/strap_lock.py</code>, <code>plugins/harness/lib/harness_lib/strap_api.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/strap.py:885-889</code> holds <code>def cmd_freeze(args: argparse.Namespace) -&gt; int:</code></li>
+<li><code>plugins/harness/scripts/strap.py:897-899</code> holds <code>frozen = Frozen(skill_hash=current, grader=grader, at=_now())</code></li>
+<li><code>plugins/harness/scripts/strap.py:922-925</code> holds <code>def cmd_reopen(args: argparse.Namespace) -&gt; int:</code></li>
+<li><code>plugins/harness/scripts/strap.py:298-311</code> holds <code>def cmd_new(args: argparse.Namespace) -&gt; int:</code></li>
+<li><code>plugins/harness/scripts/strap.py:372-385</code> holds <code>def cmd_check(args: argparse.Namespace) -&gt; int:</code></li>
+<li><code>plugins/harness/scripts/strap.py:130-144</code> holds <code>if writable and spec.frozen is not None:</code></li>
+<li><code>plugins/harness/lib/harness_lib/strap_models.py:23</code> holds <code>NAME_PATTERN = r&quot;^[a-z0-9]+(-[a-z0-9]+)*$&quot;</code></li>
+</ul>
+<p class="action">Asymmetric: SkillSpec keeps frozen, rounds and authored; the ledger (stem skill/&lt;name&gt;) records trees, Lock and relinks. Logic in new harness_lib/strap_lock.py; strap.py wires it. Before writing, every command preflights its tag names (freeze_git.preflight) and refuses on a collision. freeze / --refreeze: after the spec save, write a freeze entry (round = len(rounds)+1, seq = next_seq past existing tag seqs, tree and files from build_tree of parts + spec tests/ and fixtures/, ignored sha256 for the gitignored ones, skill_hash, grader, base) and tag &#x27;&lt;...&gt;-tree&#x27;. A frozen spec without a ledger first gets history entries (one freeze per rounds[] entry, then its current stamp; history true, tree null) so write-plan&#x27;s next refreeze lands as r3.2. New &#x27;lock &lt;name&gt;&#x27;: refuses a spec without a ledger (names the refreeze), unless Frozen, not stale, the mechanical behaviors&#x27; planned nodes and the contract_test parts&#x27; nodes pass, and the last freeze&#x27;s files (blob SHAs) and ignored (sha256) match HEAD and a clean working tree; writes lock with a tree that adds SkillSpec.json and tags it. Locked: load(writable), run (any arm), record-run, retest, draw, scaffold, every api call that saves, and freeze --refreeze refuse with &#x27;&lt;name&gt; is locked; reopen to change it&#x27;. reopen: allowed on Frozen or Locked; writes reopen and tags base/skill/&lt;name&gt;/r&lt;N&gt;. New &#x27;relink &lt;name&gt; [--to REF]&#x27;: when base is not an ancestor of HEAD, match it by patch-id (or --to), re-point base, write relink, tag base/skill/&lt;name&gt;/r&lt;N&gt;-&lt;m&gt;. new --edit tags the base. build_tree (scenario trees) writes freeze_git.SCENARIO_MARKER at the tree root; strap.py skips tagging and reconcile when the project root holds it. check: reconcile; tag:/push: lines; untagged:, off-history:, drift:, &#x27;ledger:&#x27; on a skill_hash mismatch, and &#x27;legacy: &lt;name&gt; has no ledger; one starts at its next freeze, refreeze or reopen&#x27;.</p>
+<ul>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_freeze_writes_ledger_entry_and_tags_tree</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_freeze_refuses_on_tag_collision</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_lock_refuses_stale_then_locks</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_locked_spec_refuses_green_run_and_refreeze</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_reopen_on_locked_spec_writes_reopen_and_tags_base</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_legacy_spec_gets_history_entries_on_refreeze</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_relink_repoints_base_and_tags</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_scenario_tree_creates_no_tags</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_strap_lock.py::test_check_reports_ledger_spec_mismatch</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1015 STR-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-PLN-1" data-item="PLN-1">
+<h3>PLN-1: plan.py ledger freeze, lock, unlock, base tag and check <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> PST-1, GIT-1, LED-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/plan.py</code>, <code>plugins/harness/lib/harness_lib/plan_lock.py</code>, <code>plugins/harness/lib/harness_lib/plan_doc.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/plan.py:433-437</code> holds <code>head = git_out(repo, &quot;rev-parse&quot;, &quot;HEAD&quot;).strip()</code></li>
+<li><code>plugins/harness/scripts/plan.py:484-496</code> holds <code>def store_freeze(repo: Path, plan_file: Path, plan: pm.ActionPlan, committed: Optional[str]) -&gt; None:</code></li>
+<li><code>plugins/harness/scripts/plan.py:440-445</code> holds <code>def committed_scheme(repo: Path, plan_file: Path) -&gt; Optional[str]:</code></li>
+<li><code>plugins/harness/scripts/plan.py:499-516</code> holds <code>def cmd_freeze(repo: Path, args: argparse.Namespace) -&gt; int:</code></li>
+<li><code>plugins/harness/scripts/plan.py:222-231</code> holds <code>plan_id = pd.next_plan_id(folder)</code></li>
+<li><code>plugins/harness/scripts/plan.py:307-315</code> holds <code>def cmd_check(repo: Path, args: argparse.Namespace) -&gt; int:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_doc.py:50-53</code> holds <code>def next_plan_id(plans_dir: Path) -&gt; str:</code></li>
+</ul>
+<p class="action">Logic in new harness_lib/plan_lock.py; plan.py wires it. Every tag-creating command preflights its names and refuses on a collision before writing. freeze / --refreeze: set the plan&#x27;s static &#x27;ledger&#x27; field (stem plan/&lt;id&gt;-&lt;slug&gt;) on the first ledger freeze before building the tree; write a freeze entry (round 1, seq past existing tag seqs, tree/files from build_tree of the plan JSON + &lt;id&gt;/tests/, ignored sha256, digest, records, base = base_commit) and tag the tree; new_frozen&#x27;s HEAD commit and repo tree are dropped. Refused on a Locked or armed plan (&#x27;unlock first&#x27;). A plan with an in-file stamp and no ledger migrates on --refreeze: a history freeze entry (tree null, at from Frozen.date) first, &#x27;frozen&#x27; removed, then r1.2. committed_scheme reads HEAD&#x27;s ledger entries when the HEAD copy carries &#x27;ledger&#x27;. New &#x27;lock PLAN&#x27;: refuses a legacy plan (names the refreeze), unless Frozen, the digest holds, every files entry of the last freeze is committed at HEAD with the same blob and unchanged in the working tree, and every ignored sha256 holds; writes lock and tags it. New &#x27;unlock PLAN --arm REASON&#x27; (run on the developer&#x27;s OK) writes arm; plain &#x27;unlock PLAN&#x27; refuses without a live arm and otherwise writes unlock. New &#x27;relink PLAN [--to REF]&#x27;: base_commit off HEAD&#x27;s history is matched by patch-id (or --to), re-pointed through the model, relink written, base/plan/&lt;stem&gt;/r1-&lt;m&gt; tagged. new: tag base/&lt;stem&gt;/r1; the plan number is one past the highest seen in the local plans folder, every local and remote-tracking branch&#x27;s plans folder (git for-each-ref + ls-tree) and every &#x27;*/plan/&lt;no&gt;-*&#x27; tag. Every subcommand that loads a plan reconciles; check also prints tag:/push:, untagged:, off-history:, drift: on a Locked plan, and &#x27;legacy: plan &lt;id&gt; keeps an in-file stamp; migrates at its next refreeze&#x27;. Warnings never fail check; tagging is skipped in a strap scenario tree. Update the module docstring. record: after writing a receipt, tag the tested code locally (--sha: receipt/&lt;stem&gt;/&lt;ITEM&gt;-commit on the commit; --staged: receipt/&lt;stem&gt;/&lt;ITEM&gt;-tree on the index tree; a re-record adds .2, .3); print tag: lines but never name receipt tags in a push: line; skipped in a strap scenario tree. The stem&#x27;s slug is the plan file&#x27;s title slug (pd.title_slug) with underscores as hyphens: &#x27;Add operators&#x27; -&gt; plan/0001-add-operators.</p>
+<ul>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_freeze_writes_ledger_and_tree_tag</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_freeze_refuses_on_tag_collision</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_lock_requires_committed_freeze</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_unlock_needs_arm_then_allows_refreeze</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_new_number_skips_branches_and_tags</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_check_reconciles_commit_tag_and_reports_drift</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_legacy_plan_migrates_on_refreeze</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_relink_repoints_base_commit</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_lock.py::test_record_tags_receipt_locally</code> fails with ImportError, then passes</li>
+<li>Record it: <code>plan.py record 1015 PLN-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TST-1" data-item="TST-1">
+<h3>TST-1: Existing plan driver tests read the ledger stamp <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> PLN-1</p>
+<p><strong>Files:</strong> <code>tests/scripts/_plan_driver_helpers.py</code>, <code>tests/scripts/test_plan_driver.py</code>, <code>tests/scripts/test_plan_receipts_freeze.py</code>, <code>tests/scripts/test_plan_record_driver.py</code>, <code>tests/lib/test_plan_api.py</code></p>
+<p class="action">Tests that read or edit the raw plan JSON &#x27;frozen&#x27; after plan.py freeze now read the stamp through pd.load_plan (hydrated) or the ledger; helpers that simulate a sealed or legacy plan build an in-file stamp with no ledger (the legacy path) instead of editing a stamp the freeze no longer writes. Each test keeps its claim; only where the stamp is read or written moves.</p>
+<ul>
+<li>Run <code>python -m pytest tests/scripts/test_plan_driver.py tests/scripts/test_plan_receipts_freeze.py tests/scripts/test_plan_record_driver.py tests/lib/test_plan_api.py -q</code>: passed</li>
+<li>Record it: <code>plan.py record 1015 TST-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-DOC-1" data-item="DOC-1">
+<h3>DOC-1: Skills, READMEs, release notes and version bump <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> PLN-1, STR-1, GRD-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/write-plan/SKILL.md</code>, <code>plugins/harness/skills/strap-skills/SKILL.md</code>, <code>plugins/harness/README.md</code>, <code>plugins/harness/schemas/README.md</code>, <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.1.0.md</code></p>
+<p class="action">write-plan SKILL.md: Frozen and Locked; plan.py lock (after the frozen plan is committed); unlock in two steps (--arm only on the developer&#x27;s explicit OK, then unlock when a design change is needed); relink on the developer&#x27;s request after a rebase; the ledger folder, stems and tags, the push line, reconcile on every command, git describe --match &#x27;v*&#x27;. strap-skills SKILL.md: strap.py lock (only on the developer&#x27;s explicit ask, at branch end), the Locked refusals, reopen on a Locked spec, relink, the ledger and tags. plugins/harness/README.md and schemas/README.md: the ledger, its entry schema and the guard dispatchers. Bump harness to 0.69.0 and write the next release&#x27;s notes (from gh release list --limit 1; the file name here assumes v1.1.0 and moves with it).</p>
+<ul>
+<li>Run <code>python -m pytest tests/skills/test_write_plan_skill_models.py tests/skills/test_write_plan_receipts_contract.py tests/skills/test_write_plan_record_contract.py tests/skills/test_strap_skills_skill_contract.py tests/skills/test_strap_skills_reopen_contract.py tests/skills/test_strap_skills_project_profile_contract.py -q</code>: passed</li>
+<li>Record it: <code>plan.py record 1015 DOC-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-SKL-1" data-item="SKL-1">
+<h3>SKL-1: Strap rounds for write-plan and strap-skills <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> DOC-1</p>
+<p><strong>Files:</strong> <code>docs/plans/strap/write-plan/SkillSpec.json</code>, <code>docs/plans/strap/strap-skills/SkillSpec.json</code></p>
+<p class="action">Main session, inline (strap runs dispatch one runner at a time). write-plan: check shows stale; run and grade the greens on the new hash, then freeze --refreeze, which is also its ledger migration (r3.2). strap-skills: unfrozen in edit mode; bring it to its first freeze under the ledger, per its own open steps. Developer OK needed for each refreeze.</p>
+<ul>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py check write-plan</code>: check [ok]</li>
+<li>Run <code>sh plugins/harness/scripts/hpy plugins/harness/scripts/strap.py freeze write-plan --refreeze</code>: freeze [done]</li>
+<li>Record it: <code>plan.py record 1015 SKL-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "1015/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatus(node.querySelector(".status"), receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

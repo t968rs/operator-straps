@@ -21,26 +21,33 @@ When a user pastes a permission-prompt block, they want the prompt eliminated fo
 
 ## Tool Stack Asymmetry (Read First)
 
-The harness plugin ships the hooks and wires them in its own `hooks/hooks.json`: the three Bash hooks run as
-one command through the dispatcher `hooks/bash_pretool.py` (see below), and the other hooks each through
-`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/hooks/<hook>.py"`.
+The harness plugin ships the hooks and wires them in its own `hooks/hooks.json`. Each of the three tool
+rows below is one registered command, a dispatcher run through
+`sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/hooks/<dispatcher>.py"`: `bash_pretool.py`
+(Bash), `powershell_pretool.py` (PowerShell) and `write_pretool.py` (Write|Edit). Each dispatcher runs
+`guard_locked.py` first, then its tool's hooks (see below).
 
-| Tool | Discipline hook | Allow-shapes hook | Settings matcher |
-|---|---|---|---|
-| Bash | `bash_discipline.py` (denies `;`/`&&` chains, with construct and heredoc exemptions; off when the plugin option `bash_discipline` is false) | `bash_allow_shapes.py` (auto-allows recognized shapes); `approve_python_c.py` (`python -c` one-liners, only when the project's `.claude/harness.json` sets `auto_approve_python_c: true`) | `Bash` |
-| PowerShell | none | `powershell_allow_shapes.py` (pipelines only, single-stage defers) | `PowerShell` |
-| Write, Edit | `guard_commit_txt.py` (denies Write and Edit tool calls on `.txt` files under `artifacts.commit_messages`, `PR<NNN>_merge.txt` included; those files are `build` output; shell writes are covered only by the standing rule) | none | `Write\|Edit` |
+| Tool | Registered dispatcher | Deny hooks | Allow-shapes hook | Settings matcher |
+|---|---|---|---|---|
+| Bash | `bash_pretool.py` | `guard_locked.py` (lock guard, below); `bash_discipline.py` (denies `;`/`&&` chains, with construct and heredoc exemptions; off when the plugin option `bash_discipline` is false) | `bash_allow_shapes.py` (auto-allows recognized shapes); `approve_python_c.py` (`python -c` one-liners, only when the project's `.claude/harness.json` sets `auto_approve_python_c: true`) | `Bash` |
+| PowerShell | `powershell_pretool.py` | `guard_locked.py` | `powershell_allow_shapes.py` (pipelines only, single-stage defers) | `PowerShell` |
+| Write, Edit | `write_pretool.py` | `guard_locked.py`; `guard_commit_txt.py` (denies Write and Edit tool calls on `.txt` files under `artifacts.commit_messages`, `PR<NNN>_merge.txt` included; those files are `build` output; shell writes are covered only by the standing rule) | none | `Write\|Edit` |
 
-The `hooks.json` matchers route each hook to its tool; `approve_python_c.py` and `powershell_allow_shapes.py`
-also check `tool_name` as a second guard, while `bash_discipline.py`, `bash_allow_shapes.py` and
-`guard_commit_txt.py` rely on the matcher alone. Allow-shapes hooks never block;
-they either emit `allow` or stay silent. A deny from `bash_discipline.py` wins over any allow.
+`guard_locked.py` denies writes to every file under the plans folder's `freezes/` ledger and to the files a
+Locked or armed plan or strap spec holds (`file_path` for Write and Edit, a best-effort read of the command's
+write targets for Bash and PowerShell). It runs first in every dispatcher, so its deny outranks any allow.
 
-The three Bash hooks are registered as one command, `bash_pretool.py`, which decides all three in one
-interpreter launch and prints the merged result (a deny first, then an allow, else nothing). Each of the
-three files still runs on its own and carries its own `decide(payload)`; a change to one hook's rules
-belongs in that file, and a new Bash hook is added to the dispatcher and to `COMPOSED` in
-`tests/contract/test_hooks_json_paths.py`.
+The `hooks.json` matchers route each dispatcher to its tool; `approve_python_c.py` and
+`powershell_allow_shapes.py` also check `tool_name` as a second guard, while `bash_discipline.py`,
+`bash_allow_shapes.py` and `guard_commit_txt.py` rely on the matcher alone. Allow-shapes hooks never block;
+they either emit `allow` or stay silent. A deny from `guard_locked.py` or `bash_discipline.py` wins over any
+allow.
+
+Each dispatcher decides its composed hooks in one interpreter launch and prints the merged result (the first
+hook's output in its order, `guard_locked.py` first, so a deny comes before an allow; else nothing). Each
+composed file still runs on its own and carries its own `decide(payload)`; a change to one hook's rules
+belongs in that file, and a new hook for a matcher that already has a dispatcher is added to that
+dispatcher and to `COMPOSED` in `tests/contract/test_hooks_json_paths.py`.
 
 ## Process (Mandatory)
 
@@ -73,7 +80,7 @@ flowchart TD
 5. **Test (pipe)**: feed a synthesized payload on stdin:
    `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/hooks/<hook>.py" <<< '{"tool_name":"PowerShell","cwd":"<project>","tool_input":{"command":"..."}}'`.
    Confirm `permissionDecision: "allow"` JSON for the new shape; silent `rc=0` for deferred shapes; `permissionDecision: "deny"` for discipline violations.
-   For Bash, also pipe the payload to `hooks/bash_pretool.py`, the registered command, to confirm the merged decision (deny over allow).
+   Also pipe the payload to the tool's registered dispatcher (`hooks/bash_pretool.py`, `hooks/powershell_pretool.py` or `hooks/write_pretool.py`) to confirm the merged decision, the `guard_locked.py` deny included (deny over allow).
 6. **Live-verify** with one subagent on the cheapest model. Dispatch with: the new shape, a regression that should still prompt, and one control. **Subagents must cancel (not approve) any prompt and report PROMPT.** Absence of PROMPT for the new shape = success.
 7. **Record the shape** wherever the project keeps its permissions notes (memory index or docs): append it to the handled-shapes list for its tool. Update on every meaningful shape addition, even allowlist-only ones.
 8. **Don't commit.** The developer commits and pushes; finish with the list of changed files.
@@ -111,8 +118,9 @@ All of these mean: stop, re-read this skill, follow the process.
 
 ## Files
 
-- Hooks: `${CLAUDE_PLUGIN_ROOT}/hooks/{bash_pretool,bash_discipline,bash_allow_shapes,powershell_allow_shapes,approve_python_c,guard_commit_txt}.py`
-  (`bash_pretool.py` is the registered Bash entry point; it runs the three Bash hooks)
+- Hooks: `${CLAUDE_PLUGIN_ROOT}/hooks/{bash_pretool,powershell_pretool,write_pretool,guard_locked,bash_discipline,bash_allow_shapes,powershell_allow_shapes,approve_python_c,guard_commit_txt}.py`
+  (`bash_pretool.py`, `powershell_pretool.py` and `write_pretool.py` are the registered entry points; each
+  runs `guard_locked.py` first, then its tool's hooks)
 - Hook wiring: `${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json`
 - Allowlist (single source of truth): `<project>/.claude/settings.json` (+ `settings.local.json`) and the user settings directory
 - Project opt-ins: `<project>/.claude/harness.json` (`auto_approve_python_c`); plugin options `bash_discipline`, `inject_rules`

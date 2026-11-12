@@ -39,7 +39,10 @@ new --> write (models) --> check --> red --> decisions settled --> freeze
 | Author | `plan_api.write(...)` from a script | plan JSON and PIP, after validating the whole plan |
 | Check | `PLAN check <id>` | nothing |
 | Red | `PLAN red <id>` | nothing (runs the tests on a throwaway worktree) |
-| Freeze | `PLAN freeze <id>` | the plan's `frozen` block, the HTML PIP and its `live.js` |
+| Freeze | `PLAN freeze <id>` | a `freezes/plan/<id>-<slug>/r1.<k>-freeze.json` ledger entry and its tree tag, the plan's `ledger` field, the HTML PIP and its `live.js` |
+| Lock | `PLAN lock <id>` (on the developer's ask, after the freeze commit) | a `lock` ledger entry and its tree tag |
+| Unlock | `PLAN unlock <id> --arm "<reason>"`, then `PLAN unlock <id>` | an `arm` entry, then an `unlock` entry |
+| Relink | `PLAN relink <id> [--to REF]` | the plan's `base_commit`, a `relink` entry and a `base/<stem>/r1-<m>` tag |
 | Record | `PLAN record <id> <ITEM> --sha <rev>` or `--staged` | one receipt file per item, `live.js` |
 | Other states | `--start`, `--blocked "<reason>"`, `--closed "<rationale>"` | a receipt |
 | Render | `PLAN render <id>` | `live.js` (and the page if it is missing) |
@@ -49,8 +52,20 @@ new --> write (models) --> check --> red --> decisions settled --> freeze
 ## Freezing
 
 A freeze says "this is the plan we build". It refuses while `check` or `red` has a problem, while a decision is
-open, or while an open item has neither a test nor a command. It stamps the plan with a digest and the commit
-it was frozen at.
+open, or while an open item has neither a test nor a command. It writes a write-once ledger entry,
+`<plans>/freezes/plan/<id>-<slug>/r1.<k>-freeze.json`, holding the digest, the record scheme, the base and the
+tree of the plan JSON and its planned tests (no commit), and tags that tree `freeze/<stem>/r1.<k>-tree`. The
+plan JSON drops its `frozen` block and carries the static `ledger` field (the stem `plan/<id>-<slug>`); the
+stamp is read from the ledger's last `freeze` entry. A plan frozen before the ledger keeps its in-file stamp
+until its next refreeze moves it into the ledger.
+
+**Locked** is the state after `PLAN lock <id>`, which runs only on the developer's ask once the freeze is
+committed. A Locked plan refuses `plan_api.write` and `freeze`, and a hook denies hand edits to the plan JSON,
+its planned tests and the ledger; `record`, `verify`, `lanes` and `render` run as before. A design change
+takes `PLAN unlock <id> --arm "<reason>"` (on the developer's OK), then `PLAN unlock <id>`, then
+`plan_api.write`, `freeze --refreeze` and, once that is committed, `lock` again. After a rebase or squash moves
+the base off HEAD's history (`check` prints `off-history:`), `PLAN relink <id>` re-points `base_commit` on the
+developer's request and leaves the plan Frozen or Locked.
 
 **After the freeze the plan JSON changes only through a refreeze.** Plans frozen from this version use the **receipts** scheme:
 
@@ -97,8 +112,10 @@ A commit sequence that keeps the history readable:
 2. **Plan**: the plan JSON and its PIP: `Docs(plans): plan <feature>`. The planned test files under
    `<plans>/<id>/tests/` are local references and stay out of git; each lands at its repo path, committed,
    with the item that copies it there.
-3. **Freeze**: commit right after `freeze`: the plan JSON and its HTML PIP (on a plan started before
-   receipts, also the markdown PIP the freeze deleted): `Docs(plans): freeze plan <id>`. The committed copy is
+3. **Freeze**: commit right after `freeze`: the plan JSON, its HTML PIP and the new `freezes/plan/...` ledger
+   entry (on a plan started before receipts, also the markdown PIP the freeze deleted):
+   `Docs(plans): freeze plan <id>`. When the developer asks for a lock, `PLAN lock <id>` runs after this
+   commit, and its `lock` entry is committed next. The committed copy is
    also what a later refreeze reads to keep the plan's scheme. Committing the plan folder's `.gitignore` is
    optional: whenever the driver rebuilds `live.js` (record, freeze, render, `evolution_api`) it adds the
    `live.js` line when the file is missing or lacks it, so a repository may ignore the file instead.
@@ -108,10 +125,16 @@ A commit sequence that keeps the history readable:
 5. **Design change**: the DesignEvolution entry goes in with the work that needed it.
 6. **Before the merge**: `PLAN check <id>` and `PLAN verify <id>`.
 
-**Tags.** `--sha` takes any revision. A tag (`--sha v1.4.0`) is kept in the receipt next to the full SHA, so
-a receipt can say which release carried the item. A tag on a branch commit that is later squashed points at a
-commit the base branch never gets; tag on the base branch after the merge when the tag should outlive the
-branch. The receipt's tested tree stays the evidence either way.
+**Tags.** The drivers create the plan's tags themselves (annotated, local), in the same command:
+`base/<stem>/r1` on the base commit (`r1-<m>` for a relinked base), `freeze/` and `lock/<stem>/r1.<k>-tree` on
+each entry's tree, `-commit` on the commit that added an entry file once it is committed, and
+`receipt/<stem>/<ITEM>-commit` or `-tree` on what `record` tested. A command prints one
+`tag: <name> -> <sha7>` line per tag it created and then one `push: git push origin <names>` line; run that
+line to share them, since tree tags never travel with `push --follow-tags`. Receipt tags stay local and no
+push line names them. A tag name already on another object refuses the command before anything is written.
+`--sha` still takes any revision, and a tag passed there (`--sha v1.4.0`) is kept in the receipt next to the
+full SHA. Driver tags sit on main-line commits, so a release version is read with `git describe --match 'v*'`.
+The receipt's tested tree stays the evidence either way.
 
 ## Parallel execution
 

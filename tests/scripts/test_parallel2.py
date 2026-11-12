@@ -767,20 +767,20 @@ def test_setup_probe_prints_the_dispatch_rows_then_the_probe_prompts(plan, run) 
     assert out.endswith(probe_out)
 
 
-def test_setup_cuts_worktrees_concurrently_and_rolls_back_on_a_failure(
+def test_setup_checks_out_worktrees_concurrently_and_rolls_back_on_a_failure(
         driver, plan, run, project: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     real = driver.git
     barrier = threading.Barrier(2, timeout=2)
     overlapped: List[bool] = []
 
     def fake(repo: Path, *args: str) -> subprocess.CompletedProcess:
-        if args[:2] == ("worktree", "add"):
+        if args[:2] == ("reset", "--hard"):
             try:
                 barrier.wait()
                 overlapped.append(True)
             except threading.BrokenBarrierError:
                 overlapped.append(False)
-            if "p2/task2" in args:
+            if Path(repo).name == "p2-task2":
                 return subprocess.CompletedProcess(list(args), 128, "", "boom")
         return real(repo, *args)
 
@@ -789,9 +789,26 @@ def test_setup_cuts_worktrees_concurrently_and_rolls_back_on_a_failure(
     code, _, err = run("setup")
     assert overlapped == [True, True]
     assert code == 1 and "task2" in err and "boom" in err
-    assert not (tmp_path / "trees" / "p2-task1").exists()
-    assert "p2/task1" not in branches(project)
-    assert lane_state(project, "task1")["status"] == "planned"
+    for lane_id in ("task1", "task2"):
+        assert not (tmp_path / "trees" / f"p2-{lane_id}").exists()
+        assert f"p2/{lane_id}" not in branches(project)
+        assert lane_state(project, lane_id)["status"] == "planned"
+
+
+def test_setup_survives_many_lanes_cut_in_a_row(plan, run, project: Path) -> None:
+    """Concurrent ``git worktree add`` calls race on ``.git/worktrees``; repeated 8-lane setups expose it."""
+    lanes = [lane(f"task{i}", [f"src/l{i}.py"]) for i in range(8)]
+    for attempt in range(20):
+        code, _, err = plan(lanes, *(["--replace"] if attempt else []))
+        assert code == 0, err
+        code, _, err = run("setup")
+        assert code == 0, f"attempt {attempt}: {err}"
+        for i in range(8):
+            tree = Path(lane_state(project, f"task{i}")["worktree"])
+            assert (tree / "src" / "a.py").read_text(encoding="utf-8") == "a = 1\n"
+            assert git(tree, "status", "--porcelain") == ""
+        code, _, err = run("cleanup", "--all")
+        assert code == 0, err
 
 
 def setup_with_setup(driver, make_project, tmp_path: Path, capsys: pytest.CaptureFixture,

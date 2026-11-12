@@ -19,8 +19,8 @@ SHELL_FORM = re.compile(
 EXPECTED: Dict[Tuple[str, str], List[str]] = {
     ("SessionStart", ""): ["session_rules.py", "todo_sync_session.py", "remember_prune_session.py"],
     ("PreToolUse", "Bash"): ["bash_pretool.py"],
-    ("PreToolUse", "PowerShell"): ["powershell_allow_shapes.py"],
-    ("PreToolUse", "Write|Edit"): ["guard_commit_txt.py"],
+    ("PreToolUse", "PowerShell"): ["powershell_pretool.py"],
+    ("PreToolUse", "Write|Edit"): ["write_pretool.py"],
     ("PostToolUse", "Write|Edit|Bash"): ["validate_pr_json_schema.py"],
     ("Stop", ""): ["check_phase5_sentinel.py", "check_min_viz_sentinel.py"],
     ("SubagentStop", ""): ["check_min_viz_sentinel.py"],
@@ -29,7 +29,10 @@ EXPECTED: Dict[Tuple[str, str], List[str]] = {
 # Public hook scripts that stay runnable on their own but are decided inside a registered dispatcher
 # (one interpreter launch for all of them), so hooks.json does not name them.
 COMPOSED: Dict[str, List[str]] = {
-    "bash_pretool.py": ["bash_discipline.py", "approve_python_c.py", "bash_allow_shapes.py"],
+    "bash_pretool.py": ["guard_locked.py", "bash_discipline.py", "approve_python_c.py",
+                        "bash_allow_shapes.py"],
+    "write_pretool.py": ["guard_locked.py", "guard_commit_txt.py"],
+    "powershell_pretool.py": ["guard_locked.py", "powershell_allow_shapes.py"],
 }
 
 

@@ -17,7 +17,7 @@ import json
 import re
 import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import Any, List, Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -32,25 +32,33 @@ SAFE_CMDLETS = {
 }
 
 
+def decide(payload: Any) -> Optional[str]:
+    """The allow output when every stage of a PowerShell pipeline passes, else None."""
+    if not isinstance(payload, dict) or payload.get("tool_name") != "PowerShell":
+        return None
+    cmd = (payload.get("tool_input") or {}).get("command", "")
+    stages = _split_pipeline(cmd) if isinstance(cmd, str) else []
+    if len(stages) <= 1:
+        return None
+    patterns = load_allow_patterns(payload, "PowerShell")
+    if not all(_stage_allowed(s, patterns) for s in stages):
+        return None
+    return json.dumps({"hookSpecificOutput": {
+        "hookEventName": "PreToolUse", "permissionDecision": "allow",
+        "permissionDecisionReason": (
+            "PowerShell pipeline; every stage is allowlisted or a pure-output cmdlet"
+        ),
+    }})
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, UnicodeDecodeError):
         return 0
-    if not isinstance(payload, dict) or payload.get("tool_name") != "PowerShell":
-        return 0
-    cmd = (payload.get("tool_input") or {}).get("command", "")
-    stages = _split_pipeline(cmd) if isinstance(cmd, str) else []
-    if len(stages) <= 1:
-        return 0
-    patterns = load_allow_patterns(payload, "PowerShell")
-    if all(_stage_allowed(s, patterns) for s in stages):
-        print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse", "permissionDecision": "allow",
-            "permissionDecisionReason": (
-                "PowerShell pipeline; every stage is allowlisted or a pure-output cmdlet"
-            ),
-        }}))
+    output = decide(payload)
+    if output:
+        print(output)
     return 0
 
 

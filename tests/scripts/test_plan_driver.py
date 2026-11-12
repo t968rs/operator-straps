@@ -175,17 +175,21 @@ def test_freeze_refuses_an_item_nothing_proves(run: Run,
 
 
 @pytest.mark.cross_os
-def test_freeze_records_head_and_renders(run: Run, filled: Fill,
+def test_freeze_records_the_scoped_tree_and_renders(run: Run, filled: Fill,
                                          project: Path) -> None:
+    """The stamp is the ledger's: no commit, the scoped tree of the plan files rather than HEAD's tree."""
     filled()
     code, out, err = run("freeze", "1")
     assert code == 0, err
-    frozen = read_plan(project)["frozen"]
-    assert frozen["commit"] == git(project, "rev-parse", "HEAD")
-    assert frozen["tree"] == git(project, "rev-parse", "HEAD^{tree}")
-    assert out.startswith("freeze [done] | plan 0001")
+    assert "frozen" not in read_plan(project)
+    frozen = helpers.stamp(project)
+    assert frozen.commit is None and frozen.tree is not None
+    assert git(project, "cat-file", "-t", frozen.tree) == "tree"
+    assert frozen.tree != git(project, "rev-parse", "HEAD^{tree}")
+    assert f"{PLANS}/{plan_file(project).name}" in git(project, "ls-tree", "-r", "--name-only", frozen.tree)
+    assert out.startswith("freeze [done] | plan 0001") and frozen.tree[:7] in out
     pip = (project / PLANS / "0001_Add_subtraction_PIP.md").read_text(encoding="utf-8")
-    assert "**Frozen:** " + frozen["date"] in pip
+    assert "**Frozen:** " + frozen.date in pip
 
 
 def test_a_second_freeze_needs_refreeze(run: Run, filled: Fill, project: Path) -> None:

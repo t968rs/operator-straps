@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""PreToolUse (Bash) entry point: the three Bash hooks decided in one interpreter launch.
+"""PreToolUse (Bash) entry point: the Bash hooks decided in one interpreter launch.
 
 ``bash_discipline.py``, ``bash_allow_shapes.py`` and ``approve_python_c.py`` used to be three registered
 commands, each a separate launch, whose outputs Claude Code merged by precedence (deny over allow over no
-decision). This script reads the payload once and runs the same three ``decide`` functions in the order
-that makes the merge cheap: a discipline deny ends the run, because a deny outranks every allow; a
-``python -c`` approval ends it next, because the allow-shapes hook could only add the same decision. The
-single printed output is the one the merge would have produced. A hook that raises counts as no decision
-(a note goes to stderr), as its separate launch would have, so the later hooks still decide. The three
-scripts stay runnable on their own.
+decision). This script reads the payload once and runs their ``decide`` functions in the order that makes
+the merge cheap. ``guard_locked`` runs first: it only denies (a write onto a Locked or ledger file), and a
+deny outranks every allow the later hooks give. A discipline deny ends the run next; a ``python -c``
+approval ends it after that, because the allow-shapes hook could only add the same decision. The single
+printed output is the one the merge would have produced. A hook that raises counts as no decision (a note
+goes to stderr), as its separate launch would have, so the later hooks still decide. The composed scripts
+stay runnable on their own.
 
 Unparseable input prints nothing. The deny hook honors its plugin option exactly as it does standalone.
 """
@@ -20,6 +21,12 @@ from pathlib import Path
 from typing import Any, Callable, Optional, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+
+def _locked(payload: Any) -> Optional[str]:
+    import guard_locked
+
+    return guard_locked.decide(payload)
 
 
 def _discipline(payload: Any) -> Optional[str]:
@@ -40,7 +47,7 @@ def _allow_shapes(payload: Any) -> Optional[str]:
     return bash_allow_shapes.decide(payload)
 
 
-HOOK_ORDER: Tuple[Callable[[Any], Optional[str]], ...] = (_discipline, _python_c, _allow_shapes)
+HOOK_ORDER: Tuple[Callable[[Any], Optional[str]], ...] = (_locked, _discipline, _python_c, _allow_shapes)
 
 
 def _guarded(hook: Callable[[Any], Optional[str]], payload: Any) -> Optional[str]:

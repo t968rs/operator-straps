@@ -14,10 +14,11 @@ import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, Iterable, List, Mapping, Optional
 
 from pydantic import BaseModel, ValidationError
 
+from harness_lib import freeze_ledger as fl
 from harness_lib import plan_models as pm
 from harness_lib.plan_enums import RecordScheme
 
@@ -47,10 +48,11 @@ def title_slug(title: str) -> str:
     return slug
 
 
-def next_plan_id(plans_dir: Path) -> str:
-    """One past the highest four-digit prefix among the folder's files, zero-padded."""
+def next_plan_id(plans_dir: Path, seen: Iterable[int] = ()) -> str:
+    """One past the highest four-digit prefix among the folder's files and the ``seen`` plan numbers (other
+    branches' plans folders, plan tags), zero-padded."""
     found = [int(m.group(1)) for p in plans_dir.glob("*") if (m := _ID_PREFIX.match(p.name))]
-    return f"{max(found, default=0) + 1:04d}"
+    return f"{max([*found, *seen], default=0) + 1:04d}"
 
 
 def plan_path(plans_dir: Path, plan_id: str, slug: str) -> Path:
@@ -129,10 +131,51 @@ def parse_plan(text: str, name: str) -> pm.ActionPlan:
 
 
 def load_plan(path: Path) -> pm.ActionPlan:
+    """The plan in ``path``; with a ``ledger`` field, ``frozen`` comes from the ledger beside the file."""
     try:
-        return parse_plan(path.read_text(encoding="utf-8"), path.name)
+        plan = parse_plan(path.read_text(encoding="utf-8"), path.name)
     except OSError as exc:
         raise PlanError([f"cannot read {path.as_posix()}: {exc}"]) from exc
+    return hydrate_frozen(plan, path.parent)
+
+
+def _ledger_stamp(stem: str, entry: fl.LedgerEntry) -> pm.Frozen:
+    """The stamp a ledger ``freeze`` entry stands for: no commit, its tree, the day of ``at``, digest."""
+    try:
+        return pm.Frozen.at(None, entry.tree, entry.at[:10], entry.digest, entry.records)
+    except ValidationError as exc:
+        name = fl.entry_name(entry)
+        raise PlanError([f"ledger {stem} {name}: {line}" for line in schema_lines(exc)]) from exc
+
+
+def hydrate_frozen(plan: pm.ActionPlan, plans_dir: Path) -> pm.ActionPlan:
+    """Fill ``plan.frozen`` from the last ``freeze`` of its ledger under ``plans_dir``; a legacy plan as is.
+
+    Frozen, locked, armed and unlocked plans all carry the stamp of their last freeze. A ``ledger`` field
+    whose folder is missing or holds no entry is a problem naming the stem, never a plan read as unfrozen.
+    """
+    if plan.ledger is None:
+        return plan
+    folder = fl.ledger_dir(plans_dir, plan.ledger)
+    try:
+        entries = fl.load_entries(folder)
+    except fl.LedgerError as exc:
+        raise PlanError(exc.problems) from exc
+    if not entries:
+        raise PlanError([f"ledger {plan.ledger} missing: no entries under {folder.as_posix()}"])
+    last = fl.last_freeze(entries)
+    plan.frozen = None if last is None else _ledger_stamp(plan.ledger, last)
+    return plan
+
+
+def ledger_state(plan: pm.ActionPlan, plans_dir: Path) -> Optional[fl.LedgerState]:
+    """The ledger state of ``plan`` (folder under ``plans_dir``); None for a legacy plan without a ledger."""
+    if plan.ledger is None:
+        return None
+    try:
+        return fl.state(fl.load_entries(fl.ledger_dir(plans_dir, plan.ledger)))
+    except fl.LedgerError as exc:
+        raise PlanError(exc.problems) from exc
 
 
 # --- dumping ----------------------------------------------------------------------------------------------
@@ -161,7 +204,11 @@ def plan_dict(plan: pm.ActionPlan) -> Dict[str, Any]:
 
 
 def dump_plan(plan: pm.ActionPlan) -> str:
-    return json.dumps(plan_dict(plan), indent=2, ensure_ascii=False) + "\n"
+    """The plan file text; a plan with a ``ledger`` leaves ``frozen`` out, since the ledger holds it."""
+    data = plan_dict(plan)
+    if plan.ledger is not None:
+        data.pop("frozen", None)
+    return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
 def save_plan(path: Path, plan: pm.ActionPlan) -> None:

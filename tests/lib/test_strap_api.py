@@ -229,6 +229,7 @@ def test_update_behavior_refuses_frozen_spec(project: Path) -> None:
 
 def test_drop_behavior_sets_state_and_redigests(project: Path) -> None:
     path = _seed(project)
+    grade(NAME, "R-2", 0, "present", QUOTE)
     old = load_spec(path).driver_digest
     spec = drop_behavior(NAME, "B1", "superseded by B2")
     dropped = spec.behaviors[0]

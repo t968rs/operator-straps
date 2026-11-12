@@ -101,17 +101,25 @@ def deny(reason: str) -> str:
         "hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}})
 
 
+def decide(payload: Any) -> Optional[str]:
+    """The deny output for a Write or Edit of a build-owned commit-message TXT, else None."""
+    file_path = _file_path(payload)
+    if file_path is None or not _txt_candidate(file_path):
+        return None
+    cfg = _config_for(file_path, payload)
+    if cfg is not None and guarded(file_path, cfg):
+        return deny(reason_for(file_path))
+    return None
+
+
 def main() -> int:
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, UnicodeDecodeError):
         return 0
-    file_path = _file_path(payload)
-    if file_path is None or not _txt_candidate(file_path):
-        return 0
-    cfg = _config_for(file_path, payload)
-    if cfg is not None and guarded(file_path, cfg):
-        print(deny(reason_for(file_path)))
+    output = decide(payload)
+    if output:
+        print(output)
     return 0
 
 

@@ -1,0 +1,38 @@
+{
+  "plan_id": "1015",
+  "item": "SKL-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "b9a88e73e64918eb9e1079af8cac8765d4fa9db5"
+    }
+  },
+  "evidence": "staged tree b9a88e7",
+  "deviations": {
+    "extra_files": [
+      {
+        "path": "plugins/harness/skills/write-plan/SKILL.md",
+        "change": "EX5"
+      },
+      {
+        "path": "docs/plans/strap/strap-skills/fixtures",
+        "change": "EX5"
+      },
+      {
+        "path": "docs/plans/freezes/skill/write-plan",
+        "change": "EX5"
+      },
+      {
+        "path": "docs/plans/freezes/skill/strap-skills",
+        "change": "EX5"
+      }
+    ],
+    "substitutions": [],
+    "change_digests": {
+      "EX5": "a99321faf12a513ce68da9b8854ca3082984cca3b99fd1420cfba0e1aa10af08"
+    }
+  },
+  "date": "2026-11-11",
+  "seal": "7afedf68ca385c4c6fb56ac9f6f8d052157ca6d718d6d88c8db68267d978f9e3"
+}

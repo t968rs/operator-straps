@@ -1,0 +1,107 @@
+"""Contract test for the ``memo-guard`` project skill: its SKILL.md frontmatter, its API launcher and its models.
+
+The skill's models and API are loaded by path from ``.claude/skills/memo-guard/scripts/``, never copied: a literal pinned
+here would drift from the module that defines it. A skill without a models or an API module skips the tests
+that need one. Imports only the standard library, pydantic and pytest, so the project's own test run needs no
+harness on its path.
+"""
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+from types import ModuleType
+from typing import Dict, Tuple
+
+import pytest
+from pydantic import ValidationError
+
+NAME = "memo-guard"
+FOLDER = ".claude/skills/memo-guard"
+LAUNCHER = ('harness-skill-api --repo "${CLAUDE_PROJECT_DIR}" '
+            '--file "${CLAUDE_SKILL_DIR}/scripts/memo_guard_api.py"')
+
+
+def _repo_root() -> Path:
+    """The nearest folder above this file holding a ``.git`` entry."""
+    here = Path(__file__).resolve()
+    return next(folder for folder in here.parents if (folder / ".git").exists())
+
+
+SKILL_DIR = _repo_root() / FOLDER
+SKILL = SKILL_DIR / "SKILL.md"
+
+
+def _load(stem: str) -> ModuleType:
+    """``scripts/<stem>.py`` of the skill, loaded by path; ImportError when the file is absent. The folder is
+    appended to ``sys.path`` (so the API's sibling import resolves) and never shadows another module. The
+    module is registered under its own stem, so the API's sibling import and the test share one models module
+    (and one set of model classes); a module already loaded under that stem is returned as is."""
+    path = SKILL_DIR / "scripts" / f"{stem}.py"
+    if not path.is_file():
+        raise ImportError(f"no module at {path.as_posix()}")
+    if str(path.parent) not in sys.path:
+        sys.path.append(str(path.parent))
+    if stem in sys.modules:
+        return sys.modules[stem]
+    spec = importlib.util.spec_from_file_location(stem, path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[stem] = module  # pydantic resolves postponed annotations through sys.modules
+    spec.loader.exec_module(module)
+    return module
+
+
+def _module(stem: str) -> ModuleType:
+    """The module ``stem``; the calling test is skipped when the skill has no such part."""
+    try:
+        return _load(stem)
+    except ImportError as exc:
+        pytest.skip(str(exc))
+
+
+def _skill_parts() -> Tuple[Dict[str, str], str]:
+    """SKILL.md split into its frontmatter keys (values unquoted) and its body."""
+    text = SKILL.read_text(encoding="utf-8")
+    assert text.startswith("---\n"), "SKILL.md has no frontmatter"
+    head, _, body = text[4:].partition("\n---\n")
+    keys = {}
+    for line in head.splitlines():
+        key, sep, value = line.partition(":")
+        if sep and not line.startswith(" "):
+            keys[key.strip()] = value.strip().strip("\"'")
+    return keys, body
+
+
+def test_frontmatter_names_the_skill_folder() -> None:
+    assert _skill_parts()[0]["name"] == NAME
+
+
+def test_description_is_filled() -> None:
+    description = _skill_parts()[0].get("description", "")
+    assert description.startswith("Use when"), description
+
+
+def test_api_heredoc_launches_the_skill_api() -> None:
+    if not (SKILL_DIR / "scripts" / "memo_guard_api.py").is_file():
+        pytest.skip("the skill has no API module")
+    assert LAUNCHER in _skill_parts()[1]
+
+
+def test_api_exports_existing_names() -> None:
+    api = _module("memo_guard_api")
+    missing = [name for name in api.__all__ if not hasattr(api, name)]
+    assert not missing, missing
+
+
+def test_models_forbid_extra_keys() -> None:
+    models = _module("memo_guard_models")
+    with pytest.raises(ValidationError):
+        models.Document.model_validate({"name": NAME, "unexpected": 1})
+
+
+def test_document_round_trips_through_its_dump() -> None:
+    models = _module("memo_guard_models")
+    entry = models.Entry(id=f"{models.ENTRY_PREFIX}1", kind=models.EntryKind.FIRST, text="first entry")
+    document = models.Document(name=NAME, entries=[entry])
+    assert models.Document.model_validate_json(models.dump_document(document)) == document

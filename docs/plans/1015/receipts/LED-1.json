@@ -1,0 +1,30 @@
+{
+  "plan_id": "1015",
+  "item": "LED-1",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "6e3e96b792d84618b8cfa6790baec29fb8d9dc5b"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_freeze_ledger.py::test_write_and_load_entries_round_trip",
+        "tests/lib/test_freeze_ledger.py::test_write_entry_refuses_existing_file",
+        "tests/lib/test_freeze_ledger.py::test_state_tracks_lock_arm_and_unlock",
+        "tests/lib/test_freeze_ledger.py::test_next_seq_counts_past_taken_tag_seqs",
+        "tests/lib/test_freeze_ledger.py::test_locked_files_only_under_plans_folder",
+        "tests/lib/test_freeze_ledger.py::test_schema_file_matches_model"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_freeze_ledger.py::test_write_and_load_entries_round_trip tests/lib/test_freeze_ledger.py::test_write_entry_refuses_existing_file tests/lib/test_freeze_ledger.py::test_state_tracks_lock_arm_and_unlock tests/lib/test_freeze_ledger.py::test_next_seq_counts_past_taken_tag_seqs tests/lib/test_freeze_ledger.py::test_locked_files_only_under_plans_folder tests/lib/test_freeze_ledger.py::test_schema_file_matches_model"
+    }
+  },
+  "evidence": "staged tree 6e3e96b: 6 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-11",
+  "seal": "977c44adf99b6fd59465e9d06de2a439d7f79361fcd8f869f8970ec71c3ed2b0"
+}
