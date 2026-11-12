@@ -263,7 +263,8 @@ class RefuterPlan:
 
 
 def _code_slots(scope: Mapping[str, Sequence[str]], reviewable_count: int) -> Tuple[CodeSlot, ...]:
-    """One pooled ``adv_code`` slot below ``SMALL_PR_FILES``, else one ``adv_code_<bucket>`` per bucket."""
+    """One pooled ``adv_code`` slot below ``SMALL_PR_FILES``, else one ``adv_code_<scope>`` per non-empty
+    scope."""
     buckets = [(name, tuple(scope[name])) for name in SCOPE_BUCKETS if scope.get(name)]
     if not buckets:
         return ()
@@ -310,7 +311,8 @@ def adversarial_check(plan: RefuterPlan) -> Dict[str, object]:
 
 def complete_check(check: Mapping[str, object], checked: int, refuted: int, code_findings: int,
                    refuted_ids: Sequence[str]) -> Dict[str, object]:
-    """A copy of ``check`` completed at build with the counts, ``refuted_ids`` and an ``OK`` result.
+    """A copy of ``check`` completed at build with the counts, ``refuted_ids``, an empty ``unrefuted_ids``
+    and an ``OK`` result that replaces the capture-time ``PENDING`` one.
 
     Pure: ``checked`` and ``refuted`` count verdict entries (all, and the refuted ones), so ``refuted`` is at
     most ``checked``; ``refuted_ids`` are issue ids, a different unit. Nothing is checked.

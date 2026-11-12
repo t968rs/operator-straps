@@ -44,9 +44,10 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KE
     (``{id, kind, origin, at}``; a re-fold replaces both). ``--findings`` takes a JSON list of findings or
     ``{"findings": [...], "strengths": [...]}``; ``--from-gh-review`` maps each inline comment of a GitHub
     PR review to one ``judgment`` finding at ``--severity`` (default minor); a DISMISSED review or a blank one
-    without comments is refused (exit 1, nothing recorded). Before build the source is merge input. Once the review is built the
-    source is also appended (entry gains ``after_build: true``): its findings convert as merge converts one
-    report, ids continue per severity after the review's highest, nothing is renumbered or auto-merged
+    without comments is refused (exit 1, nothing recorded). Before build the source is merge input. Once the
+    review is built the source is also appended (entry gains ``after_build: true``): its findings convert as
+    merge converts one report, ids continue per severity after the review's highest, nothing is renumbered
+    or auto-merged
     (merge candidates against existing issues print as a note), the source is credited in ``reviewers``,
     the verdict is recomputed and the review is written through the validated writer. The phase stays
     ``fix-plan`` / ``fix`` inside an open Phase 5 pass and becomes ``consolidate`` otherwise, so only
@@ -65,8 +66,9 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KE
     ``review_merge.merge_adversarial`` (an all-refuted issue carries ``refuted``), the table gains a
     ``refuted`` / ``upheld`` column and the mixed-group notes print as ``note:`` lines.
 ``amend --pr N [--regrade I3=minor ...] [--merge I3+I7 ...]``
-    Apply regrades and id merges to ``draft.json`` in the order given, log them, reprint the table. A regrade
-    to ``mechanical`` or ``judgment`` sets the issue's fix kind in place (id kept), which picks the fixer model.
+    Apply regrades and id merges to ``draft.json`` in the order given, log them, reprint the table. A
+    regrade to ``mechanical`` or ``judgment`` sets the issue's fix kind in place (id kept), which picks the
+    fixer model.
 ``build --pr N [--replace] [--waive-head-ancestry]``
     Write ``<artifacts.reviews>/<NNNN>_<slug>.json`` from the plan and the draft, with the Phase 4 first run's
     ``pre_fix_time`` when it succeeds (else the pending literal, a READY verdict turned into ``NOT READY TO
@@ -970,8 +972,8 @@ def _cmd_merge(repo: Path, args: argparse.Namespace) -> int:
 
 
 def _amend_one(issues: List[Dict[str, object]], kind: str, value: str) -> Tuple[List[Dict[str, object]], str]:
-    """Apply one ``regrade`` (``I3=minor`` moves the severity; ``I3=mechanical`` sets the fix kind in place) or
-    ``merge`` (``I3+I7``) operation; return issues and a note."""
+    """Apply one ``regrade`` (``I3=minor`` moves the severity; ``I3=mechanical`` sets the fix kind in
+    place) or ``merge`` (``I3+I7``) operation; return issues and a note."""
     if kind == "regrade":
         issue_id, _, severity = value.partition("=")
         kind_value = severity.strip().lower()
@@ -2151,9 +2153,7 @@ def _cmd_closeout(repo: Path, args: argparse.Namespace) -> int:
     require_phase4(doc, "closing out")
     if not plan.get("build_head"):
         raise CaptureError(["no build_head recorded; run build first"])
-    refuted = set(ra.refuted_now(doc))
-    refused = [ra.refuted_problem(i, _rel(repo, path))
-               for i in parse_closed(args.resolved, "--resolved", "what") if i in refuted]
+    refused = closeout_refusals(doc, args, _rel(repo, path))
     if refused:
         raise CaptureError(refused)
     head = git_out(repo, "rev-parse", "--short", "HEAD").strip()
@@ -2171,6 +2171,15 @@ def _cmd_closeout(repo: Path, args: argparse.Namespace) -> int:
     if problems:
         raise CaptureError(problems)
     return 0
+
+
+def closeout_refusals(doc: Mapping[str, object], args: argparse.Namespace, review: str) -> List[str]:
+    """One ``refuted_problem`` per ``--resolved``, ``--deferred`` or ``--closed`` id whose latest status is
+    ``REFUTED``: closeout would otherwise skip the deferred or closed decision without a problem line."""
+    named = {**parse_closed(args.closed), **parse_closed(args.deferred, "--deferred", "decision; tracker"),
+             **parse_closed(args.resolved, "--resolved", "what")}
+    refuted = set(ra.refuted_now(doc))
+    return [ra.refuted_problem(i, review) for i in named if i in refuted]
 
 
 def closeout_review(run: Path, paths: Tuple[Set[str], Set[str]], head: str, doc: Mapping[str, object],
@@ -2339,12 +2348,23 @@ def _overrule_target(repo: Path, args: argparse.Namespace, action: str
     return run, plan, path, doc, overrule_issue(repo, path, doc, args.id)
 
 
+def fixer_bubbled_problem(issue_id: str, shown: str) -> str:
+    """The refusal of ``refute`` for an id a planned fixer of the run bubbled: waves count that bubble as done
+    and closeout replays it, so a later ``unrefute --fix`` would turn back into a bubble."""
+    return (f"{issue_id}: a planned fixer of this run bubbled it; refute refused (waves and closeout replay "
+            f"that bubble); settle it with bubble or closeout --closed {issue_id}=\"rationale\"; "
+            f"{shown} unchanged")
+
+
 def _cmd_refute(repo: Path, args: argparse.Namespace) -> int:
     """Run ``refute``: close one built-review issue as ``REFUTED`` (a developer overrule). The phase stays, so
-    plan.json is never written, a hook problem included."""
-    _, _, path, doc, issue = _overrule_target(repo, args, "refuting")
+    plan.json is never written, a hook problem included. An id a planned fixer of the run bubbled is refused
+    (``fixer_bubbled_problem``), so a later ``unrefute --fix`` keeps the id open."""
+    run, _, path, doc, issue = _overrule_target(repo, args, "refuting")
     if args.id in ra.refuted_now(doc):
         raise CaptureError([ra.refuted_problem(args.id, _rel(repo, path))])
+    if args.id in counted_bubbles(rm.load_fix_reports(run / "fixes"), fixer_parts(run)):
+        raise CaptureError([fixer_bubbled_problem(args.id, _rel(repo, path))])
     try:
         out = review_edit.apply_refute(doc, args.id, args.evidence, date.today().isoformat())
     except ValueError as exc:

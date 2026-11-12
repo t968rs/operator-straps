@@ -120,6 +120,7 @@ def test_pending_review_with_overrule_entries_is_coherent(make_project, overrule
     result = _run_hook(make_project(), _review("1", _NOT_READY, True, resolutions))
     assert result.returncode == 0, f"stderr={result.stderr!r}"
     assert "INCOHERENCE" not in result.stderr
+    assert "setup error" not in result.stderr, result.stderr
 
 
 def test_pending_review_with_another_resolution_stays_incoherent(make_project) -> None:
@@ -179,6 +180,15 @@ def test_refutation_overruled_to_a_bubble_clears_the_sentinel(make_project) -> N
     resolutions = [_entry("I1", "REFUTED"), _entry("M1", "REFUTED"), _entry("M1", "BUBBLED", "dev call")]
     data = _review("OVERBUB", _READY_ONE_BUBBLED, False, resolutions, important=["I1"], minor=["M1"])
     assert _cleared(project, sentinel, _bubble_m1(data))
+
+
+def test_a_lone_latest_bubbled_keeps_the_sentinel(make_project) -> None:
+    project = make_project()
+    sentinel = _arm_sentinel(project, "LONEBUB")
+    resolutions = [_entry("I1", "REFUTED"), _entry("M1", "REFUTED"), _entry("M1", "BUBBLED", "dev call")]
+    data = _review("LONEBUB", _READY_ONE_BUBBLED, False, resolutions, important=["I1"], minor=["M1"])
+    assert not _cleared(project, sentinel, data)
+    assert sentinel.exists()
 
 
 def test_refutation_overruled_to_a_fix_keeps_the_sentinel_until_the_fix(make_project) -> None:

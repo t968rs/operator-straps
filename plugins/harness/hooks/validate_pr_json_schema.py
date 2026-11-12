@@ -212,7 +212,7 @@ def _schema_check(file_path: str, schema_file: Path, cfg: HarnessConfig,
 
 def _incoherent(file_path: str, data: Dict[str, Any], schema: Dict[str, Any]) -> bool:
     """Layer 2: a still-pending pre_fix_time cannot coexist with a READY verdict or resolutions; REFUTED,
-    BUBBLED and NOT_RESOLVED entries are exempt (build and refute / unrefute write them before Phase 4)."""
+    BUBBLED and NOT_RESOLVED entries are exempt (build writes REFUTED entries before Phase 4)."""
     from harness_lib.validation.id_handling import counted_resolutions
 
     verification_log = data.get("verification_log") or {}
@@ -234,9 +234,9 @@ def _incoherent(file_path: str, data: Dict[str, Any], schema: Dict[str, Any]) ->
 
 
 def _closeout_reason(data: Dict[str, Any]) -> Optional[str]:
-    """Why the review counts as a Phase 5 closeout, or None when it does not. REFUTED, BUBBLED and
-    NOT_RESOLVED entries disposition ids (through ``all_issues_dispositioned``) but never count as
-    resolutions or as SHA evidence, so their evidence never clears a READY review."""
+    """Why the review counts as a Phase 5 closeout, or None when it does not. A REFUTED entry dispositions
+    its id through ``all_issues_dispositioned``, a latest BUBBLED counts only through bubbles / bubble_up,
+    a latest NOT_RESOLVED never counts; none of the three counts as a resolution or as SHA evidence."""
     from harness_lib.validation.id_handling import all_issues_dispositioned, counted_resolutions
 
     resolutions = counted_resolutions(data.get("post_review_resolutions") or [])

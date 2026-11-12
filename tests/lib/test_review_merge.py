@@ -20,8 +20,7 @@ from harness_lib import review_edit as red
 from harness_lib import review_merge as rmg
 from harness_lib.config import activate, load_config
 from harness_lib.project import plugin_root, schema_path
-from harness_lib.review_models import (FixReport, Refutation, RefutationReport, ReviewerReport, finding_key,
-                                       report_digest)
+from harness_lib.review_models import FixReport, ReviewerReport
 
 WALK_ROOTS = ("plugins/harness/schemas/",)
 _SCHEMA = "PR_REVIEW.schema.json"
@@ -403,7 +402,7 @@ class TestReviewDocument:
             "review_date", "verdict", "stats", "reviewers", "scoped_review_files", "bubbles", "strengths",
             "issues", "bubble_up", "verification_log",
         ]
-        assert doc["version"] == "2.3.0" and doc["bubbles"] == [] and doc["bubble_up"] == []
+        assert doc["version"] == rmg.SCHEMA_VERSION and doc["bubbles"] == [] and doc["bubble_up"] == []
         assert doc["verification_log"]["pre_fix_time"] == rmg.PENDING
         assert doc["verdict"] == "NOT READY TO MERGE - important: I1"
         assert [i["id"] for i in doc["issues"]["minor"]] == ["M1"] and doc["issues"]["critical"] == []
@@ -648,26 +647,6 @@ class TestBubbleOfAReopenedId:
     def test_add_bubble_of_an_open_id_appends_no_entry(self) -> None:
         out = red.add_bubble(_review(_issue("M1", "a.py")), "M1")
         assert out["bubbles"] == ["M1"] and not out.get("post_review_resolutions")
-
-
-class TestMergeAdversarialMixedGroup:
-    def test_refuted_finding_leaves_only_its_evidence(self) -> None:
-        refuted = _finding("a.py", "3", name="Crash", fix=["guard it"], also=["docs/x.md"],
-                           severity="critical")
-        upheld = _finding("a.py", "5", name="Typo", fix=["spell it"], severity="minor")
-        runtime, overall = _report("runtime", refuted), _report("overall", upheld)
-        verdict = {"runtime": "refuted", "overall": "upheld"}
-        reports = {}
-        for report in (runtime, overall):
-            entry = Refutation(key=finding_key(report.findings[0]), verdict=verdict[report.reviewer],
-                               evidence=f"{report.reviewer} evidence")
-            reports[report.reviewer] = RefutationReport(
-                refuter=f"adv_refute_{report.reviewer}", target=report.reviewer,
-                report_digest=report_digest(report), refutations=(entry,))
-        issues, notes = rmg.merge_adversarial([runtime, overall], reports)
-        assert issues == [{"id": "M1", "name": "Typo", "file": "a.py", "lines": "5", "reviewer": "overall",
-                           "fix_kind": "mechanical", "summary": "s", "fix": ["spell it"]}]
-        assert len(notes) == 1 and "runtime evidence" in notes[0]
 
 
 _SPLIT_FILES = {"w1_fix_1": ["a.py"], "w1_fix_2": ["b.py"]}

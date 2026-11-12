@@ -435,14 +435,6 @@ def _mentioned_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequenc
     return _entry_ids(resolutions) | _bubbled_ids(bubbles, bubble_up)
 
 
-def _named_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequence[str],
-               bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
-    """Ids carrying a disposition: a resolution, a ``bubbles`` or a ``bubble_up`` entry; an id whose latest
-    resolution is ``NOT_RESOLVED`` carries none (a refutation overruled to Phase 5 waves reopens it).
-    No production caller: the orphan check and ``review_edit._disposed_ids`` read ``_mentioned_ids``."""
-    return _mentioned_ids(resolutions, bubbles, bubble_up) - reopened_ids(resolutions)
-
-
 def _settled_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequence[str],
                  bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
     """Ids closed (latest status in ``CLOSED_STATUSES``) or bubbled; a ``DOWNGRADED_TO_*`` (or any other

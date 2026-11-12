@@ -87,9 +87,7 @@ _OVERRULE_STATUSES = {"REFUTED", "BUBBLED", "NOT_RESOLVED"}
 
 
 def test_refuted_is_the_only_new_closed_status() -> None:
-    assert "REFUTED" in rmg.CLOSED_STATUSES
-    assert "BUBBLED" not in rmg.CLOSED_STATUSES
-    assert "NOT_RESOLVED" not in rmg.CLOSED_STATUSES
+    assert set(rmg.CLOSED_STATUSES) == {"RESOLVED", "CLOSED_NO_ACTION", "REFUTED"}
     assert not _OVERRULE_STATUSES & set(red.RESOLUTION_STATUSES)
     assert "status must be one of" in _refusal(lambda: red.resolve(_review(), "I1", "REFUTED", _EVIDENCE,
                                                                     _TODAY))
@@ -110,9 +108,7 @@ def test_compute_verdict_settles_a_refuted_id() -> None:
 
 
 def test_not_resolved_latest_status_is_no_disposition() -> None:
-    assert rmg._named_ids([{"id": "M1", "status": "NOT_RESOLVED"}], [], []) == set()
     history = [{"id": "I1", "status": "REFUTED"}, {"id": "I1", "status": "NOT_RESOLVED"}]
-    assert rmg._named_ids(history, [], []) == set()
     doc = {"issues": {"critical": [], "important": [{"id": "I1"}], "minor": []},
            "post_review_resolutions": history}
     assert rmg.undispositioned_ids(doc) == ["I1"]
@@ -203,7 +199,7 @@ def test_merge_adversarial_keeps_an_issue_with_one_upheld_finding() -> None:
 
 def test_merge_adversarial_mixed_group_takes_its_shape_from_upheld_findings() -> None:
     crash = _finding("Crash on empty input", "3", severity="critical", fix_kind="judgment",
-                     summary="Crashes when the list is empty.")
+                     summary="Crashes when the list is empty.", also=["docs/x.md"])
     typo = _finding("Typo in error message", "4", summary="The message misspells received.")
     runtime, overall = _report("runtime", crash), _report("overall", typo)
     refutations = {"runtime": _refute(runtime, "refuted"), "overall": _refute(overall, "upheld")}
@@ -213,6 +209,9 @@ def test_merge_adversarial_mixed_group_takes_its_shape_from_upheld_findings() ->
     assert (issue["id"], issue["name"], issue["fix_kind"]) == ("M1", "Typo in error message", "mechanical")
     assert str(issue["summary"]).startswith("The message misspells") and "Crashes" not in issue["summary"]
     assert "refuted" not in issue
+    assert issue == {"id": "M1", "name": "Typo in error message", "file": "src/a.py", "lines": "4",
+                     "reviewer": "overall", "fix_kind": "mechanical",
+                     "summary": "The message misspells received.", "fix": ["f"]}
     assert _evidence(runtime.findings[0]) in repr(notes)
 
 

@@ -385,10 +385,5 @@ def test_worst_case_agent_count_matches_the_planner() -> None:
 def test_a_project_lens_may_not_take_the_adv_prefix(name: str) -> None:
     lens = {"name": name, "trigger": {"path_globs": ["src/*.py"]}, "scope_template": "t"}
     rp._check_project_lens({**lens, "name": "advisory-docs"})
-    try:
+    with pytest.raises(ValueError, match=re.escape(name)):
         rp._check_project_lens(lens)
-    except ValueError as exc:
-        message = str(exc)
-    else:
-        message = ""
-    assert name in message

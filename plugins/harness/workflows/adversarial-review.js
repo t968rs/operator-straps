@@ -53,8 +53,8 @@ if (orphans.size) log('findings refuters without a target in args, not run: ' + 
 // refuterOf dispatches only the first entry per target; later entries for the same target never run.
 const firstFor = new Map()
 refute.forEach((entry, index) => { if (!firstFor.has(entry.target)) firstFor.set(entry.target, index) })
-const repeats = refute.filter((entry, index) => firstFor.get(entry.target) !== index).map(entry => entry.id)
-if (repeats.length) log('findings refuters repeating a target, not run: ' + repeats.join(', '))
+const repeats = new Set(refute.filter((entry, index) => firstFor.get(entry.target) !== index).map(entry => entry.id))
+if (repeats.size) log('findings refuters repeating a target, not run: ' + [...repeats].join(', '))
 
 await parallel([
   () => pipeline(reviewers, entry => dispatch(entry, REVIEW), thenRefute(REVIEW)),
@@ -63,10 +63,11 @@ await parallel([
 
 const row = entry => {
   const base = { id: entry.id, returned: returned[entry.id] === true }
-  return orphans.has(entry.id) ? { ...base, orphan: true } : base
+  if (orphans.has(entry.id)) return { ...base, orphan: true }
+  return repeats.has(entry.id) ? { ...base, repeat: true } : base
 }
 const results = [...reviewers, ...code, ...refute].map(row)
-const failed = results.filter(r => !r.returned && !r.orphan).map(r => r.id)
+const failed = results.filter(r => !r.returned && !r.orphan && !r.repeat).map(r => r.id)
 log('returned ' + results.filter(r => r.returned).length + '/' + results.length)
 if (failed.length) log('not returned (recover with a plain Agent dispatch, reviewer first): ' + failed.join(', '))
 return results
