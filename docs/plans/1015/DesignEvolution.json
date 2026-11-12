@@ -143,6 +143,58 @@
         "free_form": "the refreeze proves the SKILL.md as it ships, and the strap-skills first freeze needs behaviors whose scenarios run on those fixtures"
       },
       "date": "2026-11-11"
+    },
+    {
+      "id": "CX1",
+      "discovered_by": "PR 271 review (M5)",
+      "phase": "post-exec-start",
+      "items": [],
+      "original": {
+        "doc": "plan",
+        "location": "values: 'plan id pattern refused as a skill name'",
+        "indicated": "a skill name matching ^plan-[0-9]{4}$ is refused (source: spec, Tags; plan_models.py:402)"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the plan value names a rule the final spec dropped and no item builds",
+        "why_free_form": "the final spec's Tags section namespaces tag stems as plan/<no>-<slug> and skill/<name>, so a skill named like a plan id cannot collide with a plan tag; no file under plugins/ holds the ^plan-[0-9]{4}$ pattern"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "the plan-[0-9]{4} skill-name refusal is moot under the plan/ and skill/ stems and was not built; the values row stays as frozen history"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "the delivered code follows the final spec's namespaced stems, which make the refusal unnecessary"
+      },
+      "date": "2026-11-11"
+    },
+    {
+      "id": "CX2",
+      "discovered_by": "PR 271 review (M7)",
+      "phase": "post-exec-start",
+      "items": [
+        "SKL-1"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Non-goals; Tree scope",
+        "indicated": "planned tests, strap contract tests and .py fixtures (docs/plans/**/*.py) stay uncommitted and unpublished, so they always land in a freeze entry's ignored map"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "the delivered .gitignore re-includes strap fixture Python files",
+        "why_free_form": ".gitignore:242-243 adds !docs/plans/strap/*/fixtures/**/*.py after the docs/plans/**/*.py ignore (.gitignore:241), so strap fixture .py files are tracked and the strap-skills r3.2 freeze lists the fixtures' test_memo_guard_skill_contract.py under files, where r1.1 had them under ignored; EX5 adds the fixtures but not the re-include"
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "strap scenario fixtures are tracked tree content: their .py files enter a freeze entry's files, not ignored; planned tests under docs/plans/ stay ignored"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "the strap-skills judgment scenarios run on the fixtures, so the fixture Python files must be part of the tree the freeze proves"
+      },
+      "date": "2026-11-11"
     }
   ]
 }

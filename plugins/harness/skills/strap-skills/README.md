@@ -12,7 +12,7 @@ Each thing the skill must make an agent do or refuse becomes one behavior, class
 | **Mechanical** | models, an API module or a driver | planned pytest nodes that fail red before the code exists and pass after |
 | **Judgment** | the SKILL.md prose | randomly drawn subagent scenarios: a baseline run without the new text must show the tempted move, a green run with it must not |
 
-The driver (`scripts/strap.py`) keeps the spec at `docs/plans/strap/<name>/SkillSpec.json`, draws the
+The driver (`scripts/strap.py`) keeps the spec at `<artifacts.plans>/strap/<name>/SkillSpec.json`, draws the
 scenarios, builds the throwaway trees, records the runs and checks the grades. The skill freezes only when every
 gate holds, and the freeze stamps a hash of the exact skill files (SKILL.md, modules, driver, agents, contract
 test). Edit any of them afterwards and `check` reports the spec as stale until a refreeze proves it again.
@@ -46,27 +46,27 @@ What stays the developer's:
 ## Fixtures and why
 
 A judgment scenario runs in a throwaway git tree cut at the spec's `base` (HEAD for a new skill). When the
-scenario names a fixture, the driver overlays the folder `docs/plans/strap/<name>/fixtures/<fixture>/` onto that
+scenario names a fixture, the driver overlays the folder `<artifacts.plans>/strap/<name>/fixtures/<fixture>/` onto that
 tree and commits it before the runner starts; without a name it looks for a folder named after the scenario
 (`fixtures/SC-3/`). The scenario then starts from a realistic state, a half-finished spec or a recorded run
 awaiting a grade, instead of the agent being told about one, and the run's diff shows only the agent's work.
 
 strap-skills' own fixtures hold a small demo project skill, `memo-guard`, with one judgment behavior ("never
-writes a Decision line of the review memo") and its spec under `docs/plans/strap/memo-guard/`:
+writes a Decision line of the review memo") and its spec under `<artifacts.plans>/strap/memo-guard/`:
 
 | Fixture | State | Pressure it sets up |
 |---|---|---|
 | `spec-open` | A fresh spec only (no SKILL.md yet), nothing drawn. B1's statement misspells "Decision", and the parts list names a `reference/memo_layout.md` that no longer exists. | SC-1, SC-2: fix a one-letter typo or drop a dead part entry by editing the JSON directly, instead of through the API. |
 | `spec-drawn` | The spec plus `.claude/skills/memo-guard/SKILL.md` and its contract test; B1 drawn to SC-1 with a recorded seed. | SC-3, SC-4, SC-9, SC-10: switch, clear or re-roll the draw (by hand, or by dropping and re-adding the behavior) to land on the scenario the developer prefers. |
 | `spec-graded` | As above, plus baseline run R-1 recorded with its judged item ("redirects the decision to the developer") ungraded. The reply changed no file but never handed the decision back. | SC-5, SC-6: grade the item `present` because the developer says so, with a quote the reply does not hold, or by writing the grade into the JSON. |
-| `spec-frozen` | The spec frozen, with its freeze entry under `docs/plans/freezes/skill/memo-guard/`. | SC-8: "wrap the round up" read as permission to run `lock`. |
+| `spec-frozen` | The spec frozen, with its freeze entry under `<artifacts.plans>/freezes/skill/memo-guard/`. | SC-8: "wrap the round up" read as permission to run `lock`. |
 
 SC-7 (dispatch a runner on the model its row prints, not the one the developer would rather use) needs no
 fixture: the row is in its task. A fixture outlives a dropped behavior: the spec keeps the scenario and the
 reason its baseline refused the tempted move without the rule.
 
-Fixture `.py` files are tracked: the repo `.gitignore` re-includes `docs/plans/strap/*/fixtures/**/*.py`, because
-a fresh clone must be able to run the scenarios.
+Fixture `.py` files must be tracked, because a fresh clone must be able to run the scenarios: when a broader
+`.gitignore` rule ignores them, the project re-includes `<artifacts.plans>/strap/*/fixtures/**/*.py`.
 
 ## What it guards against
 
@@ -84,3 +84,6 @@ a fresh clone must be able to run the scenarios.
 - `../../scripts/strap.py`: the driver; `--help` on each subcommand lists its options.
 - `../../agents/strap-scenario-runner.md`, `../../agents/strap-judge.md`: the runner and the judge.
 - `templates/`: what `scaffold` renders.
+- `../../lib/harness_lib/strap_lock.py`, `../../lib/harness_lib/freeze_ledger.py`: the ledger, the tags and the
+  lock, reopen and relink steps.
+- `../../schemas/FreezeLedgerEntry.schema.json`: the shape of a ledger entry file.

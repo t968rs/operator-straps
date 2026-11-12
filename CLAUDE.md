@@ -45,7 +45,9 @@ plugin (ArcGIS Pro toolbox skills) plus eight TypeScript mods (`agent-watcher`, 
   dispatch as `harness:<name>`.
 - **Hooks** register in `plugins/harness/hooks/hooks.json` in shell form through `hpy`. A file under `hooks/`
   without a leading underscore must be registered, or named under `COMPOSED` as decided inside a registered
-  dispatcher (`bash_pretool.py` runs the three Bash hooks in one launch); both are checked by
+  dispatcher (`bash_pretool.py` runs `guard_locked.py` plus the three Bash hooks, `write_pretool.py` runs
+  `guard_locked.py` and `guard_commit_txt.py`, `powershell_pretool.py` runs `guard_locked.py` and
+  `powershell_allow_shapes.py`, each in one launch); both are checked by
   `tests/contract/test_hooks_json_paths.py`. Every hook launch costs an interpreter start, so a new hook
   for an event and matcher that already has a command joins that command's dispatcher (or turns it into one,
   with a `COMPOSED` entry) instead of adding a command.

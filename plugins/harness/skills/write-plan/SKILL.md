@@ -60,7 +60,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    ```
 
    `write` refuses, listing every problem and writing nothing: an unknown plan id, a copy loaded before the file
-   changed, a changed `base_commit` or `frozen`, a misspelled field, a duplicate item id, any write to a
+   changed, a changed `base_commit`, `frozen` or `ledger`, a misspelled field, a duplicate item id, any write to a
    Locked plan and, on a frozen plan, any change to an execution field. The one case for a hand edit is a plan that fails to load (a
    `schema:` problem from every command); repair the JSON, then run `PLAN check`. The fields are the models of
    `harness_lib/plan_models.py`:
@@ -92,7 +92,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    receipts scheme: the freeze digest covers every field but `frozen`, and the freeze writes the HTML page and
    its `live.js` (a plan started at this version has had the page since `new`; only the markdown PIP of a plan
    started before receipts gives way to them). Nothing writes a receipts plan after its freeze but a
-   design change (a `write` followed by `freeze --refreeze`): `record` writes receipts
+   design change (a `write` followed by `freeze --refreeze`) and a `relink` (step 8, Relink), which re-points `base_commit` only: `record` writes receipts
    (`<plans dir>/<plan_id>/receipts/<ITEM>.json`) and `live.js`, the plan JSON and its page stay as frozen,
    and the seal is on the receipt. `check` reports any edit to the plan, every receipt problem and the
    DesignEvolution catalog's problems.
@@ -138,7 +138,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
 
    | Tag | Points at |
    |---|---|
-   | `base/<stem>/r1` | the base commit; `base/<stem>/r1-<m>` for the m-th relinked base |
+   | `base/<stem>/r1` | the base commit; `base/<stem>/r1-<m>` for the m-th base of the round (the original is m 1, so the first relink tags `r1-2`) |
    | `freeze/<stem>/r1.<k>-tree`, `lock/<stem>/r1.<k>-tree` | the tree of that entry |
    | `freeze/<stem>/r1.<k>-commit`, `lock/<stem>/r1.<k>-commit` | the commit that added the entry file, once committed; `-commit.2`, `-commit.3` after a rewrite moved the entry to a new commit |
    | `receipt/<stem>/<ITEM>-commit` or `-tree` | the commit or index tree `record --sha` or `--staged` tested; `.2`, `.3` on a re-record |
@@ -147,9 +147,12 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    `push: git push origin <names>` line. The developer runs the push line; tree tags never travel with
    `push --follow-tags`. Receipt tags stay local, so no push line names them (a clone that needs them pushes
    `refs/tags/receipt/*` by hand). A tag name that already sits on another object refuses the command with a
-   `problem:` line before anything is written. Every `PLAN` command reconciles the ledger first by tagging the
+   `problem:` line before anything is written. Each `PLAN` command reconciles the ledger after its work, when it succeeds, by tagging the
    commit that added each committed entry file, and `check` does too; both write refs, never files. A tag step
    that fails after the entry is written prints `warn:` and leaves the entry; the next command creates the tag.
+   A freeze's push line never names its `-commit` tag, which exists only once the entry file is committed, so
+   after the developer commits the freeze run `PLAN check <id>`: it creates the `-commit` tag and prints its
+   `push:` line for the developer to run.
    Nothing is tagged inside a strap scenario or red tree (marker file `.harness-scenario-tree`), and tagging
    uses a fallback committer identity only when git has none configured. Driver tags sit on main-line
    commits, so a release version is read with `git describe --match 'v*'`.
@@ -161,10 +164,11 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    frozen plan. It refuses unless the plan is Frozen with a ledger (a legacy plan refreezes first), the freeze
    digest holds, every file of the last freeze is committed at HEAD with the frozen blob and unchanged in the
    working tree, and every gitignored file still has its recorded sha256. It appends a `lock` entry and tags
-   its tree. From then on a PreToolUse hook denies Write, Edit and the Bash and PowerShell write shapes
-   (redirects, `tee`, `sed -i`, `Set-Content`, `Copy-Item` and the like, matched on a best-effort basis) onto
-   the plan JSON, its planned tests and every file under `freezes/`; `plan_api.write` and `freeze` refuse the
-   plan. Receipts, `live.js` and the DesignEvolution catalog stay writable, so `record`, `verify`, `lanes`
+   its tree. A PreToolUse hook denies Write, Edit and the Bash and PowerShell write shapes (redirects, `tee`,
+   `sed -i`, `Set-Content`, `Copy-Item` and the like, matched on a best-effort basis) onto every file under
+   `freezes/` at all times, and from the lock on also onto the files the lock recorded: the plan JSON and the
+   planned test files present at lock (a test file added later is neither denied nor reported as drift);
+   `plan_api.write` and `freeze` refuse the plan. Receipts, `live.js` and the DesignEvolution catalog stay writable, so `record`, `verify`, `lanes`
    and `render` run as before. A plan frozen with the sealed scheme or none keeps its plan JSON open to the
    hook, since `record` still writes it there. `check` prints `drift: <path> differs from <tag>` for a Locked
    file changed by any other writer.
@@ -174,7 +178,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    time or when asked) and appends an `arm` entry; the plan stays Locked. `PLAN unlock <id>` runs when the
    design change is needed: it refuses without a live arm and, with one, appends an `unlock` entry that uses
    the arm up. The plan is then editable again: `write`, `freeze --refreeze`, and `lock` once the developer has
-   committed the refreeze. Hand edits stay denied throughout.
+   committed the refreeze. Ledger files under `freezes/` stay denied throughout; after `unlock` the guard releases the plan JSON and its planned tests, and the plan JSON still changes only through `plan_api.write`.
 
    **Relink.** After the developer rebases or squashes, a plan base that left HEAD's history shows as
    `off-history:` in `check`. That is the cue to offer a relink, which runs on the developer's request:
