@@ -160,7 +160,8 @@ def test_reply_summarizes_a_file_in_one_count_line() -> None:
 
 def test_reply_omits_empty_headings() -> None:
     reply = _reply_section()
-    assert "omitted" in reply and "reads `none`" not in reply
+    assert "Every other heading is omitted when it has nothing to say." in reply
+    assert "reads `none`" not in reply
 
 
 def test_api_exports_existing_names() -> None:

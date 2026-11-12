@@ -199,14 +199,17 @@ Defects (not fixed): <symbol>: <defect>, ...
 Check: <what remains after the re-run>
 ```
 
-The first line is the whole report for a clean file. Every other heading is omitted when it has nothing to
-say; none is written as `none`.
+The first line is the whole report for a clean file.
+Every other heading is omitted when it has nothing to say.
 
-- **Rewritten symbols are not listed.** The count stands for them; the diff shows which.
+- **Rewritten symbols are not listed.** The count stands for them; the diff shows which. A docstring written
+  under `New docstrings: yes` counts as rewritten; a kept docstring whose flagged lines changed still counts
+  as kept.
 - **`Tier overrides:`** lists only a symbol whose tier differs from the command's `suggest=` (a caveat made it
-  compact, a fork the command cannot count) or whose answer a reviewer would doubt. The tier line of every
-  other symbol stays in the working notes.
-- **`Kept (in layout):`** lists the symbols left byte for byte, each with the reason in a few words.
+  compact, a fork the command cannot count) or whose answer a reviewer would doubt, one `Tier overrides:`
+  line per symbol. The tier line of every other symbol stays in the working notes.
+- **`Kept (in layout):`** lists the symbols kept in their layout (byte for byte apart from flagged lines),
+  each with the reason in a few words.
 - **`Check:`** appears only when the re-run left a mismatch or a flag; a clean re-run is not reported.
 
 Guidance that asked for something out of scope gets one last line: `Not in scope: <what was asked>`.
