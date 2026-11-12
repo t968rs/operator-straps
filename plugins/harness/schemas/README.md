@@ -129,7 +129,7 @@ This is a worked specimen (originally produced for Issue #747's CICD-Decompose-c
 
 **Key fields:** `cell`, `pr`, `model_family` (`haiku` / `sonnet` / `opus`), `effort`, `dev_commit` (40-char merge-base SHA, optionally ` -- <suffix>`; freetext only on `legacy: true` rows), `dispatch_shape` (`parallel` / `inline` / `workflow`: the zero-count row agent-watcher writes per slot of a pr-review `-a` Workflow run), `tokens`, `tool_uses`, `duration_s`, `findings_count`, `C_count` / `I_count` / `M_count` / `other_count`, `verdict_prefix`, `notes`.
 
-**`tokens`:** input + output + cache read + cache creation. Watcher rows sum them over every model request of the invocation; watcher rows from before agent-watcher 0.7.0 hold, for a foreground dispatch, the last request's count, and nothing in the row dates them. Orchestrator rows carry the reviewer's self-reported figure, or 0.
+**`tokens`:** input + output + cache read + cache creation. Watcher rows sum them over every model request of the invocation, except `workflow` rows (dispatch_shape `workflow`), which hold 0 because the slot is not observed; watcher rows from before agent-watcher 0.7.0 hold, for a foreground dispatch, the last request's count, and nothing in the row dates them. Orchestrator rows carry the reviewer's self-reported figure, or 0.
 
 ### 11. `Receipt.schema.json`
 

@@ -315,7 +315,7 @@
                 },
                 "adversarial_check": {
                   "type": "object",
-                  "description": "Optional; written only by an --adversarial (-a) run, absent otherwise. Capture writes applies, workflow, code_slots, refute_slots and result; build adds counts and refuted_ids; refute and unrefute update refuted_ids and unrefuted_ids.",
+                  "description": "Optional; written only by an --adversarial (-a) run, absent otherwise. Capture writes applies, workflow, code_slots, refute_slots and a PENDING result; build adds counts, refuted_ids and an empty unrefuted_ids and sets result to its OK form; refute and unrefute update refuted_ids and unrefuted_ids only, counts and result keep the build-time figures.",
                   "required": [
                     "applies",
                     "workflow",
@@ -349,7 +349,7 @@
                     },
                     "result": {
                       "type": "string",
-                      "description": "Short status line, e.g. 'OK (2 checked, 1 refuted)'."
+                      "description": "Short status line. At capture 'PENDING (<C> code refuters, <F> findings refuters)', e.g. 'PENDING (2 code refuters, 5 findings refuters)'; after build 'OK (<N> checked, <M> refuted, <K> code findings)', e.g. 'OK (12 checked, 3 refuted, 4 code findings)'."
                     },
                     "counts": {
                       "type": "object",
@@ -357,19 +357,23 @@
                       "properties": {
                         "findings_checked": {
                           "type": "integer",
-                          "minimum": 0
+                          "minimum": 0,
+                          "description": "Verdict entries across the findings refuters' reports."
                         },
                         "findings_refuted": {
                           "type": "integer",
-                          "minimum": 0
+                          "minimum": 0,
+                          "description": "Refuted verdict entries (not issue ids; may differ from len(refuted_ids))."
                         },
                         "findings_upheld": {
                           "type": "integer",
-                          "minimum": 0
+                          "minimum": 0,
+                          "description": "findings_checked minus findings_refuted."
                         },
                         "code_findings": {
                           "type": "integer",
-                          "minimum": 0
+                          "minimum": 0,
+                          "description": "Findings across the code refuters' reports."
                         }
                       }
                     },
