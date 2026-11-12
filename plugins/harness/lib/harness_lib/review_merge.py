@@ -401,6 +401,22 @@ def regrade(issues: Sequence[Issue], issue_id: str, severity: Union[Severity, st
     return _flat([*out, moving])
 
 
+FIX_KINDS = ("mechanical", "judgment")
+
+
+def set_fix_kind(issues: Sequence[Issue], issue_id: str, fix_kind: str) -> List[Issue]:
+    """Issues with ``issue_id`` given ``fix_kind`` in place (id and order kept); a missing kind reads as
+    judgment."""
+    if fix_kind not in FIX_KINDS:
+        raise ValueError(f"unknown fix kind {fix_kind!r} (expected {' or '.join(FIX_KINDS)})")
+    out = _flat(issues)
+    moving = _find(out, issue_id)
+    if moving.get("fix_kind", "judgment") == fix_kind:
+        raise ValueError(f"{issue_id} is already {fix_kind}")
+    moving["fix_kind"] = fix_kind
+    return out
+
+
 def merge_ids(issues: Sequence[Issue], keep: str, drop: Sequence[str]) -> List[Issue]:
     """Issues with each ``drop`` id folded into ``keep`` (fixes, files, lines, reviewers, fix kind)."""
     if not drop or keep in drop:

@@ -622,7 +622,7 @@ class TestMergeAndAmend:
         draft = json.loads((rm.run_dir(_PR, clone) / "draft.json").read_text(encoding="utf-8"))
         assert [i["id"] for i in draft["issues"]] == ["I1", "M1", "M2"]
         assert "runtime (opus)" in draft["reviewers"] and draft["amend"] == []
-        assert "I1 important src/pkg/a.py:4 [runtime]" in out
+        assert "I1 important mechanical src/pkg/a.py:4 [runtime]" in out
         assert "merge candidates:" in out and "M1 + M2" in out
 
     def test_amend_then_merge_refuses_without_force(self, script: ModuleType,
@@ -641,6 +641,46 @@ class TestMergeAndAmend:
         assert [op["op"] for op in draft["amend"]] == ["regrade", "merge"]
         assert _run(script, clone, "merge", "--pr", str(_PR)) == 1
         assert _run(script, clone, "merge", "--pr", str(_PR), "--force") == 0
+
+    def test_amend_regrades_fix_kind_in_place(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
+                                              pr_repo: Tuple[Path, str], capsys: pytest.CaptureFixture) -> None:
+        clone, head = pr_repo
+        _capture(script, monkeypatch, clone, head)
+        _record_all(clone, [_finding("src/pkg/a.py", "4", severity="important", fix_kind="judgment")])
+        assert _run(script, clone, "merge", "--pr", str(_PR)) == 0
+        capsys.readouterr()
+        assert _run(script, clone, "amend", "--pr", str(_PR), "--regrade", "I1=mechanical") == 0
+        out = capsys.readouterr().out
+        draft = json.loads((rm.run_dir(_PR, clone) / "draft.json").read_text(encoding="utf-8"))
+        assert [(i["id"], i["fix_kind"]) for i in draft["issues"]] == [("I1", "mechanical")]
+        assert draft["amend"] == [{"op": "regrade", "value": "I1=mechanical", "result": "I1 -> mechanical"}]
+        assert "I1 important mechanical src/pkg/a.py:4 [runtime]" in out
+
+    def test_amend_refuses_a_fix_kind_already_set(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
+                                                  pr_repo: Tuple[Path, str],
+                                                  capsys: pytest.CaptureFixture) -> None:
+        clone, head = pr_repo
+        _capture(script, monkeypatch, clone, head)
+        _record_all(clone, [_finding("src/pkg/a.py", "4")])
+        assert _run(script, clone, "merge", "--pr", str(_PR)) == 0
+        capsys.readouterr()
+        assert _run(script, clone, "amend", "--pr", str(_PR), "--regrade", "M1=mechanical") == 1
+        assert "M1 is already mechanical" in capsys.readouterr().err
+
+    def test_fix_kind_regrade_routes_the_fixer_to_haiku(self, script: ModuleType,
+                                                        monkeypatch: pytest.MonkeyPatch,
+                                                        pr_repo: Tuple[Path, str],
+                                                        capsys: pytest.CaptureFixture) -> None:
+        clone, head = pr_repo
+        _capture(script, monkeypatch, clone, head)
+        _record_all(clone, [_finding("src/pkg/a.py", "4", fix_kind="judgment")])
+        assert _run(script, clone, "merge", "--pr", str(_PR)) == 0
+        assert _run(script, clone, "amend", "--pr", str(_PR), "--regrade", "M1=mechanical") == 0
+        _phase4(monkeypatch, script)
+        assert _run(script, clone, "build", "--pr", str(_PR)) == 0
+        capsys.readouterr()
+        assert _run(script, clone, "waves", "--pr", str(_PR)) == 0
+        assert "agent=harness:pr-fixer model=haiku" in capsys.readouterr().out.splitlines()
 
     def test_block_reprints(self, script: ModuleType, monkeypatch: pytest.MonkeyPatch,
                             pr_repo: Tuple[Path, str], capsys: pytest.CaptureFixture) -> None:
