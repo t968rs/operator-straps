@@ -458,6 +458,60 @@
         "free_form": "Developer chose to land the prose line with the TASK-9 code it describes."
       },
       "date": "2026-11-12"
+    },
+    {
+      "id": "EX10",
+      "discovered_by": "TASK-9 lane (tests/mods/test_agent_watcher_matrix_contract.py)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-9 files",
+        "indicated": "matrixRow.ts DISPATCH_SHAPES gains 'workflow'; the harness matrix schema and its README are not in TASK-9's files"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "a mirrored enum outside the item's files",
+        "why_free_form": "test_agent_watcher_matrix_contract::test_dispatch_shapes_match pins the TS DISPATCH_SHAPES to dispatch_shape.enum in pr_review_invocation_test_matrix.schema.json, so adding 'workflow' on the TS side alone fails it, and the mod's rows would fail schema validation."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-9 also changes plugins/harness/schemas/pr_review_invocation_test_matrix.schema.json (enum and description gain workflow), plugins/harness/schemas/README.md (dispatch_shape values) and tests/schemas/test_pr_review_invocation_test_matrix_schema.py (a workflow row validates)"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "The planned contract test passes only with the schema enum mirrored."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX11",
+      "discovered_by": "TASK-9 lane spec and quality reviews",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-9 files",
+        "indicated": "identify.ts claims the refuter roles and matrixRow.ts reads the Workflow args keys; no test pins either to the Python producer, and the agent-watcher role lists stay as they were"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "unpinned mirrors and stale role lists",
+        "why_free_form": "A rename of review_briefs CODE_REFUTER_ROLE / REFUTER_ROLE or of the keys review_adversarial.workflow_args emits would silently stop refuter claims and workflow rows while every TS test passes. agent-watcher types/index.d.ts AgentRec.role and schemas/agent_usage.schema.json role still list only reviewer, fixer, orchestrator, planner and closer for pr-review runs."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-9 also adds tests/mods/test_agent_watcher_adversarial_mirror.py (REFUTER_ROLES and WORKFLOW_GROUPS pinned to the Python producer) and adds refuter / code_refuter to plugins/agent-watcher/types/index.d.ts and plugins/harness/schemas/agent_usage.schema.json"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "Mirrored contracts get a pin test; documented role lists match the roles the mod records."
+      },
+      "date": "2026-11-12"
     }
   ]
 }
