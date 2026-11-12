@@ -19,8 +19,24 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KE
     ``local-<label>`` (default: the head branch's label). Every later subcommand takes that key as
     ``--pr``; runs live under ``<artifacts.scratch>/<key>/`` and the review file is
     ``LOCAL_<label>_<slug>.json``. ``fold --from-gh-review`` is refused on a local run.
+``capture ... -a`` / ``--adversarial``
+    An adversarial run. Before the run starts (``current`` unmoved) it is refused when the plugin's
+    Workflow script (``review_models.ADVERSARIAL_WORKFLOW``) is missing or the governing review schema (a
+    pinned copy first) lacks ``REFUTED``, ``BUBBLED`` or ``NOT_RESOLVED``. Plan paths are classified
+    (``review_adversarial``; notes print as ``note:`` lines), the code refuters (``adv_code`` or
+    ``adv_code_<bucket>``) cover the runtime, tests and unfrozen plan paths, and one findings refuter
+    (``adv_refute_<target>``) checks each reviewer and code-refuter slot. ``plan.json`` gains
+    ``adversarial`` and ``dispatch_time.adversarial_check`` (pending); the refuter briefs are written
+    beside the reviewer briefs. The status line is followed by ``scriptPath=<abs>`` and ``args=<one-line
+    JSON>`` (one Workflow call) instead of the dispatch rows. Without ``-a`` nothing of this is written.
+``init --pr N --agent adv_refute_<t> --run-id ID``
+    A findings refuter's first step. Refuses a run id that is not ``current`` and a target that has not
+    recorded (``reviewer <t> has not recorded``); prints each target finding once per key as
+    ``[<finding_key>] <severity> <name> <file>:<lines>`` with its summary indented below; a target
+    without findings gets an empty refutation report recorded and ``no findings: done``.
 ``block --pr N --agent ID``
-    Reprint the return block of a recorded reviewer or fixer report.
+    Reprint the return block of a recorded reviewer, code refuter or fixer report; for ``adv_refute_<t>``
+    the refutation block from ``refutations/<t>.json`` plus each entry's finding key, verdict and evidence.
 ``fold --pr N --source ID --kind external|tests|developer|adhoc (--from-gh-review URL | --findings FILE|-)
 [--severity S]``
     Record an outside review (an external reviewer, test results, the developer, ad-hoc feedback) as
@@ -37,11 +53,17 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KE
     ``bubble`` / ``waves`` open a pass. The printed ``next:`` step is the Phase 4 second run unless a Phase 5
     pass is open, where it is ``waves`` for the new ids, then ``closeout``. Re-folding a source already in the
     built review is refused, naming its ids; a built review whose Phase 4 first run failed (``pre_fix_time``
-    pending) refuses the fold until ``build --replace`` succeeds.
+    pending) refuses the fold until ``build --replace`` succeeds. A source id starting ``adv_`` is
+    refused (reserved for refuters).
 ``merge --pr N [--force]``
-    Merge the reports of the plan's slots, then its folded sources, into ``draft.json`` and print the issue
-    table, the merge candidates and the strengths count. A findings file that is neither a slot nor a folded
-    source is a problem. A draft carrying amend operations is only replaced with ``--force``.
+    Merge the reports of the plan's slots, its code refuters (``-a``), then its folded sources, into
+    ``draft.json`` and print the issue table, the merge candidates and the strengths count. A findings file
+    that is neither a slot, a code refuter nor a folded source is a problem. A draft carrying amend
+    operations is only replaced with ``--force``. Under ``-a`` every refute slot needs
+    ``refutations/<target>.json`` whose stored digest matches the target's current report (else
+    ``refutation stale: rerun adv_refute_<target>``); a refused merge writes no draft. The issues come from
+    ``review_merge.merge_adversarial`` (an all-refuted issue carries ``refuted``), the table gains a
+    ``refuted`` / ``upheld`` column and the mixed-group notes print as ``note:`` lines.
 ``amend --pr N [--regrade I3=minor ...] [--merge I3+I7 ...]``
     Apply regrades and id merges to ``draft.json`` in the order given, log them, reprint the table. A regrade
     to ``mechanical`` or ``judgment`` sets the issue's fix kind in place (id kept), which picks the fixer model.
@@ -51,11 +73,27 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KE
     MERGE - Phase 4 first run failed: <reason>``, a problem and exit 1). ``--waive-head-ancestry`` also
     accepts a run whose only STOP is ``sha_ancestry_check`` with ``head_ancestor_exit != 0`` and
     ``base_ancestor_exit == 0``: ``pre_fix_time`` is inserted, ``plan.json`` records ``phase4_waiver`` and
-    a ``note:`` line is printed.
+    a ``note:`` line is printed. A draft issue carrying ``refuted`` becomes a ``REFUTED`` resolution (written
+    before the Phase 4 run, so a held verdict still validates) and a ``refuted: <id> (<evidence first
+    line>)`` line; under ``-a`` build first repeats merge's refutation check (missing or stale
+    refutations refuse the build) and completes ``adversarial_check`` (verdict-entry counts, ``refuted_ids``,
+    ``unrefuted_ids``). ``--replace`` ignores a ``REFUTED`` resolution while ``draft.json`` still marks its
+    id ``refuted``; a developer ``refute`` / ``unrefute`` counts as Phase 5 begun.
+``refute --pr N ID --evidence TEXT``
+    Close one issue of the built review as ``REFUTED`` (a developer overrule, any phase after build, with or
+    without ``-a``); refused for an unknown or already closed id. Prints the id, tier, name and
+    ``file:lines``; the phase stays (``done`` stays ``done``); under ``-a`` the id joins ``refuted_ids``.
+``unrefute --pr N ID (--bubble --classification C --reason R | --fix [--reason R])``
+    Overrule a refutation (latest status ``REFUTED``, else refused): ``--fix`` appends ``NOT_RESOLVED``
+    (default evidence ``refutation overruled``) so the next ``waves`` plans it, and ``done`` moves to
+    ``fix``; ``--bubble`` appends ``BUBBLED`` and bubbles the id as ``bubble`` does (phase ``fix-plan``).
+    Clears the issue's ``refuted`` key in ``draft.json``; under ``-a`` the id joins ``unrefuted_ids``.
 ``bubble --pr N ID --classification C --reason R``
-    Bubble one issue for the developer and recompute the verdict.
+    Bubble one issue for the developer and recompute the verdict. An id whose latest resolution is
+    ``NOT_RESOLVED`` also gains a ``BUBBLED`` resolution; a ``REFUTED`` id is refused, naming ``unrefute``.
 ``waves --pr N [--ids I3,M2]``
-    Plan fix waves over the undispositioned, unheld issues not yet fully recorded (or exactly ``--ids``):
+    Plan fix waves over the undispositioned, unheld issues not yet fully recorded (or exactly ``--ids``; a
+    ``REFUTED`` id there is refused, naming ``unrefute``):
     a partially fixed split issue is re-planned for its unrecorded parts only; fixer-bubbled ids stay out.
     Each fixer's file set adds the registered tests targeting its issues' files and the existing paths
     their fix options name. Registered tests that ``defer_reasons`` selects (summed ``tests.timings``
@@ -74,8 +112,10 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KE
     Resolve the validated fixes (only ids assigned to the recording fixer; a split issue only when every
     planned part is recorded), close the named ids, record fixer bubbles, resolve each deferred id as a
     developer-confirmed defer (kept in ``bubble_up``), resolve each ``--resolved`` id (a fix in the tree no
-    accepted fixer entry records; one of its files must have changed since ``build_head``), recompute the
-    verdict and print the canonical Phase 5 line, a ``hint:`` line per blocked id (partially fixed ones aside)
+    accepted fixer entry records; one of its files must have changed since ``build_head``; a ``REFUTED`` id
+    is refused, naming ``unrefute``, before anything is written), recompute the verdict and print the
+    canonical Phase 5 line (refuted ids counted apart from resolved ones), a ``hint:`` line per blocked id
+    (partially fixed ones aside)
     whose files changed (the ``--resolved`` route), then a ``deferred tests:`` block (each file, its reason,
     one pytest command) for the deferred tests (those saved in ``waves.json`` plus those deferred now) that
     the paths changed since ``build_head`` reach. A planned fixer without a fix report, or an undispositioned
@@ -92,9 +132,10 @@ Every review write is validated in process (schema, pending rule, issue counts),
 run through the real schema hook, which also clears the Phase 5 sentinel. Every failure, an argument error
 included, exits 1 with one ``problem: ...`` line per defect on stderr. Each successful subcommand records
 the run's position in ``plan.json`` ``phase``: ``review`` (capture, fold before build), ``consolidate``
-(merge, amend, build, fold after build outside an open pass), ``fix-plan`` (bubble), ``fix`` (waves;
-closeout with problems or undispositioned ids; fold after build inside an open pass keeps ``fix-plan`` /
-``fix``), ``done`` (closeout with every issue id dispositioned).
+(merge, amend, build, fold after build outside an open pass), ``fix-plan`` (bubble, unrefute --bubble),
+``fix`` (waves; closeout with problems or undispositioned ids; unrefute --fix from ``done``; fold after build
+inside an open pass keeps ``fix-plan`` / ``fix``), ``done`` (closeout with every issue id dispositioned).
+``init`` and ``refute`` leave the phase as it is.
 
 Project and paths: ``--repo`` names the project (default: the git top level of the working directory); its
 ``.claude/harness.json`` is activated once. Run scratch is ``artifacts.scratch``, reviews go to
@@ -112,13 +153,17 @@ Usage (Bash tool; ``$PR_REVIEW`` stands for
 ``sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py"``)::
 
     $PR_REVIEW [--repo DIR] capture --pr N [--no-fetch] [--allow-closed] [--plan PATH] [--roast yes|no|roll]
+        [-a]
     $PR_REVIEW [--repo DIR] capture --range BASE..HEAD [--pr local-<label>] [--title T] [--plan PATH]
-        [--roast yes|no|roll]
+        [--roast yes|no|roll] [-a]
+    $PR_REVIEW init --pr N --agent adv_refute_<t> --run-id ID
     $PR_REVIEW block --pr N --agent ID
     $PR_REVIEW fold --pr N --source ID --kind K (--from-gh-review URL | --findings FILE|-) [--severity S]
     $PR_REVIEW merge --pr N [--force]
     $PR_REVIEW amend --pr N [--regrade ID=severity|fix_kind ...] [--merge KEEP+DROP ...]
     $PR_REVIEW build --pr N [--replace] [--waive-head-ancestry]
+    $PR_REVIEW refute --pr N ID --evidence TEXT
+    $PR_REVIEW unrefute --pr N ID (--bubble --classification C --reason R | --fix [--reason R])
     $PR_REVIEW bubble --pr N ID --classification C --reason R
     $PR_REVIEW waves --pr N [--ids I3,M2]
     $PR_REVIEW bubbles --pr N
@@ -172,6 +217,7 @@ if _MISSING is not None:
           file=sys.stderr)
     sys.exit(1)
 
+from harness_lib import review_adversarial as ra  # noqa: E402
 from harness_lib import review_edit  # noqa: E402
 from harness_lib import review_merge as rmg  # noqa: E402
 from harness_lib import review_models as rm  # noqa: E402
@@ -184,16 +230,20 @@ from harness_lib.config import HarnessConfig, activate, active, load_config  # n
 from harness_lib.default_exclusions import ensure_default_exclusions  # noqa: E402
 from harness_lib.pr_capture import PrMeta, budgeted_diff, capture_pr, file_patches  # noqa: E402
 from harness_lib.pr_summary import PrFacts  # noqa: E402
-from harness_lib.project import plugin_root, project_root  # noqa: E402
+from harness_lib.project import plugin_root, project_root, schema_path  # noqa: E402
 from harness_lib.review_briefs import (  # noqa: E402
+    CODE_REFUTER_ROLE,
+    REFUTER_ROLE,
     REMOVAL_DEFECTS,
     TOO_LONG_RULE,
     BriefContext,
+    code_refuter_brief,
     draft_json,
     header_lines,
     hpy_command,
     key_literal,
     record_heredoc,
+    refuter_brief,
     reviewer_brief,
     target_label,
 )
@@ -209,7 +259,7 @@ from harness_lib.review_local_models import (  # noqa: E402
     review_file_name,
 )
 
-REVIEWER_AGENT = "harness:pr-reviewer"
+REVIEWER_AGENT = ra.REVIEWER_AGENT
 FIXER_AGENT = "harness:pr-fixer"
 PR_BLOCK_BUDGET = 1200
 PR_CHAR_BUDGET = 60_000
@@ -267,6 +317,11 @@ def phase4_script() -> Path:
 def hook_script() -> Path:
     """The plugin's PR_REVIEW schema hook."""
     return plugin_root() / "hooks" / "validate_pr_json_schema.py"
+
+
+def adversarial_script() -> Path:
+    """The plugin's ``--adversarial`` Workflow script."""
+    return plugin_root() / rm.ADVERSARIAL_WORKFLOW
 
 
 def run_guards(repo: Path, suite: Sequence[str]) -> Tuple[int, str]:
@@ -568,12 +623,15 @@ def load_catalog() -> Dict[str, object]:
         raise CaptureError([f"lens catalog: {exc}"]) from exc
 
 
+def agent_prompt(agent: str, role: str, run_id: str, pr: RunKey, brief: Path) -> str:
+    """An agent's prompt: four header lines and ``Brief: <abs path>``."""
+    return "\n".join([*header_lines(agent, role, run_id, pr), f"Brief: {brief.resolve().as_posix()}"])
+
+
 def dispatch_row(agent_type: str, model: str, agent: str, role: str, run_id: str, pr: RunKey,
                  brief: Path) -> str:
     """``agent=<type> model=<m>`` then the prompt: four header lines and ``Brief: <abs path>``."""
-    lines = [f"agent={agent_type} model={model}", *header_lines(agent, role, run_id, pr),
-             f"Brief: {brief.resolve().as_posix()}"]
-    return "\n".join(lines)
+    return f"agent={agent_type} model={model}\n" + agent_prompt(agent, role, run_id, pr, brief)
 
 
 def partial_paths(diff_text: str) -> List[str]:
@@ -592,37 +650,131 @@ def partial_paths(diff_text: str) -> List[str]:
 
 def slot_diff(repo: Path, facts: PrFacts, slot: rp.Slot, patches: Optional[Mapping[str, str]] = None) -> str:
     """Budgeted diff of the slot's paths that are not new files; ``patches`` holds already-read diffs."""
-    files = [f for f in facts.files if f.path in slot.paths and f.status != "A"]
+    return paths_diff(repo, facts, slot.paths, patches)
+
+
+def paths_diff(repo: Path, facts: PrFacts, paths: Sequence[str],
+               patches: Optional[Mapping[str, str]] = None) -> str:
+    """Budgeted diff of ``paths`` that are not new files; ``patches`` holds already-read diffs."""
+    files = [f for f in facts.files if f.path in paths and f.status != "A"]
     return budgeted_diff(repo, facts, files, PR_BLOCK_BUDGET, PR_CHAR_BUDGET, patches) if files else ""
 
 
-def write_briefs(repo: Path, run: Path, ctx: BriefContext, slots: Sequence[rp.Slot]) -> None:
-    """Write ``diffs/<slot>.diff`` and ``briefs/<slot>.md`` for every slot (each path's diff read once)."""
+def _write_diff(run: Path, agent_id: str, text: str) -> Path:
+    """Write ``diffs/<agent_id>.diff`` (a placeholder line when ``text`` is empty) and return its path."""
+    diff_path = run / "diffs" / f"{agent_id}.diff"
+    _write_text(diff_path, text + "\n" if text else "(no modified paths in scope; new files only)\n")
+    return diff_path
+
+
+def write_briefs(repo: Path, run: Path, ctx: BriefContext, slots: Sequence[rp.Slot]) -> Dict[str, str]:
+    """Write ``diffs/<slot>.diff`` and ``briefs/<slot>.md`` for every slot (each path's diff read once);
+    return the per-path diffs read, for the refuter briefs to reuse."""
     scoped = {p for slot in slots for p in slot.paths}
     changed = [f for f in ctx.facts.files if f.path in scoped and f.status != "A"]
     patches = file_patches(repo, ctx.facts, changed)
     for slot in slots:
         text = slot_diff(repo, ctx.facts, slot, patches)
-        diff_path = run / "diffs" / f"{slot.id}.diff"
-        _write_text(diff_path, text + "\n" if text else "(no modified paths in scope; new files only)\n")
+        diff_path = _write_diff(run, slot.id, text)
         brief = reviewer_brief(ctx, slot, diff_path, partial_paths(text))
         _write_text(run / "briefs" / f"{slot.id}.md", brief)
+    return patches
+
+
+def write_refuter_briefs(repo: Path, run: Path, ctx: BriefContext, refuters: ra.RefuterPlan,
+                         patches: Optional[Mapping[str, str]] = None) -> None:
+    """Write ``diffs/<id>.diff`` and ``briefs/<id>.md`` for each code refuter (``patches``: diffs already
+    read, a missing path read on demand) and ``briefs/<id>.md`` (a template ``init`` completes) for each
+    findings refuter."""
+    for code in refuters.code:
+        text = paths_diff(repo, ctx.facts, code.paths, patches)
+        diff_path = _write_diff(run, code.id, text)
+        _write_text(run / "briefs" / f"{code.id}.md",
+                    code_refuter_brief(ctx, code, diff_path, partial_paths(text)))
+    for slot in refuters.refute:
+        _write_text(run / "briefs" / f"{slot.id}.md", refuter_brief(ctx, slot))
 
 
 # --- capture command ----------------------------------------------------------------------------------------
 
 
-def capture_summary(plan: Mapping[str, object], scope: Scope) -> List[str]:
-    """Status line and notes printed before the dispatch rows."""
+WORKFLOW_STEP = ("run the Workflow tool once with the scriptPath and args below, unchanged except "
+                 "args.guidance (null, or the developer's guidance text); dispatch no Agent rows:")
+
+
+def capture_summary(plan: Mapping[str, object], scope: Scope, refuters: Optional[ra.RefuterPlan] = None,
+                    notes: Sequence[str] = ()) -> List[str]:
+    """Status line and notes printed before the dispatch rows, or before the Workflow row under ``-a``
+    (``refuters`` set; ``notes`` are its plan-path notes)."""
     guards = plan["dispatch_time"]["structural_guards_check"]["result"]  # type: ignore[index]
     label = target_label(plan['pr'])  # type: ignore[arg-type]
-    lines = [f"capture [done] | {label} | run {plan['run_id']} | slots: "
-             f"{', '.join(s.id for s in scope.slots)} | roast: {'yes' if plan['roast'] else 'no'} | "
-             f"guards: {guards}"]
-    lines += [f"note: {n}" for n in scope.notes]
+    status = (f"capture [done] | {label} | run {plan['run_id']} | slots: "
+              f"{', '.join(s.id for s in scope.slots)} | roast: {'yes' if plan['roast'] else 'no'} | "
+              f"guards: {guards}")
+    if refuters is not None:
+        status += (f" | adversarial: {len(refuters.code)} code refuter(s), {len(refuters.refute)} findings "
+                   f"refuter(s)")
+    lines = [status] + [f"note: {n}" for n in (*scope.notes, *notes)]
     lines += [f"excluded (machine-generated): {len(scope.excluded)}"] if scope.excluded else []
     lines += base_note(str(plan["meta"]["base_branch"]))  # type: ignore[index]
+    if refuters is not None:
+        return lines + [WORKFLOW_STEP, ""]
     return lines + [f"dispatch every row below in one message (subagent_type={REVIEWER_AGENT}):", ""]
+
+
+def adversarial_refusals() -> None:
+    """Raise, before the run starts, when an ``-a`` run cannot work: the plugin's Workflow script is missing,
+    or the governing (possibly pinned) review schema lacks an adversarial status."""
+    script = adversarial_script()
+    problems = [] if script.is_file() else [
+        f"{script.as_posix()} is missing: capture -a needs the plugin's Workflow script; update the plugin, "
+        f"or capture without -a"]
+    schema = ra.schema_problem(schema_path(rmg.SCHEMA_NAME, active()))
+    problems += [schema] if schema else []
+    if problems:
+        raise CaptureError(problems)
+
+
+def adversarial_plan(repo: Path, run: Path, ctx: BriefContext, scope: Scope, plan: Dict[str, object],
+                     patches: Mapping[str, str]) -> Tuple[ra.RefuterPlan, List[str]]:
+    """Plan the refuters of an ``-a`` run, write their briefs (``patches``: the diffs the reviewer briefs
+    read), and record ``plan["adversarial"]`` and the pending ``adversarial_check``; return the plan and the
+    notes capture prints."""
+    plan_paths = ra.classify_plan_paths(scope.reviewable, ctx.at_head)
+    buckets = {bucket.value: tuple(paths) for bucket, paths in scope.buckets.items()}
+    code = ra.code_scope(buckets, plan_paths)
+    refuters = ra.refuter_slots([s.id for s in scope.slots], code, len(scope.reviewable))
+    write_refuter_briefs(repo, run, ctx, refuters, patches)
+    plan["adversarial"] = refuters.record()
+    plan["dispatch_time"]["adversarial_check"] = ra.adversarial_check(refuters)  # type: ignore[index]
+    notes = list(plan_paths.notes)
+    notes += [] if refuters.code else ["no runtime, tests or unfrozen plan paths: no code refuter; the "
+                                       "findings refuters still check every reviewer slot"]
+    return refuters, notes
+
+
+def workflow_lines(run: Path, key: RunKey, run_id: str, scope: Scope, refuters: ra.RefuterPlan) -> List[str]:
+    """The Workflow row: ``scriptPath=<abs>`` and ``args=<one-line JSON>``."""
+    def prompt(agent: str, role: str) -> str:
+        return agent_prompt(agent, role, run_id, key, run / "briefs" / f"{agent}.md")
+
+    reviewers = [{"id": s.id, "model": s.model, "prompt": prompt(s.id, "reviewer")} for s in scope.slots]
+    prompts = {s.id: prompt(s.id, CODE_REFUTER_ROLE) for s in refuters.code}
+    prompts.update({s.id: prompt(s.id, REFUTER_ROLE) for s in refuters.refute})
+    args = ra.workflow_args(str(key), run_id, reviewers, refuters, prompts)
+    return [f"scriptPath={adversarial_script().resolve().as_posix()}", f"args={json.dumps(args)}"]
+
+
+def capture_lines(run: Path, key: RunKey, plan: Mapping[str, object], scope: Scope,
+                  refuters: Optional[ra.RefuterPlan], notes: Sequence[str]) -> List[str]:
+    """What capture prints: the summary, then one dispatch row per slot, or the Workflow row under ``-a``."""
+    run_id = str(plan["run_id"])
+    if refuters is not None:
+        workflow = workflow_lines(run, key, run_id, scope, refuters)
+        return capture_summary(plan, scope, refuters, notes) + workflow
+    rows = [dispatch_row(REVIEWER_AGENT, s.model, s.id, "reviewer", run_id, key,
+                         run / "briefs" / f"{s.id}.md") for s in scope.slots]
+    return capture_summary(plan, scope) + [row + "\n" for row in rows]
 
 
 def base_note(base: str) -> List[str]:
@@ -659,7 +811,10 @@ def plan_pointer(repo: Path, value: Optional[str]) -> Optional[str]:
 
 
 def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
-    """Run ``capture``: Phase 1 checks, the slot plan, briefs, diffs and the dispatch rows."""
+    """Run ``capture``: Phase 1 checks, the slot plan, briefs, diffs and the dispatch rows; under ``-a`` the
+    refuter plan and briefs too, with one Workflow row instead of the dispatch rows."""
+    if args.adversarial:
+        adversarial_refusals()
     pointer = plan_pointer(repo, args.plan)
     data, raw, check = pr_metadata(repo, args)
     key = parse_key(data["number"])  # type: ignore[arg-type]
@@ -678,11 +833,11 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
     _write_text(run / "phase1_meta.txt", raw)
     ctx = BriefContext(repo.as_posix(), _LIB.as_posix(), key, run_id, facts, at_head, catalog,
                        triggered_skill_folders(scope), pointer)
-    write_briefs(repo, run, ctx, scope.slots)
+    patches = write_briefs(repo, run, ctx, scope.slots)
+    refuters, notes = adversarial_plan(repo, run, ctx, scope, plan, patches) if args.adversarial \
+        else (None, [])
     _write_json(run / "plan.json", plan)
-    rows = [dispatch_row(REVIEWER_AGENT, s.model, s.id, "reviewer", run_id, key,
-                         run / "briefs" / f"{s.id}.md") for s in scope.slots]
-    print("\n".join(capture_summary(plan, scope) + [row + "\n" for row in rows]))
+    print("\n".join(capture_lines(run, key, plan, scope, refuters, notes)))
     return 0
 
 
@@ -702,23 +857,28 @@ def save_plan(run: Path, plan: Dict[str, object], phase: str) -> None:
 
 
 def report_sources(plan: Mapping[str, object]) -> List[Tuple[str, str, str]]:
-    """(report id, label, reviewers credit) for the plan's slots, then its folded sources, in order."""
+    """(report id, label, reviewers credit) for the plan's slots, its code refuters (``-a`` only), then its
+    folded sources, in order."""
     slots = [(str(s["id"]), "slot", f"{s['id']} ({s['model']})") for s in plan["slots"]]  # type: ignore[union-attr]
+    code = (plan.get("adversarial") or {}).get("code") or []  # type: ignore[union-attr]
+    slots += [(str(c["id"]), "code refuter", f"{c['id']} ({c['model']})") for c in code]
     folded = plan.get("folded") or []
     return slots + [(str(f["id"]), "folded source", f"{f['id']} ({f['kind']})") for f in folded]  # type: ignore
 
 
 def stray_reports(run: Path, plan: Mapping[str, object]) -> List[str]:
-    """One problem per ``findings/*.json`` that is neither a slot nor a folded source."""
+    """One problem per ``findings/*.json`` that is neither a slot, a code refuter (``-a``) nor a folded
+    source."""
     known = {source for source, _, _ in report_sources(plan)}
     folder = run / "findings"
     found = sorted(folder.glob("*.json")) if folder.is_dir() else []
-    return [f"{_rel(run, p)} is neither a slot nor a folded source: fold it (fold --findings) or remove it"
-            for p in found if p.stem not in known]
+    return [f"{_rel(run, p)} is neither a slot, a code refuter nor a folded source: fold it "
+            f"(fold --findings) or remove it" for p in found if p.stem not in known]
 
 
 def source_reports(run: Path, plan: Mapping[str, object]) -> List[rm.ReviewerReport]:
-    """Reports of the slots, then the folded sources; a missing report or a stray findings file raises."""
+    """Reports of the slots, the code refuters (``-a``), then the folded sources; a missing report or a
+    stray findings file raises."""
     paths = [(source, label, run / "findings" / f"{source}.json")
              for source, label, _ in report_sources(plan)]
     problems = [f"no report for {label} {source} ({_rel(run, p)}): that reviewer has not recorded"
@@ -729,20 +889,49 @@ def source_reports(run: Path, plan: Mapping[str, object]) -> List[rm.ReviewerRep
     return [rm.load_report(p) for _, _, p in paths]
 
 
-def issue_row(issue: Mapping[str, object]) -> str:
-    """``I3 important judgment path:lines [slots] name`` (a missing fix kind reads as judgment)."""
+def issue_row(issue: Mapping[str, object], refuted_column: bool = False) -> str:
+    """``I3 important judgment path:lines [slots] name`` (a missing fix kind reads as judgment); with
+    ``refuted_column`` (an ``-a`` draft) a ``refuted`` / ``upheld`` column follows the fix kind."""
     where = f"{issue['file']}:{issue['lines']}" if issue.get("lines") else str(issue["file"])
     kind = issue.get("fix_kind") or "judgment"
+    if refuted_column:
+        kind = f"{kind} {'refuted' if 'refuted' in issue else 'upheld'}"
     return (f"{issue['id']} {_TIER[str(issue['id'])[0]]} {kind} {where} [{issue.get('reviewer', '')}] "
             f"{issue['name']}")
 
 
-def issue_table(issues: Sequence[Mapping[str, object]], strengths: int) -> str:
+def issue_table(issues: Sequence[Mapping[str, object]], strengths: int, refuted_column: bool = False) -> str:
     """Issue rows, merge candidates and the strengths count."""
     pairs = rmg.merge_candidates(list(issues))  # type: ignore[arg-type]
-    lines = [issue_row(i) for i in issues] or ["(no findings)"]
+    lines = [issue_row(i, refuted_column) for i in issues] or ["(no findings)"]
     lines += ["merge candidates:" + ("" if pairs else " none"), *(f"  {a} + {b}" for a, b in pairs)]
     return "\n".join(lines + [f"strengths: {strengths}"])
+
+
+def merge_refutations(run: Path, plan: Mapping[str, object],
+                      reports: Sequence[rm.ReviewerReport]) -> Optional[Dict[str, rm.RefutationReport]]:
+    """The refutation report of each ``-a`` refute slot, by target; None without ``-a``. A slot without
+    ``refutations/<target>.json``, or one whose stored digest differs from the target's current report,
+    raises."""
+    adversarial = plan.get("adversarial")
+    if not adversarial:
+        return None
+    current = {r.reviewer: rm.report_digest(r) for r in reports}
+    found: Dict[str, rm.RefutationReport] = {}
+    problems: List[str] = []
+    for slot in adversarial["refute"]:  # type: ignore[index]
+        path = run / "refutations" / f"{slot['target']}.json"
+        if not path.is_file():
+            problems.append(f"no refutations for {slot['target']} ({_rel(run, path)}): {slot['id']} has not "
+                            f"recorded")
+            continue
+        found[str(slot["target"])] = report = rm.load_refutations(path)
+        if report.report_digest != current.get(str(slot["target"])):
+            problems.append(f"refutation stale: rerun {slot['id']} (findings/{slot['target']}.json changed "
+                            f"after it recorded)")
+    if problems:
+        raise CaptureError(problems)
+    return found
 
 
 def _union(items: Iterable[str]) -> List[str]:
@@ -766,13 +955,17 @@ def _cmd_merge(repo: Path, args: argparse.Namespace) -> int:
         raise CaptureError([f"{_rel(repo, path)} carries amend operations; rerun merge with --force to "
                             f"drop them"])
     reports = source_reports(run, plan)
-    issues = rmg.merge_findings(reports)
+    refutations = merge_refutations(run, plan, reports)
+    issues, notes = (rmg.merge_findings(reports), []) if refutations is None \
+        else rmg.merge_adversarial(reports, refutations)
     strengths = _union(s for r in reports for s in r.strengths)
     sources = report_sources(plan)
     _write_json(path, {"issues": issues, "strengths": strengths, "reviewers": [c for _, _, c in sources],
                        "sources": [s for s, _, _ in sources], "amend": []})
     save_plan(run, plan, "consolidate")
-    print(issue_table(issues, len(strengths)))
+    print(issue_table(issues, len(strengths), refutations is not None))
+    if notes:
+        print("\n".join(f"note: {n}" for n in notes))
     return 0
 
 
@@ -810,7 +1003,8 @@ def _cmd_amend(repo: Path, args: argparse.Namespace) -> int:
     draft["issues"] = issues
     _write_json(path, draft)
     save_plan(run, plan, "consolidate")
-    print(issue_table(issues, len(draft.get("strengths") or [])))  # type: ignore[arg-type]
+    print(issue_table(issues, len(draft.get("strengths") or []),  # type: ignore[arg-type]
+                      bool(plan.get("adversarial"))))
     return 0
 
 
@@ -1022,7 +1216,11 @@ def credited_ids(doc: Mapping[str, object], source: str) -> List[str]:
 
 def fold_check(plan: Mapping[str, object], source: str, doc: Optional[Mapping[str, object]] = None) -> None:
     """Raise when ``source`` is a reviewer slot of the run, or when ``doc`` (the built review) already
-    carries ``source`` as a folded source: re-folding it would duplicate its issues."""
+    carries ``source`` as a folded source: re-folding it would duplicate its issues. An ``adv_`` id is
+    reserved for the refuters of an ``-a`` run."""
+    if source.startswith("adv_"):
+        raise CaptureError([f"--source {source}: the adv_ prefix is reserved for refuter ids; pick another "
+                            f"id"])
     if source in {str(s["id"]) for s in plan["slots"]}:  # type: ignore[union-attr]
         raise CaptureError([f"--source {source} is a reviewer slot of this run; pick another id"])
     if doc is not None and source in {str(f["id"]) for f in plan.get("folded") or []}:  # type: ignore[union-attr]
@@ -1193,14 +1391,71 @@ def phase5_state(repo: Path, run: Path, target: Path) -> List[str]:
     """One problem per Phase 5 artifact a rebuild would orphan (dispositions, waves, fixes, closeout).
 
     ``merge_findings`` renumbers ids, so a rebuild under live dispositions or fixer reports would attach them
-    to different findings.
+    to different findings. A ``REFUTED`` resolution counts only once ``draft.json`` no longer marks its id
+    ``refuted``: build wrote it from the draft and a rebuild writes it again, while a developer ``refute`` or
+    ``unrefute`` began Phase 5.
     """
     review = _read_json(target) if target.is_file() else {}
+    marked = draft_refuted(run)
+    review["post_review_resolutions"] = [
+        r for r in review.get("post_review_resolutions") or []  # type: ignore[union-attr]
+        if not (r.get("status") == "REFUTED" and str(r.get("id")) in marked)]
     held = [f"{_rel(repo, target)} {k}" for k in ("post_review_resolutions", "bubbles", "bubble_up")
             if review.get(k)]
     held += [_rel(repo, run / n) for n in ("waves.json", "fixes", "closeout.json") if (run / n).exists()]
     return [f"Phase 5 began ({name}): build --replace would renumber ids under it; start a new capture "
             "instead" for name in held]
+
+
+def draft_refuted(run: Path) -> Set[str]:
+    """Ids of the run's ``draft.json`` issues that carry ``refuted``; empty without a draft."""
+    path = run / "draft.json"
+    issues = (_read_json(path).get("issues") or []) if path.is_file() else []
+    return {str(i["id"]) for i in issues  # type: ignore[union-attr]
+            if isinstance(i, dict) and "refuted" in i}
+
+
+def clear_draft_refuted(run: Path, issue_id: str) -> None:
+    """Drop ``refuted`` from the draft issue ``issue_id`` (when present), so a rebuild cannot refute it
+    again."""
+    path = run / "draft.json"
+    if issue_id not in draft_refuted(run):
+        return
+    draft = _read_json(path)
+    for issue in draft["issues"]:  # type: ignore[union-attr]
+        if str(issue["id"]) == issue_id:
+            issue.pop("refuted", None)
+    _write_json(path, draft)
+
+
+def complete_adversarial(run: Path, plan: Mapping[str, object], doc: Dict[str, object]) -> None:
+    """Under ``-a``, complete the review's ``adversarial_check`` with the build counts (verdict entries:
+    checked and refuted; code findings) and the issue ids the refuters closed (``REFUTED`` resolutions);
+    nothing without ``-a``."""
+    adversarial = plan.get("adversarial")
+    log = doc["verification_log"]["dispatch_time"]  # type: ignore[index]
+    if not adversarial or "adversarial_check" not in log:
+        return
+    targets = [run / "refutations" / f"{s['target']}.json" for s in adversarial["refute"]]  # type: ignore
+    coded = [run / "findings" / f"{c['id']}.json" for c in adversarial["code"]]  # type: ignore[index]
+    refutations = [rm.load_refutations(p) for p in targets if p.is_file()]
+    checked, refuted, code_findings = ra.build_counts(refutations,
+                                                      [rm.load_report(p) for p in coded if p.is_file()])
+    log["adversarial_check"] = ra.complete_check(log["adversarial_check"], checked, refuted, code_findings,
+                                                 ra.refuted_now(doc))
+
+
+def fresh_refutations(run: Path, plan: Mapping[str, object]) -> None:
+    """Under ``-a``, raise as ``merge`` does when a refute slot's refutations are missing or stale (a
+    report re-recorded after merge); nothing without ``-a``."""
+    if plan.get("adversarial"):
+        merge_refutations(run, plan, source_reports(run, plan))
+
+
+def refuted_lines(doc: Mapping[str, object]) -> List[str]:
+    """``refuted: <id> (<evidence first line>)`` per ``REFUTED`` resolution of a built review."""
+    return [f"refuted: {r['id']} ({(str(r['evidence']).splitlines() or [''])[0]})"
+            for r in doc.get("post_review_resolutions") or [] if r["status"] == "REFUTED"]  # type: ignore
 
 
 def build_meta(repo: Path, run: Path, plan: Mapping[str, object]) -> Dict[str, object]:
@@ -1341,8 +1596,10 @@ def _cmd_build(repo: Path, args: argparse.Namespace) -> int:
     if unmerged_sources(plan, draft):
         raise CaptureError(unmerged_sources(plan, draft))
     straggler_check(repo, args.pr, target, args.replace)
+    fresh_refutations(run, plan)
     doc = rmg.review_document(build_meta(repo, run, plan), draft, plan["dispatch_time"],  # type: ignore[arg-type]
                               schema_ref=rmg.schema_ref_for(target, active()))
+    complete_adversarial(run, plan, doc)
     problem, waiver = apply_phase4(repo, run, args.pr, doc, args.waive_head_ancestry)
     phase4 = [problem] if problem else []
     try:
@@ -1354,7 +1611,8 @@ def _cmd_build(repo: Path, args: argparse.Namespace) -> int:
     if not problems + phase4:
         plan["phase"] = "consolidate"
     _write_json(run / "plan.json", plan)
-    print(f"wrote {_rel(repo, target)}\nverdict: {doc['verdict']}\n{_counts(doc)}")
+    print("\n".join([f"wrote {_rel(repo, target)}", f"verdict: {doc['verdict']}", _counts(doc),
+                     *refuted_lines(doc)]))
     if waiver:
         print("note: Phase 4 head-ancestry STOP waived (--waive-head-ancestry; remote PR head lags local "
               "HEAD, merge base intact); recorded as phase4_waiver in plan.json")
@@ -1367,8 +1625,16 @@ def _cmd_build(repo: Path, args: argparse.Namespace) -> int:
 
 
 def with_bubble(doc: Mapping[str, object], bubble: rm.FixBubble) -> Dict[str, object]:
-    """``doc`` with ``bubble`` in ``bubbles`` and ``bubble_up`` (replacing older entries), verdict redone."""
+    """``doc`` with ``bubble`` in ``bubbles`` and ``bubble_up`` (replacing older entries), verdict redone.
+
+    An id whose latest resolution is ``NOT_RESOLVED`` (a refutation overruled to the waves) also gains a
+    ``BUBBLED`` resolution (evidence: the bubble's reason), so it settles through the bubble.
+    """
     out = json.loads(json.dumps(doc))
+    resolutions = out.get("post_review_resolutions") or []
+    entry = rmg.reopened_bubble_entry(resolutions, bubble.id, date.today().isoformat(), bubble.reason)
+    if entry is not None:
+        out["post_review_resolutions"] = [*resolutions, entry]
     out["bubbles"] = _union([*out.get("bubbles", []), bubble.id])
     entry = bubble.model_dump(mode="json")
     out["bubble_up"] = [b for b in out.get("bubble_up", []) if b["id"] != bubble.id] + [entry]
@@ -1384,6 +1650,8 @@ def _cmd_bubble(repo: Path, args: argparse.Namespace) -> int:
     require_phase4(doc)
     if args.id not in {str(i["id"]) for i in all_issues(doc)}:
         raise CaptureError([f"{args.id}: no such issue in {_rel(repo, path)}"])
+    if args.id in ra.refuted_now(doc):
+        raise CaptureError([ra.refuted_problem(args.id, _rel(repo, path))])
     if args.id in closed_ids(doc):
         raise CaptureError([f"{args.id}: already closed (latest resolution RESOLVED or CLOSED_NO_ACTION); "
                             f"bubble refused, {_rel(repo, path)} unchanged"])
@@ -1409,12 +1677,17 @@ def pending_lines(pending: Sequence[Tuple[str, rm.FixBubble]]) -> List[str]:
             *(f"  {b.id} ({b.classification.value}) from {fixer}: {b.reason}" for fixer, b in pending)]
 
 
-def _selected(issues: Sequence[Dict[str, object]], ids: str) -> List[Dict[str, object]]:
-    """The issues ``--ids`` names; an unknown id raises."""
+def _selected(issues: Sequence[Dict[str, object]], ids: str,
+              refuted: Sequence[str] = ()) -> List[Dict[str, object]]:
+    """The issues ``--ids`` names; an unknown id, or one whose latest resolution is ``REFUTED``
+    (``refuted``), raises."""
     wanted = [i.strip() for i in ids.split(",") if i.strip()]
     unknown = [i for i in wanted if i not in {str(x["id"]) for x in issues}]
     if unknown:
         raise CaptureError([f"--ids names unknown issue(s): {', '.join(unknown)}"])
+    closed = [ra.refuted_problem(i) for i in wanted if i in refuted]
+    if closed:
+        raise CaptureError(closed)
     return [i for i in issues if i["id"] in wanted]
 
 
@@ -1458,7 +1731,7 @@ def wave_inputs(doc: Mapping[str, object], run: Path, ids: Optional[str],
     """
     issues = all_issues(doc)
     if ids:
-        return _selected(issues, ids), [], []
+        return _selected(issues, ids, ra.refuted_now(doc)), [], []
     closed = closed_ids(doc)
     held = [str(b) for b in doc.get("bubbles") or []]  # type: ignore[union-attr]
     planned, done = _follow_up([i for i in issues if i["id"] not in closed], run, checked)
@@ -1878,6 +2151,11 @@ def _cmd_closeout(repo: Path, args: argparse.Namespace) -> int:
     require_phase4(doc, "closing out")
     if not plan.get("build_head"):
         raise CaptureError(["no build_head recorded; run build first"])
+    refuted = set(ra.refuted_now(doc))
+    refused = [ra.refuted_problem(i, _rel(repo, path))
+               for i in parse_closed(args.resolved, "--resolved", "what") if i in refuted]
+    if refused:
+        raise CaptureError(refused)
     head = git_out(repo, "rev-parse", "--short", "HEAD").strip()
     paths = changed_paths(repo, str(plan["build_head"]))
     doc, problems = closeout_review(run, paths, head, doc, args)
@@ -1946,27 +2224,176 @@ def deferred_lines(repo: Path, reasons: Mapping[str, str], paths: Iterable[str])
 
 
 def phase5_line(doc: Mapping[str, object], problems: Sequence[str]) -> str:
-    """The canonical Phase 5 done line, or a blocked line when closeout left problems."""
+    """The canonical Phase 5 done line, or a blocked line when closeout left problems. Refuted ids are
+    counted apart from resolved ones (``, K refuted`` only when K > 0), as the READY verdict counts them."""
     if problems:
         return (f"Phase 5 [blocked] | {len(problems)} problems | verdict: {doc['verdict']} | "
                 f"next: settle problems, rerun closeout")
-    return f"Phase 5 [done] | {len(closed_ids(doc))} issues resolved | verdict: {doc['verdict']} | next: stop"
+    refuted = set(ra.refuted_now(doc))
+    resolved = f"{len(closed_ids(doc) - refuted)} issues resolved"
+    resolved += f", {len(refuted)} refuted" if refuted else ""
+    return f"Phase 5 [done] | {resolved} | verdict: {doc['verdict']} | next: stop"
 
 
 # --- block --------------------------------------------------------------------------------------------------
 
 
+def refutation_lines(report: rm.RefutationReport, output: str) -> List[str]:
+    """A findings refuter's block, then ``[<finding key>] <verdict>: <evidence>`` per entry."""
+    return [rm.refutation_block(report, output),
+            *(f"[{r.key}] {r.verdict.value}: {r.evidence or '-'}" for r in report.refutations)]
+
+
 def _cmd_block(repo: Path, args: argparse.Namespace) -> int:
-    """Run ``block``: reprint a recorded reviewer or fixer block."""
+    """Run ``block``: reprint a recorded reviewer, code refuter, findings refuter or fixer block."""
     run = rm.run_dir(args.pr, repo)
     review, fixes = run / "findings" / f"{args.agent}.json", run / "fixes" / f"{args.agent}.json"
-    if review.is_file():
+    refuted = run / "refutations" / f"{args.agent[len(rm.FINDINGS_REFUTER_PREFIX):]}.json"
+    if args.agent.startswith(rm.FINDINGS_REFUTER_PREFIX) and refuted.is_file():
+        print("\n".join(refutation_lines(rm.load_refutations(refuted), _rel(repo, refuted))))
+    elif review.is_file():
         print(rm.reviewer_block(rm.load_report(review), _rel(repo, review)))
     elif fixes.is_file():
         report = rm.FixReport.model_validate_json(fixes.read_text(encoding="utf-8"))
         print(rm.fixer_block(report, _rel(repo, fixes)))
     else:
         raise CaptureError([f"no report recorded for {args.agent} in {_rel(repo, run)}"])
+    return 0
+
+
+# --- refuter init -------------------------------------------------------------------------------------------
+
+
+def refute_target(plan: Mapping[str, object], agent: str) -> str:
+    """The target slot of the findings refuter ``agent`` in ``plan["adversarial"]``; raise for any other
+    id."""
+    slots = (plan.get("adversarial") or {}).get("refute") or []  # type: ignore[union-attr]
+    target = next((str(s["target"]) for s in slots if s["id"] == agent), None)
+    if target is None:
+        raise CaptureError([f"--agent {agent} is not a findings refuter of this run (plan.json adversarial "
+                            f"refute slots); init serves only adv_refute_<target> agents of an -a capture"])
+    return target
+
+
+def finding_lines(report: rm.ReviewerReport) -> List[str]:
+    """``[<finding_key>] <severity> <name> <file>:<lines>`` per distinct finding key, each with its
+    summary, other files and attack (a code refuter's finding) indented below."""
+    lines: List[str] = []
+    for key, finding in dict.fromkeys((rm.finding_key(f), f) for f in report.findings):
+        where = f"{finding.file}:{finding.lines}" if finding.lines else finding.file
+        lines += [f"[{key}] {finding.severity.value} {finding.name} {where}",
+                  f"    summary: {finding.summary}"]
+        lines += [f"    also: {', '.join(finding.also)}"] if finding.also else []
+        attack = getattr(finding, "attack", None)
+        lines += [f"    attack: {attack}"] if attack else []
+    return lines
+
+
+def _cmd_init(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``init``: a findings refuter's first step; print its target's findings by key, or record an
+    empty report for a target without findings."""
+    run, plan = load_plan(repo, args.pr)
+    if args.run_id != run.name:
+        raise CaptureError([f"run {args.run_id} is not the current run ({run.name}): a later capture "
+                            f"replaced it; stop and record nothing"])
+    target = refute_target(plan, args.agent)
+    try:
+        report = rm._target_report(args.pr, target, repo, args.run_id)
+    except ValueError as exc:
+        raise CaptureError([f"{exc}; rerun {args.agent} once it has"]) from exc
+    if not report.findings:
+        rm.record_refutations(args.pr, args.agent, target, [], repo=repo, run_id=args.run_id)
+        print("no findings: done")
+        return 0
+    keys = len({rm.finding_key(f) for f in report.findings})
+    print(f"init [done] | {args.agent} | target {target} | {keys} finding key(s) | run {args.run_id}")
+    print("\n".join(finding_lines(report)))
+    print(f"record one entry per key above, each exactly once (full report: findings/{target}.json)")
+    return 0
+
+
+# --- developer overrule: refute and unrefute ----------------------------------------------------------------
+
+
+def overrule_issue(repo: Path, path: Path, doc: Mapping[str, object], issue_id: str) -> Dict[str, object]:
+    """The built review's issue ``issue_id``; raise naming the id when there is none."""
+    try:
+        return review_edit.issue_info(doc, issue_id)
+    except ValueError as exc:
+        raise CaptureError([f"{issue_id}: no such issue in {_rel(repo, path)}"]) from exc
+
+
+def overrule_line(action: str, issue: Mapping[str, object], doc: Mapping[str, object]) -> str:
+    """``<action> <id> (<tier>) <name> <file>:<lines> | verdict: <verdict>``."""
+    issue_id = str(issue["id"])
+    where = f"{issue['file']}:{issue['lines']}" if issue.get("lines") else str(issue["file"])
+    return f"{action} {issue_id} ({rmg._tier(issue_id)}) {issue['name']} {where} | verdict: {doc['verdict']}"
+
+
+def _overrule_target(repo: Path, args: argparse.Namespace, action: str
+                     ) -> Tuple[Path, Dict[str, object], Path, Dict[str, object], Dict[str, object]]:
+    """(run, plan, review path, review, issue) of a ``refute`` / ``unrefute`` of ``args.id``."""
+    run, plan = load_plan(repo, args.pr)
+    path, doc = load_review(repo, plan)
+    require_phase4(doc, action)
+    return run, plan, path, doc, overrule_issue(repo, path, doc, args.id)
+
+
+def _cmd_refute(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``refute``: close one built-review issue as ``REFUTED`` (a developer overrule). The phase stays, so
+    plan.json is never written, a hook problem included."""
+    _, _, path, doc, issue = _overrule_target(repo, args, "refuting")
+    if args.id in ra.refuted_now(doc):
+        raise CaptureError([ra.refuted_problem(args.id, _rel(repo, path))])
+    try:
+        out = review_edit.apply_refute(doc, args.id, args.evidence, date.today().isoformat())
+    except ValueError as exc:
+        raise CaptureError([f"{exc}; {_rel(repo, path)} unchanged"]) from exc
+    out = ra.with_overrule(out, refuted=[args.id])
+    problems = commit_review(repo, path, out)
+    print(overrule_line("refuted", issue, out))
+    if problems:
+        raise CaptureError(problems)
+    return 0
+
+
+def unrefute_mode(args: argparse.Namespace) -> str:
+    """``bubble`` or ``fix``; raise when the flags do not fit the mode."""
+    if args.bubble and not (args.classification and args.reason):
+        raise CaptureError(["unrefute --bubble needs --classification and --reason"])
+    if args.fix and args.classification:
+        raise CaptureError(["unrefute --fix takes no --classification (only --bubble does)"])
+    return "bubble" if args.bubble else "fix"
+
+
+def unrefuted_review(doc: Mapping[str, object], args: argparse.Namespace, mode: str,
+                     shown: str) -> Dict[str, object]:
+    """``doc`` with the refutation of ``args.id`` overruled: ``NOT_RESOLVED`` (``fix``), or ``BUBBLED`` and
+    the id bubbled through ``with_bubble`` (``bubble``); a refusal names ``shown`` (the review) unchanged."""
+    reason = args.reason or review_edit.UNREFUTE_FIX_EVIDENCE
+    bubble = rm.FixBubble(id=args.id, classification=args.classification, reason=reason) \
+        if mode == "bubble" else None
+    try:
+        out = review_edit.apply_unrefute(doc, args.id, mode, reason, date.today().isoformat())
+    except ValueError as exc:
+        raise CaptureError([f"{exc}; {shown} unchanged"]) from exc
+    return ra.with_overrule(with_bubble(out, bubble) if bubble else out, unrefuted=[args.id])
+
+
+def _cmd_unrefute(repo: Path, args: argparse.Namespace) -> int:
+    """Run ``unrefute``: reopen a ``REFUTED`` issue for the waves (``--fix``; ``done`` moves to ``fix``) or
+    bubble it (``--bubble``; phase ``fix-plan``, as ``bubble``); the draft forgets the refutation. The review
+    is written before the hook runs, so a hook problem still saves the new phase, then raises."""
+    mode = unrefute_mode(args)
+    run, plan, path, doc, issue = _overrule_target(repo, args, "unrefuting")
+    out = unrefuted_review(doc, args, mode, _rel(repo, path))
+    problems = commit_review(repo, path, out)
+    clear_draft_refuted(run, args.id)
+    phase = str(plan.get("phase") or "")
+    save_plan(run, plan, "fix-plan" if mode == "bubble" else ("fix" if phase == "done" else phase))
+    print(overrule_line(f"unrefuted ({mode})", issue, out))
+    if problems:
+        raise CaptureError(problems)
     return 0
 
 
@@ -2040,6 +2467,8 @@ def _add_capture_command(sub: argparse._SubParsersAction) -> None:
     cap.add_argument("--no-fetch", action="store_true", help="Skip fetching the base side and pull/N/head.")
     cap.add_argument("--allow-closed", action="store_true", help="Replay a closed or merged PR.")
     cap.add_argument("--roast", choices=("yes", "no", "roll"), default="roll", help="Roast slot (roll).")
+    cap.add_argument("-a", "--adversarial", action="store_true",
+                     help="Add code and findings refuters; print one Workflow row instead of Agent rows.")
 
 
 def _op(kind: str) -> Callable[[str], Tuple[str, str]]:
@@ -2096,6 +2525,25 @@ def _add_fix_commands(sub: argparse._SubParsersAction) -> None:
                             "work or a rejected fixer edit) (repeatable).")
 
 
+def _add_adversarial_commands(sub: argparse._SubParsersAction) -> None:
+    """Add the refuter ``init`` and the developer overrules ``refute`` and ``unrefute``."""
+    init = _pr(sub.add_parser("init", help="A findings refuter's first step: print its target's findings."))
+    init.add_argument("--agent", required=True, help="adv_refute_<target>.")
+    init.add_argument("--run-id", required=True, help="The run id the refuter's brief names.")
+    refute = _pr(sub.add_parser("refute", help="Close one built-review issue as REFUTED."))
+    refute.add_argument("id", help="Issue id (C1, I3, M2).")
+    refute.add_argument("--evidence", required=True, help="The path:line opened and what it showed.")
+    unrefute = _pr(sub.add_parser("unrefute", help="Overrule a REFUTED issue: bubble it or reopen it."))
+    unrefute.add_argument("id", help="Issue id (C1, I3, M2).")
+    mode = unrefute.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--bubble", action="store_true", help="Append BUBBLED and bubble the id.")
+    mode.add_argument("--fix", action="store_true", help="Append NOT_RESOLVED; the next waves plan it.")
+    unrefute.add_argument("--classification", choices=[c.value for c in rm.BubbleClass],
+                          help="Bubble classification (--bubble only).")
+    unrefute.add_argument("--reason", help="One line (required with --bubble; --fix default: "
+                                           f"{review_edit.UNREFUTE_FIX_EVIDENCE}).")
+
+
 class _Parser(argparse.ArgumentParser):
     """Argument parser whose errors raise ``CaptureError`` (exit 1, ``problem:`` lines) instead of exit 2.
 
@@ -2115,6 +2563,7 @@ def _parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     _add_review_commands(sub)
     _add_fix_commands(sub)
+    _add_adversarial_commands(sub)
     conf = sub.add_parser("config", help="Print the project's merged harness configuration (JSON).")
     conf.add_argument("--get", action="append", default=[], metavar="KEY",
                       help="Print only this dotted key, one line each (repeatable; null prints empty).")
@@ -2124,7 +2573,8 @@ def _parser() -> argparse.ArgumentParser:
 _COMMANDS: Dict[str, Callable[[Path, argparse.Namespace], int]] = {
     "capture": _cmd_capture, "block": _cmd_block, "fold": _cmd_fold, "merge": _cmd_merge, "amend": _cmd_amend,
     "build": _cmd_build, "bubble": _cmd_bubble, "waves": _cmd_waves, "bubbles": _cmd_bubbles,
-    "closeout": _cmd_closeout, "config": _cmd_config,
+    "closeout": _cmd_closeout, "config": _cmd_config, "init": _cmd_init, "refute": _cmd_refute,
+    "unrefute": _cmd_unrefute,
 }
 
 

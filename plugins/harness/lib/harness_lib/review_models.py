@@ -4,8 +4,9 @@ Reviewers record through ``record_draft`` (or ``record``) and fixers through ``r
 ``record_fixes``), normally once, from the heredoc their brief carries. ``record_add`` is the exception: it
 appends to a reviewer's report across several calls. Under ``--adversarial``, code refuters (``adv_code*``)
 record through ``record_attacks(_draft)`` and findings refuters through ``record_refutations(_draft)``,
-which writes ``refutations/<target>.json``. Each replacing call validates every item before writing
-anything, replaces the agent's report under the run directory
+which writes ``refutations/<target>.json``; their ``attack`` and ``evidence`` text loses the repo root
+prefix (``strip_root``), so a cited ``path:line`` stays repo-relative. Each replacing call validates every
+item before writing anything, replaces the agent's report under the run directory
 (``<project>/<artifacts.scratch>/<NNNN or local-<label>>/<RUN_ID>/``, named by the ``run_id`` argument,
 else by ``current``), and prints the agent's return-contract block (the pr-team skill's
 ``return_contract.md``), UTF-8 safe on any console encoding. Agents never choose issue ids; ids are assigned when ``harness_lib.review_merge`` merges
@@ -140,6 +141,23 @@ def repo_path(value: str, root: Optional[Union[str, Path]] = None) -> str:
     if ".." in text.split("/"):
         raise ValueError(f"path {value!r} leaves the repo ('..')")
     return text
+
+
+def strip_root(text: str, root: Union[str, Path]) -> str:
+    """``text`` with every occurrence of the repo ``root`` prefix (``<root>/`` or ``<root>\\``) removed, so
+    a cited ``path:line`` reads repo-relative; case-insensitive on Windows or for a drive-rooted root."""
+    base = Path(root).as_posix().rstrip("/")
+    forms = (base + "/", base.replace("/", "\\") + "\\")
+    flags = re.IGNORECASE if os.name == "nt" or _DRIVE.match(base) else 0
+    pattern = "|".join(re.escape(form) for form in dict.fromkeys(forms))
+    return re.sub(pattern, "", text, flags=flags)
+
+
+def _relative_text(value: str, info: ValidationInfo) -> str:
+    """``value`` with the validation context's repo root stripped (``strip_root``); unchanged without a
+    root (a report loaded from disk)."""
+    root = _context_root(info)
+    return strip_root(value, root) if root else value
 
 
 def _one_line(value: object) -> object:
@@ -278,9 +296,10 @@ class AttackFinding(Finding):
 
     @field_validator("attack")
     @classmethod
-    def _attack(cls, value: str) -> str:
-        """Attack stripped; blank rejected."""
-        return _non_empty((value,), "attack")[0]
+    def _attack(cls, value: str, info: ValidationInfo) -> str:
+        """Attack stripped, the repo root prefix removed (``record_attacks`` passes the root); blank
+        rejected."""
+        return _non_empty((_relative_text(value, info),), "attack")[0]
 
 
 class CodeRefuterReport(ReviewerReport):
@@ -324,6 +343,12 @@ class Refutation(BaseModel):
     def _evidence(cls, value: object) -> object:
         """Evidence collapsed to one line."""
         return _one_line(value)
+
+    @field_validator("evidence")
+    @classmethod
+    def _evidence_relative(cls, value: str, info: ValidationInfo) -> str:
+        """Evidence with the repo root prefix removed (``record_refutations`` passes the root)."""
+        return _relative_text(value, info)
 
     @model_validator(mode="after")
     def _refuted_has_evidence(self) -> Refutation:

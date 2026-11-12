@@ -16,9 +16,15 @@ function). Its state follows one table:
 An unreadable state counts unfrozen with a note. A tree not at the PR head reads no state: every plan path
 outside freezes/ and strap fixtures counts unfrozen, with one note. Notes carry no ``note:`` prefix, no
 newline and no absolute path; capture prints them.
+
+The driver's refuted-id helpers live here too: ``refuted_now`` (ids whose latest resolution is ``REFUTED``),
+``refuted_problem`` (the one refusal text ``bubble``, ``closeout --resolved``, ``waves --ids`` and
+``refute`` print for such an id, naming ``unrefute``) and ``with_overrule`` (the ``refuted_ids`` /
+``unrefuted_ids`` update a developer ``refute`` or ``unrefute`` makes to a review's ``adversarial_check``).
 """
 from __future__ import annotations
 
+import copy
 import json
 import os
 import posixpath
@@ -31,7 +37,7 @@ from harness_lib import freeze_ledger as fl
 from harness_lib import plan_doc as pd
 from harness_lib import review_models as rm
 from harness_lib import review_plan as rp
-from harness_lib.validation.id_handling import ADVERSARIAL_STATUSES
+from harness_lib.validation.id_handling import ADVERSARIAL_STATUSES, latest_statuses
 
 REVIEWER_AGENT = "harness:pr-reviewer"
 PLANS_BUCKET = "plans"
@@ -306,7 +312,8 @@ def complete_check(check: Mapping[str, object], checked: int, refuted: int, code
                    refuted_ids: Sequence[str]) -> Dict[str, object]:
     """A copy of ``check`` completed at build with the counts, ``refuted_ids`` and an ``OK`` result.
 
-    Pure: the caller passes consistent counts (``refuted`` between 0 and ``checked``); nothing is checked.
+    Pure: ``checked`` and ``refuted`` count verdict entries (all, and the refuted ones), so ``refuted`` is at
+    most ``checked``; ``refuted_ids`` are issue ids, a different unit. Nothing is checked.
     """
     counts = {"findings_checked": checked, "findings_refuted": refuted,
               "findings_upheld": checked - refuted, "code_findings": code_findings}
@@ -344,3 +351,52 @@ def worst_case_agents(project_lenses: int) -> int:
     lenses and one code refuter per scope bucket."""
     reviewers = len(rp.PathBucket.slotted()) + len(rp.Lens) + len(rp.ScopeLens) + project_lenses
     return agent_count(reviewers, len(SCOPE_BUCKETS))
+
+
+# --- build counts and the developer overrule ----------------------------------------------------------------
+
+
+def build_counts(refutations: Sequence[rm.RefutationReport],
+                 code_reports: Sequence[rm.ReviewerReport]) -> Tuple[int, int, int]:
+    """(findings checked, findings refuted, code findings): the verdict entries across ``refutations``, the
+    refuted ones among them, and the findings across the code refuters' ``code_reports``."""
+    checked = sum(len(r.refutations) for r in refutations)
+    refuted = sum(r.counts()[rm.RefutationVerdict.refuted] for r in refutations)
+    return checked, refuted, sum(len(r.findings) for r in code_reports)
+
+
+def refuted_now(doc: Mapping[str, object]) -> List[str]:
+    """Ids of a review whose latest resolution is ``REFUTED``, in first-resolution order (the position of
+    each id's first resolution entry)."""
+    latest = latest_statuses(doc.get("post_review_resolutions") or [])  # type: ignore[arg-type]
+    return [str(i) for i, status in latest.items() if status == "REFUTED"]
+
+
+def refuted_problem(issue_id: str, unchanged: Optional[str] = None) -> str:
+    """The one refusal of a command on ``issue_id`` while its latest resolution is ``REFUTED``, naming the
+    ``unrefute`` overrule; ``unchanged`` (a review path) adds ``; <unchanged> unchanged``."""
+    text = (f"{issue_id}: latest resolution is REFUTED (closed by a refutation); refused until the "
+            f"refutation is overruled with unrefute {issue_id} --fix (or --bubble)")
+    return f"{text}; {unchanged} unchanged" if unchanged else text
+
+
+def _moved(ids: Sequence[str], add: Sequence[str], drop: Sequence[str]) -> List[str]:
+    """``ids`` without ``drop``, then each id of ``add`` not yet present."""
+    kept = [i for i in ids if i not in drop]
+    return list(dict.fromkeys([*kept, *add]))
+
+
+def with_overrule(doc: Mapping[str, object], refuted: Sequence[str] = (),
+                  unrefuted: Sequence[str] = ()) -> Dict[str, object]:
+    """A copy of ``doc`` whose ``adversarial_check`` holds the current overrule state: ``refuted`` ids join
+    ``refuted_ids`` and leave ``unrefuted_ids``, ``unrefuted`` ids the reverse. A review without the check
+    (no ``-a``) comes back unchanged. ``counts`` and ``result`` stay the build-time figures: only the two id
+    lists track the developer's overrules."""
+    out = copy.deepcopy(dict(doc))
+    log = out.get("verification_log")
+    check = log.get("dispatch_time", {}).get("adversarial_check") if isinstance(log, dict) else None
+    if not isinstance(check, dict):
+        return out
+    check["refuted_ids"] = _moved(check.get("refuted_ids") or [], refuted, unrefuted)
+    check["unrefuted_ids"] = _moved(check.get("unrefuted_ids") or [], unrefuted, refuted)
+    return out
