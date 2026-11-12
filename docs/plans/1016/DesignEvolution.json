@@ -213,6 +213,88 @@
         "free_form": "Developer: a row the watcher can record beats more precision by another route; no session step, no output-file read, no driver command."
       },
       "date": "2026-11-12"
+    },
+    {
+      "id": "EX1",
+      "discovered_by": "TASK-1 lane quality review (Q1)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-4",
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1 action (latest NOT_RESOLVED is open regardless of bubble entries)",
+        "indicated": "_settled_ids drops every reopened id whatever bubbles say; the bubble writers (_apply_bubbles, review_edit.add_bubble, pr_review bubble) only add the id to bubbles"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "a reopened id can never settle again",
+        "why_free_form": "REFUTED -> NOT_RESOLVED (unrefute --fix) -> a Phase 5 fixer or the developer bubbles the id: the latest status stays NOT_RESOLVED, so the verdict stays NOT READY, waves skip the id as bubbled and the Layer 3 sentinel never clears."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "_apply_bubbles and review_edit.add_bubble (TASK-4) and pr_review's bubble command (TASK-5) also append a BUBBLED resolution entry when the id's latest status is NOT_RESOLVED, so the latest status becomes BUBBLED and settles through the bubble entry"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "Developer chose append-BUBBLED over refusing the bubble or leaving the id stuck."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "TASK-1 lane reviews (Q3 / I1)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-4"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1 action (disposition_ids stays raw for the orphan check)",
+        "indicated": "pr_json_validation.validate_issue_counts reads the raw disposition_ids for both the orphan check and the READY unaccounted check"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "READY passes with a reopened id",
+        "why_free_form": "A hand-written READY verdict whose issue has latest status NOT_RESOLVED passes tabulation, since the unaccounted check counts any resolution entry."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-4 also changes plugins/harness/lib/harness_lib/validation/pr_json_validation.py: the READY unaccounted check subtracts reopened_ids; the orphan check stays raw; a test covers it"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "Developer chose to fix it in TASK-4 as a recorded deviation, cited with --also."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX3",
+      "discovered_by": "TASK-10 lane reviews (S2 / Q7)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-10"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-10 files",
+        "indicated": "bubble-stamp plugin.json changes for the version bump only; marketplace.json is in no item"
+      },
+      "issue": {
+        "category": "dyad-drift",
+        "why_categorical": "stale description in two copies",
+        "why_free_form": "plugins/bubble-stamp/.claude-plugin/plugin.json and .claude-plugin/marketplace.json both describe the stamping statuses as (RESOLVED, CLOSED_NO_ACTION); REFUTED now stamps too, and changing one copy alone leaves them drifted."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-10 changes both descriptions to (RESOLVED, CLOSED_NO_ACTION, REFUTED) together; .claude-plugin/marketplace.json is recorded with --also"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "The descriptions must name the statuses the mod now stamps."
+      },
+      "date": "2026-11-12"
     }
   ]
 }
