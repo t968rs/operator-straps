@@ -56,30 +56,30 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 57,
+    "items": 56,
     "needs_decision": 33,
     "trackers": 0,
-    "close_candidates": 25,
+    "close_candidates": 27,
     "by_status": {
       "NEEDS_DECISION": 33,
-      "OPEN": 24
+      "OPEN": 23
     },
     "by_impact": {
       "dev_velocity": 29,
-      "docs_tooling": 22,
+      "docs_tooling": 21,
       "maintainability": 1,
       "runtime_failure": 4,
       "data_correctness": 1
     },
     "by_loe": {
-      "XS": 4,
+      "XS": 3,
       "S": 17,
       "M": 25,
       "L": 10,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 51,
+      "gh_issue": 50,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 6
@@ -375,65 +375,8 @@
       "why_ranked": "Severity 2 missing guard, dev_velocity impact, S size."
     },
     {
-      "id": "todo-sp4v",
-      "rank": 6,
-      "title": "pr-review: let a trivial judgment fix run cheaper (amend regrades fix_kind, or lower fixer effort)",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "The batching in #153 landed at 23d5f6c: close the issue and drop the optional point, or keep it for an `amend` fix_kind regrade (or a lower fixer effort)?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#153",
-          "url": "https://github.com/t968rs/operator-straps/issues/153"
-        }
-      ],
-      "gh_issues": [
-        153
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The issue's main change (dedupe and batch fixer test commands into one pytest run) landed in 23d5f6c (\"Refs #153\", on main): plugins/harness/scripts/pr_review.py:1717-1736 now emits one pytest_command over the deduped non-deferred tests plus a per-file mapping, the fixer rule at plugins/harness/scripts/pr_review.py:1747-1755 runs it once after the last edit, and tests/scripts/test_pr_review_driver.py:1110 covers it. Left is the issue's optional, separate point: a judgment issue whose fix is a one-line edit still gets opus at the session effort. Checked: `amend` only regrades severity and merges ids (plugins/harness/scripts/pr_review.py:913-924, usage at :105), so fix_kind (set per finding, plugins/harness/scripts/pr_review.py:215) cannot be changed after capture.",
-      "proposed_change": "Either extend `amend --regrade` to accept a fix_kind (for example `I3=mechanical`) so a trivial judgment fix routes to the small-model fixer, or pass a lower effort to fixer rows; add a driver test for the chosen route. Otherwise close #153 on 23d5f6c and drop the optional point.",
-      "files": [
-        "plugins/harness/scripts/pr_review.py",
-        "plugins/harness/skills/pr-review/SKILL.md",
-        "tests/scripts/test_pr_review_driver.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "pr-review amend and fixer routing only.",
-        "consumers": [
-          "plugins/harness/skills/pr-review/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "One more regrade form in _amend_one plus a test, or one effort field on fixer rows."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.4142,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 1.4142,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 fixer cost on small judgment fixes, dev_velocity impact, S size."
-    },
-    {
       "id": "todo-7vfg",
-      "rank": 7,
+      "rank": 6,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -493,7 +436,7 @@
     },
     {
       "id": "todo-ys3k",
-      "rank": 8,
+      "rank": 7,
       "title": "todo-watch / session-bookmark: session.compact handler skipped when another mod runs first",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -550,7 +493,7 @@
     },
     {
       "id": "todo-rst5",
-      "rank": 9,
+      "rank": 8,
       "title": "todo_sync add: accept catalog_entry_ids so a new item can cite a research entry (clears T4)",
       "kind": "feature",
       "status": "OPEN",
@@ -607,6 +550,70 @@
       "depends_on": [],
       "unblocks": [],
       "why_ranked": "Severity 2 missing guard path that leaves T4 warnings uncleared without a forbidden hand edit, dev_velocity impact, S size."
+    },
+    {
+      "id": "todo-5rze",
+      "rank": 9,
+      "title": "strap: refreeze review-local, stale since pr_review.py changed in 0ae8c1c (#239) and again in 757277a",
+      "kind": "skill",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Refreeze review-local on branch 1154-pr-review-mini-fixes (which changes pr_review.py again in 757277a, so the new stamp matches main once it merges) or on main after that merge, and is the refreeze OK'd? The wider choice, narrowing the parts list or accepting a refreeze per pr-review change, belongs to todo-m86m (#264).",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#275",
+          "url": "https://github.com/t968rs/operator-straps/issues/275"
+        }
+      ],
+      "gh_issues": [
+        275
+      ],
+      "related_gh_issues": [
+        264,
+        178
+      ],
+      "catalog_entry_ids": [],
+      "summary": "Developer note: review-local's frozen spec is already stale. Per the session, `strap.py check review-local` on 1154-pr-review-mini-fixes (HEAD 9177e8f) printed `stale: frozen at 8538f7298472, parts now hash b3547d8a43ac; prove greens then freeze --refreeze` and `legacy: review-local has no ledger; one starts at its next freeze --refreeze, reopen or relink` (check output not rerun here). Checked: docs/plans/strap/review-local/SkillSpec.json:995-1000 holds `frozen.skill_hash` 8538f7298472... stamped 2026-11-07T00:34:59, and its parts (lines 7-40) include plugins/harness/scripts/pr_review.py (kind driver, line 26); plugins/harness/scripts/strap.py:247-260 hashes every part file in the working tree, so any pr_review.py edit stales the spec. `git show --stat` confirms 0ae8c1c (#239, 2026-11-07) and 757277a (2026-11-12, this branch) both change pr_review.py. Whether main alone is stale is inferred from git log, not proven by running check on main (unverified). The stale line is advisory in check and resume (strap.py:285, :419) but blocks `lock` (strap.py:1030-1036, lock_gate). Clearing it per plugins/harness/skills/strap-skills/SKILL.md:231-247: a passing green on the new hash for each judgment behavior (B9, B10, B11), then `strap.py freeze review-local --refreeze`, which also writes the first ledger entry and clears the legacy line (SKILL.md:254-256); the refreeze needs the developer's OK. Related catalog items: todo-m86m (#264) proposes pinning judgment greens to runner-read parts, the general fix for driver edits staling specs; todo-v55s (#178) notes review-local greens on detached scenario trees stop at capture, which may shape the green runs.",
+      "proposed_change": "Once the branch question is settled and the refreeze is OK'd: run `strap.py check review-local` on the chosen branch to confirm the stale hash; run and grade one green per judgment behavior (B9, B10, B11) on the current hash; confirm the mechanical behaviors' planned tests pass (tests/lib/test_review_local_models.py, tests/scripts/test_pr_review_local.py, tests/scripts/test_phase4_local.py, tests/hooks/test_local_review_artifacts.py) and the contract test tests/skills/test_review_local_skill_contract.py; then `strap.py freeze review-local --refreeze`, which stamps the new hash and starts the ledger. Doing it on 1154-pr-review-mini-fixes stamps the hash that main gets at merge; doing it on main first would be staled again by 757277a. Any later pr_review.py change re-stales it until todo-m86m (#264) settles the hash scope.",
+      "files": [
+        "docs/plans/strap/review-local/SkillSpec.json",
+        "plugins/harness/scripts/pr_review.py",
+        "plugins/harness/scripts/strap.py",
+        "plugins/harness/skills/review-local/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Rewrites only review-local's SkillSpec.json stamp and adds its first ledger entry and tags; no code changes.",
+        "consumers": [
+          "plugins/harness/scripts/strap.py:cmd_check",
+          "plugins/harness/scripts/strap.py:_resume",
+          "plugins/harness/scripts/strap.py:lock_gate",
+          "tests/scripts/test_strap_gate.py:345"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Three judgment greens to run and grade, the planned and contract tests to rerun, and one refreeze command."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 (debt with a concrete cost: lock is refused and check reports stale until the refreeze), dev_velocity impact, size S."
     },
     {
       "id": "todo-9yns",
@@ -2705,63 +2712,8 @@
       "why_ranked": "Severity 1 hygiene, docs_tooling impact, XS size."
     },
     {
-      "id": "todo-6za3",
-      "rank": 45,
-      "title": "strap-scenario-runner: a dispatching scenario must still record its run",
-      "kind": "skill",
-      "status": "OPEN",
-      "needs_decision": false,
-      "decision_question": null,
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#194",
-          "url": "https://github.com/t968rs/operator-straps/issues/194"
-        }
-      ],
-      "gh_issues": [
-        194
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The issue (created 2026-11-03T17:53Z) quotes a session blaming the runner's wording at strap-scenario-runner.md:43-46 for a scenario that stopped at the dispatch without recording. Checked: c857744 (2026-11-03, merged through PR #207, f163fe4) reworded that rule, and plugins/harness/agents/strap-scenario-runner.md:44-48 now reads 'A scenario that plays the session ends its work at the dispatch, then records ... stopping at the dispatch never skips the record'. No test under tests/ pins that sentence, and no strap run since the change is recorded here, so whether it fixes the reported R-5 run is unverified.",
-      "proposed_change": "Rerun a dispatching scenario (the R-5 case of the portable write-skill run) on the published plugin to confirm the runner records after the dispatch line; add a contract test pinning the record-after-dispatch sentence of plugins/harness/agents/strap-scenario-runner.md; then close #194 against c857744.",
-      "files": [
-        "plugins/harness/agents/strap-scenario-runner.md"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "The strap-skills scenario runner only.",
-        "consumers": [
-          "plugins/harness/skills/strap-skills/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "XS",
-        "reasoning": "One confirming run and a one-assertion contract test."
-      },
-      "impact": "docs_tooling",
-      "severity": 1,
-      "priority": {
-        "score": 0.6,
-        "components": {
-          "impact_weight": 0.6,
-          "value": 0.6,
-          "loe_points": 1,
-          "blast_factor": 1.0,
-          "cost": 1.0,
-          "base_score": 0.6,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 1 since the wording fix likely landed in c857744, docs_tooling impact, XS size."
-    },
-    {
       "id": "todo-3aye",
-      "rank": 46,
+      "rank": 45,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2817,7 +2769,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 47,
+      "rank": 46,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -2877,7 +2829,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 48,
+      "rank": 47,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2932,7 +2884,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 49,
+      "rank": 48,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -2983,7 +2935,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 50,
+      "rank": 49,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3040,7 +2992,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 51,
+      "rank": 50,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3093,7 +3045,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 52,
+      "rank": 51,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3148,7 +3100,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 53,
+      "rank": 52,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -3206,7 +3158,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 54,
+      "rank": 53,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3269,7 +3221,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 55,
+      "rank": 54,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -3324,7 +3276,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 56,
+      "rank": 55,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -3375,7 +3327,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 57,
+      "rank": 56,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3438,6 +3390,15 @@
   ],
   "trackers": [],
   "close_candidates": [
+    {
+      "number": 153,
+      "title": "pr-review: batch and dedupe fixer test commands (one pytest per brief)",
+      "url": "https://github.com/t968rs/operator-straps/issues/153",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "The main change landed in 23d5f6c (\"Fix(pr-review): batch and dedupe fixer test commands into one pytest run\", \"Refs #153\", on main). The optional point (a trivial judgment fix running cheaper) landed as an `amend --regrade` fix-kind form: 757277a (\"Fix(pr-review): allow amend to set issue fix kind\"; plugins/harness/lib/harness_lib/review_merge.py:404-417 `set_fix_kind`, driver tests in tests/scripts/test_pr_review_driver.py) and 8cd9cae (\"Feat(pr-review): regrade issue fix kind in place\", SKILL.md and operating_rules.md, harness 0.70.0). Both sit only on branch 1154-pr-review-mini-fixes (`git branch --all --contains 757277a`); PR #276 carries them.",
+      "recommended_action": "Close as completed when PR #276 merges to main; its body can say \"Closes #153\".",
+      "related_todo_ids": []
+    },
     {
       "number": 77,
       "title": "Enable Edit / Ammendments to `branch-commit-msg`",
@@ -3662,6 +3623,15 @@
       "evidence": "`gh pr view 253` reports MERGED at 2026-11-10T06:04:12Z as merge commit 5655a92 (\"Merge PR #253 -- bug writing docstrings\"), on main (`git branch -a --contains 5655a92`). Its commit 3d675b3 adds the param-format and underline-width flags to plugins/harness/lib/harness_lib/writing_docstrings_api.py, and 85db9f6 documents the full-layout Parameters format and the numpy restyle rule in plugins/harness/skills/writing-docstrings/docstring_format.md and plugins/harness/agents/docstring-writer.md (both on main). `gh issue view 246` already reports CLOSED (2026-11-10T06:04:13Z). The catalog item for #246 was retired in this run; the untested agent restyle is tracked as todo-nau4.",
       "recommended_action": "Already closed on GitHub by PR #253 (merge 5655a92); drop this candidate.",
       "related_todo_ids": []
+    },
+    {
+      "number": 194,
+      "title": "BUG: Strap Scenario Runner Wording",
+      "url": "https://github.com/t968rs/operator-straps/issues/194",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "c857744 (\"Fix(agents): update session end behavior to record run\") rewords the dispatch rule; `gh pr view 207` reports MERGED at 2026-11-04T17:01:52Z as merge commit f163fe4, and `git branch -a --contains c857744` lists main. plugins/harness/agents/strap-scenario-runner.md:58-61 now reads 'A scenario that plays the session ends its work at the dispatch, then records ... stopping at the dispatch never ...'. No test under tests/ pins that sentence. `gh issue view 194` already reports CLOSED (2026-11-12T07:46:29Z). The catalog item for #194 was retired in this run.",
+      "recommended_action": "Already closed on GitHub; the fix landed in c857744 through PR #207 (merge f163fe4); drop this candidate.",
+      "related_todo_ids": []
     }
   ],
   "retired_ids": [
@@ -3673,7 +3643,9 @@
     "todo-2n9s",
     "todo-7zrw",
     "todo-fmt6",
-    "todo-p52r"
+    "todo-p52r",
+    "todo-6za3",
+    "todo-sp4v"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",

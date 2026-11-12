@@ -90,7 +90,7 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
    report is dispatched again with its row.
 3. **Consolidate in one turn, no text before `build` returns.**
    `merge --pr local-<label>`, then `amend` only when the printed table needs a regrade (`--regrade I3=minor`,
-   by blast radius) or a merge of candidates that are one defect (`--merge I3+I7`), then
+   by blast radius; `--regrade I3=mechanical` when a judgment issue's fix is an exact edit) or a merge of candidates that are one defect (`--merge I3+I7`), then
    `build --pr local-<label>`. `build` writes `<reviews>/LOCAL_<label>_<slug>.json`, runs the Phase 4 first run
    and prints the path, verdict and counts. A first-run STOP leaves the review NOT READY with `pre_fix_time`
    pending: settle it (Rules; Stop Recovery), then `build --pr local-<label> --replace`. A straggler

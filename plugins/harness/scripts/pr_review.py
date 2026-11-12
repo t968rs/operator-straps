@@ -43,7 +43,8 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KE
     table, the merge candidates and the strengths count. A findings file that is neither a slot nor a folded
     source is a problem. A draft carrying amend operations is only replaced with ``--force``.
 ``amend --pr N [--regrade I3=minor ...] [--merge I3+I7 ...]``
-    Apply regrades and id merges to ``draft.json`` in the order given, log them, reprint the table.
+    Apply regrades and id merges to ``draft.json`` in the order given, log them, reprint the table. A regrade
+    to ``mechanical`` or ``judgment`` sets the issue's fix kind in place (id kept), which picks the fixer model.
 ``build --pr N [--replace] [--waive-head-ancestry]``
     Write ``<artifacts.reviews>/<NNNN>_<slug>.json`` from the plan and the draft, with the Phase 4 first run's
     ``pre_fix_time`` when it succeeds (else the pending literal, a READY verdict turned into ``NOT READY TO
@@ -116,7 +117,7 @@ Usage (Bash tool; ``$PR_REVIEW`` stands for
     $PR_REVIEW block --pr N --agent ID
     $PR_REVIEW fold --pr N --source ID --kind K (--from-gh-review URL | --findings FILE|-) [--severity S]
     $PR_REVIEW merge --pr N [--force]
-    $PR_REVIEW amend --pr N [--regrade ID=severity ...] [--merge KEEP+DROP ...]
+    $PR_REVIEW amend --pr N [--regrade ID=severity|fix_kind ...] [--merge KEEP+DROP ...]
     $PR_REVIEW build --pr N [--replace] [--waive-head-ancestry]
     $PR_REVIEW bubble --pr N ID --classification C --reason R
     $PR_REVIEW waves --pr N [--ids I3,M2]
@@ -729,9 +730,11 @@ def source_reports(run: Path, plan: Mapping[str, object]) -> List[rm.ReviewerRep
 
 
 def issue_row(issue: Mapping[str, object]) -> str:
-    """``I3 important path:lines [slots] name``."""
+    """``I3 important judgment path:lines [slots] name`` (a missing fix kind reads as judgment)."""
     where = f"{issue['file']}:{issue['lines']}" if issue.get("lines") else str(issue["file"])
-    return f"{issue['id']} {_TIER[str(issue['id'])[0]]} {where} [{issue.get('reviewer', '')}] {issue['name']}"
+    kind = issue.get("fix_kind") or "judgment"
+    return (f"{issue['id']} {_TIER[str(issue['id'])[0]]} {kind} {where} [{issue.get('reviewer', '')}] "
+            f"{issue['name']}")
 
 
 def issue_table(issues: Sequence[Mapping[str, object]], strengths: int) -> str:
@@ -774,9 +777,14 @@ def _cmd_merge(repo: Path, args: argparse.Namespace) -> int:
 
 
 def _amend_one(issues: List[Dict[str, object]], kind: str, value: str) -> Tuple[List[Dict[str, object]], str]:
-    """Apply one ``regrade`` (``I3=minor``) or ``merge`` (``I3+I7``) operation; return issues and a note."""
+    """Apply one ``regrade`` (``I3=minor`` moves the severity; ``I3=mechanical`` sets the fix kind in place) or
+    ``merge`` (``I3+I7``) operation; return issues and a note."""
     if kind == "regrade":
         issue_id, _, severity = value.partition("=")
+        kind_value = severity.strip().lower()
+        if kind_value in rmg.FIX_KINDS:
+            out = rmg.set_fix_kind(issues, issue_id.strip(), kind_value)
+            return out, f"{issue_id.strip()} -> {kind_value}"
         before = {str(i["id"]) for i in issues}
         out = rmg.regrade(issues, issue_id.strip(), severity.strip())
         new = sorted({str(i["id"]) for i in out} - before)
@@ -2046,7 +2054,8 @@ def _add_review_commands(sub: argparse._SubParsersAction) -> None:
     merge = _pr(sub.add_parser("merge", help="Merge reports into draft.json."))
     merge.add_argument("--force", action="store_true", help="Replace a draft that carries amend operations.")
     amend = _pr(sub.add_parser("amend", help="Regrade or merge draft issues."))
-    amend.add_argument("--regrade", dest="ops", action="append", type=_op("regrade"), help="ID=severity.")
+    amend.add_argument("--regrade", dest="ops", action="append", type=_op("regrade"),
+                       help="ID=severity, or ID=mechanical|judgment to set the fix kind in place.")
     amend.add_argument("--merge", dest="ops", action="append", type=_op("merge"), help="KEEP+DROP[+DROP].")
     build = _pr(sub.add_parser("build", help="Write the review JSON."))
     build.add_argument("--replace", action="store_true", help="Overwrite this PR's existing review file.")
