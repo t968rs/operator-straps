@@ -8,7 +8,7 @@
   "base_sha": "757503ccd75a98281eb6c15bc611cb3a214eed69",
   "head_sha": "9d9b363433e319cc273510ce3259d9da1d3a13b2",
   "review_date": "2026-11-12",
-  "verdict": "READY TO MERGE - 0 of 2 findings resolved, 2 bubbled",
+  "verdict": "READY TO MERGE - 2 of 2 findings resolved, 0 bubbled",
   "stats": {
     "additions": 404,
     "deletions": 5,
@@ -27,10 +27,7 @@
     "docs/_scratch/pr_review/0274/pr274_20261112T071902Z/findings/docs.json",
     "docs/_scratch/pr_review/0274/pr274_20261112T071902Z/findings/overall.json"
   ],
-  "bubbles": [
-    "M1",
-    "M2"
-  ],
+  "bubbles": [],
   "strengths": [
     "Ledger and spec agree end to end: r1.1 history freeze (base 7009a6e, skill_hash fab18dca) -> r1.2 relink 7009a6e->0421c4a by patch-id -> rounds[0].base 0421c4a -> r2.1 reopen and r2.2 freeze at 7f5aedf, matching spec.base",
     "r2.2-freeze files map is exact: every listed blob (agent file, SKILL.md, api, models, both commands, docstring_format.md, contract test, ingest and tiles fixtures) matches git rev-parse at head 9d9b363",
@@ -148,5 +145,19 @@
         "result": "OK (recorded; configured base)"
       }
     }
-  }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "f8c9877 (working-tree snapshot; developer commits) - strap.py reopen (round 3, base f8c9877) then update_behavior B8 statement to 'no tier line outside Tier overrides:', refrozen at 2c0937d3a4d3 (outside fixer waves)"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-12",
+      "evidence": "f8c9877 (developer-confirmed defer) - developer deferred: not worth a reopen alone, fold into the next round with a pre-short-reply base; todo-hnp3"
+    }
+  ]
 }
