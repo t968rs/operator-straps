@@ -1,0 +1,1095 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 271,
+  "pr_title": "commit tagging",
+  "branch": "1151-commit-tagging",
+  "base_branch": "main",
+  "base_sha": "0083e64da21a5208efbaed6719c3fce78fa23939",
+  "head_sha": "1b00d8db9370fdea27777122824a8f3d7d836dba",
+  "review_date": "2026-11-11",
+  "verdict": "READY TO MERGE - 40 of 40 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 9468,
+    "deletions": 215,
+    "files_changed": 102,
+    "source": {
+      "additions": 9437,
+      "deletions": 215,
+      "files_changed": 101
+    }
+  },
+  "reviewers": [
+    "config (opus)",
+    "tests (opus)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "overall (opus)",
+    "system_shape (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0271/pr271_20261111T234221Z/findings/config.json",
+    "docs/_scratch/pr_review/0271/pr271_20261111T234221Z/findings/tests.json",
+    "docs/_scratch/pr_review/0271/pr271_20261111T234221Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0271/pr271_20261111T234221Z/findings/docs.json",
+    "docs/_scratch/pr_review/0271/pr271_20261111T234221Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0271/pr271_20261111T234221Z/findings/overall.json",
+    "docs/_scratch/pr_review/0271/pr271_20261111T234221Z/findings/system_shape.json",
+    "docs/_scratch/pr_review/0271/pr271_20261111T234221Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Both schemas are generated from the pydantic models (`LedgerEntry.model_json_schema()` via `schema_text()`, `ActionPlan` via `schema_dict()`), and tests pin the committed files to the models, so schema drift fails CI.",
+    "FreezeLedgerEntry is closed (`additionalProperties: false`) with 40/64-hex patterns on every SHA field and `$schema`/`$id` first, matching its sibling schemas and suiting a write-once, append-only record.",
+    "The `ledger` field description states the failure mode explicitly (a missing or empty ledger folder fails the load), and `hydrate_frozen` implements exactly that rather than reading the plan as unfrozen.",
+    "Relaxing `Frozen.commit`/`tree` to nullable lets a ledger stamp carry no commit, and stays backward compatible with legacy stamps that carry both.",
+    "test_guard_locked seeds real ledgers through freeze_ledger.write_entry. It covers Write, Edit, Bash and PowerShell targets, including backslashed and absolute Windows paths, the frozen-only, unlocked and armed states, and an exact count of ledger files.",
+    "test_freeze_git runs against throwaway git repos. It proves build_tree leaves the index and status unchanged, includes untracked files, and normalizes CRLF in the ignored-file digest.",
+    "Tag names are checked with git check-ref-format and against directory-prefix collisions, then created for real and read back with tag_seqs.",
+    "Each collision and refusal test asserts that nothing was written: plan bytes, git status, the ledger folder and the tag list are all checked.",
+    "test_strap_api_drop_guard seeds specs through strap_models with a stamped digest, so it does not depend on strap.py. Each refusal leaves the spec byte-for-byte unchanged.",
+    "The new helpers in _plan_driver_helpers.py (stamp, drop_ledger_scheme, as_legacy) move the existing suites to the ledger in one place, and as_sealed now reuses as_legacy.",
+    "test_record_staged_records_the_index_and_survives_the_commit now asserts the exact new receipt tag ref rather than an unchanged ref list.",
+    "Walking tests carry WALK_ROOTS markers, and test_schema_file_matches_model names FreezeLedgerEntry.schema.json in its source, so select_tests can reach it.",
+    "freeze_ledger.write_entry opens with mode 'x', so a ledger entry is truly write-once, and _read_entry cross-checks the file name against the content.",
+    "freeze_git.build_tree hashes the freeze set under a temporary GIT_INDEX_FILE, so the real index never moves.",
+    "Tag names are worked out and preflighted before any file write in new, freeze, lock, reopen and relink, so a tag conflict refuses with nothing written.",
+    "The new write_pretool and powershell_pretool dispatchers keep per-hook fault isolation and deny-first ordering, matching bash_pretool and the COMPOSED contract.",
+    "todo_sync/rules_plans reads ledger freeze entries without importing pydantic, keeping the rule module dependency-free as its docstring promises.",
+    "schemas/README.md section 12 matches the LedgerEntry model field for field (required kind/round/seq/at, null tree on unlock/arm/reopen/relink/history, plan digest/records, strap skill_hash/grader, relink old_base/new_base/match) and names the pin test that holds the generated file to the model.",
+    "write-plan SKILL.md's ledger and tag section agrees with plan_lock.py on stems, r1.<k> naming, the -commit.<n> rewrite suffix, receipt tags kept out of push lines, the plan-number draw across branches and */plan/<no>-* tags, and the two-step unlock.",
+    "The plan's deviations are recorded where they happened: DesignEvolution EX2 and EX3 explain why DOC-1 wrote the root README and v1.0.0.md instead of the planned plugin README and v1.1.0.md, and the DOC-1 receipt cites both.",
+    "The new strap-skills README gives the developer a clear map of the memo-guard fixtures, the scenario each one pressures, and why fixture .py files are re-included in .gitignore (verified at .gitignore:243).",
+    "Ledger artifacts are internally consistent: strap-skills SkillSpec's stamp hash equals r3.2-freeze's skill_hash, and the spec-frozen fixture's r1.1-freeze matches its SkillSpec stamp and parts.",
+    "Every cross-link in both SKILL.md files and the new README resolves: strap.py, the strap-scenario-runner and strap-judge agents, templates/, reference/skill_arguments.md, plan_lock.py, freeze_ledger.py and FreezeLedgerEntry.schema.json all exist at the head.",
+    "The skill packages are self-consistent at the head: the strap-skills r3.2 freeze entry pins SKILL.md blob 7c4c8c8 and write-plan r3.2 pins 4a1ef48, which match the PR head's blobs, and the spec-frozen fixture's r1.1 entry matches its committed SKILL.md (85e5f87) and contract test (3da4495).",
+    "The README fixture table matches the strap-skills SkillSpec exactly: SC-1/2 use spec-open, SC-3/4/9/10 use spec-drawn, SC-5/6 use spec-graded, SC-8 uses spec-frozen, and SC-7 has no fixture.",
+    "The prose matches the code on the drop_behavior guard (SKILL.md:59-61 vs strap_api._refuse_drop_before_baseline), the Locked refusal message (strap_lock.LOCKED) and the lock gate (strap_lock.lock_problems: ledger matches the stamp, files committed at HEAD and clean, ignored files at their sha256).",
+    "write-plan's plan-number rule (one past the highest number on any local or remote-tracking branch and in any */plan/<no>-* tag) is implemented exactly by plan_lock.seen_plan_ids and _branch_ids.",
+    "Lock and unlock --arm are consistently reserved for the developer's explicit ask or OK in the steps, the Common mistakes list, the hook's deny message and the README.",
+    "Ledger entries are opened with mode 'x' and refuse a rewrite, and _read_entry rejects a file whose name disagrees with its content, so the append-only contract is enforced, not just documented.",
+    "freeze_git.build_tree hashes under a scratch GIT_INDEX_FILE, and test_build_tree_holds_not_ignored_paths proves the real index and status are untouched.",
+    "Every tag-creating command preflights its names before any write. The collision tests assert the plan or spec bytes and the ledger folder are unchanged after the refusal.",
+    "plan_lock.write_freeze restores the plan file's bytes when the tree or entry write fails, so a failed freeze leaves no half-migrated plan.",
+    "The new tests are behavioral against real throwaway git repositories (make_project, real tags, real rebases for relink); none stubs the code under test.",
+    "Hook composition keeps per-hook fault isolation and deny-first order in all three dispatchers, and the COMPOSED contract table was updated alongside hooks.json.",
+    "review_merge now resolves sibling schemas lazily through a retrieve callback, so an unrelated or dialect-less schema in the folder can no longer break review validation; pinned by three focused tests.",
+    "The drop guard in strap_api closes the drop-and-re-add loophole on draws, with refusals that leave the spec byte-identical.",
+    "guard_locked joins the existing Bash dispatcher and two new per-matcher dispatchers instead of adding launches, as the CLAUDE.md hook rule asks; test_hooks_json_paths.py EXPECTED and COMPOSED were updated with hooks.json.",
+    "FreezeLedgerEntry.schema.json is generated from LedgerEntry and pinned by test_schema_file_matches_model; schemas README section 12 documents the folder layout, state rule, tag names and guard consistently with freeze_ledger.py.",
+    "Plan 1015 documents its moves away from the spec (EX1-EX5) in DesignEvolution, and each receipt cites the change it relies on, so the README.md-instead-of-plugins/harness/README.md and release-file moves can be traced.",
+    "todo_sync/rules_plans.py mirrors the ledger layout without importing pydantic and names the constants it copies, so the P1/P4 receipts check follows the stamp into the ledger.",
+    "The plugin.json bump to 0.69.0, the release-note plugin table, the root README rows and the schemas README Migration entry all name the same version and behavior.",
+    "Ledger entries are write-once by construction (open mode 'x' in freeze_ledger.write_entry), and the name-versus-content check in _read_entry catches a renamed entry file.",
+    "Every tag-creating command preflights its tag names before it writes anything. plan_lock.write_freeze restores the plan file bytes if the tree or entry write fails, so a refusal leaves the tree unchanged.",
+    "freeze_git.build_tree hashes under a temporary GIT_INDEX_FILE, so the developer's index never moves; test_freeze_git asserts the real index stage is unchanged.",
+    "The hooks compose into dispatchers instead of adding new launches, which follows the project's one-launch-per-matcher rule, and the COMPOSED map in test_hooks_json_paths.py is updated to match.",
+    "The new tests are behavioral against real git repos built with make_project (tags peeled, trees listed, rebases replayed) with no mock-chain wiring. Each test that walks a folder declares WALK_ROOTS.",
+    "rules_plans reads the ledger's last freeze without pydantic, and its comment ties the duplicated stem pattern back to ActionPlan.ledger.",
+    "The review_merge validator now loads only $ref'd sibling schemas, so the new FreezeLedgerEntry schema, or any unrelated sibling, cannot break review writes."
+  ],
+  "issues": {
+    "critical": [
+      {
+        "id": "C1",
+        "name": "Freeze after a relink is refused: the round base tag is re-requested on the relinked base",
+        "file": "plugins/harness/lib/harness_lib/plan_lock.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_lock.py",
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/scripts/strap.py",
+          "tests/scripts/test_plan_relink_lock.py",
+          "tests/scripts/test_strap_relink_lock.py"
+        ],
+        "lines": "166-168,293-301",
+        "reviewer": "runtime, overall, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "plan.py new tags base/<stem>/r1 on the original base A. relink re-points base_commit to B and tags base/<stem>/r1-2, leaving r1 on A (test_relink_repoints_base_commit asserts exactly that). The next freeze, first or --refreeze, calls freeze_pending -> base_tags(stem, plan.base_commit) and asks for base/<stem>/r1 -> B. freeze_git.preflight finds r1 already peeling to A and raises 'tag ... already points at A, not B', so the freeze is refused before it writes anything. Every relinked plan is stuck: the documented route of unlock, write, freeze --refreeze and then lock never gets past the freeze, and only deleting the tag by hand unblocks it. strap_lock.freeze_pending has the same defect: reopen tags base/skill/<name>/r<N> on the old base, relink tags r<N>-2 on the new one, and the next freeze in that round asks for r<N> on spec.base and is refused (test_relink_repoints_base_and_tags sets up exactly this state and stops before a freeze). No test runs a freeze after a relink.\n\nAlso (overall): relink keeps the old tag base/<stem>/r1 on the old base and adds base/<stem>/r1-<m> on the new one (plan_lock.py:507-511; test_plan_lock.py:338-339 asserts both). The next freeze re-adds the fixed name: freeze_pending builds base_tags(stem, plan.base_commit), i.e. base/<stem>/r1 -> the new base_commit (plan_lock.py:166-168, 299-300), and freeze_git._conflict reports 'tag base/<stem>/r1 already points at <old>, not <new>', so preflight refuses the command. So once a plan is relinked, plan.py freeze --refreeze can never run again: not on a Frozen plan, and not after unlock --arm / unlock on a Locked one. That breaks the documented path 'unlock, write, freeze --refreeze, lock' (write-plan SKILL.md, Relink and Unlock). strap_lock.freeze_pending has the same defect: after strap.py relink in round N it adds base/skill/<name>/rN -> spec.base (the new base), which conflicts with the tag new --edit, reopen or the first freeze left on the old base (strap_lock.py:208-209). No test runs relink followed by a refreeze, so the suite stays green.\n\nAlso (roast): relink re-points base_commit (plan) or base (strap) and tags the new commit base/<stem>/r<N>-<m>, leaving base/<stem>/r<N> on the old commit. The next freeze then rebuilds the plain round tag from the current base: plan_lock.freeze_pending puts base_tags(stem, plan.base_commit) = {base/<stem>/r1: <new base>} into preflight, and strap_lock.freeze_pending adds base/skill/<name>/r<N> -> spec.base. freeze_git._conflict finds r<N> already on the old commit, so preflight refuses with 'tag base/... already points at <old>, not <new>'. Three cases hit this: a relinked Frozen plan's freeze --refreeze, the refreeze after unlock on a relinked Locked plan, and the first freeze of a plan relinked before it was ever frozen (plan.py new already tagged r1). A strap spec's refreeze after a part change in the same round hits it too. The whole feature exists for the rebase case, and after that one rebase the subject cannot freeze again until someone deletes a tag by hand. test_plan_relink_lock.py and test_strap_relink_lock.py stop at lock and check and never refreeze.",
+        "fix": [
+          "Request the round base tag only when no existing base/<stem>/r<N>[-<m>] tag already peels to the current base: in plan_lock.base_tags/freeze_pending and strap_lock.freeze_pending, list the base tags of the round (the _base_ms prefix) and drop the r<N> request when one of them holds the base. Add a test that runs relink and then freeze --refreeze for plans and for strap specs.",
+          "Alternatively, have freeze tag the base the ledger already knows: skip the base tag whenever a relink entry of the round names the current base as new_base, since relink already tagged it.",
+          "In plan_lock.freeze_pending and strap_lock.freeze_pending, add a base tag only when no existing base/<stem>/r<N>[-<m>] tag already peels to the current base (reuse _base_ms / the tag --list scan _base_lines already does), and never re-target the fixed r<N> name once it exists on another object. Add a driver test for each: relink, then freeze --refreeze (plan: also after unlock --arm / unlock), expecting exit 0 and no new base tag.",
+          "Alternatively record the base tag name in the relink entry and have freeze_pending reuse the latest relink's tag name instead of base_tag(stem, round).",
+          "Make the freeze's base tag relink-aware: when any existing base/<stem>/r<N> or base/<stem>/r<N>-<m> tag already peels to the current base, add no base tag (or use that name); create base/<stem>/r<N> only when no tag of the round holds the base. Apply the same rule in plan_lock.freeze_pending / base_tags and strap_lock.freeze_pending, and add driver tests: relink, then freeze --refreeze succeeds (plan Frozen, plan unlocked after a relinked lock, never-frozen plan, strap spec in the same round)."
+        ]
+      }
+    ],
+    "important": [
+      {
+        "id": "I1",
+        "name": "guard_locked lets a session delete or move ledger entries, which undoes a lock",
+        "file": "plugins/harness/hooks/guard_locked.py",
+        "files": [
+          "plugins/harness/hooks/guard_locked.py",
+          "tests/hooks/test_guard_locked.py"
+        ],
+        "lines": "7-15,37-47,104-140,170-189",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The module docstring says every file under <plans>/freezes/ is denied, but the only shapes it extracts are write destinations: Bash redirects, tee, sed -i and the cp/mv destination; PowerShell redirects, Set-Content/Add-Content/Out-File and the Copy-Item/Move-Item destination. Three commands reach the ledger anyway: 'rm docs/plans/freezes/plan/0001-x/r1.3-lock.json', 'mv <that file> /tmp/', where only the /tmp destination is checked, and 'Remove-Item <that file>'. Each one removes the lock entry. freeze_ledger.state then reads the plan as Frozen, and plan_api.write, freeze --refreeze and the guard's own locked_paths all treat it as editable. That is the most direct way past a Locked plan or spec, with no developer OK involved.\n\nAlso (roast): guard_locked counts only write destinations. _copy_targets returns the cp/mv destination and never the mv source, and _bash_segment does not handle rm, unlink or git rm at all. _PS_WRITERS has no Remove-Item (ri, del, erase, rm) and treats Move-Item like Copy-Item, so its source is skipped too. A Bash call like `rm docs/plans/freezes/plan/<stem>/r1.2-lock.json`, or an mv of that file out of the plans folder, therefore passes the hook. fl.state then drops back to frozen, and plan_api.write and freeze --refreeze accept the plan with no arm entry. That is the exact route the two-step unlock exists to close, and it is cheaper to type than any write the guard does catch. The 'best-effort' label covers clever shapes, not the most obvious one.",
+        "fix": [
+          "Treat deletion and move sources under <plans>/freezes/ (and Locked paths) as targets: rm/unlink and the cp/mv sources in _bash_segment, git rm/git mv, and Remove-Item/ri/del/erase plus the Move-Item source in _PS_WRITERS. Add tests in the guard_locked hook test.",
+          "If deletion is deliberately out of scope, say so in the module docstring and in _WAY_IN, so the claim that every file under freezes/ is denied matches what the hook does.",
+          "Treat as targets the operands of rm/unlink/git rm (Bash), the sources of mv and git mv, and the -Path/-LiteralPath or positional operands of Remove-Item and its aliases plus the Move-Item source (PowerShell). Add cases to tests/hooks/test_guard_locked.py for each shape on a ledger entry and on a Locked plan JSON."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "ledger stem pattern rejects stems that freeze builds from hand-named plan files",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_lock.py",
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "plugins/harness/lib/harness_lib/todo_sync/rules_plans.py"
+        ],
+        "lines": "1053-1066",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "The new `ledger` property only accepts `^plan/[0-9]{4}-[A-Za-z0-9-]+$`, but `plan.py freeze` builds the stem with `stem_of` -> `file_slug` -> `stem_slug` (plan_lock.py:61-76). That code only swaps `_` for `-` and lowercases whatever sits between `<id>_` and `_ActionPlan.json`. The schema README accepts any `{NNNN}_*_ActionPlan.json` name, so a hand-named file with a dot, plus sign, comma or non-ASCII letter (`0012_v1.2_fix_ActionPlan.json`) gives `plan/0012-v1.2-fix`. `write_freeze` assigns it to `plan.ledger` with no assignment validation, saves the JSON, writes the ledger entries and tags (git ref names allow those characters), and reports success. The next load then fails the schema pattern, so the plan is frozen in the ledger but its JSON can no longer be read. `todo_sync/rules_plans.py:25` copies the same narrow pattern, so a plan with such a stem also drops out of todo sync.",
+        "fix": [
+          "Normalize the slug in `stem_slug`/`file_slug` to the stem alphabet, e.g. `re.sub(r\"[^a-z0-9]+\", \"-\", slug.lower()).strip(\"-\")`, so every built stem matches the `ledger` pattern; add a test that freezes a plan file whose title holds a dot.",
+          "Or validate `pending.stem` against the `ActionPlan.ledger` pattern in `freeze_pending` before any write and fail with a problem line naming the file."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "agent-permissions skill still documents the pre-dispatcher hook wiring",
+        "file": "plugins/harness/skills/agent-permissions/SKILL.md",
+        "files": [
+          "plugins/harness/skills/agent-permissions/SKILL.md",
+          "CLAUDE.md",
+          "plugins/harness/hooks/hooks.json"
+        ],
+        "lines": "24-43,114-115",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The PR re-registers the PowerShell matcher to powershell_pretool.py and the Write|Edit matcher to write_pretool.py (hooks.json), and puts guard_locked first in bash_pretool.py. The agent-permissions SKILL, which an agent follows to diagnose permission prompts, still says the PowerShell row is powershell_allow_shapes.py and the Write/Edit row is guard_commit_txt.py, each registered on its own (lines 24-26, 31-32), that bash_pretool.py runs 'the three Bash hooks' (lines 24, 39-43), and its hook list (lines 114-115) has no guard_locked.py, write_pretool.py or powershell_pretool.py. An agent that pipes a PowerShell or Write payload to the file the table names never sees the lock guard's deny, which outranks every allow. CLAUDE.md:48 repeats 'bash_pretool.py runs the three Bash hooks'.",
+        "fix": [
+          "Update plugins/harness/skills/agent-permissions/SKILL.md: name the three registered dispatchers (bash_pretool.py, powershell_pretool.py, write_pretool.py), add guard_locked.py as the deny hook that runs first in each, change the PowerShell and Write/Edit rows and the Bash paragraph to match, extend the hook list at line 114; and change CLAUDE.md:48 to 'runs the Bash hooks (guard_locked plus the three) in one launch'."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "write-plan README still describes the pre-ledger freeze and has no lock, unlock or relink",
+        "file": "plugins/harness/skills/write-plan/README.md",
+        "files": [
+          "plugins/harness/skills/write-plan/README.md",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_lock.py",
+          "plugins/harness/lib/harness_lib/plan_doc.py"
+        ],
+        "lines": "36-53,89-114",
+        "reviewer": "system_shape",
+        "fix_kind": "judgment",
+        "summary": "The developer-facing README of write-plan was not updated with SKILL.md. Its command table (README.md:36-47) has no lock, unlock or relink rows, and its Freeze row (line 42) says freeze writes 'the plan's `frozen` block'. Freezing (lines 51-53) says freeze 'stamps the plan with a digest and the commit it was frozen at'. At this head, plan_lock.write_freeze (plan_lock.py:304-326) writes a `freezes/plan/<id>-<slug>/r1.<k>-freeze.json` entry with a tree and no commit, and plan_doc.dump_plan (plan_doc.py:207-212) drops `frozen` from the JSON. The 'Git: commits, tags and the plan' sequence (lines 94-109) never says to commit the ledger entry or run `lock` after the freeze commit. Its Tags paragraph (lines 111-114) tells the developer to tag by hand on the base branch, with no word on the driver-created base, freeze, lock and receipt tags or the `push:` line. A developer who follows this README gets the wrong picture of what freeze writes and misses the Locked state entirely.",
+        "fix": [
+          "Update plugins/harness/skills/write-plan/README.md: add Lock, Unlock (--arm then plain) and Relink rows to the command table; change the Freeze row and the Freezing paragraph to the ledger entry plus tree tag (no commit, `frozen` read from the ledger); add 'commit the `freezes/plan/...` entry with the freeze' and 'lock on the developer's ask after the freeze commit' to the commit sequence; replace the Tags paragraph with the driver tags, the `push:` line, local-only receipt tags and `git describe --match 'v*'`, as write-plan SKILL.md step 8 states them."
+        ]
+      },
+      {
+        "id": "I5",
+        "name": "No behavioral test that the three dispatchers apply the lock guard's deny",
+        "file": "tests/hooks/test_guard_locked.py",
+        "files": [
+          "tests/hooks/test_guard_locked.py",
+          "tests/hooks/test_bash_pretool.py",
+          "tests/contract/test_hooks_json_paths.py",
+          "plugins/harness/hooks/guard_locked.py"
+        ],
+        "lines": "3-8,252-270,273-290",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "The guard reaches a session only through write_pretool.py, bash_pretool.py and powershell_pretool.py, and guard_locked.py's docstring promises it runs first there, so its deny outranks any allow the other hooks would give. No test checks this. test_guard_locked.py calls guard.decide directly, and its registration test (test_dispatchers_registered_and_compose_guard_locked) only regex-matches an `import guard_locked` line, which test_hooks_json_paths.py::test_a_dispatcher_imports_exactly_its_composed_hooks already checks more strictly. test_bash_pretool.py never mentions guard_locked, and write_pretool.py and powershell_pretool.py have no test file. A dispatcher that imports guard_locked but skips it, runs it after an allow, or swallows its output would pass every test in the suite.\n\nAlso (tests): The module docstring says the guard denies a write to any path that a Locked or armed subject's ledger lists. test_sealed_plan_json_stays_writable_under_lock asserts the opposite for a plan whose lock carries the sealed scheme or no scheme: the plan JSON stays writable and only the planned test is denied. guard_locked.py documents this exception at lines 10-11; the test module does not.",
+        "fix": [
+          "Replace test_dispatchers_registered_and_compose_guard_locked with behavioral tests. On the _project seed, load each dispatcher by path and call its decide(). Assert 'deny' for a Write to LOCKED_PLAN through write_pretool, a Bash redirect into a ledger file through bash_pretool, and a Set-Content onto LOCKED_PLAN through powershell_pretool. Add one case per dispatcher where the other composed hook would allow the same command (an allow-listed Bash or PowerShell shape that writes into a locked path), to pin the precedence.",
+          "Keep the hooks.json matcher asserts if wanted, but drop the import-regex check: it duplicates the contract test.",
+          "Add a sentence to the module docstring: a plan whose lock carries the sealed scheme or no scheme keeps its plan JSON writable, since record still writes it, while its other locked files stay denied."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M2",
+        "name": "CLAUDE.md still says bash_pretool runs three Bash hooks",
+        "file": "CLAUDE.md",
+        "files": [
+          "CLAUDE.md",
+          "plugins/harness/hooks/bash_pretool.py",
+          "tests/contract/test_hooks_json_paths.py"
+        ],
+        "lines": "47-48",
+        "reviewer": "overall, system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The Hooks rule in CLAUDE.md says '(bash_pretool.py runs the three Bash hooks in one launch)'. This PR adds guard_locked to bash_pretool's HOOK_ORDER (four hooks) and adds two dispatchers, write_pretool.py and powershell_pretool.py, with COMPOSED entries. The project instructions now understate the composition.\n\nAlso (system_shape): CLAUDE.md:47-48 says '`bash_pretool.py` runs the three Bash hooks in one launch'. At this head bash_pretool.HOOK_ORDER has four (guard_locked first), and this PR adds two more dispatchers, `write_pretool.py` and `powershell_pretool.py`, which tests/contract/test_hooks_json_paths.py lists under COMPOSED. The project rule a contributor reads before adding a hook is now behind the code.\n\nAlso (roast): The Hooks rule says `bash_pretool.py` runs the three Bash hooks in one launch. It now composes four (guard_locked first), and write_pretool.py and powershell_pretool.py are new dispatchers with their own COMPOSED entries in test_hooks_json_paths.py.",
+        "fix": [
+          "Update the parenthetical to name the three dispatchers: bash_pretool.py (four Bash hooks), write_pretool.py (guard_locked, guard_commit_txt) and powershell_pretool.py (guard_locked, powershell_allow_shapes).",
+          "Update CLAUDE.md:47-48 to: 'dispatcher (`bash_pretool.py`, `write_pretool.py` and `powershell_pretool.py` each decide their composed hooks in one launch, `guard_locked.py` first)'.",
+          "Update CLAUDE.md:48 to name the dispatchers: bash_pretool.py (guard_locked plus the three Bash hooks), write_pretool.py (guard_locked, guard_commit_txt) and powershell_pretool.py (guard_locked, powershell_allow_shapes)."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Release notes cite issue #265 as the PR number; two Fix lines carry no number",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "68-96",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Every other v1.0.0.md change line opens with its PR number and puts the issue in parentheses ('#253 Fix(...) (issue #246)'). The three new feature lines (68, 79, 84) open with '#265', which is the open issue 'Driver-created local tags ...' (gh issue view 265); there is no PR 265. This PR is #271. The Fix(pr-review) and Fix(strap-skills) lines (90, 93), also from this branch, carry no number at all.\n\nAlso (system_shape): Every earlier entry in docs/RELEASES/v1.0.0.md starts with the PR number and puts the issue in parentheses (for example '#261 Feat(write-plan): ... (issue #258)'). The three new feature entries (lines 68, 79, 84) start with '#265', which is the open issue 'Driver-created local tags ...', not a PR. The work merges as PR #271. The two new Fix entries (lines 90, 93) have no number at all.\n\nAlso (system_shape): PR #271 is titled 'Docs(spec): `freeze_ledger` module' and has an empty body. The branch ships a harness minor bump (0.68.0 to 0.69.0) with new `lock`, `unlock` and `relink` commands, a new schema, three hook dispatchers, the `drop_behavior` guard and a review-validator fix. This is a description gap only. The code is unaffected.",
+        "fix": [
+          "Change '#265 Feat(...)' to '#271 Feat(...)' with '(issue #265)' after the subject on lines 68, 79 and 84, and prefix lines 90 and 93 with '#271'.",
+          "Change '#265' to '#271' at lines 68, 79 and 84, add '(issue #265)' to the first of them, and prefix the Fix entries at lines 90 and 93 with '#271'.",
+          "Retitle the PR along the lines of 'Feat(write-plan, strap-skills): freeze ledger, commit tags, Frozen and Locked (plan 1015)' and fill the body from the five new entries in docs/RELEASES/v1.0.0.md:68-96."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Design report's Decisions and first findings table state decisions the later review superseded, unmarked",
+        "file": "docs/RESEARCH/write-plan/locking/0265_locking_design_report.md",
+        "lines": "63,73-74,82,85,90",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "0265_locking_design_report.md lists as decisions 'A git tree of scoped, tracked files' (line 63), 'freeze --refreeze --unlock writes unlock' (line 73) and 'plans named plan-<id>' (line 74), and settles Q3, Q6 and C2 (lines 82, 85, 90) with tracked-only trees, id-skipping by tag and 'strap.py new refuses names matching plan-[0-9]{4}'. The review section at line 102 onward amends these (not gitignored, unlock --arm, plan/<no>-<slug> stems), and the shipped code has no plan-[0-9]{4} name refusal. A reader of the Decisions table gets the superseded design with no pointer to the amendment.\n\nAlso (system_shape): The Decisions table of 0265_locking_design_report.md still says 'tracked files' (line 63), '`freeze --refreeze --unlock`' (line 73) and plan tags 'named `plan-<id>`' (line 74). All three were replaced by the amendment table below it (lines 110, 112, 114) and by the code (not-gitignored membership, the two-step `plan.py unlock`, and `plan/<no>-<slug>` stems). Nothing marks them superseded. Row C2 (line 90) says '`strap.py new` refuses names matching `plan-[0-9]{4}`', but no such refusal exists under plugins/harness. The separate `plan/` and `skill/` stems make it unnecessary.",
+        "fix": [
+          "Mark each superseded row (lines 63, 73, 74, 82, 85, 90) with '(superseded: see Design review of 5beb6e0)' and the final choice, or add one sentence above the Decisions table saying the review section below amends it.",
+          "Mark lines 63, 73 and 74 '(superseded; see Design review below)', and change C2's settlement to 'Moot: tag stems are `plan/<no>-<slug>` and `skill/<name>`, separate namespaces'."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Plan 1015 value names a skill-name rule that the spec dropped and no item implements",
+        "file": "docs/plans/1015_freeze_tags_and_locking_ActionPlan.json",
+        "files": [
+          "docs/plans/1015_freeze_tags_and_locking_ActionPlan.json",
+          "docs/plans/1015/DesignEvolution.json",
+          "docs/plans/1015_freeze_tags_and_locking_PIP.html"
+        ],
+        "lines": "555-556",
+        "reviewer": "docs",
+        "fix_kind": "judgment",
+        "summary": "The frozen plan's values[] holds 'plan id pattern refused as a skill name' = '^plan-[0-9]{4}$' with source 'spec, Tags; plan_models.py:402' (ActionPlan.json:555-556, PIP.html:46). The final spec's Tags section has no such rule (stems plan/<no>-<slug> and skill/<name> made it moot), and no file under plugins/ matches the pattern. The DesignEvolution records EX1-EX5 but not this dropped value, so the plan claims a threshold the delivered code does not have.",
+        "fix": [
+          "Add a DesignEvolution entry through evolution_api (phase post-exec-start) recording that the plan-[0-9]{4} skill-name refusal is moot under the plan/ and skill/ stems and was not built."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "memo-guard fixture SKILL.md has rules about commands and problem: lines, but the skill has none",
+        "file": "docs/plans/strap/strap-skills/fixtures/spec-drawn/.claude/skills/memo-guard/SKILL.md",
+        "files": [
+          "docs/plans/strap/strap-skills/fixtures/spec-drawn/.claude/skills/memo-guard/SKILL.md",
+          "docs/plans/strap/strap-skills/fixtures/spec-graded/.claude/skills/memo-guard/SKILL.md",
+          "docs/plans/strap/strap-skills/fixtures/spec-frozen/.claude/skills/memo-guard/SKILL.md",
+          "plugins/harness/skills/strap-skills/templates/project/skill_md.tmpl"
+        ],
+        "lines": "12,22-23",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "All three identical memo-guard fixtures (spec-drawn, spec-graded, spec-frozen) carry template prose that the judgment-only skill never uses. Line 12 says 'no command below carries the guidance', yet the file has no command. Lines 22-23 make 'A refusal is information. Read the `problem:` line ... run the same command again' a rule, yet memo-guard has no driver, API or command that could print a `problem:` line. The text comes from templates/project/skill_md.tmpl:12,23, which renders it whether or not the skill has an API. The skill's own rules thus point at machinery the skill lacks. The fixture is tree content rather than the skill under test, so the effect on scenarios is small.",
+        "fix": [
+          "Make templates/project/skill_md.tmpl render the refusal rule (and the 'no command below' clause) only when the skill has an API or driver part. Leave the fixtures as they are: they are frozen into spec-frozen's r1.1 entry (SKILL.md blob 85e5f87) and into strap-skills' r3.2 freeze set, so editing them forces a regenerated fixture ledger and a strap-skills refreeze.",
+          "Or drop the refusal rule and the 'no command below' clause from the three fixture SKILL.md copies, then regenerate spec-frozen's SkillSpec stamp and r1.1 entry and refreeze strap-skills."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "Design spec says .py fixtures stay ignored; this PR tracks them",
+        "file": "docs/superpowers/specs/2026-11-11-freeze-tags-design.md",
+        "files": [
+          "docs/superpowers/specs/2026-11-11-freeze-tags-design.md",
+          ".gitignore",
+          "docs/plans/1015/DesignEvolution.json",
+          "docs/plans/freezes/skill/strap-skills/r3.2-freeze.json"
+        ],
+        "lines": "57-58,119-120",
+        "reviewer": "system_shape, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "The frozen design states as a non-goal that '.py fixtures ... stay uncommitted and unpublished' (freeze-tags-design.md:57-58). Its Tree scope says they 'are gitignored, so they always land in `ignored`' (lines 119-120). Commit 8172d90 adds `!docs/plans/strap/*/fixtures/**/*.py` to .gitignore:11. The strap-skills r3.2 freeze entry now lists the fixture `test_memo_guard_skill_contract.py` files under `files`, where the r1.1 entry had them under `ignored`. Plan 1015's DesignEvolution has no entry for this change (EX5 covers the fixtures but not the gitignore re-include). The spec is frozen, so the plan record is where this belongs.\n\nAlso (roast): The .gitignore negation `!docs/plans/strap/*/fixtures/**/*.py` now tracks strap fixture Python files, and they land in freeze trees (r3.2-freeze.json lists fixtures/.../test_memo_guard_skill_contract.py under files). The design's Non-goals say `.py` fixtures stay uncommitted and go into the ledger by sha256. The release notes mention the change, but plan 1015's DesignEvolution has no entry for it, and the frozen spec cannot be edited.",
+        "fix": [
+          "Add a DesignEvolution change to docs/plans/1015/DesignEvolution.json (through evolution_api.add) recording that strap fixture .py files are tracked and enter freeze trees, citing .gitignore:10-11.",
+          "Record the decision in docs/plans/1015/DesignEvolution.json through evolution_api.add (strap fixtures are tracked tree content, so their .py files enter files, not ignored)."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "guard_locked plans-folder match ignores the Windows case rule and MSYS drive paths",
+        "file": "plugins/harness/hooks/guard_locked.py",
+        "files": [
+          "plugins/harness/hooks/guard_locked.py",
+          "tests/hooks/test_guard_locked.py"
+        ],
+        "lines": "215-228,262-268,300-303",
+        "reviewer": "runtime, overall",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_under compares in the OS's case rule and _key lowercases on nt, but decide() filters with a case-sensitive r.startswith(plans_rel + '/'), and _verdict checks rel.startswith(freezes) the same way. On Windows, a Write to 'Docs/Plans/...' when the config says docs/plans skips the guard. A Git Bash path such as '/e/proj/docs/plans/...' is not absolute on Windows either, so repo_rel joins it under cwd and returns None. Both are silent bypasses of a deny-only guard.\n\nAlso (overall): repo_rel treats a target as absolute only when Path(...).is_absolute(). On Windows a Git Bash path such as /e/repo/docs/plans/freezes/plan/x/r1.1-freeze.json has no drive, so it is joined onto cwd (E:/e/repo/...), falls outside the project root and returns None. The Bash tool on Windows runs Git Bash, where such paths are routine, so 'echo x > /e/<repo>/docs/plans/freezes/...' or 'tee /c/...' onto a Locked file passes the guard. The guard is best-effort by design, but this is the shell form the Bash tool most often emits on Windows.",
+        "fix": [
+          "Compare through _key on both sides (_key(r).startswith(_key(plans_rel) + '/') and the same for the freezes prefix). In repo_rel, map a leading '/<letter>/' to '<letter>:/' on nt before resolving.",
+          "In repo_rel, on os.name == 'nt' map a leading '/<letter>/' (and '/cygdrive/<letter>/') to '<letter>:/' before the absolute test, and add a Windows-path case to tests/hooks/test_guard_locked.py marked cross_os."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Frozen.at is now dead and _ledger_stamp duplicates it; legacy stamps lost their commit/tree requirement",
+        "file": "plugins/harness/lib/harness_lib/plan_models.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/plan_models.py",
+          "plugins/harness/lib/harness_lib/plan_doc.py"
+        ],
+        "lines": "149-167",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The removal of plan.py new_frozen left Frozen.at (plan_models.py:163-167) with no caller in plugins or tests. plan_doc._ledger_stamp re-implements the same records-only-when-set construction. Separately, the Frozen docstring says a legacy stamp carries both commit and tree, but commit and tree are now Optional for every stamp, so an in-file stamp with either one missing validates.\n\nAlso (roast): plan.py's new_frozen was the only caller of pm.Frozen.at. The ledger now builds stamps through plan_doc._ledger_stamp, and nothing in plugins/ or tests/ calls Frozen.at any more.",
+        "fix": [
+          "Build the ledger stamp through Frozen.at, typing its commit as Optional[str], or delete Frozen.at.",
+          "Optionally add a model validator, or a check in parse_plan for plans without a ledger, so an in-file stamp still requires commit and tree.",
+          "Delete the Frozen.at classmethod (plan_models.py:163-167) and the Dict/Any imports if nothing else uses them."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Strap `legacy:` message and SKILL.md name different first ledger writes",
+        "file": "plugins/harness/lib/harness_lib/strap_lock.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "plugins/harness/skills/strap-skills/SKILL.md"
+        ],
+        "lines": "31",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "strap_lock.LEGACY (strap_lock.py:31) prints 'one starts at its next freeze, refreeze or reopen'. strap-skills SKILL.md:252-253 lists '(`freeze --refreeze`, `reopen` or `relink`)'. relink_pending (strap_lock.py:246-258) also writes history entries, so the printed message leaves out relink. The design spec message (freeze-tags-design.md:306) leaves it out too.",
+        "fix": [
+          "Change LEGACY at strap_lock.py:31 to 'legacy: {name} has no ledger; one starts at its next refreeze, reopen or relink', and update the quoted line in freeze-tags-design.md:306 if that text is kept as the reference."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "Strap lock tree takes SkillSpec.json from the working tree without a committed check",
+        "file": "plugins/harness/lib/harness_lib/strap_lock.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "plugins/harness/skills/strap-skills/SKILL.md"
+        ],
+        "lines": "213-224,413-422",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "lock_pending snapshots lock_set (the freeze set plus SkillSpec.json) from the working tree, but lock_problems / _file_problems only check that the last freeze's files are committed at HEAD and clean. SkillSpec.json is not in the freeze set, so the lock tag can hold a spec blob that sits in no commit, for example after a green run recorded since the freeze and never committed. The plan side has no such gap, because its lock set equals its freeze set. This matches the plan text, so it is a hole in the gate rather than a drift from the plan.",
+        "fix": [
+          "In strap_lock.lock_problems, also compare SkillSpec.json's HEAD blob with its working-tree blob and refuse with 'commit the spec first' when they differ.",
+          "Or state in strap-skills SKILL.md (Lock) that the lock tree's SkillSpec.json is taken from the working tree."
+        ]
+      },
+      {
+        "id": "M12",
+        "name": "strap saves the spec before its ledger entries are written, with no restore",
+        "file": "plugins/harness/lib/harness_lib/strap_lock.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "plugins/harness/scripts/strap.py"
+        ],
+        "lines": "359-364",
+        "reviewer": "runtime",
+        "fix_kind": "judgment",
+        "summary": "cmd_freeze, cmd_reopen and cmd_relink save SkillSpec.json and only then call strap_lock.commit, which writes the entries with fl.write_entry. A LedgerError there, an entry name that already exists, leaves the spec frozen, reopened or re-pointed with no matching ledger entry, and check then reports a 'ledger:' mismatch. plan_lock.write_freeze avoids this on the plan side by restoring the plan file bytes on failure. Strap's ordering is the opposite and has no rollback.",
+        "fix": [
+          "Write the pending entries before the spec save, or keep the spec bytes and restore them when strap_lock.commit's entry write raises, as plan_lock.write_freeze does."
+        ]
+      },
+      {
+        "id": "M13",
+        "name": "Frozen claims a legacy stamp carries commit and tree, but nothing enforces it any more",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py"
+        ],
+        "lines": "435-492",
+        "reviewer": "config",
+        "fix_kind": "judgment",
+        "summary": "The `Frozen` description says \"a legacy stamp carries both\" (commit and tree). This change dropped both from `required` and made them nullable, and no model validator puts them back for a stamp found in the plan JSON (no `ledger`). So a legacy plan whose `frozen` lacks commit or tree now validates. No code path reads a legacy commit or tree for logic (`check_lines` returns the `legacy:` line, and the renderers fall back to `tree or \"\"`), so behavior is unaffected. The prose claims a guarantee the schema no longer gives.",
+        "fix": [
+          "Add a `model_validator` on `ActionPlan` that requires `frozen.commit` and `frozen.tree` when `ledger` is None and `frozen` is set, so the claim holds at load.",
+          "Or soften the `Frozen` docstring at plan_models.py:152 to \"a legacy stamp written by `plan.py freeze` carries both\" so it describes provenance, not a validated invariant, and regenerate the schema."
+        ]
+      },
+      {
+        "id": "M14",
+        "name": "frozen description still says the stamp is set in the JSON with a commit",
+        "file": "plugins/harness/schemas/ActionPlan.schema.json",
+        "files": [
+          "plugins/harness/schemas/ActionPlan.schema.json",
+          "plugins/harness/lib/harness_lib/plan_models.py"
+        ],
+        "lines": "1003-1014",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "The `frozen` property description (generated from plan_models.py:427-433) still opens with \"Set by `plan.py freeze`: the commit and tree the plan was frozen at and a digest.\" On a ledger plan, `frozen` is never written to the JSON (`dump_plan` pops it, plan_doc.py:207-212), and the stamp has no commit (`_ledger_stamp` passes `commit=None`). The new `ledger` description and the `Frozen` definition both say so, which contradicts this sentence in the same schema.",
+        "fix": [
+          "Reword the `frozen` description in plan_models.py:428 to: \"On a legacy plan, set by `plan.py freeze` in the JSON (commit, tree, digest); on a plan with `ledger`, read from the last ledger `freeze` entry (tree and digest, no commit) and never written.\" Then regenerate with `python tools/gen_plan_schema.py`."
+        ]
+      },
+      {
+        "id": "M15",
+        "name": "Ledger entry `records` and `match` are free strings although their value sets are fixed",
+        "file": "plugins/harness/schemas/FreezeLedgerEntry.schema.json",
+        "files": [
+          "plugins/harness/schemas/FreezeLedgerEntry.schema.json",
+          "plugins/harness/lib/harness_lib/freeze_ledger.py",
+          "plugins/harness/schemas/README.md"
+        ],
+        "lines": "100-111,175-186",
+        "reviewer": "config",
+        "fix_kind": "mechanical",
+        "summary": "In FreezeLedgerEntry.schema.json, `records` (lines 100-111) and `match` (lines 175-186) are plain nullable strings. The schema README fixes their values: `records` is the record scheme (`sealed`/`receipts`, the `RecordScheme` enum that `Frozen.records` uses), and `match` is `patch-id` or `ref`. An entry with `records: \"bogus\"` passes the ledger schema and `_read_entry`, and fails only later when `_ledger_stamp` builds `Frozen`. So a closed, write-once schema accepts entries that hydration rejects.",
+        "fix": [
+          "Type `LedgerEntry.records` as `Optional[RecordScheme]` (dump stays the string value) and `match` as `Optional[Literal[\"patch-id\", \"ref\"]]` in freeze_ledger.py:80,86, then regenerate the schema with `schema_text()`."
+        ]
+      },
+      {
+        "id": "M16",
+        "name": "schemas README says a strap spec is Locked when its highest entry is a lock; a relink after the lock keeps it Locked",
+        "file": "plugins/harness/schemas/README.md",
+        "files": [
+          "plugins/harness/schemas/README.md",
+          "plugins/harness/lib/harness_lib/strap_lock.py"
+        ],
+        "lines": "150",
+        "reviewer": "docs, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "schemas/README.md:150 (State) says a strap spec 'reads only Locked from the ledger (the highest entry of its current round is a lock)'. Since EX4, strap_lock.is_locked (strap_lock.py:95-99) reads fl.state() over the current round, so a relink after the lock leaves the spec Locked although the highest entry is the relink; its own docstring says 'a lock that only a relink may follow'. The strap_lock.py module docstring (lines 5-6) still has the old 'highest entry ... is a lock' wording.\n\nAlso (system_shape): schemas/README.md:150 and the strap_lock module docstring (strap_lock.py:4-6) define a Locked spec as 'the highest entry of its current round is a `lock`'. The design spec says the same (freeze-tags-design.md:159-160). strap_lock.is_locked (strap_lock.py:95-99) reads freeze_ledger.state over the current round. That state ignores `relink` and `reopen`, so a spec with a `relink` after its `lock` stays Locked. That is the intended behavior per DesignEvolution EX4 ('is_locked reads state() over the current round'), and the is_locked docstring itself says 'a lock that only a relink may follow'. The README and the module docstring describe the pre-EX4 rule.",
+        "fix": [
+          "Reword schemas/README.md:150 to '(the state of its current round's entries is Locked: a lock, optionally followed by relink entries)' and fix strap_lock.py:5-6 the same way.",
+          "Reword schemas/README.md:150 and strap_lock.py:4-6 to 'the last `freeze` or `lock` entry of its current round is a `lock` (a later `relink` keeps it Locked)'."
+        ]
+      },
+      {
+        "id": "M17",
+        "name": "plan.py docstring: freeze paragraph left unwrapped, lock paragraph reads inverted",
+        "file": "plugins/harness/scripts/plan.py",
+        "files": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/lib/harness_lib/plan_api.py"
+        ],
+        "lines": "63,118-121",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "plan.py:63 runs to about 180 columns: the inserted 'The status line names the entry and its tree.' was spliced onto the existing sentence without a reflow. plan_api.py:14 also passes 110 columns, and E501 is on locally. The lock paragraph at plan.py:118-121 says it 'Refuses a plan with an in-file stamp ..., unless the plan is Frozen with a ledger, its freeze digest holds, ...'. That reads as if those conditions were an exception to the in-file-stamp refusal, when the code (lock_problems plus digest_problems) refuses unless all of them hold.\n\nAlso (roast): plan.py:63 (183 columns, the freeze paragraph) and plan_api.py:14 (122 columns) break the local ruff E501 setting. CI ignores E501, so only local lint flags them.",
+        "fix": [
+          "Reflow plan.py lines 59-66 and plan_api.py lines 9-15 to 110 columns. Reword the lock paragraph as 'Refuses unless the plan has a ledger (an in-file stamp migrates on freeze --refreeze first), its freeze digest holds, ...'.",
+          "Rewrap plugins/harness/scripts/plan.py:63 and plugins/harness/lib/harness_lib/plan_api.py:14 to at most 110 columns."
+        ]
+      },
+      {
+        "id": "M18",
+        "name": "Scenario marker is an untracked file the runner sees, not an ignored one",
+        "file": "plugins/harness/scripts/strap.py",
+        "files": [
+          "plugins/harness/scripts/strap.py",
+          "docs/superpowers/specs/2026-11-11-freeze-tags-design.md"
+        ],
+        "lines": "563-567",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "The design (Reconcile, Scenario trees) calls for an ignored marker file. _mark_scenario writes .harness-scenario-tree at the tree root but never ignores it (no .git/info/exclude entry, no ignore rule), so git status in every scenario and red tree shows '?? .harness-scenario-tree'. changed_paths filters it out of the recorded diff, but the scenario runner, the agent under test, still sees a stray untracked file in a tree meant to look realistic, and a 'git add -A; git commit' by the runner commits it. That contradicts the docstring's 'never committed'.",
+        "fix": [
+          "After writing the marker, also exclude it in the tree: append '/.harness-scenario-tree' to the worktree's info/exclude (git rev-parse --git-path info/exclude inside the tree), or name it in a global exclude the driver controls. Then the runner's git status stays clean and the changed_paths filter becomes a safety net.",
+          "Or correct the docstring and the design text to say the marker is untracked and filtered, if the visibility is accepted."
+        ]
+      },
+      {
+        "id": "M19",
+        "name": "Plugin README hard-codes docs/plans and this repo's .gitignore",
+        "file": "plugins/harness/skills/strap-skills/README.md",
+        "lines": "15,49,55,62,68-69",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "The new plugins/harness/skills/strap-skills/README.md ships with the plugin but writes 'docs/plans/strap/<name>/SkillSpec.json', 'docs/plans/strap/<name>/fixtures/<fixture>/' and 'docs/plans/freezes/skill/memo-guard/'. It also says 'the repo .gitignore re-includes docs/plans/strap/*/fixtures/**/*.py', which is true only of operator-straps. A consuming project reads these paths from artifacts.plans, and its .gitignore may differ. SKILL.md uses <artifacts.plans>, and CLAUDE.md's 'Plugins stay generic' rule asks for the configured name.",
+        "fix": [
+          "Replace docs/plans with <artifacts.plans> in the README, and phrase the .gitignore note as a requirement on the consuming project (fixture .py files must be tracked, so re-include them if a broader rule ignores them)."
+        ]
+      },
+      {
+        "id": "M20",
+        "name": "Lock-guard scope stated as whole folders; the guard denies only the files the lock entry lists",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "docs/RELEASES/v1.0.0.md",
+          "plugins/harness/hooks/guard_locked.py",
+          "plugins/harness/lib/harness_lib/freeze_ledger.py"
+        ],
+        "lines": "75-77",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "strap-skills SKILL.md:75-77 says on a Locked spec the hook denies writes onto 'SkillSpec.json, the spec folder's tests/ and fixtures/, and every file under freezes/'; write-plan SKILL.md:164-166 says the plan JSON and 'its planned tests'; v1.0.0.md:79-81 repeats both. guard_locked denies only the paths in the last lock entry's files and ignored maps (freeze_ledger.locked_files, freeze_ledger.py:187-199; guard_locked._subject_locked), so a new file created in tests/ or fixtures/ after the lock passes; check reports no drift for it either (drift compares held entries only). Separately, 'every file under freezes/' is denied whether or not the spec is Locked (guard_locked._verdict), not 'on a Locked spec'. schemas/README.md:154 states the file-list rule correctly.\n\nAlso (skill_package): strap-skills SKILL.md:75-77 says that on a Locked spec a hook 'also denies' writes onto SkillSpec.json, the spec folder's tests/ and fixtures/, 'and every file under freezes/'. write-plan SKILL.md:164-167 likewise says that 'from then on' (after lock) the hook denies writes to the plan JSON, its planned tests 'and every file under freezes/'. The code does not match on two counts. (a) guard_locked._verdict (plugins/harness/hooks/guard_locked.py:265-268) denies every path under <plans>/freezes/ unconditionally, for Frozen and open subjects too, not only once a spec or plan is Locked. (b) Other paths are denied only when they appear in the last lock entry (freeze_ledger.locked_files, freeze_ledger.py:187-199, files plus ignored keys). A new file created under a Locked spec's tests/ or fixtures/ is neither denied nor reported as drift (strap_lock._drift_lines only walks held.files). A session that reads the skill text expects a freezes/ write on a Frozen spec to go through, and expects any write into the whole tests/ or fixtures/ folder to be blocked.",
+        "fix": [
+          "Say 'the files the lock recorded in SkillSpec.json's folder (SkillSpec.json and the tests/ and fixtures/ files present at lock)' and move 'every file under freezes/' out of the Locked-only sentence ('and, always, every file under freezes/'); same for the planned tests in write-plan SKILL.md:166 and v1.0.0.md:79-81.",
+          "Or widen guard_locked to deny any path under a Locked subject's tests/ and fixtures/ folders, so the prose holds as written.",
+          "strap-skills SKILL.md:75-77: say that a hook denies every file under freezes/ at all times, and on a Locked spec also the SkillSpec.json and the tests/ and fixtures/ files the lock recorded. Make the same split in write-plan SKILL.md:164-167 (freezes/ always; the plan JSON and the planned test files the lock recorded once Locked). Both SKILL.md files are frozen parts, so refreeze strap-skills and write-plan afterwards (greens on the new hash, then freeze --refreeze).",
+          "Alternatively widen guard_locked so that, on a Locked subject, a new path under the spec's tests/ or fixtures/ folder (or the plan's <id>/tests/) is denied as well, and keep the prose as written apart from the freezes/ timing."
+        ]
+      },
+      {
+        "id": "M21",
+        "name": "SKILL.md says contract tests and .py fixtures are usually gitignored; the PR's own ledger and README track them",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/skills/strap-skills/README.md",
+          "docs/plans/freezes/skill/strap-skills/r3.2-freeze.json"
+        ],
+        "lines": "248-250",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "strap-skills SKILL.md:248-250 says the freeze tree is limited to non-ignored files and that 'planned tests, contract tests and `.py` fixtures are usually ignored and enter the entry by sha256 only'. The PR's own strap-skills freeze entry docs/plans/freezes/skill/strap-skills/r3.2-freeze.json:7-29 lists the contract tests (tests/skills/test_strap_skills_*_contract.py) and the fixture contract tests (.../fixtures/*/tests/skills/test_memo_guard_skill_contract.py) under `files`, and lists only the planned test under `ignored`. The skill's README (plugins/harness/skills/strap-skills/README.md:68) states that fixture .py files are tracked because .gitignore:243 now re-includes them. Contract tests sit under tests/, which nothing ignores. Within the same skill package, the SKILL.md claim contradicts both its README and its own ledger.",
+        "fix": [
+          "Reword strap-skills SKILL.md:249-250 to: 'planned tests are usually ignored (and `.py` fixtures, unless the project re-includes them, as this repository does) and enter the entry by sha256 only'. Drop 'contract tests'. Refreeze strap-skills afterwards, since SKILL.md is a frozen part."
+        ]
+      },
+      {
+        "id": "M22",
+        "name": "strap SKILL says every strap.py command reconciles; only check and ledger writers do",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/scripts/strap.py",
+          "plugins/harness/lib/harness_lib/strap_lock.py",
+          "docs/superpowers/specs/2026-11-11-freeze-tags-design.md"
+        ],
+        "lines": "263-266",
+        "reviewer": "docs, overall, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "strap-skills SKILL.md:264 says 'Every strap.py command reconciles the ledger by tagging the commit that added each committed entry file'. In strap.py only check (sl.check_lines, strap_lock.py:522) and the commands that go through sl.commit (freeze, reopen, lock, relink; strap_lock.py:359-369) reconcile; red, draw, run, record-run, scaffold, retest and api never call sl.reconcile. plan.py does reconcile on every plan-loading command, so the parallel sentence in write-plan SKILL.md:150 holds. The design spec (Reconcile section, 'Every plan.py and strap.py command reconciles') shares the strap SKILL's claim, so the gap is code vs design as well as doc vs code.\n\nAlso (overall): SKILL.md step 12 says 'Every strap.py command reconciles the ledger by tagging the commit that added each committed entry file', and the design (Reconcile) asks for the same. In strap.py only check (sl.check_lines), new --edit, freeze, reopen, lock and relink (sl.commit) reconcile. red, draw, run, init, record-run, judge-row, scaffold, retest and api never call strap_lock.reconcile, so a committed freeze entry gets its -commit tag only at the next check or ledger write. plan.py does reconcile on every command that loads a plan, so the two drivers also behave differently.\n\nAlso (system_shape): strap-skills SKILL.md:264-266 says 'Every `strap.py` command reconciles the ledger by tagging the commit that added each committed entry file, and `check` does too'. The design says the same (freeze-tags-design.md:254). In strap.py, reconcile runs only through `sl.check_lines` (strap.py:414) and `sl.commit` (new --edit, freeze, reopen, lock, relink: strap.py:341,949,988,1025,1043). `red`, `draw`, `run`, `record-run`, `retest`, `scaffold`, `init`, `judge-row` and `api` never reconcile. plan.py does reconcile on every plan-loading command (render, red, record, lanes and verify at plan.py:374,407,877,911,980), so the two drivers differ while the docs describe them the same way.",
+        "fix": [
+          "Narrow strap-skills SKILL.md:264 to 'check and every command that writes a ledger entry (freeze, reopen, lock, relink) reconcile the ledger ...'.",
+          "Or make strap.py reconcile on every command that loads a spec (for example in load()), matching the design and plan.py.",
+          "Call sl.reconcile(root, name) (printing its tag:/push:/warn: lines after the status line) from the strap.py commands that load a spec, e.g. in a shared post-command step of main().",
+          "Or narrow the SKILL.md sentence and the strap.py module docstring to the commands that reconcile (check and the ledger writers).",
+          "Reword strap-skills SKILL.md:264-266 to 'Every ledger-writing `strap.py` command (new --edit, freeze, reopen, lock, relink) reconciles the ledger, and `check` does too'.",
+          "Or make strap.py match plan.py: print `sl.reconcile` lines after the status line of every command that loads a spec."
+        ]
+      },
+      {
+        "id": "M23",
+        "name": "Hand-off push line cannot name -commit tags; they exist only after the commit and a later reconcile",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ],
+        "lines": "325-327",
+        "reviewer": "skill_package",
+        "fix_kind": "judgment",
+        "summary": "strap-skills SKILL.md:325-327 (step 13) hands the developer 'the `push:` line the freeze printed', then 'the developer commits and pushes'. write-plan SKILL.md:146-147 likewise says that the developer runs the push line. The `freeze/<stem>/r<N>.<k>-commit` tag goes on the commit that added the entry file, which exists only after the developer commits. That tag is created only when a later strap.py or plan.py command reconciles (strap SKILL.md:264-266; strap_lock.reconcile), so the freeze's push line never names it. Neither skill tells the session to run `check` after the developer's commit, or tells the developer that the commit tag arrives with the next command's `push:` line. In practice the commit tags stay local until some later command happens to run, and `check` then reports them as `untagged:` only in the session that runs it.",
+        "fix": [
+          "strap-skills SKILL.md step 13 and write-plan SKILL.md step 8 (ledger paragraph) or step 10: add one sentence saying that after the developer commits the freeze, `check` creates the -commit tags and prints their `push:` line, or that they travel with `git push --follow-tags` once created. Refreeze both skills afterwards.",
+          "Alternatively state in both skills that commit tags are created lazily, on the next command after the commit, and are pushed with `--follow-tags`; no extra step is needed."
+        ]
+      },
+      {
+        "id": "M24",
+        "name": "strap-skills Related section omits the lock and ledger modules that write-plan lists",
+        "file": "plugins/harness/skills/strap-skills/SKILL.md",
+        "files": [
+          "plugins/harness/skills/strap-skills/SKILL.md",
+          "plugins/harness/skills/strap-skills/README.md"
+        ],
+        "lines": "386-391",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "write-plan SKILL.md:321-324 adds the ledger, lock and relink modules and the FreezeLedgerEntry schema to its Related list. strap-skills SKILL.md:386-391 gains the same ledger, lock and relink procedure in this PR (step 12) but lists only strap.py, the agents, the templates and skill_arguments.md. Its lock logic lives in plugins/harness/lib/harness_lib/strap_lock.py and freeze_ledger.py, and its entry shape in plugins/harness/schemas/FreezeLedgerEntry.schema.json. The README's Related list (README.md:81-86) has the same gap.",
+        "fix": [
+          "Add to strap-skills SKILL.md Related: '`${CLAUDE_PLUGIN_ROOT}/lib/harness_lib/strap_lock.py` and `freeze_ledger.py`: the ledger, the tags and the lock, reopen and relink steps' and '`${CLAUDE_PLUGIN_ROOT}/schemas/FreezeLedgerEntry.schema.json`: the shape of a ledger entry file'. Refreeze strap-skills afterwards."
+        ]
+      },
+      {
+        "id": "M25",
+        "name": "write-plan lists the owned fields `write` refuses to change but omits `ledger`",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/plan_api.py"
+        ],
+        "lines": "62-64",
+        "reviewer": "skill_package, system_shape",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "write-plan SKILL.md:62-64 says that `write` refuses 'a changed `base_commit` or `frozen`'. The ledger section (line 127-128) adds a static `ledger` field to the plan JSON, and plan_api._OWNERS (plugins/harness/lib/harness_lib/plan_api.py:42) refuses a changed `ledger` too, with 'plan.py freeze owns it'. Its module docstring (plan_api.py:11) also names `plan_id`. The skill's refusal list predates the ledger and leaves out the field the ledger introduced.\n\nAlso (system_shape): plan_api.write now refuses a changed `ledger` (plan_api._OWNERS, plan_api.py:42, and the module docstring at plan_api.py:10-12). write-plan SKILL.md:62-63 still lists only 'a changed `base_commit` or `frozen`'.",
+        "fix": [
+          "write-plan SKILL.md:63: change 'a changed `base_commit` or `frozen`' to 'a changed `base_commit`, `frozen` or `ledger`'. Refreeze write-plan afterwards, since SKILL.md is a frozen part.",
+          "At write-plan SKILL.md:63 change 'a changed `base_commit` or `frozen`' to 'a changed `base_commit`, `frozen` or `ledger`'."
+        ]
+      },
+      {
+        "id": "M26",
+        "name": "write-plan says nothing but a design change writes a receipts plan after its freeze; relink now re-points base_commit",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "lines": "94-96",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "write-plan SKILL.md:94-96 says: 'Nothing writes a receipts plan after its freeze but a design change (a `write` followed by `freeze --refreeze`)'. The new Relink paragraph in the same step (lines 179-184) says that `PLAN relink` 're-points `base_commit`' in the plan JSON and re-records the plan JSON's new blob in a `relink` entry. A legacy plan's migration refreeze also rewrites the JSON (it drops `frozen` and adds `ledger`). The step therefore contradicts itself about who writes a frozen plan.",
+        "fix": [
+          "write-plan SKILL.md:94-95: extend the sentence to '... but a design change (a `write` followed by `freeze --refreeze`) and a `relink` (step 8, Relink), which re-points `base_commit` only'. Refreeze write-plan afterwards."
+        ]
+      },
+      {
+        "id": "M27",
+        "name": "Relinked base tag documented as 'the m-th relinked base' but the first relink is -2",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/skills/strap-skills/SKILL.md"
+        ],
+        "lines": "141,183",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "write-plan SKILL.md:141 says base/<stem>/r1-<m> is 'the m-th relinked base', and strap-skills SKILL.md:256 says 'base/<stem>/r<N>-<m> is the m-th relinked base'. relink computes m = max(existing m, relinks + 1) + 1 with the plain base tag counting as 1 (plan_lock.py:507, strap_lock.py:252, freeze_git.base_tag 'm from 2'), so the first relink tags r1-2; tests/scripts/test_plan_lock.py:338 and test_strap_lock.py:327 pin -2. A reader looking for the first relinked base under r1-1 finds nothing. The design spec says '(m from 2)'; the skills dropped that qualifier.",
+        "fix": [
+          "Change both skill lines to 'the m-th base of the round (the original is m 1, so the first relink tags r1-2)', or append '(m from 2)' as the design spec does; same at write-plan SKILL.md:183 and strap-skills SKILL.md:323 if desired."
+        ]
+      },
+      {
+        "id": "M28",
+        "name": "write-plan SKILL.md says commands reconcile first; the code reconciles after, on success only",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/scripts/plan.py"
+        ],
+        "lines": "150",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md says 'Every PLAN command reconciles the ledger first'. In plan.py, reconcile_lines / commit_tags run after each command's own work, and a command that raises a problem never reaches them: check with a problem, or freeze refused.",
+        "fix": [
+          "Change the sentence to say each PLAN command reconciles the ledger after its work, when it succeeds."
+        ]
+      },
+      {
+        "id": "M29",
+        "name": "'Hand edits stay denied throughout' is false once a plan is unlocked",
+        "file": "plugins/harness/skills/write-plan/SKILL.md",
+        "files": [
+          "plugins/harness/skills/write-plan/SKILL.md",
+          "plugins/harness/lib/harness_lib/freeze_ledger.py",
+          "plugins/harness/hooks/guard_locked.py",
+          "docs/superpowers/specs/2026-11-11-freeze-tags-design.md"
+        ],
+        "lines": "177",
+        "reviewer": "system_shape",
+        "fix_kind": "mechanical",
+        "summary": "write-plan SKILL.md:177 ends the Unlock paragraph with 'Hand edits stay denied throughout.' After `unlock`, freeze_ledger.state returns `unlocked`. freeze_ledger.locked_files (freeze_ledger.py:193-194) then returns [], so guard_locked (guard_locked.py:262-274) stops denying the plan JSON and its planned tests. Only `freezes/` stays denied. A design change after an unlock often needs a planned test edited by hand (step 4 writes them as real files). Read literally, the sentence tells the session that this edit is blocked.",
+        "fix": [
+          "Replace the sentence at write-plan SKILL.md:177 with: 'Ledger files under `freezes/` stay denied throughout; after `unlock` the guard releases the plan JSON and its planned tests, and the plan JSON still changes only through `plan_api.write`.'"
+        ]
+      },
+      {
+        "id": "M30",
+        "name": "Red-phase prose and scaffolding left in the new test modules",
+        "file": "tests/hooks/test_guard_locked.py",
+        "files": [
+          "tests/hooks/test_guard_locked.py",
+          "tests/lib/test_freeze_git.py",
+          "tests/lib/test_freeze_ledger.py",
+          "tests/lib/test_plan_ledger_state.py",
+          "tests/scripts/test_plan_lock.py",
+          "tests/scripts/test_strap_lock.py"
+        ],
+        "lines": "9-10,48-51",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "Six new modules still describe the pre-implementation state, for example 'fails with ImportError until it exists', 'before the work the behavior tests fail with ImportError' and 'the registration test fails on its asserts'. They also keep the per-test in-body imports of harness_lib.freeze_ledger and freeze_git, and the GUARD.is_file() ImportError shim in _load, which exist only for that red run. The modules exist now, so the prose is stale. No other test in tests/ carries such text.",
+        "fix": [
+          "Drop the red-phase sentences from the module docstrings: test_guard_locked.py:9-10, test_freeze_git.py:10-11, test_freeze_ledger.py:4-5, test_plan_ledger_state.py:13-14, test_plan_lock.py:11-12, test_strap_lock.py:12-13.",
+          "Optionally hoist the freeze_ledger and freeze_git imports to module level and remove the is_file() ImportError shim in test_guard_locked._load."
+        ]
+      },
+      {
+        "id": "M31",
+        "name": "OS-dependent guard test is not marked cross_os",
+        "file": "tests/hooks/test_guard_locked.py",
+        "lines": "174-189,223-238",
+        "reviewer": "overall",
+        "fix_kind": "mechanical",
+        "summary": "guard_locked compares paths with os.path.normcase and lowercases keys on Windows (_under, _key), and test_write_to_locked_plan_json_is_denied exercises backslash and drive-style targets. CLAUDE.md requires a cross_os mark on any test that depends on the OS, because Windows CI runs only cross_os tests. Unmarked, the Windows branch of the guard (case folding, drive letters) never runs in CI.",
+        "fix": [
+          "Mark test_write_to_locked_plan_json_is_denied (and test_bash_and_powershell_writes_matched, which uses absolute paths) with @pytest.mark.cross_os."
+        ]
+      },
+      {
+        "id": "M32",
+        "name": "Dispatcher composition is checked by import regex only",
+        "file": "tests/hooks/test_guard_locked.py",
+        "files": [
+          "tests/hooks/test_guard_locked.py",
+          "plugins/harness/hooks/write_pretool.py",
+          "plugins/harness/hooks/powershell_pretool.py"
+        ],
+        "lines": "280-290",
+        "reviewer": "overall",
+        "fix_kind": "judgment",
+        "summary": "test_dispatchers_registered_and_compose_guard_locked only checks that each dispatcher's text matches 'import guard_locked'. Dropping _locked from HOOK_ORDER in write_pretool.py or powershell_pretool.py, or putting it after the allow hook, keeps the import and passes the test. Yet deny-before-allow ordering is the reason the guard sits in these dispatchers (powershell_allow_shapes emits allow). No test calls write_pretool.decide or powershell_pretool.decide on a Locked path.",
+        "fix": [
+          "Add behavioral cases: build the _project fixture, then assert write_pretool.decide(_write(root, LOCKED_PLAN)) and powershell_pretool.decide on an allowlisted PowerShell pipeline that ends in Set-Content onto LOCKED_PLAN both return a deny."
+        ]
+      },
+      {
+        "id": "M33",
+        "name": "Test name says the freeze records HEAD; the body asserts it records no commit",
+        "file": "tests/scripts/test_plan_driver.py",
+        "lines": "178-192",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "test_freeze_records_head_and_renders now asserts frozen.commit is None and that frozen.tree differs from HEAD's tree. Its new docstring says the same: no commit, a scoped tree. The name still claims the opposite.",
+        "fix": [
+          "Rename to test_freeze_records_the_scoped_tree_and_renders (or similar)."
+        ]
+      },
+      {
+        "id": "M34",
+        "name": "test_reopen_releases_the_lock_guard is off-topic for its module and does not exercise the guard",
+        "file": "tests/scripts/test_strap_relink_lock.py",
+        "files": [
+          "tests/scripts/test_strap_relink_lock.py",
+          "tests/scripts/test_strap_lock.py"
+        ],
+        "lines": "1-5,44-50",
+        "reviewer": "tests",
+        "fix_kind": "mechanical",
+        "summary": "The module docstring covers only relink keeping a lock. This test checks that reopen empties freeze_ledger.locked_files: it neither relinks nor calls guard_locked. Its name says 'lock guard'.",
+        "fix": [
+          "Move it to tests/scripts/test_strap_lock.py and rename it, for example test_reopen_empties_the_locked_files.",
+          "Or extend the module docstring to cover reopen and rename the test to name locked_files."
+        ]
+      },
+      {
+        "id": "M35",
+        "name": "Test modules import other test modules instead of a _-prefixed helper",
+        "file": "tests/scripts/test_strap_relink_lock.py",
+        "files": [
+          "tests/scripts/test_strap_relink_lock.py",
+          "tests/scripts/test_plan_relink_lock.py"
+        ],
+        "lines": "15-21",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_plan_relink_lock.py imports helpers from test_plan_lock, and test_strap_relink_lock.py imports test_strap_lock and re-exports its fixtures. These are the only two test-to-test imports in tests/. The repo's convention is _-prefixed helper modules such as _plan_driver_helpers.py. Under --import-mode=importlib, pytest collects test_plan_lock.py under its own module name, and the bare `import test_plan_lock` loads a second copy of it. Any future module-level state, or a test_* name pulled in by a wider import, would then be duplicated.",
+        "fix": [
+          "Move the shared helpers (fill, commit_all, entries, advance_main, rewrite_base, tag_target, prefixed, plan_rel, STEM) into tests/scripts/_plan_lock_helpers.py. Move the strap fixtures and helpers into tests/scripts/_strap_lock_helpers.py. Import both from the test modules."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [
+    {
+      "id": "M6",
+      "classification": "out_of_scope",
+      "reason": "Template option needs strap_scaffold.py (_project_sections fills the API-conditional slots); fixture option needs spec-frozen's stamp, r1.1 entry and a strap-skills refreeze"
+    }
+  ],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 271 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":21,\"first_sha\":\"5beb6e08512ac6c33061b0c65b7a0e32dfaf3290\",\"headRefName\":\"1151-commit-tagging\",\"headRefOid\":\"1b00d8db9370fdea27777122824a8f3d7d836dba\",\"last_sha\":\"1b00d8db9370fdea27777122824a8f3d7d836dba\",\"mergeCommit\":null,\"number\":271,\"state\":\"OPEN\",\"title\":\"commit tagging\",\"url\":\"https://github.com/t968rs/operator-straps/pull/271\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1151-commit-tagging",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1151-commit-tagging",
+        "head_ref_name": "1151-commit-tagging",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": " M docs/_harness/agent_usage.jsonl",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "5beb6e08512ac6c33061b0c65b7a0e32dfaf3290",
+        "head_sha": "1b00d8db9370fdea27777122824a8f3d7d836dba",
+        "base_ancestor_command": "git merge-base --is-ancestor 5beb6e08512ac6c33061b0c65b7a0e32dfaf3290 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor 1b00d8db9370fdea27777122824a8f3d7d836dba HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "gh pr view <PR> --json baseRefName --jq .baseRefName",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M9",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - plan_doc._ledger_stamp now builds the stamp through pm.Frozen.at (commit typed Optional[str]), removing the duplicate records-only-when-set construction; the Frozen docstring now states both commit and tree are optional for every stamp (optional legacy validator not added)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - plan_lock.stem_slug lower-cases and turns each run outside [a-z0-9] into one hyphen, so every built stem fits the ledger pattern; test_a_hand_named_plan_file_freezes_to_a_loadable_ledger freezes 0001_v1.2_fix_ActionPlan.json; ActionPlan.schema.json, plan_models.py and rules_plans.py: the ledger pattern stays as is, since built stems now always match it"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - write-plan README: Freeze row and Freezing paragraph describe the ledger entry, tree tag and ledger field (no commit); Lock, Unlock (--arm then plain) and Relink rows and a Locked/Unlock/Relink paragraph added; commit sequence commits the freezes/plan entry and locks after the freeze commit; Tags paragraph lists the driver tags, push: line, local receipt tags and git describe --match 'v*'; SKILL.md, plan_lock.py, plan_doc.py: cited as the source of the behavior, no edit for this issue"
+    },
+    {
+      "id": "C1",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - plan_lock.base_tags (with repo) and strap_lock.freeze_pending request the round base tag only when no base/<stem>/r<N> or r<N>-<m> tag already peels to the current base (new base_held/_base_held), so a relinked subject freezes again and r<N> is never re-targeted; driver tests: relink then freeze --refreeze (Frozen plan, plan after unlock --arm/unlock, never-frozen plan) and strap spec relinked then frozen in the same round, each expecting no new base tag; plan.py, strap.py: callers unchanged (plan.py new keeps base_tags without repo)"
+    },
+    {
+      "id": "M2",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Part needs no edit: tests/contract/test_hooks_json_paths.py COMPOSED already lists bash_pretool (four hooks, guard_locked first), write_pretool and powershell_pretool; the CLAUDE.md wording is the other part's fix; CLAUDE.md Hooks rule now names all three dispatchers and their composed hooks: bash_pretool.py (guard_locked.py plus the three Bash hooks), write_pretool.py (guard_locked.py, guard_commit_txt.py), powershell_pretool.py (guard_locked.py, powershell_allow_shapes.py); bash_pretool.py docstring and HOOK_ORDER already name guard_locked first and four hooks; the CLAUDE.md:47-48 parenthetical is edited by the other part (test_hooks_json_paths.py and CLAUDE.md fixer), so no edit here"
+    },
+    {
+      "id": "M8",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - guard_locked: decide() and _verdict() compare the plans and freezes prefixes through _key (OS case rule); repo_rel maps Git Bash /<letter>/ and /cygdrive/<letter>/ to <letter>:/ on Windows via _native; docstring updated; added cross_os Windows-only test for Docs/Plans case and /c/ and /cygdrive/c/ paths"
+    },
+    {
+      "id": "M29",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Part needs no edit: guard_locked.py already releases an unlocked plan (locked_paths via freeze_ledger.locked_files) and keeps freezes/ denied; only the write-plan SKILL.md sentence (other part) was wrong; freeze-tags-design.md: frozen spec (176-177 holds the same sentence as design intent), not edited; the corrected wording lives in write-plan SKILL.md, the other part; freeze_ledger.py needs no edit: locked_files already returns [] once unlocked, which is the behavior the reworded write-plan SKILL.md sentence (other part) describes; Unlock paragraph replaces 'Hand edits stay denied throughout' with the freezes/ denial and the guard release after unlock, plan JSON changes only through plan_api.write"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - guard_locked: removals and move sources are targets: Bash rm/unlink operands, mv sources, git rm (not --cached) and both sides of git mv; PowerShell Remove-Item and aliases (ri, rm, del, erase, rd, rmdir) and the Move-Item source; the freezes/ folder itself counts as ledger; docstring and deny reason updated, folder-above-freezes limit documented; tests cover each shape on a ledger entry, a Locked plan JSON and a planned test, plus negatives"
+    },
+    {
+      "id": "I5",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - test_guard_locked: import-regex registration check replaced by behavioral tests that load write_pretool, bash_pretool and powershell_pretool by path and assert the lock deny, with bash and PowerShell cases where the allow-shapes hook alone allows the same command and a control that allows outside the plans folder; hooks.json matcher asserts kept; module docstring now states the sealed/no-scheme plan JSON exception; cited files need no edit (contract test already pins imports, bash_pretool test covers the merge corpus, guard behavior unchanged for this issue)"
+    },
+    {
+      "id": "M5",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Added CX1 to plan 1015 DesignEvolution through evolution_api.add (post-exec-start): the ^plan-[0-9]{4}$ skill-name refusal is moot under the plan/ and skill/ tag stems and was not built; ActionPlan.json and PIP.html: frozen plan and its generated page, the values row stays as history and the catalog records the drop"
+    },
+    {
+      "id": "M7",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Added CX2 to plan 1015 DesignEvolution through evolution_api.add (post-exec-start, item SKL-1): strap fixture .py files are tracked through the .gitignore:242-243 re-include and enter freeze entries' files, not ignored; spec: frozen, the plan record carries the change; .gitignore: cited source of the re-include, behavior intended; r3.2-freeze.json: ledger entry already reflects the tracked fixtures and is guard-denied"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - r3.2-freeze.json: cited ledger entry whose files/ignored split is the correct evidence; the SKILL.md wording fix and the strap-skills refreeze belong to the other part, ledger files are written only by strap.py and are guard-denied; strap-skills SKILL.md:248-250 now says planned tests are usually ignored and .py fixtures are tracked only where the project re-includes them; contract tests dropped from the sentence.; README part needs no edit: its Fixtures section already says fixture .py files are tracked (now worded as a project requirement under M19), which matches the ledger; the contradiction sits in SKILL.md, owned by the other part"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - agent-permissions SKILL.md: table gains a Registered dispatcher column (bash_pretool.py, powershell_pretool.py, write_pretool.py) and guard_locked.py as the first deny hook in each row, new lock-guard paragraph, dispatcher paragraph generalized, pipe-test step names all three dispatchers, Files hook list adds guard_locked/write_pretool/powershell_pretool; CLAUDE.md:48 updated with the M2 edit (guard_locked plus the three Bash hooks); hooks.json: cited, wiring already registers the three dispatchers"
+    },
+    {
+      "id": "M15",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Value sets are fixed in the schema and model (other part). schemas/README.md:148 already documents match as patch-id or ref and the record scheme for records, so no README edit.; LedgerEntry.records typed Optional[RecordScheme] (imported from plan_enums; dump stays the string value) and match typed Optional[Literal['patch-id', 'ref']]; all 10 ledger entries in the repo still validate; schema_text() now emits a RecordScheme $def and an enum for match, for the schema part's fixer to regenerate FreezeLedgerEntry.schema.json; Regenerated FreezeLedgerEntry.schema.json with schema_text(): records is a $ref to the RecordScheme enum in $defs, match is an enum of patch-id and ref; freeze_ledger.py already types the fields (other part)"
+    },
+    {
+      "id": "M16",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - schemas/README.md:150 State now reads the state of the current round's entries as Locked: a lock, optionally followed by relink entries, matching strap_lock.is_locked and fl.state.; strap_lock module docstring now says Locked is the state of the current round's entries: a lock optionally followed by relink entries"
+    },
+    {
+      "id": "M24",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - strap-skills SKILL.md Related gains strap_lock.py and freeze_ledger.py (ledger, tags, lock, reopen and relink steps) and schemas/FreezeLedgerEntry.schema.json (ledger entry shape).; README Related list gains strap_lock.py and freeze_ledger.py (ledger, tags, lock, reopen and relink steps) and schemas/FreezeLedgerEntry.schema.json (ledger entry shape)"
+    },
+    {
+      "id": "M27",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - strap-skills SKILL.md:256 now says base/<stem>/r<N>-<m> is the m-th base of the round, the original being m 1, so the first relink tags r<N>-2.; base/<stem>/r1-<m> row now reads 'the m-th base of the round (the original is m 1, so the first relink tags r1-2)'"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - README: docs/plans replaced by <artifacts.plans> at the spec, fixture, memo-guard spec and freeze-entry paths; the .gitignore note now states the requirement on the consuming project (fixture .py files must be tracked, re-include <artifacts.plans>/strap/*/fixtures/**/*.py when a broader rule ignores them)"
+    },
+    {
+      "id": "M3",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Renumbered the three feature lines to #271 with (issue #265) on the first; prefixed the two Fix lines with #271"
+    },
+    {
+      "id": "M4",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Marked Decisions rows Freeze identity, Design change after a plan Lock, Tag names, and reviewer rows Q3, Q6, C2 as superseded by the Design review of 5beb6e0 with the final choice"
+    },
+    {
+      "id": "M17",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Rewrapped plan_api.py module docstring lines 4-6 and 14-15 to 110 columns; the plan.py docstring paragraph is the other part; Reflowed the plan.py freeze paragraph to 110 columns and reworded the lock paragraph to 'Refuses unless the plan is Frozen with a ledger (an in-file stamp migrates on freeze --refreeze first), ...'"
+    },
+    {
+      "id": "M25",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - plan_api.py module docstring (lines 10-12) and _OWNERS already refuse a changed ledger; the write-plan SKILL.md:62-64 edit is the other part; SKILL.md write refusal list now reads 'a changed `base_commit`, `frozen` or `ledger`' to match plan_api._OWNERS"
+    },
+    {
+      "id": "M33",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - renamed test_freeze_records_head_and_renders to test_freeze_records_the_scoped_tree_and_renders; body unchanged (asserts no commit and a scoped tree)"
+    },
+    {
+      "id": "M34",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - moved test_reopen_releases_the_lock_guard into tests/scripts/test_strap_lock.py as test_reopen_empties_the_locked_files (after test_reopen_on_locked_spec_writes_reopen_and_tags_base); the relink-file copy is removed by the test_strap_relink_lock.py fixer; Removed test_reopen_releases_the_lock_guard from test_strap_relink_lock.py; it now lives in test_strap_lock.py as test_reopen_empties_the_locked_files (the other part)"
+    },
+    {
+      "id": "M11",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - strap_lock.lock_problems adds _spec_problems: refuses with '<spec>: differs from HEAD; commit the spec first' when SkillSpec.json's HEAD blob differs from its working-tree blob; strap-skills SKILL.md Lock paragraph names the new refusal"
+    },
+    {
+      "id": "M12",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - strap_lock.commit takes restore=(spec path, bytes) and puts the spec bytes back when an entry write raises (LedgerError or OSError), as plan_lock.write_freeze does; cmd_freeze, cmd_reopen and cmd_relink capture the bytes before save (new spec_bytes helper) and pass them, relink also restores when relinked() refuses, and the status line prints only after the entries are written"
+    },
+    {
+      "id": "M18",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - _mark_scenario now appends '/.harness-scenario-tree' once to the info/exclude git reads for the tree (git rev-parse --git-path info/exclude), so the runner's git status stays clean and git add -A skips it; docstring updated; design doc: already calls for an ignored marker (Reconcile, Scenario trees), which the code now matches"
+    },
+    {
+      "id": "M22",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - strap-skills SKILL.md and the strap.py module docstring narrowed to the commands that reconcile (check and the ledger writers new --edit, freeze, reopen, lock, relink); strap_lock.py: reconcile code cited, unchanged; design doc: left as recorded, the narrowed driver docs describe strap.py's behavior"
+    },
+    {
+      "id": "M26",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - freeze step now says a relink also writes a frozen plan after its freeze (re-points base_commit only), alongside a design change"
+    },
+    {
+      "id": "M28",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - ledger reconcile sentence now says each PLAN command reconciles after its work, when it succeeds; plan.py module docstring now says each plan-loading command reconciles its ledger after its own work, when that work succeeds (a refused command never reaches it)"
+    },
+    {
+      "id": "M13",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Frozen docstring already softened in plan_models.py:152 (a legacy stamp was written with both, the model requires neither); regenerated ActionPlan.schema.json so the Frozen description no longer claims a legacy stamp carries both"
+    },
+    {
+      "id": "M14",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Reworded the frozen field description in plan_models.py (legacy: set by freeze in the JSON with commit, tree, digest; ledger: read from the last ledger freeze entry, tree and digest, no commit, never written) and regenerated ActionPlan.schema.json"
+    },
+    {
+      "id": "M30",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Dropped the red-phase ImportError sentences from the six module docstrings; test_guard_locked imports freeze_ledger at module level and _load loses the GUARD.is_file() ImportError shim (spec check is now an assert)"
+    },
+    {
+      "id": "M31",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Marked test_write_to_locked_plan_json_is_denied and test_bash_and_powershell_writes_matched with @pytest.mark.cross_os"
+    },
+    {
+      "id": "M35",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - Moved the shared plan lock helpers (STEM, PLANNED, fill, commit_all, kind_of, ledger_folder, entries, tag_target, plan_rel, prefixed, advance_main, rewrite_base) into tests/scripts/_plan_lock_helpers.py and the strap fixtures and helpers into tests/scripts/_strap_lock_helpers.py; test_plan_lock, test_plan_relink_lock, test_strap_lock and test_strap_relink_lock import from them, so no test module imports another"
+    },
+    {
+      "id": "M20",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - strap-skills SKILL.md, write-plan SKILL.md and v1.0.0.md now say freezes/ files are denied at all times and, once Locked, only the files the lock recorded (SkillSpec.json and tests/ and fixtures/ files present at lock; plan JSON and planned tests present at lock), noting later-added files are neither denied nor drift; strap-skills and write-plan need a refreeze for the SKILL.md change; guard_locked.py and freeze_ledger.py: cited behavior, prose matched to the code, no edit"
+    },
+    {
+      "id": "M23",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - strap-skills step 13 and write-plan ledger paragraph now say the freeze push line cannot name the -commit tag, so after the developer commits the freeze the session runs check, which creates the -commit tag and prints its push: line; both skills need a refreeze for the SKILL.md change"
+    },
+    {
+      "id": "M10",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - strap_lock.LEGACY and tests/scripts/test_strap_lock.py LEGACY now name the ledger writers: next freeze --refreeze, reopen or relink, matching SKILL.md (outside fixer waves)"
+    },
+    {
+      "id": "M32",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (working-tree snapshot; developer commits) - test_guard_locked.py: the import-regex check is replaced by behavioral tests that load write_pretool, bash_pretool and powershell_pretool and assert the lock deny (added with I5) (outside fixer waves)"
+    },
+    {
+      "id": "M6",
+      "status": "RESOLVED",
+      "date": "2026-11-11",
+      "evidence": "1b00d8d (developer-confirmed defer) - fix the strap scaffold template in a follow-up instead of editing the fixtures; TODO todo-6mbt"
+    }
+  ]
+}
