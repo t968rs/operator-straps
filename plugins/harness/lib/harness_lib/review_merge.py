@@ -24,7 +24,7 @@ than its file set, or a mechanical issue planned over more than one file, all pa
 resolves only when its fixers' entries together cover every planned part, each part edited or marked
 ``no_change`` by its fixer (a part's entry may also list the rest of its fixer's file set, never the same
 issue's parts other fixers own); only ids already closed
-(``RESOLVED`` / ``CLOSED_NO_ACTION``, latest status) are skipped. ``remaining_parts`` and ``only_files`` let
+(latest status in ``CLOSED_STATUSES``) are skipped. ``remaining_parts`` and ``only_files`` let
 a follow-up wave re-plan just the unrecorded parts of a partially fixed split issue; given the closeout
 inputs, ``remaining_parts`` counts only the entries closeout accepts, so a rejected entry is re-planned.
 """
@@ -41,7 +41,10 @@ from pathlib import Path
 from typing import (TYPE_CHECKING, Callable, Dict, Iterable, List, Mapping, Optional, Sequence, Set, Tuple,
                     Union)
 
-from harness_lib.review_models import Finding, FixEntry, FixReport, ReviewerReport, Severity, config_for
+from harness_lib.review_models import (AttackFinding, Finding, FixEntry, FixReport, Refutation,
+                                       RefutationReport, RefutationVerdict, ReviewerReport, Severity,
+                                       config_for, finding_key)
+from harness_lib.validation.id_handling import counted_resolutions, latest_statuses, reopened_ids
 
 if TYPE_CHECKING:
     from jsonschema.protocols import Validator
@@ -51,10 +54,10 @@ if TYPE_CHECKING:
 MERGE_WINDOW = 3
 PENDING = "pending - to be populated in Phase 4"
 SCHEMA_NAME = "PR_REVIEW.schema.json"
-SCHEMA_VERSION = "2.2.0"
+SCHEMA_VERSION = "2.3.0"
 EVIDENCE_NOTE = "(working-tree snapshot; developer commits)"
 TIERS = ("critical", "important", "minor")
-CLOSED_STATUSES = ("RESOLVED", "CLOSED_NO_ACTION")
+CLOSED_STATUSES = ("RESOLVED", "CLOSED_NO_ACTION", "REFUTED")
 _LETTER = {"critical": "C", "important": "I", "minor": "M"}
 _TIER_OF = {v: k for k, v in _LETTER.items()}
 # Shared with review_waves: _RANK, _union, _tier, _files and _id_key are imported by the fix-wave planner
@@ -127,7 +130,8 @@ def _files(issue: Mapping[str, object]) -> List[str]:
 
 @dataclass(frozen=True)
 class _Record:
-    """One finding or issue while merging; ``rank`` 0 is critical."""
+    """One finding or issue while merging; ``rank`` 0 is critical. ``attacks`` (a code refuter's attack
+    texts) exist only to fold ``Attack: <text>`` into the issue summary; no schema field holds them."""
 
     rank: int
     name: str
@@ -138,12 +142,15 @@ class _Record:
     ranges: Tuple[Range, ...]
     slots: Tuple[str, ...]
     judgment: bool
+    attacks: Tuple[str, ...] = ()
 
     @classmethod
     def of_finding(cls, slot: str, finding: Finding) -> _Record:
-        """Record for one finding of reviewer ``slot``."""
+        """Record for one finding of reviewer ``slot`` (a code refuter's finding carries its attack)."""
+        attacks = (finding.attack,) if isinstance(finding, AttackFinding) else ()
         return cls(_RANK[finding.severity.value], finding.name, finding.summary, finding.fix, finding.file,
-                   finding.also, line_ranges(finding.lines), (slot,), finding.fix_kind.value == "judgment")
+                   finding.also, line_ranges(finding.lines), (slot,), finding.fix_kind.value == "judgment",
+                   attacks)
 
     @classmethod
     def of_issue(cls, issue: Mapping[str, object]) -> _Record:
@@ -167,7 +174,8 @@ class _Record:
         if len(self.slots) > 1:
             out["both_reviewers"] = True
         out["fix_kind"] = "judgment" if self.judgment else "mechanical"
-        out.update(summary=self.summary, fix=list(self.fix))
+        summary = "\n\n".join([self.summary, *(f"Attack: {a}" for a in self.attacks)])
+        out.update(summary=summary, fix=list(self.fix))
         return out
 
 
@@ -182,16 +190,21 @@ def _summary(records: Sequence[_Record]) -> str:
     return "\n\n".join(parts)
 
 
-def _combine(records: Sequence[_Record]) -> _Record:
-    """One record from ``records``; the first supplies the name and primary file, the best rank wins."""
-    first = records[0]
+def _combine(records: Sequence[_Record], shaped: Optional[int] = None) -> _Record:
+    """One record from ``records``; the first supplies the name and primary file, the best rank wins.
+
+    With ``shaped``, only the first ``shaped`` records (the upheld ones of a mixed group) supply the rank,
+    summary, attacks and fix kind; files, lines, fixes and reviewers union over every record.
+    """
+    first, shape = records[0], records[:shaped or len(records)]
     others = _union(f for r in records for f in (r.file, *r.also))
     fixes = _union(f for r in records for f in r.fix)
     return _Record(
-        min(r.rank for r in records), first.name, _summary(records), fixes,
+        min(r.rank for r in shape), first.name, _summary(shape), fixes,
         first.file, tuple(f for f in others if f != first.file),
         _merge_ranges(rng for r in records if r.file == first.file for rng in r.ranges),
-        _union(s for r in records for s in r.slots), any(r.judgment for r in records),
+        _union(s for r in records for s in r.slots), any(r.judgment for r in shape),
+        _union(a for r in shape for a in r.attacks),
     )
 
 
@@ -217,23 +230,110 @@ def _sort_key(record: _Record) -> Tuple[str, float, str]:
     return record.file, (record.ranges[0][0] if record.ranges else math.inf), record.name
 
 
+def _numbered(records: Sequence[_Record]) -> List[Tuple[str, int]]:
+    """``(issue id, index into records)`` pairs, ids numbered per tier in ``_sort_key`` order, tiers
+    critical first."""
+    out: List[Tuple[str, int]] = []
+    for rank, tier in enumerate(TIERS):
+        tiered = sorted((n for n, r in enumerate(records) if r.rank == rank),
+                        key=lambda n: _sort_key(records[n]))
+        out += [(f"{_LETTER[tier]}{k}", n) for k, n in enumerate(tiered, start=1)]
+    return out
+
+
 def _number(records: Sequence[_Record]) -> List[Issue]:
     """Schema issues with ids numbered per tier in ``_sort_key`` order, tiers critical first."""
-    out: List[Issue] = []
-    for rank, tier in enumerate(TIERS):
-        tiered = sorted((r for r in records if r.rank == rank), key=_sort_key)
-        out += [r.issue(f"{_LETTER[tier]}{n}") for n, r in enumerate(tiered, start=1)]
-    return out
+    return [records[n].issue(issue_id) for issue_id, n in _numbered(records)]
+
+
+Member = Tuple[str, Finding]
+Trace = Dict[str, List[Tuple[str, str]]]
+
+
+def _member_groups(reports: Sequence[ReviewerReport]) -> List[List[Member]]:
+    """``(slot, finding)`` members of every report, grouped by ``_groups``."""
+    items = [(report.reviewer, finding) for report in reports for finding in report.findings]
+    return [[items[i] for i in group] for group in _groups([finding for _, finding in items])]
+
+
+def _by_rank(records: Iterable[_Record]) -> List[_Record]:
+    """``records`` sorted by rank, critical first (stable)."""
+    return sorted(records, key=lambda r: r.rank)
+
+
+def _trace(groups: Sequence[Sequence[Member]], numbered: Sequence[Tuple[str, int]]) -> Trace:
+    """Issue id -> ``(slot, finding_key)`` of each finding merged into it."""
+    return {issue_id: [(slot, finding_key(f)) for slot, f in groups[n]] for issue_id, n in numbered}
+
+
+def merge_findings_traced(reports: Sequence[ReviewerReport]) -> Tuple[List[Issue], Trace]:
+    """``merge_findings`` plus its trace: issue id -> ``(source slot, finding_key)`` per merged finding."""
+    groups = _member_groups(reports)
+    records = [_combine(_by_rank(_Record.of_finding(*m) for m in group)) for group in groups]
+    numbered = _numbered(records)
+    return [records[n].issue(i) for i, n in numbered], _trace(groups, numbered)
 
 
 def merge_findings(reports: Sequence[ReviewerReport]) -> List[Issue]:
     """Schema issue dicts from every report's findings, merged by ``same_issue`` and numbered per tier."""
-    items = [(report.reviewer, finding) for report in reports for finding in report.findings]
-    merged = []
-    for group in _groups([finding for _, finding in items]):
-        records = sorted((_Record.of_finding(*items[i]) for i in group), key=lambda r: r.rank)
-        merged.append(_combine(records))
-    return _number(merged)
+    return merge_findings_traced(reports)[0]
+
+
+Verdicts = Mapping[Tuple[str, str], Refutation]
+
+
+def _refuted(member: Member, verdicts: Verdicts) -> Optional[Refutation]:
+    """The refuted verdict on ``member``; None when upheld or never refuted (a folded source)."""
+    found = verdicts.get((member[0], finding_key(member[1])))
+    return found if found is not None and found.verdict is RefutationVerdict.refuted else None
+
+
+@dataclass(frozen=True)
+class _Judged:
+    """One merged group under refutation: its record, the ``refuted`` evidence when every finding was
+    refuted, and the merge notes a mixed group's refuted findings leave."""
+
+    record: _Record
+    refuted: Optional[str] = None
+    notes: Tuple[str, ...] = ()
+
+
+def _judge(group: Sequence[Member], verdicts: Verdicts) -> _Judged:
+    """``_Judged`` for one group: upheld findings shape a mixed group; refuted ones add only notes."""
+    refuted = {n: r for n, r in ((n, _refuted(m, verdicts)) for n, m in enumerate(group)) if r is not None}
+    records = [_Record.of_finding(*m) for m in group]
+    upheld = _by_rank(r for n, r in enumerate(records) if n not in refuted)
+    if not refuted or not upheld:
+        evidence = "\n\n".join(_union(r.evidence for r in refuted.values())) or None
+        return _Judged(_combine(_by_rank(records)), evidence)
+    notes = tuple(f"refuted ({group[n][0]}) {group[n][1].name}: {r.evidence}" for n, r in refuted.items())
+    return _Judged(_combine(upheld), None, notes)
+
+
+def merge_adversarial(reports: Sequence[ReviewerReport],
+                      refutations: Mapping[str, RefutationReport]) -> Tuple[List[Issue], List[str]]:
+    """Issues and merge notes from every source report (reviewer, code refuter, folded), grouped as
+    ``merge_findings`` groups them, with the findings refuters' verdicts looked up per group member by
+    (slot, finding_key).
+
+    A finding without a refutation entry counts as upheld. An issue whose every finding was refuted
+    carries ``refuted`` (the evidence, distinct texts joined by a blank line). A mixed group is built from
+    its upheld findings only; each refuted finding contributes only its evidence, as one
+    ``<issue id>: refuted (<slot>) <name>: <evidence>`` note. With nothing refuted the issues equal
+    ``merge_findings``.
+    """
+    verdicts = {(rep.target, r.key): r for rep in refutations.values() for r in rep.refutations}
+    judged = [_judge(group, verdicts) for group in _member_groups(reports)]
+    numbered = _numbered([j.record for j in judged])
+    issues: List[Issue] = []
+    notes: List[str] = []
+    for issue_id, n in numbered:
+        issue = judged[n].record.issue(issue_id)
+        if judged[n].refuted is not None:
+            issue["refuted"] = judged[n].refuted
+        issues.append(issue)
+        notes += [f"{issue_id}: {note}" for note in judged[n].notes]
+    return issues, notes
 
 
 def _tokens(name: object) -> Set[str]:
@@ -314,9 +414,8 @@ def _ids(issues: Mapping[str, Sequence[Issue]]) -> Set[str]:
 
 
 def _closed_ids(resolutions: Sequence[Mapping[str, object]]) -> Set[str]:
-    """Ids whose latest resolution is ``RESOLVED`` or ``CLOSED_NO_ACTION``."""
-    latest = {str(r["id"]): r.get("status") for r in resolutions}
-    return {i for i, status in latest.items() if status in CLOSED_STATUSES}
+    """Ids whose latest resolution is ``RESOLVED``, ``CLOSED_NO_ACTION`` or ``REFUTED``."""
+    return {i for i, status in latest_statuses(resolutions).items() if status in CLOSED_STATUSES}
 
 
 def _bubbled_ids(bubbles: Sequence[str], bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
@@ -324,17 +423,32 @@ def _bubbled_ids(bubbles: Sequence[str], bubble_up: Sequence[Mapping[str, object
     return set(bubbles) | {str(b["id"]) for b in bubble_up}
 
 
+def _entry_ids(resolutions: Sequence[Mapping[str, object]]) -> Set[str]:
+    """Every id any resolution names, whatever its status (the orphan check and the merge refusal)."""
+    return {str(r["id"]) for r in resolutions}
+
+
+def _mentioned_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequence[str],
+                   bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
+    """Every id any resolution (whatever its status), ``bubbles`` or ``bubble_up`` entry names, raw: the
+    orphan check of ``compute_verdict`` and ``review_edit._disposed_ids``."""
+    return _entry_ids(resolutions) | _bubbled_ids(bubbles, bubble_up)
+
+
 def _named_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequence[str],
                bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
-    """Ids carrying any disposition: a resolution of any status, a ``bubbles`` or a ``bubble_up`` entry."""
-    return {str(r["id"]) for r in resolutions} | _bubbled_ids(bubbles, bubble_up)
+    """Ids carrying a disposition: a resolution, a ``bubbles`` or a ``bubble_up`` entry; an id whose latest
+    resolution is ``NOT_RESOLVED`` carries none (a refutation overruled to Phase 5 waves reopens it).
+    No production caller: the orphan check and ``review_edit._disposed_ids`` read ``_mentioned_ids``."""
+    return _mentioned_ids(resolutions, bubbles, bubble_up) - reopened_ids(resolutions)
 
 
 def _settled_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequence[str],
                  bubble_up: Sequence[Mapping[str, object]]) -> Set[str]:
-    """Ids closed (latest status ``RESOLVED`` / ``CLOSED_NO_ACTION``) or bubbled; a ``DOWNGRADED_TO_*`` (or
-    any other non-closing) resolution alone does not settle an id."""
-    return _closed_ids(resolutions) | _bubbled_ids(bubbles, bubble_up)
+    """Ids closed (latest status in ``CLOSED_STATUSES``) or bubbled; a ``DOWNGRADED_TO_*`` (or any other
+    non-closing) resolution alone does not settle an id, and a latest ``NOT_RESOLVED`` leaves it open
+    whatever ``bubbles`` or ``bubble_up`` say."""
+    return (_closed_ids(resolutions) | _bubbled_ids(bubbles, bubble_up)) - reopened_ids(resolutions)
 
 
 def undispositioned_ids(doc: Mapping[str, object]) -> List[str]:
@@ -344,11 +458,21 @@ def undispositioned_ids(doc: Mapping[str, object]) -> List[str]:
     return sorted(_ids(doc["issues"]) - settled, key=_tolerant_key)  # type: ignore[arg-type]
 
 
+def _ready_text(ids: Set[str], resolutions: Sequence[Mapping[str, object]], closed: Set[str],
+                bubbled: Set[str]) -> str:
+    """READY line: R of T resolved (closed ids not REFUTED), B bubbled, then ``, K refuted`` when K > 0."""
+    latest = latest_statuses(resolutions)
+    refuted = {i for i in closed if latest.get(i) == "REFUTED"}
+    text = f"READY TO MERGE - {len(closed - refuted)} of {len(ids)} findings resolved, {len(bubbled)} bubbled"
+    return f"{text}, {len(refuted)} refuted" if refuted else text
+
+
 def compute_verdict(issues: Mapping[str, Sequence[Issue]], resolutions: Sequence[Mapping[str, object]],
                     bubbles: Sequence[str], bubble_up: Sequence[Mapping[str, object]]) -> str:
-    """Verdict line per the pr-review verdict rule; an orphan disposition id raises ``ValueError``."""
+    """Verdict line per the pr-review verdict rule; an orphan disposition id raises ``ValueError``. The
+    READY line counts REFUTED ids apart from resolved ones (``_ready_text``)."""
     ids = _ids(issues)
-    named = _named_ids(resolutions, bubbles, bubble_up)
+    named = _mentioned_ids(resolutions, bubbles, bubble_up)
     if named - ids:
         raise ValueError(f"orphan disposition ids (match no issue): {_listed(named - ids)}")
     closed = _closed_ids(resolutions)
@@ -360,7 +484,7 @@ def compute_verdict(issues: Mapping[str, Sequence[Issue]], resolutions: Sequence
     if pending:
         return f"NOT READY TO MERGE - minor findings pending Phase 5: {_listed(pending)}"
     bubbled = _bubbled_ids(bubbles, bubble_up) - closed
-    return f"READY TO MERGE - {len(closed)} of {len(ids)} findings resolved, {len(bubbled)} bubbled"
+    return _ready_text(ids, resolutions, closed, bubbled)
 
 
 # --- amend --------------------------------------------------------------------------------------------------
@@ -389,7 +513,8 @@ def _tier_name(severity: Union[Severity, str]) -> str:
 
 
 def regrade(issues: Sequence[Issue], issue_id: str, severity: Union[Severity, str]) -> List[Issue]:
-    """Issues with ``issue_id`` moved to ``severity`` under a new id at the end of that tier."""
+    """Issues with ``issue_id`` moved to ``severity`` under a new id at the end of that tier; the moved
+    issue keeps every other key, ``refuted`` included."""
     tier = _tier_name(severity)
     out = _flat(issues)
     moving = _find(out, issue_id)
@@ -417,8 +542,26 @@ def set_fix_kind(issues: Sequence[Issue], issue_id: str, fix_kind: str) -> List[
     return out
 
 
+def _folded(merged: Sequence[Issue], keep: str) -> Issue:
+    """``merged`` (keep first) combined into one issue under ``keep``, upheld issues (no ``refuted`` key)
+    ordered first and shaping it; ``refuted`` kept only when every issue carries it."""
+    upheld = [i for i in merged if "refuted" not in i]
+    refuted = [i for i in merged if "refuted" in i]
+    records = [_Record.of_issue(i) for i in [*upheld, *refuted]]
+    combined = _combine(records, len(upheld) or None)
+    out = replace(combined, rank=_RANK[_tier(keep)]).issue(keep)
+    if not upheld:
+        out["refuted"] = "\n\n".join(_union(str(i["refuted"]) for i in refuted))
+    return out
+
+
 def merge_ids(issues: Sequence[Issue], keep: str, drop: Sequence[str]) -> List[Issue]:
-    """Issues with each ``drop`` id folded into ``keep`` (fixes, files, lines, reviewers, fix kind)."""
+    """Issues with each ``drop`` id folded into ``keep`` (fixes, files, lines, reviewers, fix kind).
+
+    In a mixed group (some issues carry ``refuted``) the upheld issues supply the name, primary file,
+    summary and fix kind; files, lines, fixes and reviewers union over every issue; the id stays ``keep``.
+    The refuted issues' evidence is dropped in a mixed group (the merged issue is upheld).
+    """
     if not drop or keep in drop:
         raise ValueError("merge needs at least one id to drop, and keep must not be dropped")
     out = _flat(issues)
@@ -426,9 +569,25 @@ def merge_ids(issues: Sequence[Issue], keep: str, drop: Sequence[str]) -> List[I
     dropped = [_find(out, d) for d in drop]
     if any(_RANK[_tier(d)] < _RANK[_tier(keep)] for d in drop):
         raise ValueError(f"cannot fold a higher-severity issue into {keep}; regrade first")
-    combined = _combine([_Record.of_issue(i) for i in [kept, *dropped]])
-    out[out.index(kept)] = replace(combined, rank=_RANK[_tier(keep)]).issue(keep)
+    out[out.index(kept)] = _folded([kept, *dropped], keep)
     return [i for i in out if i["id"] not in drop]
+
+
+def refuted_resolutions(issues: Sequence[Issue], date: str) -> List[Dict[str, str]]:
+    """One ``REFUTED`` resolution (``date``, the issue's ``refuted`` evidence) per issue carrying the key,
+    in input order; ``ValueError`` naming the id when ``refuted`` is not a non-blank string."""
+    out: List[Dict[str, str]] = []
+    for issue in (i for i in issues if "refuted" in i):
+        evidence = issue["refuted"]
+        if not isinstance(evidence, str) or not evidence.strip():
+            raise ValueError(f"{issue['id']}: refuted needs non-blank evidence text")
+        out.append(_resolution(str(issue["id"]), "REFUTED", date, evidence))
+    return out
+
+
+def strip_refuted(issues: Sequence[Issue]) -> List[Issue]:
+    """Deep copies of ``issues`` without the ``refuted`` key."""
+    return [{k: copy.deepcopy(v) for k, v in i.items() if k != "refuted"} for i in issues]
 
 
 # --- review document and validation -------------------------------------------------------------------------
@@ -474,19 +633,28 @@ def review_document(meta: Mapping[str, object], draft: Mapping[str, object],
     ``meta`` keys: pr, pr_title, branch, base_branch, base_sha, head_sha, review_date, stats and optional
     scoped_review_files. ``draft`` keys: issues (flat list), strengths, reviewers. ``schema_ref`` defaults
     to ``default_schema_ref()``; a writer that knows the target path passes ``schema_ref_for``.
+
+    A draft issue carrying ``refuted`` gets one ``REFUTED`` resolution dated ``review_date``
+    (``refuted_resolutions``) and loses the key (``strip_refuted``); the verdict counts those resolutions,
+    and ``post_review_resolutions`` is written only when there is one.
     """
-    issues = copy.deepcopy(issues_by_severity(draft["issues"]))  # type: ignore[arg-type]
+    flat = _flat(draft["issues"])  # type: ignore[arg-type]
+    resolutions = refuted_resolutions(flat, str(meta["review_date"]))
+    issues = issues_by_severity(strip_refuted(flat))
     named = ("pr", "pr_title", "branch", "base_branch", "base_sha", "head_sha", "review_date")
-    return {
+    doc: Dict[str, object] = {
         "schema_ref": schema_ref or default_schema_ref(), "version": SCHEMA_VERSION,
         **{k: meta[k] for k in named},
-        "verdict": compute_verdict(issues, [], [], []), "stats": copy.deepcopy(meta["stats"]),
+        "verdict": compute_verdict(issues, resolutions, [], []), "stats": copy.deepcopy(meta["stats"]),
         "reviewers": list(draft["reviewers"]),  # type: ignore[call-overload]
         "scoped_review_files": list(meta.get("scoped_review_files") or []),  # type: ignore[call-overload]
         "bubbles": [], "strengths": list(draft["strengths"]),  # type: ignore[call-overload]
         "issues": issues, "bubble_up": [],
         "verification_log": {"dispatch_time": copy.deepcopy(dict(dispatch_time)), "pre_fix_time": PENDING},
     }
+    if resolutions:
+        doc["post_review_resolutions"] = resolutions
+    return doc
 
 
 def review_validator(schema_file: Path) -> Validator:
@@ -538,12 +706,13 @@ def _schema_problems(doc: Mapping[str, object], schema_file: Path) -> List[str]:
 
 
 def _pending_problems(doc: Mapping[str, object]) -> List[str]:
-    """The hook's Layer 2 rule: a pending ``pre_fix_time`` allows no READY verdict and no resolution."""
+    """The hook's Layer 2 rule: a pending ``pre_fix_time`` allows no READY verdict and no resolution other
+    than ``REFUTED`` / ``BUBBLED`` / ``NOT_RESOLVED``."""
     log = doc.get("verification_log")
     if not isinstance(log, dict) or log.get("pre_fix_time") != PENDING:
         return []
     ready = str(doc.get("verdict") or "").startswith("READY TO MERGE")
-    if ready or doc.get("post_review_resolutions"):
+    if ready or counted_resolutions(doc.get("post_review_resolutions") or []):  # type: ignore[arg-type]
         return ["pre_fix_time is still pending but the review has a READY verdict or resolutions"]
     return []
 
@@ -779,18 +948,33 @@ def _bubble_problem(planned: _Planned, fixer: str, issue_id: str) -> Optional[st
     return None
 
 
-def _apply_bubbles(doc: Dict[str, object], planned: _Planned, report: FixReport) -> List[str]:
+def reopened_bubble_entry(resolutions: Sequence[Mapping[str, object]], issue_id: str, today: str,
+                          reason: str) -> Optional[Dict[str, str]]:
+    """The ``BUBBLED`` entry (date ``today``, evidence ``reason``) a bubble of ``issue_id`` appends when its
+    latest resolution is ``NOT_RESOLVED``, so the id settles through the bubble; None otherwise."""
+    if issue_id not in reopened_ids(resolutions):
+        return None
+    return _resolution(issue_id, "BUBBLED", today, reason)
+
+
+def _apply_bubbles(doc: Dict[str, object], planned: _Planned, report: FixReport, today: str) -> List[str]:
     """Add each bubble of ``report`` to ``bubbles`` and ``bubble_up`` unless closed; return the problems.
 
     A bubble counts only from a planned fixer, for an id assigned to it (the rule fixed entries follow).
+    An id whose latest resolution is ``NOT_RESOLVED`` also gains a ``BUBBLED`` entry (evidence: the
+    bubble's reason), so it settles through the bubble.
     """
-    resolved = _closed_ids(doc["post_review_resolutions"])  # type: ignore[arg-type]
+    resolutions: List[Dict[str, str]] = doc["post_review_resolutions"]  # type: ignore[assignment]
+    resolved = _closed_ids(resolutions)
     problems: List[str] = []
     for bubble in report.bubbled:
         problem = _bubble_problem(planned, report.fixer, bubble.id)
         if problem:
             problems.append(problem)
         elif bubble.id not in resolved:
+            entry = reopened_bubble_entry(resolutions, bubble.id, today, bubble.reason)
+            if entry is not None:
+                resolutions.append(entry)
             if bubble.id not in doc["bubbles"]:  # type: ignore[operator]
                 doc["bubbles"].append(bubble.id)  # type: ignore[attr-defined]
             if bubble.id not in {b["id"] for b in doc["bubble_up"]}:  # type: ignore[attr-defined]
@@ -883,7 +1067,7 @@ def apply_closeout(review: Mapping[str, object], fixes: Sequence[FixReport],
     ``fixer_files`` set or in ``created``. ``parts`` (fixer -> issue id -> owned files, as
     ``review_waves.plan_waves`` writes them) assigns ids to fixers: an entry or a bubble for an id outside its
     fixer's parts, or from a fixer outside ``fixer_files``, is rejected with a problem. A rejected entry
-    raises nothing when its id ends the closeout closed (``RESOLVED`` / ``CLOSED_NO_ACTION`` by any path,
+    raises nothing when its id ends the closeout closed (a ``CLOSED_STATUSES`` status by any path,
     e.g. a later fixer's valid entry or ``closed``); a rejected bubble always raises its problem. It also
     marks split issues (some fixer owns less than the file set, or a mechanical issue planned over more
     than one file, even in one fixer): there an entry may list its fixer's part and the rest of the fixer's
@@ -895,14 +1079,15 @@ def apply_closeout(review: Mapping[str, object], fixes: Sequence[FixReport],
     with a problem. An issue whose validated entries edited none of its own files gets a problem instead
     of a resolution, unless one of its own files listed under ``no_change`` is in ``changed`` and no other
     issue's validated entry lists it under ``files``: the fix is already present, and the evidence says
-    so. Rejected-entry and coverage problems of an id that ends the closeout ``RESOLVED`` /
-    ``CLOSED_NO_ACTION`` are dropped; bubble, ``closed``, ``deferred`` and ``resolved`` problems stay.
+    so. Rejected-entry and coverage problems of an id that ends the closeout closed
+    (``CLOSED_STATUSES``) are dropped; bubble, ``closed``, ``deferred`` and ``resolved`` problems stay.
     Every problem about one issue leads with its id (``resolvable_hints`` reads it there).
-    Only ids already ``RESOLVED`` / ``CLOSED_NO_ACTION`` (latest status) are skipped. A
+    Only ids already closed (latest status in ``CLOSED_STATUSES``) are skipped. A
     ``deferred`` id (id -> decision text) is RESOLVED with ``<head> (developer-confirmed defer) - <text>``
     evidence and keeps (or gains) a ``needs_follow_up`` ``bubble_up`` entry. A
     ``resolved`` id (id -> what changed) is RESOLVED with ``<head> (working-tree snapshot; developer
-    commits) - <what> (outside fixer waves)`` evidence when one of its files is in ``changed``. Closed ids
+    commits) - <what> (outside fixer waves)`` evidence when one of its files is in ``changed``. A fixer
+    bubble of an id whose latest resolution is ``NOT_RESOLVED`` appends a ``BUBBLED`` entry. Closed ids
     leave ``bubbles``; the verdict is recomputed.
     """
     doc = copy.deepcopy(dict(review))
@@ -915,7 +1100,7 @@ def apply_closeout(review: Mapping[str, object], fixes: Sequence[FixReport],
     problems = _apply_closed(doc, closed, head, today)
     problems += _apply_resolved(doc, resolved or {}, changed, head, today)
     for report in fixes:
-        problems += _apply_bubbles(doc, planned, report)
+        problems += _apply_bubbles(doc, planned, report, today)
     problems += _apply_deferred(doc, deferred or {}, head, today)
     resolved = _closed_ids(doc["post_review_resolutions"])  # type: ignore[arg-type]
     problems = [problem for issue_id, problem in rejected if issue_id not in resolved] + problems

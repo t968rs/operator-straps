@@ -24,7 +24,8 @@ One editor (or a tight pair) per schema root field:
 ``strengths``                               ``add_strength``, ``set_strengths``
 ``bubble_up``                               ``add_bubble_up``, ``drop_bubble_up``, ``mirror_bubble_ups``
 ``post_review_resolutions``                 ``resolve``, ``resolve_all`` (``snapshot_evidence`` builds the
-                                            evidence text)
+                                            evidence text); ``apply_refute``, ``apply_unrefute`` (the
+                                            developer overrule; ``issue_info`` reads the issue)
 ``verification_log``                        ``set_verification_phase``
 =========================================== =================================================================
 
@@ -50,6 +51,7 @@ from pathlib import Path
 from typing import Dict, List, Mapping, Optional, Sequence, Union
 
 from harness_lib import review_merge as rmg
+from harness_lib.validation.id_handling import REOPENED_STATUS
 
 Doc = Dict[str, object]
 
@@ -269,11 +271,23 @@ def set_scoped_files(doc: Mapping[str, object], paths: Sequence[str]) -> Doc:
     return _with(doc, scoped_review_files=list(dict.fromkeys(posix)))
 
 
-def add_bubble(doc: Mapping[str, object], issue_id: str) -> Doc:
-    """``issue_id`` appended to ``bubbles`` unless present; the id must name an issue."""
+BUBBLE_EVIDENCE = "bubbled for a developer decision"
+UNREFUTE_FIX_EVIDENCE = "refutation overruled"
+
+
+def add_bubble(doc: Mapping[str, object], issue_id: str, *, reason: str = BUBBLE_EVIDENCE,
+               date: Optional[str] = None) -> Doc:
+    """``issue_id`` appended to ``bubbles`` unless present; the id must name an issue. When the id's latest
+    resolution is ``NOT_RESOLVED``, a ``BUBBLED`` entry (evidence ``reason``, date default today) is
+    appended too, so the id settles through the bubble."""
     _require_issue(doc, issue_id)
     bubbles = list(doc.get("bubbles") or [])  # type: ignore[call-overload]
-    return _with(doc, bubbles=bubbles if issue_id in bubbles else [*bubbles, issue_id])
+    out = _with(doc, bubbles=bubbles if issue_id in bubbles else [*bubbles, issue_id])
+    resolutions = doc.get("post_review_resolutions") or []
+    entry = rmg.reopened_bubble_entry(resolutions, issue_id, date or _today(), reason)  # type: ignore[arg-type]
+    if entry is None:
+        return out
+    return _appended(out, issue_id, entry["status"], entry["evidence"], entry["date"])
 
 
 def clear_bubble(doc: Mapping[str, object], issue_id: str) -> Doc:
@@ -305,9 +319,11 @@ def _with_issues(doc: Mapping[str, object], flat: Sequence[Dict[str, object]]) -
 
 
 def _disposed_ids(doc: Mapping[str, object]) -> List[str]:
-    """Ids named by any ``post_review_resolutions``, ``bubbles`` or ``bubble_up`` entry."""
-    return sorted(rmg._named_ids(doc.get("post_review_resolutions") or [],  # type: ignore[arg-type]
-                                 doc.get("bubbles") or [], doc.get("bubble_up") or []))  # type: ignore[arg-type]
+    """Ids named by any ``post_review_resolutions`` entry (whatever its status), ``bubbles`` or ``bubble_up``
+    entry."""
+    return sorted(rmg._mentioned_ids(doc.get("post_review_resolutions") or [],  # type: ignore[arg-type]
+                                     doc.get("bubbles") or [],  # type: ignore[arg-type]
+                                     doc.get("bubble_up") or []))  # type: ignore[arg-type]
 
 
 def add_issue(doc: Mapping[str, object], severity: str, issue: Mapping[str, object]) -> Doc:
@@ -347,7 +363,8 @@ def regrade_issue(doc: Mapping[str, object], issue_id: str, severity: str) -> Do
 def merge_issue_ids(doc: Mapping[str, object], keep: str, drop: Sequence[str]) -> Doc:
     """``drop`` ids folded into ``keep`` (``review_merge.merge_ids``); refused while a ``drop`` id carries a
     resolution or bubble, so no disposition is orphaned or transferred to ``keep``, and refused while ``keep``
-    is settled (closed or bubbled), so an open dropped finding never inherits a closed state unverified."""
+    is settled (closed through ``rmg._closed_ids``, ``REFUTED`` included, or bubbled), so an open dropped
+    finding never inherits a closed state unverified."""
     held = [d for d in drop if d in _disposed_ids(doc)]
     if held:
         raise ValueError(f"merge refused; {', '.join(held)} carries a resolution or bubble "
@@ -500,12 +517,69 @@ def resolve_all(doc: Mapping[str, object], entries: Sequence[Mapping[str, object
 
 
 def _without_closed_bubbles(doc: Mapping[str, object]) -> Doc:
-    """``doc`` with ids whose latest resolution is ``RESOLVED`` / ``CLOSED_NO_ACTION`` dropped from the
-    transient ``bubbles`` list (as ``review_merge.apply_closeout`` does); ``bubble_up`` is kept."""
+    """``doc`` with ids whose latest resolution is closed (``rmg.CLOSED_STATUSES``, ``REFUTED`` included)
+    dropped from the transient ``bubbles`` list (as ``review_merge.apply_closeout`` does); ``bubble_up`` is
+    kept."""
     if "bubbles" not in doc:
         return _with(doc)
     closed = rmg._closed_ids(doc.get("post_review_resolutions") or [])  # type: ignore[arg-type]
     return _with(doc, bubbles=[b for b in doc["bubbles"] or [] if str(b) not in closed])  # type: ignore
+
+
+def _appended(doc: Mapping[str, object], issue_id: str, status: str, evidence: str, date: str) -> Doc:
+    """``doc`` with one ``{id, status, date, evidence}`` entry appended to ``post_review_resolutions``;
+    blank evidence or a malformed date raises ``ValueError``."""
+    if not evidence.strip():
+        raise ValueError(f"{issue_id}: {status} requires evidence")
+    entry = rmg._resolution(issue_id, status, _check_date(date), evidence)
+    entries = list(doc.get("post_review_resolutions") or [])  # type: ignore[call-overload]
+    return _with(doc, post_review_resolutions=[*entries, entry])
+
+
+# --- developer overrule of a refutation ---------------------------------------------------------------------
+
+
+UNREFUTE_MODES = ("bubble", "fix")
+
+
+def issue_info(doc: Mapping[str, object], issue_id: str) -> Dict[str, object]:
+    """A copy of issue ``issue_id``; ``ValueError`` when no issue has that id."""
+    for issue in _flat_issues(doc):
+        if issue["id"] == issue_id:
+            return copy.deepcopy(issue)
+    raise ValueError(f"no issue {issue_id}")
+
+
+def apply_refute(doc: Mapping[str, object], issue_id: str, evidence: str, date: str) -> Doc:
+    """A ``REFUTED`` entry appended for ``issue_id`` (refused for an unknown id or a closing latest status:
+    ``RESOLVED``, ``CLOSED_NO_ACTION``, ``REFUTED``); the id leaves ``bubbles`` (``bubble_up`` keeps its
+    entry) and the verdict is recomputed."""
+    _require_issue(doc, issue_id)
+    latest = _latest_status(doc, issue_id)
+    if latest in rmg.CLOSED_STATUSES:
+        raise ValueError(f"refute refused; {issue_id} is already closed ({latest})")
+    return recompute_verdict(_without_closed_bubbles(_appended(doc, issue_id, "REFUTED", evidence, date)))
+
+
+def apply_unrefute(doc: Mapping[str, object], issue_id: str, mode: str, reason: str, date: str) -> Doc:
+    """A refutation of ``issue_id`` overruled; refused unless its latest status is ``REFUTED``.
+
+    ``bubble`` appends ``BUBBLED`` and adds the id to ``bubbles`` (``add_bubble``); ``fix`` appends
+    ``NOT_RESOLVED`` and drops the id from ``bubbles``, so Phase 5 waves see it open. ``bubble_up`` keeps
+    any entry as history. The verdict is recomputed.
+    """
+    if mode not in UNREFUTE_MODES:
+        raise ValueError(f"unknown unrefute mode {mode!r} (expected {' or '.join(UNREFUTE_MODES)})")
+    _require_issue(doc, issue_id)
+    latest = _latest_status(doc, issue_id)
+    if latest != "REFUTED":
+        raise ValueError(f"unrefute refused; {issue_id} latest status is {latest or 'none'}, not REFUTED")
+    if mode == "bubble":
+        return recompute_verdict(add_bubble(_appended(doc, issue_id, "BUBBLED", reason, date), issue_id))
+    out = _appended(doc, issue_id, REOPENED_STATUS, reason, date)
+    if "bubbles" in out:
+        out["bubbles"] = [b for b in out["bubbles"] or [] if str(b) != issue_id]  # type: ignore[union-attr]
+    return recompute_verdict(out)
 
 
 # --- verification_log ---------------------------------------------------------------------------------------
