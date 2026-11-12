@@ -322,6 +322,88 @@
         "free_form": "Developer chose fallback only: keep one row per slot with zero counts and an unobserved note."
       },
       "date": "2026-11-12"
+    },
+    {
+      "id": "EX5",
+      "discovered_by": "TASK-5 lane quality review (Q1)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 record calls; TASK-5 refuter briefs",
+        "indicated": "refutation evidence and attack text are stored as the agent writes them; the brief has the agent open files under the absolute repo path"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "absolute paths reach tracked data",
+        "why_free_form": "A refuter citing the absolute path:line it opened puts a local path into draft.json, the REFUTED evidence of the tracked review JSON and the build output."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-5 also changes plugins/harness/lib/harness_lib/review_models.py: record_refutations and record_attacks strip the repo root prefix from evidence and attack text, the way Finding.file is normalized; the refuter briefs ask for a repo-relative path:line"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "Tracked logs and rows never carry local or absolute paths."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX6",
+      "discovered_by": "TASK-5 lane and its spec review (S5)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-5 dependencies",
+        "indicated": "TASK-5 depends on TASK-3, TASK-4 and SPK-1"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "planned nodes need another item's file",
+        "why_free_form": "35 of TASK-5's 43 planned nodes run capture -a, which refuses when plugins/harness/workflows/adversarial-review.js (TASK-6) is missing."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-5 is staged and recorded together with TASK-6, on an index holding both"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "The nodes pass only with the Workflow script present."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "EX7",
+      "discovered_by": "TASK-5 lane and its spec review (S6)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5",
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Refute and unrefute",
+        "indicated": "refute / unrefute run any time after build (consolidate, fix-plan, fix, done)"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "an overrule would strand a failed Phase 4 run",
+        "why_free_form": "After a failed Phase 4 the phase is still consolidate; a developer REFUTED entry or a cleared draft mark makes phase5_state refuse build --replace, the one recovery."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "refute and unrefute require Phase 4 to have passed (require_phase4), as bubble and waves do; TASK-7's skill prose states it"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "Keeps build --replace available after a Phase 4 stop."
+      },
+      "date": "2026-11-12"
     }
   ]
 }
