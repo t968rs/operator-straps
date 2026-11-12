@@ -87,9 +87,9 @@ before a word of it is written. The convention is
    under a label without its colon (numpy's `Parameters` over `----------`) is fixed by adding the colon and
    matching the underline to the label's width, never by deleting the underline.
 
-2. **Answer "1, 2 or 3?" for each symbol**, as one line in the reply:
-   `<symbol>: tier <n> - <lines> lines, <forks> forks; <reason>`. The line never goes into the file. The first
-   match wins:
+2. **Answer "1, 2 or 3?" for each symbol**, as one working note:
+   `<symbol>: tier <n> - <lines> lines, <forks> forks; <reason>`. The note never goes into the file, and goes
+   into the reply only as a tier override (see Reply). The first match wins:
    - **3 full**: body over about 50 lines **and** two or more forks.
    - **1 brief**: no forks (one path: no branch, fallback, early return or raise of its own) **and** one summary
      line tells a caller everything. A usage constraint ("call once per process"), side effect or caveat the
@@ -191,14 +191,25 @@ any probe file, with the refused command or path after it on the same line (`Pro
 Per Scope file, in Scope order:
 
 ```
-<path>
-<symbol>: tier <n> - <lines> lines, <forks> forks; <reason>
-Rewritten: <symbol>, <symbol>
+<path>: <n> rewritten, <n> kept
+Tier overrides: <symbol>: tier <n> - <lines> lines, <forks> forks; <reason>
 Kept (in layout): <symbol> (<why>), ...
 Undocumented (rerun with --include-new): <symbol>, ...
 Defects (not fixed): <symbol>: <defect>, ...
-Check: <the re-run's result: every current= matches, no flags; or what remains>
+Check: <what remains after the re-run>
 ```
 
-A heading with nothing under it reads `none`. Guidance that asked for something out of scope gets one last
-line: `Not in scope: <what was asked>`.
+The first line is the whole report for a clean file.
+Every other heading is omitted when it has nothing to say.
+
+- **Rewritten symbols are not listed.** The count stands for them; the diff shows which. A docstring written
+  under `New docstrings: yes` counts as rewritten; a kept docstring whose flagged lines changed still counts
+  as kept.
+- **`Tier overrides:`** lists only a symbol whose tier differs from the command's `suggest=` (a caveat made it
+  compact, a fork the command cannot count) or whose answer a reviewer would doubt, one `Tier overrides:`
+  line per symbol. The tier line of every other symbol stays in the working notes.
+- **`Kept (in layout):`** lists the symbols kept in their layout (byte for byte apart from flagged lines),
+  each with the reason in a few words.
+- **`Check:`** appears only when the re-run left a mismatch or a flag; a clean re-run is not reported.
+
+Guidance that asked for something out of scope gets one last line: `Not in scope: <what was asked>`.

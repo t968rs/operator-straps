@@ -30,7 +30,7 @@ TIERS = ('sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" '
          '"${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/commands/docstring_tiers.py"')
 DISPATCH = ('sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" '
             '"${CLAUDE_PLUGIN_ROOT}/skills/writing-docstrings/commands/docstring_dispatch.py"')
-REPLY_HEADINGS = ("Rewritten:", "Kept (in layout):", "Undocumented (rerun with --include-new):",
+REPLY_HEADINGS = ("Tier overrides:", "Kept (in layout):", "Undocumented (rerun with --include-new):",
                   "Defects (not fixed):", "Check:")
 PROBE_LINES = ("Probe tier: SUCCESS", "Probe tier: BLOCKED", "Probe edit: SUCCESS", "Probe edit: BLOCKED")
 
@@ -142,6 +142,26 @@ def test_agent_names_the_reply_headings_and_probe_lines() -> None:
     text = _agent()
     missing = [line for line in (*REPLY_HEADINGS, *PROBE_LINES) if line not in text]
     assert not missing, missing
+
+
+def _reply_section() -> str:
+    return _agent().split("## Reply", 1)[1]
+
+
+def test_reply_has_no_per_symbol_tier_line_or_rewritten_list() -> None:
+    reply = _reply_section()
+    assert "\n<symbol>: tier" not in reply
+    assert "Rewritten:" not in reply
+
+
+def test_reply_summarizes_a_file_in_one_count_line() -> None:
+    assert "<path>: <n> rewritten, <n> kept" in _reply_section()
+
+
+def test_reply_omits_empty_headings() -> None:
+    reply = _reply_section()
+    assert "Every other heading is omitted when it has nothing to say." in reply
+    assert "reads `none`" not in reply
 
 
 def test_api_exports_existing_names() -> None:
