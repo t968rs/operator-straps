@@ -56,16 +56,16 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 56,
-    "needs_decision": 33,
+    "items": 55,
+    "needs_decision": 32,
     "trackers": 0,
-    "close_candidates": 26,
+    "close_candidates": 27,
     "by_status": {
-      "NEEDS_DECISION": 33,
+      "NEEDS_DECISION": 32,
       "OPEN": 23
     },
     "by_impact": {
-      "dev_velocity": 29,
+      "dev_velocity": 28,
       "docs_tooling": 21,
       "maintainability": 1,
       "runtime_failure": 4,
@@ -73,13 +73,13 @@
     },
     "by_loe": {
       "XS": 3,
-      "S": 17,
+      "S": 16,
       "M": 25,
       "L": 10,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 50,
+      "gh_issue": 49,
       "impl_stub": 0,
       "research_folder": 0,
       "note": 6
@@ -375,65 +375,8 @@
       "why_ranked": "Severity 2 missing guard, dev_velocity impact, S size."
     },
     {
-      "id": "todo-sp4v",
-      "rank": 6,
-      "title": "pr-review: let a trivial judgment fix run cheaper (amend regrades fix_kind, or lower fixer effort)",
-      "kind": "feature",
-      "status": "NEEDS_DECISION",
-      "needs_decision": true,
-      "decision_question": "The batching in #153 landed at 23d5f6c: close the issue and drop the optional point, or keep it for an `amend` fix_kind regrade (or a lower fixer effort)?",
-      "tracker": null,
-      "sources": [
-        {
-          "type": "gh_issue",
-          "ref": "#153",
-          "url": "https://github.com/t968rs/operator-straps/issues/153"
-        }
-      ],
-      "gh_issues": [
-        153
-      ],
-      "related_gh_issues": [],
-      "catalog_entry_ids": [],
-      "summary": "The issue's main change (dedupe and batch fixer test commands into one pytest run) landed in 23d5f6c (\"Refs #153\", on main): plugins/harness/scripts/pr_review.py:1717-1736 now emits one pytest_command over the deduped non-deferred tests plus a per-file mapping, the fixer rule at plugins/harness/scripts/pr_review.py:1747-1755 runs it once after the last edit, and tests/scripts/test_pr_review_driver.py:1110 covers it. Left is the issue's optional, separate point: a judgment issue whose fix is a one-line edit still gets opus at the session effort. Checked: `amend` only regrades severity and merges ids (plugins/harness/scripts/pr_review.py:913-924, usage at :105), so fix_kind (set per finding, plugins/harness/scripts/pr_review.py:215) cannot be changed after capture.",
-      "proposed_change": "Either extend `amend --regrade` to accept a fix_kind (for example `I3=mechanical`) so a trivial judgment fix routes to the small-model fixer, or pass a lower effort to fixer rows; add a driver test for the chosen route. Otherwise close #153 on 23d5f6c and drop the optional point.",
-      "files": [
-        "plugins/harness/scripts/pr_review.py",
-        "plugins/harness/skills/pr-review/SKILL.md",
-        "tests/scripts/test_pr_review_driver.py"
-      ],
-      "blast_radius": {
-        "level": "S",
-        "reasoning": "pr-review amend and fixer routing only.",
-        "consumers": [
-          "plugins/harness/skills/pr-review/SKILL.md"
-        ]
-      },
-      "loe": {
-        "size": "S",
-        "reasoning": "One more regrade form in _amend_one plus a test, or one effort field on fixer rows."
-      },
-      "impact": "dev_velocity",
-      "severity": 2,
-      "priority": {
-        "score": 1.4142,
-        "components": {
-          "impact_weight": 1.0,
-          "value": 2.0,
-          "loe_points": 2,
-          "blast_factor": 1.0,
-          "cost": 2.0,
-          "base_score": 1.4142,
-          "unblock_bonus": 0.0
-        }
-      },
-      "depends_on": [],
-      "unblocks": [],
-      "why_ranked": "Severity 2 fixer cost on small judgment fixes, dev_velocity impact, S size."
-    },
-    {
       "id": "todo-7vfg",
-      "rank": 7,
+      "rank": 6,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -493,7 +436,7 @@
     },
     {
       "id": "todo-ys3k",
-      "rank": 8,
+      "rank": 7,
       "title": "todo-watch / session-bookmark: session.compact handler skipped when another mod runs first",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -550,7 +493,7 @@
     },
     {
       "id": "todo-rst5",
-      "rank": 9,
+      "rank": 8,
       "title": "todo_sync add: accept catalog_entry_ids so a new item can cite a research entry (clears T4)",
       "kind": "feature",
       "status": "OPEN",
@@ -610,7 +553,7 @@
     },
     {
       "id": "todo-9yns",
-      "rank": 10,
+      "rank": 9,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "kind": "feature",
       "status": "OPEN",
@@ -671,7 +614,7 @@
     },
     {
       "id": "todo-92yf",
-      "rank": 11,
+      "rank": 10,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -731,7 +674,7 @@
     },
     {
       "id": "todo-jrz2",
-      "rank": 12,
+      "rank": 11,
       "title": "Stop hooks: cut launch cost (stdlib constants module, one dispatcher, optional schema skip)",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -793,7 +736,7 @@
     },
     {
       "id": "todo-8ywz",
-      "rank": 13,
+      "rank": 12,
       "title": "pr-review: stats headline counts machine-generated exclusions",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -854,7 +797,7 @@
     },
     {
       "id": "todo-45fq",
-      "rank": 14,
+      "rank": 13,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -913,7 +856,7 @@
     },
     {
       "id": "todo-kj3z",
-      "rank": 15,
+      "rank": 14,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -970,7 +913,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 16,
+      "rank": 15,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -1030,7 +973,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 17,
+      "rank": 16,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1089,7 +1032,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 18,
+      "rank": 17,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "kind": "feature",
       "status": "OPEN",
@@ -1148,7 +1091,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 19,
+      "rank": 18,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1210,7 +1153,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 20,
+      "rank": 19,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "kind": "skill",
       "status": "OPEN",
@@ -1269,7 +1212,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 21,
+      "rank": 20,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1333,7 +1276,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 22,
+      "rank": 21,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "kind": "feature",
       "status": "OPEN",
@@ -1392,7 +1335,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 23,
+      "rank": 22,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1453,7 +1396,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 24,
+      "rank": 23,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1515,7 +1458,7 @@
     },
     {
       "id": "todo-w3ck",
-      "rank": 25,
+      "rank": 24,
       "title": "Driver-created local tags for every necessary, plan-referenced and base-to-freeze commit",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1571,7 +1514,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 26,
+      "rank": 25,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -1626,7 +1569,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 27,
+      "rank": 26,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -1687,7 +1630,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 28,
+      "rank": 27,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "kind": "bug",
       "status": "OPEN",
@@ -1737,7 +1680,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 29,
+      "rank": 28,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -1785,7 +1728,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 30,
+      "rank": 29,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1860,7 +1803,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 31,
+      "rank": 30,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1918,7 +1861,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 32,
+      "rank": 31,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -1974,7 +1917,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 33,
+      "rank": 32,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2037,7 +1980,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 34,
+      "rank": 33,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -2097,7 +2040,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 35,
+      "rank": 34,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -2158,7 +2101,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 36,
+      "rank": 35,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2225,7 +2168,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 37,
+      "rank": 36,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2301,7 +2244,7 @@
     },
     {
       "id": "todo-zj3h",
-      "rank": 38,
+      "rank": 37,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -2363,7 +2306,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 39,
+      "rank": 38,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2422,7 +2365,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 40,
+      "rank": 39,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2483,7 +2426,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 41,
+      "rank": 40,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2541,7 +2484,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 42,
+      "rank": 41,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2599,7 +2542,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 43,
+      "rank": 42,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -2652,7 +2595,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 44,
+      "rank": 43,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -2706,7 +2649,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 45,
+      "rank": 44,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2762,7 +2705,7 @@
     },
     {
       "id": "todo-e8y9",
-      "rank": 46,
+      "rank": 45,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -2822,7 +2765,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 47,
+      "rank": 46,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2877,7 +2820,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 48,
+      "rank": 47,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -2928,7 +2871,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 49,
+      "rank": 48,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2985,7 +2928,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 50,
+      "rank": 49,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3038,7 +2981,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 51,
+      "rank": 50,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3093,7 +3036,7 @@
     },
     {
       "id": "todo-8thf",
-      "rank": 52,
+      "rank": 51,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -3151,7 +3094,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 53,
+      "rank": 52,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3214,7 +3157,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 54,
+      "rank": 53,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -3269,7 +3212,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 55,
+      "rank": 54,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -3320,7 +3263,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 56,
+      "rank": 55,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3383,6 +3326,15 @@
   ],
   "trackers": [],
   "close_candidates": [
+    {
+      "number": 153,
+      "title": "pr-review: batch and dedupe fixer test commands (one pytest per brief)",
+      "url": "https://github.com/t968rs/operator-straps/issues/153",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "The main change landed in 23d5f6c (\"Fix(pr-review): batch and dedupe fixer test commands into one pytest run\", \"Refs #153\", on main). The optional point (a trivial judgment fix running cheaper) landed as an `amend --regrade` fix-kind form: 757277a (\"Fix(pr-review): allow amend to set issue fix kind\"; plugins/harness/lib/harness_lib/review_merge.py:404-416 `set_fix_kind`, driver tests in tests/scripts/test_pr_review_driver.py) and 8cd9cae (\"Feat(pr-review): regrade issue fix kind in place\", SKILL.md and operating_rules.md, harness 0.70.0). Both sit only on branch 1154-pr-review-mini-fixes (`git branch --all --contains 757277a`); no PR is open for it yet.",
+      "recommended_action": "Close as completed once branch 1154-pr-review-mini-fixes merges to main (23d5f6c plus 757277a and 8cd9cae); the PR body can say \"Closes #153\".",
+      "related_todo_ids": []
+    },
     {
       "number": 77,
       "title": "Enable Edit / Ammendments to `branch-commit-msg`",
@@ -3628,7 +3580,8 @@
     "todo-7zrw",
     "todo-fmt6",
     "todo-p52r",
-    "todo-6za3"
+    "todo-6za3",
+    "todo-sp4v"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",
