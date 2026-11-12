@@ -155,6 +155,64 @@
         "free_form": "test_refutation_overruled_to_a_fix_keeps_the_sentinel_until_the_fix cannot pass without it; the spec is frozen, so the plan carries the change."
       },
       "date": "2026-11-12"
+    },
+    {
+      "id": "P1",
+      "discovered_by": "plan review (plan vs code, and planned tests)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-1",
+        "TASK-4",
+        "TASK-5",
+        "TASK-10"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-1, TASK-4, TASK-10 actions (round 2)",
+        "indicated": "_named_ids reads the latest status everywhere; a bubble entry settles an id whatever its latest status; merge_ids keeps _combine's first-record shape; the TS mirrors only gain REFUTED; bubble-stamp stamping unqualified; KNOWN_VERSIONS left implicit"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "latest-status rule leaked or missed",
+        "why_free_form": "A2: bubble -> refute -> unrefute --fix left the id in bubble_up (and bubbles), so _settled_ids, wave_inputs and disposition_ids called it settled and no fixer was planned. A4: a latest-status _named_ids would drop REFUTED -> NOT_RESOLVED ids from the orphan guard and review_edit._disposed_ids. A5: amend --merge took name and summary from the kept (possibly refuted) issue, against S5. A3: agent-watcher bubbles.ts ports all_issues_dispositioned, so it needed the NOT_RESOLVED rule too. A11: memo.ts never unstamps a Decided row. A1: KNOWN_VERSIONS is single-version and tests/lib/test_review_edit.py pins 2.2.0 twice."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "A latest NOT_RESOLVED is open regardless of bubble entries (_settled_ids, all_issues_dispositioned, bubbles.ts dispositionedOf); apply_refute drops the id from bubbles through _without_closed_bubbles and apply_unrefute --fix removes it from bubbles, bubble_up kept as history; a raw _entry_ids backs the orphan guard and _disposed_ids; merge_ids takes name, summary and fix_kind from upheld issues; the memo stamp limit is stated and its unstamp deferred; KNOWN_VERSIONS stays single-version with the test_review_edit literals moved to rmg.SCHEMA_VERSION"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "Each cite was checked against the code; the plan's rules now agree with the D5 pipeline in every disposition reader, Python and TypeScript, and the planned tests pin each case."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "P2",
+      "discovered_by": "developer answer on D6",
+      "phase": "plan-review",
+      "items": [
+        "SPK-1",
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "D6; TASK-9 action; deferred topic 'D6 follow-through beyond TASK-9'",
+        "indicated": "D6 open among watcher, shape, exempt and result; TASK-9 carried a matrix rule per option; result would have had the session pass the Workflow output file to a driver command"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "open decision blocked freeze",
+        "why_free_form": "result and shape need an in-session step after the Workflow completes (the Workflow call returns at launch, so no hook sees its end) and a read of a session temp file. agent-watcher already tallies usage per agentId from turn.step, turn.complete and tool.call, independent of the Agent tool."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "D6 = watcher: the pr-review layer binds a Workflow agent's agentId to its slot at its first pr_review.py Bash call naming the slot and run, rows come from tracker.ts per-agentId tallies with dispatch_shape 'workflow'; an unobserved count is 0 and named in notes; with no agentId events at all, one row per planned slot from the Workflow tool.call args. SPK-1 assumption 7 now probes those hooks; the D6 deferred topic is dropped."
+      },
+      "why_new_outcome": {
+        "category": "yagni",
+        "free_form": "Developer: a row the watcher can record beats more precision by another route; no session step, no output-file read, no driver command."
+      },
+      "date": "2026-11-12"
     }
   ]
 }

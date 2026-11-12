@@ -10,17 +10,18 @@
     {
       "id": "SPK-1",
       "title": "Workflow spike: verify the eight Workflow API assumptions",
-      "action": "In a `claude --plugin-dir plugins/harness` session, run a throwaway two-agent Workflow and record each answer, with what was observed, in docs/RESEARCH/pr-review/1016_workflow_spike.md: (1) scriptPath accepts a path under the plugin root; (2) a plugin-shipped workflows/ folder passes `claude plugin validate --strict`; (3) agentType 'harness:<name>' resolves to the plugin agent; (4) a workflow agent Writes its draft file without a permission prompt; (5) pipeline behavior when a stage returns null; (6) whether the Workflow call returns synchronously or asynchronously; (7) whether agent-watcher hooks fire for Workflow agents (decides D6); (8) whether the output file's workflowProgress carries tokens, toolCalls, durationMs, label and model per agent. The throwaway script and its folder are removed after the run; nothing under plugins/ stays changed. TASK-5, TASK-6 and TASK-9 wait on this item.",
+      "action": "In a `claude --plugin-dir plugins/harness` session, run a throwaway two-agent Workflow and record each answer, with what was observed, in docs/RESEARCH/pr-review/1016_workflow_spike.md. The probe agent is a throwaway, checkout-only plugins/harness/agents/spike-probe.md (tools Read and Write; its body Writes the value of ${CLAUDE_PLUGIN_ROOT} into its draft file). The published marketplace this repository's settings enable has no spike-probe, so its resolution shows which plugin root serves agentType: the spike note records the plugin root the probe echoed and the root scriptPath resolved from (checkout or installed cache). Answers: (1) scriptPath accepts a path under the plugin root; (2) a plugin-shipped workflows/ folder passes `claude plugin validate --strict`; (3) agentType 'harness:spike-probe' resolves to the checkout's agent (the echoed root names the checkout); (4) a workflow agent Writes its draft file without a permission prompt; (5) pipeline behavior when a stage returns null; (6) whether the Workflow call returns synchronously or asynchronously; (7) for Workflow agents, whether agent-watcher's turn.step, turn.complete and catch-all tool.call hooks fire with an agentId, what usage turn.step carries, and whether a Bash tool.call from a Workflow agent carries the same agentId (the slot binding TASK-9 uses under D6 watcher); (8) whether the output file's workflowProgress carries tokens, toolCalls, durationMs, label and model per agent (recorded for reference only: under D6 watcher no code reads the output file). The throwaway script, its workflows/ folder and spike-probe.md are removed after the run; nothing under plugins/ stays changed. TASK-5, TASK-6 and TASK-9 wait on this item.",
       "files": [
-        "docs/RESEARCH/pr-review/1016_workflow_spike.md"
+        "docs/RESEARCH/pr-review/1016_workflow_spike.md",
+        "plugins/harness/agents/spike-probe.md"
       ],
       "status": "PENDING",
       "evidence": "not started",
       "model": "opus",
       "commands": [
         {
-          "run": "claude --plugin-dir plugins/harness (interactive session): run a throwaway two-agent Workflow whose scriptPath sits under the plugin root and whose agents use agentType 'harness:pr-reviewer'; answer assumptions 1 and 3-8 of the spec",
-          "expect": "each assumption answered with the observed evidence",
+          "run": "claude --plugin-dir plugins/harness (interactive session): with the throwaway plugins/harness/agents/spike-probe.md in place, run a throwaway two-agent Workflow whose scriptPath sits under the plugin root and whose agents use agentType 'harness:spike-probe'; answer assumptions 1 and 3-8 and record the plugin root each probe echoed and the root scriptPath resolved from",
+          "expect": "each assumption answered with the observed evidence; the resolved plugin roots recorded",
           "writes": [
             "docs/RESEARCH/pr-review/1016_workflow_spike.md"
           ]
@@ -31,13 +32,17 @@
           "writes": [
             "docs/RESEARCH/pr-review/1016_workflow_spike.md"
           ]
+        },
+        {
+          "run": "git status --porcelain plugins/ (after removing spike-probe.md and the throwaway workflows/ folder)",
+          "expect": "no output: nothing under plugins/ changed"
         }
       ]
     },
     {
       "id": "TASK-1",
       "title": "Schema 2.3.0, REFUTED closing, BUBBLED / NOT_RESOLVED open, Layer 2 and Layer 3 rules",
-      "action": "Copy the planned schema, hook and merge test files. PR_REVIEW.schema.json: $version 2.3.0; post_review_resolution.status gains REFUTED (closing: refuted by the findings refuter at build or by the developer through refute; evidence is the refuter's or the developer's case), BUBBLED (non-closing: a refutation overruled and routed to the bubble workflow) and NOT_RESOLVED (non-closing: overruled and routed to Phase 5 waves), with the description extended; verification_log.dispatch_time gains an optional adversarial_check object (applies, workflow, code_slots, refute_slots, result required; counts {findings_checked, findings_refuted, findings_upheld, code_findings}, refuted_ids, unrefuted_ids optional). review_merge: SCHEMA_VERSION 2.3.0; CLOSED_STATUSES gains only REFUTED; _named_ids reads each id's LATEST status and a NOT_RESOLVED latest status names nothing (REFUTED then NOT_RESOLVED is undispositioned; BUBBLED is named by the bubble entry the --bubble route writes); _pending_problems exempts resolutions whose status is REFUTED, BUBBLED or NOT_RESOLVED (any other resolution or a READY verdict still fails). Hook validate_pr_json_schema.py: _incoherent gets the same exemption; _closeout_reason counts only resolutions whose status is not REFUTED, BUBBLED or NOT_RESOLVED toward the SHA-evidence test. id_handling.all_issues_dispositioned (post-freeze addition, DesignEvolution S5) treats an id whose latest status is NOT_RESOLVED as open, the _named_ids rule; disposition_ids stays as is, since pr_json_validation's orphan check reads it. schemas/README.md :31 and :33 name 2.3.0 (minor, no sweep); the pin in tests/lib/test_review_merge.py:404 moves to 2.3.0. review_edit.RESOLUTION_STATUSES gains none of the three. This repository pins no schema copy.",
+      "action": "Copy the planned schema, hook and merge test files. PR_REVIEW.schema.json: $version 2.3.0; post_review_resolution.status gains REFUTED (closing: refuted by the findings refuter at build or by the developer through refute; evidence is the refuter's or the developer's case), BUBBLED (non-closing: a refutation overruled and routed to the bubble workflow) and NOT_RESOLVED (non-closing: overruled and routed to Phase 5 waves), with the description extended; verification_log.dispatch_time gains an optional adversarial_check object (applies, workflow, code_slots, refute_slots, result required, so {applies: true} alone is invalid; counts {findings_checked, findings_refuted, findings_upheld, code_findings}, refuted_ids, unrefuted_ids optional). review_merge: SCHEMA_VERSION 2.3.0; CLOSED_STATUSES gains only REFUTED. A new raw helper _entry_ids(resolutions) returns every id any resolution names, whatever its status; it backs the orphan check in compute_verdict (:351-353, with _bubbled_ids) and review_edit._disposed_ids (:307-310), so add_issue still skips those ids and merge_issue_ids still refuses a drop id with REFUTED then NOT_RESOLVED history. Only the disposition predicates follow the latest status: _named_ids names nothing for an id whose latest status is NOT_RESOLVED (REFUTED then NOT_RESOLVED is undispositioned; BUBBLED is named by the bubble entry the --bubble route writes), and _settled_ids (:333-337) drops an id whose latest status is NOT_RESOLVED even when bubbles or bubble_up still name it (a latest NOT_RESOLVED is open regardless of bubble entries), so undispositioned_ids, compute_verdict's pending set and review_edit.merge_issue_ids follow. _pending_problems exempts resolutions whose status is REFUTED, BUBBLED or NOT_RESOLVED (any other resolution or a READY verdict still fails). Hook validate_pr_json_schema.py: _incoherent gets the same exemption; _closeout_reason filters resolutions once at :236 (dropping REFUTED, BUBBLED and NOT_RESOLVED) and uses the filtered list in both the :244 clause (populated, not NOT READY, SHA evidence) and the :247 clause (no resolutions or SHA evidence), so a REFUTED entry's SHA-shaped evidence never clears a READY review. id_handling.all_issues_dispositioned (post-freeze addition, DesignEvolution S5) treats an id whose latest status is NOT_RESOLVED as open regardless of bubbles / bubble_up entries, the _settled_ids rule; disposition_ids stays as is, since pr_json_validation's orphan check reads it. review_edit.KNOWN_VERSIONS stays single-version ((rmg.SCHEMA_VERSION,), review_edit.py:56), so set_schema accepts only 2.3.0: tests/lib/test_review_edit.py:67 and :110 pin '2.2.0', and both literals become rmg.SCHEMA_VERSION (import review_merge as rmg there). schemas/README.md :31 and :33 name 2.3.0 (minor, no sweep); the pin in tests/lib/test_review_merge.py:404 moves to 2.3.0 and stays the one literal version pin (the planned tests compare with rmg.SCHEMA_VERSION or a (2, 3, 0) floor). review_edit.RESOLUTION_STATUSES gains none of the three, so resolve refuses them. This repository pins no schema copy.",
       "files": [
         "plugins/harness/schemas/PR_REVIEW.schema.json",
         "plugins/harness/lib/harness_lib/review_merge.py",
@@ -47,7 +52,9 @@
         "tests/lib/test_review_merge.py",
         "tests/schemas/test_pr_review_schema_adversarial.py",
         "tests/hooks/test_schema_hook_refuted.py",
-        "tests/lib/test_review_merge_adversarial.py"
+        "tests/lib/test_review_merge_adversarial.py",
+        "plugins/harness/lib/harness_lib/review_edit.py",
+        "tests/lib/test_review_edit.py"
       ],
       "status": "PENDING",
       "evidence": "not started",
@@ -132,6 +139,38 @@
         {
           "at": "tests/lib/test_review_merge.py:404",
           "expect": "assert doc[\"version\"] == \"2.2.0\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_merge.py:333-337",
+          "expect": "def _settled_ids(resolutions: Sequence[Mapping[str, object]], bubbles: Sequence[str],"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_merge.py:351-353",
+          "expect": "named = _named_ids(resolutions, bubbles, bubble_up)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_edit.py:56",
+          "expect": "KNOWN_VERSIONS = (rmg.SCHEMA_VERSION,)"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_edit.py:307-310",
+          "expect": "def _disposed_ids(doc: Mapping[str, object]) -> List[str]:"
+        },
+        {
+          "at": "plugins/harness/hooks/validate_pr_json_schema.py:236",
+          "expect": "resolutions = data.get(\"post_review_resolutions\") or []"
+        },
+        {
+          "at": "plugins/harness/hooks/validate_pr_json_schema.py:244",
+          "expect": "if resolutions and not verdict.startswith(\"NOT READY TO MERGE\") and has_sha_evidence:"
+        },
+        {
+          "at": "tests/lib/test_review_edit.py:67",
+          "expect": "pytest.param(_as_is, lambda d: red.set_schema(d, \"x.json\", \"2.2.0\"), id=\"set_schema\"),"
+        },
+        {
+          "at": "tests/lib/test_review_edit.py:110",
+          "expect": "assert red.set_schema(doc, \"x.json\", \"2.2.0\")[\"schema_ref\"] == \"x.json\""
         }
       ],
       "commands": [
@@ -159,6 +198,10 @@
         {
           "run": "python -m pytest tests/lib/test_review_merge.py -q",
           "expect": "passed, no failures"
+        },
+        {
+          "run": "python -m pytest tests/lib/test_review_edit.py -q",
+          "expect": "passed, no failures"
         }
       ],
       "tests": [
@@ -167,7 +210,7 @@
           "red": "AssertionError"
         },
         {
-          "node": "tests/lib/test_review_merge_adversarial.py::test_schema_version_is_2_3_0",
+          "node": "tests/lib/test_review_merge_adversarial.py::test_schema_version_is_at_least_2_3_0",
           "red": "AssertionError"
         },
         {
@@ -199,7 +242,7 @@
           "red": "AssertionError"
         },
         {
-          "node": "tests/schemas/test_pr_review_schema_adversarial.py::test_schema_version_is_2_3_0",
+          "node": "tests/schemas/test_pr_review_schema_adversarial.py::test_schema_version_matches_the_merge_constant_and_is_at_least_2_3_0",
           "red": "AssertionError"
         },
         {
@@ -252,6 +295,22 @@
         },
         {
           "node": "tests/hooks/test_schema_hook_refuted.py::test_refuted_entries_do_not_lift_the_sha_evidence_rule",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_review_merge_adversarial.py::test_not_resolved_latest_status_is_open_despite_a_bubble_entry",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_review_merge_adversarial.py::test_entry_ids_keep_the_orphan_guard_and_the_merge_refusal",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_fix_after_a_bubble_keeps_the_sentinel",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/hooks/test_schema_hook_refuted.py::test_a_refuted_sha_evidence_does_not_clear_a_ready_review",
           "red": "AssertionError"
         }
       ]
@@ -681,7 +740,7 @@
     {
       "id": "TASK-4",
       "title": "review_merge traced merge, merge_adversarial, refuted key, review_document; review_edit overrules",
-      "action": "review_merge.py: merge_findings_traced(reports) -> (issues, trace), trace mapping each issue id to its (source_id, finding_key) pairs; merge_findings stays and equals merge_findings_traced(...)[0]. merge_adversarial(reports, refutations) -> (issues, notes): merges every source (reviewer, code refuter, folded) through the trace; a finding with no refutation entry counts as upheld; an issue whose every finding is refuted carries 'refuted': <evidence>; in a mixed group rank, name, summary and fix_kind come from the upheld findings only and the refuted evidence goes to notes; with nothing refuted the issues equal merge_findings. _Record / _combine carry attack only to fold 'Attack: <text>' into the summary (D9). refuted_resolutions(issues, date) builds one REFUTED entry per refuted issue through _resolution; strip_refuted(issues) returns copies without the key. merge_ids (and regrade) carry refuted: kept only when every merged issue is refuted, evidence joined by a blank line. review_document writes the refuted_resolutions, strips the key and computes the verdict over them (post_review_resolutions present only when non-empty, so TestReviewDocument.test_key_order_and_defaults keeps its key list; edit tests/lib/test_review_merge.py:399-404 only if the order must change). The READY verdict counts refuted ids apart from resolved (', K refuted' only when K > 0). review_edit.py: issue_info(doc, id) returns the issue dict or raises ValueError; apply_refute(doc, id, evidence, date) refuses an unknown id or a closing latest status (RESOLVED, CLOSED_NO_ACTION, REFUTED) and appends a REFUTED entry; apply_unrefute(doc, id, mode, reason, date), mode bubble | fix, refuses unless the latest status is REFUTED (or an unknown mode / id); bubble appends BUBBLED and adds the id through add_bubble; fix appends NOT_RESOLVED. Both return a new doc with the verdict recomputed and never mutate the input. _without_closed_bubbles and merge_issue_ids treat REFUTED as closed through _closed_ids.",
+      "action": "review_merge.py: merge_findings_traced(reports) -> (issues, trace), trace mapping each issue id to its (source_id, finding_key) pairs; merge_findings stays and equals merge_findings_traced(...)[0]. merge_adversarial(reports, refutations) -> (issues, notes): merges every source (reviewer, code refuter, folded) through the trace; a finding with no refutation entry counts as upheld; an issue whose every finding is refuted carries 'refuted': <evidence>; in a mixed group rank, name, summary and fix_kind come from the upheld findings only and the refuted evidence goes to notes; with nothing refuted the issues equal merge_findings. _Record / _combine carry attack only to fold 'Attack: <text>' into the summary (D9). refuted_resolutions(issues, date) builds one REFUTED entry per refuted issue through _resolution; strip_refuted(issues) returns copies without the key. merge_ids (and regrade) carry refuted: kept only when every merged issue is refuted, evidence joined by a blank line. The spec's S5 rule holds for amend --merge too: in a mixed group (an issue dict without the refuted key is upheld) merge_ids orders the records upheld first before _combine, so the record that supplies the name and primary file is upheld, and takes the summary (_summary) and fix_kind (the judgment flag) from the upheld issues only; files, lines, fixes and reviewers still union over every merged issue, and the id (so the rank) stays keep's. review_document writes the refuted_resolutions, strips the key and computes the verdict over them (post_review_resolutions present only when non-empty, so TestReviewDocument.test_key_order_and_defaults keeps its key list; edit tests/lib/test_review_merge.py:399-404 only if the order must change). compute_verdict's READY text counts REFUTED ids apart: 'READY TO MERGE - <R> of <T> findings resolved, <B> bubbled' with R the closed ids that are not REFUTED, then ', <K> refuted' only when K > 0 (no suffix keeps every existing verdict string). review_edit.py: issue_info(doc, id) returns the issue dict or raises ValueError; apply_refute(doc, id, evidence, date) refuses an unknown id or a closing latest status (RESOLVED, CLOSED_NO_ACTION, REFUTED), appends a REFUTED entry and passes the result through _without_closed_bubbles, so a refuted bubbled id leaves the transient bubbles list; apply_unrefute(doc, id, mode, reason, date), mode bubble | fix, refuses unless the latest status is REFUTED (or an unknown mode / id); bubble appends BUBBLED and adds the id through add_bubble; fix appends NOT_RESOLVED and removes the id from the transient bubbles list. bubble_up is the terminal ledger (one {id, classification, reason} record per id), so both keep its entry as history, as resolve_all and _without_closed_bubbles already do; TASK-1's _settled_ids rule then counts the NOT_RESOLVED id open, so undispositioned_ids and the next waves see it. Both return a new doc with the verdict recomputed and never mutate the input. _without_closed_bubbles and merge_issue_ids treat REFUTED as closed through _closed_ids. Functions touched: review_merge merge_findings_traced, merge_adversarial, _Record, _combine, refuted_resolutions, strip_refuted, merge_ids, regrade, review_document, compute_verdict; review_edit issue_info, apply_refute, apply_unrefute, _without_closed_bubbles (docstring), merge_issue_ids. review_edit.KNOWN_VERSIONS stays (rmg.SCHEMA_VERSION,); tests/lib/test_review_edit.py runs after the review_edit edits.",
       "files": [
         "plugins/harness/lib/harness_lib/review_merge.py",
         "plugins/harness/lib/harness_lib/review_edit.py",
@@ -755,11 +814,19 @@
         {
           "at": "tests/lib/test_review_merge.py:397-403",
           "expect": "\"review_date\", \"verdict\", \"stats\", \"reviewers\", \"scoped_review_files\", \"bubbles\", \"strengths\","
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/review_merge.py:363",
+          "expect": "return f\"READY TO MERGE - {len(closed)} of {len(ids)} findings resolved, {len(bubbled)} bubbled\""
         }
       ],
       "commands": [
         {
           "run": "python -m pytest tests/lib/test_review_merge.py -q",
+          "expect": "passed, no failures"
+        },
+        {
+          "run": "python -m pytest tests/lib/test_review_edit.py -q",
           "expect": "passed, no failures"
         }
       ],
@@ -875,13 +942,29 @@
         {
           "node": "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[unknown-id]",
           "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_review_merge_adversarial.py::test_ready_verdict_counts_refuted_ids_apart",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_review_merge_adversarial.py::test_merge_ids_mixed_group_takes_its_shape_from_upheld_issues",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_review_merge_adversarial.py::test_bubble_refute_then_unrefute_fix_leaves_the_id_undispositioned",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_fix_drops_the_id_from_bubbles_and_keeps_bubble_up",
+          "red": "AttributeError"
         }
       ]
     },
     {
       "id": "TASK-5",
       "title": "pr_review.py and review_briefs: capture -a, init, merge, build, refute / unrefute, Phase 5 refusals",
-      "action": "Copy the planned driver test. capture: -a / --adversarial (store_true, beside --roast). Before rm.start_run (so current does not move) refuse when adversarial_script() (module seam: plugin root / rm.ADVERSARIAL_WORKFLOW) is missing (problem names adversarial-review.js) and when review_adversarial.schema_problem(project schema_path) reports the governing (possibly pinned) schema lacks REFUTED, BUBBLED or NOT_RESOLVED (problem names the pinned path). Classify plan paths (classify_plan_paths with tree_at_head; notes as note: lines), code_scope, refuter_slots; write the code-refuter briefs and the findings-refuter brief templates (review_briefs: role, scope, the attack or refute rule, the record_attacks_draft / record_refutations_draft heredoc with run_id=, the no-repo-writes rule, init as the first step for refuters); store plan['adversarial'] = record() and dispatch_time.adversarial_check; print the status line, then scriptPath=<abs> and args=<one-line JSON> (workflow_args) and no agent= rows. Without -a capture output, plan.json and briefs stay byte-identical. New init --pr <key> --agent adv_refute_<t> --run-id <id>: refuses a run id that is not current (naming it) and a target that has not recorded ('reviewer <t> has not recorded', exit 1); prints each target finding as '[<finding_key>] <severity> <name> <file>:<lines>'; on zero findings records an empty RefutationReport and prints 'no findings: done'. report_sources adds adv_code* sources credited '<id> (opus)'; stray_reports accepts them; fold_check refuses an adv_ source id; block --agent adv_refute_<t> reprints from refutations/<t>.json. merge under plan['adversarial']: every refute slot needs refutations/<target>.json (problem names adv_refute_<target>), a stored digest that differs from the target's current report_digest refuses with 'refutation stale: rerun adv_refute_<target>', then merge_adversarial; the table prints a refuted column. build: review_document writes the REFUTED resolutions before apply_phase4 / hold_ready_verdict; prints 'refuted: <id> (<evidence first line>)' per id; completes adversarial_check (counts, refuted_ids, unrefuted_ids) only under -a. phase5_state ignores a REFUTED resolution only while draft.json marks its id refuted, so build --replace still works after a refuting build and refuses after a developer refute / unrefute. New refute --pr <key> <ID> --evidence and unrefute --pr <key> <ID> (--bubble --classification C --reason R | --fix [--reason R]) read the built review, print tier, name and file:lines, go through review_edit.issue_info / apply_refute / apply_unrefute and commit_review; under -a they update refuted_ids / unrefuted_ids; unrefute clears the issue's refuted key in draft.json; --bubble then follows the existing bubble path (with_bubble); --fix moves phase done -> fix. bubble and closeout --resolved on a REFUTED id refuse naming unrefute; waves plans no fixer for a refuted id (--ids included) and plans a NOT_RESOLVED one; the done line counts refuted apart (suffix only when K > 0, so test_pr_review_driver.py:1051 holds). Module docstring (:1-127): -a, init --run-id, refute, unrefute. Keep functions under 50 lines; helpers go to review_adversarial.",
+      "action": "Copy the planned driver test. capture: -a / --adversarial (store_true, beside --roast). Before rm.start_run (so current does not move) refuse when adversarial_script() (module seam: plugin root / rm.ADVERSARIAL_WORKFLOW) is missing (problem names adversarial-review.js) and when review_adversarial.schema_problem(project schema_path) reports the governing (possibly pinned) schema lacks REFUTED, BUBBLED or NOT_RESOLVED (problem names the pinned path). Classify plan paths (classify_plan_paths with tree_at_head; notes as note: lines), code_scope, refuter_slots; write the code-refuter briefs and the findings-refuter brief templates (review_briefs: role, scope, the attack or refute rule, the record_attacks_draft / record_refutations_draft heredoc with run_id=, the no-repo-writes rule, init as the first step for refuters); store plan['adversarial'] = record() and dispatch_time.adversarial_check; print the status line, then scriptPath=<abs> and args=<one-line JSON> (workflow_args) and no agent= rows. Without -a capture output, plan.json and briefs stay byte-identical. New init --pr <key> --agent adv_refute_<t> --run-id <id>: refuses a run id that is not current (naming it) and a target that has not recorded ('reviewer <t> has not recorded', exit 1); prints each target finding as '[<finding_key>] <severity> <name> <file>:<lines>'; on zero findings records an empty RefutationReport and prints 'no findings: done'. report_sources adds adv_code* sources credited '<id> (opus)'; stray_reports accepts them; fold_check refuses an adv_ source id; block --agent adv_refute_<t> reprints from refutations/<t>.json (each entry's finding key, verdict and evidence). merge under plan['adversarial']: every refute slot needs refutations/<target>.json (problem names adv_refute_<target>; a refused merge writes no draft.json), a stored digest that differs from the target's current report_digest refuses with 'refutation stale: rerun adv_refute_<target>', then merge_adversarial; the table prints a refuted column. build: review_document writes the REFUTED resolutions before apply_phase4 / hold_ready_verdict; prints 'refuted: <id> (<evidence first line>)' per id; completes adversarial_check (counts, refuted_ids, unrefuted_ids) only under -a. phase5_state ignores a REFUTED resolution only while draft.json marks its id refuted, so build --replace still works after a refuting build and refuses after a developer refute / unrefute. New refute --pr <key> <ID> --evidence and unrefute --pr <key> <ID> (--bubble --classification C --reason R | --fix [--reason R]) read the built review, print the id, its tier, name and file:lines, go through review_edit.issue_info / apply_refute / apply_unrefute and commit_review; under -a they update refuted_ids / unrefuted_ids; unrefute clears the issue's refuted key in draft.json; --bubble then follows the existing bubble path (with_bubble); --fix moves phase done -> fix; refute never moves the phase (from done it stays done). bubble and closeout --resolved on a REFUTED id refuse naming unrefute and leave the review unchanged (bubbles, resolutions); waves plans no fixer for a refuted id and plans a NOT_RESOLVED one, a bubbled-then-refuted id included once unrefute --fix clears it from bubbles (wave_inputs holds back only the transient bubbles list, so it needs no other change); _selected (the --ids path of wave_inputs) refuses an id whose latest status is REFUTED with a problem naming the id and unrefute (exit 1), and selects it again after unrefute --fix; the done line counts refuted apart (suffix only when K > 0, so test_pr_review_driver.py:1051 holds). Module docstring (:1-127): -a, init --run-id, refute, unrefute. Keep functions under 50 lines; helpers go to review_adversarial.",
       "files": [
         "plugins/harness/scripts/pr_review.py",
         "plugins/harness/lib/harness_lib/review_briefs.py",
@@ -1180,6 +1263,30 @@
         {
           "node": "tests/scripts/test_pr_review_adversarial.py::test_waves_plan_no_fixer_for_a_refuted_id",
           "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_adversarial.py::test_bubble_refute_then_unrefute_fix_hands_the_id_to_waves",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_adversarial.py::test_waves_ids_refuses_a_refuted_id_naming_unrefute",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_adversarial.py::test_waves_ids_plans_an_id_after_unrefute_fix",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_refute_of_an_upheld_id",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_adversarial.py::test_refute_under_the_flag_adds_the_id_to_refuted_ids",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_pr_review_adversarial.py::test_refute_from_done_keeps_the_phase",
+          "red": "AssertionError"
         }
       ]
     },
@@ -1242,6 +1349,14 @@
         {
           "run": "claude plugin validate --strict plugins/harness",
           "expect": "validation passes"
+        },
+        {
+          "run": "claude plugin test plugins/agent-watcher",
+          "expect": "all agent-watcher tests pass"
+        },
+        {
+          "run": "python -m pytest tests/skills/test_agent_frontmatter_contract.py -q",
+          "expect": "passed, no failures"
         }
       ],
       "tests": [
@@ -1306,7 +1421,7 @@
     {
       "id": "TASK-7",
       "title": "Skill docs, schemas README prose, README, harness 0.71.0 and the release note",
-      "action": "Copy the planned docs test. pr-review SKILL.md: -a / --adversarial in the argument hint and the capture row; before capture, with -a and no Workflow tool print a problem: line and do not run capture (D7); a Phase 2 'Under -a' section: one Workflow call with scriptPath and args exactly as printed, no edits and no added or dropped slots with the one named exception args.guidance, the agent count 2(R + C) <= 26 + 2N, the Phase 3 trigger and the recovery (a plain Agent dispatch of the failed entry, reviewer first); a Model floor row for the refuter (opus); the init, refute and unrefute (--bubble / --fix) rows, no amend --unrefute; Phase 3 reads the refuted column; the Phase 5 Step 5 pause lists refuted ids; Step 0 'no unrefuted issues, no Phase 5'; :489 and :496 count refuted apart from resolved. operating_rules.md :35: REFUTED closing, BUBBLED and NOT_RESOLVED non-closing, a refuted issue gets no fixer, the developer overrules with refute or unrefute --bubble / --fix. review-local SKILL.md: -a in the hint, the capture line and the rows table, an 'Under -a' Phase 2 paragraph with the recovery. fold-in-review SKILL.md: one line, folded findings are not refuted. schemas/README.md :40 and :283 status prose (TASK-1 moved :31/:33). README.md layout table (:575-587): a plugins/harness/workflows/ row; feature prose. plugin.json 0.70.0 -> 0.71.0; docs/RELEASES/v1.0.0.md harness row to 0.71.0 and a #252 line for --adversarial (refute / unrefute included). pr-team stays unchanged (D2).",
+      "action": "Copy the planned docs test. pr-review SKILL.md: -a / --adversarial in the argument hint and the capture row; before capture, with -a and no Workflow tool print a problem: line and do not run capture (D7); a Phase 2 'Under -a' section: one Workflow call with scriptPath and args exactly as printed, no edits and no added or dropped slots with the one named exception args.guidance, the agent count 2(R + C) <= 26 + 2N, the Phase 3 trigger and the recovery (a plain Agent dispatch of the failed entry, reviewer first); a Model floor row for the refuter (opus); the init, refute and unrefute (--bubble / --fix) rows, no amend --unrefute; Phase 3 reads the refuted column; the Phase 5 Step 5 pause lists refuted ids; Step 0 'no unrefuted issues, no Phase 5'; :489 and :496 count refuted apart from resolved. operating_rules.md :35: REFUTED closing, BUBBLED and NOT_RESOLVED non-closing, a refuted issue gets no fixer, the developer overrules with refute or unrefute --bubble / --fix. review-local SKILL.md: -a in the hint, the capture line and the rows table, an 'Under -a' Phase 2 paragraph with the recovery. fold-in-review SKILL.md: one line, folded findings are not refuted. schemas/README.md :40 and :283 status prose (TASK-1 moved :31/:33). README.md layout table (:575-587): a plugins/harness/workflows/ row; feature prose. plugin.json 0.70.0 -> 0.71.0; docs/RELEASES/v1.0.0.md harness row to 0.71.0 and a #252 line for --adversarial (refute / unrefute included). pr-team stays unchanged (D2). operating_rules.md: the verdict form (:41-43) gains ', K refuted' (only when K > 0; R counts resolved ids without the refuted ones); the write-path list (:47-50) adds refute and unrefute beside closeout, bubble and amend. pr-review SKILL.md Layer 3 closeout prose (:586-590, S4): REFUTED, BUBBLED and NOT_RESOLVED entries count toward neither shape (a)'s SHA evidence nor shape (b)'s resolutions, and a latest NOT_RESOLVED keeps its id open even when bubbled. tests/skills/test_review_local_skill_contract.py stays unchanged: the planned docs test covers the -a capture line.",
       "files": [
         "plugins/harness/skills/pr-review/SKILL.md",
         "plugins/harness/skills/pr-review/operating_rules.md",
@@ -1324,7 +1439,7 @@
       ],
       "status": "PENDING",
       "evidence": "not started",
-      "model": "sonnet",
+      "model": "opus",
       "anchors": [
         {
           "at": "plugins/harness/skills/pr-review/SKILL.md:5",
@@ -1373,6 +1488,22 @@
         {
           "at": "docs/RELEASES/v1.0.0.md:25",
           "expect": "| harness | 0.65.1 | 0.70.0 |"
+        },
+        {
+          "at": "plugins/harness/skills/pr-review/operating_rules.md:42",
+          "expect": "else `READY TO MERGE - <R> of <T> findings resolved,"
+        },
+        {
+          "at": "plugins/harness/skills/pr-review/operating_rules.md:49",
+          "expect": "bubbles, regrades and merges always go through `closeout`, `bubble` and `amend`"
+        },
+        {
+          "at": "plugins/harness/skills/pr-review/SKILL.md:586",
+          "expect": "(a) **resolution closeout**"
+        },
+        {
+          "at": "plugins/harness/skills/pr-review/SKILL.md:588",
+          "expect": "(b) **bubble-accounted closeout**"
         }
       ],
       "commands": [
@@ -1467,8 +1598,8 @@
       "model": "sonnet",
       "commands": [
         {
-          "run": "/harness:add-todo -r 1 -- pr-team --adversarial follow-up to #252",
-          "expect": "Added todo-",
+          "run": "/harness:add-todo -r 1 -- pr-team gets --adversarial after #252 lands; the pr-team-orchestrator and pr-team-fixer agents plan and consolidate inside their own runs, so -a there changes both agents; reuse review_adversarial, merge_adversarial and the refute / unrefute pipeline.",
+          "expect": "added todo-",
           "writes": [
             "docs/TODO/RepoToDo.json"
           ]
@@ -1477,20 +1608,24 @@
     },
     {
       "id": "TASK-9",
-      "title": "agent-watcher: refuter role in identify.ts, matrix rule per D6, version and release row",
-      "action": "Blocked until the developer settles D6 after SPK-1. identify.ts: a refuter dispatch (agent harness:adversarial-reviewer, AGENT_ROLE code refuter or findings refuter) is identified as a pr-review slot, beside reviewer and fixer, with its tests in identify.test.ts. The matrix rule per D6's choice (watcher: record Workflow agents as Agent dispatches; shape: a workflow dispatch_shape in matrixRow.ts DISPATCH_SHAPES; exempt: no rows for Workflow agents; result: rows from workflowProgress through a harness driver command, dispatch_shape workflow) with its matrixRow.test.ts cases. agent-watcher plugin.json 0.8.1 -> 0.9.0 unless TASK-10 already moved it there (one minor bump on the branch); its row in docs/RELEASES/v1.0.0.md (Plugins table, leaving the Unchanged line) and a change line.",
+      "title": "agent-watcher: refuter role, Workflow-agent matrix rows by watcher (D6), release line",
+      "action": "D6 is watcher. identify.ts: a refuter (agent harness:adversarial-reviewer, AGENT_ROLE code refuter or findings refuter) is identified as a pr-review slot, beside reviewer and fixer, with its tests in identify.test.ts. Workflow agents never pass through tool.call {tool: 'Agent'}, so the pr-review layer binds an agentId to a slot at the agent's first pr_review.py Bash call that names the slot and run (init --pr --agent --run-id for a refuter; the brief's record command for a reviewer slot), through the existing Bash tool.call hook in layer.ts. The bound agent's tokens and tool_uses come from the per-agentId tallies tracker.ts already keeps (turn.step, catch-all tool.call); duration runs from its first observed step to turn.complete, where its matrix row is written. matrixRow.ts DISPATCH_SHAPES gains 'workflow' and these rows carry it. A row is always written for a bound slot: a count the hooks did not observe (per SPK-1 assumption 7) is written as 0 and the row's notes name it. When SPK-1 shows Workflow agents raise no agentId events at all, the layer still writes one row per planned slot from the main session's Workflow tool.call args (counts 0, notes 'unobserved: workflow agent'). Nothing reads the Workflow task output file. matrixRow.test.ts and tracker.test.ts cover the bound row, the unobserved-count row and the no-event fallback. No version bump: TASK-10 moves agent-watcher 0.8.1 -> 0.9.0 and writes its Plugins row; TASK-9 adds only its change line to docs/RELEASES/v1.0.0.md, after TASK-7's and TASK-10's edits there.",
       "files": [
         "plugins/agent-watcher/hooks/layers/pr-review/identify.ts",
         "plugins/agent-watcher/hooks/layers/pr-review/identify.test.ts",
         "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts",
         "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.test.ts",
-        "plugins/agent-watcher/.claude-plugin/plugin.json",
+        "plugins/agent-watcher/hooks/layers/pr-review/layer.ts",
+        "plugins/agent-watcher/hooks/core/tracker.ts",
+        "plugins/agent-watcher/hooks/tracker.test.ts",
         "plugins/agent-watcher/README.md",
         "docs/RELEASES/v1.0.0.md"
       ],
       "dependencies": [
         "SPK-1",
-        "TASK-6"
+        "TASK-6",
+        "TASK-7",
+        "TASK-10"
       ],
       "status": "PENDING",
       "evidence": "not started",
@@ -1505,12 +1640,20 @@
           "expect": "export const DISPATCH_SHAPES = ['parallel', 'inline'] as const"
         },
         {
-          "at": "plugins/agent-watcher/.claude-plugin/plugin.json:3",
-          "expect": "\"version\": \"0.8.1\","
+          "at": "plugins/agent-watcher/hooks/layers/pr-review/layer.ts:317",
+          "expect": "on('tool.call', { tool: 'Bash' }, async ($, e, next) => {"
         },
         {
-          "at": "docs/RELEASES/v1.0.0.md:27",
-          "expect": "Unchanged: agent-watcher, band-line, banner-status, bubble-stamp,"
+          "at": "plugins/agent-watcher/hooks/core/tracker.ts:571-572",
+          "expect": "if (e.agentId !== undefined) toolUses.set(e.agentId, (toolUses.get(e.agentId) ?? 0) + 1)"
+        },
+        {
+          "at": "plugins/agent-watcher/hooks/core/tracker.ts:581-584",
+          "expect": "tallyStep(e.agentId, r.usage)"
+        },
+        {
+          "at": "plugins/agent-watcher/hooks/core/tracker.ts:589-591",
+          "expect": "if (e.agentId !== undefined) await recordLoopEnd($, layers, e.agentId, e).catch(noop)"
         }
       ],
       "commands": [
@@ -1535,7 +1678,7 @@
     {
       "id": "TASK-10",
       "title": "TS closed-status mirrors gain REFUTED (D11): agent-watcher and bubble-stamp",
-      "action": "agent-watcher hooks/layers/pr-review/bubbles.ts CLOSING_STATUSES, bubble-stamp hooks/review.ts CLOSING_STATUSES and hooks/memo.ts STAMPING gain 'REFUTED', so a bubbled id whose latest status is REFUTED reads as Decided; BUBBLED and NOT_RESOLVED stay non-closing (a later entry reopens). Update the doc comments (bubbles.ts:10, review.ts:74, memo.ts:142) and both READMEs. Tests: bubbles.test.ts, review.test.ts and memo.test.ts each add a bubbled id with a REFUTED latest status (closed) and one with REFUTED then NOT_RESOLVED (open). Versions: agent-watcher 0.8.1 -> 0.9.0 (unless TASK-9 already moved it), bubble-stamp 0.2.0 -> 0.3.0; rows in docs/RELEASES/v1.0.0.md (Plugins table, drop both from the Unchanged line) and one change line.",
+      "action": "agent-watcher hooks/layers/pr-review/bubbles.ts CLOSING_STATUSES, bubble-stamp hooks/review.ts CLOSING_STATUSES and hooks/memo.ts STAMPING gain 'REFUTED' (the arrays stay unexported), so a bubbled id whose latest status is REFUTED reads as Decided; BUBBLED and NOT_RESOLVED stay non-closing (a later entry reopens). bubbles.ts is the port of id_handling.all_issues_dispositioned (bubbles.ts:2-3; runs.ts:57 marks a run done from allDispositioned): dispositionedOf drops every id whose latest post_review_resolutions status is NOT_RESOLVED, even when bubbles or bubble_up name it (TASK-1's rule); bubbles.test.ts adds that case (REFUTED then NOT_RESOLVED with a bubble_up entry: not dispositioned, allDispositioned false). memo.ts stamping is one-way (memo.ts:143-145: a Decided row is never touched), so a row stamped Decided by a REFUTED entry stays Decided after unrefute --bubble: memo.ts's doc comment and a bubble-stamp README Limits line state it (memo unstamp on unrefute --bubble is deferred). Update the doc comments (bubbles.ts:10, review.ts:74, memo.ts:142, types/index.d.ts:84) and both READMEs (agent-watcher R1's closing list and R6 at README.md:102: REFUTED closes, a latest NOT_RESOLVED is not a disposition). Tests: bubbles.test.ts, review.test.ts and memo.test.ts each add a bubbled id with a REFUTED latest status (closed) and one with REFUTED then NOT_RESOLVED (open); copy the planned tests/mods/test_closed_status_mirror.py, which pins each array to rmg.CLOSED_STATUSES. Versions: agent-watcher 0.8.1 -> 0.9.0 (TASK-10 always makes this bump; TASK-9 adds only a release line), bubble-stamp 0.2.0 -> 0.3.0. docs/RELEASES/v1.0.0.md: both rows in the Plugins table (drop both from the Unchanged line), the intro (:3-4) names the two mod minor bumps, and change lines: agent-watcher's names REFUTED closing, the NOT_RESOLVED rule and the new harness:adversarial-reviewer DEFINED_AGENTS entry (TASK-6's contract.ts line); bubble-stamp's names REFUTED stamping and the one-way limit.",
       "files": [
         "plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts",
         "plugins/agent-watcher/hooks/layers/pr-review/bubbles.test.ts",
@@ -1547,7 +1690,9 @@
         "plugins/bubble-stamp/hooks/memo.test.ts",
         "plugins/bubble-stamp/README.md",
         "plugins/bubble-stamp/.claude-plugin/plugin.json",
-        "docs/RELEASES/v1.0.0.md"
+        "docs/RELEASES/v1.0.0.md",
+        "plugins/agent-watcher/types/index.d.ts",
+        "tests/mods/test_closed_status_mirror.py"
       ],
       "dependencies": [
         "TASK-1"
@@ -1579,6 +1724,30 @@
         {
           "at": "docs/RELEASES/v1.0.0.md:27",
           "expect": "Unchanged: agent-watcher, band-line, banner-status, bubble-stamp,"
+        },
+        {
+          "at": "plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts:53-57",
+          "expect": "const dispositionedOf = (doc: Record<string, unknown>): string[] => ["
+        },
+        {
+          "at": "plugins/agent-watcher/hooks/layers/pr-review/runs.ts:57",
+          "expect": "return review !== undefined && allDispositioned(review) ? { ...bubbled, phase: 'done' } : bubbled"
+        },
+        {
+          "at": "plugins/agent-watcher/README.md:102",
+          "expect": "| R6 | Bubbled issues are dispositioned in the review JSON before stopping |"
+        },
+        {
+          "at": "plugins/agent-watcher/types/index.d.ts:84",
+          "expect": "that no RESOLVED / CLOSED_NO_ACTION resolution closes."
+        },
+        {
+          "at": "plugins/bubble-stamp/hooks/memo.ts:143",
+          "expect": "a `Decided` row is never touched"
+        },
+        {
+          "at": "docs/RELEASES/v1.0.0.md:3",
+          "expect": "Since `v0.7.0`. Major:"
         }
       ],
       "commands": [
@@ -1595,18 +1764,34 @@
           "expect": "passed, no failures"
         },
         {
-          "run": "python -m pytest tests/mods/test_bubble_stamp_config_mirror.py -q",
-          "expect": "passed, no failures"
+          "run": "copy docs/plans/1016/tests/tests/mods/test_closed_status_mirror.py to tests/mods/test_closed_status_mirror.py",
+          "expect": "tests/mods/test_closed_status_mirror.py matches the planned file",
+          "writes": [
+            "tests/mods/test_closed_status_mirror.py"
+          ]
         },
         {
-          "run": "python -m pytest tests/mods/test_agent_watcher_config_mirror.py -q",
+          "run": "python -m pytest tests/mods/test_closed_status_mirror.py -q",
           "expect": "passed, no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[agent-watcher-bubbles]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[bubble-stamp-review]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/mods/test_closed_status_mirror.py::test_the_mirror_holds_refuted_and_equals_the_harness_set[bubble-stamp-memo]",
+          "red": "AssertionError"
         }
       ]
     }
   ],
   "base_commit": "c4cda8a6e33f2f6f4e3e0dd00449f2e40b277464",
-  "frozen": null,
   "decisions": [
     {
       "id": "D1",
@@ -1721,8 +1906,8 @@
           "summary": "The session passes the Workflow completion notification's <output-file> to a driver command writing one matrix row per workflowProgress[] entry (label = slot id; tokens, toolCalls, durationMs, model), dispatch_shape workflow, no path logged"
         }
       ],
-      "chosen": null,
-      "rationale": "Open: waits on SPK-1 (hooks for Workflow agents, the workflowProgress shape); the developer decides."
+      "chosen": "watcher",
+      "rationale": "Developer, 2026-11-12: watcher is definitely preferred. A row agent-watcher records from what its own hooks observe beats a more precise row by another route: no session step, no read of the Workflow task output file, no driver command. SPK-1 assumption 7 tells which counts the hooks observe for Workflow agents; a count they cannot observe is written as 0 and named in the row's notes, never sourced elsewhere."
     },
     {
       "id": "D7",
@@ -1876,7 +2061,7 @@
     },
     {
       "name": "agent-watcher version",
-      "value": "0.8.1 -> 0.9.0 (one minor bump on the branch; TASK-9 and TASK-10 share it)",
+      "value": "0.8.1 -> 0.9.0 (TASK-10 bumps it; TASK-9 adds only its release line)",
       "source": "plugins/agent-watcher/.claude-plugin/plugin.json:3",
       "assumes": [
         "add-refuted"
@@ -2038,7 +2223,7 @@
   "deferred_to_future_plans": [
     {
       "topic": "review-local strap round for -a",
-      "rationale": "strap.py reopen review-local after this plan's items land: a new round on a frozen spec (legacy stamp 8538f729, already stale 8538f729 -> 400373d6, todo-5rze / #275). #252 changes four of its parts: pr_review.py, review_models.py, review-local/SKILL.md and tests/skills/test_review_local_skill_contract.py. Mechanical: capture -a refuses a missing script; build writes REFUTED; refute closes, unrefute reopens. Judgment: no Workflow tool stops the session; the row goes unchanged but guidance; refute / unrefute only on the developer's word.",
+      "rationale": "strap.py reopen review-local --base c4cda8a (the plan's base_commit) after this plan's items land, so the baselines read the SKILL.md from before -a: a new round on a frozen spec (legacy stamp 8538f729, already stale 8538f729 -> 400373d6, todo-5rze / #275). #252 changes four of its parts: pr_review.py, review_models.py, review-local/SKILL.md and tests/skills/test_review_local_skill_contract.py. Mechanical: capture -a refuses a missing script; build writes REFUTED; refute closes, unrefute reopens. Judgment: no Workflow tool stops the session; the row goes unchanged but guidance; refute / unrefute only on the developer's word.",
       "affected_sites": [
         "docs/plans/strap/review-local/SkillSpec.json"
       ]
@@ -2052,12 +2237,14 @@
       ]
     },
     {
-      "topic": "D6 follow-through beyond TASK-9",
-      "rationale": "If the developer picks result or shape after SPK-1, a harness driver command that reads the Workflow output file and writes matrix rows (and its done-criterion (h) rule) may outgrow TASK-9; it lands as its own plan when it does.",
+      "topic": "memo unstamp on unrefute --bubble",
+      "rationale": "bubble-stamp stamps a memo row Decided when an id's latest status closes (REFUTED included after TASK-10) and never touches a Decided row again (memo.ts:143-145), so unrefute --bubble after a refute leaves the row Decided while the id is open again. Reopening a stamped row needs a reverse stamp rule and its anchors; the developer decides whether it is worth it.",
       "affected_sites": [
-        "plugins/harness/scripts/pr_review.py",
-        "plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts"
+        "plugins/bubble-stamp/hooks/memo.ts",
+        "plugins/bubble-stamp/hooks/memo.test.ts",
+        "plugins/bubble-stamp/README.md"
       ]
     }
-  ]
+  ],
+  "ledger": "plan/1016-pr-review-adversarial"
 }
