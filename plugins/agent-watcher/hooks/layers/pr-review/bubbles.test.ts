@@ -25,12 +25,20 @@ describe('readReview (id_handling.py port)', () => {
     })
   })
 
-  test('closed: the latest resolution status per id, RESOLVED or CLOSED_NO_ACTION', async () => {
+  test('closed: the latest resolution status per id is a closing one; a later non-closing entry reopens', async () => {
     const resolutions = [
       { id: 'C1', status: 'RESOLVED' }, { id: 'I1', status: 'CLOSED_NO_ACTION' }, { id: 'I2', status: 'RESOLVED' },
       { id: 'I2', status: 'UNRESOLVED' }, { id: 'M1', status: 'DEFERRED' }, { id: 'M2' },
     ]
     expect(readReview(review({ post_review_resolutions: resolutions }))?.closed).toEqual(['C1', 'I1'])
+  })
+
+  test('closed: a latest REFUTED closes; REFUTED then NOT_RESOLVED or BUBBLED reopens', async () => {
+    const resolutions = [
+      { id: 'I1', status: 'REFUTED' }, { id: 'I2', status: 'REFUTED' }, { id: 'I2', status: 'NOT_RESOLVED' },
+      { id: 'M1', status: 'REFUTED' }, { id: 'M1', status: 'BUBBLED' },
+    ]
+    expect(readReview(review({ post_review_resolutions: resolutions }))?.closed).toEqual(['I1'])
   })
 
   test('tolerates nulls, junk entries and bad JSON', async () => {
@@ -46,6 +54,38 @@ describe('dispositions', () => {
     expect(allDispositioned(readReview(review())!)).toBe(false)
     expect(allDispositioned(readReview(review({ post_review_resolutions: [{ id: 'C1' }, { id: 'I2' }] }))!)).toBe(true)
     expect(allDispositioned(readReview(JSON.stringify({ issues: {} }))!)).toBe(false)
+  })
+
+  test('a latest NOT_RESOLVED is no disposition, even when bubbles or bubble_up name the id', async () => {
+    const reopened = [
+      { id: 'C1', status: 'RESOLVED' }, { id: 'I2', status: 'REFUTED' },
+      { id: 'M1', status: 'REFUTED' }, { id: 'M1', status: 'NOT_RESOLVED' },
+      { id: 'I1', status: 'NOT_RESOLVED' },
+    ]
+    const r = readReview(review({ post_review_resolutions: reopened }))!
+    expect(r.dispositioned).toEqual(['C1', 'I2'])
+    expect(allDispositioned(r)).toBe(false)
+    expect(missingFromReview(['I1', 'M1'], r)).toEqual(['I1', 'M1'])
+  })
+
+  test('only the latest NOT_RESOLVED reopens: a later closing entry settles the id; a latest REFUTED counts', async () => {
+    const settled = [
+      { id: 'C1', status: 'RESOLVED' }, { id: 'I2', status: 'REFUTED' },
+      { id: 'M1', status: 'REFUTED' }, { id: 'M1', status: 'NOT_RESOLVED' }, { id: 'M1', status: 'RESOLVED' },
+    ]
+    const r = readReview(review({ post_review_resolutions: settled }))!
+    expect(r.dispositioned).toEqual(['C1', 'I2', 'M1', 'I1'])
+    expect(allDispositioned(r)).toBe(true)
+  })
+
+  test('a latest BUBBLED counts only through bubbles or bubble_up', async () => {
+    const lone = [{ id: 'C1', status: 'RESOLVED' }, { id: 'I2', status: 'BUBBLED' }]
+    const r = readReview(review({ post_review_resolutions: lone }))!
+    expect(r.dispositioned).toEqual(['C1', 'I1', 'M1'])
+    expect(allDispositioned(r)).toBe(false)
+    const named = readReview(review({ post_review_resolutions: lone, bubbles: ['I1', 'I2'] }))!
+    expect(named.dispositioned).toEqual(['C1', 'I1', 'I2', 'M1'])
+    expect(allDispositioned(named)).toBe(true)
   })
 
   test('missingFromReview: tracked ids not dispositioned, sorted; nothing without a review', async () => {

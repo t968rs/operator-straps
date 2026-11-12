@@ -1,5 +1,6 @@
-"""Behavioral tests for ``harness_lib.validation.artifact_names`` and
-``harness_lib.validation.schema_registry``.
+"""Behavioral tests for ``harness_lib.validation.artifact_names``,
+``harness_lib.validation.schema_registry`` and the READY count check of
+``harness_lib.validation.pr_json_validation.validate_issue_counts``.
 
 Projects are throwaway repos built by ``make_project``; schema resolution goes through
 ``schema_path`` (project pinned copy first, else the plugin copy).
@@ -23,6 +24,7 @@ from harness_lib.validation.artifact_names import (
     phase5_sentinel_dir,
     phase5_sentinel_path,
 )
+from harness_lib.validation.pr_json_validation import IssueTabulationError, validate_issue_counts
 from harness_lib.validation.schema_registry import load_schema, schema_names, schema_registry
 
 # A pinned pair with a bare-filename sibling ref: the plugin ships none any more, so the registry is
@@ -145,3 +147,35 @@ def test_registry_serves_pinned_sibling(make_project) -> None:
     root = make_project(files=_PINNED)
     cfg = activate(load_config(root))
     assert schema_registry(cfg).contents("Child.schema.json") == _CHILD
+
+
+def _counted_review(verdict: str, *resolutions: dict, **extra: object) -> dict:
+    """A PR_REVIEW dict holding minor issue M1, with ``resolutions`` as its history."""
+    doc = {"verdict": verdict, "issues": {"critical": [], "important": [], "minor": [{"id": "M1"}]},
+           "post_review_resolutions": list(resolutions), "bubbles": [], "bubble_up": []}
+    doc.update(extra)
+    return doc
+
+
+_REOPENED = ({"id": "M1", "status": "REFUTED"}, {"id": "M1", "status": "NOT_RESOLVED"})
+
+
+@pytest.mark.parametrize("extra", [
+    pytest.param({}, id="resolution-only"),
+    pytest.param({"bubbles": ["M1"]}, id="bubbled-too"),
+])
+def test_ready_count_check_treats_a_reopened_id_as_unaccounted(extra: dict) -> None:
+    """A READY verdict over an id whose latest resolution is NOT_RESOLVED leaves that id unaccounted."""
+    with pytest.raises(IssueTabulationError) as caught:
+        validate_issue_counts(_counted_review("READY TO MERGE - 0 of 1", *_REOPENED, **extra))
+    assert caught.value.unaccounted == {"M1"} and caught.value.orphans == set()
+
+
+def test_count_check_orphan_rule_stays_raw_and_not_ready_passes() -> None:
+    """A reopened id still names an issue (no orphan), and a NOT READY review with it passes."""
+    validate_issue_counts(_counted_review("NOT READY TO MERGE - minor findings pending Phase 5: M1",
+                                          *_REOPENED))
+    stray = ({"id": "M9", "status": "REFUTED"}, {"id": "M9", "status": "NOT_RESOLVED"})
+    with pytest.raises(IssueTabulationError) as caught:
+        validate_issue_counts(_counted_review("NOT READY TO MERGE - x", *stray))
+    assert caught.value.orphans == {"M9"}
