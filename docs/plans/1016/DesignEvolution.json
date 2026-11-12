@@ -431,6 +431,33 @@
         "free_form": "Developer asked for a user-facing README for review-local alongside the TASK-7 skill docs."
       },
       "date": "2026-11-12"
+    },
+    {
+      "id": "EX9",
+      "discovered_by": "TASK-7 lane (open item 1)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-9"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-9 files; pr-review SKILL.md Phase 3 Step 4 and done criterion (h)",
+        "indicated": "TASK-9 changes agent-watcher only; the pr-review skill describes matrix rows through the agent-watcher note or a manual append"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "skill prose misses the workflow rows",
+        "why_free_form": "Under -a the manual append needs token and duration counts that Workflow agents never expose, and the prose does not say the watcher writes the fallback rows (EX4)."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-9 also edits plugins/harness/skills/pr-review/SKILL.md: under -a the watcher writes one row per workflow slot (dispatch_shape workflow, counts 0, notes unobserved: workflow agent) and the session appends no row for those slots"
+      },
+      "why_new_outcome": {
+        "category": "convention-compliance",
+        "free_form": "Developer chose to land the prose line with the TASK-9 code it describes."
+      },
+      "date": "2026-11-12"
     }
   ]
 }
