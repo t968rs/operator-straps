@@ -1,0 +1,253 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.2.0",
+  "pr": 276,
+  "pr_title": "pr review mini fixes",
+  "branch": "1154-pr-review-mini-fixes",
+  "base_branch": "main",
+  "base_sha": "e1cf2a79ce245bb7862acb7378cd0f44ee91bb64",
+  "head_sha": "9177e8f318547943a8627e49c6ceb05601659934",
+  "review_date": "2026-11-12",
+  "verdict": "NOT READY TO MERGE - minor findings pending Phase 5: M1, M2, M3, M4, M5, M6, M7, M8, M9, M10, M11",
+  "stats": {
+    "additions": 170,
+    "deletions": 185,
+    "files_changed": 9,
+    "source": {
+      "additions": 168,
+      "deletions": 185,
+      "files_changed": 8
+    }
+  },
+  "reviewers": [
+    "tests (sonnet)",
+    "runtime (opus)",
+    "docs (opus)",
+    "skill_package (opus)",
+    "roast (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/0276/pr276_20261112T081743Z/findings/tests.json",
+    "docs/_scratch/pr_review/0276/pr276_20261112T081743Z/findings/runtime.json",
+    "docs/_scratch/pr_review/0276/pr276_20261112T081743Z/findings/docs.json",
+    "docs/_scratch/pr_review/0276/pr276_20261112T081743Z/findings/skill_package.json",
+    "docs/_scratch/pr_review/0276/pr276_20261112T081743Z/findings/roast.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "The new amend tests are behavioral: they drive the real CLI through merge, amend, build and waves and assert on draft.json, the amend log entry and the printed table, with only gh and the phase 4 script stubbed.",
+    "The refusal path (M1 is already mechanical, exit 1, stderr message) is covered next to the success path, matching set_fix_kind's guard in review_merge.py.",
+    "The updated table assertion ('I1 important mechanical ...') tracks the new fix kind column that issue_row prints, and the regrade test checks the id and order are kept in place.",
+    "set_fix_kind keeps the id and position, so a fix-kind change never renumbers issues the way a severity regrade does, and it refuses a no-op change exactly as regrade does.",
+    "The fix-kind value rides the existing --regrade flag through the same ordered ops list and amend log, so merge --force protection and argument-order semantics apply unchanged.",
+    "issue_row now prints the fix kind in the table, which makes the amend result (and the haiku/opus choice in review_waves._mechanical) visible before build.",
+    "Module docstring, usage block and argparse help were all updated together with the behavior; driver tests cover success, already-set refusal and the log note.",
+    "The RepoToDo.json counts are consistent with the two retired items: items 57->55, by_status, by_impact (dev_velocity and docs_tooling each -1), by_loe (XS and S each -1), gh_issue 51->49 and close_candidates 25->27 all reconcile, ranks renumber with no gaps, and both ids join retired_ids.",
+    "The new operating rule covers both directions (judgment->mechanical for exact edits, mechanical->judgment for fixes still needing a choice) and flags GitHub folds, which always arrive as judgment, as the case to check.",
+    "The issue-row format in the docs (`I3 important judgment path:lines [slots] name`) matches `issue_row` at the head exactly, including the judgment default for a missing fix kind.",
+    "The version bump (harness 0.69.1 -> 0.70.0, a minor bump for a new amend form) is reflected in both plugin.json and the release table.",
+    "SKILL.md Step 1's printed-row example (`I3 important judgment path:lines [slots] name`) matches issue_row in pr_review.py exactly, and the driver test pins that format.",
+    "The new operating rule names both directions (judgment to mechanical and back) with concrete criteria, and its section pointer from SKILL.md Step 2 ('same section') resolves to 'Grading and verifying findings'.",
+    "Docs, script docstring, argparse help, usage block and release notes describe the fix-kind regrade with the same 'in place, id and severity kept' contract that set_fix_kind implements.",
+    "set_fix_kind works on _flat deep copies and keeps id and order, so a fix-kind regrade cannot renumber the draft or mutate the caller's issues.",
+    "The routing test drives amend through build and waves and asserts `model=haiku` on the real planner output, proving the regrade reaches the fixer model rather than just the draft.",
+    "Docs move in lockstep: module docstring, usage line, argparse help, SKILL.md table and Phase 3 step, operating rules, release note and the 0.70.0 minor bump all describe the same `ID=mechanical|judgment` form.",
+    "RepoToDo counts reconcile exactly with the two retired items (status, impact, LoE and gh_issue tallies each drop by the right one), and the retired ids are recorded."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "Release note entry lacks its PR number",
+        "file": "docs/RELEASES/v1.0.0.md",
+        "lines": "105",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "Every other bullet under Changes in docs/RELEASES/v1.0.0.md opens with its PR number (`#253 Fix(...)`, `#273 Fix(...)`), but the new entry at line 105 opens with a bare `Feat(pr-review):`. The developer pastes this file as the GitHub release body, so the entry cannot be traced to its PR.\n\nAlso (roast): Every other Changes entry in v1.0.0.md opens with its PR (`#273 Fix(...)`); the new entry starts bare at `Feat(pr-review)`, so it is the one line in the release body a reader cannot trace to a merge.",
+        "fix": [
+          "Prefix docs/RELEASES/v1.0.0.md:105 with the PR number: '- #276 Feat(pr-review): `amend --regrade I3=mechanical` ...'.",
+          "Prefix the entry with the PR number: `- #276 Feat(pr-review): amend --regrade I3=mechanical ...`."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "#153 close candidate says no PR is open, but PR #276 carries the branch",
+        "file": "docs/TODO/RepoToDo.json",
+        "lines": "3329-3337",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "The new close candidate's evidence ends with 'no PR is open for it yet' (RepoToDo.json:3334), and its recommended_action (3335) names only the branch. PR #276 (`1154-pr-review-mini-fixes` -> `main`) is open and holds 757277a and 8cd9cae, so this text was out of date when the branch was proposed. The cited range `review_merge.py:404-416` also stops one line short of `set_fix_kind`'s `return out` at 417.\n\nAlso (roast): The new close_candidates entry for #153 states the commits sit only on branch 1154-pr-review-mini-fixes with `no PR is open for it yet`, but it ships inside PR #276, which is that PR; the recommended action still talks about a future PR body. Stale on arrival.",
+        "fix": [
+          "In RepoToDo.json:3334 replace 'no PR is open for it yet' with 'PR #276 carries them', and change 404-416 to 404-417. In 3335 name PR #276: 'Close as completed when PR #276 merges to main; its body can say \"Closes #153\".'",
+          "Reword the evidence to name PR #276 (`open as PR #276`) and the recommended action to `Close as completed when PR #276 merges (its body can say Closes #153)`."
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "set_fix_kind and issue_row read a missing fix kind differently",
+        "file": "plugins/harness/lib/harness_lib/review_merge.py",
+        "files": [
+          "plugins/harness/lib/harness_lib/review_merge.py",
+          "plugins/harness/scripts/pr_review.py"
+        ],
+        "lines": "414",
+        "reviewer": "runtime",
+        "fix_kind": "mechanical",
+        "summary": "issue_row (pr_review.py:735) treats any falsy fix_kind (absent, None, empty) as judgment via `or \"judgment\"`, and _Record.of_issue treats anything but \"mechanical\" as judgment, but set_fix_kind (review_merge.py:414) uses `moving.get(\"fix_kind\", \"judgment\")`, so an explicit null reads as a third value: `--regrade I3=judgment` on such an issue succeeds as a no-op change instead of raising `already judgment`, contradicting its own docstring rule that a missing kind reads as judgment. Harmless today (merge always writes the key), but the three readers should share one rule.",
+        "fix": [
+          "In set_fix_kind use `(moving.get(\"fix_kind\") or \"judgment\") == fix_kind`, matching issue_row."
+        ]
+      },
+      {
+        "id": "M4",
+        "name": "Fix-kind regrade is case-sensitive while severity regrade is not",
+        "file": "plugins/harness/scripts/pr_review.py",
+        "files": [
+          "plugins/harness/scripts/pr_review.py",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "783-790",
+        "reviewer": "runtime, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "_amend_one routes a regrade to set_fix_kind only when `severity.strip() in rmg.FIX_KINDS`, an exact lowercase match. Severity values go through review_merge._tier_name, which lowercases and accepts letters (`I3=Minor`, `I3=m` both work). So `--regrade I3=Mechanical` or `I3=JUDGMENT` falls through to rmg.regrade and fails with `unknown severity 'Mechanical'`, a message that never mentions that fix kinds are accepted values at all. The two value families on one flag disagree on normalization, and the error steers the operator away from the feature the flag now carries.\n\nAlso (roast): _amend_one routes to set_fix_kind only on an exact `severity.strip() in rmg.FIX_KINDS` match, but the severity path (`_tier_name`) lowercases and accepts letters, so `I3=Minor` and `I3=m` work while `I3=Mechanical` falls through to regrade and fails with `unknown severity 'Mechanical'`, an error that never mentions the fix-kind form. Two dialects for one flag; the operator gets to guess which one is picky.",
+        "fix": [
+          "Normalize once in _amend_one: `value_ = severity.strip().lower()`; test `value_ in rmg.FIX_KINDS` and pass `value_` to set_fix_kind (the logged note then reads the canonical kind).",
+          "Or keep it case-sensitive but extend the regrade failure path so an unknown value names both families (`expected critical|important|minor or mechanical|judgment`).",
+          "Normalize once in _amend_one: `target = severity.strip().lower()`, test `target in rmg.FIX_KINDS`, and pass `target` to set_fix_kind; add a driver test for `I1=Mechanical`.",
+          "Alternatively, have _tier_name's ValueError list the fix kinds too (`expected a severity or mechanical|judgment`) so the case mismatch is at least self-explaining."
+        ]
+      },
+      {
+        "id": "M5",
+        "name": "Sibling skills that restate the amend step omit the fix-kind regrade",
+        "file": "plugins/harness/skills/fold-in-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/fold-in-review/SKILL.md",
+          "plugins/harness/skills/review-local/SKILL.md"
+        ],
+        "lines": "143-144",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "fold-in-review/SKILL.md line 143-144 tells the session to run `amend --regrade <ID>=<severity>` for each folded issue before build, and review-local/SKILL.md line 92-93 lists amend's uses as a severity regrade or a merge. Both restate the pr-review Phase 3 amend step that now has three calls, so a session following them never considers the fix-kind regrade the new operating rule asks for (cross-link consistency of the pr-review package).",
+        "fix": [
+          "fold-in-review/SKILL.md line 143-144: 'amend --regrade <ID>=<severity>` for each folded issue by blast radius (and `<ID>=mechanical` when its fix is an exact edit)'; review-local/SKILL.md line 92-93: add '`--regrade I3=mechanical` when a judgment issue's fix is an exact edit' to the listed amend uses."
+        ]
+      },
+      {
+        "id": "M6",
+        "name": "Subcommand table files fix-kind regrades under severity regrades",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "lines": "25-26,45",
+        "reviewer": "docs, skill_package",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "SKILL.md:45 now reads 'Applies severity regrades (`I3=mechanical` or `I3=judgment` sets the fix kind in place)', so the parenthetical calls a fix-kind change a kind of severity regrade. The code keeps them apart: `_amend_one` routes a value in `rmg.FIX_KINDS` to `set_fix_kind` and every other value to the severity `regrade` (pr_review.py `_amend_one`). The Overview list of the main session's judgment calls (SKILL.md:26: 'severity regrades, merge candidates, the bubble audit') also omits the new fix-kind call that step 2 (SKILL.md:388) now counts as one of three.\n\nAlso (skill_package): The subcommand table row reads 'Applies severity regrades (`I3=mechanical` or `I3=judgment` sets the fix kind in place)', which files a fix-kind change under severity regrades, and its synopsis column still shows only `--regrade I3=minor`, while pr_review.py's usage line now reads `--regrade ID=severity|fix_kind`. The Overview (line 25-26) also lists the main session's judgment calls as 'severity regrades, merge candidates, the bubble audit' without the new fix-kind call that Step 2 now counts as one of three.",
+        "fix": [
+          "Change SKILL.md:45 to 'Applies regrades (`I3=minor` moves the severity; `I3=mechanical` or `I3=judgment` sets the fix kind in place) and merges to the draft, logs them, reprints the table', and change SKILL.md:26 to 'severity and fix-kind regrades, merge candidates, the bubble audit, ...'.",
+          "Line 45: change the synopsis to `amend [--regrade I3=minor\\|I3=mechanical ...] [--merge I3+I7 ...]` and the description to 'Applies severity regrades (`I3=minor`, which renumbers the id), fix-kind regrades (`I3=mechanical` or `I3=judgment`, in place) and merges to the draft, logs them, reprints the table'; line 26: 'severity and fix-kind regrades, merge candidates, the bubble audit'."
+        ]
+      },
+      {
+        "id": "M7",
+        "name": "post-build fold guidance covers severity only; fix kind is now also final and unregradable",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/skills/pr-review/operating_rules.md"
+        ],
+        "lines": "372-375",
+        "reviewer": "skill_package",
+        "fix_kind": "mechanical",
+        "summary": "operating_rules.md adds 'GitHub review folds arrive as `judgment`, so check them', but the check is only possible through amend, which refuses after build. SKILL.md Step 0 ('Grade before a post-build fold', lines 372-375) and operating_rules.md 'Grade before a post-build fold' still tell the session to set only a per-finding `severity` in a --findings file; a post-build `--from-gh-review` fold therefore puts every comment on an opus fixer with no route to mechanical. The new rule's 'check them' has no actionable path in that case.",
+        "fix": [
+          "In SKILL.md lines 372-375 and the operating_rules.md 'Grade before a post-build fold' bullet, extend the --findings conversion to a per-finding `severity` and `fix_kind` (amend does not run after build, so both are final), and scope the 'GitHub review folds arrive as judgment' sentence to folds before build."
+        ]
+      },
+      {
+        "id": "M8",
+        "name": "amend step order lets a later --merge silently undo a fix-kind regrade",
+        "file": "plugins/harness/skills/pr-review/SKILL.md",
+        "files": [
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "plugins/harness/skills/pr-review/operating_rules.md",
+          "plugins/harness/lib/harness_lib/review_merge.py"
+        ],
+        "lines": "388-394",
+        "reviewer": "skill_package, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "SKILL.md Phase 3 Step 2 lists the fix-kind regrade before the merge of candidates, and pr_review.py applies amend operations in the order given. merge_ids folds fix kind with judgment beating mechanical (review_merge.py _Record.of_issue / issue: fix_kind is judgment when any merged record is judgment), so `--regrade I3=mechanical --merge I3+I7` with a judgment I7 leaves I3 judgment and routes it to an opus fixer, with no warning. Also, a severity regrade renumbers the id, so a fix-kind regrade on the same issue in one call must name the new id. Neither ordering rule is stated in Step 2 or in operating_rules.md 'Grading and verifying findings'.\n\nAlso (roast): merge_ids rebuilds the kept issue through _Record.of_issue/_combine, where judgment beats mechanical, so `amend --regrade I3=mechanical --merge I3+I7` (the order SKILL.md lists the bullets in) ends with I3 back at judgment when I7 is judgment, and the amend log still reads `I3 -> mechanical`. The docs never say regrade the fix kind after merging; the table will show it, but only to someone reading closely.",
+        "fix": [
+          "Append to SKILL.md Phase 3 Step 2 (after the three bullets): 'Operations run in the order given: merge candidates and regrade severity first, then set the fix kind on the resulting id, since a merge with a `judgment` issue makes the kept issue `judgment` and a severity regrade renumbers the id.'",
+          "Add the same ordering sentence to the 'Re-grade the fix kind by the fix' bullet in plugins/harness/skills/pr-review/operating_rules.md.",
+          "In SKILL.md Phase 3 step 2 and the operating rules bullet, state that a fix-kind regrade goes after any `--merge` of the same id, since a merge re-derives the kind (judgment wins); optionally reorder the step 2 bullets to merge first.",
+          "Or have merge_ids keep the kept issue's explicit fix_kind when the amend log shows it was set, and test it."
+        ]
+      },
+      {
+        "id": "M9",
+        "name": "Fix-kind regrade prose promises a haiku fixer the wave planner does not guarantee",
+        "file": "plugins/harness/skills/pr-review/operating_rules.md",
+        "files": [
+          "plugins/harness/skills/pr-review/operating_rules.md",
+          "plugins/harness/skills/pr-review/SKILL.md",
+          "docs/RELEASES/v1.0.0.md"
+        ],
+        "lines": "163-167",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The new rule says a regrade to mechanical means 'a `haiku` fixer applies it instead of `opus`' (operating_rules.md:165), echoed by SKILL.md:391 ('so a `haiku` fixer takes it') and the release note (docs/RELEASES/v1.0.0.md:106-107, 'goes to a `haiku` fixer'). The planner picks haiku only when every unit in a fixer chunk is mechanical (review_waves.py:337 `model = \"haiku\" if _mechanical(chunk) else \"opus\"`; SKILL.md:839 and operating_rules.md:111 already state it). A regraded issue packed with any judgment unit still runs under opus. The regrade also changes packing: a mechanical multi-file issue splits into single-file parts (SKILL.md:802). The new text leaves out both effects, so an operator can expect a model choice the planner may not make.",
+        "fix": [
+          "Reword operating_rules.md:165 to 'so it can go to a `haiku` fixer (a fixer runs `haiku` only when every unit it holds is mechanical; a mechanical multi-file issue also splits per file)', and make the same qualification in SKILL.md:391 ('so it can join a `haiku` fixer') and docs/RELEASES/v1.0.0.md:106-107 ('can go to a `haiku` fixer')."
+        ]
+      },
+      {
+        "id": "M10",
+        "name": "Regrade routing test never shows the fixer would otherwise not be haiku",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "44-57",
+        "reviewer": "tests",
+        "fix_kind": "judgment",
+        "summary": "test_fix_kind_regrade_routes_the_fixer_to_haiku asserts only the post-regrade row 'agent=harness:pr-fixer model=haiku'. Nothing in the driver test file asserts that a judgment finding routes to an opus fixer (no 'model=opus' assertion exists), so the test would still pass if the waves planner returned haiku for every fixer, and the regrade would then prove nothing about routing. The amend half is covered by the regrade test; the routing half has no contrast.",
+        "fix": [
+          "Record a second finding on another file that stays judgment and assert the waves output holds both a 'model=haiku' and a 'model=opus' pr-fixer row, or assert the opus row for the judgment finding before the regrade by building and running waves in a sibling test."
+        ]
+      },
+      {
+        "id": "M11",
+        "name": "No test covers the mechanical-to-judgment direction",
+        "file": "tests/scripts/test_pr_review_driver.py",
+        "lines": "645-683",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "The three new driver tests cover judgment->mechanical, the already-set refusal and the haiku routing; `=judgment` (the operating rules' second regrade, and the one that should send a fixer back to opus) is never exercised, and nothing pins a fix-kind regrade on a missing id. Half a toggle tested is a toggle trusted on faith.",
+        "fix": [
+          "Add a TestMergeAndAmend case: record a mechanical finding, `amend --regrade M1=judgment`, assert draft fix_kind is judgment, the row reads `M1 minor judgment ...`, and after build `waves` prints `model=opus` for that issue.",
+          "Add a case asserting `amend --regrade I9=mechanical` on an absent id exits 1 with `no issue I9`."
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "gh pr view 276 --json number,title,headRefName,baseRefName,state,url,commits,headRefOid,mergeCommit --jq '{number, title, headRefName, baseRefName, state, url, headRefOid, mergeCommit: .mergeCommit.oid, commits_count: (.commits|length), first_sha: .commits[0].oid, last_sha: .commits[-1].oid}'",
+        "stdout": "{\"baseRefName\":\"main\",\"commits_count\":4,\"first_sha\":\"e4ccf6590b5bc2d23bfb8e2b5d47dce3ceb523a8\",\"headRefName\":\"1154-pr-review-mini-fixes\",\"headRefOid\":\"9177e8f318547943a8627e49c6ceb05601659934\",\"last_sha\":\"9177e8f318547943a8627e49c6ceb05601659934\",\"mergeCommit\":null,\"number\":276,\"state\":\"OPEN\",\"title\":\"pr review mini fixes\",\"url\":\"https://github.com/t968rs/operator-straps/pull/276\"}\n",
+        "result": "OK (state=OPEN)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      }
+    },
+    "pre_fix_time": "pending - to be populated in Phase 4"
+  }
+}
