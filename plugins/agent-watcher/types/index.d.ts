@@ -21,7 +21,8 @@ export type AgentRec = {
    */
   id: string
   /**
-   * `reviewer`, `fixer`, `orchestrator`, `planner` or `closer` in a layer's run; an unclaimed dispatch's header
+   * `reviewer`, `fixer`, `orchestrator`, `planner` or `closer` in a layer's run, or for pr-review `-a` a
+   * `refuter` or `code_refuter` re-dispatched as an `Agent` call; an unclaimed dispatch's header
    * `AGENT_ROLE:`, else `other`.
    */
   role: string

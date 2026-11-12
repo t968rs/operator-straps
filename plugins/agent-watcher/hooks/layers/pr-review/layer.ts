@@ -15,7 +15,9 @@ import {
 } from './bubbles'
 import { prReviewConfigOf, runtimeBaseOf, type PrReviewConfig } from './config'
 import { identifyHeader } from './identify'
-import { buildRow, validateRow, type MatrixRow } from './matrixRow'
+import {
+  buildRow, buildWorkflowRow, validateRow, workflowPlan, type MatrixRow, type WorkflowPlan,
+} from './matrixRow'
 import { registerPhase5Context, scanSentinels, type HotSentinel } from './phase5Scan'
 import {
   closeRun, currentRunId, fixerBubbledIds, markLogged, planPhase, recoverReviewers, reportCounts, reviewersSettled,
@@ -26,10 +28,11 @@ import { blocksSession } from './sentinels'
 
 /**
  * The pr-review layer: claims pr-team and pr-review dispatches, follows their phases and bubbled ids, owns
- * the invocation-matrix rows (reviewers) and guards Stop on undispositioned bubbled ids. Core calls the
- * `prReviewLayer` members with an `Io`; the hooks the engine raises on their own (shell refresh, recovery,
- * the prompt line, the band) register in `registerPrReviewLayer(on)`. Its paths and base branch come from
- * `harness.json` (./config). Every host failure degrades to doing nothing.
+ * the invocation-matrix rows (reviewers, and the zero-count rows of an adversarial Workflow's slots) and
+ * guards Stop on undispositioned bubbled ids. Core calls the `prReviewLayer` members with an `Io`; the hooks
+ * the engine raises on their own (shell refresh, Workflow rows, recovery, the prompt line, the band) register
+ * in `registerPrReviewLayer(on)`. Its paths and base branch come from `harness.json` (./config). Every host
+ * failure degrades to doing nothing.
  */
 
 type Dollar = EngineInterface
@@ -185,6 +188,33 @@ const flushNow = async (io: Io, runId: string): Promise<void> => {
 
 const flush = (io: Io, runId: string): Promise<unknown> => serialize(() => flushNow(io, runId))
 
+/** Marks a run id's Workflow rows as attempted, in the run's folder under `artifacts.scratch`. */
+const WORKFLOW_MARKER = '.workflow_rows'
+
+const workflowMarkerOf = (io: Io, pr: number, runId: string): string =>
+  `${under(io.watch.root, cfgOf(io).scratchDir)}/${runDirName(pr)}/${runId}/${WORKFLOW_MARKER}`
+
+/**
+ * One zero-count row per slot an adversarial Workflow call plans (`buildWorkflowRow`), appended when the call
+ * is made: the mod cannot tie a Workflow agent's loop to its slot, and SPK-1 found no usage row for one, so no
+ * later event fills the counts in. Attempted once per run id: the marker is written before the append, and a
+ * second call for the same run id finds it. A run keyed by a local key logs none, as `logsMatrix` rules for
+ * dispatched reviewers.
+ */
+const logWorkflowNow = async (io: Io, plan: WorkflowPlan): Promise<void> => {
+  const pr = plan.runKey
+  if (typeof pr !== 'number' || plan.slots.length === 0) return
+  const marker = workflowMarkerOf(io, pr, plan.runId)
+  if ((await io.readText(marker)) !== undefined) return
+  await io.write(marker, `attempted ${new Date(await io.now()).toISOString()}\n`)
+  const devCommit = await devCommitFor(io)
+  const rows = plan.slots.map(slot => buildWorkflowRow({ pr, slot, devCommit }))
+  const path = under(io.watch.root, cfgOf(io).matrixPath)
+  await recordFailures(io, await appendValid(io, path, rows, MATRIX_CHECK, await io.now()), 'matrix')
+}
+
+const logWorkflow = (io: Io, plan: WorkflowPlan): Promise<unknown> => serialize(() => logWorkflowNow(io, plan))
+
 // ---------------------------------------------------------------------------
 // Settle, recovery, stop
 
@@ -312,8 +342,38 @@ async function recoverThenRefresh($: Dollar): Promise<void> {
   await onSettle(io, await activeRun(io)).catch(noop)
 }
 
-/** Shell refreshes, session-start recovery, the per-prompt Phase 5 line and the band. */
+/** The fields of a Workflow call and its answer the layer reads; the engine's types are wider. */
+type WorkflowCall = { args?: unknown; agentId?: string; resumeFromRunId?: unknown }
+type ToolAnswer = { deny?: unknown; isError?: unknown; result?: unknown }
+
+/** Whether the tool launched the workflow: not refused, not errored, no `result.error` (a failed syntax check). */
+const launched = (answer: ToolAnswer): boolean => {
+  const result = answer.result
+  const failed =
+    typeof result === 'object' && result !== null && 'error' in result && result.error !== undefined
+  return answer.deny === undefined && answer.isError !== true && !failed
+}
+
+/**
+ * The main session's Workflow call that launched: the zero-count rows for the slots its args plan. A call
+ * that did not launch, a resume (`resumeFromRunId`) or a call a subagent makes logs none.
+ */
+async function afterWorkflow($: Dollar, call: WorkflowCall, answer: ToolAnswer): Promise<void> {
+  if (call.agentId !== undefined || call.resumeFromRunId !== undefined || !launched(answer)) return
+  const plan = workflowPlan(call.args)
+  const w = plan === undefined ? undefined : await resolveWatch($)
+  if (plan === undefined || w === undefined) return
+  await logWorkflow(ioOf($, w), plan)
+}
+
+/** Shell refreshes, Workflow rows, session-start recovery, the per-prompt Phase 5 line and the band. */
 export const registerPrReviewLayer = (on: On): void => {
+  on('tool.call', { tool: 'Workflow' }, async ($, e, next) => {
+    const r = await next(e)
+    await afterWorkflow($, e as unknown as WorkflowCall, r).catch(noop)
+    return r
+  })
+
   on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
     const r = await next(e)
     await afterShell($, e.command)

@@ -47,7 +47,7 @@
     "role": {
       "type": "string",
       "pattern": "^[a-z][a-z0-9_-]*$",
-      "description": "The tracked role: `reviewer`, `fixer`, `orchestrator`, `planner` or `closer` in a pr-review or pr-team run (a roast is a reviewer; `subagent_type` or `agent_id` tells it apart). A generic row takes its header `AGENT_ROLE:` value, else `other` (no line, a value off the pattern, or `fixer` / `closer`, whose counts only a layer computes)."
+      "description": "The tracked role: `reviewer`, `fixer`, `orchestrator`, `planner` or `closer` in a pr-review or pr-team run (a roast is a reviewer; `subagent_type` or `agent_id` tells it apart), or `refuter` / `code_refuter` for a pr-review `-a` refuter dispatched as an `Agent` call. A generic row takes its header `AGENT_ROLE:` value, else `other` (no line, a value off the pattern, or `fixer` / `closer`, whose counts only a layer computes)."
     },
     "agent_id": {
       "type": "string",

@@ -95,7 +95,7 @@ a new layer needs no vocabulary change for them. A second layer today still touc
 | # | Rule | Behavior |
 |---|------|----------|
 | R1 | Phase 5 must close before the session stops | A band above the prompt shows `PR #N · <phase> · K bubbled` while a run is active or a `<state_dir>/pr-review/.phase5_pending_<PR>` sentinel is hot (younger than 24 h, the harness `check_phase5_sentinel.py` rule). A hot sentinel for the run's PR follows the phase rather than replacing it (`PR #N · fixers 2/5 · Phase 5 pending · K bubbled`). The phase comes from the latest dispatch; for pr-review, the `phase` in the current run's `plan.json` wins when it is a known value. K for pr-review counts the review JSON's `bubbles[]` plus ids bubbled in the run's `fixes/*.json` that no `RESOLVED` / `CLOSED_NO_ACTION` / `REFUTED` resolution closes (the latest status per id decides, so a later `BUBBLED` or `NOT_RESOLVED` reopens). Each prompt also carries `PHASE5_PENDING=<ids>` while sentinels are hot. |
-| R2 | Matrix rows carry real `tokens` / `tool_uses` / `duration_s` | One row per reviewer, from engine-measured usage; `tokens` is the summed figure of [Usage figures](#usage-figures) (before 0.7.0 a foreground reviewer's was its last request's count). |
+| R2 | Matrix rows carry real `tokens` / `tool_uses` / `duration_s` | One row per reviewer, from engine-measured usage; `tokens` is the summed figure of [Usage figures](#usage-figures) (before 0.7.0 a foreground reviewer's was its last request's count). The exception: a pr-review `-a` Workflow slot's row (`dispatch_shape` `workflow`) holds 0 and says `unobserved: workflow agent`: the mod cannot tie a Workflow agent's loop to its slot, and SPK-1 found no usage row for one. |
 | R3 | Rows validate against `pr_review_invocation_test_matrix.schema.json` before append | Validated in-process; an invalid row is not appended, is kept in `failures` and raised as a toast. |
 | R4 | `model_family` is the family token | Token search over the resolved model id; an id with no `haiku` / `sonnet` / `opus` token fails R3. |
 | R5 | `dev_commit` starts with the merge base against the base branch | Run by the mod: `git merge-base HEAD <base>`, written as `<sha> -- <branch> (agent-watcher auto)`. |
@@ -117,6 +117,8 @@ keyword checks nothing. The band still lists every hot sentinel. The text comes 
 | pr-team orchestrator / fixer modes | `MODE=PLAN\|CONSOLIDATE\|CLOSEOUT`, `PR_NUMBER=`, `RUN_ID=`, `RUNTIME_DIR=` | `orchestrator_plan`, `orchestrator_consolidate`, `fixer_plan`, `closer` |
 | pr-team reviewers and fixers | `AGENT_ID:`, `AGENT_ROLE:`, `RUN_ID:` (`canonical_prompt_template.md`) | the plan's agent id |
 | pr-review reviewers and fixers | the same three lines plus `PR:` (rows printed by `pr_review.py capture` / `waves`); `PR:` holds the run key, a PR number or `local-<label>` | the `AGENT_ID` |
+| pr-review refuters (`-a`), re-dispatched as an `Agent` call when the Workflow did not return them | the same four lines with `AGENT_ROLE: refuter` or `code_refuter`; `PR:` is required | the `AGENT_ID`, in the review phase (a usage row, no matrix row) |
+| pr-review `-a` Workflow call | none: the mod cannot tie its agents' loops to their slots; the call's `args` name the slots | no run; one zero-count matrix row per slot ([Matrix-row ownership](#matrix-row-ownership)) |
 | any other dispatch, of any agent type | the header convention below, or none | an unclaimed run of its own |
 | a forked skill (`context: fork`), by the Skill tool or a typed `/<skill>` | none: no `Agent` call is made | an unclaimed run under its skill ([Forked skills](#forked-skills)) |
 
@@ -193,6 +195,7 @@ written and reviewer results carry no ownership note: the matrix schema keys row
 | `tool.call` (any) | Counts tool calls per subagent loop id. |
 | `turn.step` | Once a subagent's model request has streamed through untouched, counts it in that loop's tally and adds its usage (summed, and the last request). On a loop's first request (the next request when the list refuses), registers a forked skill's loop. The main loop's requests are skipped. |
 | `tool.call` on `Bash` / `PowerShell` | After a command that names `pr_review.py`, refreshes, so the band follows the script's phases within a turn. |
+| `tool.call` on `Workflow` | After a main-session call that launched (not refused, errored, failing its syntax check or resuming) whose `args` are pr-review's `capture -a` args, appends one zero-count matrix row per planned slot, once per `run_id`. |
 | `turn.complete` | Completes a background subagent or a forked skill; on every turn end, refreshes and appends rows that became due. |
 | `session.start` | Recovers pr-team runs a previous session claimed but never logged, then refreshes. |
 | `prompt.submit` | Scans the sentinels and attaches `PHASE5_PENDING=<ids>` when the hot set changed since the line last attached. |
@@ -219,7 +222,8 @@ A sentinel is hot by its line-2 unix stamp, else the listed file mtime, else the
 ## Matrix-row ownership
 
 Rows go to `<matrix_path>` once the review JSON has a `READY TO MERGE` / `NOT READY TO MERGE` verdict and
-every tracked reviewer has returned. `cell` is `pr<N>_<agentId>`, `dispatch_shape` is `parallel`,
+every tracked reviewer has returned (the `-a` Workflow rows below are the exception). `cell` is
+`pr<N>_<agentId>`, `dispatch_shape` is `parallel`,
 `other_count` is 0 and `phase4_script` is null. Each reviewer is attempted once. A matrix file that exists
 but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never rewritten: its rows go to
 `failures` as `matrix unreadable; not overwritten` and are toasted.
@@ -237,6 +241,22 @@ but cannot be read (a lock, an OS refusal, over the 4 MiB read limit) is never r
   Phase 3 Step 4 skips when that note was seen. The note is added only when the run was recorded in
   state with a PR; otherwise the skill's own append runs. Fixer results (`AGENT_ROLE: fixer`) never carry
   the note, even though their dispatch rows include the `PR:` header.
+- **pr-review `-a` (Workflow rows).** The mod cannot tie a Workflow agent's loop to its slot, and SPK-1
+  (plan 1016) found no usage row for one, so no measured usage exists for these slots. When the main
+  session's `Workflow` call launches (not refused, not `isError`, no `result.error`; a `resumeFromRunId`
+  call is skipped) with the args `pr_review.py capture -a` prints, the mod reads `run_key` (a PR number,
+  as text or a number; a `local-<label>` key logs none), `run_id` (a run id of that same key, else the
+  call is ignored) and the `id` and `model` of each entry in `reviewers`, `code` and `refute`, and appends
+  one row per entry at once: `cell` `pr<N>_<slot id>`, `dispatch_shape` `workflow`, `tokens`, `tool_uses`
+  and `duration_s` 0, the four counts 0, `effort` `default`, `verdict_prefix` `N/A (unobserved)` (no
+  verdict exists yet), and `notes` `agent-watcher auto row; <reviewer|code_refuter|refuter>; unobserved:
+  workflow agent`. A slot with no model fails R4 and is toasted, as a reviewer row would be. The rows are
+  attempted once per `run_id`: the mod writes `<artifacts.scratch>/<NNNN>/<run_id>/.workflow_rows` before
+  the append and skips a later call that finds it. Nothing reads the Workflow task's output file. The
+  session appends no row for those slots. A slot re-dispatched as an `Agent` call after the Workflow did
+  not return it is tracked as any dispatch is: a reviewer gets its measured `parallel` row beside the
+  `workflow` one, **so the same `cell` appears twice** (the `dispatch_shape` tells them apart), and a
+  refuter gets a usage row only.
 
 ## Agent usage rows
 
@@ -326,8 +346,9 @@ reviewer's matrix `tokens` before 0.7.0 is its last request's count.
   by then, and is skipped after that); a forked skill that starts while an `Agent` call with its exact
   `/<skill>` description runs logs no row. An engine that describes forks otherwise logs none. Before 0.8.0 forked skills logged no
   row at all.
-- Workflow-run reviews are not tracked. Their agents raise `tool.call` and `turn.complete` with loop ids that
-  no dispatch header names.
+- Workflow agents are not tracked: the mod cannot tie a Workflow agent's loop to its slot, and SPK-1
+  (plan 1016) found no usage row for one. They log no usage row, and a pr-review `-a` run's matrix rows for
+  them are the zero-count `workflow` rows, never measured figures.
 - Appends are a read and a whole-file write, serialized within the session. Two sessions appending to the
   same JSONL (matrix or usage log) at the same moment can lose a row.
 - A git top level, once answered, is cached per cwd for the life of the hooks module; a worktree moved or
