@@ -91,6 +91,8 @@ export const WORKFLOW_ARG_KEYS = ['run_key', 'run_id'] as const
 export const WORKFLOW_GROUPS = ['reviewers', 'code', 'refute'] as const
 export const WORKFLOW_ROLES = ['reviewer', 'code_refuter', 'refuter'] as const
 export const WORKFLOW_SLOT_KEYS = ['id', 'model'] as const
+const [RUN_KEY, RUN_ID] = WORKFLOW_ARG_KEYS
+const [SLOT_ID, SLOT_MODEL] = WORKFLOW_SLOT_KEYS
 
 export const WORKFLOW_VERDICT = 'N/A (unobserved)'
 export const WORKFLOW_UNOBSERVED = 'unobserved: workflow agent'
@@ -111,8 +113,9 @@ const argsObject = (args: unknown): Record<string, unknown> | undefined => {
 
 /** The group's slots; entries without a string id are skipped. */
 const groupSlots = (entries: unknown, role: string): WorkflowSlot[] =>
-  (Array.isArray(entries) ? entries : []).filter(isRecord).filter(e => typeof e.id === 'string' && e.id !== '')
-    .map(e => ({ id: e.id as string, role, model: typeof e.model === 'string' ? e.model : null }))
+  (Array.isArray(entries) ? entries : []).filter(isRecord)
+    .filter(e => typeof e[SLOT_ID] === 'string' && e[SLOT_ID] !== '')
+    .map(e => ({ id: e[SLOT_ID] as string, role, model: typeof e[SLOT_MODEL] === 'string' ? e[SLOT_MODEL] : null }))
 
 /** A `run_key` as text: a string as given, a number (a PR) as its digits; undefined for anything else. */
 const keyText = (v: unknown): string | undefined =>
@@ -120,8 +123,8 @@ const keyText = (v: unknown): string | undefined =>
 
 /** The run key of `run_key` when `run_id` is a valid run id naming that same key; else null. */
 const matchedKey = (a: Record<string, unknown>): RunKey | null => {
-  const runKey = toRunKey(keyText(a.run_key))
-  const runId = typeof a.run_id === 'string' ? a.run_id : ''
+  const runKey = toRunKey(keyText(a[RUN_KEY]))
+  const runId = typeof a[RUN_ID] === 'string' ? a[RUN_ID] : ''
   return runKey !== null && keyOfRunId(runId) === runKey ? runKey : null
 }
 
@@ -133,9 +136,9 @@ const matchedKey = (a: Record<string, unknown>): RunKey | null => {
 export const workflowPlan = (args: unknown): WorkflowPlan | undefined => {
   const a = argsObject(args)
   const runKey = a === undefined ? null : matchedKey(a)
-  if (a === undefined || runKey === null || !Array.isArray(a.reviewers)) return undefined
+  if (a === undefined || runKey === null || !Array.isArray(a[WORKFLOW_GROUPS[0]])) return undefined
   const slots = WORKFLOW_GROUPS.flatMap((key, i) => groupSlots(a[key], WORKFLOW_ROLES[i] ?? 'other'))
-  return { runKey, runId: a.run_id as string, slots }
+  return { runKey, runId: a[RUN_ID] as string, slots }
 }
 
 export type WorkflowRowInput = { pr: number; slot: WorkflowSlot; devCommit: string }

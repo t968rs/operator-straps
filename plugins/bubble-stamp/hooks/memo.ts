@@ -142,8 +142,8 @@ const openDecisionAt = (memo: Memo, lines: readonly string[], id: string): numbe
  * `CLOSED_NO_ACTION` or `REFUTED`: Status to `Decided`, the Decision and Tracked in cells, and the entry's
  * open Decision line. Nothing else changes, and every line keeps its own ending; a `Decided` row is never
  * touched, so a second run changes nothing. Stamping is one-way: a row stamped `Decided` by a `REFUTED`
- * entry stays `Decided` after `pr_review.py unrefute`, in either mode (`--bubble` or `--fix`), reopens the
- * id; the unstamp is deferred. A Tracked in cell the developer filled stays unless the evidence names a
+ * entry stays `Decided` after `pr_review.py unrefute` reopens the id (either mode, `--bubble` or `--fix`);
+ * the unstamp is deferred. A Tracked in cell the developer filled stays unless the evidence names a
  * `#<n>`. The text is returned as given when nothing stamps or the memo lacks the anchors.
  */
 export const stampMemo = (text: string, resolutions: readonly Resolution[]): StampResult => {

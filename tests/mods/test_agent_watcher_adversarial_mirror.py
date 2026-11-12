@@ -5,7 +5,8 @@ An installed mod cannot import the harness library, so
 ``harness_lib.review_briefs`` (``REFUTER_ROLES``), and
 ``plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts`` copies the keys it reads from the Workflow args
 that ``harness_lib.review_adversarial.workflow_args`` builds (``WORKFLOW_ARG_KEYS``, ``WORKFLOW_GROUPS``,
-``WORKFLOW_ROLES``, ``WORKFLOW_SLOT_KEYS``). This test fails when either side changes without the other.
+``WORKFLOW_ROLES``, ``WORKFLOW_SLOT_KEYS``).
+This test fails when the mod reads a role, group or key the library no longer writes.
 """
 from __future__ import annotations
 

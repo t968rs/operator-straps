@@ -1,6 +1,6 @@
 /**
  * Review-JSON reading for the bubble guard: a port of the harness library's `validation/id_handling.py`
- * (`issue_ids`, `disposition_ids`, `all_issues_dispositioned`, `latest_statuses`, `reopened_ids`) plus file
+ * (`issue_ids`, `all_issues_dispositioned`, `latest_statuses`, `reopened_ids`) plus file
  * selection. Pure: no `$`.
  */
 
