@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 1016: pr review adversarial</title>
+<style>
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+code { font: 13px ui-monospace, monospace; background: var(--code); padding: 0 .25em; border-radius: 4px;
+  overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.status { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--muted); vertical-align: middle; }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<h1>Plan 1016: pr review adversarial</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>1016_pr_review_adversarial_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note">Not frozen yet: every item reads PENDING. Receipts and design changes appear after <code>plan.py freeze 1016</code> writes live.js.</p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-12</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-12-pr-review-adversarial-design.md</code></dd><dt>Branch</dt><dd>1155-local-review-strapping -&gt; main</dd><dt>Base commit</dt><dd><code>c4cda8a</code></dd><dt>Frozen</dt><dd>no</dd><dt>Execution model</dt><dd>parallel2 lanes by dependency wave</dd></dl>
+<h2>Decisions</h2>
+<ul>
+<li><strong>D1</strong> How many Workflow scripts drive an -a run? Chosen: <code>one</code> (One script pipelines reviewers, code refuters and findings refuters). Rejected: <code>two</code> (code-refute.js in Phase 2 and findings-refute.js after it), <code>none</code> (No workflow: refuters are capture slots and a refute subcommand). Developer (Approach A): the refuters depend on each other and the pipeline is the reason for a workflow.</li>
+<li><strong>D2</strong> Does pr-team take --adversarial on this branch? Chosen: <code>later</code> (A follow-up TODO item (TASK-8)). Rejected: <code>now</code> (Change pr-team-orchestrator and pr-team-fixer too). Developer.</li>
+<li><strong>D3</strong> Is -a a plain flag or yes|no|roll like --roast? Chosen: <code>flag</code> (Plain on/off flag). Rejected: <code>roll</code> (yes|no|roll dice). Developer; an adversarial run costs too much to leave to a coin flip.</li>
+<li><strong>D4</strong> Which resolution status does a refuted finding get? Chosen: <code>REFUTED</code> (New closing REFUTED status). Rejected: <code>CLOSED_NO_ACTION</code> (Reuse CLOSED_NO_ACTION). Developer; a distinct status keeps CLOSED_NO_ACTION a developer decision.</li>
+<li><strong>D5</strong> When can the developer overrule a refutation? Chosen: <code>anytime</code> (Any time after build, either direction: refute adds REFUTED, unrefute appends BUBBLED or NOT_RESOLVED; both read the built review object). Rejected: <code>prebuild-pause</code> (Under -a, stop after merge for amend --unrefute, then build), <code>postbuild</code> (Post-build unrefute only, appending one UNREFUTED entry), <code>session</code> (The session may unrefute on its own judgment before build). Developer answer, superseding the review&#x27;s post-build-only fix for S2: a driver pipeline, refute (add) and unrefute (remove), both reading the issue from the built review object. amend --unrefute is dropped; Phase 3 stays atomic.</li>
+<li><strong>D6</strong> How do matrix rows work for agents the Workflow tool dispatches (agent-watcher sees only Agent calls; tokens, tool_uses, duration_s are required integers)? <strong>Open.</strong> Options: <code>watcher</code> (agent-watcher records Workflow agents as it records Agent dispatches (needs its hooks to fire for them)), <code>shape</code> (Rows marked with a workflow dispatch shape, usage read from the workflow), <code>exempt</code> (No matrix rows for Workflow agents; exempt from done criterion (h)), <code>result</code> (The session passes the Workflow completion notification&#x27;s &lt;output-file&gt; to a driver command writing one matrix row per workflowProgress[] entry (label = slot id; tokens, toolCalls, durationMs, model), dispatch_shape workflow, no path logged).</li>
+<li><strong>D7</strong> Who detects a missing Workflow tool? Chosen: <code>capture-file</code> (capture checks the plugin script before start_run; skill prose stops the session when the tool is missing). Rejected: <code>signal</code> (The skill passes a flag or variable capture checks). S14: a driver cannot see the session&#x27;s tools.</li>
+<li><strong>D8</strong> Does every new review carry adversarial_check? Chosen: <code>only-a</code> (Optional in the schema, written only under -a). Rejected: <code>always</code> (Always, with applies false when off). S11: a run without -a stays byte-identical.</li>
+<li><strong>D9</strong> Where does the code refuter&#x27;s attack text go? Chosen: <code>summary</code> (Folded into the issue summary as &#x27;Attack: &lt;text&gt;&#x27;; no schema field). Rejected: <code>field</code> (A new issue.attack schema field). S8: the fixer reads the summary.</li>
+<li><strong>D10</strong> Which ledger states count as frozen for the code refuter&#x27;s plan scope? Chosen: <code>frozen-locked-armed</code> (frozen, locked, armed (plus a legacy in-file frozen stamp)). Rejected: <code>frozen-locked</code> (only frozen and locked). S10: armed is still write-protected.</li>
+<li><strong>D11</strong> Do the TS closed-status mirrors (agent-watcher bubbles.ts:59, bubble-stamp review.ts:40 and memo.ts:38) gain REFUTED? Chosen: <code>add-refuted</code> (Mirrors gain REFUTED; both mod versions bump (TASK-10)). Rejected: <code>unchanged</code> (Mirrors stay RESOLVED / CLOSED_NO_ACTION). Under D5 the developer can refute a bubbled id, so its latest status can be REFUTED, a decision that closes the bubble. BUBBLED and NOT_RESOLVED are non-closing, which the mirrors already treat as open.</li>
+<li><strong>D12</strong> How is an unrefute recorded? Chosen: <code>bubbled-notresolved</code> (Two non-closing statuses appended: BUBBLED (bubble workflow) and NOT_RESOLVED (Phase 5 waves)). Rejected: <code>unrefuted</code> (One non-closing UNREFUTED status). Developer: append-only; the latest-status rule reopens the id. There is no UNREFUTED status.</li>
+<li><strong>D13</strong> What keys a refutation to its finding? Chosen: <code>finding-key</code> (Content hash of the finding (finding_key) plus a digest of the slot report). Rejected: <code>index</code> (The finding&#x27;s position in the slot report). S7: an index goes stale when a slot re-records.</li>
+<li><strong>D14</strong> What is a plan path&#x27;s state when the tree is not at the PR head? Chosen: <code>unfrozen-note</code> (Every plan path unfrozen, with one note: line). Rejected: <code>git-show</code> (Read plan state at the head through git show). S10: conservative (attacks more); no git show reader.</li>
+</ul>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>SMALL_PR_FILES</td><td>20</td><td>plugins/harness/lib/harness_lib/review_plan.py:35</td><td>-</td></tr>
+<tr><td>REFUTER_MODEL</td><td>opus</td><td>spec, Capture (models) and Anti-goals</td><td>-</td></tr>
+<tr><td>PR_REVIEW schema version</td><td>2.2.0 -&gt; 2.3.0</td><td>plugins/harness/schemas/PR_REVIEW.schema.json:4, plugins/harness/lib/harness_lib/review_merge.py:54</td><td>-</td></tr>
+<tr><td>harness version</td><td>0.70.0 -&gt; 0.71.0</td><td>plugins/harness/.claude-plugin/plugin.json:3</td><td>-</td></tr>
+<tr><td>agent-watcher version</td><td>0.8.1 -&gt; 0.9.0 (one minor bump on the branch; TASK-9 and TASK-10 share it)</td><td>plugins/agent-watcher/.claude-plugin/plugin.json:3</td><td>add-refuted</td></tr>
+<tr><td>bubble-stamp version</td><td>0.2.0 -&gt; 0.3.0</td><td>plugins/bubble-stamp/.claude-plugin/plugin.json:3</td><td>add-refuted</td></tr>
+<tr><td>release notes file</td><td>docs/RELEASES/v1.0.0.md (proposed; latest tag v0.7.0)</td><td>docs/RELEASES/v1.0.0.md:1</td><td>-</td></tr>
+<tr><td>new resolution statuses</td><td>REFUTED (closing); BUBBLED, NOT_RESOLVED (non-closing)</td><td>spec, Refute and unrefute (Statuses)</td><td>REFUTED, bubbled-notresolved</td></tr>
+<tr><td>worst-case agent count</td><td>2(R + C) &lt;= 26 + 2N (R &lt;= 10 + N reviewer slots, C &lt;= 3)</td><td>spec, Agent count</td><td>one</td></tr>
+<tr><td>code refuter slot ids</td><td>adv_code (pooled, under 20 reviewable files) | adv_code_&lt;runtime|tests|plans&gt;</td><td>spec, Pool or single</td><td>one</td></tr>
+<tr><td>findings refuter slot ids</td><td>adv_refute_&lt;target&gt;, target a reviewer slot id or an adv_code* id</td><td>spec, Capture (slot plan)</td><td>one</td></tr>
+<tr><td>finding_key / report_digest</td><td>first 12 hex chars of sha256 over canonical JSON</td><td>spec, Agent, brief and models (finding keys)</td><td>finding-key</td></tr>
+</table>
+<h2>Formats</h2>
+<ul>
+<li><strong>Workflow row printed by capture -a (replaces the agent= rows)</strong>: <code>scriptPath=&lt;plugin root&gt;/workflows/adversarial-review.js
+args={&quot;run_key&quot;: &quot;local-x&quot;, &quot;run_id&quot;: &quot;local-x_20261112T000000Z&quot;, &quot;guidance&quot;: null, &quot;reviewers&quot;: [...], &quot;code&quot;: [...], &quot;refute&quot;: [...]}</code>, copied from <code>plugins/harness/scripts/pr_review.py:571-576</code></li>
+<li><strong>Refuter init line, one per target finding</strong>: <code>[0123456789ab] minor Wrong value src/pkg/a.py:2</code>, copied from <code>plugins/harness/scripts/pr_review.py:732-737</code></li>
+<li><strong>merge refusal for a stale refutation</strong>: <code>refutation stale: rerun adv_refute_runtime</code>, copied from <code>plugins/harness/scripts/pr_review.py:720-729</code></li>
+<li><strong>init refusal before the target reviewer recorded</strong>: <code>reviewer runtime has not recorded</code>, copied from <code>plugins/harness/scripts/pr_review.py:720-729</code></li>
+<li><strong>init on a target with zero findings</strong>: <code>no findings: done</code>, copied from <code>plugins/harness/lib/harness_lib/review_models.py:402</code></li>
+<li><strong>build line per refuted id</strong>: <code>refuted: M1 (src/pkg/a.py:2 returns 2 as the change intends)</code>, copied from <code>plugins/harness/scripts/pr_review.py:1357</code></li>
+<li><strong>READY verdict with refuted ids counted apart (suffix only when K &gt; 0)</strong>: <code>READY TO MERGE - 1 of 2 findings resolved, 0 bubbled, 1 refuted</code>, copied from <code>plugins/harness/lib/harness_lib/review_merge.py:363</code></li>
+<li><strong>Phase 5 done line with refuted ids counted apart (suffix only when K &gt; 0)</strong>: <code>Phase 5 [done] | 1 issues resolved, 1 refuted | verdict: READY TO MERGE ... | next: stop</code>, copied from <code>plugins/harness/scripts/pr_review.py:1953</code></li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>CLOSED_STATUSES|CLOSING_STATUSES|STAMPING</code>: <code>plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts</code> (changes: CLOSING_STATUSES gains REFUTED (TASK-10, D11)), <code>plugins/bubble-stamp/hooks/memo.ts</code> (changes: STAMPING gains REFUTED (TASK-10, D11)), <code>plugins/bubble-stamp/hooks/review.ts</code> (changes: CLOSING_STATUSES gains REFUTED (TASK-10, D11)), <code>plugins/harness/lib/harness_lib/review_bubbles.py</code> (follows: closed_ids reads rmg.CLOSED_STATUSES), <code>plugins/harness/lib/harness_lib/review_merge.py</code> (changes: REFUTED joins CLOSED_STATUSES (TASK-1))</li>
+<li><strong>S2</strong> <code>--roast</code>: <code>docs/RESEARCH/pr-review/0117_review_wall_time.md</code> (unchanged: research record), <code>docs/RESEARCH/pr-review/0203_roast_slot_duration.md</code> (unchanged: research record), <code>docs/TODO/RepoToDo.json</code> (unchanged: todo-kex8 retires after merge), <code>plugins/harness/scripts/pr_review.py</code> (changes: -a / --adversarial joins --roast in capture (TASK-5)), <code>plugins/harness/skills/pr-review/SKILL.md</code> (changes: argument hint and capture row (TASK-7)), <code>plugins/harness/skills/review-local/SKILL.md</code> (changes: argument hint and capture line pass -a (TASK-7)), <code>tests/scripts/test_pr_review_driver.py</code> (unchanged: runs without -a), <code>tests/scripts/test_pr_review_local.py</code> (unchanged: runs without -a)</li>
+<li><strong>S3</strong> <code>UNREFUTED</code>: no hits</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-SPK-1" data-item="SPK-1">
+<h3>SPK-1: Workflow spike: verify the eight Workflow API assumptions <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>docs/RESEARCH/pr-review/1016_workflow_spike.md</code></p>
+<p class="action">In a `claude --plugin-dir plugins/harness` session, run a throwaway two-agent Workflow and record each answer, with what was observed, in docs/RESEARCH/pr-review/1016_workflow_spike.md: (1) scriptPath accepts a path under the plugin root; (2) a plugin-shipped workflows/ folder passes `claude plugin validate --strict`; (3) agentType &#x27;harness:&lt;name&gt;&#x27; resolves to the plugin agent; (4) a workflow agent Writes its draft file without a permission prompt; (5) pipeline behavior when a stage returns null; (6) whether the Workflow call returns synchronously or asynchronously; (7) whether agent-watcher hooks fire for Workflow agents (decides D6); (8) whether the output file&#x27;s workflowProgress carries tokens, toolCalls, durationMs, label and model per agent. The throwaway script and its folder are removed after the run; nothing under plugins/ stays changed. TASK-5, TASK-6 and TASK-9 wait on this item.</p>
+<ul>
+<li>Run <code>claude --plugin-dir plugins/harness (interactive session): run a throwaway two-agent Workflow whose scriptPath sits under the plugin root and whose agents use agentType &#x27;harness:pr-reviewer&#x27;; answer assumptions 1 and 3-8 of the spec</code>: each assumption answered with the observed evidence</li>
+<li>Run <code>claude plugin validate --strict plugins/harness (with the throwaway workflows/ folder present, removed afterwards)</code>: validation passes with a workflows/ folder (assumption 2 recorded in the spike note)</li>
+<li>Record it: <code>plan.py record 1016 SPK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: Schema 2.3.0, REFUTED closing, BUBBLED / NOT_RESOLVED open, Layer 2 and Layer 3 rules <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/schemas/PR_REVIEW.schema.json</code>, <code>plugins/harness/lib/harness_lib/review_merge.py</code>, <code>plugins/harness/hooks/validate_pr_json_schema.py</code>, <code>plugins/harness/lib/harness_lib/validation/id_handling.py</code>, <code>plugins/harness/schemas/README.md</code>, <code>tests/lib/test_review_merge.py</code>, <code>tests/schemas/test_pr_review_schema_adversarial.py</code>, <code>tests/hooks/test_schema_hook_refuted.py</code>, <code>tests/lib/test_review_merge_adversarial.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/schemas/PR_REVIEW.schema.json:4</code> holds <code>&quot;$version&quot;: &quot;2.2.0&quot;,</code></li>
+<li><code>plugins/harness/schemas/PR_REVIEW.schema.json:250</code> holds <code>&quot;dispatch_time&quot;: {</code></li>
+<li><code>plugins/harness/schemas/PR_REVIEW.schema.json:540</code> holds <code>&quot;post_review_resolution&quot;: {</code></li>
+<li><code>plugins/harness/schemas/PR_REVIEW.schema.json:559</code> holds <code>&quot;CLOSED_NO_ACTION&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:54</code> holds <code>SCHEMA_VERSION = &quot;2.2.0&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:57</code> holds <code>CLOSED_STATUSES = (&quot;RESOLVED&quot;, &quot;CLOSED_NO_ACTION&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:316-319</code> holds <code>def _closed_ids(resolutions: Sequence[Mapping[str, object]]) -&gt; Set[str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:330</code> holds <code>return {str(r[&quot;id&quot;]) for r in resolutions} | _bubbled_ids(bubbles, bubble_up)</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:340-344</code> holds <code>def undispositioned_ids(doc: Mapping[str, object]) -&gt; List[str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:546</code> holds <code>if ready or doc.get(&quot;post_review_resolutions&quot;):</code></li>
+<li><code>plugins/harness/hooks/validate_pr_json_schema.py:219</code> holds <code>if not (verdict.startswith(&quot;READY TO MERGE&quot;) or data.get(&quot;post_review_resolutions&quot;)):</code></li>
+<li><code>plugins/harness/hooks/validate_pr_json_schema.py:232</code> holds <code>def _closeout_reason(data: Dict[str, Any]) -&gt; Optional[str]:</code></li>
+<li><code>plugins/harness/hooks/validate_pr_json_schema.py:247</code> holds <code>if all_issues_dispositioned(data) and (not resolutions or has_sha_evidence):</code></li>
+<li><code>plugins/harness/lib/harness_lib/validation/id_handling.py:42-49</code> holds <code>return bool(ids) and ids &lt;= disposition_ids(report)</code></li>
+<li><code>plugins/harness/lib/harness_lib/validation/pr_json_validation.py:51</code> holds <code>dispositioned = _disposition_ids(report)</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_bubbles.py:14</code> holds <code>return {i for i, status in latest.items() if status in rmg.CLOSED_STATUSES}</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_edit.py:57</code> holds <code>RESOLUTION_STATUSES = (&quot;RESOLVED&quot;, &quot;DOWNGRADED_TO_MINOR&quot;, &quot;DOWNGRADED_TO_IMPORTANT&quot;, &quot;CLOSED_NO_ACTION&quot;)</code></li>
+<li><code>plugins/harness/schemas/README.md:31</code> holds <code>currently &quot;2.2.0&quot;</code></li>
+<li><code>plugins/harness/schemas/README.md:33</code> holds <code>`2.2.0` adds the optional `stats.source` sub-object</code></li>
+<li><code>tests/lib/test_review_merge.py:404</code> holds <code>assert doc[&quot;version&quot;] == &quot;2.2.0&quot;</code></li>
+</ul>
+<p class="action">Copy the planned schema, hook and merge test files. PR_REVIEW.schema.json: $version 2.3.0; post_review_resolution.status gains REFUTED (closing: refuted by the findings refuter at build or by the developer through refute; evidence is the refuter&#x27;s or the developer&#x27;s case), BUBBLED (non-closing: a refutation overruled and routed to the bubble workflow) and NOT_RESOLVED (non-closing: overruled and routed to Phase 5 waves), with the description extended; verification_log.dispatch_time gains an optional adversarial_check object (applies, workflow, code_slots, refute_slots, result required; counts {findings_checked, findings_refuted, findings_upheld, code_findings}, refuted_ids, unrefuted_ids optional). review_merge: SCHEMA_VERSION 2.3.0; CLOSED_STATUSES gains only REFUTED; _named_ids reads each id&#x27;s LATEST status and a NOT_RESOLVED latest status names nothing (REFUTED then NOT_RESOLVED is undispositioned; BUBBLED is named by the bubble entry the --bubble route writes); _pending_problems exempts resolutions whose status is REFUTED, BUBBLED or NOT_RESOLVED (any other resolution or a READY verdict still fails). Hook validate_pr_json_schema.py: _incoherent gets the same exemption; _closeout_reason counts only resolutions whose status is not REFUTED, BUBBLED or NOT_RESOLVED toward the SHA-evidence test. id_handling.all_issues_dispositioned (post-freeze addition, DesignEvolution S5) treats an id whose latest status is NOT_RESOLVED as open, the _named_ids rule; disposition_ids stays as is, since pr_json_validation&#x27;s orphan check reads it. schemas/README.md :31 and :33 name 2.3.0 (minor, no sweep); the pin in tests/lib/test_review_merge.py:404 moves to 2.3.0. review_edit.RESOLUTION_STATUSES gains none of the three. This repository pins no schema copy.</p>
+<ul>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_refuted_is_the_only_new_closed_status</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_schema_version_is_2_3_0</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_compute_verdict_settles_a_refuted_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_not_resolved_latest_status_is_no_disposition</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[REFUTED]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[BUBBLED]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_pending_rule_exempts_overrule_statuses[NOT_RESOLVED]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_pending_rule_still_refuses_other_resolutions</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_pending_rule_still_refuses_a_ready_verdict</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/schemas/test_pr_review_schema_adversarial.py::test_schema_version_is_2_3_0</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/schemas/test_pr_review_schema_adversarial.py::test_refuted_bubbled_and_not_resolved_are_resolution_statuses</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/schemas/test_pr_review_schema_adversarial.py::test_adversarial_check_is_optional</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/schemas/test_pr_review_schema_adversarial.py::test_adversarial_check_declares_and_accepts_the_s29_fields</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[None]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[BUBBLED]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_overrule_entries_is_coherent[NOT_RESOLVED]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_another_resolution_stays_incoherent</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_pending_review_with_a_ready_verdict_stays_incoherent</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_all_refuted_review_clears_the_sentinel</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_refuted_and_bubbled_review_clears_the_sentinel</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_bubble_clears_the_sentinel</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_refutation_overruled_to_a_fix_keeps_the_sentinel_until_the_fix</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/hooks/test_schema_hook_refuted.py::test_refuted_entries_do_not_lift_the_sha_evidence_rule</code> fails with AssertionError, then passes</li>
+<li>Run <code>copy docs/plans/1016/tests/tests/schemas/test_pr_review_schema_adversarial.py to tests/schemas/test_pr_review_schema_adversarial.py</code>: tests/schemas/test_pr_review_schema_adversarial.py matches the planned file</li>
+<li>Run <code>copy docs/plans/1016/tests/tests/hooks/test_schema_hook_refuted.py to tests/hooks/test_schema_hook_refuted.py</code>: tests/hooks/test_schema_hook_refuted.py matches the planned file</li>
+<li>Run <code>copy docs/plans/1016/tests/tests/lib/test_review_merge_adversarial.py to tests/lib/test_review_merge_adversarial.py</code>: tests/lib/test_review_merge_adversarial.py matches the planned file</li>
+<li>Run <code>python -m pytest tests/lib/test_review_merge.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 1016 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: review_models: workflow constants, AttackFinding, keys, refutation reports and record calls <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/review_models.py</code>, <code>tests/lib/test_review_adversarial_models.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:39</code> holds <code>AGENT_ID = re.compile(r&quot;^[a-z0-9]+(_[a-z0-9]+)*$&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:159-171</code> holds <code>class Finding(BaseModel):</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:236-243</code> holds <code>findings: Tuple[Finding, ...] = ()</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:402</code> holds <code>def reviewer_block(report: ReviewerReport, output: str) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:483-500</code> holds <code>built = _validate_items(Finding, findings, &quot;finding&quot;, root)</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:524-526</code> holds <code>def draft_path(pr: RunKey, agent: str, repo: Optional[Path] = None, run_id: Optional[str] = None) -&gt; Path:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:544-551</code> holds <code>draft = _read_draft(draft_path(pr, reviewer, repo, run_id), (&quot;findings&quot;, &quot;strengths&quot;))</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:561-575</code> holds <code>added = _validate_items(Finding, findings, &quot;finding&quot;, root)</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_models.py:578-580</code> holds <code>return _load(ReviewerReport, path)</code></li>
+</ul>
+<p class="action">Copy the planned models test. review_models.py: ADVERSARIAL_WORKFLOW = &#x27;workflows/adversarial-review.js&#x27; (a code literal, relative to the plugin root), ADVERSARIAL_AGENT = &#x27;harness:adversarial-reviewer&#x27;, REFUTER_MODEL = &#x27;opus&#x27;. AttackFinding(Finding) with a required non-empty attack: str; CodeRefuterReport(ReviewerReport) whose findings are AttackFinding. finding_key(finding): first 12 hex chars of sha256 over model_dump(mode=&#x27;json&#x27;) with sorted keys; report_digest(report): the same over the findings list only (strengths do not move it). RefutationVerdict refuted | upheld; Refutation(key, verdict, evidence) where refuted needs non-blank evidence; RefutationReport(refuter, target, report_digest, refutations) and load_refutations(path). record, record_add, record_draft and load_report validate an id starting with the reserved prefix adv_code as a CodeRefuterReport (a missing attack raises ValueError naming attack). record_attacks / record_attacks_draft are the code refuter&#x27;s record calls and refuse an id outside adv_code*. record_refutations(pr, refuter, target, entries, repo=...) writes refutations/&lt;target&gt;.json (never under findings/) after checking that the entry keys cover the target report&#x27;s findings exactly once (missing, extra or duplicate keys refused; a target without a report refused) and stores the target&#x27;s report_digest; record_refutations_draft reads drafts/&lt;refuter&gt;.json {refutations}. Each record call prints a block like reviewer_block.</p>
+<ul>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_workflow_references_name_the_script_the_agent_and_the_model</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_attack_finding_requires_a_non_empty_attack</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_code_refuter_report_holds_attack_findings</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_validates_an_adv_code_id_as_a_code_refuter_report</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_add_validates_an_adv_code_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_draft_validates_an_adv_code_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_load_report_validates_an_adv_code_file</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_attacks_round_trips_through_load_report</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_attacks_refuses_an_id_outside_adv_code</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_attacks_draft_reads_the_draft_file</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_finding_key_is_stable_and_content_sensitive</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_report_digest_follows_the_findings_list</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_refutation_needs_evidence_when_refuted</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_refutations_writes_the_target_report_digest</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[missing]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[extra]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_bad_key_set[duplicate]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_refutations_refuses_a_target_without_a_report</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_record_refutations_draft_reads_the_draft_file</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial_models.py::test_load_refutations_round_trips</code> fails with AttributeError, then passes</li>
+<li>Run <code>copy docs/plans/1016/tests/tests/lib/test_review_adversarial_models.py to tests/lib/test_review_adversarial_models.py</code>: tests/lib/test_review_adversarial_models.py matches the planned file</li>
+<li>Record it: <code>plan.py record 1016 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: review_adversarial: plan-path classification, code scope, refuter slots, args, check, agent count <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/review_adversarial.py</code>, <code>plugins/harness/lib/harness_lib/review_plan.py</code>, <code>tests/lib/test_review_adversarial.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/review_plan.py:35</code> holds <code>SMALL_PR_FILES = 20</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_plan.py:61-69</code> holds <code>RUNTIME = &quot;runtime&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_plan.py:200</code> holds <code>def merge_registry_into_tests(</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_plan.py:330-337</code> holds <code>def _check_project_lens(lens: Mapping[str, object]) -&gt; None:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_plan.py:533</code> holds <code>if len(reviewable) &lt; SMALL_PR_FILES:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_plan.py:544</code> holds <code>def slot_plan(buckets: Mapping[PathBucket, Tuple[str, ...]], lenses: Mapping[str, Tuple[str, ...]],</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_doc.py:25</code> holds <code>PLAN_SUFFIX = &quot;_ActionPlan.json&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_doc.py:151</code> holds <code>def hydrate_frozen(plan: pm.ActionPlan, plans_dir: Path) -&gt; pm.ActionPlan:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_doc.py:171</code> holds <code>def ledger_state(plan: pm.ActionPlan, plans_dir: Path) -&gt; Optional[fl.LedgerState]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/freeze_ledger.py:22</code> holds <code>FREEZES_DIR = &quot;freezes&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/freeze_ledger.py:40-45</code> holds <code>class LedgerState(str, Enum):</code></li>
+<li><code>plugins/harness/lib/harness_lib/strap_lock.py:96</code> holds <code>def is_locked(spec: SkillSpec, found: Optional[List[LedgerEntry]] = None) -&gt; bool:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:462</code> holds <code>def tree_at_head(repo: Path, head: str, paths: Sequence[str]) -&gt; bool:</code></li>
+</ul>
+<p class="action">Copy the planned test. New module review_adversarial.py (reads artifacts.plans from active config; names no project path). classify_plan_paths(paths, at_head) -&gt; PlanPaths(frozen, unfrozen, excluded, notes) per the spec&#x27;s classification table: &lt;stem&gt;_ActionPlan.json from plan_doc.ledger_state (None -&gt; legacy frozen field through hydrate_frozen), frozen/locked/armed count frozen (D10), unlocked and none unfrozen; &lt;stem&gt;_PIP.* as the plan of the full stem; NNNN/** as the one plan numbered NNNN (zero or several -&gt; unfrozen + note naming NNNN); freezes/** and strap/*/fixtures/** excluded; strap/&lt;name&gt;/** frozen when strap_lock.is_locked or SkillSpec.frozen; anything else unfrozen; unreadable state -&gt; unfrozen + note; at_head False -&gt; every plan path unfrozen + one note (D14). code_scope(buckets, plan_paths) -&gt; {runtime, tests, plans}: runtime and tests buckets minus every plan path (the plan rule overrides the bucket), plans = unfrozen plan paths, empty buckets dropped. refuter_slots(reviewer_ids, scope, reviewable_count) -&gt; plan with code (one pooled adv_code below SMALL_PR_FILES, else one adv_code_&lt;bucket&gt; per non-empty scope bucket) and refute (adv_refute_&lt;target&gt; per reviewer, then per code slot), every slot on REFUTER_MODEL, and plan.record() -&gt; {code: [{id, paths, model}], refute: [{id, target, model}]}. workflow_args(run_key, run_id, reviewers, plan, prompts) with guidance None and agentType harness:pr-reviewer for reviewers, rm.ADVERSARIAL_AGENT for the rest. adversarial_check(plan) (result PENDING ...) and complete_check(check, checked, refuted, code_findings, refuted_ids) adding counts, refuted_ids, unrefuted_ids [] and an OK result, without mutating the input. schema_problem(path) -&gt; None or a problem naming the file and each missing status of REFUTED, BUBBLED, NOT_RESOLVED. agent_count(R, C) = 2(R + C); worst_case_agents(N) = 26 + 2N. review_plan._check_project_lens rejects a lens name starting with adv- or adv_ with a ValueError naming it.</p>
+<ul>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1016_x_ActionPlan.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1017_lk_ActionPlan.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1018_ar_ActionPlan.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1019_un_ActionPlan.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1020_legacy_ActionPlan.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1021_open_ActionPlan.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1016_x_PIP.html]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1016_y_PIP.md]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1021_open_PIP.md]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1016/design.md]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[1019/design.md]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[0002/design.md]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[0042/design.md]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[freezes/plan/1016-x/r1.1-freeze.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[strap/open-skill/fixtures/SC-1/a.py]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[strap/locked-skill/SkillSpec.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[strap/locked-skill/notes.md]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[strap/frozen-skill/SkillSpec.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[strap/open-skill/SkillSpec.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[2026-10-13-port.md]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_plan_path_lands_in_its_row[9999_bad_ActionPlan.json]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_path_outside_the_plans_folder_is_not_classified</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_readable_plan_adds_no_note</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_an_unresolved_state_is_unfrozen_with_a_note[several-plans]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_an_unresolved_state_is_unfrozen_with_a_note[no-plan]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_an_unresolved_state_is_unfrozen_with_a_note[unreadable]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_tree_off_the_head_unfreezes_every_plan_path_with_one_note</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_code_scope_takes_runtime_tests_and_unfrozen_plans_only</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_code_scope_of_a_docs_only_change_is_empty</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_registry_files_merged_into_tests_are_in_scope</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_small_change_pools_the_scope_in_one_code_refuter</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_large_change_gets_one_code_refuter_per_scope_bucket</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_each_scope_path_lands_in_exactly_one_code_slot</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_an_empty_scope_plans_no_code_refuter</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_every_refuter_slot_runs_on_opus</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_the_plan_records_code_and_refute_entries</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_workflow_args_carry_the_run_and_no_guidance</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_workflow_args_name_the_reviewer_agent_for_reviewers</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_workflow_args_name_the_adversarial_agent_for_code_and_refuters</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_the_initial_check_records_the_plan</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_the_completed_check_counts_findings_and_lists_refuted_ids</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_schema_without_the_adversarial_statuses_is_a_problem[none]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_schema_without_the_adversarial_statuses_is_a_problem[no-refuted]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_schema_without_the_adversarial_statuses_is_a_problem[no-bubbled]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_schema_without_the_adversarial_statuses_is_a_problem[no-not-resolved]</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_schema_with_all_three_statuses_is_no_problem</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_agent_count_is_twice_reviewers_plus_code_refuters</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_worst_case_agent_count_matches_the_planner</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_project_lens_may_not_take_the_adv_prefix[adv-code]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_adversarial.py::test_a_project_lens_may_not_take_the_adv_prefix[adv-refute-x]</code> fails with AssertionError, then passes</li>
+<li>Run <code>copy docs/plans/1016/tests/tests/lib/test_review_adversarial.py to tests/lib/test_review_adversarial.py</code>: tests/lib/test_review_adversarial.py matches the planned file</li>
+<li>Record it: <code>plan.py record 1016 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: review_merge traced merge, merge_adversarial, refuted key, review_document; review_edit overrules <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1, TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/review_merge.py</code>, <code>plugins/harness/lib/harness_lib/review_edit.py</code>, <code>tests/lib/test_review_merge_adversarial.py</code>, <code>tests/lib/test_review_merge.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:143-146</code> holds <code>def of_finding(cls, slot: str, finding: Finding) -&gt; _Record:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:185-195</code> holds <code>def _combine(records: Sequence[_Record]) -&gt; _Record:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:201</code> holds <code>def _groups(findings: Sequence[Finding]) -&gt; List[List[int]]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:229-236</code> holds <code>def merge_findings(reports: Sequence[ReviewerReport]) -&gt; List[Issue]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:347-363</code> holds <code>closed = _closed_ids(resolutions)</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:391</code> holds <code>def regrade(issues: Sequence[Issue], issue_id: str, severity: Union[Severity, str]) -&gt; List[Issue]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:420-431</code> holds <code>combined = _combine([_Record.of_issue(i) for i in [kept, *dropped]])</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:469-489</code> holds <code>&quot;verdict&quot;: compute_verdict(issues, [], [], []), &quot;stats&quot;: copy.deepcopy(meta[&quot;stats&quot;]),</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:570-572</code> holds <code>def _resolution(issue_id: str, status: str, today: str, evidence: str) -&gt; Dict[str, str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_edit.py:224-231</code> holds <code>def recompute_verdict(doc: Mapping[str, object]) -&gt; Doc:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_edit.py:272-276</code> holds <code>def add_bubble(doc: Mapping[str, object], issue_id: str) -&gt; Doc:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_edit.py:347-359</code> holds <code>settled = rmg._settled_ids(</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_edit.py:441-445</code> holds <code>def _latest_status(doc: Mapping[str, object], issue_id: str) -&gt; Optional[str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_edit.py:502-508</code> holds <code>closed = rmg._closed_ids(</code></li>
+<li><code>tests/lib/test_review_merge.py:397-403</code> holds <code>&quot;review_date&quot;, &quot;verdict&quot;, &quot;stats&quot;, &quot;reviewers&quot;, &quot;scoped_review_files&quot;, &quot;bubbles&quot;, &quot;strengths&quot;,</code></li>
+</ul>
+<p class="action">review_merge.py: merge_findings_traced(reports) -&gt; (issues, trace), trace mapping each issue id to its (source_id, finding_key) pairs; merge_findings stays and equals merge_findings_traced(...)[0]. merge_adversarial(reports, refutations) -&gt; (issues, notes): merges every source (reviewer, code refuter, folded) through the trace; a finding with no refutation entry counts as upheld; an issue whose every finding is refuted carries &#x27;refuted&#x27;: &lt;evidence&gt;; in a mixed group rank, name, summary and fix_kind come from the upheld findings only and the refuted evidence goes to notes; with nothing refuted the issues equal merge_findings. _Record / _combine carry attack only to fold &#x27;Attack: &lt;text&gt;&#x27; into the summary (D9). refuted_resolutions(issues, date) builds one REFUTED entry per refuted issue through _resolution; strip_refuted(issues) returns copies without the key. merge_ids (and regrade) carry refuted: kept only when every merged issue is refuted, evidence joined by a blank line. review_document writes the refuted_resolutions, strips the key and computes the verdict over them (post_review_resolutions present only when non-empty, so TestReviewDocument.test_key_order_and_defaults keeps its key list; edit tests/lib/test_review_merge.py:399-404 only if the order must change). The READY verdict counts refuted ids apart from resolved (&#x27;, K refuted&#x27; only when K &gt; 0). review_edit.py: issue_info(doc, id) returns the issue dict or raises ValueError; apply_refute(doc, id, evidence, date) refuses an unknown id or a closing latest status (RESOLVED, CLOSED_NO_ACTION, REFUTED) and appends a REFUTED entry; apply_unrefute(doc, id, mode, reason, date), mode bubble | fix, refuses unless the latest status is REFUTED (or an unknown mode / id); bubble appends BUBBLED and adds the id through add_bubble; fix appends NOT_RESOLVED. Both return a new doc with the verdict recomputed and never mutate the input. _without_closed_bubbles and merge_issue_ids treat REFUTED as closed through _closed_ids.</p>
+<ul>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_merge_findings_traced_maps_each_issue_to_its_findings</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_marks_a_fully_refuted_issue</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_keeps_an_issue_with_one_upheld_finding</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_mixed_group_takes_its_shape_from_upheld_findings</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_folds_the_attack_into_the_summary</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_counts_a_source_without_refutations_as_upheld</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_merge_adversarial_without_refutations_equals_merge_findings</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_refuted_resolutions_build_one_entry_per_refuted_issue</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_strip_refuted_drops_only_the_key_and_copies</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_merge_ids_keeps_refuted_only_when_every_issue_is</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_review_document_writes_refuted_resolutions_and_strips_the_key</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_review_document_all_refuted_is_held_and_validates</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_issue_info_returns_the_issue_and_refuses_an_unknown_id</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[open]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[after-fix-overrule]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_refute_appends_a_refuted_entry[after-bubble-overrule]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[resolved]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[closed-no-action]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[already-refuted]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_refute_refuses_a_closed_or_unknown_id[unknown-id]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_bubble_appends_bubbled_and_bubbles_the_id</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_fix_appends_not_resolved_and_reopens_the_id</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[never-refuted]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[already-fix]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[already-bubbled]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[resolved]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[unknown-mode]</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_review_merge_adversarial.py::test_apply_unrefute_refuses[unknown-id]</code> fails with AttributeError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_review_merge.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 1016 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-5" data-item="TASK-5">
+<h3>TASK-5: pr_review.py and review_briefs: capture -a, init, merge, build, refute / unrefute, Phase 5 refusals <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-3, TASK-4, SPK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/scripts/pr_review.py</code>, <code>plugins/harness/lib/harness_lib/review_briefs.py</code>, <code>plugins/harness/lib/harness_lib/review_adversarial.py</code>, <code>tests/scripts/test_pr_review_adversarial.py</code>, <code>tests/scripts/test_pr_review_driver.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/pr_review.py:1</code> holds <code>&quot;&quot;&quot;pr-review driver: capture a PR into reviewer briefs, merge findings, build the review, plan fix waves.</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:212</code> holds <code>REVIEWER_AGENT = &quot;harness:pr-reviewer&quot;</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:571-576</code> holds <code>def dispatch_row(agent_type: str, model: str, agent: str, role: str, run_id: str, pr: RunKey,</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:671</code> holds <code>at_head = tree_at_head(repo, facts.head_sha, scope.reviewable)</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:673</code> holds <code>dispatch_time = {&quot;pr_metadata_check&quot;: check, &quot;structural_guards_check&quot;: guards}</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:675</code> holds <code>run = rm.start_run(key, run_id, repo)</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:683-685</code> holds <code>rows = [dispatch_row(REVIEWER_AGENT, s.model, s.id, &quot;reviewer&quot;, run_id, key,</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:704-708</code> holds <code>def report_sources(plan: Mapping[str, object]) -&gt; List[Tuple[str, str, str]]:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:711-717</code> holds <code>def stray_reports(run: Path, plan: Mapping[str, object]) -&gt; List[str]:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:769</code> holds <code>issues = rmg.merge_findings(reports)</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1023-1027</code> holds <code>def fold_check(plan: Mapping[str, object], source: str, doc: Optional[Mapping[str, object]] = None) -&gt; None:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1192-1203</code> holds <code>def phase5_state(repo: Path, run: Path, target: Path) -&gt; List[str]:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1199</code> holds <code>held = [f&quot;{_rel(repo, target)} {k}&quot; for k in (&quot;post_review_resolutions&quot;, &quot;bubbles&quot;, &quot;bubble_up&quot;)</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1206-1212</code> holds <code>def build_meta(repo: Path, run: Path, plan: Mapping[str, object]) -&gt; Dict[str, object]:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1312-1319</code> holds <code>def hold_ready_verdict(doc: Dict[str, object], reason: str) -&gt; None:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1344</code> holds <code>doc = rmg.review_document(build_meta(repo, run, plan), draft, plan[&quot;dispatch_time&quot;],</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1346</code> holds <code>problem, waiver = apply_phase4(repo, run, args.pr, doc, args.waive_head_ancestry)</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1369-1377</code> holds <code>def with_bubble(doc: Mapping[str, object], bubble: rm.FixBubble) -&gt; Dict[str, object]:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1387</code> holds <code>if args.id in closed_ids(doc):</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1412-1418</code> holds <code>def _selected(issues: Sequence[Dict[str, object]], ids: str) -&gt; List[Dict[str, object]]:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1462</code> holds <code>closed = closed_ids(doc)</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1953</code> holds <code>return f&quot;Phase 5 [done] | {len(closed_ids(doc))} issues resolved</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:1959-1970</code> holds <code>def _cmd_block(repo: Path, args: argparse.Namespace) -&gt; int:</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:2042</code> holds <code>cap.add_argument(&quot;--roast&quot;, choices=(&quot;yes&quot;, &quot;no&quot;, &quot;roll&quot;), default=&quot;roll&quot;, help=&quot;Roast slot (roll).&quot;)</code></li>
+<li><code>plugins/harness/scripts/pr_review.py:2124-2128</code> holds <code>&quot;capture&quot;: _cmd_capture, &quot;block&quot;: _cmd_block, &quot;fold&quot;: _cmd_fold, &quot;merge&quot;: _cmd_merge, &quot;amend&quot;: _cmd_amend,</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_merge.py:856-870</code> holds <code>def _apply_resolved(doc: Dict[str, object], resolved: Mapping[str, str], changed: Set[str], head: str,</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_briefs.py:103-105</code> holds <code>def header_lines(agent: str, role_name: str, run_id: str, pr: RunKey) -&gt; List[str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_briefs.py:260</code> holds <code>tail = f&#x27;repo=Path(r&quot;{ctx.repo}&quot;), run_id=&quot;{ctx.run_id}&quot;)&#x27;</code></li>
+<li><code>plugins/harness/lib/harness_lib/review_briefs.py:278-282</code> holds <code>def reviewer_brief(ctx: BriefContext, slot: rp.Slot, diff_path: Path, partial: Sequence[str]) -&gt; str:</code></li>
+<li><code>tests/scripts/test_pr_review_driver.py:1051</code> holds <code>assert &quot;Phase 5 [done] | 1 issues resolved | verdict: READY TO MERGE&quot; in out</code></li>
+</ul>
+<p class="action">Copy the planned driver test. capture: -a / --adversarial (store_true, beside --roast). Before rm.start_run (so current does not move) refuse when adversarial_script() (module seam: plugin root / rm.ADVERSARIAL_WORKFLOW) is missing (problem names adversarial-review.js) and when review_adversarial.schema_problem(project schema_path) reports the governing (possibly pinned) schema lacks REFUTED, BUBBLED or NOT_RESOLVED (problem names the pinned path). Classify plan paths (classify_plan_paths with tree_at_head; notes as note: lines), code_scope, refuter_slots; write the code-refuter briefs and the findings-refuter brief templates (review_briefs: role, scope, the attack or refute rule, the record_attacks_draft / record_refutations_draft heredoc with run_id=, the no-repo-writes rule, init as the first step for refuters); store plan[&#x27;adversarial&#x27;] = record() and dispatch_time.adversarial_check; print the status line, then scriptPath=&lt;abs&gt; and args=&lt;one-line JSON&gt; (workflow_args) and no agent= rows. Without -a capture output, plan.json and briefs stay byte-identical. New init --pr &lt;key&gt; --agent adv_refute_&lt;t&gt; --run-id &lt;id&gt;: refuses a run id that is not current (naming it) and a target that has not recorded (&#x27;reviewer &lt;t&gt; has not recorded&#x27;, exit 1); prints each target finding as &#x27;[&lt;finding_key&gt;] &lt;severity&gt; &lt;name&gt; &lt;file&gt;:&lt;lines&gt;&#x27;; on zero findings records an empty RefutationReport and prints &#x27;no findings: done&#x27;. report_sources adds adv_code* sources credited &#x27;&lt;id&gt; (opus)&#x27;; stray_reports accepts them; fold_check refuses an adv_ source id; block --agent adv_refute_&lt;t&gt; reprints from refutations/&lt;t&gt;.json. merge under plan[&#x27;adversarial&#x27;]: every refute slot needs refutations/&lt;target&gt;.json (problem names adv_refute_&lt;target&gt;), a stored digest that differs from the target&#x27;s current report_digest refuses with &#x27;refutation stale: rerun adv_refute_&lt;target&gt;&#x27;, then merge_adversarial; the table prints a refuted column. build: review_document writes the REFUTED resolutions before apply_phase4 / hold_ready_verdict; prints &#x27;refuted: &lt;id&gt; (&lt;evidence first line&gt;)&#x27; per id; completes adversarial_check (counts, refuted_ids, unrefuted_ids) only under -a. phase5_state ignores a REFUTED resolution only while draft.json marks its id refuted, so build --replace still works after a refuting build and refuses after a developer refute / unrefute. New refute --pr &lt;key&gt; &lt;ID&gt; --evidence and unrefute --pr &lt;key&gt; &lt;ID&gt; (--bubble --classification C --reason R | --fix [--reason R]) read the built review, print tier, name and file:lines, go through review_edit.issue_info / apply_refute / apply_unrefute and commit_review; under -a they update refuted_ids / unrefuted_ids; unrefute clears the issue&#x27;s refuted key in draft.json; --bubble then follows the existing bubble path (with_bubble); --fix moves phase done -&gt; fix. bubble and closeout --resolved on a REFUTED id refuse naming unrefute; waves plans no fixer for a refuted id (--ids included) and plans a NOT_RESOLVED one; the done line counts refuted apart (suffix only when K &gt; 0, so test_pr_review_driver.py:1051 holds). Module docstring (:1-127): -a, init --run-id, refute, unrefute. Keep functions under 50 lines; helpers go to review_adversarial.</p>
+<ul>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_only_the_flag_plans_an_adversarial_run</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_prints_one_workflow_row_and_no_agent_rows</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_records_the_refuter_plan</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_writes_refuter_briefs_with_the_run_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_logs_the_pending_check</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_refuses_a_missing_script_before_the_run</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_capture_adversarial_refuses_a_pinned_schema_without_refuted</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_init_prints_each_target_finding_under_its_key</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_init_refuses_before_the_reviewer_recorded</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_init_refuses_a_run_id_that_is_not_current</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_init_on_a_slot_without_findings_records_an_empty_report</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_merge_refuses_a_slot_without_refutations</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_merge_refuses_a_refutation_of_an_older_report</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_code_refuter_reports_and_refutations_are_not_strays</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_block_reprints_a_refuter_report</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_fold_refuses_an_adv_source_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_merge_marks_the_refuted_issue_and_folds_the_attack</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_build_writes_refuted_resolutions_and_keeps_the_issue</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_build_completes_the_adversarial_check</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_build_prints_each_refuted_id_with_its_evidence</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_build_replace_after_a_phase4_stop_keeps_working</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_all_refuted_with_a_phase4_failure_holds_a_valid_review</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_only_an_adversarial_build_writes_the_check</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_refute_on_a_review_without_the_flag_closes_the_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_refute_refuses_an_id_already_closed</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_refute_refuses_an_unknown_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_appends_not_resolved_and_reopens_the_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_hands_the_id_to_the_next_waves</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_unrefute_fix_moves_a_done_run_back_to_fix</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_unrefute_bubble_appends_bubbled_and_bubbles_the_id</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_unrefute_refuses_an_id_that_is_not_refuted_or_unknown[not-refuted]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_unrefute_refuses_an_id_that_is_not_refuted_or_unknown[unknown]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_refute</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_build_replace_refuses_after_a_developer_unrefute</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_bubble_refuses_a_refuted_id_naming_unrefute</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_closeout_resolved_refuses_a_refuted_id_naming_unrefute</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_pr_review_adversarial.py::test_waves_plan_no_fixer_for_a_refuted_id</code> fails with AssertionError, then passes</li>
+<li>Run <code>copy docs/plans/1016/tests/tests/scripts/test_pr_review_adversarial.py to tests/scripts/test_pr_review_adversarial.py</code>: tests/scripts/test_pr_review_adversarial.py matches the planned file</li>
+<li>Run <code>python -m pytest tests/scripts/test_pr_review_driver.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 1016 TASK-5 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-6" data-item="TASK-6">
+<h3>TASK-6: The adversarial-review Workflow script, the adversarial-reviewer agent, DEFINED_AGENTS, .js scan <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-2, SPK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/workflows/adversarial-review.js</code>, <code>plugins/harness/agents/adversarial-reviewer.md</code>, <code>plugins/agent-watcher/hooks/core/contract.ts</code>, <code>tests/contract/test_no_repo_literals.py</code>, <code>tests/contract/test_adversarial_workflow.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/agents/pr-reviewer.md:25</code> holds <code>tools: Read, Grep, Glob, Bash, Write</code></li>
+<li><code>plugins/agent-watcher/hooks/core/contract.ts:85-90</code> holds <code>export const DEFINED_AGENTS = [</code></li>
+<li><code>tests/contract/test_no_repo_literals.py:16</code> holds <code>WALK_ROOTS = (&quot;plugins/&quot;,)</code></li>
+<li><code>tests/contract/test_no_repo_literals.py:18</code> holds <code>TEXT_SUFFIXES = {&quot;.py&quot;, &quot;.md&quot;, &quot;.json&quot;, &quot;.jsonl&quot;, &quot;.ts&quot;, &quot;.tsx&quot;, &quot;.sh&quot;, &quot;.txt&quot;, &quot;.yaml&quot;, &quot;.yml&quot;, &quot;.tmpl&quot;}</code></li>
+<li><code>tests/mods/test_agent_watcher_usage_contract.py:130-135</code> holds <code>assert ts_string_array(contract_ts, &quot;DEFINED_AGENTS&quot;) == defined</code></li>
+</ul>
+<p class="action">Copy the planned contract test. plugins/harness/workflows/adversarial-review.js, shaped by SPK-1&#x27;s findings: a pure-literal `export const meta = {...}` first (name, description, phases Review and Attack); pipeline(args.reviewers, reviewer agent then its refuter from args.refute) and pipeline(args.code, code refuter then its refuter), the two under one parallel; every agentType, model and prompt from args; &#x27;Developer guidance: &lt;text&gt;&#x27; appended to every reviewer and refuter prompt when args.guidance is set; returns [{id, returned}] only; no Date.now, Math.random, require, import(), process., machine path or model literal. plugins/harness/agents/adversarial-reviewer.md: name adversarial-reviewer, two examples, model opus, tools Read, Grep, Glob, Bash, Write; the body names the code refuter role (findings only with an attack, through record_attacks_draft) and the findings refuter role (start with init, open every cited path:line, refuted when the citation does not show the claim, record_refutations_draft), and bans repository writes through Bash (probes only under the run directory, pytest with -p no:cacheprovider). Add &#x27;harness:adversarial-reviewer&#x27; to agent-watcher DEFINED_AGENTS (contract.ts) in sorted place, so test_agent_watcher_usage_contract holds. Add .js to TEXT_SUFFIXES in tests/contract/test_no_repo_literals.py (its WALK_ROOTS plugins/ already covers workflows/).</p>
+<ul>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_script_sits_at_the_named_path</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_meta_is_the_first_statement_and_a_pure_literal</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_meta_names_the_workflow</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_phases_match_the_meta_entries</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_agent_types_name_existing_plugin_agents</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_script_reads_every_slot_and_the_guidance_from_args</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_script_uses_no_clock_randomness_modules_or_process</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_script_names_no_machine_path</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_script_holds_no_model_literal</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_agent_frontmatter_names_the_agent_its_tools_and_opus</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_agent_body_names_both_roles_init_and_the_record_calls</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_agent_body_bans_repository_writes_through_bash</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_the_literal_scan_reads_js_files</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/contract/test_adversarial_workflow.py::test_agent_watcher_knows_the_agent</code> fails with AttributeError, then passes</li>
+<li>Run <code>copy docs/plans/1016/tests/tests/contract/test_adversarial_workflow.py to tests/contract/test_adversarial_workflow.py</code>: tests/contract/test_adversarial_workflow.py matches the planned file</li>
+<li>Run <code>python -m pytest tests/mods/test_agent_watcher_usage_contract.py -q</code>: passed, no failures</li>
+<li>Run <code>python -m pytest tests/contract/test_no_repo_literals.py -q</code>: passed, no failures</li>
+<li>Run <code>claude plugin validate --strict plugins/harness</code>: validation passes</li>
+<li>Record it: <code>plan.py record 1016 TASK-6 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-7" data-item="TASK-7">
+<h3>TASK-7: Skill docs, schemas README prose, README, harness 0.71.0 and the release note <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-5, TASK-6</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/pr-review/SKILL.md</code>, <code>plugins/harness/skills/pr-review/operating_rules.md</code>, <code>plugins/harness/skills/review-local/SKILL.md</code>, <code>plugins/harness/skills/fold-in-review/SKILL.md</code>, <code>plugins/harness/schemas/README.md</code>, <code>README.md</code>, <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code>, <code>tests/skills/test_pr_review_adversarial_docs.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/pr-review/SKILL.md:5</code> holds <code>argument-hint: &quot;&lt;PR number&gt; [--roast yes|no|roll] [--no-fetch] [-- &lt;guidance&gt;]&quot;</code></li>
+<li><code>plugins/harness/skills/pr-review/SKILL.md:41</code> holds <code>| `capture [--roast yes\|no\|roll] [--no-fetch] [--allow-closed]` | 1 |</code></li>
+<li><code>plugins/harness/skills/pr-review/SKILL.md:202</code> holds <code>### Model floor (reviewer dispatch)</code></li>
+<li><code>plugins/harness/skills/pr-review/SKILL.md:489</code> holds <code>a resolution whose status is not `RESOLVED` / `CLOSED_NO_ACTION`.</code></li>
+<li><code>plugins/harness/skills/pr-review/SKILL.md:496</code> holds <code>else `READY TO MERGE - &lt;R&gt; of &lt;T&gt; findings resolved, &lt;B&gt; bubbled`</code></li>
+<li><code>plugins/harness/skills/pr-review/operating_rules.md:35</code> holds <code>- **Status enum:** `RESOLVED`, `DOWNGRADED_TO_MINOR`, `DOWNGRADED_TO_IMPORTANT`, `CLOSED_NO_ACTION`.</code></li>
+<li><code>plugins/harness/skills/review-local/SKILL.md:6</code> holds <code>[--roast yes|no|roll] [-- &lt;guidance&gt;]</code></li>
+<li><code>plugins/harness/skills/review-local/SKILL.md:75</code> holds <code>capture --range &lt;BASE..HEAD&gt; --roast roll [--pr local-&lt;label&gt;]</code></li>
+<li><code>plugins/harness/schemas/README.md:40</code> holds <code>`status` ∈ `{RESOLVED, DOWNGRADED_TO_*, CLOSED_NO_ACTION}`</code></li>
+<li><code>README.md:580</code> holds <code>| `plugins/harness/skills/`, `agents/`</code></li>
+<li><code>plugins/harness/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.70.0&quot;,</code></li>
+<li><code>docs/RELEASES/v1.0.0.md:25</code> holds <code>| harness | 0.65.1 | 0.70.0 |</code></li>
+</ul>
+<p class="action">Copy the planned docs test. pr-review SKILL.md: -a / --adversarial in the argument hint and the capture row; before capture, with -a and no Workflow tool print a problem: line and do not run capture (D7); a Phase 2 &#x27;Under -a&#x27; section: one Workflow call with scriptPath and args exactly as printed, no edits and no added or dropped slots with the one named exception args.guidance, the agent count 2(R + C) &lt;= 26 + 2N, the Phase 3 trigger and the recovery (a plain Agent dispatch of the failed entry, reviewer first); a Model floor row for the refuter (opus); the init, refute and unrefute (--bubble / --fix) rows, no amend --unrefute; Phase 3 reads the refuted column; the Phase 5 Step 5 pause lists refuted ids; Step 0 &#x27;no unrefuted issues, no Phase 5&#x27;; :489 and :496 count refuted apart from resolved. operating_rules.md :35: REFUTED closing, BUBBLED and NOT_RESOLVED non-closing, a refuted issue gets no fixer, the developer overrules with refute or unrefute --bubble / --fix. review-local SKILL.md: -a in the hint, the capture line and the rows table, an &#x27;Under -a&#x27; Phase 2 paragraph with the recovery. fold-in-review SKILL.md: one line, folded findings are not refuted. schemas/README.md :40 and :283 status prose (TASK-1 moved :31/:33). README.md layout table (:575-587): a plugins/harness/workflows/ row; feature prose. plugin.json 0.70.0 -&gt; 0.71.0; docs/RELEASES/v1.0.0.md harness row to 0.71.0 and a #252 line for --adversarial (refute / unrefute included). pr-team stays unchanged (D2).</p>
+<ul>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_argument_hint_names_the_flag</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_capture_row_names_the_flag</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_dispatches_a_workflow_with_a_script_path</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_names_the_guidance_exception</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_lists_refute_and_unrefute_subcommands_not_an_amend_flag</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_model_floor_covers_the_refuter</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_pr_review_states_the_worst_case_agent_count</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_operating_rules_define_the_three_new_statuses</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_operating_rules_name_the_overrule_commands</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_review_local_argument_hint_names_the_flag</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_review_local_capture_line_carries_the_flag</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_review_local_has_an_under_a_paragraph</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_fold_in_review_says_folded_findings_are_not_refuted</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_the_flag_is_pr_reviews_not_pr_teams</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_schemas_readme_names_the_new_version</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_harness_plugin_version_is_bumped</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_pr_review_adversarial_docs.py::test_a_release_note_names_the_flag</code> fails with AssertionError, then passes</li>
+<li>Run <code>copy docs/plans/1016/tests/tests/skills/test_pr_review_adversarial_docs.py to tests/skills/test_pr_review_adversarial_docs.py</code>: tests/skills/test_pr_review_adversarial_docs.py matches the planned file</li>
+<li>Record it: <code>plan.py record 1016 TASK-7 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-8" data-item="TASK-8">
+<h3>TASK-8: Follow-up TODO item for pr-team --adversarial <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>docs/TODO/RepoToDo.json</code></p>
+<p class="action">Run /harness:add-todo with the note: pr-team gets --adversarial after #252 lands; the pr-team-orchestrator and pr-team-fixer agents plan and consolidate inside their own runs, so -a there changes both agents; reuse review_adversarial, merge_adversarial and the refute / unrefute pipeline. The todo-editor writes the catalog.</p>
+<ul>
+<li>Run <code>/harness:add-todo -r 1 -- pr-team --adversarial follow-up to #252</code>: Added todo-</li>
+<li>Record it: <code>plan.py record 1016 TASK-8 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-9" data-item="TASK-9">
+<h3>TASK-9: agent-watcher: refuter role in identify.ts, matrix rule per D6, version and release row <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> SPK-1, TASK-6</p>
+<p><strong>Files:</strong> <code>plugins/agent-watcher/hooks/layers/pr-review/identify.ts</code>, <code>plugins/agent-watcher/hooks/layers/pr-review/identify.test.ts</code>, <code>plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts</code>, <code>plugins/agent-watcher/hooks/layers/pr-review/matrixRow.test.ts</code>, <code>plugins/agent-watcher/.claude-plugin/plugin.json</code>, <code>plugins/agent-watcher/README.md</code>, <code>docs/RELEASES/v1.0.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/agent-watcher/hooks/layers/pr-review/identify.ts:46</code> holds <code>if (!agentId || (role !== &#x27;reviewer&#x27; &amp;&amp; role !== &#x27;fixer&#x27;)) return undefined</code></li>
+<li><code>plugins/agent-watcher/hooks/layers/pr-review/matrixRow.ts:15</code> holds <code>export const DISPATCH_SHAPES = [&#x27;parallel&#x27;, &#x27;inline&#x27;] as const</code></li>
+<li><code>plugins/agent-watcher/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.8.1&quot;,</code></li>
+<li><code>docs/RELEASES/v1.0.0.md:27</code> holds <code>Unchanged: agent-watcher, band-line, banner-status, bubble-stamp,</code></li>
+</ul>
+<p class="action">Blocked until the developer settles D6 after SPK-1. identify.ts: a refuter dispatch (agent harness:adversarial-reviewer, AGENT_ROLE code refuter or findings refuter) is identified as a pr-review slot, beside reviewer and fixer, with its tests in identify.test.ts. The matrix rule per D6&#x27;s choice (watcher: record Workflow agents as Agent dispatches; shape: a workflow dispatch_shape in matrixRow.ts DISPATCH_SHAPES; exempt: no rows for Workflow agents; result: rows from workflowProgress through a harness driver command, dispatch_shape workflow) with its matrixRow.test.ts cases. agent-watcher plugin.json 0.8.1 -&gt; 0.9.0 unless TASK-10 already moved it there (one minor bump on the branch); its row in docs/RELEASES/v1.0.0.md (Plugins table, leaving the Unchanged line) and a change line.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/agent-watcher</code>: all agent-watcher tests pass</li>
+<li>Run <code>python -m pytest tests/mods/test_agent_watcher_matrix_contract.py -q</code>: passed, no failures</li>
+<li>Run <code>python -m pytest tests/mods/test_agent_watcher_layers.py -q</code>: passed, no failures</li>
+<li>Run <code>claude plugin validate --strict plugins/agent-watcher</code>: validation passes</li>
+<li>Record it: <code>plan.py record 1016 TASK-9 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-10" data-item="TASK-10">
+<h3>TASK-10: TS closed-status mirrors gain REFUTED (D11): agent-watcher and bubble-stamp <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts</code>, <code>plugins/agent-watcher/hooks/layers/pr-review/bubbles.test.ts</code>, <code>plugins/agent-watcher/README.md</code>, <code>plugins/agent-watcher/.claude-plugin/plugin.json</code>, <code>plugins/bubble-stamp/hooks/review.ts</code>, <code>plugins/bubble-stamp/hooks/review.test.ts</code>, <code>plugins/bubble-stamp/hooks/memo.ts</code>, <code>plugins/bubble-stamp/hooks/memo.test.ts</code>, <code>plugins/bubble-stamp/README.md</code>, <code>plugins/bubble-stamp/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/agent-watcher/hooks/layers/pr-review/bubbles.ts:59</code> holds <code>const CLOSING_STATUSES: readonly unknown[] = [&#x27;RESOLVED&#x27;, &#x27;CLOSED_NO_ACTION&#x27;]</code></li>
+<li><code>plugins/bubble-stamp/hooks/review.ts:40</code> holds <code>const CLOSING_STATUSES: readonly string[] = [&#x27;RESOLVED&#x27;, &#x27;CLOSED_NO_ACTION&#x27;]</code></li>
+<li><code>plugins/bubble-stamp/hooks/memo.ts:38</code> holds <code>const STAMPING: readonly string[] = [&#x27;RESOLVED&#x27;, &#x27;CLOSED_NO_ACTION&#x27;]</code></li>
+<li><code>plugins/agent-watcher/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.8.1&quot;,</code></li>
+<li><code>plugins/bubble-stamp/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.2.0&quot;,</code></li>
+<li><code>docs/RELEASES/v1.0.0.md:27</code> holds <code>Unchanged: agent-watcher, band-line, banner-status, bubble-stamp,</code></li>
+</ul>
+<p class="action">agent-watcher hooks/layers/pr-review/bubbles.ts CLOSING_STATUSES, bubble-stamp hooks/review.ts CLOSING_STATUSES and hooks/memo.ts STAMPING gain &#x27;REFUTED&#x27;, so a bubbled id whose latest status is REFUTED reads as Decided; BUBBLED and NOT_RESOLVED stay non-closing (a later entry reopens). Update the doc comments (bubbles.ts:10, review.ts:74, memo.ts:142) and both READMEs. Tests: bubbles.test.ts, review.test.ts and memo.test.ts each add a bubbled id with a REFUTED latest status (closed) and one with REFUTED then NOT_RESOLVED (open). Versions: agent-watcher 0.8.1 -&gt; 0.9.0 (unless TASK-9 already moved it), bubble-stamp 0.2.0 -&gt; 0.3.0; rows in docs/RELEASES/v1.0.0.md (Plugins table, drop both from the Unchanged line) and one change line.</p>
+<ul>
+<li>Run <code>claude plugin test plugins/agent-watcher</code>: all agent-watcher tests pass</li>
+<li>Run <code>claude plugin test plugins/bubble-stamp</code>: all bubble-stamp tests pass</li>
+<li>Run <code>python -m pytest tests/mods/test_bubble_stamp_anchors_contract.py -q</code>: passed, no failures</li>
+<li>Run <code>python -m pytest tests/mods/test_bubble_stamp_config_mirror.py -q</code>: passed, no failures</li>
+<li>Run <code>python -m pytest tests/mods/test_agent_watcher_config_mirror.py -q</code>: passed, no failures</li>
+<li>Record it: <code>plan.py record 1016 TASK-10 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+</body>
+</html>

@@ -1,0 +1,160 @@
+{
+  "plan_id": "1016",
+  "feature": "pr review adversarial",
+  "branch_lineage": "main-->1155-local-review-strapping",
+  "primary_documents": {
+    "plan": "docs/plans/1016_pr_review_adversarial_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-12-pr-review-adversarial-design.md"
+  },
+  "changes": [
+    {
+      "id": "S1",
+      "discovered_by": "spec review (four dimensions, adversarially verified)",
+      "phase": "spec-review",
+      "items": [
+        "SPK-1",
+        "TASK-1",
+        "TASK-2",
+        "TASK-3",
+        "TASK-4",
+        "TASK-5",
+        "TASK-6",
+        "TASK-7",
+        "TASK-8",
+        "TASK-9",
+        "TASK-10"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "whole document, pre-review draft",
+        "indicated": "pr-review --adversarial design before review: amend --unrefute before build, index-keyed refutations, no spike, no plan-path classification table"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "31 findings (S1-S31)",
+        "why_free_form": "The review found 31 gaps: Phase 5 detection after a refuting build (S1), the overrule window (S2), the closed-status consumer trace (S3), the hook's Layer 2 and Layer 3 rules (S4, S13), mixed-group merges (S5, S6), stale refutations (S7), the attack field (S8), discovery and layout (S9), plan-path state (S10), schema versioning (S11, S12), the missing Workflow tool (S14), unverified Workflow API facts (S15), agent-watcher (S16), recovery (S17), guidance (S18), agent count (S19), the strap round (S20), tests (S21) and more (S22-S31)."
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "Every finding accepted with the resolution sheet's fix; the frozen spec's Review resolutions table maps each finding to its section; SPK-1, TASK-9 and TASK-10 join the plan"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "The plan items, values and planned tests follow the resolved spec, not the draft."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "S2",
+      "discovered_by": "developer (answer to D5)",
+      "phase": "spec-review",
+      "items": [
+        "TASK-4",
+        "TASK-5",
+        "TASK-7"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decisions D5; review finding S2",
+        "indicated": "the developer overrules a refutation with amend --unrefute before build, or (the review's fix) a post-build unrefute --reason appending one UNREFUTED entry"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "overrule window too narrow",
+        "why_free_form": "Phase 3 runs merge, amend and build in one turn with no developer-facing text before build, so a pre-build overrule never happens; a post-build-only unrefute cannot add a refutation the developer wants on a review built without -a."
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "D5 anytime: a driver pipeline, refute --pr <key> <ID> --evidence (adds REFUTED) and unrefute --pr <key> <ID> (--bubble --classification C --reason R | --fix [--reason R]), both reading the built review object, any phase after build, with or without -a; amend --unrefute dropped"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "Developer answer; Phase 3 stays atomic and the overrule works in either direction."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "S3",
+      "discovered_by": "spec review (S3), following the developer's D5",
+      "phase": "spec-review",
+      "items": [
+        "TASK-10"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decisions D11; REFUTED as a closed status (TS mirrors row)",
+        "indicated": "the TS closed-status mirrors stay RESOLVED / CLOSED_NO_ACTION: a refuted id is settled before waves and never bubbled"
+      },
+      "issue": {
+        "category": "dyad-drift",
+        "why_categorical": "mirror misses a closing status",
+        "why_free_form": "Under D5 the developer can refute a bubbled id after build, so its latest status can be REFUTED; agent-watcher bubbles.ts:59, bubble-stamp review.ts:40 and memo.ts:38 would keep showing a decided bubble as open."
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "D11 add-refuted: the three mirrors gain REFUTED; agent-watcher and bubble-stamp versions bump; their TS tests and release rows move (TASK-10)"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "The mirrors must agree with review_merge.CLOSED_STATUSES once REFUTED can follow a bubble."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "S4",
+      "discovered_by": "developer (answer to D12)",
+      "phase": "spec-review",
+      "items": [
+        "TASK-1",
+        "TASK-4",
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decisions D12; review findings S2, S3, S11",
+        "indicated": "an unrefute appends one non-closing UNREFUTED status"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "one status, two routes",
+        "why_free_form": "An overruled refutation goes either to the bubble workflow or to a Phase 5 fixer; one UNREFUTED status cannot say which, so waves and the bubble path could not route the id."
+      },
+      "new_outcome": {
+        "doc": "spec",
+        "indicated": "Two non-closing statuses appended: BUBBLED (then the existing bubble path) and NOT_RESOLVED (open; the next waves plans a fixer). No UNREFUTED status."
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "Developer answer; append-only, the latest-status rule reopens the id."
+      },
+      "date": "2026-11-12"
+    },
+    {
+      "id": "S5",
+      "discovered_by": "plan writer (planned hook tests, after the spec froze)",
+      "phase": "spec-review",
+      "items": [
+        "TASK-1"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Phase 5 and the hook; Sequencing (TASK-1 scope)",
+        "indicated": "TASK-1 changes _named_ids, _pending_problems, the hook's _incoherent and _closeout_reason; id_handling is not named"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "second copy of the disposition rule",
+        "why_free_form": "The hook's _closeout_reason gates on validation.id_handling.all_issues_dispositioned, which counts any resolution as a disposition. Without the NOT_RESOLVED rule there, an id refuted and then overruled with unrefute --fix counts as dispositioned and the Phase 5 sentinel clears before its fix lands."
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-1 files include plugins/harness/lib/harness_lib/validation/id_handling.py: all_issues_dispositioned treats an id whose latest status is NOT_RESOLVED as open, the _named_ids rule; disposition_ids (the orphan check's input) stays as is"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "test_refutation_overruled_to_a_fix_keeps_the_sentinel_until_the_fix cannot pass without it; the spec is frozen, so the plan carries the change."
+      },
+      "date": "2026-11-12"
+    }
+  ]
+}
