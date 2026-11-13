@@ -206,19 +206,38 @@ def test_only_the_flag_plans_an_adversarial_run(script, repo, capsys) -> None:
     assert "adversarial" in _plan(repo)
 
 
-def test_capture_adversarial_prints_one_workflow_row_and_no_agent_rows(script, repo, plugin_root,
-                                                                      capsys) -> None:
+def test_capture_adversarial_prints_one_workflow_row_and_no_agent_rows(script, repo, capsys) -> None:
     rc = _capture(script, repo, "-a")
     out = capsys.readouterr().out
     assert rc == 0, out
     assert not any(line.startswith("agent=") for line in out.splitlines())
     row = _workflow_lines(out)
-    assert Path(row["scriptPath"]).resolve() == (plugin_root / rm.ADVERSARIAL_WORKFLOW).resolve()
     args, plan = json.loads(row["args"]), _plan(repo)
     assert args["run_key"] == _KEY and args["run_id"] == plan["run_id"] and args["guidance"] is None
     assert [r["id"] for r in args["reviewers"]] == [s["id"] for s in plan["slots"]]
     assert [c["id"] for c in args["code"]] == [c["id"] for c in plan["adversarial"]["code"]]
     assert [r["id"] for r in args["refute"]] == [r["id"] for r in plan["adversarial"]["refute"]]
+
+
+def test_capture_adversarial_prints_a_script_copy_inside_the_project(script, repo, plugin_root,
+                                                                    capsys) -> None:
+    """The Workflow tool reads a scriptPath only from the working directory, never from the plugin root."""
+    assert _capture(script, repo, "-a") == 0
+    printed = Path(_workflow_lines(capsys.readouterr().out)["scriptPath"]).resolve()
+    original = (plugin_root / rm.ADVERSARIAL_WORKFLOW).resolve()
+    assert printed != original and not printed.is_relative_to(plugin_root.resolve())
+    assert printed.is_relative_to(repo.resolve()) and printed.parent == _run_folder(repo).resolve()
+    assert printed.read_bytes() == original.read_bytes()
+
+
+def test_capture_adversarial_refreshes_a_stale_script_copy(script, repo, capsys) -> None:
+    assert _capture(script, repo, "-a") == 0
+    copy = Path(_workflow_lines(capsys.readouterr().out)["scriptPath"])
+    assert copy.resolve().is_relative_to(repo.resolve()), "never overwrite a file outside the test project"
+    copy.write_text("// stale\n", encoding="utf-8")
+    assert _capture(script, repo, "-a") == 0
+    again = Path(_workflow_lines(capsys.readouterr().out)["scriptPath"])
+    assert again.read_text(encoding="utf-8") != "// stale\n"
 
 
 def test_capture_adversarial_records_the_refuter_plan(script, repo, capsys) -> None:

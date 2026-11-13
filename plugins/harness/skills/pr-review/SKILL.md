@@ -227,7 +227,7 @@ session stops each parallel slot on a Write prompt. When Write is denied, the re
 (null, or the developer's guidance text); dispatch no Agent rows:` and the Workflow row:
 
 ```
-scriptPath=<abs path to the plugin's workflows/adversarial-review.js>
+scriptPath=<abs path to the run directory's copy of workflows/adversarial-review.js>
 args={"run_key": "...", "run_id": "...", "guidance": null, "reviewers": [...], "code": [...], "refute": [...]}
 ```
 
