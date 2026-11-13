@@ -230,14 +230,25 @@ def test_capture_adversarial_prints_a_script_copy_inside_the_project(script, rep
     assert printed.read_bytes() == original.read_bytes()
 
 
-def test_capture_adversarial_refreshes_a_stale_script_copy(script, repo, capsys) -> None:
-    assert _capture(script, repo, "-a") == 0
-    copy = Path(_workflow_lines(capsys.readouterr().out)["scriptPath"])
-    assert copy.resolve().is_relative_to(repo.resolve()), "never overwrite a file outside the test project"
+def test_stage_workflow_script_refreshes_a_stale_copy_in_the_same_run(script, plugin_root,
+                                                                     tmp_path) -> None:
+    run = tmp_path / "run"
+    copy = script.stage_workflow_script(run)
     copy.write_text("// stale\n", encoding="utf-8")
-    assert _capture(script, repo, "-a") == 0
-    again = Path(_workflow_lines(capsys.readouterr().out)["scriptPath"])
-    assert again.read_text(encoding="utf-8") != "// stale\n"
+    again = script.stage_workflow_script(run)
+    assert again == copy
+    assert again.read_bytes() == (plugin_root / rm.ADVERSARIAL_WORKFLOW).read_bytes()
+    assert sorted(p.name for p in run.iterdir()) == [copy.name]
+
+
+def test_stage_workflow_script_turns_an_os_error_into_a_problem(script, tmp_path, monkeypatch) -> None:
+    def locked(*_args: object) -> None:
+        raise PermissionError("locked")
+
+    monkeypatch.setattr(script.shutil, "copyfile", locked)
+    with pytest.raises(script.CaptureError) as caught:
+        script.stage_workflow_script(tmp_path / "run")
+    assert any(problem.startswith("cannot stage ") for problem in caught.value.problems)
 
 
 def test_capture_adversarial_records_the_refuter_plan(script, repo, capsys) -> None:

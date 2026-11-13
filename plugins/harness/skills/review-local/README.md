@@ -100,7 +100,7 @@ Attack pipeline:  adv_code[_scope] -> adv_refute_adv_code[_scope]      (both run
   `path:line` a finding cites and record it `refuted`, with the line opened and what it showed, or `upheld`.
   Doubt upholds.
 - **One Workflow call** replaces the reviewer dispatch. The plugin's `workflows/adversarial-review.js` runs each
-  slot and then its findings refuter. Every refuter is the `harness:adversarial-reviewer` agent on `opus`. A run
+  slot and then its findings refuter. Capture copies it into the run directory and passes that copy as `scriptPath`, since the Workflow tool reads a script only from the working directory or an added directory. Every refuter is the `harness:adversarial-reviewer` agent on `opus`. A run
   dispatches `2(R + C)` agents for `R` reviewer slots and `C` code refuters, at most `26 + 2N` with `N`
   triggered project lenses. When the workflow drops an agent, the session dispatches that entry again on its
   own, reviewer first and then its refuter.
