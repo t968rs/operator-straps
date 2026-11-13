@@ -115,6 +115,33 @@
         "free_form": "the spec's anti-goals forbid touching target paths the move does not write and require every refusal to change nothing; the planned test files stay verbatim, so the eight regression nodes take a new file"
       },
       "date": "2026-11-13"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "parallel2 lane review of TASK-3 (spec, quality and two verification reviewers)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-3 action (resume, D4 restart, --committed rebase) and tests",
+        "indicated": "--continue finishes a rebase in progress or, with none, restarts from the snapshot with patch_base set to the state's target_head; usage errors exit 2 by argparse; the TASK-3 tests live in the two planned files"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "reproduced routes landed a revert of target commits or excluded commits",
+        "why_free_form": "a rebase that never started, an agent rebase --abort or reset --hard during a stop, a rebase already in progress before the attach, and a worktree cut from another branch each let a land measure from target_head while HEAD was not the attach's rebase result; argparse exit 2 collided with the resolution stop; a resolution keeping every branch copy looped on --continue; --committed flattened merge commits"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "the state gains a cut field (the first run's patch_base, carried unchanged through every D4 restart); every land after a resolution requires HEAD to descend from target_head and not to contain patch_base or the cut when the target lacks them; an agent's own hand rebase or merge during a stop is a documented limit; a rebase that cannot start restores original_head, clears the state and names a discarded resolution; every plain run refuses a rebase already in progress before writing anything; usage errors exit 1; an empty resolution clears the state once; --committed pins --no-rebase-merges and refuses merge commits; --abort ignores --auto-resolve; regression nodes live in tests/skills/test_attach_worktree_resolve_edges.py, outside TASK-3's files"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "the spec's anti-goals forbid a land that changes target work the move does not carry and reserve exit 2 for a resolution stop; the planned test files stay verbatim, so the regression nodes take a new file"
+      },
+      "date": "2026-11-13"
     }
   ]
 }

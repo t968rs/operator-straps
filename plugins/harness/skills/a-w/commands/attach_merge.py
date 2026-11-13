@@ -1,9 +1,10 @@
-"""Staged a-w move onto a target checkout that may hold dirty edits.
+"""An a-w move onto a target checkout that may hold dirty edits.
 
 Snapshot of the target, the worktree's state as a loose commit, the overlap check, the in-memory trial
 merge (``git merge-tree --write-tree``), the auto-resolve rules, the backup (``git stash create``) and the
-exact land (``git apply --index``). Nothing here touches the target before the land, and the land changes
-the target only after the race check and the backup.
+land: exact (``git apply --index``) for a staged move, ``git merge --ff-only`` for a committed one. Nothing
+here touches the target before the land, and the land changes the target only after the race check and the
+backup.
 """
 from __future__ import annotations
 
@@ -197,19 +198,31 @@ def untracked_on(target: Path, touched: Dict[str, str], written: Dict[str, str],
     return sorted(found)
 
 
+def check_dirty(touched: Iterable[str], dirty: FrozenSet[str], sides: Dict[str, str],
+                fast_forward: bool = False) -> None:
+    """Refuse a touched path dirty in the target that no rule governs (any dirty one for a fast-forward)."""
+    overlap = sorted(path for path in touched if path in dirty and (fast_forward or path not in sides))
+    if not overlap:
+        return
+    names = ", ".join(map(show_path, overlap))
+    if fast_forward:
+        raise AttachError(f"the target checkout has uncommitted edits on paths the commits write: {names}; "
+                          "a fast-forward cannot skip a path and no rule applies to it, so commit or stash "
+                          "them in the target first, or drop --committed")
+    raise AttachError(f"the target checkout has uncommitted edits on paths the move writes: {names}; commit "
+                      "or stash them in the target, or add an --auto-resolve rule for them")
+
+
 def check_overlap(target: Path, touched: Dict[str, str], written: Dict[str, str], dirty: FrozenSet[str],
-                  sides: Dict[str, str]) -> None:
+                  sides: Dict[str, str], fast_forward: bool = False) -> None:
     """Refuse a touched path dirty in the target that no rule governs, and an untracked file in the way.
 
     ``touched`` joins the worktree's changed paths with the paths the land writes (``written``), so a
-    target-side rename that carries a worktree edit onto a dirty path is caught too.
+    target-side rename that carries a worktree edit onto a dirty path is caught too. A ``fast_forward``
+    refuses every dirty touched path, ruled or not.
     """
-    overlap = sorted(path for path in touched if path in dirty and path not in sides)
-    if overlap:
-        raise AttachError("the target checkout has uncommitted edits on paths the move writes: "
-                          f"{', '.join(map(show_path, overlap))}; commit or stash them in the target, or add "
-                          "an --auto-resolve rule for them")
-    governed = frozenset(path for path in sides if path in dirty)
+    check_dirty(touched, dirty, sides, fast_forward)
+    governed = frozenset() if fast_forward else frozenset(path for path in sides if path in dirty)
     blocked = untracked_on(target, touched, written, governed)
     if blocked:
         names = ", ".join(map(show_path, blocked))
@@ -370,6 +383,38 @@ def land(target: Path, branch: str, snap: Snapshot, final: str, sides: Dict[str,
                    "the backup and undo lines on stdout restore it")
         raise AttachError(message, report=recovery) from exc
     return report(target, branch, result, stash)
+
+
+def stage_final(target: Path, branch: str, snap: Snapshot, final: str, changed: Dict[str, str],
+                rules: Sequence[AutoResolve]) -> List[str]:
+    """Check the paths the final tree writes against the target's dirty state, then land it staged.
+
+    ``changed`` holds the worktree's own changed paths when they are measured from another commit than the
+    snapshot's HEAD; after a resolution they are the written paths themselves, so it may be empty.
+    """
+    written = diff_paths(target, snap.head, final)
+    touched = {**changed, **written}
+    sides = rule_sides(touched, rules)
+    check_overlap(target, touched, written, snap.dirty, sides)
+    check_governed(target, final, written, sorted(path for path in sides if path in snap.dirty))
+    return land(target, branch, snap, final, sides)
+
+
+def land_committed(worktree: Path, target: Path, branch: str, snap: Snapshot) -> List[str]:
+    """Race check, backup, then fast-forward the target to the worktree's HEAD; return the report lines."""
+    head = git(worktree, "rev-parse", "HEAD")
+    written = diff_paths(target, snap.head, head)
+    check_overlap(target, written, written, snap.dirty, {}, fast_forward=True)
+    race_check(target, snap)
+    stash = backup(target)
+    done = run_git(target, "merge", "--ff-only", "-q", head)
+    if done.returncode != 0:
+        detail = done.stderr.decode("utf-8", errors="replace").strip()
+        raise AttachError(f"git merge --ff-only failed after the backup ({detail}); the target did not move",
+                          report=[backup_line(stash)])
+    count = git(target, "rev-list", "--count", f"{snap.head}..{head}")
+    return [f"attached {count} commit(s) to {branch} at {head[:7]}", backup_line(stash),
+            f"undo: git -C {show_path(target.as_posix())} reset --keep {snap.head}"]
 
 
 def ruled_lines(result: Outcome) -> List[str]:

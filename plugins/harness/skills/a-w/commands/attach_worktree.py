@@ -1,26 +1,41 @@
 """Move a detached worktree's work onto a target branch, then remove the worktree.
 
 Usage: attach_worktree.py [TARGET] [--target-branch BRANCH] [--worktree PATH] [--committed]
+                          [--auto-resolve PATTERN=SIDE ...] [--continue | --abort]
 
-TARGET names a branch that is checked out in one of the repository's worktrees; its checkout must have no
-tracked changes. ``--target-branch`` (also ``--target_branch``) names it as a flag and wins over TARGET when
-both are given. The literal ``HEAD`` stands for the branch checked out in the main checkout. ``--worktree``
-defaults to the current directory, which must be a linked worktree.
+Exit codes: 0 moved (or aborted), 1 refused, 2 stopped for resolution in the worktree.
 
-Default mode stages the worktree's committed, edited and new files on the target as an uncommitted change: the
-combined diff from the commit the worktree was cut from (the creation entry of its HEAD reflog) is applied
-three-way. The merge base with the target replaces the cut when it already contains the cut (the worktree
-took in later target commits) and when the creation entry is gone (reflog expiry) or no longer behind HEAD.
-Only paths the worktree changed are touched, so commits the target gained since the cut are merged and never
-reverted, and history the cut commit carried that the target lacks stays behind while the creation entry
-survives. ``--committed`` instead fast-forwards the target to the worktree's commits
-and keeps their structure; it refuses uncommitted worktree changes, a target that moved since the cut, and,
-while the creation entry survives, a target that does not contain the cut commit.
+TARGET names a branch that is checked out in one of the repository's worktrees. ``--target-branch`` (also
+``--target_branch``) names it as a flag and wins over TARGET when both are given. The literal ``HEAD`` stands
+for the branch checked out in the main checkout. ``--worktree`` defaults to the current directory, which must
+be a linked worktree.
 
-The worktree is removed once the move succeeds. Files its ignore rules match never move and are discarded with
-it. A failed move leaves the worktree's files and index as they
-were and says why. A three-way conflict also leaves markers and staged files in the target checkout; the error
-names the command that finishes the move and the one that undoes it.
+The target checkout may hold uncommitted edits: a path the move writes must not be dirty there unless an
+auto-resolve rule governs it (staged mode only; ``--committed`` refuses every dirty path it writes). A
+``branch`` rule keeps the dirty copy, a ``worktree`` rule overwrites it after a ``git stash create`` backup.
+Rules come from ``attach.auto_resolve`` in the project's ``.claude/harness.json``, then each
+``--auto-resolve PATTERN=SIDE`` (SIDE ``worktree`` or ``branch``); two rules naming different sides for one
+path refuse as ambiguous.
+
+Default mode stages the worktree's committed, edited and new files on the target as an uncommitted change,
+measured from the commit the worktree was cut from (or the merge base with the target once that contains
+the cut). An in-memory trial merge (``git merge-tree``) runs first; ruled conflicts take their side's whole
+file, and the exact result lands with ``git apply --index`` after a race check and the backup.
+``--committed`` instead fast-forwards the target to the worktree's commits, rebasing them onto the target's
+HEAD inside the worktree when the target moved or lacks the cut; it refuses uncommitted worktree changes.
+
+Conflicts no rule settles are resolved in the worktree, never in the target, which receives no conflict at
+all. With a clean worktree the script rebases its work onto the target (staged mode squashes it into one
+commit first), settles ruled paths at each stop, and exits 2 naming the paths left. The agent edits and
+``git add``s them in the worktree, then reruns with ``--continue``; ``--abort`` returns the worktree to its
+original HEAD. Both read the state file (``harness-attach.json`` in the worktree's git dir) and take no
+target or mode; a plain run while it exists refuses. The land carries whatever the worktree's HEAD holds
+over the target HEAD the resolution rebased onto: an agent that rebases or merges by hand during a stop
+owns what that brings in.
+
+The worktree is removed once the move succeeds. Files its ignore rules match never move and are discarded
+with it. A refusal changes nothing in the target and says why; every report prints the backup and a
+path-scoped undo.
 """
 from __future__ import annotations
 
@@ -30,12 +45,14 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, NamedTuple, Optional, Sequence, Tuple
+from typing import List, NamedTuple, NoReturn, Optional, Sequence, Tuple
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
 import attach_merge as merge  # noqa: E402
-from attach_merge import SIDES, AttachError, git, run_git, show_path  # noqa: E402
+import attach_resolve as resolve  # noqa: E402
+from attach_merge import SIDES, AttachError, git, run_git  # noqa: E402
+from attach_resolve import State, StopForResolution  # noqa: E402
 from harness_lib.config import (  # noqa: E402
     CONFIG_REL, AutoResolve, ConfigError, activate, active, load_config)
 from harness_lib.project import main_worktree, project_root  # noqa: E402
@@ -124,26 +141,51 @@ def target_checkout(entries: List[Checkout], branch: str, worktree: Path) -> Pat
                       "checkout first")
 
 
-def move_committed(worktree: Path, target: Path, branch: str) -> List[str]:
-    """Fast-forward ``target`` to the worktree's commits; return the report lines."""
-    if git(worktree, "status", "--porcelain"):
+def check_linear(worktree: Path, base: str, head: str) -> None:
+    """Refuse to rebase commits that include a merge: flattening it would drop merge-only changes."""
+    merges = git(worktree, "rev-list", "--merges", f"{base}..{head}").split()
+    if merges:
+        raise AttachError(f"the worktree's commits since {base[:7]} include merge commit(s) "
+                          f"{', '.join(sha[:7] for sha in merges)}, and --committed would have to rebase "
+                          "them onto the moved target, flattening the merge; run without --committed to "
+                          "stage the work instead; nothing moved")
+
+
+def new_state(worktree: Path, target: Path, branch: str, mode: str, target_head: str, base: str,
+              rules: Sequence[AutoResolve], prior: Optional[State]) -> State:
+    """The state of a resolution about to start; a restart keeps the prior original HEAD and cut."""
+    original = prior.original_head if prior else git(worktree, "rev-parse", "HEAD")
+    return State(target_branch=branch, target_checkout=target.as_posix(), mode=mode, target_head=target_head,
+                 original_head=original, patch_base=base, cut=prior.cut if prior else base,
+                 rules=tuple(rules))
+
+
+def move_committed(worktree: Path, target: Path, branch: str, rules: Sequence[AutoResolve],
+                   prior: Optional[State] = None) -> List[str]:
+    """Fast-forward ``target`` to the worktree's commits, rebased onto it first when needed; report lines.
+
+    ``prior`` is the state a ``--continue`` restart resumes: its work is measured from the target HEAD the
+    finished rebase went onto, and its original HEAD and cut carry over.
+    """
+    if git(worktree, "status", "--porcelain", "--untracked-files=normal"):
         raise AttachError("worktree has uncommitted changes; commit them or drop --committed")
     head = git(worktree, "rev-parse", "HEAD")
-    target_head = git(target, "rev-parse", "HEAD")
-    cut = cut_point(worktree, head)
-    if cut and not is_ancestor(worktree, cut, target_head):
-        raise AttachError(f"branch {branch} does not contain the commit the worktree was cut from, so a "
-                          "fast-forward would carry that commit's history onto it; run without --committed "
-                          "to stage only the worktree's own changes")
-    base = git(worktree, "merge-base", head, target_head)
-    count = int(git(worktree, "rev-list", "--count", f"{base}..{head}"))
-    if count == 0:
+    snap = merge.snapshot(target)
+    base = prior.target_head if prior else patch_base(worktree, target)
+    if git(worktree, "rev-list", "--count", f"{base}..{head}") == "0":
         raise AttachError("worktree has no commits beyond the target branch")
-    if base != target_head:
-        raise AttachError(f"branch {branch} moved since the worktree was cut, so its commits cannot "
-                          "fast-forward; run without --committed to get them staged three-way")
-    git(target, "merge", "--ff-only", head)
-    return [f"attached {count} commit(s) to {branch} at {head[:7]}"]
+    changed = merge.diff_paths(worktree, base, head)
+    merge.rule_sides(changed, rules)
+    if base == snap.head:
+        return merge.land_committed(worktree, target, branch, snap)
+    check_linear(worktree, base, head)
+    trial = merge.trial_merge(worktree, base, snap.head, head)
+    merge.rule_sides(trial.conflicts, rules)
+    touched = {**changed, **merge.diff_paths(worktree, snap.head, trial.tree)}
+    merge.check_overlap(target, touched, touched, snap.dirty, {}, fast_forward=True)
+    state = new_state(worktree, target, branch, "committed", snap.head, base, rules, prior)
+    resolve.start(worktree, state)
+    return resolve.land_resolved(worktree, target, state)
 
 
 def is_ancestor(repo: Path, older: str, newer: str) -> bool:
@@ -197,34 +239,33 @@ def patch_base(worktree: Path, target: Path) -> str:
     return shared
 
 
-def conflict_refusal(worktree: Path, conflicts: List[str]) -> str:
-    """The refusal for trial conflicts no rule settles; nothing moved in either checkout."""
-    names = ", ".join(map(show_path, conflicts))
-    if git(worktree, "status", "--porcelain"):
-        return (f"the trial merge left conflicts no rule settles in {names}; the worktree has uncommitted "
-                f"changes, so commit them in the worktree {worktree.as_posix()} first (commits there are "
-                "allowed), then rerun; nothing moved")
-    return (f"the trial merge left conflicts no rule settles in {names}; add an --auto-resolve rule for "
-            "them or settle them by hand, then rerun; nothing moved")
+def no_change(base: str, prior: Optional[State]) -> AttachError:
+    if prior:
+        return AttachError(f"nothing to move: the worktree's HEAD holds no changes over {base[:7]}, the "
+                           "target HEAD the resolution rebased onto; run --abort to drop the attach")
+    return AttachError("nothing to move: the worktree has no changes since it was cut")
 
 
-def move_staged(worktree: Path, target: Path, branch: str, rules: Sequence[AutoResolve]) -> List[str]:
-    """Trial-merge the worktree's changes onto the target, then stage them there exactly; report lines."""
+def move_staged(worktree: Path, target: Path, branch: str, rules: Sequence[AutoResolve],
+                prior: Optional[State] = None) -> List[str]:
+    """Trial-merge the worktree's changes onto the target, then stage them there exactly; report lines.
+
+    Conflicts no rule settles go to resolution in the worktree. ``prior`` as for ``move_committed``.
+    """
     snap = merge.snapshot(target)
-    base = patch_base(worktree, target)
+    base = prior.target_head if prior else patch_base(worktree, target)
     change = merge.worktree_change(worktree, base)
     if not change.paths:
-        raise AttachError("nothing to move: the worktree has no changes since it was cut")
-    merge.rule_sides(change.paths, rules)
+        raise no_change(base, prior)
+    sides = merge.rule_sides(change.paths, rules)
     final = merge.final_tree(worktree, base, snap.head, change, rules)
-    if final.conflicts:
-        raise AttachError(conflict_refusal(worktree, final.conflicts))
-    written = merge.diff_paths(target, snap.head, final.tree)
-    touched = {**change.paths, **written}
-    sides = merge.rule_sides(touched, rules)
-    merge.check_overlap(target, touched, written, snap.dirty, sides)
-    merge.check_governed(target, final.tree, written, sorted(path for path in sides if path in snap.dirty))
-    return merge.land(target, branch, snap, final.tree, sides)
+    if not final.conflicts:
+        return merge.stage_final(target, branch, snap, final.tree, change.paths, rules)
+    resolve.require_clean(worktree, final.conflicts)
+    merge.check_dirty(change.paths, snap.dirty, sides)
+    state = new_state(worktree, target, branch, "staged", snap.head, base, rules, prior)
+    resolve.start_staged(worktree, state, final.conflicts)
+    return resolve.land_resolved(worktree, target, state)
 
 
 def finish(lines: List[str], worktree: Path, main: Path) -> List[str]:
@@ -249,6 +290,52 @@ def remove_worktree(worktree: Path, main: Path) -> str:
     return f"removed worktree {worktree.as_posix()}"
 
 
+def check_resume(args: argparse.Namespace, state: Optional[State], entries: List[Checkout],
+                 worktree: Path) -> State:
+    """The state ``--continue`` or ``--abort`` resumes; refuses arguments that differ from it."""
+    if args.resume and args.abort:
+        raise AttachError("--continue and --abort exclude each other; pass one")
+    if state is None:
+        raise AttachError(f"no attach is stopped in the worktree {worktree.as_posix()}; nothing to continue "
+                          "or abort")
+    if args.target and resolve_branch(entries, args.target) != state.target_branch:
+        raise AttachError(f"the stopped attach targets {state.target_branch}, not {args.target}; pass "
+                          "--continue or --abort without a target")
+    if args.committed and state.mode != "committed":
+        raise AttachError("the stopped attach is a staged move, so --committed does not apply; pass "
+                          "--continue or --abort without a mode")
+    extra = [rule.pattern for rule in args.auto_resolve if rule not in state.rules]
+    if extra and args.resume:
+        raise AttachError(f"the stopped attach was started without the rule(s) for {', '.join(extra)}; "
+                          "--continue keeps the rules it started with, so --abort and rerun to change them")
+    return state
+
+
+def resume(worktree: Path, entries: List[Checkout], state: State) -> List[str]:
+    """``--continue``: finish a stopped rebase and land, or (D4) restart the flow from the resolved HEAD."""
+    target = target_checkout(entries, state.target_branch, worktree)
+    if resolve.rebasing(worktree):
+        resolve.continue_rebase(worktree, state)
+        return resolve.land_resolved(worktree, target, state)
+    resolve.check_resolved(worktree, state)
+    move = move_committed if state.mode == "committed" else move_staged
+    return move(worktree, target, state.target_branch, state.rules, prior=state)
+
+
+def start(args: argparse.Namespace, worktree: Path, entries: List[Checkout],
+          state: Optional[State]) -> List[str]:
+    """A plain run: refuse while an attach is stopped or another rebase is in progress, else move."""
+    if state is not None:
+        raise AttachError(f"an attach to {state.target_branch} is stopped for resolution in this worktree; "
+                          "finish it with --continue or drop it with --abort")
+    resolve.refuse_foreign_rebase(worktree)
+    branch = resolve_branch(entries, args.target)
+    target = target_checkout(entries, branch, worktree)
+    rules = load_rules(target, args.auto_resolve)
+    move = move_committed if args.committed else move_staged
+    return move(worktree, target, branch, rules)
+
+
 def attach(args: argparse.Namespace) -> List[str]:
     """Move the worktree's work onto the target branch, remove the worktree, return the report lines."""
     check_git_version(git_version())
@@ -257,19 +344,29 @@ def attach(args: argparse.Namespace) -> List[str]:
     main = entries[0].path
     if worktree == main:
         raise AttachError(f"{worktree.as_posix()} is the main checkout, not a linked worktree")
-    branch = resolve_branch(entries, args.target)
-    target = target_checkout(entries, branch, worktree)
-    rules = load_rules(target, args.auto_resolve)
-    if not args.committed:
-        return finish(move_staged(worktree, target, branch, rules), worktree, main)
-    if merge.snapshot(target).dirty:
-        raise AttachError(f"target checkout {target.as_posix()} is not clean: commit or stash its tracked "
-                          "changes first, or drop --committed to stage beside them")
-    return finish(move_committed(worktree, target, branch), worktree, main)
+    state = resolve.read_state(worktree)
+    if args.resume or args.abort:
+        state = check_resume(args, state, entries, worktree)
+        if args.abort:
+            return resolve.abort(worktree, state)
+    try:
+        lines = resume(worktree, entries, state) if args.resume else start(args, worktree, entries, state)
+    except AttachError as exc:
+        raise resolve.keep_hint(worktree, exc) from exc
+    resolve.clear_state(worktree)
+    return finish(lines, worktree, main)
+
+
+class Parser(argparse.ArgumentParser):
+    """An argument parser whose usage errors exit 1, since exit 2 means stopped for resolution."""
+
+    def error(self, message: str) -> NoReturn:
+        self.print_usage(sys.stderr)
+        self.exit(1, f"{self.prog}: error: {message}\n")
 
 
 def parse_args(argv: Optional[list]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = Parser(description=__doc__.splitlines()[0])
     parser.add_argument("target_positional", nargs="?", metavar="TARGET",
                         help="target branch, or HEAD for the main checkout's branch")
     parser.add_argument("--target-branch", "--target_branch", dest="target_flag", metavar="BRANCH",
@@ -281,9 +378,14 @@ def parse_args(argv: Optional[list]) -> argparse.Namespace:
                         metavar="PATTERN=SIDE",
                         help="settle a conflict on paths matching PATTERN with SIDE's whole file "
                              "(worktree or branch); repeatable")
+    parser.add_argument("--continue", dest="resume", action="store_true",
+                        help="finish an attach stopped for resolution, once its conflicts are added")
+    parser.add_argument("--abort", action="store_true",
+                        help="drop an attach stopped for resolution; the worktree returns to its "
+                             "original HEAD")
     args = parser.parse_args(argv)
     args.target = args.target_flag or args.target_positional
-    if not args.target:
+    if not args.target and not (args.resume or args.abort):
         parser.error("a target branch is required, as TARGET or --target-branch")
     return args
 
@@ -292,6 +394,9 @@ def main(argv: Optional[list] = None) -> int:
     args = parse_args(argv)
     try:
         lines = attach(args)
+    except StopForResolution as stop:
+        print("\n".join(stop.lines))
+        return 2
     except AttachError as exc:
         if exc.report:
             print("\n".join(exc.report))
