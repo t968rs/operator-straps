@@ -46,8 +46,9 @@ branch then.
 - **Backup and undo.** Before the target changes, the command records a backup sha of the target's dirty
   state. The success report prints it with undo commands that match the mode: path-scoped for a staged move,
   and for `--committed` a `reset --keep <old head>` that moves the branch back, which belongs to the
-  developer. Run an undo only when the developer asks for it, or after a failure past the backup point (the
-  error then prints the backup and undo lines, since the target may hold part of the move).
+  developer. Run an undo only when the developer asks for it, or after a failure past the backup point (a staged
+  move's error then prints the backup and undo lines, since the target may hold part of the move; a failed
+  `--committed` fast-forward prints the backup and leaves the target where it was).
 - On success the command removes the worktree without asking. It sets no timer: the move is the trigger.
   Files the worktree's `.gitignore` rules ignore (local env files, caches, build outputs) never move and are
   deleted with the worktree; copy any worth keeping before the attach.
@@ -85,8 +86,9 @@ During a stop the agent runs no `rebase`, `merge`, `cherry-pick` or `reset` of i
 attach cannot tell what such a step brought in, and the land would carry it.
 
 `--continue` and `--abort` take no target, mode or new rules (`--abort` ignores `--auto-resolve`). `--abort`
-returns the worktree to the HEAD it had before the attach and leaves the target untouched. Each refusal names
-its way out; follow it as the error states. While a stop is pending, a plain run refuses.
+returns the worktree to the HEAD it had before the attach and leaves the target untouched. Follow a refusal
+that names `--continue` or `--abort`; a refusal that names a `git rebase` or `reset` command goes to the
+developer, who runs it. While a stop is pending, a plain run refuses.
 
 ## Exit codes and reports
 

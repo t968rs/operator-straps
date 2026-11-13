@@ -9,7 +9,7 @@ backup.
 from __future__ import annotations
 
 import os
-import re
+import shlex
 import shutil
 import subprocess
 import tempfile
@@ -80,8 +80,8 @@ def zsplit(raw: bytes) -> List[str]:
 
 
 def show_path(path: str) -> str:
-    """``path`` for a report line: quoted only when it holds whitespace."""
-    return f'"{path}"' if re.search(r"\s", path) else path
+    """``path`` for a report line: shell-quoted unless it is made only of plain path characters."""
+    return shlex.quote(path)
 
 
 def rule_side(path: str, rules: Sequence[AutoResolve]) -> Optional[str]:

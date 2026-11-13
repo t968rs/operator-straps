@@ -64,8 +64,9 @@ its missing step lines then mean the setup and baseline state is unknown, not pa
 - Commits in the worktree are allowed. They sit on a detached HEAD until the work moves.
 - Finishing: `harness:a-w` moves the work onto the branch the developer names (staged, or the commits with
   `--committed`) and removes the worktree. Use it rather than a hand-run `git worktree remove` for work that
-  moves. One case takes the hand-run `git worktree remove --force "<path>"`: a worktree whose work is
-  discarded or that holds nothing to move (a-w refuses both). When a conflict no rule settles stops a-w with
+  moves. Two cases take the hand-run `git worktree remove --force "<path>"`: a worktree whose work is
+  discarded or that holds nothing to move (a-w refuses both), and a move that landed but whose removal
+  failed (below). When a conflict no rule settles stops a-w with
   exit 2, the resolution happens in the worktree: a-w runs the rebase there, the agent edits and `git add`s the
   conflicted files, then reruns a-w with `--continue` (or `--abort` to drop the attach). The worktree is
   removed once the move lands; if the move succeeded but the removal failed, a-w exits 1 and names the

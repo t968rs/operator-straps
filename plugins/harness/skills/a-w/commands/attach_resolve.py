@@ -67,7 +67,6 @@ def read_state(worktree: Path) -> Optional[State]:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
         rules = tuple(AutoResolve(rule["pattern"], rule["in_favor_of"]) for rule in data.pop("rules"))
-        data.setdefault("cut", data["patch_base"])  # a state file written before the cut field
         return State(**data, rules=rules)
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
         raise AttachError(f"the attach state file {path.as_posix()} is unreadable ({exc}); remove it to "
@@ -297,8 +296,38 @@ def land_resolved(worktree: Path, target: Path, state: State) -> List[str]:
     return merge.stage_final(target, state.target_branch, snap, final, {}, state.rules)
 
 
+def saved_edits(worktree: Path, wt: str) -> Optional[str]:
+    """Save the worktree's uncommitted tracked edits as a stash commit (no ref); the recovery note, if any.
+
+    ``git stash create`` refuses an index with unmerged entries (a rebase stop), so the note then says the
+    edits are dropped unsaved. Untracked files survive ``reset --hard`` and need no backup.
+    """
+    if not git(worktree, "status", "--porcelain", "--untracked-files=no"):
+        return None
+    done = run_git(worktree, "stash", "create")
+    stash = done.stdout.decode("utf-8", errors="replace").strip()
+    if done.returncode != 0 or not stash:
+        return f"the uncommitted edits could not be saved ({stderr_of(done) or 'no stash'}) and are dropped"
+    return f"the uncommitted edits are saved in {stash}: recover them with git -C {wt} stash apply {stash}"
+
+
+def dropped_work(worktree: Path, state: State) -> List[str]:
+    """Recovery notes for what ``--abort`` drops: a HEAD past the original one and uncommitted edits."""
+    wt = show_path(worktree.as_posix())
+    head = git(worktree, "rev-parse", "HEAD")
+    notes: List[str] = []
+    if head != state.original_head:
+        notes.append(f"the worktree HEAD {head} is dropped: recover it with git -C {wt} reset --hard {head}")
+    edits = saved_edits(worktree, wt)
+    return notes + ([edits] if edits else [])
+
+
 def abort(worktree: Path, state: State) -> List[str]:
-    """Drop the attach: the worktree returns to its original HEAD; the target was never touched."""
+    """Drop the attach: the worktree returns to its original HEAD; the target was never touched.
+
+    The HEAD and uncommitted edits ``reset --hard`` discards are named first, with how to recover them.
+    """
+    notes = dropped_work(worktree, state)
     restore(worktree, state)
     return [f"aborted the attach to {state.target_branch}: the worktree {worktree.as_posix()} is back at "
-            f"{state.original_head[:7]}; the target checkout was not touched"]
+            f"{state.original_head[:7]}; the target checkout was not touched", *notes]

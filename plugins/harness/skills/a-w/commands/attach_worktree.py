@@ -29,13 +29,13 @@ all. With a clean worktree the script rebases its work onto the target (staged m
 commit first), settles ruled paths at each stop, and exits 2 naming the paths left. The agent edits and
 ``git add``s them in the worktree, then reruns with ``--continue``; ``--abort`` returns the worktree to its
 original HEAD. Both read the state file (``harness-attach.json`` in the worktree's git dir) and take no
-target or mode; a plain run while it exists refuses. The land carries whatever the worktree's HEAD holds
-over the target HEAD the resolution rebased onto: an agent that rebases or merges by hand during a stop
-owns what that brings in.
+target or mode that differs from it; a plain run while it exists refuses. The land carries whatever the
+worktree's HEAD holds over the target HEAD the resolution rebased onto: an agent that rebases or merges by
+hand during a stop owns what that brings in.
 
 The worktree is removed once the move succeeds. Files its ignore rules match never move and are discarded
-with it. A refusal changes nothing in the target and says why; every report prints the backup and a
-path-scoped undo.
+with it. A refusal changes nothing in the target and says why; a successful move prints the backup and an
+undo that matches the mode (path-scoped for a staged move, ``reset --keep`` for ``--committed``).
 """
 from __future__ import annotations
 
@@ -160,6 +160,14 @@ def new_state(worktree: Path, target: Path, branch: str, mode: str, target_head:
                  rules=tuple(rules))
 
 
+def no_commits(base: str, prior: Optional[State]) -> AttachError:
+    """The refusal for a committed move with nothing to land; a restart names only ``--abort``."""
+    if prior:
+        return AttachError(f"nothing to move: the worktree's HEAD holds no commits beyond {base[:7]}, the "
+                           "target HEAD the resolution rebased onto; run --abort to drop the attach")
+    return AttachError("worktree has no commits beyond the target branch")
+
+
 def move_committed(worktree: Path, target: Path, branch: str, rules: Sequence[AutoResolve],
                    prior: Optional[State] = None) -> List[str]:
     """Fast-forward ``target`` to the worktree's commits, rebased onto it first when needed; report lines.
@@ -173,7 +181,7 @@ def move_committed(worktree: Path, target: Path, branch: str, rules: Sequence[Au
     snap = merge.snapshot(target)
     base = prior.target_head if prior else patch_base(worktree, target)
     if git(worktree, "rev-list", "--count", f"{base}..{head}") == "0":
-        raise AttachError("worktree has no commits beyond the target branch")
+        raise no_commits(base, prior)
     changed = merge.diff_paths(worktree, base, head)
     merge.rule_sides(changed, rules)
     if base == snap.head:
@@ -186,10 +194,6 @@ def move_committed(worktree: Path, target: Path, branch: str, rules: Sequence[Au
     state = new_state(worktree, target, branch, "committed", snap.head, base, rules, prior)
     resolve.start(worktree, state)
     return resolve.land_resolved(worktree, target, state)
-
-
-def is_ancestor(repo: Path, older: str, newer: str) -> bool:
-    return run_git(repo, "merge-base", "--is-ancestor", older, newer).returncode == 0
 
 
 def creation_entry(worktree: Path) -> Optional[str]:
@@ -211,7 +215,7 @@ def creation_entry(worktree: Path) -> Optional[str]:
 def cut_point(worktree: Path, head: str) -> Optional[str]:
     """The commit the worktree was cut from: its reflog's creation entry, while still behind HEAD."""
     cut = creation_entry(worktree)
-    return cut if cut and is_ancestor(worktree, cut, head) else None
+    return cut if cut and resolve.is_ancestor(worktree, cut, head) else None
 
 
 def merge_base(worktree: Path, head: str, target: Path) -> Optional[str]:
@@ -231,7 +235,7 @@ def patch_base(worktree: Path, target: Path) -> str:
     """
     head = git(worktree, "rev-parse", "HEAD")
     cut, shared = cut_point(worktree, head), merge_base(worktree, head, target)
-    if cut and (shared is None or not is_ancestor(worktree, cut, shared)):
+    if cut and (shared is None or not resolve.is_ancestor(worktree, cut, shared)):
         return cut
     if shared is None:
         raise AttachError("the worktree shares no history with the target and its HEAD reflog no longer "
@@ -262,7 +266,7 @@ def move_staged(worktree: Path, target: Path, branch: str, rules: Sequence[AutoR
     if not final.conflicts:
         return merge.stage_final(target, branch, snap, final.tree, change.paths, rules)
     resolve.require_clean(worktree, final.conflicts)
-    merge.check_dirty(change.paths, snap.dirty, sides)
+    merge.check_overlap(target, change.paths, change.paths, snap.dirty, sides)
     state = new_state(worktree, target, branch, "staged", snap.head, base, rules, prior)
     resolve.start_staged(worktree, state, final.conflicts)
     return resolve.land_resolved(worktree, target, state)
@@ -275,7 +279,8 @@ def finish(lines: List[str], worktree: Path, main: Path) -> List[str]:
     except (AttachError, OSError) as exc:
         message = str(exc)
         if not isinstance(exc, AttachError):
-            message = f"the move succeeded but removing the worktree failed: {message}"
+            message = (f"the move succeeded but removing the worktree failed: {message}; remove it with "
+                       f"git worktree remove --force {worktree.as_posix()}")
         raise AttachError(message, report=lines) from exc
 
 
@@ -312,7 +317,7 @@ def check_resume(args: argparse.Namespace, state: Optional[State], entries: List
 
 
 def resume(worktree: Path, entries: List[Checkout], state: State) -> List[str]:
-    """``--continue``: finish a stopped rebase and land, or (D4) restart the flow from the resolved HEAD."""
+    """``--continue``: finish a stopped rebase and land, or restart the flow from the resolved HEAD."""
     target = target_checkout(entries, state.target_branch, worktree)
     if resolve.rebasing(worktree):
         resolve.continue_rebase(worktree, state)
