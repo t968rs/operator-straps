@@ -1,7 +1,8 @@
 """Edge cases of a-w resolution inside the worktree, found in review.
 
 Each test builds a throwaway repository under ``tmp_path``: ``main`` has branch ``feature`` checked out and
-``wt`` is a detached worktree cut from its one commit, the way ``d-w`` cuts one.
+``wt`` is a detached worktree cut from its one commit, the way ``d-w`` cuts one. The ``lagging`` fixture
+instead cuts ``wt`` from a branch ``other`` that ``feature`` never merged.
 """
 from __future__ import annotations
 
@@ -204,6 +205,14 @@ def test_a_reset_during_the_stop_refuses_and_lands_nothing(script_path: Path, re
     _untouched(main, moved)
 
 
+def _break_editor(index: int) -> str:
+    """A ``GIT_SEQUENCE_EDITOR`` that inserts a ``break`` line at ``index`` of the todo file, without sed."""
+    code = ("import sys;from pathlib import Path as P;f=P(sys.argv[1]);"
+            "l=f.read_bytes().decode().splitlines(True);"
+            f"l.insert({index},'break'+chr(10));f.write_bytes(''.join(l).encode())")
+    return f'"{Path(sys.executable).as_posix()}" -c "{code}"'
+
+
 def _rebasing(wt: Path) -> bool:
     return any(Path(_git(wt, "rev-parse", "--path-format=absolute", "--git-path", name)).exists()
                for name in ("rebase-merge", "rebase-apply"))
@@ -214,7 +223,7 @@ def test_a_rebase_already_in_progress_refuses_before_the_attach_rebases(script_p
     main, wt = repos["main"], repos["wt"]
     _commit(wt, "shared.txt", _WT, "worktree edit")
     _commit(wt, "z.txt", "z\n", "worktree z")
-    env = {**os.environ, **_GIT_ENV, "GIT_SEQUENCE_EDITOR": "sed -i -e '1i break'"}
+    env = {**os.environ, **_GIT_ENV, "GIT_SEQUENCE_EDITOR": _break_editor(0)}
     subprocess.run(["git", "-C", str(wt), "rebase", "-i", "HEAD~1"], check=True, capture_output=True, env=env)
     assert _rebasing(wt)
     paused = _git(wt, "rev-parse", "HEAD")
@@ -290,7 +299,7 @@ def test_a_rebase_in_progress_without_a_conflict_refuses_before_anything_moves(s
     main, wt = repos["main"], repos["wt"]
     _commit(wt, "a.txt", "a\n", "first worktree commit")
     _commit(wt, "b.txt", "b\n", "second worktree commit")
-    env = {**os.environ, **_GIT_ENV, "GIT_SEQUENCE_EDITOR": "sed -i -e '1a break'"}
+    env = {**os.environ, **_GIT_ENV, "GIT_SEQUENCE_EDITOR": _break_editor(1)}
     subprocess.run(["git", "-C", str(wt), "rebase", "-i", "HEAD~2"], check=True, capture_output=True, env=env)
     assert _rebasing(wt)
     paused = _git(wt, "rev-parse", "HEAD")

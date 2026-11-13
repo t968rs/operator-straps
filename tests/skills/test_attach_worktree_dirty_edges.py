@@ -9,6 +9,7 @@ import importlib.util
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +21,7 @@ pytestmark = pytest.mark.cross_os
 
 _GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t",
             "GIT_COMMITTER_EMAIL": "t@t"}
+WALK_ROOTS = ()  # walks only the tmp_path checkout
 _BODY = "".join(f"line {n}\n" for n in range(20))
 
 
@@ -145,6 +147,26 @@ def test_the_printed_undo_matches_paths_literally(script_path: Path, tmp_path: P
     assert _read(main, "a[1].txt") == "a\n"
 
 
+@pytest.mark.skipif(shutil.which("sh") is None, reason="needs a POSIX shell to parse the printed lines")
+def test_the_printed_undo_survives_shell_metacharacters(script_path: Path, tmp_path: Path) -> None:
+    names = ("notes(old).md", "a$b.txt", "it's.md")
+    repos = _repos(tmp_path, {**{name: "base\n" for name in names}, "keep.txt": "keep\n"})
+    main, wt = repos["main"], repos["wt"]
+    _write(main, "keep.txt", "dirty unrelated\n")
+    for name in names:
+        _write(wt, name, "changed\n")
+    done = _attach(script_path, repos)
+    assert done.returncode == 0, done.stderr
+    lines = [line[len("undo: "):] for line in done.stdout.splitlines() if line.startswith("undo: ")]
+    assert lines, done.stdout
+    for line in lines:
+        ran = subprocess.run(["sh", "-c", line], capture_output=True, text=True,
+                             env={**os.environ, **_GIT_ENV})
+        assert ran.returncode == 0, (line, ran.stderr)
+    assert _read(main, "keep.txt") == "dirty unrelated\n"
+    assert [_read(main, name) for name in names] == ["base\n"] * len(names)
+
+
 def _load_merge(plugin_root: Path, monkeypatch: pytest.MonkeyPatch):
     commands = plugin_root / "skills" / "a-w" / "commands"
     monkeypatch.syspath_prepend(str(plugin_root / "lib"))
@@ -265,6 +287,9 @@ def test_a_real_apply_failure_prints_recovery_lines_that_restore_the_target(scri
     with open(main / "z.txt", "rb"):
         done = _attach(script_path, repos)
     assert done.returncode == 1
+    assert "apply" in done.stderr, done.stderr
+    assert re.search(r"backup\b.*\b[0-9a-f]{40}\b", done.stdout), done.stdout
+    assert _undo_commands(done.stdout), done.stdout
     _run_undo(done.stdout)
     assert _state(main) == before
 
