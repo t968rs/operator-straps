@@ -206,19 +206,49 @@ def test_only_the_flag_plans_an_adversarial_run(script, repo, capsys) -> None:
     assert "adversarial" in _plan(repo)
 
 
-def test_capture_adversarial_prints_one_workflow_row_and_no_agent_rows(script, repo, plugin_root,
-                                                                      capsys) -> None:
+def test_capture_adversarial_prints_one_workflow_row_and_no_agent_rows(script, repo, capsys) -> None:
     rc = _capture(script, repo, "-a")
     out = capsys.readouterr().out
     assert rc == 0, out
     assert not any(line.startswith("agent=") for line in out.splitlines())
     row = _workflow_lines(out)
-    assert Path(row["scriptPath"]).resolve() == (plugin_root / rm.ADVERSARIAL_WORKFLOW).resolve()
     args, plan = json.loads(row["args"]), _plan(repo)
     assert args["run_key"] == _KEY and args["run_id"] == plan["run_id"] and args["guidance"] is None
     assert [r["id"] for r in args["reviewers"]] == [s["id"] for s in plan["slots"]]
     assert [c["id"] for c in args["code"]] == [c["id"] for c in plan["adversarial"]["code"]]
     assert [r["id"] for r in args["refute"]] == [r["id"] for r in plan["adversarial"]["refute"]]
+
+
+def test_capture_adversarial_prints_a_script_copy_inside_the_project(script, repo, plugin_root,
+                                                                    capsys) -> None:
+    """The Workflow tool reads a scriptPath only from the working directory, never from the plugin root."""
+    assert _capture(script, repo, "-a") == 0
+    printed = Path(_workflow_lines(capsys.readouterr().out)["scriptPath"]).resolve()
+    original = (plugin_root / rm.ADVERSARIAL_WORKFLOW).resolve()
+    assert printed != original and not printed.is_relative_to(plugin_root.resolve())
+    assert printed.is_relative_to(repo.resolve()) and printed.parent == _run_folder(repo).resolve()
+    assert printed.read_bytes() == original.read_bytes()
+
+
+def test_stage_workflow_script_refreshes_a_stale_copy_in_the_same_run(script, plugin_root,
+                                                                     tmp_path) -> None:
+    run = tmp_path / "run"
+    copy = script.stage_workflow_script(run)
+    copy.write_text("// stale\n", encoding="utf-8")
+    again = script.stage_workflow_script(run)
+    assert again == copy
+    assert again.read_bytes() == (plugin_root / rm.ADVERSARIAL_WORKFLOW).read_bytes()
+    assert sorted(p.name for p in run.iterdir()) == [copy.name]
+
+
+def test_stage_workflow_script_turns_an_os_error_into_a_problem(script, tmp_path, monkeypatch) -> None:
+    def locked(*_args: object) -> None:
+        raise PermissionError("locked")
+
+    monkeypatch.setattr(script.shutil, "copyfile", locked)
+    with pytest.raises(script.CaptureError) as caught:
+        script.stage_workflow_script(tmp_path / "run")
+    assert any(problem.startswith("cannot stage ") for problem in caught.value.problems)
 
 
 def test_capture_adversarial_records_the_refuter_plan(script, repo, capsys) -> None:

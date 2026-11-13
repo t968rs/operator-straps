@@ -45,7 +45,7 @@ roots and registry (`tests.*`), the structural guard suites and brief pointers (
 
 | Subcommand | Phase | Does |
 |---|---|---|
-| `capture [--roast yes\|no\|roll] [-a] [--no-fetch] [--allow-closed]` | 1 | PR metadata, structural guards, review buckets, lens triggers, slot plan, reviewer briefs and diffs under `<scratch>/<NNNN>/<RUN_ID>/`; prints one `agent=harness:pr-reviewer model=<m>` dispatch row per slot. With `-a` (`--adversarial`) it also plans the code and findings refuters, writes their briefs, records `adversarial` in `plan.json` and a pending `dispatch_time.adversarial_check`, and prints one Workflow row (`scriptPath=<abs>`, `args=<one-line JSON>`) instead of the dispatch rows; it is refused before the run starts when the plugin's Workflow script is missing or the governing review schema (a pinned copy first) lacks `REFUTED`, `BUBBLED` or `NOT_RESOLVED` |
+| `capture [--roast yes\|no\|roll] [-a] [--no-fetch] [--allow-closed]` | 1 | PR metadata, structural guards, review buckets, lens triggers, slot plan, reviewer briefs and diffs under `<scratch>/<NNNN>/<RUN_ID>/`; prints one `agent=harness:pr-reviewer model=<m>` dispatch row per slot. With `-a` (`--adversarial`) it also plans the code and findings refuters, writes their briefs, records `adversarial` in `plan.json` and a pending `dispatch_time.adversarial_check`, and prints one Workflow row (`scriptPath=<abs path of the run directory's copy of the Workflow script>`, `args=<one-line JSON>`) instead of the dispatch rows; it is refused before the run starts when the plugin's Workflow script is missing or the governing review schema (a pinned copy first) lacks `REFUTED`, `BUBBLED` or `NOT_RESOLVED` |
 | `init --agent adv_refute_<t> --run-id ID` | 2 | A findings refuter's first step, run by the refuter agent, never by the session: refuses a run id that is not `current` and a target that has not recorded (`reviewer <t> has not recorded`); prints each target finding once per key as `[<finding_key>] <severity> <name> <file>:<lines>`; a target without findings gets an empty refutation report and `no findings: done` |
 | `block --agent ID` | 2, 5 | Reprints an agent's return block from its recorded report; for `adv_refute_<t>`, the refutation block plus each entry's key, verdict and evidence |
 | `fold --source ID --kind external\|tests\|developer\|adhoc (--from-gh-review URL \| --findings FILE\|-) [--severity S]` | 3, 5 | Records an outside review as `findings/<ID>.json` (same Finding model reviewers use) and registers it in `plan.json` `folded`; a GitHub review maps one `judgment` finding per inline comment (default `minor`). Before `build` it is `merge` input. After `build` it appends the source's issues to the review with fresh ids (per severity, after the highest existing; nothing renumbered or auto-merged, merge candidates printed as a note), recomputes the verdict, keeps the phase inside an open Phase 5 pass (`fix-plan` / `fix`, else sets `consolidate`) and prints the added rows; re-folding a source already in the built review is refused, and so is any fold into a review whose Phase 4 first run failed (`pre_fix_time` pending) |
@@ -150,7 +150,9 @@ PR head checked out (see Check 2).
 **Before running `capture` with `-a`:** an `-a` run is dispatched by the `Workflow` tool, and no script can see
 the session's tools. When the session has no `Workflow` tool, print
 `problem: -a needs the Workflow tool, which this session does not have; rerun without -a or in a session that has it`
-and do not run `capture`.
+and do not run `capture`. Capture copies the Workflow script into the run directory because the Workflow tool reads
+a `scriptPath` only under the session's working directory or an added directory, so run an `-a` capture from the
+session's own checkout, with no `--repo` pointing elsewhere.
 
 Run, with `--roast roll` for a normal review (the 50/50 dice; `yes` / `no` force it), and `-a` only when the
 invocation carried it:
@@ -227,7 +229,7 @@ session stops each parallel slot on a Write prompt. When Write is denied, the re
 (null, or the developer's guidance text); dispatch no Agent rows:` and the Workflow row:
 
 ```
-scriptPath=<abs path to the plugin's workflows/adversarial-review.js>
+scriptPath=<abs path to <run>/adversarial-review.js, capture's copy of the plugin's workflows/adversarial-review.js>
 args={"run_key": "...", "run_id": "...", "guidance": null, "reviewers": [...], "code": [...], "refute": [...]}
 ```
 
@@ -1192,8 +1194,8 @@ Example report format:
 - `harness:pr-reviewer` agent (`${CLAUDE_PLUGIN_ROOT}/agents/pr-reviewer.md`) — every Phase 2 slot, roast included
 - `harness:pr-fixer` agent (`${CLAUDE_PLUGIN_ROOT}/agents/pr-fixer.md`) — every Phase 5 fixer row
 - `harness:adversarial-reviewer` agent (`${CLAUDE_PLUGIN_ROOT}/agents/adversarial-reviewer.md`) — every code and
-  findings refuter of an `-a` run, dispatched by the `${CLAUDE_PLUGIN_ROOT}/workflows/adversarial-review.js`
-  Workflow script (or by a recovery `Agent` call)
+  findings refuter of an `-a` run, dispatched by the run directory's copy of `${CLAUDE_PLUGIN_ROOT}/workflows/adversarial-review.js`
+  Workflow script (staged by capture, or by a recovery `Agent` call)
 
 **Alternative:** `harness:pr-team` — for large multi-bucket PRs where main-session context must be bounded; it wraps this
 skill's phase logic in a shimmed parallel dispatch and keeps strict lens additivity. It takes no `-a`.

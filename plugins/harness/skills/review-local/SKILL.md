@@ -75,7 +75,8 @@ review-JSON field semantics, the grading rules and the Phase 5 dispatch order th
 1. **Capture.** Before running `capture` with `-a` (passed only when the developer asked for it): with no
    `Workflow` tool in the session, print
    `problem: -a needs the Workflow tool, which this session does not have; rerun without -a or in a session that has it`
-   and do not run `capture`.
+   and do not run `capture`. Run an `-a` capture from the session's own checkout, with no `--repo` pointing
+   elsewhere: the Workflow tool reads the staged `scriptPath` only under the session's working directory.
 
    ```bash
    sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/pr_review.py" capture --range <BASE..HEAD> --roast roll [-a] [--pr local-<label>] [--title <T>] [--plan <path>]

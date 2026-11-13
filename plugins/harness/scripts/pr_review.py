@@ -27,8 +27,11 @@ Every subcommand but ``capture`` works on the run that ``<artifacts.scratch>/<KE
     ``adv_code_<bucket>``) cover the runtime, tests and unfrozen plan paths, and one findings refuter
     (``adv_refute_<target>``) checks each reviewer and code-refuter slot. ``plan.json`` gains
     ``adversarial`` and ``dispatch_time.adversarial_check`` (pending); the refuter briefs are written
-    beside the reviewer briefs. The status line is followed by ``scriptPath=<abs>`` and ``args=<one-line
-    JSON>`` (one Workflow call) instead of the dispatch rows. Without ``-a`` nothing of this is written.
+    beside the reviewer briefs, and the Workflow script is copied into the run directory (the Workflow tool
+    reads a ``scriptPath`` only under the working directory, so an ``-a`` capture runs in the session's
+    own project, with no ``--repo`` pointing elsewhere). The status line is followed by
+    ``scriptPath=<abs copy>`` and ``args=<one-line JSON>`` (one Workflow call) instead of the dispatch rows.
+    Without ``-a`` nothing of this is written.
 ``init --pr N --agent adv_refute_<t> --run-id ID``
     A findings refuter's first step. Refuses a run id that is not ``current`` and a target that has not
     recorded (``reviewer <t> has not recorded``); prints each target finding once per key as
@@ -180,6 +183,7 @@ import os
 import random
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
@@ -755,8 +759,25 @@ def adversarial_plan(repo: Path, run: Path, ctx: BriefContext, scope: Scope, pla
     return refuters, notes
 
 
-def workflow_lines(run: Path, key: RunKey, run_id: str, scope: Scope, refuters: ra.RefuterPlan) -> List[str]:
-    """The Workflow row: ``scriptPath=<abs>`` and ``args=<one-line JSON>``."""
+def stage_workflow_script(run: Path) -> Path:
+    """Copy the plugin's Workflow script into ``run`` and return the copy. The Workflow tool reads a
+    ``scriptPath`` only from the working directory or an added directory, and the plugin root is neither
+    in a consuming project. A copy that cannot be written is a ``CaptureError``."""
+    source = adversarial_script()
+    staged = run / source.name
+    tmp = staged.with_name(staged.name + ".tmp")
+    try:
+        staged.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, tmp)
+        os.replace(tmp, staged)
+    except OSError as exc:
+        raise CaptureError([f"cannot stage {source}: {exc}"]) from exc
+    return staged
+
+
+def workflow_lines(run: Path, key: RunKey, run_id: str, scope: Scope, refuters: ra.RefuterPlan,
+                   script: Path) -> List[str]:
+    """The Workflow row: ``scriptPath=<abs>`` (``script``, the staged copy) and ``args=<one-line JSON>``."""
     def prompt(agent: str, role: str) -> str:
         return agent_prompt(agent, role, run_id, key, run / "briefs" / f"{agent}.md")
 
@@ -764,15 +785,17 @@ def workflow_lines(run: Path, key: RunKey, run_id: str, scope: Scope, refuters: 
     prompts = {s.id: prompt(s.id, CODE_REFUTER_ROLE) for s in refuters.code}
     prompts.update({s.id: prompt(s.id, REFUTER_ROLE) for s in refuters.refute})
     args = ra.workflow_args(str(key), run_id, reviewers, refuters, prompts)
-    return [f"scriptPath={adversarial_script().resolve().as_posix()}", f"args={json.dumps(args)}"]
+    return [f"scriptPath={script.resolve().as_posix()}", f"args={json.dumps(args)}"]
 
 
 def capture_lines(run: Path, key: RunKey, plan: Mapping[str, object], scope: Scope,
-                  refuters: Optional[ra.RefuterPlan], notes: Sequence[str]) -> List[str]:
-    """What capture prints: the summary, then one dispatch row per slot, or the Workflow row under ``-a``."""
+                  refuters: Optional[ra.RefuterPlan], notes: Sequence[str],
+                  script: Optional[Path] = None) -> List[str]:
+    """What capture prints: the summary, then one dispatch row per slot, or the Workflow row under ``-a``
+    (``refuters`` and ``script``, the staged Workflow script, both set)."""
     run_id = str(plan["run_id"])
-    if refuters is not None:
-        workflow = workflow_lines(run, key, run_id, scope, refuters)
+    if refuters is not None and script is not None:
+        workflow = workflow_lines(run, key, run_id, scope, refuters, script)
         return capture_summary(plan, scope, refuters, notes) + workflow
     rows = [dispatch_row(REVIEWER_AGENT, s.model, s.id, "reviewer", run_id, key,
                          run / "briefs" / f"{s.id}.md") for s in scope.slots]
@@ -838,8 +861,9 @@ def _cmd_capture(repo: Path, args: argparse.Namespace) -> int:
     patches = write_briefs(repo, run, ctx, scope.slots)
     refuters, notes = adversarial_plan(repo, run, ctx, scope, plan, patches) if args.adversarial \
         else (None, [])
+    script = stage_workflow_script(run) if args.adversarial else None
     _write_json(run / "plan.json", plan)
-    print("\n".join(capture_lines(run, key, plan, scope, refuters, notes)))
+    print("\n".join(capture_lines(run, key, plan, scope, refuters, notes, script)))
     return 0
 
 
