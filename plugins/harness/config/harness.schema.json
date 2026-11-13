@@ -130,7 +130,7 @@
       "properties": {
         "auto_resolve": {
           "type": "array",
-          "description": "Rules a-w applies to a path that conflicts when the worktree's changes move onto the target branch. pattern is an fnmatch glob over the repo-relative POSIX path (case-sensitive); in_favor_of names the side whose whole file wins, a deletion included. Two rules naming different sides for one path refuse as ambiguous. a-w reads this list from the target checkout's harness.json together with --auto-resolve flags.",
+          "description": "Rules a-w applies to a path that conflicts when the worktree's changes move onto the target branch. pattern is an fnmatch glob over the repo-relative POSIX path (case-sensitive); in_favor_of names the side whose whole file wins, a deletion included. Two rules naming different sides for one path refuse as ambiguous. a-w reads this list from the target checkout's harness.json, or, when the target checkout has none, the main checkout's, together with --auto-resolve flags. In staged mode a rule also settles a dirty-path overlap in the target: a worktree rule overwrites the dirty target copy after a backup, and a branch rule keeps it and drops the worktree's change to that path.",
           "items": {
             "type": "object",
             "additionalProperties": false,
