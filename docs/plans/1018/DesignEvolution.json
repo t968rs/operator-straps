@@ -1,0 +1,38 @@
+{
+  "plan_id": "1018",
+  "feature": "a w dirty",
+  "branch_lineage": "main-->none",
+  "primary_documents": {
+    "plan": "docs/plans/1018_a_w_dirty_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-12-a-w-dirty-target-design.md"
+  },
+  "changes": [
+    {
+      "id": "P1",
+      "discovered_by": "plan writing (write-plan)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decided, Interface (state file paragraph)",
+        "indicated": "after a race refusal the rerun is --continue, which redoes the snapshot, overlap check and race check against the resolved worktree HEAD and lands"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "a re-snapshot makes the land diff run from the new target HEAD",
+        "why_free_form": "the resolved tree is built on the old target_head; a diff from the new target HEAD to it deletes or reverts whatever the late target commit added, so the land would undo target work"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "D4: --continue with no rebase in progress sets patch_base to the target_head the finished rebase went onto and reruns the flow from the snapshot against the current target HEAD (a clean trial lands; a conflict stops again)"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "measuring from the old target_head carries only the worktree's work onto the moved target; test_a_target_that_moves_during_resolution_refuses_then_continue_lands pins it"
+      },
+      "date": "2026-11-12"
+    }
+  ]
+}

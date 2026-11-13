@@ -1,0 +1,602 @@
+{
+  "plan_id": "1018",
+  "plan_created": "2026-11-12",
+  "source_document": "docs/superpowers/specs/2026-11-12-a-w-dirty-target-design.md",
+  "documentation": "docs/plans/1018_a_w_dirty_PIP.html",
+  "branch": null,
+  "base_branch": "main",
+  "execution_model": "serial",
+  "items": [
+    {
+      "id": "TASK-1",
+      "title": "Config key attach.auto_resolve in the four places",
+      "action": "Copy docs/plans/1018/tests/tests/lib/test_config_attach.py to tests/lib/test_config_attach.py first. 1) defaults.json: add \"attach\": {\"auto_resolve\": []} after worktree_baseline. 2) harness.schema.json: add property attach (object, additionalProperties false) with auto_resolve: array of objects, additionalProperties false, required [pattern, in_favor_of], pattern a string (minLength 1, fnmatch over the repo-relative POSIX path, case-sensitive), in_favor_of enum [worktree, branch]; the description says the side's whole file wins (a deletion included), two rules naming different sides for one path refuse as ambiguous, and a-w reads it from the target checkout's harness.json together with --auto-resolve flags. 3) config.py: frozen dataclasses AutoResolve(pattern: str, in_favor_of: str, typed Literal['worktree', 'branch']) and AttachConfig(auto_resolve: Tuple[AutoResolve, ...]); field HarnessConfig.attach: AttachConfig declared before canned_messages (the one defaulted field); _build passes attach=_attach(m['attach']); _attach checks the shape also without jsonschema (object, no unknown keys, a list, each entry an object with a non-empty string pattern and in_favor_of in the two sides) and raises ConfigError naming attach/auto_resolve/<n>/pattern or attach/auto_resolve/<n>/in_favor_of. Functions under 50 lines, Optional/Union only. 4) README.md key table: a row | `attach.auto_resolve` | `[]` | `a-w`: ... | after worktree_baseline, column padding matched to the table.",
+      "files": [
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/harness/lib/harness_lib/config.py",
+        "README.md",
+        "tests/lib/test_config_attach.py"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:176-206",
+          "expect": "class HarnessConfig:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:206-206",
+          "expect": "canned_messages: Tuple[CannedSet, ...] = ()"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:318-337",
+          "expect": "canned_messages=_canned_messages(m[\"canned_messages\"]),"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/config.py:306-309",
+          "expect": "unknown = sorted(set(data) - set(schema[\"properties\"]))"
+        },
+        {
+          "at": "plugins/harness/config/defaults.json:59-59",
+          "expect": "\"worktree_baseline\": [],"
+        },
+        {
+          "at": "plugins/harness/config/harness.schema.json:109-109",
+          "expect": "\"canned_messages\": {"
+        },
+        {
+          "at": "README.md:509-509",
+          "expect": "| `worktree_baseline`"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/lib/test_config.py -q",
+          "expect": "no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_config_attach.py::test_attach_auto_resolve_defaults_to_empty",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/lib/test_config_attach.py::test_attach_auto_resolve_loads_rules_in_order",
+          "red": "ImportError"
+        },
+        {
+          "node": "tests/lib/test_config_attach.py::test_invalid_rules_raise_naming_the_field[unknown-side]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_attach.py::test_invalid_rules_raise_naming_the_field[missing-side]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_attach.py::test_invalid_rules_raise_without_jsonschema[unknown-side]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_attach.py::test_invalid_rules_raise_without_jsonschema[missing-side]",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_attach.py::test_an_empty_glob_raises_without_jsonschema",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/lib/test_config_attach.py::test_the_readme_key_table_names_the_key",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-2",
+      "title": "Staged attach onto a dirty target: overlap, backup, trial merge, rules, exact land",
+      "action": "Copy the planned files first: docs/plans/1018/tests/tests/skills/test_attach_worktree_dirty.py, test_attach_worktree_index.py and test_attach_worktree_script.py to tests/skills/ (the last two replace the current files; the script file only drops three tests whose behavior changes). Spec items 2-6, 8 and 9 for staged mode (D3 split): a) attach_worktree.py inserts Path(__file__).resolve().parents[3] / 'lib' on sys.path (as d-w/commands/new_worktree.py:36 does), imports its sibling attach_merge by plain import, and calls activate(load_config(project_root(target))) once (D2). b) check_git_version(version_output: str) -> None raises AttachError naming git 2.40 below 2.40; attach() calls it on `git --version` before any other step. c) Rules: AutoResolve from harness_lib.config; repeatable --auto-resolve PATTERN=SIDE (argparse append; a value without '=' or a side other than worktree/branch is a usage error); rules = config rules then flag rules; matching with fnmatch.fnmatchcase (D6); a path two rules give different sides raises AttachError naming the path and the word ambiguous. d) Snapshot: target_head and the dirty set from `status --porcelain=v1 -z --untracked-files=no` (both sides of a rename, staged and unstaged). e) Worktree commit: the scratch index (scratch_index, add -A), write-tree, commit-tree -p HEAD, never touching the worktree's index or refs; changed paths = diff --name-only --no-renames from patch_base() to that commit. f) Overlap: changed paths in the dirty set that no rule covers refuse, naming them; a path the move adds that is untracked in the target refuses, naming it with the word untracked. g) Backup: `git stash create` in the target (empty output = clean target, reported as such). h) Trial: merge-tree --write-tree --merge-base=<patch_base> <target_head> <worktree commit> (--name-only -z --no-messages, parsed per git-merge-tree(1)). Ruled conflicted paths take the chosen side's blob or deletion into the result tree through a temporary index (read-tree, update-index --cacheinfo / --force-remove, write-tree). Unruled conflicts left: refuse naming the paths and saying to commit the worktree's changes in the worktree first when the worktree is dirty; until TASK-3 lands, the clean-worktree case refuses the same way without the commit advice. i) Land: re-read target HEAD and dirty set (a change refuses: rerun); then `git apply --index` of `diff --binary --full-index <target_head> <final tree>` excluding every rule-governed dirty path (:(exclude,literal) pathspecs). Only after it succeeds, each worktree-ruled dirty path gets the final tree's blob written and staged (or is removed and unstaged when the final tree lacks it); a branch-ruled dirty path is left as it is. j) Report: staged N file(s) on <branch>, nothing committed; a line holding the word backup and the stash sha (or saying the target was clean); each overwritten dirty path; undo lines `git -C <target> restore --source=HEAD --staged --worktree -- <paths>` for the clean paths and, per overwritten path, `restore --source=<backup>^2 --staged -- <path>` then `restore --source=<backup> --worktree -- <path>`; `next: git diff --cached`. A path is quoted only when it holds whitespace. k) Remove tracked_changes, unmerged, conflict_message and the apply --3way path; the dirty-target refusal at attach() stays for --committed only until TASK-3. Every refusal changes nothing in the target. Functions under 50 lines; no first or second person in comments.",
+      "files": [
+        "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "plugins/harness/skills/a-w/commands/attach_merge.py",
+        "tests/skills/test_attach_worktree_dirty.py",
+        "tests/skills/test_attach_worktree_index.py",
+        "tests/skills/test_attach_worktree_script.py"
+      ],
+      "dependencies": [
+        "TASK-1"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:104-105",
+          "expect": "def tracked_changes(repo: Path) -> bool:"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:130-139",
+          "expect": "def scratch_index(worktree: Path, scratch: Path) -> Dict[str, str]:"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:142-152",
+          "expect": "def worktree_patch(worktree: Path, base: str) -> Tuple[bytes, int]:"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:160-166",
+          "expect": "def conflict_message(conflicts: List[str], worktree: Path, target: Path) -> str:"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:202-217",
+          "expect": "def patch_base(worktree: Path, target: Path) -> str:"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:220-231",
+          "expect": "done = run_git(target, \"apply\", \"--3way\", \"--whitespace=nowarn\", stdin=patch)"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:254-256",
+          "expect": "if tracked_changes(target):"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:262-275",
+          "expect": "def parse_args(argv: Optional[list]) -> argparse.Namespace:"
+        },
+        {
+          "at": "plugins/harness/skills/d-w/commands/new_worktree.py:36-36",
+          "expect": "sys.path.insert(0, str(Path(__file__).resolve().parents[3] / \"lib\"))"
+        },
+        {
+          "at": "tests/contract/test_root_separation.py:106-111",
+          "expect": "return [\"skills/a-w/commands/attach_worktree.py\", \"feature\", \"--worktree\", str(wt)]"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_attach_worktree_script.py tests/skills/test_attach_worktree_index.py tests/contract/test_root_separation.py -q",
+          "expect": "no failures"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_a_dirty_path_the_move_does_not_write_stays_as_it_was",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_a_staged_dirty_edit_in_the_target_stays_staged",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_an_overlapping_dirty_path_refuses_naming_it_and_changes_nothing",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_an_untracked_target_file_on_a_path_the_move_adds_refuses",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_an_unruled_conflict_with_uncommitted_worktree_changes_refuses_leaving_the_target_clean",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_a_conflict_ruled_for_the_worktree_lands_its_copy",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_a_conflict_ruled_for_the_branch_keeps_the_target_copy",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_project_config_rules_apply_without_flags",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_rules_naming_different_sides_for_one_path_refuse_as_ambiguous",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_a_dirty_overlap_ruled_for_the_branch_skips_the_path",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_a_dirty_overlap_ruled_for_the_worktree_is_overwritten_and_the_printed_undo_restores_it",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_the_staged_report_names_the_backup_and_a_path_scoped_undo",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_dirty.py::test_git_older_than_2_40_is_refused_naming_the_requirement",
+          "red": "AttributeError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_index.py::test_a_conflict_leaves_the_target_checkout_untouched",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_index.py::test_the_refusal_names_the_path_and_asks_for_a_commit_in_the_worktree",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-3",
+      "title": "Resolution in the worktree: rebase loop, exit 2, --continue/--abort, --committed rebase",
+      "action": "Copy docs/plans/1018/tests/tests/skills/test_attach_worktree_resolve.py to tests/skills/ first. Spec items 5 (committed routing), 6 (committed overlap), 7, 8 and the Interface: a) attach_resolve.py owns the state file `git rev-parse --git-path harness-attach.json` resolved in the worktree: JSON with target_branch, target_checkout, mode (staged|committed), target_head, original_head, patch_base, rules. Written before the rebase starts; removed once the land succeeds or --abort runs. A plain run while it exists refuses naming --continue and --abort. b) Resolution needs a clean worktree (status --porcelain, untracked included): otherwise refuse, naming the conflicted paths and saying to commit in the worktree first. Staged mode builds one squash commit (commit-tree HEAD^{tree} -p <patch_base>) and runs `rebase --onto <target_head> <patch_base> <squash>`; --committed runs `rebase --onto <target_head> <patch_base>` with no squash. Every rebase step runs with GIT_EDITOR=true. c) At each stop: conflicted paths from `diff --name-only --diff-filter=U -z`; a ruled path takes stage 3 (the replayed worktree commit) for worktree or stage 2 (the target side) for branch, a side without the path becoming git rm; then git add. An ambiguous rule mid-rebase aborts the rebase, resets to original_head, removes the state and refuses. Nothing unruled left: rebase --continue and loop. Otherwise write the state, print the paths, the worktree path and the --continue / --abort commands to stdout, exit 2 (a StopForResolution exception main() maps to 2). d) --continue and --abort (mutually exclusive) read the state and take no TARGET; a TARGET, --committed or --auto-resolve that differs from the state refuses and keeps the state. --continue with a rebase in progress: unmerged paths left stop again with exit 2; else continue the loop, then race check and land (TASK-2 land for staged, the final tree being HEAD^{tree}; merge --ff-only for --committed). A race refusal keeps the state and the resolved commits and names --continue. --continue with no rebase in progress (D4): patch_base := the state's target_head, then rerun the flow from the snapshot against the current target HEAD (another stop is possible), updating the state. --abort: rebase --abort when in progress, reset --hard to original_head (exact: the worktree was clean), remove the state, report the worktree's HEAD, exit 0 (D5). e) --committed: drop both refusals (target moved, cut not in the target); keep the uncommitted and no-commits refusals. A dirty overlap always refuses, rules or not. When target_head is the merge base and the cut (if any) is in target_head, fast-forward as today; otherwise run the trial first (ambiguity refuses before the worktree is touched), then the rebase. Land: race check, then merge --ff-only; report the commit count, the backup and `undo: git -C <target> reset --keep <target_head>`. f) Rewrite the module docstring: the interface line with --auto-resolve, --continue and --abort, exit codes 0/1/2, the dirty-target rule, no conflict markers in the target. Functions under 50 lines.",
+      "files": [
+        "plugins/harness/skills/a-w/commands/attach_worktree.py",
+        "plugins/harness/skills/a-w/commands/attach_merge.py",
+        "plugins/harness/skills/a-w/commands/attach_resolve.py",
+        "tests/skills/test_attach_worktree_resolve.py"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "opus",
+      "anchors": [
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:108-127",
+          "expect": "def move_committed(worktree: Path, target: Path, branch: str) -> List[str]:"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:115-118",
+          "expect": "if cut and not is_ancestor(worktree, cut, target_head):"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:123-125",
+          "expect": "if base != target_head:"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:189-192",
+          "expect": "def cut_point(worktree: Path, head: str) -> Optional[str]:"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:3-3",
+          "expect": "Usage: attach_worktree.py [TARGET] [--target-branch BRANCH] [--worktree PATH] [--committed]"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/commands/attach_worktree.py:278-286",
+          "expect": "def main(argv: Optional[list] = None) -> int:"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/skills/test_attach_worktree_script.py tests/skills/test_attach_worktree_dirty.py tests/skills/test_attach_worktree_index.py -q",
+          "expect": "no failures"
+        },
+        {
+          "run": "python -m ruff check --no-cache plugins/harness/skills/a-w tests/skills",
+          "expect": "All checks passed"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_an_unruled_conflict_stops_with_exit_2_and_leaves_the_target_clean",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_continue_after_the_agent_resolves_stages_the_result",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_staged_resolution_squashes_so_the_conflict_comes_up_once",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_abort_returns_the_worktree_to_its_original_head_and_clears_the_state",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_a_plain_rerun_while_stopped_refuses_naming_continue_and_abort",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_continue_with_a_different_mode_refuses",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_a_target_that_moves_during_resolution_refuses_then_continue_lands",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_committed_rebases_onto_a_moved_target_and_fast_forwards",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_committed_conflict_stops_then_continue_fast_forwards_keeping_messages",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_committed_rule_settles_a_rebase_stop_on_its_own",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_committed_with_a_dirty_overlap_refuses_even_under_a_rule",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_committed_from_a_cut_the_target_lacks_carries_only_the_worktrees_commits",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_resolve.py::test_the_module_docstring_names_the_new_interface",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-4",
+      "title": "Rules exception and the a-w, d-w and README texts",
+      "action": "Copy docs/plans/1018/tests/tests/skills/test_attach_worktree_docs.py to tests/skills/ first. a) HARNESS_RULES.md:25-26: append to the history-rewrite rule the one exception: attach_worktree.py (harness:a-w) rebases and squashes the worktree's own unpushed commits inside a d-w worktree during an attach; the agent resolves conflicts there and reruns the script with --continue or --abort, never running rebase, merge or cherry-pick itself. b) a-w SKILL.md: argument-hint gains [--auto-resolve PATTERN=SIDE ...] [--continue | --abort]; the opening paragraph and mode table describe the trial merge and the --committed rebase onto a moved target; the clean-target bullet becomes the overlap rule (dirty paths the move does not write stay; an overlap or an untracked collision refuses; the backup sha and the path-scoped undo); the conflict bullets become the resolution loop (exit 2, edit and git add in the worktree, --continue; --abort on any ambiguity, then report); --auto-resolve and the attach.auto_resolve key, with the ambiguous refusal; the rules exception; --committed still only on the developer's explicit ask. No reset --hard and no 'no tracked changes' remain. c) d-w SKILL.md:65-69: the finishing bullet drops the three-way-conflict case and says a-w may stop with exit 2 for resolution in the worktree, where a-w runs the rebase and the agent reruns with --continue or --abort. d) README.md:32: the a-w row states the overlap rule, the trial merge, the resolution loop (--continue / --abort) and the --committed rebase; no 'no tracked changes', no 'leaves markers'.",
+      "files": [
+        "plugins/harness/rules/HARNESS_RULES.md",
+        "plugins/harness/skills/a-w/SKILL.md",
+        "plugins/harness/skills/d-w/SKILL.md",
+        "README.md",
+        "tests/skills/test_attach_worktree_docs.py"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-3"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/rules/HARNESS_RULES.md:25-26",
+          "expect": "**History rewrites belong to the developer, everywhere:** no `rebase`, `cherry-pick`,"
+        },
+        {
+          "at": "plugins/harness/skills/a-w/SKILL.md:4-4",
+          "expect": "argument-hint: \"<target-branch|HEAD> [--committed] [--worktree PATH] [-- <guidance>]\""
+        },
+        {
+          "at": "plugins/harness/skills/a-w/SKILL.md:37-37",
+          "expect": "with no tracked changes."
+        },
+        {
+          "at": "plugins/harness/skills/a-w/SKILL.md:44-50",
+          "expect": "A three-way conflict names the conflicted paths and leaves the markers"
+        },
+        {
+          "at": "plugins/harness/skills/d-w/SKILL.md:65-69",
+          "expect": "three-way conflict, once the markers in the target are resolved"
+        },
+        {
+          "at": "README.md:32-32",
+          "expect": "Script requires the target branch checked out with no tracked changes."
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/skills/test_attach_worktree_docs.py::test_the_history_rule_names_the_attach_exception",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_docs.py::test_the_a_w_skill_describes_the_resolution_loop",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_docs.py::test_the_a_w_argument_hint_lists_the_new_flags",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_docs.py::test_the_d_w_skill_no_longer_sends_a_conflict_to_the_target",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_docs.py::test_the_readme_a_w_row_drops_the_clean_target_requirement",
+          "red": "AssertionError"
+        }
+      ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "harness 0.72.0 and the v1.0.0 release notes",
+      "action": "a) plugin.json: version 0.71.0 -> 0.72.0 (minor: new behavior and a new config key). b) docs/RELEASES/v1.0.0.md (the proposed release; latest tag v0.7.0): harness row now 0.65.1 -> 0.72.0; one Changes line: Feat(a-w) attach onto a dirty target (issue #161): overlap check, backup sha, in-memory trial merge, attach.auto_resolve and --auto-resolve rules, resolution in the worktree with exit 2, --continue and --abort, --committed rebasing onto a moved target, and the HARNESS_RULES exception for that rebase. No other row changes.",
+      "files": [
+        "plugins/harness/.claude-plugin/plugin.json",
+        "docs/RELEASES/v1.0.0.md"
+      ],
+      "dependencies": [
+        "TASK-1",
+        "TASK-2",
+        "TASK-3",
+        "TASK-4"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "haiku",
+      "anchors": [
+        {
+          "at": "plugins/harness/.claude-plugin/plugin.json:3-3",
+          "expect": "\"version\": \"0.71.0\","
+        },
+        {
+          "at": "docs/RELEASES/v1.0.0.md:28-28",
+          "expect": "| harness | 0.65.1 | 0.71.0 |"
+        }
+      ],
+      "commands": [
+        {
+          "run": "claude plugin validate --strict plugins/harness",
+          "expect": "validation passed"
+        },
+        {
+          "run": "git grep -n \"0.72.0\" -- plugins/harness/.claude-plugin/plugin.json docs/RELEASES/v1.0.0.md",
+          "expect": "both files list 0.72.0"
+        }
+      ]
+    }
+  ],
+  "base_commit": "6a9347a174ca98d323d061bb218d5b31fa3c1639",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "Where does the AutoResolve dataclass live?",
+      "options": [
+        {
+          "id": "config",
+          "summary": "harness_lib.config, beside the attach.auto_resolve key that builds it"
+        },
+        {
+          "id": "driver",
+          "summary": "the a-w commands folder, with the config holding plain dicts"
+        }
+      ],
+      "chosen": "config",
+      "rationale": "One frozen type serves the config load and the driver; the config stays typed and hashable like CannedSet."
+    },
+    {
+      "id": "D2",
+      "question": "Which checkout's .claude/harness.json supplies attach.auto_resolve?",
+      "options": [
+        {
+          "id": "target",
+          "summary": "load_config(project_root(target checkout))"
+        },
+        {
+          "id": "worktree",
+          "summary": "load_config(project_root(worktree))"
+        }
+      ],
+      "chosen": "target",
+      "rationale": "The rules govern what lands on the target branch, and the target checkout is the project the developer configures; an untracked harness.json never reaches a worktree."
+    },
+    {
+      "id": "D3",
+      "question": "How does attach_worktree.py split as it grows?",
+      "options": [
+        {
+          "id": "split3",
+          "summary": "attach_worktree.py (CLI, preconditions, flow, removal), attach_merge.py (snapshot, overlap, backup, trial merge, rules, land), attach_resolve.py (state file, rebase loop, --continue, --abort)"
+        },
+        {
+          "id": "single",
+          "summary": "one module past 290 lines"
+        }
+      ],
+      "chosen": "split3",
+      "rationale": "The spec leaves the split to the builder and allows it by concern; three concerns, each under the 50-line function rule, keep each file readable."
+    },
+    {
+      "id": "D4",
+      "question": "What does --continue do when no rebase is in progress (after a race refusal)?",
+      "options": [
+        {
+          "id": "restart",
+          "summary": "rerun the flow from the snapshot (spec item 2) with patch_base set to the target_head the finished rebase went onto, and land against the current target HEAD"
+        },
+        {
+          "id": "reland",
+          "summary": "re-snapshot and land the diff from the new target HEAD to the resolved tree"
+        }
+      ],
+      "chosen": "restart",
+      "rationale": "A diff from the new target HEAD to a tree built on the old one reverts the late target commit; measuring from the old target_head carries only the worktree's work. DesignEvolution entry records it."
+    },
+    {
+      "id": "D5",
+      "question": "What exit code does a successful --abort return?",
+      "options": [
+        {
+          "id": "zero",
+          "summary": "0, with one report line"
+        },
+        {
+          "id": "one",
+          "summary": "1, as a refusal"
+        }
+      ],
+      "chosen": "zero",
+      "rationale": "The abort did what was asked; 1 stays the refusal code and 2 the resolution stop."
+    },
+    {
+      "id": "D6",
+      "question": "How do rule patterns match paths?",
+      "options": [
+        {
+          "id": "fnmatchcase",
+          "summary": "fnmatch.fnmatchcase over the repo-relative POSIX path"
+        },
+        {
+          "id": "fnmatch",
+          "summary": "fnmatch.fnmatch, case folding on Windows"
+        }
+      ],
+      "chosen": "fnmatchcase",
+      "rationale": "The same rule set must land the same files on every OS; case folding on Windows would widen a rule there only."
+    }
+  ],
+  "values": [
+    {
+      "name": "minimum git version",
+      "value": "2.40",
+      "source": "spec Constraints (merge-tree --write-tree --merge-base)"
+    },
+    {
+      "name": "exit codes",
+      "value": "0 moved, 1 refused, 2 stopped for agent resolution",
+      "source": "spec Interface"
+    },
+    {
+      "name": "state file",
+      "value": "harness-attach.json under git rev-parse --git-path in the worktree",
+      "source": "spec Interface"
+    },
+    {
+      "name": "rule sides",
+      "value": "worktree | branch",
+      "source": "spec Decided item 6"
+    },
+    {
+      "name": "harness version",
+      "value": "0.71.0 -> 0.72.0",
+      "source": "plugins/harness/.claude-plugin/plugin.json:3; minor bump per CLAUDE.md Releases"
+    },
+    {
+      "name": "release notes",
+      "value": "docs/RELEASES/v1.0.0.md (proposed; latest tag v0.7.0)",
+      "source": "docs/RELEASES/v1.0.0.md:28"
+    }
+  ],
+  "formats": [],
+  "sweeps": [
+    {
+      "id": "S1",
+      "pattern": "three-way conflict|no tracked changes|is not clean|conflict_message|tracked_changes",
+      "hits": {
+        "README.md": "TASK-4 rewrites the a-w row (line 32)",
+        "docs/TODO/RepoToDo.json": "todo-c69j quotes the old refusal; retired by todo-editor after merge",
+        "plugins/harness/skills/a-w/SKILL.md": "TASK-4 rewrites the clean-target and conflict bullets",
+        "plugins/harness/skills/a-w/commands/attach_worktree.py": "TASK-2 removes tracked_changes, conflict_message and the refusal; TASK-3 the docstring",
+        "plugins/harness/skills/bubble-memo/SKILL.md": "unrelated: 'the memo is not clean'",
+        "plugins/harness/skills/d-w/SKILL.md": "TASK-4 rewrites the finishing bullet"
+      }
+    },
+    {
+      "id": "S2",
+      "pattern": "attach_worktree",
+      "hits": {
+        "docs/TODO/RepoToDo.json": "catalog text; no change",
+        "plugins/harness/skills/a-w/SKILL.md": "invokes the script; TASK-4 keeps the command line",
+        "plugins/harness/skills/a-w/commands/attach_worktree.py": "the driver itself",
+        "tests/contract/test_root_separation.py": "runs the script in a case project; TASK-2 command reruns it (config load and the state file stay under the project)",
+        "tests/skills/test_attach_worktree_index.py": "TASK-2 rewrites it",
+        "tests/skills/test_attach_worktree_script.py": "TASK-2 drops three obsolete tests"
+      }
+    },
+    {
+      "id": "S3",
+      "pattern": "History rewrites belong|no .rebase., .cherry-pick.",
+      "hits": {
+        "plugins/harness/rules/HARNESS_RULES.md": "TASK-4 appends the a-w exception"
+      }
+    }
+  ],
+  "ledger": "plan/1018-a-w-dirty"
+}
