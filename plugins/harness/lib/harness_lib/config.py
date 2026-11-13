@@ -11,7 +11,7 @@ import posixpath
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Literal, Optional, Tuple
 
 from harness_lib.project import main_worktree, project_root, run_git
 
@@ -174,6 +174,21 @@ class CannedSet:
 
 
 @dataclass(frozen=True)
+class AutoResolve:
+    """One a-w conflict rule: the side whose whole file wins for a path matching the glob ``pattern``."""
+
+    pattern: str
+    in_favor_of: Literal["worktree", "branch"]
+
+
+@dataclass(frozen=True)
+class AttachConfig:
+    """Project values of a-w: the conflict rules applied with any ``--auto-resolve`` flags."""
+
+    auto_resolve: Tuple[AutoResolve, ...]
+
+
+@dataclass(frozen=True)
 class HarnessConfig:
     """Merged, validated harness configuration for one project root."""
 
@@ -203,6 +218,7 @@ class HarnessConfig:
     todo: TodoConfig
     strap: StrapConfig
     plugins: Tuple[Tuple[str, str], ...]
+    attach: AttachConfig
     canned_messages: Tuple[CannedSet, ...] = ()
 
     def plugin(self, name: str) -> Dict[str, Any]:
@@ -333,6 +349,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         todo=_todo(m["todo"], root, (override or {}).get("todo") or {}),
         strap=_strap(m["strap"]),
         plugins=_plugins(m["plugins"]),
+        attach=_attach(m["attach"]),
         canned_messages=_canned_messages(m["canned_messages"]),
     )
 
@@ -348,6 +365,37 @@ def _strap(s: Dict[str, Any]) -> StrapConfig:
     if target not in ("harness", "project"):
         raise ConfigError(f"strap/target: {target!r} is not 'harness' or 'project'")
     return StrapConfig(target)
+
+
+def _attach(a: Any) -> AttachConfig:
+    """``attach`` with each ``auto_resolve`` rule shape-checked, also on a load without ``jsonschema``."""
+    if not isinstance(a, dict):
+        raise ConfigError("attach: must be an object")
+    unknown = sorted(set(a) - {"auto_resolve"})
+    if unknown:
+        raise ConfigError(f"attach: unknown keys {unknown}")
+    rules = a.get("auto_resolve")
+    if not isinstance(rules, list):
+        raise ConfigError("attach/auto_resolve: must be a list")
+    return AttachConfig(tuple(_auto_resolve(r, f"attach/auto_resolve/{n}") for n, r in enumerate(rules)))
+
+
+def _auto_resolve(rule: Any, where: str) -> AutoResolve:
+    """One ``{pattern, in_favor_of}`` object; ConfigError on any other shape."""
+    if not isinstance(rule, dict):
+        raise ConfigError(f"{where}: must be an object")
+    unknown = sorted(set(rule) - {"pattern", "in_favor_of"})
+    if unknown:
+        raise ConfigError(f"{where}: unknown keys {unknown}")
+    for key in ("pattern", "in_favor_of"):
+        if key not in rule:
+            raise ConfigError(f"{where}/{key}: is missing")
+    pattern, side = rule["pattern"], rule["in_favor_of"]
+    if not isinstance(pattern, str) or not pattern:
+        raise ConfigError(f"{where}/pattern: must be a non-empty string")
+    if side not in ("worktree", "branch"):
+        raise ConfigError(f"{where}/in_favor_of: {side!r} is not 'worktree' or 'branch'")
+    return AutoResolve(pattern, side)
 
 
 def _plugins(p: Dict[str, Any]) -> Tuple[Tuple[str, str], ...]:
