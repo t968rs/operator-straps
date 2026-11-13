@@ -30,7 +30,7 @@ def test_attach_auto_resolve_loads_rules_in_order(make_project) -> None:
     ]}}))
     assert cfg.attach.auto_resolve == (AutoResolve("*offlineTestReport.json", "branch"),
                                        AutoResolve("docs/generated/*", "worktree"))
-    assert hash(cfg) == hash(cfg)
+    hash(cfg)  # auto_resolve must keep the frozen config hashable
 
 
 @pytest.mark.parametrize("bad", BAD_RULES)
