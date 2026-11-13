@@ -1,0 +1,30 @@
+{
+  "kind": "freeze",
+  "round": 1,
+  "seq": 2,
+  "tree": "4d3f1e6cc96d21d5adc711e00d9d3d732cd5f80a",
+  "files": {
+    "docs/plans/1018_a_w_dirty_ActionPlan.json": "f3c7ffd6863129e4cab1c27a719c52a05f3d2d1a"
+  },
+  "ignored": {
+    "docs/plans/1018/tests/tests/lib/test_config_attach.py": "86310045430e754c29877bda55cc22e58172ced387a75da8e156925b9e774cae",
+    "docs/plans/1018/tests/tests/skills/test_attach_worktree_config_source.py": "1ac7660362e48b3cfd322701a1a6d809e28720a870948f303c57ac5bab4548e9",
+    "docs/plans/1018/tests/tests/skills/test_attach_worktree_continue_backup.py": "b9e31e7023cf937857bfa9ef34fae7c3fc46050898a48716d0eb5b793fa82181",
+    "docs/plans/1018/tests/tests/skills/test_attach_worktree_dirty.py": "cb4eff980dac3795b8d570f5658c87a22028bfc52739214059365ca8441433bd",
+    "docs/plans/1018/tests/tests/skills/test_attach_worktree_docs.py": "6803b211a4e65b5173b9556014580ba0d0748f546ce9a27a6805fcb6f9c9034d",
+    "docs/plans/1018/tests/tests/skills/test_attach_worktree_index.py": "cd7e364579fb20fdcaeed6d20b85242fb1f9288ab95e0ea3b6722cff0d34df3e",
+    "docs/plans/1018/tests/tests/skills/test_attach_worktree_resolve.py": "f8b51ec62f42609259b115d77b470cef39a7fd314411af319dc270c3cf133aa8",
+    "docs/plans/1018/tests/tests/skills/test_attach_worktree_script.py": "002bec7df2e6d83d8a4642a49e8e79a50a20f1285a1b49786e9d54e2a29b93f1"
+  },
+  "at": "2026-11-13T07:24:27+00:00",
+  "base": "6a9347a174ca98d323d061bb218d5b31fa3c1639",
+  "history": false,
+  "digest": "a732c7ab003e16be1648dfb5c894fae6006139d8881e7ee5f546ec2917c7f55d",
+  "records": "receipts",
+  "skill_hash": null,
+  "grader": null,
+  "reason": null,
+  "old_base": null,
+  "new_base": null,
+  "match": null
+}
