@@ -33,6 +33,33 @@
         "free_form": "measuring from the old target_head carries only the worktree's work onto the moved target; test_a_target_that_moves_during_resolution_refuses_then_continue_lands pins it"
       },
       "date": "2026-11-12"
+    },
+    {
+      "id": "P2",
+      "discovered_by": "local review local-1157-a-w-committed (M1)",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "spec",
+        "location": "Decided, item 3 (overlap check)",
+        "indicated": "the overlap set drops only the paths a branch-favoring rule covers; any other changed path in the dirty set refuses"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "item 3 contradicts item 6 and the anti-goals of the same spec",
+        "why_free_form": "item 6 and the anti-goals say a worktree rule on a dirty overlap overwrites the path after the backup; under item 3 that path would refuse before item 6 could apply"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 f: in staged mode the overlap set drops every path any rule covers (a branch rule skips the path, a worktree rule overwrites it after the backup); changed paths in the dirty set that no rule covers refuse"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "follows spec item 6 and the anti-goals; test_a_dirty_overlap_ruled_for_the_worktree_is_overwritten_and_the_printed_undo_restores_it pins it"
+      },
+      "date": "2026-11-13"
     }
   ]
 }
