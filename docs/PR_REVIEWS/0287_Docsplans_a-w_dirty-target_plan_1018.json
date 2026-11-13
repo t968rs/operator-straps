@@ -8,7 +8,7 @@
   "base_sha": "3e5908715a6f6d78f794d5c1142ec693a06e03f2",
   "head_sha": "29dd371c3672dcd56e8641134263b5c7a365ceba",
   "review_date": "2026-11-13",
-  "verdict": "READY TO MERGE - 22 of 25 findings resolved, 3 bubbled",
+  "verdict": "READY TO MERGE - 25 of 25 findings resolved, 0 bubbled",
   "stats": {
     "additions": 4333,
     "deletions": 281,
@@ -39,11 +39,7 @@
     "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/system_shape.json",
     "docs/_scratch/pr_review/0287/pr287_20261113T214920Z/findings/roast.json"
   ],
-  "bubbles": [
-    "M4",
-    "M21",
-    "M19"
-  ],
+  "bubbles": [],
   "strengths": [
     "The attach schema block matches defaults.json (auto_resolve: []) and the AttachConfig/AutoResolve dataclasses and _attach/_auto_resolve checks in config.py: same keys, additionalProperties false, required pattern and in_favor_of, side enum worktree/branch.",
     "The description's claims (case-sensitive fnmatch over the path, ambiguous rules refuse) agree with fnmatchcase and the ambiguity check in attach_merge.py.",
@@ -716,6 +712,24 @@
       "status": "RESOLVED",
       "date": "2026-11-13",
       "evidence": "12ecb08 (working-tree snapshot; developer commits) - finish() OSError branch now names git worktree remove --force <worktree> (attach_worktree.py:283,294) (outside fixer waves)"
+    },
+    {
+      "id": "M4",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-13",
+      "evidence": "460746e (working-tree snapshot; developer commits) - closed, no action: Developer retitled PR 287 on GitHub to Feature(a-w): attach onto a dirty target with trial merge and in-worktree resolution (#161)"
+    },
+    {
+      "id": "M19",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "460746e (working-tree snapshot; developer commits) - test_config_attach.py:33 now reads hash(cfg) with a comment naming the hashability intent; plan copy left as frozen, PLAN check 1018 passes (outside fixer waves)"
+    },
+    {
+      "id": "M21",
+      "status": "RESOLVED",
+      "date": "2026-11-13",
+      "evidence": "460746e (developer-confirmed defer) - Developer deferred the helper consolidation; tracker todo-dx3b"
     }
   ]
 }

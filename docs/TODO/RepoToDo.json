@@ -56,25 +56,25 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 60,
+    "items": 61,
     "needs_decision": 35,
     "trackers": 0,
     "close_candidates": 27,
     "by_status": {
       "NEEDS_DECISION": 35,
-      "OPEN": 25
+      "OPEN": 26
     },
     "by_impact": {
       "dev_velocity": 32,
       "docs_tooling": 21,
-      "maintainability": 1,
+      "maintainability": 2,
       "runtime_failure": 5,
       "data_correctness": 1
     },
     "by_loe": {
       "XS": 3,
       "S": 19,
-      "M": 27,
+      "M": 28,
       "L": 10,
       "XL": 1
     },
@@ -82,7 +82,7 @@
       "gh_issue": 51,
       "impl_stub": 0,
       "research_folder": 0,
-      "note": 9
+      "note": 10
     },
     "merged_items": 0
   },
@@ -3386,8 +3386,63 @@
       "why_ranked": "Severity 1 hygiene audit, maintainability impact, M size."
     },
     {
-      "id": "todo-c7s9",
+      "id": "todo-dx3b",
       "rank": 57,
+      "title": "Consolidate a-w attach test helpers into one _-prefixed module",
+      "kind": "refactor",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "note",
+          "ref": "2026-11-13"
+        }
+      ],
+      "gh_issues": [],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Per the session: PR 287 review (docs/PR_REVIEWS/0287_Docsplans_a-w_dirty-target_plan_1018.json) issue M21, minor, judgment, from the tests reviewer. The helpers _GIT_ENV, _git, _write, _commit, the script_path and repos fixtures, _rebasing and _state_file are duplicated nearly verbatim across six tests/skills/test_attach_worktree_*.py modules: dirty, dirty_edges, resolve, resolve_edges, continue_backup and config_source. _rebasing appears twice (resolve.py:76, resolve_edges.py:207 per the review). Not re-checked at research level 0. The developer deferred M21; the review closeout records this item as the tracker. Plan 1018 freezes verbatim copies of these tests under docs/plans/1018/tests; the refactor changes only the repo copies, and PLAN check 1018 does not compare the two, so no refreeze is needed. Related: todo-7nb9 (a-w attach state loss).",
+      "proposed_change": "Move _GIT_ENV, _git, _write, _commit, the script_path and repos fixtures, _rebasing and _state_file into one _-prefixed helper module, tests/skills/_attach_repo.py, and import them in the six test modules, deleting the local copies. Leave docs/plans/1018/tests untouched. Verify each touched module with python -m pytest tests/skills/test_attach_worktree_<name>.py -q, naming the file and not the directory.",
+      "files": [
+        "tests/skills/test_attach_worktree_dirty.py",
+        "tests/skills/test_attach_worktree_dirty_edges.py",
+        "tests/skills/test_attach_worktree_resolve.py",
+        "tests/skills/test_attach_worktree_resolve_edges.py",
+        "tests/skills/test_attach_worktree_continue_backup.py",
+        "tests/skills/test_attach_worktree_config_source.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Test-only consolidation; the change touches test modules and one new helper module.",
+        "consumers": []
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A new helper module, imports in six test modules and a pytest run of each touched module."
+      },
+      "impact": "maintainability",
+      "severity": 1,
+      "priority": {
+        "score": 0.4,
+        "components": {
+          "impact_weight": 0.8,
+          "value": 0.8,
+          "loe_points": 4,
+          "blast_factor": 1.0,
+          "cost": 4.0,
+          "base_score": 0.4,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 duplication hygiene across six test modules, maintainability impact, M size."
+    },
+    {
+      "id": "todo-c7s9",
+      "rank": 58,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3450,7 +3505,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 58,
+      "rank": 59,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -3505,7 +3560,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 59,
+      "rank": 60,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -3556,7 +3611,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 60,
+      "rank": 61,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
