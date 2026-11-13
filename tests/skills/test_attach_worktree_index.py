@@ -1,7 +1,9 @@
-"""The a-w command ``commands/attach_worktree.py`` keeps the worktree's index and names the conflict recovery.
+"""The a-w command ``commands/attach_worktree.py`` keeps the worktree index and the target clean on conflict.
 
 Each test builds a throwaway repository under ``tmp_path``: ``main`` has branch ``feature`` checked out and
-``wt`` is a detached worktree cut from it, with one staged and one unstaged edit and a conflicting target.
+``wt`` is a detached worktree cut from it, with one staged and one unstaged edit and a conflicting target. A
+conflict no rule settles needs a clean worktree for its resolution, so the attach refuses before anything
+moves.
 """
 from __future__ import annotations
 
@@ -42,10 +44,11 @@ def conflicted(tmp_path: Path, plugin_root: Path) -> dict:
     _git(wt, "add", "kept.txt")
     (wt / "shared.txt").write_text("one\nWORKTREE\nthree\n", encoding="utf-8")
     _commit(main, "shared.txt", "one\nTARGET\nthree\n")
+    head = _git(main, "rev-parse", "HEAD")
     script = plugin_root / "skills" / "a-w" / "commands" / "attach_worktree.py"
     done = subprocess.run([sys.executable, str(script), "feature", "--worktree", str(wt)],
                           capture_output=True, text=True, cwd=main, env={**os.environ, **_GIT_ENV})
-    return {"main": main, "wt": wt, "done": done}
+    return {"main": main, "wt": wt, "head": head, "done": done}
 
 
 def test_a_conflict_leaves_the_worktree_index_as_it_was(conflicted: dict) -> None:
@@ -55,15 +58,16 @@ def test_a_conflict_leaves_the_worktree_index_as_it_was(conflicted: dict) -> Non
     assert _git(wt, "diff", "--name-only").splitlines() == ["shared.txt"]
 
 
-def test_the_conflict_error_names_the_finish_and_undo_commands(conflicted: dict) -> None:
-    stderr = conflicted["done"].stderr
-    assert "shared.txt" in stderr
-    assert f"git worktree remove --force {conflicted['wt'].resolve().as_posix()}" in stderr
-    assert f"git -C {conflicted['main'].resolve().as_posix()} reset --hard" in stderr
-
-
-def test_the_named_undo_restores_a_clean_target(conflicted: dict) -> None:
+def test_a_conflict_leaves_the_target_checkout_untouched(conflicted: dict) -> None:
     main = conflicted["main"]
-    _git(main, "reset", "-q", "--hard")
+    assert conflicted["done"].returncode == 1
     assert _git(main, "status", "--porcelain") == ""
+    assert _git(main, "rev-parse", "HEAD") == conflicted["head"]
+    assert "<<<<<<<" not in (main / "shared.txt").read_text(encoding="utf-8")
+
+
+def test_the_refusal_names_the_path_and_asks_for_a_commit_in_the_worktree(conflicted: dict) -> None:
+    stderr = conflicted["done"].stderr
+    assert "shared.txt" in stderr and "commit" in stderr
+    assert "reset --hard" not in stderr
     assert conflicted["wt"].exists()

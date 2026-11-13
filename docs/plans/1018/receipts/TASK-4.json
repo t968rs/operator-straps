@@ -1,0 +1,29 @@
+{
+  "plan_id": "1018",
+  "item": "TASK-4",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "a8732037be03a260fc528bda1b8bdd75896c8f07"
+    },
+    "tests": {
+      "nodes": [
+        "tests/skills/test_attach_worktree_docs.py::test_the_history_rule_names_the_attach_exception",
+        "tests/skills/test_attach_worktree_docs.py::test_the_a_w_skill_describes_the_resolution_loop",
+        "tests/skills/test_attach_worktree_docs.py::test_the_a_w_argument_hint_lists_the_new_flags",
+        "tests/skills/test_attach_worktree_docs.py::test_the_d_w_skill_no_longer_sends_a_conflict_to_the_target",
+        "tests/skills/test_attach_worktree_docs.py::test_the_readme_a_w_row_drops_the_clean_target_requirement"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/skills/test_attach_worktree_docs.py::test_the_history_rule_names_the_attach_exception tests/skills/test_attach_worktree_docs.py::test_the_a_w_skill_describes_the_resolution_loop tests/skills/test_attach_worktree_docs.py::test_the_a_w_argument_hint_lists_the_new_flags tests/skills/test_attach_worktree_docs.py::test_the_d_w_skill_no_longer_sends_a_conflict_to_the_target tests/skills/test_attach_worktree_docs.py::test_the_readme_a_w_row_drops_the_clean_target_requirement"
+    }
+  },
+  "evidence": "staged tree a873203: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-13",
+  "seal": "6ebcd7ef0c53bbd92a263324c116752d8e03a5c608d6745fbe4d2ceb1ce1a9f9"
+}

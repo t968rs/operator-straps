@@ -1,8 +1,8 @@
 # Harness rules
 
 Project-independent working rules from the `harness` plugin. Every path named below as a config key resolves
-against the project's `.claude/harness.json` (merged over the plugin defaults); the project's own CLAUDE.md wins
-wherever it is more specific.
+against the project's `.claude/harness.json` (merged over the plugin defaults); the project's own CLAUDE.md
+wins wherever it is more specific.
 
 ## Bash discipline
 
@@ -20,10 +20,14 @@ wherever it is more specific.
   target branch unless the current user message asks for exactly that.
 - **Worktree exception:** commits inside a dedicated worktree are allowed. Only the main session moves a
   `harness:d-w` worktree back, with `harness:a-w`: staged and uncommitted by default, `--committed`
-  (fast-forwarding the target to the worktree's commits) only when the current user message asks for it. a-w
-  removes the worktree itself. Subagents never move or merge a worktree.
+  (fast-forwarding the target to the worktree's commits) only when the current user message asks for it.
+  Subagents never move or merge a worktree.
 - **History rewrites belong to the developer, everywhere:** no `rebase`, `cherry-pick`, `commit --amend`,
   `reset` to drop commits, or `push`. Recommend the operation instead; subagent prompts never contain one.
+  One exception: `attach_worktree.py` (`harness:a-w`) rebases and squashes the `d-w` worktree's commits and
+  resets it to its original HEAD on `--abort`, a failed start or ambiguous rules at a rebase stop. At exit 2
+  the agent resolves files there and reruns with `--continue` or `--abort`, never running a rewrite or
+  `merge` itself.
 - Commit messages only on explicit ask (`harness:c-msg`, `harness:branch-commit-msg`, or in words). A finished
   unit of work otherwise ends with the list of changed files.
 - `harness:amend-commit-msg` rewrites only the drafted commit-message TXT file; it never runs `git commit --amend`.
@@ -39,12 +43,12 @@ wherever it is more specific.
 
 ### Pre-merge recommendation
 
-At PR creation, after review fixes, and on any "ready to merge?" prompt, recommend ONE strategy tied to the
-branch's actual commit history, with a one-sentence rationale:
+At PR creation, after review fixes and on any "ready to merge?" prompt, recommend ONE strategy for the
+branch's commit history, with a one-sentence rationale:
 
 - **Squash-merge**: exploratory or WIP commits; the PR is one logical unit.
-- **Merge as-is**: every commit is bisect-friendly and the narrative adds value.
-- **Restructure** (`rebase -i` / `reset`, run by the developer): right content, wrong shape; say what to fold,
+- **Merge as-is**: every commit is bisect-friendly and tells the story.
+- **Restructure** (`rebase -i` / `reset`, by the developer): right content, wrong shape; say what to fold,
   drop or reorder.
 
 ## Branch and worktree flow
@@ -58,11 +62,11 @@ branch's actual commit history, with a one-sentence rationale:
 - Never branch from an integration branch unless told to; the working branch descends from the validated base.
 - First status update names the lineage: `[base]-->[parent]-->[child]`.
 - **Session end:** report **Branch**, **What was done**, **What's left to do**, **Issues or questions**.
-- **Worktrees** live outside the project directory (an IDE indexing the workspace holds file locks on Windows).
+- **Worktrees** live outside the project directory (an IDE indexing it holds file locks on Windows).
   `harness:d-w` creates a detached worktree and prints its path. Work there with absolute paths only, commit
-  coherent slices, and stage results onto the target branch only after validation and review, once the target
-  branch is confirmed checked out: `harness:a-w <target>` stages them (or, on the developer's explicit ask,
-  `--committed` fast-forwards the commits) and drops the worktree.
+  coherent slices, and stage results onto the target branch only after validation and review, once it is
+  confirmed checked out: `harness:a-w <target>` stages them (or, on the developer's explicit ask, `--committed`
+  fast-forwards the commits) and drops the worktree.
 
 ## Agent accountability
 
@@ -83,19 +87,18 @@ the configured `schemas_dir`. Work that is not tracked explicitly is work going 
   a plan frozen before receipts), never compared with HEAD.
 - **File touch list:** before changing code, list the files to touch with a rationale mapped to plan items.
 - **Refactoring preservation:** ordered structures stay ordered, validation stays validated, indices stay
-  indexed. Audit what the original did beyond the obvious before simplifying.
+  indexed. Audit what the original did beyond the obvious first.
 
 ## Verification
 
 - Evidence before assertions: run the command that proves a claim and read its output before stating it.
-  State ambiguity plainly instead of letting an assumption stand. This applies to docs, code comments and chat.
-- After `Write` creates or fully rewrites a file, confirm it landed (a `Read` of the path, or a size and
-  head/tail check) before calling it saved.
-- **Test runs name files or node ids, never a directory.** A directory is not "scoped" because it is smaller
-  than the whole suite. This binds subagent prompts too: every test command in a prompt names its files and the
-  claim each proves. Prefer one agent owning a guard run over many re-running it.
-- Full-suite runs belong to the developer. When correctness genuinely depends on one, say so and hand it over.
-- Memory and earlier notes are point-in-time observations; re-check them against the current code first.
+  State ambiguity plainly; this covers docs, code comments and chat.
+- After `Write` creates or fully rewrites a file, confirm it landed (`Read` it, or check size and
+  head/tail) before calling it saved.
+- **Test runs name files or node ids, never a directory.** This binds subagent prompts too: each test command
+  names its files and the claim each proves. Prefer one agent owning a guard run over many re-running it.
+- Full-suite runs belong to the developer; when correctness depends on one, say so and hand it over.
+- Memory and earlier notes are point-in-time; re-check them against the current code.
 
 ## Skill invocation at development stages
 
@@ -105,8 +108,8 @@ Skills outside this plugin apply when installed.
 - **Troubleshooting:** systematic debugging (`superpowers-lt:systematic-debugging`, else the bundled
   `harness:strap-debugging`); finish the diagnosis before proposing a fix.
 - **Creating plans:** a written plan for any multi-task work.
-- **Parallel subagent dispatch:** `harness:parallel2` first (vets the dispatch plan, prevents overlapping file
-  sets), then dispatch.
+- **Parallel subagent dispatch:** `harness:parallel2` first (vets the dispatch plan, prevents overlapping
+  file sets), then dispatch.
 - **Making claims:** verification before completion; non-negotiable.
 - **Reviewing code:** `harness:pr-review` (single session) or `harness:pr-team` (parallel fan-out for PRs
   spanning several path buckets). Execute every phase of the chosen skill before stopping.
@@ -117,11 +120,11 @@ Skills outside this plugin apply when installed.
 - Planning documents live under the configured `artifacts.planning_prefixes`; research notes under
   `artifacts.research`.
 - Spec or plan changes that alter the design go to `<artifacts.plans>/NNNN/DesignEvolution.json` through
-  `evolution_api`, conforming to `catalogs/DesignEvolutionCatalog.schema.json` (resolved through the pinned
-  schemas first, then the plugin's); a receipt that differs from its item cites one of those changes. Lint,
-  guard, helper-extraction and rename changes stay out. `evolution_api` resolves the plan first, so a change
-  found before the plan exists is entered (phase `spec-review`) once `plan.py new` has run. A design change
-  the developer asks for after the freeze is entered too, alongside its `write` and `freeze --refreeze`.
+  `evolution_api`, conforming to `catalogs/DesignEvolutionCatalog.schema.json` (pinned schemas first, then
+  the plugin's); a receipt that differs from its item cites one of those changes. Lint, guard,
+  helper-extraction and rename changes stay out. `evolution_api` resolves the plan first, so a change found
+  before the plan exists is entered (phase `spec-review`) once `plan.py new` has run. A design change the
+  developer asks for after the freeze is entered too, alongside its `write` and `freeze --refreeze`.
 
 ## Writing conventions
 

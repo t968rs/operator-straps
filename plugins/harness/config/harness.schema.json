@@ -124,6 +124,25 @@
     "worktree_root": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}], "description": "Directory linked worktrees are created under; a leading ~ expands and {repo} is the main checkout's folder name. null: ~/.config/harness/worktrees/{repo}."},
     "worktree_setup": {"$ref": "#/$defs/argvList", "description": "Commands d-w runs, in order, in each new worktree (dependency install). Each command is an argv array, run without a shell and with stdin closed; a bare program is looked up on PATH (.cmd shims included on Windows), a relative program path resolves against the new worktree. Each step is killed with its process tree after 600 s; the first failure stops the list. A failure is reported, never fatal."},
     "worktree_baseline": {"$ref": "#/$defs/argvList", "description": "Commands d-w runs after worktree_setup succeeds, to record the test state before any change (name test files, never a directory). Runs like worktree_setup (PATH lookup, stdin closed, 600 s per-step kill). A failure is reported, never fatal. The first failure stops the list; each later command is reported as baseline [skipped]."},
+    "attach": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "auto_resolve": {
+          "type": "array",
+          "description": "Rules a-w applies to a path that conflicts when the worktree's changes move onto the target branch. pattern is an fnmatch glob over the repo-relative POSIX path (case-sensitive); in_favor_of names the side whose whole file wins, a deletion included. Two rules naming different sides for one path refuse as ambiguous. a-w reads this list from the target checkout's harness.json, or, when the target checkout has none, the main checkout's, together with --auto-resolve flags. In staged mode a rule also settles a dirty-path overlap in the target: a worktree rule overwrites the dirty target copy after a backup, and a branch rule keeps it and drops the worktree's change to that path.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pattern", "in_favor_of"],
+            "properties": {
+              "pattern": {"type": "string", "minLength": 1},
+              "in_favor_of": {"enum": ["worktree", "branch"]}
+            }
+          }
+        }
+      }
+    },
     "runlogs": {
       "type": "object",
       "additionalProperties": false,
