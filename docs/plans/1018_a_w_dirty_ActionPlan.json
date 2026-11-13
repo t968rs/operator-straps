@@ -3,7 +3,7 @@
   "plan_created": "2026-11-12",
   "source_document": "docs/superpowers/specs/2026-11-12-a-w-dirty-target-design.md",
   "documentation": "docs/plans/1018_a_w_dirty_PIP.html",
-  "branch": null,
+  "branch": "1157-a-w-committed",
   "base_branch": "main",
   "execution_model": "serial",
   "items": [
@@ -95,11 +95,12 @@
     {
       "id": "TASK-2",
       "title": "Staged attach onto a dirty target: overlap, backup, trial merge, rules, exact land",
-      "action": "Copy the planned files first: docs/plans/1018/tests/tests/skills/test_attach_worktree_dirty.py, test_attach_worktree_index.py and test_attach_worktree_script.py to tests/skills/ (the last two replace the current files; the script file only drops three tests whose behavior changes). Spec items 2-6, 8 and 9 for staged mode (D3 split): a) attach_worktree.py inserts Path(__file__).resolve().parents[3] / 'lib' on sys.path (as d-w/commands/new_worktree.py:36 does), imports its sibling attach_merge by plain import, and calls activate(load_config(project_root(target))) once (D2). b) check_git_version(version_output: str) -> None raises AttachError naming git 2.40 below 2.40; attach() calls it on `git --version` before any other step. c) Rules: AutoResolve from harness_lib.config; repeatable --auto-resolve PATTERN=SIDE (argparse append; a value without '=' or a side other than worktree/branch is a usage error); rules = config rules then flag rules; matching with fnmatch.fnmatchcase (D6); a path two rules give different sides raises AttachError naming the path and the word ambiguous. d) Snapshot: target_head and the dirty set from `status --porcelain=v1 -z --untracked-files=no` (both sides of a rename, staged and unstaged). e) Worktree commit: the scratch index (scratch_index, add -A), write-tree, commit-tree -p HEAD, never touching the worktree's index or refs; changed paths = diff --name-only --no-renames from patch_base() to that commit. f) Overlap: changed paths in the dirty set that no rule covers refuse, naming them; a path the move adds that is untracked in the target refuses, naming it with the word untracked. g) Backup: `git stash create` in the target (empty output = clean target, reported as such). h) Trial: merge-tree --write-tree --merge-base=<patch_base> <target_head> <worktree commit> (--name-only -z --no-messages, parsed per git-merge-tree(1)). Ruled conflicted paths take the chosen side's blob or deletion into the result tree through a temporary index (read-tree, update-index --cacheinfo / --force-remove, write-tree). Unruled conflicts left: refuse naming the paths and saying to commit the worktree's changes in the worktree first when the worktree is dirty; until TASK-3 lands, the clean-worktree case refuses the same way without the commit advice. i) Land: re-read target HEAD and dirty set (a change refuses: rerun); then `git apply --index` of `diff --binary --full-index <target_head> <final tree>` excluding every rule-governed dirty path (:(exclude,literal) pathspecs). Only after it succeeds, each worktree-ruled dirty path gets the final tree's blob written and staged (or is removed and unstaged when the final tree lacks it); a branch-ruled dirty path is left as it is. j) Report: staged N file(s) on <branch>, nothing committed; a line holding the word backup and the stash sha (or saying the target was clean); each overwritten dirty path; undo lines `git -C <target> restore --source=HEAD --staged --worktree -- <paths>` for the clean paths and, per overwritten path, `restore --source=<backup>^2 --staged -- <path>` then `restore --source=<backup> --worktree -- <path>`; `next: git diff --cached`. A path is quoted only when it holds whitespace. k) Remove tracked_changes, unmerged, conflict_message and the apply --3way path; the dirty-target refusal at attach() stays for --committed only until TASK-3. Every refusal changes nothing in the target. Functions under 50 lines; no first or second person in comments.",
+      "action": "Copy the planned files first: docs/plans/1018/tests/tests/skills/test_attach_worktree_dirty.py, test_attach_worktree_config_source.py, test_attach_worktree_index.py and test_attach_worktree_script.py to tests/skills/ (the last two replace the current files; the script file only drops three tests whose behavior changes). Spec items 2-6, 8 and 9 for staged mode (D3 split): a) attach_worktree.py inserts Path(__file__).resolve().parents[3] / 'lib' on sys.path (as d-w/commands/new_worktree.py:36 does), imports its sibling attach_merge by plain import, and calls activate(load_config(root)) once (D2), root being project_root(target) when that checkout holds .claude/harness.json and main_worktree(target) (harness_lib.project) otherwise, so a target branch checked out in a linked worktree still gets an untracked harness.json from the main checkout. b) check_git_version(version_output: str) -> None raises AttachError naming git 2.40 below 2.40; attach() calls it on `git --version` before any other step. c) Rules: AutoResolve from harness_lib.config; repeatable --auto-resolve PATTERN=SIDE (argparse append; a value without '=' or a side other than worktree/branch is a usage error); rules = config rules then flag rules; matching with fnmatch.fnmatchcase (D6); a path two rules give different sides raises AttachError naming the path and the word ambiguous. d) Snapshot: target_head and the dirty set from `status --porcelain=v1 -z --untracked-files=no` (both sides of a rename, staged and unstaged). e) Worktree commit: the scratch index (scratch_index, add -A), write-tree, commit-tree -p HEAD, never touching the worktree's index or refs; changed paths = diff --name-only --no-renames from patch_base() to that commit. f) Overlap: changed paths in the dirty set that no rule covers refuse, naming them (a rule of either side lifts a staged overlap: spec item 6 over item 3's text, DesignEvolution P2); a path the move adds that is untracked in the target refuses, naming it with the word untracked. g) Backup: taken in the land (i), right after the race check, never before the trial, so the sha a report prints always holds the dirty state that land overwrites (DesignEvolution P3). h) Trial: merge-tree --write-tree --merge-base=<patch_base> <target_head> <worktree commit> (--name-only -z --no-messages, parsed per git-merge-tree(1)). Ruled conflicted paths take the chosen side's blob or deletion into the result tree through a temporary index (read-tree, update-index --cacheinfo / --force-remove, write-tree). Unruled conflicts left: refuse naming the paths and saying to commit the worktree's changes in the worktree first when the worktree is dirty; until TASK-3 lands, the clean-worktree case refuses the same way without the commit advice. i) Land: re-read target HEAD and dirty set (a change refuses: rerun); then the backup, `git stash create` in the target (empty output = clean target, reported as such); then `git apply --index` of `diff --binary --full-index <target_head> <final tree>` excluding every rule-governed dirty path (:(exclude,literal) pathspecs). Only after it succeeds, each worktree-ruled dirty path gets the final tree's blob written and staged (or is removed and unstaged when the final tree lacks it); a branch-ruled dirty path is left as it is. j) Report: staged N file(s) on <branch>, nothing committed; a line holding the word backup and the stash sha (or saying the target was clean); each overwritten dirty path; undo lines `git -C <target> restore --source=HEAD --staged --worktree -- <paths>` for the clean paths and, per overwritten path, `restore --source=<backup>^2 --staged -- <path>` then `restore --source=<backup> --worktree -- <path>`; `next: git diff --cached`. A path is quoted only when it holds whitespace. k) Remove tracked_changes, unmerged, conflict_message and the apply --3way path; the dirty-target refusal at attach() stays for --committed only until TASK-3. Every refusal changes nothing in the target. Functions under 50 lines; no first or second person in comments.",
       "files": [
         "plugins/harness/skills/a-w/commands/attach_worktree.py",
         "plugins/harness/skills/a-w/commands/attach_merge.py",
         "tests/skills/test_attach_worktree_dirty.py",
+        "tests/skills/test_attach_worktree_config_source.py",
         "tests/skills/test_attach_worktree_index.py",
         "tests/skills/test_attach_worktree_script.py"
       ],
@@ -153,7 +154,7 @@
       ],
       "commands": [
         {
-          "run": "python -m pytest tests/skills/test_attach_worktree_script.py tests/skills/test_attach_worktree_index.py tests/contract/test_root_separation.py -q",
+          "run": "python -m pytest tests/skills/test_attach_worktree_script.py tests/skills/test_attach_worktree_index.py tests/skills/test_attach_worktree_config_source.py tests/contract/test_root_separation.py -q",
           "expect": "no failures"
         }
       ],
@@ -211,6 +212,10 @@
           "red": "AttributeError"
         },
         {
+          "node": "tests/skills/test_attach_worktree_config_source.py::test_untracked_main_checkout_rules_apply_to_a_target_in_a_linked_worktree",
+          "red": "AssertionError"
+        },
+        {
           "node": "tests/skills/test_attach_worktree_index.py::test_a_conflict_leaves_the_target_checkout_untouched",
           "red": "AssertionError"
         },
@@ -223,12 +228,13 @@
     {
       "id": "TASK-3",
       "title": "Resolution in the worktree: rebase loop, exit 2, --continue/--abort, --committed rebase",
-      "action": "Copy docs/plans/1018/tests/tests/skills/test_attach_worktree_resolve.py to tests/skills/ first. Spec items 5 (committed routing), 6 (committed overlap), 7, 8 and the Interface: a) attach_resolve.py owns the state file `git rev-parse --git-path harness-attach.json` resolved in the worktree: JSON with target_branch, target_checkout, mode (staged|committed), target_head, original_head, patch_base, rules. Written before the rebase starts; removed once the land succeeds or --abort runs. A plain run while it exists refuses naming --continue and --abort. b) Resolution needs a clean worktree (status --porcelain, untracked included): otherwise refuse, naming the conflicted paths and saying to commit in the worktree first. Staged mode builds one squash commit (commit-tree HEAD^{tree} -p <patch_base>) and runs `rebase --onto <target_head> <patch_base> <squash>`; --committed runs `rebase --onto <target_head> <patch_base>` with no squash. Every rebase step runs with GIT_EDITOR=true. c) At each stop: conflicted paths from `diff --name-only --diff-filter=U -z`; a ruled path takes stage 3 (the replayed worktree commit) for worktree or stage 2 (the target side) for branch, a side without the path becoming git rm; then git add. An ambiguous rule mid-rebase aborts the rebase, resets to original_head, removes the state and refuses. Nothing unruled left: rebase --continue and loop. Otherwise write the state, print the paths, the worktree path and the --continue / --abort commands to stdout, exit 2 (a StopForResolution exception main() maps to 2). d) --continue and --abort (mutually exclusive) read the state and take no TARGET; a TARGET, --committed or --auto-resolve that differs from the state refuses and keeps the state. --continue with a rebase in progress: unmerged paths left stop again with exit 2; else continue the loop, then race check and land (TASK-2 land for staged, the final tree being HEAD^{tree}; merge --ff-only for --committed). A race refusal keeps the state and the resolved commits and names --continue. --continue with no rebase in progress (D4): patch_base := the state's target_head, then rerun the flow from the snapshot against the current target HEAD (another stop is possible), updating the state. --abort: rebase --abort when in progress, reset --hard to original_head (exact: the worktree was clean), remove the state, report the worktree's HEAD, exit 0 (D5). e) --committed: drop both refusals (target moved, cut not in the target); keep the uncommitted and no-commits refusals. A dirty overlap always refuses, rules or not. When target_head is the merge base and the cut (if any) is in target_head, fast-forward as today; otherwise run the trial first (ambiguity refuses before the worktree is touched), then the rebase. Land: race check, then merge --ff-only; report the commit count, the backup and `undo: git -C <target> reset --keep <target_head>`. f) Rewrite the module docstring: the interface line with --auto-resolve, --continue and --abort, exit codes 0/1/2, the dirty-target rule, no conflict markers in the target. Functions under 50 lines.",
+      "action": "Copy docs/plans/1018/tests/tests/skills/test_attach_worktree_resolve.py and test_attach_worktree_continue_backup.py to tests/skills/ first. Spec items 5 (committed routing), 6 (committed overlap), 7, 8 and the Interface: a) attach_resolve.py owns the state file `git rev-parse --git-path harness-attach.json` resolved in the worktree: JSON with target_branch, target_checkout, mode (staged|committed), target_head, original_head, patch_base, rules. Written before the rebase starts; removed once the land succeeds or --abort runs. A plain run while it exists refuses naming --continue and --abort. b) Resolution needs a clean worktree (status --porcelain, untracked included): otherwise refuse, naming the conflicted paths and saying to commit in the worktree first. Staged mode builds one squash commit (commit-tree HEAD^{tree} -p <patch_base>) and runs `rebase --onto <target_head> <patch_base> <squash>`; --committed runs `rebase --onto <target_head> <patch_base>` with no squash. Every rebase step runs with GIT_EDITOR=true. c) At each stop: conflicted paths from `diff --name-only --diff-filter=U -z`; a ruled path takes stage 3 (the replayed worktree commit) for worktree or stage 2 (the target side) for branch, a side without the path becoming git rm; then git add. An ambiguous rule mid-rebase aborts the rebase, resets to original_head, removes the state and refuses. Nothing unruled left: rebase --continue and loop. Otherwise write the state, print the paths, the worktree path and the --continue / --abort commands to stdout, exit 2 (a StopForResolution exception main() maps to 2). d) --continue and --abort (mutually exclusive) read the state and take no TARGET; a TARGET, --committed or --auto-resolve that differs from the state refuses and keeps the state. --continue with a rebase in progress: unmerged paths left stop again with exit 2; else continue the loop, then race check and land (TASK-2 land for staged, the final tree being HEAD^{tree}; merge --ff-only for --committed). Every land path (the first run, --continue with or without a rebase in progress, the D4 restart) runs `git stash create` in the target right after its race check and before the apply or merge, and prints that sha in the report and the undo lines; the state file holds no backup, so no report reuses a sha an earlier run took. A race refusal keeps the state and the resolved commits and names --continue. --continue with no rebase in progress (D4): patch_base := the state's target_head, then rerun the flow from the snapshot against the current target HEAD (another stop is possible), updating the state. --abort: rebase --abort when in progress, reset --hard to original_head (exact: the worktree was clean), remove the state, report the worktree's HEAD, exit 0 (D5). e) --committed: drop both refusals (target moved, cut not in the target); keep the uncommitted and no-commits refusals. A dirty overlap always refuses, rules or not. When target_head is the merge base and the cut (if any) is in target_head, fast-forward as today; otherwise run the trial first (ambiguity refuses before the worktree is touched), then the rebase. Land: race check, then the backup (`git stash create`), then merge --ff-only; report the commit count, the backup and `undo: git -C <target> reset --keep <target_head>`. f) Rewrite the module docstring: the interface line with --auto-resolve, --continue and --abort, exit codes 0/1/2, the dirty-target rule, no conflict markers in the target. Functions under 50 lines.",
       "files": [
         "plugins/harness/skills/a-w/commands/attach_worktree.py",
         "plugins/harness/skills/a-w/commands/attach_merge.py",
         "plugins/harness/skills/a-w/commands/attach_resolve.py",
-        "tests/skills/test_attach_worktree_resolve.py"
+        "tests/skills/test_attach_worktree_resolve.py",
+        "tests/skills/test_attach_worktree_continue_backup.py"
       ],
       "dependencies": [
         "TASK-2"
@@ -324,6 +330,10 @@
         {
           "node": "tests/skills/test_attach_worktree_resolve.py::test_the_module_docstring_names_the_new_interface",
           "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_attach_worktree_continue_backup.py::test_continue_backs_up_a_ruled_dirty_path_edited_during_the_stop",
+          "red": "AssertionError"
         }
       ]
     },
@@ -397,7 +407,7 @@
     {
       "id": "TASK-5",
       "title": "harness 0.72.0 and the v1.0.0 release notes",
-      "action": "a) plugin.json: version 0.71.0 -> 0.72.0 (minor: new behavior and a new config key). b) docs/RELEASES/v1.0.0.md (the proposed release; latest tag v0.7.0): harness row now 0.65.1 -> 0.72.0; one Changes line: Feat(a-w) attach onto a dirty target (issue #161): overlap check, backup sha, in-memory trial merge, attach.auto_resolve and --auto-resolve rules, resolution in the worktree with exit 2, --continue and --abort, --committed rebasing onto a moved target, and the HARNESS_RULES exception for that rebase. No other row changes.",
+      "action": "a) plugin.json: version 0.71.x -> 0.72.0 (minor: new behavior and a new config key). b) docs/RELEASES/v1.0.0.md (the proposed release; latest tag v0.7.0): harness row now 0.65.1 -> 0.72.0; one Changes line: Feat(a-w) attach onto a dirty target (issue #161): overlap check, backup sha, in-memory trial merge, attach.auto_resolve and --auto-resolve rules, resolution in the worktree with exit 2, --continue and --abort, --committed rebasing onto a moved target, and the HARNESS_RULES exception for that rebase. No other row changes.",
       "files": [
         "plugins/harness/.claude-plugin/plugin.json",
         "docs/RELEASES/v1.0.0.md"
@@ -414,11 +424,11 @@
       "anchors": [
         {
           "at": "plugins/harness/.claude-plugin/plugin.json:3-3",
-          "expect": "\"version\": \"0.71.0\","
+          "expect": "\"version\": \"0.71."
         },
         {
           "at": "docs/RELEASES/v1.0.0.md:28-28",
-          "expect": "| harness | 0.65.1 | 0.71.0 |"
+          "expect": "| harness | 0.65.1 | 0.71."
         }
       ],
       "commands": [
@@ -457,7 +467,7 @@
       "options": [
         {
           "id": "target",
-          "summary": "load_config(project_root(target checkout))"
+          "summary": "load_config(project_root(target checkout)) when that checkout holds .claude/harness.json, else load_config(main_worktree(target checkout))"
         },
         {
           "id": "worktree",
@@ -465,7 +475,7 @@
         }
       ],
       "chosen": "target",
-      "rationale": "The rules govern what lands on the target branch, and the target checkout is the project the developer configures; an untracked harness.json never reaches a worktree."
+      "rationale": "The rules govern what lands on the target branch, and the target checkout is the project the developer configures; an untracked harness.json never reaches a worktree. A target branch checked out in a linked worktree (a collector) lacks that untracked file too, so the main checkout supplies it there; a tracked harness.json is present in every checkout, so the target's own copy wins. test_untracked_main_checkout_rules_apply_to_a_target_in_a_linked_worktree pins it."
     },
     {
       "id": "D3",
@@ -555,7 +565,7 @@
     },
     {
       "name": "harness version",
-      "value": "0.71.0 -> 0.72.0",
+      "value": "0.71.x -> 0.72.0",
       "source": "plugins/harness/.claude-plugin/plugin.json:3; minor bump per CLAUDE.md Releases"
     },
     {
