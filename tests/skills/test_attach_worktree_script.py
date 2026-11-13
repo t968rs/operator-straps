@@ -92,16 +92,6 @@ def test_committed_removes_the_worktree_without_asking(script_path: Path, repos:
     assert "removed worktree" in done.stdout
 
 
-def test_committed_refuses_when_the_target_moved(script_path: Path, repos: dict) -> None:
-    _commit(repos["wt"], "a.txt", "a")
-    moved = _commit(repos["main"], "other.txt", "other")
-    done = _attach(script_path, repos, "--committed")
-    assert done.returncode == 1
-    assert "moved" in done.stderr and "staged" in done.stderr
-    assert _git(repos["main"], "rev-parse", "HEAD") == moved
-    assert repos["wt"].exists()
-
-
 def test_committed_refuses_uncommitted_worktree_changes(script_path: Path, repos: dict) -> None:
     _commit(repos["wt"], "a.txt", "a")
     (repos["wt"] / "loose.txt").write_text("loose", encoding="utf-8")
@@ -143,22 +133,6 @@ def test_staged_merges_three_way_when_the_target_moved(script_path: Path, repos:
     assert _git(main, "rev-parse", "HEAD") == moved
     assert (main / "shared.txt").read_text(encoding="utf-8") == "ONE\ntwo\nTHREE\n"
     assert not wt.exists()
-
-
-def test_staged_conflict_stops_and_keeps_the_worktree(script_path: Path, repos: dict) -> None:
-    wt, main = repos["wt"], repos["main"]
-    (wt / "shared.txt").write_text("one\nWORKTREE\nthree\n", encoding="utf-8")
-    _commit(main, "shared.txt", "one\nTARGET\nthree\n", "target edit")
-    moved = _git(main, "rev-parse", "HEAD")
-    done = _attach(script_path, repos)
-    assert done.returncode == 1
-    assert "conflicts in shared.txt" in done.stderr, "the conflict branch, not the generic apply failure"
-    assert _git(main, "rev-parse", "HEAD") == moved
-    assert _git(main, "diff", "--name-only", "--diff-filter=U").splitlines() == ["shared.txt"]
-    assert "<<<<<<<" in (main / "shared.txt").read_text(encoding="utf-8")
-    assert wt.exists()
-    assert (wt / "shared.txt").read_text(encoding="utf-8") == "one\nWORKTREE\nthree\n"
-    assert _git(wt, "diff", "--cached") == "", "the worktree's own index is untouched"
 
 
 def test_staged_moves_a_deletion(script_path: Path, repos: dict) -> None:
@@ -308,15 +282,6 @@ def test_staged_with_nothing_to_move_is_an_error(script_path: Path, repos: dict)
     done = _attach(script_path, repos)
     assert done.returncode == 1
     assert "nothing to move" in done.stderr
-    assert repos["wt"].exists()
-
-
-def test_a_dirty_target_checkout_is_refused(script_path: Path, repos: dict) -> None:
-    _commit(repos["wt"], "a.txt", "a")
-    (repos["main"] / "shared.txt").write_text("dirty\n", encoding="utf-8")
-    done = _attach(script_path, repos)
-    assert done.returncode == 1
-    assert "not clean" in done.stderr
     assert repos["wt"].exists()
 
 

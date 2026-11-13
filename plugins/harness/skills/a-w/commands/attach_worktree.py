@@ -26,16 +26,21 @@ from __future__ import annotations
 
 import argparse
 import os
-import shutil
+import re
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
-from typing import Dict, List, NamedTuple, Optional, Tuple
+from typing import List, NamedTuple, Optional, Sequence, Tuple
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "lib"))
 
-class AttachError(RuntimeError):
-    """A precondition or git step failed; the worktree is left in place."""
+import attach_merge as merge  # noqa: E402
+from attach_merge import SIDES, AttachError, git, run_git, show_path  # noqa: E402
+from harness_lib.config import (  # noqa: E402
+    CONFIG_REL, AutoResolve, ConfigError, activate, active, load_config)
+from harness_lib.project import main_worktree, project_root  # noqa: E402
+
+MIN_GIT = (2, 40)
 
 
 class Checkout(NamedTuple):
@@ -43,24 +48,42 @@ class Checkout(NamedTuple):
     branch: Optional[str]
 
 
-def run_git(repo: Path, *args: str, stdin: Optional[bytes] = None,
-            env: Optional[Dict[str, str]] = None) -> subprocess.CompletedProcess:
-    """Run git in ``repo`` and return the completed process with bytes output."""
-    return subprocess.run(["git", "-C", str(repo), *args], input=stdin, capture_output=True, env=env)
+def check_git_version(version_output: str) -> None:
+    """Refuse a git older than 2.40, which lacks ``merge-tree --write-tree --merge-base``."""
+    found = re.search(r"(\d+)\.(\d+)", version_output)
+    if found is None or (int(found.group(1)), int(found.group(2))) < MIN_GIT:
+        shown = version_output.strip() or "no version reported"
+        raise AttachError(f"a-w needs git 2.40 or later for git merge-tree --write-tree --merge-base; "
+                          f"found {shown}")
 
 
-def git_bytes(repo: Path, *args: str, env: Optional[Dict[str, str]] = None) -> bytes:
-    """Raw stdout of a git command; raises ``AttachError`` on a non-zero exit."""
-    done = run_git(repo, *args, env=env)
-    if done.returncode != 0:
-        detail = done.stderr.decode("utf-8", errors="replace").strip()
-        raise AttachError(detail or f"git {' '.join(args)} failed")
-    return done.stdout
+def git_version() -> str:
+    """The output of ``git --version``."""
+    done = subprocess.run(["git", "--version"], capture_output=True)
+    return done.stdout.decode("utf-8", errors="replace")
 
 
-def git(repo: Path, *args: str, env: Optional[Dict[str, str]] = None) -> str:
-    """Stripped stdout of a git command; raises ``AttachError`` on a non-zero exit."""
-    return git_bytes(repo, *args, env=env).decode("utf-8", errors="replace").strip()
+def config_root(target: Path) -> Path:
+    """The checkout whose ``.claude/harness.json`` supplies the rules: the target's, else the main one."""
+    root = project_root(target)
+    return root if (root / CONFIG_REL).is_file() else main_worktree(target)
+
+
+def load_rules(target: Path, flags: Sequence[AutoResolve]) -> Tuple[AutoResolve, ...]:
+    """The project's ``attach.auto_resolve`` rules, then the ``--auto-resolve`` flags."""
+    try:
+        activate(load_config(config_root(target)))
+    except ConfigError as exc:
+        raise AttachError(f"harness config: {exc}") from exc
+    return (*active().attach.auto_resolve, *flags)
+
+
+def parse_rule(value: str) -> AutoResolve:
+    """One ``--auto-resolve PATTERN=SIDE`` value; argparse turns a bad one into a usage error."""
+    pattern, sep, side = value.rpartition("=")
+    if not sep or not pattern or side not in SIDES:
+        raise argparse.ArgumentTypeError(f"expected PATTERN=SIDE with SIDE worktree or branch, got {value!r}")
+    return AutoResolve(pattern, side)
 
 
 def checkouts(repo: Path) -> List[Checkout]:
@@ -101,10 +124,6 @@ def target_checkout(entries: List[Checkout], branch: str, worktree: Path) -> Pat
                       "checkout first")
 
 
-def tracked_changes(repo: Path) -> bool:
-    return bool(git(repo, "status", "--porcelain", "--untracked-files=no"))
-
-
 def move_committed(worktree: Path, target: Path, branch: str) -> List[str]:
     """Fast-forward ``target`` to the worktree's commits; return the report lines."""
     if git(worktree, "status", "--porcelain"):
@@ -125,45 +144,6 @@ def move_committed(worktree: Path, target: Path, branch: str) -> List[str]:
                           "fast-forward; run without --committed to get them staged three-way")
     git(target, "merge", "--ff-only", head)
     return [f"attached {count} commit(s) to {branch} at {head[:7]}"]
-
-
-def scratch_index(worktree: Path, scratch: Path) -> Dict[str, str]:
-    """A git environment whose index is a copy of the worktree's, so staging never touches the real one."""
-    real = worktree / git(worktree, "rev-parse", "--git-path", "index")
-    copy = scratch / "index"
-    env = {**os.environ, "GIT_INDEX_FILE": str(copy)}
-    if real.is_file():
-        shutil.copy2(real, copy)  # the kept mtime lets git still content-check racily clean entries
-    else:
-        git(worktree, "read-tree", "HEAD", env=env)
-    return env
-
-
-def worktree_patch(worktree: Path, base: str) -> Tuple[bytes, int]:
-    """The diff from ``base`` to the worktree's files, new ones included, and the changed file count.
-
-    Staging runs against a throwaway copy of the index, so the worktree's own staged/unstaged split survives.
-    """
-    with tempfile.TemporaryDirectory() as scratch:
-        env = scratch_index(worktree, Path(scratch))
-        git(worktree, "add", "-A", env=env)
-        names = git(worktree, "diff", "--cached", "--name-only", base, env=env).splitlines()
-        patch = git_bytes(worktree, "diff", "--cached", "--binary", "--full-index", "-M", base, env=env)
-    return patch, len(names)
-
-
-def unmerged(target: Path) -> List[str]:
-    listing = git(target, "diff", "--name-only", "--diff-filter=U", "-z")
-    return [path for path in listing.split("\0") if path]
-
-
-def conflict_message(conflicts: List[str], worktree: Path, target: Path) -> str:
-    """The conflict report: what is left where, and the commands that finish or undo the move."""
-    return (f"three-way merge left conflicts in {', '.join(conflicts)}; the markers and the rest of the "
-            f"patch are staged in {target.as_posix()} and the worktree is kept at {worktree.as_posix()}. "
-            f"To finish, resolve the markers, then run git worktree remove --force {worktree.as_posix()}. "
-            f"To undo, run git -C {target.as_posix()} reset --hard (the target had no tracked changes "
-            "before the move)")
 
 
 def is_ancestor(repo: Path, older: str, newer: str) -> bool:
@@ -217,18 +197,45 @@ def patch_base(worktree: Path, target: Path) -> str:
     return shared
 
 
-def move_staged(worktree: Path, target: Path, branch: str) -> List[str]:
-    """Apply the worktree's changes three-way onto ``target``'s index; return the report lines."""
-    patch, count = worktree_patch(worktree, patch_base(worktree, target))
-    if not patch.strip():
+def conflict_refusal(worktree: Path, conflicts: List[str]) -> str:
+    """The refusal for trial conflicts no rule settles; nothing moved in either checkout."""
+    names = ", ".join(map(show_path, conflicts))
+    if git(worktree, "status", "--porcelain"):
+        return (f"the trial merge left conflicts no rule settles in {names}; the worktree has uncommitted "
+                f"changes, so commit them in the worktree {worktree.as_posix()} first (commits there are "
+                "allowed), then rerun; nothing moved")
+    return (f"the trial merge left conflicts no rule settles in {names}; add an --auto-resolve rule for "
+            "them or settle them by hand, then rerun; nothing moved")
+
+
+def move_staged(worktree: Path, target: Path, branch: str, rules: Sequence[AutoResolve]) -> List[str]:
+    """Trial-merge the worktree's changes onto the target, then stage them there exactly; report lines."""
+    snap = merge.snapshot(target)
+    base = patch_base(worktree, target)
+    change = merge.worktree_change(worktree, base)
+    if not change.paths:
         raise AttachError("nothing to move: the worktree has no changes since it was cut")
-    done = run_git(target, "apply", "--3way", "--whitespace=nowarn", stdin=patch)
-    conflicts = unmerged(target)
-    if conflicts:
-        raise AttachError(conflict_message(conflicts, worktree, target))
-    if done.returncode != 0:
-        raise AttachError("git apply failed: " + done.stderr.decode("utf-8", errors="replace").strip())
-    return [f"staged {count} file(s) on {branch}, nothing committed", "next: git diff --cached"]
+    merge.rule_sides(change.paths, rules)
+    final = merge.final_tree(worktree, base, snap.head, change, rules)
+    if final.conflicts:
+        raise AttachError(conflict_refusal(worktree, final.conflicts))
+    written = merge.diff_paths(target, snap.head, final.tree)
+    touched = {**change.paths, **written}
+    sides = merge.rule_sides(touched, rules)
+    merge.check_overlap(target, touched, written, snap.dirty, sides)
+    merge.check_governed(target, final.tree, written, sorted(path for path in sides if path in snap.dirty))
+    return merge.land(target, branch, snap, final.tree, sides)
+
+
+def finish(lines: List[str], worktree: Path, main: Path) -> List[str]:
+    """The move's report plus the removal line; a failed removal still carries the report."""
+    try:
+        return [*lines, remove_worktree(worktree, main)]
+    except (AttachError, OSError) as exc:
+        message = str(exc)
+        if not isinstance(exc, AttachError):
+            message = f"the move succeeded but removing the worktree failed: {message}"
+        raise AttachError(message, report=lines) from exc
 
 
 def remove_worktree(worktree: Path, main: Path) -> str:
@@ -244,6 +251,7 @@ def remove_worktree(worktree: Path, main: Path) -> str:
 
 def attach(args: argparse.Namespace) -> List[str]:
     """Move the worktree's work onto the target branch, remove the worktree, return the report lines."""
+    check_git_version(git_version())
     worktree = worktree_path(args.worktree)
     entries = checkouts(worktree)
     main = entries[0].path
@@ -251,12 +259,13 @@ def attach(args: argparse.Namespace) -> List[str]:
         raise AttachError(f"{worktree.as_posix()} is the main checkout, not a linked worktree")
     branch = resolve_branch(entries, args.target)
     target = target_checkout(entries, branch, worktree)
-    if tracked_changes(target):
+    rules = load_rules(target, args.auto_resolve)
+    if not args.committed:
+        return finish(move_staged(worktree, target, branch, rules), worktree, main)
+    if merge.snapshot(target).dirty:
         raise AttachError(f"target checkout {target.as_posix()} is not clean: commit or stash its tracked "
-                          "changes first")
-    mover = move_committed if args.committed else move_staged
-    lines = mover(worktree, target, branch)
-    return [*lines, remove_worktree(worktree, main)]
+                          "changes first, or drop --committed to stage beside them")
+    return finish(move_committed(worktree, target, branch), worktree, main)
 
 
 def parse_args(argv: Optional[list]) -> argparse.Namespace:
@@ -268,6 +277,10 @@ def parse_args(argv: Optional[list]) -> argparse.Namespace:
     parser.add_argument("--worktree", type=Path, help="worktree to attach (default: the current directory)")
     parser.add_argument("--committed", action="store_true",
                         help="fast-forward the target to the worktree's commits instead of staging")
+    parser.add_argument("--auto-resolve", dest="auto_resolve", action="append", type=parse_rule, default=[],
+                        metavar="PATTERN=SIDE",
+                        help="settle a conflict on paths matching PATTERN with SIDE's whole file "
+                             "(worktree or branch); repeatable")
     args = parser.parse_args(argv)
     args.target = args.target_flag or args.target_positional
     if not args.target:
@@ -280,6 +293,8 @@ def main(argv: Optional[list] = None) -> int:
     try:
         lines = attach(args)
     except AttachError as exc:
+        if exc.report:
+            print("\n".join(exc.report))
         print(f"attach_worktree: {exc}", file=sys.stderr)
         return 1
     print("\n".join(lines))
