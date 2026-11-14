@@ -12,7 +12,7 @@ import re
 import shlex
 import subprocess
 from pathlib import Path
-from typing import Dict, Iterator, List, Optional, Sequence, Set, Tuple
+from typing import Dict, Iterator, List, Optional, Sequence, Set, Tuple, Union
 
 from harness_lib.plan_doc import planned_tests_dir
 from harness_lib.plan_models import ActionPlan, Anchor, Decision
@@ -239,9 +239,15 @@ def lint_problems(plan: ActionPlan, root: Path, plans_dir: Path) -> List[str]:
 
 # --- sweeps -----------------------------------------------------------------------------------------------
 
-def sweep_hits(root: Path, pattern: str, skip_prefix: str,
+def skip_prefixes(skip: Union[str, Sequence[str]]) -> Tuple[str, ...]:
+    """Each folder of ``skip`` (one folder, or several) as a ``/``-terminated prefix; empty ones dropped."""
+    folders = (skip,) if isinstance(skip, str) else tuple(skip)
+    return tuple(f.rstrip("/") + "/" for f in folders if f.rstrip("/"))
+
+
+def sweep_hits(root: Path, pattern: str, skip: Union[str, Sequence[str]],
                rev: Optional[str] = None) -> Tuple[Set[str], Optional[str]]:
-    """Files matching ``pattern``, minus ``skip_prefix``; or an error.
+    """Files matching ``pattern``, minus those under the ``skip`` folders; or an error.
 
     Without ``rev`` the working tree is searched (tracked or untracked, not ignored); with it, the commit.
     The tracked files get a scan of their own as well: ``--untracked`` honors the ignore rules on every
@@ -254,9 +260,28 @@ def sweep_hits(root: Path, pattern: str, skip_prefix: str,
         if error:
             return set(), error
         found |= paths
-    prefix, at = skip_prefix.rstrip("/") + "/", "" if rev is None else f"{rev}:"
+    prefixes, at = skip_prefixes(skip), "" if rev is None else f"{rev}:"
     paths = (p[len(at):] if p.startswith(at) else p for p in found)
-    return {p for p in paths if not p.startswith(prefix)}, None
+    return {p for p in paths if not p.startswith(prefixes)}, None
+
+
+def absent_paths(root: Path, paths: Set[str], rev: Optional[str] = None) -> Set[str]:
+    """The ``paths`` that do not exist in the working tree, or at ``rev`` when one is given.
+
+    A failed ``git cat-file`` reports none absent, so every path stays subject to the caller's check.
+    """
+    if not paths:
+        return set()
+    if rev is None:
+        return {p for p in paths if not (root / p).exists()}
+    ordered = sorted(paths)
+    query = "".join(f"{rev}:{p}\n" for p in ordered)
+    done = subprocess.run(["git", "cat-file", "--batch-check"], input=query, cwd=root,
+                          capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if done.returncode != 0:
+        return set()
+    lines = done.stdout.splitlines()
+    return {p for p, line in zip(ordered, lines) if line.endswith(" missing")}
 
 
 def _grep_files(root: Path, pattern: str, options: List[str],
@@ -285,23 +310,42 @@ def source_path(plan: ActionPlan, root: Path) -> Optional[str]:
         return None
 
 
-def sweep_problems(plan: ActionPlan, root: Path, plans_prefix: str, rev: Optional[str] = None) -> List[str]:
+def sweep_problems(plan: ActionPlan, root: Path, skip: Union[str, Sequence[str]],
+                   rev: Optional[str] = None) -> List[str]:
     """Hits the sweep does not classify, and classified files without a hit (in the tree, or at ``rev``).
 
-    The plan's own source document is skipped on both sides; the plans folder is already dropped from the
-    hits by sweep_hits. The document names the symbols the sweeps search for, and a spec committed on the
-    plan's branch is absent at the base.
+    The plan's own source document and every file under the ``skip`` folders (the history folders: plans,
+    reviews, commit messages and the like) are skipped on both sides: they quote the symbols the sweeps
+    search for, and a spec or review committed on the plan's branch is absent at the base. A classified
+    file missing on the side checked but present on the other is no problem either (``moved_paths``).
     """
     out: List[str] = []
-    source = source_path(plan, root)
-    skipped = {source} if source else set()
+    source, prefixes = source_path(plan, root), skip_prefixes(skip)
     for sweep in plan.sweeps:
-        sid, classified = sweep.id, set(sweep.hits) - skipped
-        hits, error = sweep_hits(root, sweep.pattern, plans_prefix, rev)
+        sid = sweep.id
+        classified = {p for p in sweep.hits if p != source and not p.startswith(prefixes)}
+        hits, error = sweep_hits(root, sweep.pattern, prefixes, rev)
         if error:
             out.append(f"sweep {sid}: git grep failed: {error}")
             continue
-        hits -= skipped
+        hits.discard(source)
+        unhit = classified - hits
+        unhit -= moved_paths(plan, root, unhit, rev)
         out.extend(f"sweep {sid}: {p} has hits but no classification" for p in sorted(hits - classified))
-        out.extend(f"sweep {sid}: {p} is classified but has no hit" for p in sorted(classified - hits))
+        out.extend(f"sweep {sid}: {p} is classified but has no hit" for p in sorted(unhit))
     return out
+
+
+def moved_paths(plan: ActionPlan, root: Path, paths: Set[str], rev: Optional[str] = None) -> Set[str]:
+    """The ``paths`` missing on the side checked (the tree, or ``rev``) that exist on the other side.
+
+    A file deleted after the base has hits only at the base, and one added after it only in the tree. The
+    other side of the tree is the plan's ``base_commit`` (none when unset); the other side of ``rev`` is the
+    working tree. A path missing on both sides (a typo, a file gone before the base) is not returned.
+    """
+    absent = absent_paths(root, paths, rev)
+    if rev is not None:
+        return {p for p in absent if (root / p).exists()}
+    if not plan.base_commit:
+        return set()
+    return absent - absent_paths(root, absent, plan.base_commit)
