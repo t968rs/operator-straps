@@ -197,6 +197,7 @@ from harness_lib import plan_render_html as prh  # noqa: E402
 from harness_lib.branch_capture import (CaptureError, current_branch, git, git_out,  # noqa: E402
                                         resolve_merge_base, snapshot_commit)
 from harness_lib.config import ConfigError, active, activate, load_config  # noqa: E402
+from harness_lib.history import history_paths  # noqa: E402
 from harness_lib.plan_enums import (DONE, ItemStatus, OutcomeKind, RecordProblemKind,  # noqa: E402
                                     RecordScheme, RecordSource, VerifyKind)
 from harness_lib.project import plugin_root, project_root  # noqa: E402
@@ -338,7 +339,7 @@ def claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     """The lint, anchor and sweep checks of a plan that loaded: loading already validated its shape."""
     rev = claims_rev(plan)
     return (pc.lint_problems(plan, repo, plans_dir()) + pc.anchor_problems(plan, repo, rev)
-            + pc.sweep_problems(plan, repo, active().artifacts.plans, rev))
+            + pc.sweep_problems(plan, repo, history_paths(active()), rev))
 
 
 def all_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan, book: prt.RecordBook) -> List[str]:
@@ -440,7 +441,7 @@ def base_claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     if not base or claims_rev(plan) is not None:
         return []
     found = (pc.anchor_problems(plan, repo, base)
-             + pc.sweep_problems(plan, repo, active().artifacts.plans, base))
+             + pc.sweep_problems(plan, repo, history_paths(active()), base))
     return [f"at base {base[:7]}: {p}" for p in found]
 
 

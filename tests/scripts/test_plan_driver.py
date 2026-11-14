@@ -250,6 +250,41 @@ def test_a_plan_with_nothing_done_reads_its_anchors_in_the_tree(run: Run, filled
     assert "problem: sweep S1: src/calc.py is classified but has no hit" in err
 
 
+ADD_HITS = {"src/calc.py": "TASK-1 keeps it"}
+
+
+def test_a_sweep_hit_deleted_or_added_after_the_base_freezes(run: Run, filled: Fill, project: Path) -> None:
+    (project / "src" / "legacy.py").write_text("def add(a, b):\n    return 0\n", encoding="utf-8")
+    git(project, "add", "src/legacy.py")
+    git(project, "commit", "-q", "-m", "legacy add")
+    git(project, "branch", "-f", "main", "HEAD")
+    filled(sweeps=[{"id": "S1", "pattern": "def add",
+                    "hits": {**ADD_HITS, "src/legacy.py": "deleted on the branch",
+                             "src/fresh.py": "added on the branch"}}])
+    git(project, "rm", "-q", "src/legacy.py")
+    (project / "src" / "fresh.py").write_text("def add(a, b):\n    return 1\n", encoding="utf-8")
+    git(project, "add", "src/fresh.py")
+    git(project, "commit", "-q", "-m", "drop legacy, add fresh")
+    code, _, err = run("freeze", "1")
+    assert code == 0, err
+    assert run("check", "1")[0] == 0
+
+
+def test_review_and_commit_message_records_are_not_sweep_hits(run: Run, filled: Fill, project: Path) -> None:
+    filled(sweeps=[{"id": "S1", "pattern": "def add", "hits": ADD_HITS}])
+    message = project / "docs" / "_commit_messages" / "x.txt"
+    message.parent.mkdir(parents=True)
+    message.write_text("rename def add\n", encoding="utf-8")
+    git(project, "add", "docs/_commit_messages/x.txt")
+    git(project, "commit", "-q", "-m", "drafted message")
+    review = project / "docs" / "PR_REVIEWS" / "LOCAL_x.json"
+    review.parent.mkdir(parents=True)
+    review.write_text('{"pattern": "def add"}\n', encoding="utf-8")
+    code, _, err = run("freeze", "1")
+    assert code == 0, err
+    assert run("check", "1")[0] == 0
+
+
 def test_check_flags_an_edit_after_freeze(run: Run, filled: Fill,
                                           project: Path) -> None:
     filled()

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from harness_lib.config import HarnessConfig
+from harness_lib.history import posix
 from harness_lib.todo_sync.pip_sections import PipDoc, parse_pip
 
 TERMINAL_RESEARCH = frozenset({"FULLY_IMPLEMENTED", "NOT_APPLICABLE"})
@@ -89,12 +90,6 @@ class Snapshot:
 
     rel: str
     header: Optional[SnapshotHeader]
-
-
-def posix(rel: str) -> str:
-    """``rel`` with forward slashes and no leading ``./``."""
-    out = rel.replace("\\", "/")
-    return out[2:] if out.startswith("./") else out
 
 
 def read_json(root: Path, rel: str) -> JsonFile:

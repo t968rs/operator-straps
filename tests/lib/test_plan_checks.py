@@ -176,8 +176,10 @@ SPEC = "docs/specs/x.md"
 CODE_HITS = {"src/old_name.py": "rewrite", "src/user.py": "rewrite"}
 
 
-def sweep_plan(hits: Dict[str, str], source: Optional[str] = None) -> ActionPlan:
+def sweep_plan(hits: Dict[str, str], source: Optional[str] = None, base: Optional[str] = None) -> ActionPlan:
     top: Dict[str, Any] = {} if source is None else {"source_document": source}
+    if base is not None:
+        top["base_commit"] = base
     return plan(sweeps=[{"id": "S1", "pattern": "OLD_NAME|old_name", "hits": hits}], **top)
 
 
@@ -253,3 +255,52 @@ def test_a_bad_pattern_is_a_problem(make_project) -> None:
     root = make_project(files=FILES)
     problems = pc.sweep_problems(plan(sweeps=[{"id": "S1", "pattern": "(", "hits": {}}]), root, "docs/PLANS")
     assert len(problems) == 1 and problems[0].startswith("sweep S1: git grep failed:")
+
+
+HISTORY = ("docs/PLANS", "docs/PR_REVIEWS", "docs/_commit_messages")
+
+
+def test_history_folders_are_not_sweep_hits(make_project) -> None:
+    review = "docs/PR_REVIEWS/LOCAL_x.json"
+    root = make_project(files={**FILES, review: '{"pattern": "OLD_NAME"}\n'})
+    (root / "docs" / "_commit_messages").mkdir(parents=True)
+    (root / "docs" / "_commit_messages" / "x.txt").write_text("rename OLD_NAME\n", encoding="utf-8")
+    assert pc.sweep_problems(sweep_plan(CODE_HITS), root, HISTORY) == []
+    assert pc.sweep_problems(sweep_plan(CODE_HITS), root, HISTORY, git(root, "rev-parse", "HEAD")) == []
+
+
+def test_a_classified_history_file_is_skipped_on_both_sides(make_project) -> None:
+    review = "docs/PR_REVIEWS/LOCAL_x.json"
+    root = make_project(files={**FILES, review: '{"pattern": "OLD_NAME"}\n'})
+    hits = {**CODE_HITS, review: "a review quoting the pattern"}
+    assert pc.sweep_problems(sweep_plan(hits), root, HISTORY) == []
+    assert pc.sweep_problems(sweep_plan(hits), root, HISTORY, git(root, "rev-parse", "HEAD")) == []
+
+
+def test_a_hit_deleted_or_added_after_the_base_passes_on_both_sides(make_project) -> None:
+    root = make_project(files={**FILES, "src/legacy.py": "OLD_NAME = 2\n"})
+    base = git(root, "rev-parse", "HEAD")
+    git(root, "rm", "-q", "src/legacy.py")
+    (root / "src" / "fresh.py").write_text("OLD_NAME\n", encoding="utf-8")
+    git(root, "add", "src/fresh.py")
+    git(root, "commit", "-q", "-m", "drop legacy, add fresh")
+    classified = sweep_plan({**CODE_HITS, "src/legacy.py": "deleted", "src/fresh.py": "added"}, base=base)
+    assert pc.sweep_problems(classified, root, HISTORY) == []
+    assert pc.sweep_problems(classified, root, HISTORY, base) == []
+
+
+def test_a_classified_file_absent_on_both_sides_is_a_problem(make_project) -> None:
+    root = make_project(files=FILES)
+    base = git(root, "rev-parse", "HEAD")
+    classified = sweep_plan({**CODE_HITS, "src/old_nmae.py": "typo"}, base=base)
+    expected = ["sweep S1: src/old_nmae.py is classified but has no hit"]
+    assert pc.sweep_problems(classified, root, HISTORY) == expected
+    assert pc.sweep_problems(classified, root, HISTORY, base) == expected
+
+
+def test_a_classified_file_present_at_the_base_without_hits_is_a_problem(make_project) -> None:
+    root = make_project(files=FILES)
+    base = git(root, "rev-parse", "HEAD")
+    hits = {**CODE_HITS, "src/a.py": "keep"}
+    assert pc.sweep_problems(sweep_plan(hits), root, HISTORY, base) == [
+        "sweep S1: src/a.py is classified but has no hit"]

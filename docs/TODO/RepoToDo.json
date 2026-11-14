@@ -56,33 +56,34 @@
     "notes": "Each item's severity, impact, LoE and blast radius come from its source's triage. Ranking compares scores rounded to 4 decimals; the tie breakers apply in order, so ids and ranks are reproducible from the item fields alone."
   },
   "counts": {
-    "items": 61,
-    "needs_decision": 35,
+    "items": 73,
+    "needs_decision": 42,
     "trackers": 0,
-    "close_candidates": 27,
+    "close_candidates": 28,
     "by_status": {
-      "NEEDS_DECISION": 35,
-      "OPEN": 26
+      "NEEDS_DECISION": 42,
+      "OPEN": 31
     },
     "by_impact": {
-      "dev_velocity": 32,
-      "docs_tooling": 21,
-      "maintainability": 2,
+      "dev_velocity": 40,
+      "docs_tooling": 22,
+      "maintainability": 3,
       "runtime_failure": 5,
-      "data_correctness": 1
+      "data_correctness": 2,
+      "silent_wrong_output": 1
     },
     "by_loe": {
-      "XS": 3,
-      "S": 19,
-      "M": 28,
-      "L": 10,
+      "XS": 4,
+      "S": 25,
+      "M": 31,
+      "L": 12,
       "XL": 1
     },
     "sources_absorbed": {
-      "gh_issue": 51,
+      "gh_issue": 65,
       "impl_stub": 0,
       "research_folder": 0,
-      "note": 10
+      "note": 8
     },
     "merged_items": 0
   },
@@ -148,8 +149,66 @@
       "why_ranked": "Severity 3 block of post-forcepush in any project without superpowers-lt, runtime_failure impact, S size."
     },
     {
-      "id": "todo-7nb9",
+      "id": "todo-e82z",
       "rank": 2,
+      "title": "merge-commit-msg: fall back to local git for commit messages and file stats when gh refuses a large PR diff",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Build the local-git fallback alone now, or fold #260 into todo-9yns (whose plan already includes the too_large fallback) and retire this item?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#260",
+          "url": "https://github.com/t968rs/operator-straps/issues/260"
+        }
+      ],
+      "gh_issues": [
+        260
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "capture stops when GitHub refuses a diff for a PR over 300 files (HTTP 406), with no local route. Checked: `pr_files` runs `gh pr diff N --name-only` (plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:158-160) and `pr_diff` runs a second `gh pr diff N --color=never` (:170-180); the CLI offers only pr, mode, --squash and --auto-title (:452-455), so no local-checkout option exists. The issue's goals are commit messages and file lists or change stats from local git, explicitly not the full diff. Overlap: todo-9yns (#167) already plans 'a local git diff --name-only fallback on too_large for the PR route' as part of its L-sized big-PR route; this issue is that fallback alone. The 359-file PR #1776 failure is from the issue transcript (unverified here).",
+      "proposed_change": "On a too_large refusal, read files from `git diff --name-only` and `git diff --stat` over origin/<base>...origin/<head> (after a fetch and a headRefOid check) and skip the diff section, keeping the gh commit list; add a regression test for the fallback in tests/skills/test_merge_commit_msg.py and one SKILL.md Step 1 line allowing the local route. Either build it alone first or fold it into todo-9yns and retire this item.",
+      "code_snippet": "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py:158\ndef pr_files(repo: Path, pr: int) -> List[str]:\n    out = gh(repo, \"pr\", \"diff\", str(pr), \"--name-only\")",
+      "files": [
+        "plugins/harness/skills/merge-commit-msg/commands/merge_commit_msg.py",
+        "plugins/harness/skills/merge-commit-msg/SKILL.md",
+        "tests/skills/test_merge_commit_msg.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Confined to merge-commit-msg capture; the normal PR route stays unchanged.",
+        "consumers": [
+          "plugins/harness/skills/merge-commit-msg/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One fallback branch in capture, a test and a SKILL.md line."
+      },
+      "impact": "runtime_failure",
+      "severity": 3,
+      "priority": {
+        "score": 2.7577,
+        "components": {
+          "impact_weight": 1.3,
+          "value": 3.9,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 2.7577,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 3 failure on large but supported PRs, runtime_failure impact, S size."
+    },
+    {
+      "id": "todo-7nb9",
+      "rank": 3,
       "title": "a-w attach: clear the attach state without restoring original_head when a --committed rebase moves nothing, and reword unstarted()'s reset --hard recovery line",
       "kind": "bug",
       "status": "OPEN",
@@ -199,9 +258,9 @@
       "why_ranked": "Severity 3 for a failing result on an uncommon input (every worktree commit already patch-equivalent in the target), runtime_failure impact, size S."
     },
     {
-      "id": "todo-dtd5",
-      "rank": 3,
-      "title": "plan.py freeze cannot pass a sweep whose hits include a file deleted after the plan base",
+      "id": "todo-rf8t",
+      "rank": 4,
+      "title": "arc-help-pages: drop the self-referential 'Full help page: <Tool> help' paragraph from the built page header",
       "kind": "bug",
       "status": "OPEN",
       "needs_decision": false,
@@ -209,54 +268,115 @@
       "tracker": null,
       "sources": [
         {
-          "type": "note",
-          "ref": "2026-11-10"
+          "type": "gh_issue",
+          "ref": "#259",
+          "url": "https://github.com/t968rs/operator-straps/issues/259"
         }
       ],
-      "gh_issues": [],
+      "gh_issues": [
+        259
+      ],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "Per the session: freezing plan 1012 (docs/plans/1012_canned_blocks_survive_build_ActionPlan.json, branch 1150-canned-messages, base 5a8ef39) failed. Sweep S1 (get_canned_message) hit four docs/PR_REVIEWS/*.json files that existed at the base and were deleted from the tree by commit 21df329. `plan.py check` (tree) reports them as 'classified but has no hit' when they are dropped from the classification, and `plan.py freeze` (which also checks sweeps at the base) reports 'at base 5a8ef39: ... has hits but no classification' when they are kept. No classification set satisfies both. The comparison is in sweep_problems (plugins/harness/lib/harness_lib/plan_checks.py:288), which compares hits to classifications exactly on each side; sweep_hits (plan_checks.py:242) skips only the plans folder and the plan's source_document. Workaround used: S1 pattern narrowed to `^[^\"]*get_canned_message` so JSON-string lines drop out; plan 1012 then froze at b4e8d6b. Decision 2026-11-12: option (a). The defect runs both ways: a matching file added on the branch after the plan base also fails one side whichever way it is classified, because freeze runs claim_problems on the tree (plugins/harness/scripts/plan.py:337-341) and base_claim_problems at the base (plan.py:433-444), both from freeze_problems (plan.py:484), and sweep_problems (plugins/harness/lib/harness_lib/plan_checks.py:286-307) compares hits and classifications exactly on each side, skipping only the plan source document (the e703a52 / #249 precedent). Status checked 2026-11-12: still present in HEAD; no test covers it (tests/lib/test_plan_checks.py has no deleted or absent case).",
-      "proposed_change": "Decision (a): in sweep_problems, suppress the 'is classified but has no hit' line for a classified path that does not exist on the side being checked (git cat-file -e <rev>:<path> at a rev, Path.exists() on the tree); no schema change, no marker label. Add a test that freezes a plan whose sweep hits one file deleted after the base and one added after it. Optional later convenience, not part of the fix: skip history folders from sweep hits via history_paths(cfg) (plugins/harness/lib/harness_lib/todo_sync/retire.py:222-232).",
+      "summary": "Every built help page header ends with the unlinked text 'Full help page: <Tool> help', naming the page the reader is on (45 pages in a consumer project, per the issue comment; unverified here). Checked the cause chain in the generator: `tool_doc` reads the summary as `_collapsed(_field_text(tool_el.find(\"summary\")))` (plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_source.py:53); `_field_text` (:106-113) sends CDATA through `_strip_tags` (:133-137), whose `_TextOnly` parser keeps only text data, so the `<a>` tag is dropped and its text kept; `_collapsed` (:140-141) folds both summary paragraphs into one string; `render` escapes it into the header slot (plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_build.py:208). No test or source file in this repo contains 'Full help page' (grep). The canonical XML must keep the link paragraph, since the ArcGIS Pro '?' page uses it to reach the hosted page.",
+      "proposed_change": "In the generator, not the XML: build the header summary from the <summary> paragraphs other than the one linking to the tool's own help page (the paragraph starting 'Full help page:', or the one whose href resolves to the page being built), keeping the XML untouched. Add tests in tests/arc/test_arc_help_pages_source.py and tests/arc/test_arc_help_pages_build.py pinning that the header holds no 'Full help page:' text while the source XML still does, bump the arc-straps plugin version, and note that the consumer must regenerate its pages and drop its README 'known artifact' paragraph.",
+      "code_snippet": "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_source.py:53\n                   summary=_collapsed(_field_text(tool_el.find(\"summary\"))), alias=alias,",
       "files": [
-        "plugins/harness/lib/harness_lib/plan_checks.py",
-        "plugins/harness/scripts/plan.py",
-        "tests/lib/test_plan_checks.py",
-        "tests/scripts/test_plan_driver.py"
+        "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_source.py",
+        "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_build.py",
+        "tests/arc/test_arc_help_pages_source.py",
+        "tests/arc/test_arc_help_pages_build.py",
+        "plugins/arc-straps/.claude-plugin/plugin.json"
       ],
       "blast_radius": {
-        "level": "M",
-        "reasoning": "sweep_problems and sweep_hits are shared by plan.py check and plan.py freeze, so either fix changes both paths; no shipped output changes.",
+        "level": "S",
+        "reasoning": "One summary-extraction path in arc-help-pages; every built page header changes on the next rebuild.",
         "consumers": [
-          "plan.py check (tree)",
-          "plan.py freeze (base and tree)"
+          "plugins/arc-straps/skills/arc-help-pages/scripts/arc_help_pages_build.py"
         ]
       },
       "loe": {
         "size": "S",
-        "reasoning": "Change is confined to two functions in plan_checks.py plus one test; the option choice is the open cost."
+        "reasoning": "A paragraph filter in tool_doc or render plus two tests."
       },
-      "impact": "runtime_failure",
-      "severity": 3,
+      "impact": "silent_wrong_output",
+      "severity": 2,
       "priority": {
-        "score": 2.5174,
+        "score": 2.1213,
         "components": {
-          "impact_weight": 1.3,
-          "value": 3.9,
+          "impact_weight": 1.5,
+          "value": 3.0,
           "loe_points": 2,
-          "blast_factor": 1.2,
-          "cost": 2.4,
-          "base_score": 2.5174,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 2.1213,
           "unblock_bonus": 0.0
         }
       },
       "depends_on": [],
       "unblocks": [],
-      "why_ranked": "Severity 3 (a failing result on a supported but uncommon input), runtime_failure impact (freeze aborts on a valid plan), size S, blast M."
+      "why_ranked": "Severity 2 cosmetic defect published without warning on every built page, silent_wrong_output impact, S size."
+    },
+    {
+      "id": "todo-545g",
+      "rank": 5,
+      "title": "add-bookmark: remove or edit a single stored note instead of clear-and-re-add",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "A remove N (and edit N) subcommand in add-bookmark, separate add-bookmark and remove-bookmark skills, or one edit-bookmarks skill?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#272",
+          "url": "https://github.com/t968rs/operator-straps/issues/272"
+        }
+      ],
+      "gh_issues": [
+        272
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Dropping one stale bookmark note today means clearing every note and re-adding the rest. Checked: plugins/harness/skills/add-bookmark/commands/add_note.py:118-121 defines only the add, list and clear subcommands (functions at :91, :99, :104). The issue title leaves open whether this is a remove subcommand, separate add-bookmark and remove-bookmark skills, or one edit-bookmarks skill. The session-bookmark mod reads the same notes (plugins/session-bookmark/hooks/notes.ts). Related: todo-v8mh (branch-scoped notes go stale silently).",
+      "proposed_change": "Add `remove N` (and optionally `edit N <text>`) to add_note.py, printing the numbered list after the change; document it in plugins/harness/skills/add-bookmark/SKILL.md (or a new skill, per the decision) and add tests in tests/skills/test_add_note_script.py.",
+      "files": [
+        "plugins/harness/skills/add-bookmark/commands/add_note.py",
+        "plugins/harness/skills/add-bookmark/SKILL.md",
+        "tests/skills/test_add_note_script.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One script's subcommands; the notes file format is unchanged.",
+        "consumers": [
+          "plugins/session-bookmark/hooks/notes.ts"
+        ]
+      },
+      "loe": {
+        "size": "XS",
+        "reasoning": "One subcommand over an existing list file, plus tests and a SKILL.md line."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 2.0,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 1,
+          "blast_factor": 1.0,
+          "cost": 1.0,
+          "base_score": 2.0,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt (clear and re-add to drop one note), dev_velocity impact, XS size."
     },
     {
       "id": "todo-afq8",
-      "rank": 4,
+      "rank": 6,
       "title": "merge-commit-msg: relax the squash title check to capitalized, not the branch name, no leading digits, no trailing separator",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -316,59 +436,71 @@
       "why_ranked": "Severity 3 refusal of plain titles that forces a retitle before every squash-merge, dev_velocity impact, S size."
     },
     {
-      "id": "todo-7chd",
-      "rank": 5,
-      "title": "Plan sweeps scan the reviews folder, so review JSON that quotes sweep patterns fails PLAN, freeze and record",
-      "kind": "bug",
+      "id": "todo-udx4",
+      "rank": 7,
+      "title": "todo_sync: serialize catalog writes so parallel TODO agents cannot race on RepoToDo.json",
+      "kind": "feature",
       "status": "NEEDS_DECISION",
       "needs_decision": true,
-      "decision_question": "The note asks to skip only artifacts.reviews. Should the sweep also skip the PR summaries and commit-message TXT folders, which the session flagged as possibly generated artifacts too?",
+      "decision_question": "A catalog lock so agents add in parallel, the scratch-then-consolidate flow from the issue, or both; and for the flow, consolidate after each return or once after all?",
       "tracker": null,
       "sources": [
         {
-          "type": "note",
-          "ref": "2026-11-13"
+          "type": "gh_issue",
+          "ref": "#277",
+          "url": "https://github.com/t968rs/operator-straps/issues/277"
         }
       ],
-      "gh_issues": [],
+      "gh_issues": [
+        277
+      ],
       "related_gh_issues": [],
       "catalog_entry_ids": [],
-      "summary": "per the session: on branch 1157-a-w-committed, plan 1018 (issue 161), PLAN check 1018 printed 'problem: sweep S1: docs/PR_REVIEWS/LOCAL_1157-a-w-committed_1157-a-w-committed.json has hits but no classification' and the same for S2. That review record (committed in 1b6f359) quotes the plan's sweep patterns. The same hit blocked the earlier r1.2 refreeze while the file was untracked. Per the session, sweep_hits at plugins/harness/lib/harness_lib/plan_checks.py:242 skips only the plans folder (skip_prefix) and searches tracked plus untracked files, and sweep_problems at plan_checks.py:288 skips only the plan's source_document. Per the session, claims_rev at plugins/harness/scripts/plan.py:328 checks the working tree until an item is done, and a freeze before any item is done checks at the base (plan.py:443), so the failure lasts until the first item is recorded. Level 0 check: plan_checks.py exists at that path; the review JSON is absent from the working tree now (Glob), consistent with the session's move-out workaround. The line numbers and the skip logic are unverified at research level 0. Classifying the file in the sweep does not work, because the file is absent at the base and would read as classified but has no hit (per the session).",
-      "proposed_change": "Make sweep_hits also skip the configured artifacts.reviews prefix, the same way it skips the plans folder, so review records that quote sweep patterns produce no hits. Check that sweep_problems reads its hits from that same filter, and add a test that a tracked and an untracked review JSON quoting a sweep pattern passes PLAN, freeze and record. Moving the file out of the tree stays a workaround, not a fix.",
+      "summary": "Parallel add-todo agents race on the catalog, so a session ran six of them one at a time. Checked: todo_sync.py and harness_lib/todo_sync hold no lock (grep for lock, O_EXCL, msvcrt, fcntl finds none); each write is atomic per file (`write_atomic` through a temp file and `os.replace`, plugins/harness/lib/harness_lib/todo_sync/report.py:89-96), but two read-modify-write runs can still lose one item silently. The issue's goals: a `scratch_folder` config key defaulting to docs/_scratch/, todo agents writing one entry to scratch, and consolidation in the main session with little returned context. The existing `artifacts.scratch` key defaults to docs/_scratch/pr_review (plugins/harness/config/defaults.json:21), so it is pr-review specific. `add --spec` already takes a list of items, so consolidation could be one add run over the merged specs. Open questions in the issue: consolidate after each return or after all, and whether a mod can safe-write scratch entries into the catalog.",
+      "proposed_change": "Decide between (A) a lock file (O_EXCL create with a stale-lock timeout) around every load-modify-write in todo_sync.py, letting agents run add in parallel; and (B) the issue's scratch flow: a new config key (four places: defaults.json, harness.schema.json, config.py, README), agents write one add spec item to scratch, and the main session merges them into one `todo_sync.py add --spec` run. A can land first and B on top. Update the add-todo and sync-gh-todo skills and the todo-editor agent, with tests in tests/scripts/test_todo_sync.py.",
       "files": [
-        "plugins/harness/lib/harness_lib/plan_checks.py",
-        "plugins/harness/scripts/plan.py"
+        "plugins/harness/scripts/todo_sync.py",
+        "plugins/harness/lib/harness_lib/todo_sync/report.py",
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/harness/lib/harness_lib/config.py",
+        "plugins/harness/skills/add-todo/SKILL.md",
+        "plugins/harness/agents/todo-editor.md",
+        "tests/scripts/test_todo_sync.py"
       ],
       "blast_radius": {
         "level": "M",
-        "reasoning": "Per the session, sweep_hits feeds the PLAN check, freeze and record through claims_rev (plan.py:328, :443). Consumers not grepped at level 0.",
-        "consumers": []
+        "reasoning": "Every catalog write path in todo_sync, the add-todo and sync-gh-todo flows and, for B, a new config key.",
+        "consumers": [
+          "plugins/harness/skills/add-todo/SKILL.md",
+          "plugins/harness/agents/todo-editor.md"
+        ]
       },
       "loe": {
-        "size": "S",
-        "reasoning": "A prefix skip in sweep_hits plus a test, if sweep_problems follows the same filter. Best guess at level 0."
+        "size": "M",
+        "reasoning": "A lock wrapper is small; the scratch-and-consolidate flow adds a config key and skill changes."
       },
-      "impact": "dev_velocity",
+      "impact": "data_correctness",
       "severity": 3,
       "priority": {
-        "score": 1.9365,
+        "score": 1.917,
         "components": {
-          "impact_weight": 1.0,
-          "value": 3.0,
-          "loe_points": 2,
+          "impact_weight": 1.4,
+          "value": 4.2,
+          "loe_points": 4,
           "blast_factor": 1.2,
-          "cost": 2.4,
-          "base_score": 1.9365,
+          "cost": 4.8,
+          "base_score": 1.917,
           "unblock_bonus": 0.0
         }
       },
       "depends_on": [],
       "unblocks": [],
-      "why_ranked": "Severity 3 (a failing check on an input the plan workflow accepts, with a manual workaround), dev_velocity impact (tooling only, no shipped output), S size."
+      "why_ranked": "Severity 3 silent lost update on an uncommon (parallel) input, data_correctness impact, M size."
     },
     {
       "id": "todo-c69j",
-      "rank": 6,
+      "rank": 8,
       "title": "a-w: attach refuses whenever the target checkout has any tracked change",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -424,7 +556,7 @@
     },
     {
       "id": "todo-7jb6",
-      "rank": 7,
+      "rank": 9,
       "title": "Contract test on SKILL.md size; decide on pr-review and pr-team over the limit",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -478,7 +610,7 @@
     },
     {
       "id": "todo-7vfg",
-      "rank": 8,
+      "rank": 10,
       "title": "pr-team: let a Step 3 STOP re-dispatch CONSOLIDATE instead of re-running the reviewer fan-out",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -538,7 +670,7 @@
     },
     {
       "id": "todo-ys3k",
-      "rank": 9,
+      "rank": 11,
       "title": "todo-watch / session-bookmark: session.compact handler skipped when another mod runs first",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -595,7 +727,7 @@
     },
     {
       "id": "todo-rst5",
-      "rank": 10,
+      "rank": 12,
       "title": "todo_sync add: accept catalog_entry_ids so a new item can cite a research entry (clears T4)",
       "kind": "feature",
       "status": "OPEN",
@@ -654,8 +786,127 @@
       "why_ranked": "Severity 2 missing guard path that leaves T4 warnings uncleared without a forbidden hand edit, dev_velocity impact, S size."
     },
     {
+      "id": "todo-n48z",
+      "rank": 13,
+      "title": "pr-sum: add --level 0, brief summary text only (no tables, no diagrams)",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#268",
+          "url": "https://github.com/t968rs/operator-straps/issues/268"
+        }
+      ],
+      "gh_issues": [
+        268
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for a minimum-effort level: brief summary text, no tables, no diagrams. Checked: levels are `LEVELS = (1, 2, 3)` with `DEFAULT_LEVEL = 2` (plugins/harness/lib/harness_lib/pr_summary.py:48-49); capture takes `--level` with `choices=LEVELS` (plugins/harness/scripts/pr_sum.py:376) and build refuses a skeleton level outside LEVELS (:260-261). Level 1 is already prose only but still emits Files Changed and Relocated (plugins/harness/skills/pr-sum/SKILL.md:25), and every level adds the delta table when a file is machine-generated (:29).",
+      "proposed_change": "Add level 0 to LEVELS: Summary prose only, with no Files Changed, Relocated or delta table; build refuses sections at level 0 as at level 1. Update the level tables in plugins/harness/skills/pr-sum/SKILL.md and README.md, the argument hints, and tests in tests/lib/test_pr_summary.py, tests/scripts/test_pr_sum.py and tests/skills/test_pr_sum_skill_contract.py; bump the harness version.",
+      "files": [
+        "plugins/harness/lib/harness_lib/pr_summary.py",
+        "plugins/harness/scripts/pr_sum.py",
+        "plugins/harness/skills/pr-sum/SKILL.md",
+        "plugins/harness/skills/pr-sum/README.md",
+        "tests/lib/test_pr_summary.py",
+        "tests/scripts/test_pr_sum.py",
+        "tests/skills/test_pr_sum_skill_contract.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "A new opt-in level inside pr-sum; existing levels unchanged.",
+        "consumers": [
+          "plugins/harness/scripts/pr_sum.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One more level value, a render branch, docs tables and tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing cheap option, dev_velocity impact, S size."
+    },
+    {
+      "id": "todo-mbt8",
+      "rank": 14,
+      "title": "pr-sum: add --gh to write the summary to the PR description or a comment, still saving the .md",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Should --gh replace the PR body, insert a marked block into it, or post a PR comment that a rerun edits in place?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#269",
+          "url": "https://github.com/t968rs/operator-straps/issues/269"
+        }
+      ],
+      "gh_issues": [
+        269
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Goals: the agent edits the PR description or a comment directly, and the .md is still saved. Checked: build writes `<summaries>/<NNNN>_<Title>.md` (plugins/harness/scripts/pr_sum.py:334) and touches the PR only through `gh pr edit` for a retitle under --auto-title (plugins/harness/skills/pr-sum/SKILL.md:73, :312); the skill forbids running `gh pr edit` unasked (:345), so publishing the body today is a manual step. The issue leaves open whether the body is replaced or a comment is posted.",
+      "proposed_change": "Add a --gh flag stored in the skeleton at capture, and have build, after writing the .md, publish it with `gh pr edit N --body-file` or `gh pr comment N --body-file` (editing the earlier comment on a rerun), reporting a gh failure as a problem: line with the .md kept. Update SKILL.md, README.md and the forbidden-actions table, and add tests in tests/scripts/test_pr_sum.py with gh stubbed.",
+      "files": [
+        "plugins/harness/scripts/pr_sum.py",
+        "plugins/harness/skills/pr-sum/SKILL.md",
+        "plugins/harness/skills/pr-sum/README.md",
+        "tests/scripts/test_pr_sum.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Opt-in flag inside pr-sum; writes to GitHub only when asked.",
+        "consumers": [
+          "plugins/harness/scripts/pr_sum.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One flag, one gh call path with a rerun rule, docs and stubbed tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 manual step on every summary, dev_velocity impact, S size."
+    },
+    {
       "id": "todo-5rze",
-      "rank": 11,
+      "rank": 15,
       "title": "strap: refreeze review-local, stale since pr_review.py changed in 0ae8c1c (#239) and again in 757277a",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -718,8 +969,64 @@
       "why_ranked": "Severity 2 (debt with a concrete cost: lock is refused and check reports stale until the refreeze), dev_velocity impact, size S."
     },
     {
+      "id": "todo-bwe5",
+      "rank": 16,
+      "title": "Plan HTML PIP: add a status summary block of task headings and badges above Decisions",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#280",
+          "url": "https://github.com/t968rs/operator-straps/issues/280"
+        }
+      ],
+      "gh_issues": [
+        280
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Reading each task's status needs long scrolling on a detailed plan. Checked: render_pip_html puts Decisions first and Tasks last (plugins/harness/lib/harness_lib/plan_render_html.py:177-180); each status badge sits only in its item's <h3> (:153). The loader updates badges only inside `.item[data-item]` sections (:365-369), so a summary block needs its own data-item hooks for live status.",
+      "proposed_change": "Emit a 'Status' list before the Decisions section with one row per item (link to #item-<id>, title, a .status badge carrying data-item), and have the loader draw those badges from the same receipts as the item sections. Add tests in tests/lib/test_plan_render_html.py for the block and its order.",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_render_html.py",
+        "tests/lib/test_plan_render_html.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Only the HTML PIP page and its loader.",
+        "consumers": [
+          "plugins/harness/scripts/plan.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One render section, a loader loop and tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.4142,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 1.4142,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 status readout cost on every detailed plan, dev_velocity impact, S size."
+    },
+    {
       "id": "todo-9yns",
-      "rank": 12,
+      "rank": 17,
       "title": "merge-commit-msg: big-PR route from local git and commit messages when a PR has over 50 commits",
       "kind": "feature",
       "status": "OPEN",
@@ -780,7 +1087,7 @@
     },
     {
       "id": "todo-92yf",
-      "rank": 13,
+      "rank": 18,
       "title": "pr-review: session ends its turn after the Phase 3 summary instead of entering Phase 5",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -840,7 +1147,7 @@
     },
     {
       "id": "todo-jrz2",
-      "rank": 14,
+      "rank": 19,
       "title": "Stop hooks: cut launch cost (stdlib constants module, one dispatcher, optional schema skip)",
       "kind": "refactor",
       "status": "NEEDS_DECISION",
@@ -902,7 +1209,7 @@
     },
     {
       "id": "todo-8ywz",
-      "rank": 15,
+      "rank": 20,
       "title": "pr-review: stats headline counts machine-generated exclusions",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -962,8 +1269,67 @@
       "why_ranked": "Severity 2 noisy headline in review documents with filtered counts already present, dev_velocity impact, S size."
     },
     {
+      "id": "todo-2r6p",
+      "rank": 21,
+      "title": "Narrow the PostToolUse Write|Edit|Bash hook that launches validate_pr_json_schema.py",
+      "kind": "refactor",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Which narrowing: a per-hook path or command condition (if Claude Code supports one), folding into a dispatcher, or keeping the existing stdlib pre-check and closing the issue?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#267",
+          "url": "https://github.com/t968rs/operator-straps/issues/267"
+        }
+      ],
+      "gh_issues": [
+        267
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue quotes the hook entry and asks for a more specific one; the body states no target. Checked: plugins/harness/hooks/hooks.json:33-37 registers validate_pr_json_schema.py under matcher 'Write|Edit|Bash', so every Write, Edit and Bash call launches an interpreter through hpy. The script already exits before any harness_lib import when the event cannot name a plan or review artifact: `_cannot_target` (plugins/harness/hooks/validate_pr_json_schema.py:367-384) needs a .json path or substring and a candidate artifact directory, and `main` returns at :419-420 (landed for #17, close candidate, PR #99). What is left is the launch cost per call. Whether Claude Code supports a finer per-hook filter than the tool-name matcher (for example a path or command condition) is unverified. Related: todo-jrz2 (Stop hook launch cost).",
+      "proposed_change": "Decide the narrowing: (A) a per-hook condition, if Claude Code supports one, so Write/Edit fire only for .json paths and Bash only for commands naming .json; (B) fold the hook into an existing PostToolUse dispatcher if one appears, per the COMPOSED rule; (C) keep the stdlib pre-check as the filter and close the issue. Update tests/contract/test_hooks_json_paths.py and tests/hooks/test_hooks_schema_validation.py for any registration change, and bump the harness version.",
+      "code_snippet": "plugins/harness/hooks/hooks.json:35\n        \"matcher\": \"Write|Edit|Bash\",",
+      "files": [
+        "plugins/harness/hooks/hooks.json",
+        "plugins/harness/hooks/validate_pr_json_schema.py",
+        "tests/hooks/test_hooks_schema_validation.py",
+        "tests/contract/test_hooks_json_paths.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "The hook runs on every Write, Edit and Bash call in every project; a wrong filter silently stops schema validation.",
+        "consumers": [
+          "plugins/harness/hooks/hooks.json"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "A registration change plus test updates, after the mechanism is settled."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 1.291,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 2,
+          "blast_factor": 1.2,
+          "cost": 2.4,
+          "base_score": 1.291,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt (an interpreter launch on every Write, Edit and Bash call), dev_velocity impact, S size."
+    },
+    {
       "id": "todo-45fq",
-      "rank": 16,
+      "rank": 22,
       "title": "d-w: detect an existing linked worktree, document setup and baseline, settle EnterWorktree",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1022,7 +1388,7 @@
     },
     {
       "id": "todo-kj3z",
-      "rank": 17,
+      "rank": 23,
       "title": "branch-commit-msg: describe a two-ref range (merge base of REF1 and REF2 up to REF2)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1079,7 +1445,7 @@
     },
     {
       "id": "todo-4n8b",
-      "rank": 18,
+      "rank": 24,
       "title": "write-plan: add an inline (serial) execution path to replace executing-plans",
       "kind": "skill",
       "status": "OPEN",
@@ -1139,7 +1505,7 @@
     },
     {
       "id": "todo-9scx",
-      "rank": 19,
+      "rank": 25,
       "title": "Act on the context usage report: cheaper general-purpose subagents and harness skill cost",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -1198,7 +1564,7 @@
     },
     {
       "id": "todo-v55s",
-      "rank": 20,
+      "rank": 26,
       "title": "strap: let a scenario tree check out a throwaway branch so review-local scenarios get past capture",
       "kind": "feature",
       "status": "OPEN",
@@ -1257,7 +1623,7 @@
     },
     {
       "id": "todo-7x8f",
-      "rank": 21,
+      "rank": 27,
       "title": "branch-commit-msg: a regenerated project report (offlineTestReport.json) breaks the build instead of taking a canned message",
       "kind": "bug",
       "status": "NEEDS_DECISION",
@@ -1319,7 +1685,7 @@
     },
     {
       "id": "todo-2es9",
-      "rank": 22,
+      "rank": 28,
       "title": "pr-review: investigate why the roast slot is consistently the longest-running reviewer",
       "kind": "skill",
       "status": "OPEN",
@@ -1378,7 +1744,7 @@
     },
     {
       "id": "todo-dv6n",
-      "rank": 23,
+      "rank": 29,
       "title": "pr-reviewer: run without CLAUDE.md, carry project standards in the brief (review.standards)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1442,7 +1808,7 @@
     },
     {
       "id": "todo-cwp3",
-      "rank": 24,
+      "rank": 30,
       "title": "pr-review: let history rewrites that touch only machine-generated exclusions pass Phase 4 without re-review",
       "kind": "feature",
       "status": "OPEN",
@@ -1501,7 +1867,7 @@
     },
     {
       "id": "todo-gv5k",
-      "rank": 25,
+      "rank": 31,
       "title": "todo_sync: add todo.companions so project files citing TODO ids are rewritten on every renumber",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1562,7 +1928,7 @@
     },
     {
       "id": "todo-kex8",
-      "rank": 26,
+      "rank": 32,
       "title": "pr-review: add an --adversarial (-a) flag and an adversarial-reviewer agent",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1624,7 +1990,7 @@
     },
     {
       "id": "todo-w3ck",
-      "rank": 27,
+      "rank": 33,
       "title": "Driver-created local tags for every necessary, plan-referenced and base-to-freeze commit",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1680,7 +2046,7 @@
     },
     {
       "id": "todo-v8mh",
-      "rank": 28,
+      "rank": 34,
       "title": "session-bookmark: a branch-scoped note goes stale silently after the branch changes",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -1747,8 +2113,125 @@
       "why_ranked": "Severity 2 missing guard in developer tooling (a standing note is applied stale or dropped silently), dev_velocity impact, M size."
     },
     {
+      "id": "todo-jq3x",
+      "rank": 35,
+      "title": "add-todo hook option: let a TODO item set a session /goal through a session-bookmark hook",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Can a mod or agent set /goal mid-session; if not, is a temporary settings.local.json hook acceptable instead?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#282",
+          "url": "https://github.com/t968rs/operator-straps/issues/282"
+        }
+      ],
+      "gh_issues": [
+        282
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue proposes a `session_hook.ts` in plugins/session-bookmark/hooks fired from register.ts on a 'hook switch' to issue `/goal <goal>`, a hook argument on plugins/harness/scripts/add_todo.py with `_build_hook`, and a `TodoHook` model (closed_by, desc, start_time) as an attribute of the add-todo request. Checked: register.ts only calls registerBookmark (plugins/session-bookmark/hooks/register.ts:3-6); add_todo.py has no hook argument (parser at :38-44); the request model is `AddTodoRequest` (not AddToDoRequest) with only `issue` and `research` (plugins/harness/lib/harness_lib/add_todo_models.py:33-40). The issue's own gate: whether a TODO agent or the session agent can set the goal at all; otherwise a temporary hook in settings.local.json. The research transcript's claims (settings.local.json hooks reload live, skill frontmatter hooks persist for the session, /goal is a session-scoped Stop hook) are unverified here.",
+      "proposed_change": "First settle the gate: test whether a mod or an agent can issue /goal mid-session. If yes, add TodoHook to add_todo_models.py, a hook option on add_todo.py, and session_hook.ts wired from register.ts; if not, write and later remove a temporary hook entry in .claude/settings.local.json. Tests in tests/scripts/test_add_todo.py and the mod's bun tests.",
+      "files": [
+        "plugins/session-bookmark/hooks/register.ts",
+        "plugins/harness/scripts/add_todo.py",
+        "plugins/harness/lib/harness_lib/add_todo_models.py",
+        "plugins/harness/skills/add-todo/SKILL.md",
+        "tests/scripts/test_add_todo.py"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Crosses the session-bookmark mod and the harness add-todo skill, and may write session settings.",
+        "consumers": [
+          "plugins/harness/skills/add-todo/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "A feasibility spike, a model, a CLI option and a mod module."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 missing workflow aid, dev_velocity impact, M size."
+    },
+    {
+      "id": "todo-cvm4",
+      "rank": 36,
+      "title": "bin/ wrappers for plugin scripts (harness-plan first) and actor wording fixes in write-plan and the PIP template",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Does `! command -v harness-skill-api` print a path (so ! mode can run bin/ wrappers), and which scripts beyond plan.py get wrappers?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#283",
+          "url": "https://github.com/t968rs/operator-straps/issues/283"
+        }
+      ],
+      "gh_issues": [
+        283
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Checked: plugins/harness/bin holds only harness-skill-api; write-plan defines `PLAN` as the long `sh hpy .../plan.py` form (plugins/harness/skills/write-plan/SKILL.md:25). Wording bug: SKILL.md:154 'after the developer commits the freeze run `PLAN check <id>`' reads as a developer step though the agent runs check. plugins/harness/schemas/PLANS_PIP_Template.md:208-218 mixes developer steps (push, open the PR) with plan.py record, verify and render and names no actor. Per the issue: a bin/harness-plan sh wrapper that runs hpy on plan.py with arguments passed through, the skill and template text switched to it, and the same wrapper for other user-facing scripts (parallel2, branch_commit_msg). Whether `!` mode gets the plugin bin/ on PATH is unverified (the issue's test: `! command -v harness-skill-api`). Related: #284 cites the same two wording spots. Changing write-plan SKILL.md may need a reopen round of its strap spec (per todo-c7s9; unverified here).",
+      "proposed_change": "Fix the wording now: SKILL.md:154 to 'Once the developer has committed the freeze, the agent runs PLAN check <id>; ...', and split the template checklist into developer and agent steps. Add bin/harness-plan modelled on bin/harness-skill-api, point PLAN at it in write-plan SKILL.md, the PIP template and the schemas README, then add wrappers for other user-facing scripts. Add a cross_os test for the wrapper and a HARNESS_RULES line that plugin scripts are agent-run.",
+      "code_snippet": "plugins/harness/skills/write-plan/SKILL.md:154\n   after the developer commits the freeze run `PLAN check <id>`: it creates the `-commit` tag and prints its",
+      "files": [
+        "plugins/harness/bin/harness-skill-api",
+        "plugins/harness/skills/write-plan/SKILL.md",
+        "plugins/harness/schemas/PLANS_PIP_Template.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Every skill that spells the long script form, plus the write-plan strap spec.",
+        "consumers": [
+          "plugins/harness/skills/write-plan/SKILL.md"
+        ]
+      },
+      "loe": {
+        "size": "M",
+        "reasoning": "Two wording fixes are XS; wrappers, skill text across skills and a strap reopen make it M."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.9129,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 4,
+          "blast_factor": 1.2,
+          "cost": 4.8,
+          "base_score": 0.9129,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 misread actor wording plus long command forms, dev_velocity impact, M size."
+    },
+    {
       "id": "todo-zes6",
-      "rank": 29,
+      "rank": 37,
       "title": "pr-team: add --adversarial (-a) to the orchestrator and fixer agents (follow-up to todo-kex8)",
       "kind": "feature",
       "status": "OPEN",
@@ -1807,7 +2290,7 @@
     },
     {
       "id": "todo-e7ha",
-      "rank": 30,
+      "rank": 38,
       "title": "Review-response discipline for feedback outside a pr-review run (replaces receiving-code-review)",
       "kind": "skill",
       "status": "OPEN",
@@ -1862,7 +2345,7 @@
     },
     {
       "id": "todo-m9mv",
-      "rank": 31,
+      "rank": 39,
       "title": "parallel2: drop the REQUIRED line to dispatching-parallel-agents and fold in an independence check",
       "kind": "skill",
       "status": "OPEN",
@@ -1923,7 +2406,7 @@
     },
     {
       "id": "todo-6mbt",
-      "rank": 32,
+      "rank": 40,
       "title": "strap scaffold: project SKILL.md template emits command and problem-line rules for skills with no API",
       "kind": "bug",
       "status": "OPEN",
@@ -1973,7 +2456,7 @@
     },
     {
       "id": "todo-6g9h",
-      "rank": 33,
+      "rank": 41,
       "title": "Fix PR 266 review findings M6, M7, M12, M15, M16, M17 in the next write-plan strap round",
       "kind": "bug",
       "status": "OPEN",
@@ -2021,7 +2504,7 @@
     },
     {
       "id": "todo-nr8j",
-      "rank": 34,
+      "rank": 42,
       "title": "writer-switchgate mod: typed tools that carry agent payloads off the shell command line",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2096,7 +2579,7 @@
     },
     {
       "id": "todo-x842",
-      "rank": 35,
+      "rank": 43,
       "title": "Replace finishing-a-development-branch with an end-of-branch checklist that routes d-w worktrees through a-w",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2154,7 +2637,7 @@
     },
     {
       "id": "todo-q2gb",
-      "rank": 36,
+      "rank": 44,
       "title": "HARNESS_RULES: add a Skill check section (forcing rule, ordering, precedence, subagent exemption)",
       "kind": "skill",
       "status": "OPEN",
@@ -2210,7 +2693,7 @@
     },
     {
       "id": "todo-2jca",
-      "rank": 37,
+      "rank": 45,
       "title": "parallel2: per-lane implement-review-fix loop (status contract, reviewer templates, capped fix loop)",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2273,7 +2756,7 @@
     },
     {
       "id": "todo-qhe6",
-      "rank": 38,
+      "rank": 46,
       "title": "PR-free review of a local BASE..HEAD range against a plan (replaces requesting-code-review)",
       "kind": "feature",
       "status": "OPEN",
@@ -2333,7 +2816,7 @@
     },
     {
       "id": "todo-x4np",
-      "rank": 39,
+      "rank": 47,
       "title": "write-plan: spec coverage, cross-item Produces/Consumes interfaces and a Review Focus",
       "kind": "feature",
       "status": "OPEN",
@@ -2394,7 +2877,7 @@
     },
     {
       "id": "todo-6hnd",
-      "rank": 40,
+      "rank": 48,
       "title": "fold-in-review: fold into pr-team runs and import a prior review JSON of the same PR",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2461,7 +2944,7 @@
     },
     {
       "id": "todo-m86m",
-      "rank": 41,
+      "rank": 49,
       "title": "strap: pin judgment greens to the parts a scenario runner reads, so library and driver edits stop staling frozen specs",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2536,8 +3019,127 @@
       "why_ranked": "Severity 2 for debt with a concrete cost (five stale frozen specs and forced green reruns), impact dev_velocity because only the strap tooling slows down and no output changes, and size L for a design pass plus a hash-scope migration across strap.py, its models, schema and docs."
     },
     {
+      "id": "todo-4zhu",
+      "rank": 50,
+      "title": "plan.py archive: fold a finished plan's driver tags into one archive tag",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#284",
+          "url": "https://github.com/t968rs/operator-straps/issues/284"
+        }
+      ],
+      "gh_issues": [
+        284
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "A finished plan leaves dozens of driver tags (31 in one consumer plan, per the issue; unverified here), tree and receipt tags stay local, and after a squash merge the tags alone keep base and receipt commits alive. Checked the tag namespaces the issue names: base tags `base/<stem>/r<round>` (plugins/harness/lib/harness_lib/freeze_git.py:110), receipt tags `receipt/<stem>/<item>-<part>` (plugins/harness/lib/harness_lib/plan_lock.py:645), and the `untagged:` and `off-history:` warnings (plan_lock.py:564-594; strap has the same at plugins/harness/lib/harness_lib/strap_lock.py:489-519). plan.py has no archive subcommand (grep finds no 'archive' in plan.py, plan_lock.py or freeze_git.py). Proposal: `plan.py archive <id>` builds one annotated tag `archive/plan/<id>-<slug>/r<round>` over a plumbing commit whose tree holds receipts/ and freezes/ subtrees and whose parents are every base, freeze-entry, receipt and relink commit, verifies reachability, prints one push: line and deletes the local driver tags; reconcile and the untagged/off-history checks must then resolve through the archive; feed `git mktree` bytes on Windows. Related: todo-w3ck (#265, driver tags); #283 (same write-plan wording spots).",
+      "proposed_change": "Add an archive subcommand to plan.py backed by freeze_git plumbing (mktree with bytes stdin, commit-tree, tag -a), with a reachability check before deleting local tags and an optional --remote line printing the remote delete; teach reconcile and the untagged/off-history checks to treat objects reachable from the archive as tagged and to create no new -commit.N tags once it exists; keep archive/ outside the collision-checked prefixes. Tests over a temporary repo in tests/lib, a cross_os mark for the Windows bytes path; consider the same for strap.py afterward.",
+      "files": [
+        "plugins/harness/scripts/plan.py",
+        "plugins/harness/lib/harness_lib/plan_lock.py",
+        "plugins/harness/lib/harness_lib/freeze_git.py",
+        "plugins/harness/skills/write-plan/SKILL.md"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Every PLAN command's reconcile and tag checks, shared tag plumbing with strap.",
+        "consumers": [
+          "plugins/harness/scripts/plan.py",
+          "plugins/harness/scripts/strap.py"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "A plumbing builder with verification, reconcile changes, warning changes and cross-OS tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 debt (tag sprawl and local-only objects), dev_velocity impact, L size."
+    },
+    {
+      "id": "todo-yuy7",
+      "rank": 51,
+      "title": "TODO snapshot as one HTML page in the Snapshots folder, read from RepoToDo.json",
+      "kind": "feature",
+      "status": "NEEDS_DECISION",
+      "needs_decision": true,
+      "decision_question": "Should the HTML page replace the dated markdown snapshot (changing rule T2, todo.snapshots.name_pattern and todo-watch) or be written beside it?",
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#288",
+          "url": "https://github.com/t968rs/operator-straps/issues/288"
+        }
+      ],
+      "gh_issues": [
+        288
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "The issue asks for one HTML page in the configured snapshots folder that reads the catalog, instead of regenerating a markdown snapshot on command, with the formatting asked in #278 and #280. Checked: render writes a dated `TODO_Snapshot_<YYYY>_<MMDD>.md` (plugins/harness/lib/harness_lib/todo_sync/__init__.py:155-177); `todo.snapshots.name_pattern` defaults to a .md pattern (plugins/harness/config/defaults.json:77-79); rule T2 checks the snapshot (todo_sync/__init__.py:55); the todo-watch mod mirrors the snapshot config (plugins/todo-watch/hooks/config.ts, checks.ts). The plan PIP the issue cites as a model loads its live data through a `live.js` script sidecar (plugins/harness/lib/harness_lib/plan_render_html.py:166), not a JSON fetch; whether a static page can read RepoToDo.json directly under file:// is unverified.",
+      "proposed_change": "Write a static HTML page into todo.snapshots.dir plus a script sidecar regenerated from RepoToDo.json on each catalog write (the plan live.js pattern), styled per #278 and #280; decide whether it replaces the dated markdown snapshot (then T2, name_pattern, todo-watch and its config mirror change) or sits beside it. Tests in tests/lib/test_todo_sync_snapshot_header.py and a new HTML render test.",
+      "files": [
+        "plugins/harness/lib/harness_lib/todo_sync/__init__.py",
+        "plugins/harness/config/defaults.json",
+        "plugins/harness/config/harness.schema.json",
+        "plugins/todo-watch/hooks/config.ts",
+        "plugins/todo-watch/hooks/checks.ts"
+      ],
+      "blast_radius": {
+        "level": "M",
+        "reasoning": "Snapshot rendering, rule T2, a config default and the todo-watch mod mirror.",
+        "consumers": [
+          "plugins/todo-watch/hooks/checks.ts",
+          "plugins/harness/agents/todo-editor.md"
+        ]
+      },
+      "loe": {
+        "size": "L",
+        "reasoning": "A new renderer and data sidecar, config and rule changes, mod updates and tests."
+      },
+      "impact": "dev_velocity",
+      "severity": 2,
+      "priority": {
+        "score": 0.6455,
+        "components": {
+          "impact_weight": 1.0,
+          "value": 2.0,
+          "loe_points": 8,
+          "blast_factor": 1.2,
+          "cost": 9.6,
+          "base_score": 0.6455,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 2 regenerate-to-read friction, dev_velocity impact, L size."
+    },
+    {
       "id": "todo-zj3h",
-      "rank": 42,
+      "rank": 52,
       "title": "Port test-driven-development with writing-good-tests.md, scoped to named test files",
       "kind": "skill",
       "status": "OPEN",
@@ -2599,7 +3201,7 @@
     },
     {
       "id": "todo-33h5",
-      "rank": 43,
+      "rank": 53,
       "title": "Spec-Sheet-Lite: a short goals brief to replace brainstorming spec sheets before write-plan",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2658,7 +3260,7 @@
     },
     {
       "id": "todo-8wd7",
-      "rank": 44,
+      "rank": 54,
       "title": "Create the spec-me skill to replace the brainstorming session and its _spec.md",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2719,7 +3321,7 @@
     },
     {
       "id": "todo-7sfy",
-      "rank": 45,
+      "rank": 55,
       "title": "Red/green spec-me against no skill and against brainstorming",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -2777,7 +3379,7 @@
     },
     {
       "id": "todo-wnj3",
-      "rank": 46,
+      "rank": 56,
       "title": "bubble-memo: write a memo for any issue, not only a bubble in a PR-numbered review JSON",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -2835,7 +3437,7 @@
     },
     {
       "id": "todo-66qe",
-      "rank": 47,
+      "rank": 57,
       "title": "Strap recorder writes absolute machine paths into tracked SkillSpec rows",
       "kind": "bug",
       "status": "OPEN",
@@ -2888,7 +3490,7 @@
     },
     {
       "id": "todo-t72u",
-      "rank": 48,
+      "rank": 58,
       "title": "write-plan: ignore planned test files in consuming projects, not only here",
       "kind": "skill",
       "status": "OPEN",
@@ -2942,7 +3544,7 @@
     },
     {
       "id": "todo-3aye",
-      "rank": 49,
+      "rank": 59,
       "title": "pr-sum: side-by-side BEFORE/AFTER/[CHANGE] diagram format for level 2 and 3 Behavior sections",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -2997,8 +3599,65 @@
       "why_ranked": "Severity 1 since the requested format already landed in PR #240, docs_tooling impact, XS size."
     },
     {
+      "id": "todo-h4za",
+      "rank": 60,
+      "title": "Move plan_render_html's _STYLE and _LOADER string blocks into plugins/harness/pages asset files",
+      "kind": "refactor",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#289",
+          "url": "https://github.com/t968rs/operator-straps/issues/289"
+        }
+      ],
+      "gh_issues": [
+        289
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "Checked: plugins/harness/lib/harness_lib/plan_render_html.py:226-249 holds `_STYLE` (CSS) and :251-388 `_LOADER` (JS) as module string literals (the issue cites 226-389; the file has 388 lines). Proposed layout: plugins/harness/pages/ with architecture-level folders components (services), styles and views, and file names 'shared' or the page name; `_STYLE` to pages/styles/plan.css with a `_load_style()`, `_LOADER` to a plan.js (the issue writes ../harness/components/plan.js, outside its own pages/ layout, and its file-name examples swap .js and .css roles). Reading assets from the plugin root is allowed (read-only). Per the repo's test selection rules, the module must spell each asset file name in a code string literal so a CSS or JS edit selects its tests.",
+      "proposed_change": "Create plugins/harness/pages/styles/plan.css and plugins/harness/pages/components/plan.js from the literals, load them inside functions (not at import) relative to the module's plugin root, and keep the rendered page byte-identical; spell 'plan.css' and 'plan.js' in code literals. Update tests/lib/test_plan_render_html.py to pin the output and bump the harness version.",
+      "code_snippet": "plugins/harness/lib/harness_lib/plan_render_html.py:226\n_STYLE = \"\"\"",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_render_html.py",
+        "tests/lib/test_plan_render_html.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "One render module; output unchanged.",
+        "consumers": [
+          "plugins/harness/scripts/plan.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "Two file moves, a loader function and a byte-identity test."
+      },
+      "impact": "maintainability",
+      "severity": 1,
+      "priority": {
+        "score": 0.5657,
+        "components": {
+          "impact_weight": 0.8,
+          "value": 0.8,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.5657,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 structure cleanup, maintainability impact, S size."
+    },
+    {
       "id": "todo-e8y9",
-      "rank": 50,
+      "rank": 61,
       "title": "strap-debugging: standalone description trigger and no superpowers-lt references",
       "kind": "skill",
       "status": "OPEN",
@@ -3058,7 +3717,7 @@
     },
     {
       "id": "todo-mwy3",
-      "rank": 51,
+      "rank": 62,
       "title": "Decide on skill-trigger and behavior tests; add structure checks for every SKILL.md",
       "kind": "test",
       "status": "NEEDS_DECISION",
@@ -3113,7 +3772,7 @@
     },
     {
       "id": "todo-hnp3",
-      "rank": 52,
+      "rank": 63,
       "title": "writing-docstrings B9: add a tier-line reply_lacks check for SC-10/SC-11",
       "kind": "test",
       "status": "OPEN",
@@ -3164,7 +3823,7 @@
     },
     {
       "id": "todo-5xr3",
-      "rank": 53,
+      "rank": 64,
       "title": "Port or drop brainstorming (design doc and approval gate before write-plan)",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3221,7 +3880,7 @@
     },
     {
       "id": "todo-w2y3",
-      "rank": 54,
+      "rank": 65,
       "title": "Record a decision on diagnosing-superpowers: drop, or port as a session-forensics skill",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3274,7 +3933,7 @@
     },
     {
       "id": "todo-n9jj",
-      "rank": 55,
+      "rank": 66,
       "title": "Decide on writing-skills (project-local port, skill-creator, or drop) and drop its test references",
       "kind": "skill",
       "status": "NEEDS_DECISION",
@@ -3328,8 +3987,65 @@
       "why_ranked": "Severity 1 stale reference and development tooling, docs_tooling impact, S size."
     },
     {
+      "id": "todo-n7q5",
+      "rank": 67,
+      "title": "Plan HTML PIP: lay out each decision as a heading with Chosen and Rejected lists, and theme headings and code",
+      "kind": "feature",
+      "status": "OPEN",
+      "needs_decision": false,
+      "decision_question": null,
+      "tracker": null,
+      "sources": [
+        {
+          "type": "gh_issue",
+          "ref": "#278",
+          "url": "https://github.com/t968rs/operator-straps/issues/278"
+        }
+      ],
+      "gh_issues": [
+        278
+      ],
+      "related_gh_issues": [],
+      "catalog_entry_ids": [],
+      "summary": "A decision renders as one dense line. Checked: `_decision` emits a single <li> with the id in <strong>, the question, then 'Chosen: ... Rejected: ...' and the rationale inline (plugins/harness/lib/harness_lib/plan_render_html.py:98-105). `_STYLE` (:226-249) colors only status badges, notes and borders; headings and <code> carry no accent color. The issue's HTML sketch is a direction, not a recipe (it nests <li> without a list).",
+      "proposed_change": "Render each decision as a block: an <h4> with id and question, then 'Chosen' and 'Rejected' each followed by a <ul> of options (id in <code>, summary as text), then the rationale line; keep Open decisions as Options lists. Add accent colors for h2-h4 and <code> in _STYLE with light and dark values. Update tests/lib/test_plan_render_html.py.",
+      "code_snippet": "plugins/harness/lib/harness_lib/plan_render_html.py:98\ndef _decision(d: Decision) -> str:\n    head = f\"<li><strong>{_e(d.id)}</strong> {_e(d.question)} \"",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_render_html.py",
+        "tests/lib/test_plan_render_html.py"
+      ],
+      "blast_radius": {
+        "level": "S",
+        "reasoning": "Only the HTML PIP page; plan data and live.js are unchanged.",
+        "consumers": [
+          "plugins/harness/scripts/plan.py"
+        ]
+      },
+      "loe": {
+        "size": "S",
+        "reasoning": "One render function, a few CSS rules and test updates."
+      },
+      "impact": "docs_tooling",
+      "severity": 1,
+      "priority": {
+        "score": 0.4243,
+        "components": {
+          "impact_weight": 0.6,
+          "value": 0.6,
+          "loe_points": 2,
+          "blast_factor": 1.0,
+          "cost": 2.0,
+          "base_score": 0.4243,
+          "unblock_bonus": 0.0
+        }
+      },
+      "depends_on": [],
+      "unblocks": [],
+      "why_ranked": "Severity 1 readability of the HTML PIP, docs_tooling impact, S size."
+    },
+    {
       "id": "todo-8thf",
-      "rank": 56,
+      "rank": 68,
       "title": "Audit pr-review and parallel2 dispatch for shared fixtures and cross-improvements",
       "kind": "skill",
       "status": "OPEN",
@@ -3387,7 +4103,7 @@
     },
     {
       "id": "todo-dx3b",
-      "rank": 57,
+      "rank": 69,
       "title": "Consolidate a-w attach test helpers into one _-prefixed module",
       "kind": "refactor",
       "status": "OPEN",
@@ -3442,7 +4158,7 @@
     },
     {
       "id": "todo-c7s9",
-      "rank": 58,
+      "rank": 70,
       "title": "Plan receipts: decide how an unplanned item is declared and recorded",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3505,7 +4221,7 @@
     },
     {
       "id": "todo-3ckt",
-      "rank": 59,
+      "rank": 71,
       "title": "local-llm: run a Claude Code session against Ollama's Anthropic-compatible endpoint",
       "kind": "docs",
       "status": "OPEN",
@@ -3560,7 +4276,7 @@
     },
     {
       "id": "todo-nau4",
-      "rank": 60,
+      "rank": 72,
       "title": "writing-docstrings B10: prove the docstring-writer restyles numpy Parameters blocks to 'name: (type)  Description.'",
       "kind": "skill",
       "status": "OPEN",
@@ -3611,7 +4327,7 @@
     },
     {
       "id": "todo-8rcw",
-      "rank": 61,
+      "rank": 73,
       "title": "local-llm: driver that offloads text generation (commit messages, summaries) to a local Ollama model",
       "kind": "feature",
       "status": "NEEDS_DECISION",
@@ -3916,6 +4632,15 @@
       "evidence": "c857744 (\"Fix(agents): update session end behavior to record run\") rewords the dispatch rule; `gh pr view 207` reports MERGED at 2026-11-04T17:01:52Z as merge commit f163fe4, and `git branch -a --contains c857744` lists main. plugins/harness/agents/strap-scenario-runner.md:58-61 now reads 'A scenario that plays the session ends its work at the dispatch, then records ... stopping at the dispatch never ...'. No test under tests/ pins that sentence. `gh issue view 194` already reports CLOSED (2026-11-12T07:46:29Z). The catalog item for #194 was retired in this run.",
       "recommended_action": "Already closed on GitHub; the fix landed in c857744 through PR #207 (merge f163fe4); drop this candidate.",
       "related_todo_ids": []
+    },
+    {
+      "number": 258,
+      "title": "Plan Freeze --> Refreeze Cycle During Implementation is Laborious",
+      "url": "https://github.com/t968rs/operator-straps/issues/258",
+      "current_state": "LIKELY_RESOLVED",
+      "evidence": "3882f64 (\"Feature(plan): receipts scheme, DesignEvolution catalog and HTML PIP modules\") adds plugins/harness/lib/harness_lib/plan_receipts.py and receipt_models.py, 2c1cf96 makes plan.py record items on the receipts scheme, and 3ae089c documents it (harness 0.66.0); `gh pr view 261` reports MERGED at 2026-11-11T06:19:49Z as merge commit b4e8d6b (\"Docs(plan): `receipts` record scheme\"), and `git branch -a --contains 3882f64` lists main. `gh issue view 258` already reports CLOSED as COMPLETED (2026-11-13T23:02:57Z). The catalog item for #258 was retired in this run; the unplanned-item gap (plan_api.write plus freeze --refreeze) stays tracked as todo-c7s9.",
+      "recommended_action": "Already closed on GitHub; the receipts scheme landed through PR #261 (merge b4e8d6b); drop this candidate.",
+      "related_todo_ids": []
     }
   ],
   "retired_ids": [
@@ -3929,7 +4654,10 @@
     "todo-fmt6",
     "todo-p52r",
     "todo-6za3",
-    "todo-sp4v"
+    "todo-sp4v",
+    "todo-2tv5",
+    "todo-dtd5",
+    "todo-7chd"
   ],
   "legacy_ids": {
     "migrated": "2026-11-09",

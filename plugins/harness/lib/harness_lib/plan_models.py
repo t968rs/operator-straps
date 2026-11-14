@@ -445,8 +445,9 @@ class ActionPlan(BaseModel):
     sweeps: List[Sweep] = Field(default_factory=list, description=(
         "Searches the plan relies on (old names, moved paths). `plan.py check` runs each pattern over "
         "tracked and untracked files and fails on a file with hits that `hits` does not classify, or a "
-        "classified file with none. The plans folder and the plan's own `source_document` are skipped on "
-        "both sides."))
+        "classified file with none, except a classified file absent on the side checked (deleted after the "
+        "base, or added after it). The history folders (plans, reviews, commit messages, summaries, scratch, "
+        "planning prefixes, TODO snapshots) and the plan's own `source_document` are skipped on both sides."))
     deferred_to_future_plans: List[DeferredTopic] = Field(default_factory=list)
     ledger: Optional[str] = Field(default=None, pattern=r"^plan/[0-9]{4}-[A-Za-z0-9-]+$", description=(
         "Stem of the plan's freeze ledger (`plan/<id>-<slug>`), set by the first ledger freeze. With it set, "

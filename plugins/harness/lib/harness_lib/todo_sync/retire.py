@@ -17,6 +17,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 from harness_lib.config import HarnessConfig
+from harness_lib.history import history_paths
 from harness_lib.todo_sync import TodoSyncError
 from harness_lib.todo_sync import ids as todo_ids
 from harness_lib.todo_sync.ranking import RankingError, expected_order, method_from, score
@@ -217,19 +218,6 @@ def load_catalog(cfg: HarnessConfig, verb: str, stable: bool = True) -> Tuple[st
 def write_edits(cfg: HarnessConfig, catalog_text: str) -> None:
     """Write the catalog atomically."""
     write_atomic(cfg.path(cfg.todo.catalog), catalog_text)
-
-
-def history_paths(cfg: HarnessConfig) -> Tuple[str, ...]:
-    """Repo-relative POSIX folders, without a trailing ``/``, whose files are history the reference scans
-    skip: plans, reviews, commit messages, summaries, scratch, each planning prefix and the snapshots."""
-    art = cfg.artifacts
-    out: List[str] = []
-    for rel in (art.plans, art.reviews, art.commit_messages, art.summaries, art.scratch,
-                *art.planning_prefixes, cfg.todo.snapshots.dir):
-        path = posix(rel).rstrip("/") if rel else ""
-        if path and path not in out:
-            out.append(path)
-    return tuple(out)
 
 
 def git_grep(cfg: HarnessConfig, args: Sequence[str]) -> Tuple[str, ...]:
