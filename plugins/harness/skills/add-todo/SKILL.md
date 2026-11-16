@@ -10,7 +10,7 @@ Arguments: `$ARGUMENTS`
 
 The developer types a short note; the conversation usually already holds the rest (the files, the ids, what was
 found). The main session passes that on in a `Context:` line and hands everything else to the `todo-editor`
-agent, which researches at the level asked, drafts the item and runs `todo_sync.py add`. Main-session time stays
+agent, which researches at the level asked, drafts the item and queues it with `todo_sync.py inbox put`. Main-session time stays
 near zero, and the research is done once, by the agent, at the depth the developer chose.
 
 ## Arguments
@@ -68,10 +68,27 @@ Context: <the Step 2 line, or none>
 
 The prompt carries no drafted item fields (title, severity, files): the agent drafts them.
 
-## Step 4: report
+## Step 4: drain the inbox
 
-Relay the agent's reply as it stands. The edit is saved, not committed; the developer reviews the diff and
-commits. With `--issue`, name the issue the reply's `Added` line gives. Name an item marked
+The agent queues the item in the inbox and never writes the catalog. Once it returns, add whatever the inbox
+holds, once:
+
+```bash
+sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" add --inbox
+```
+
+Run it from the project root. It prints one line: `inbox: added N item(s): <id> (#N|note), ...; check drift=<d>`,
+with a `; rejected M (<files>)` part when the catalog refused some queued files; `inbox: rejected M (<files>)`
+when it refused all of them; or `inbox: empty`. A refused file stays in the inbox as `<name>.rejected.json`
+beside a `<name>.reason.txt` naming why: report its item as not added. `inbox: empty` means nothing was waiting:
+either the agent queued nothing (its reply says why), or the todo-watch mod already drained the inbox and its
+summary line arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain; the
+queued items stay in the inbox.
+
+## Step 5: report
+
+Relay the agent's reply as it stands, with the Step 4 line. The edit is saved, not committed; the developer
+reviews the diff and commits. With `--issue`, name the issue the reply's `Added` line gives. Name an item marked
 `(needs decision)`.
 
 ## Rules
@@ -104,5 +121,6 @@ commits. With `--issue`, name the issue the reply's `Added` line gives. Name an 
 
 - `${CLAUDE_PLUGIN_ROOT}/scripts/add_todo.py`: the row driver.
 - `${CLAUDE_PLUGIN_ROOT}/agents/todo-editor.md`: the agent; its `add` operation drafts the item.
-- `${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py`: `add` (with `--file-issue`), `render` and `check`.
+- `${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py`: `inbox put` (with `--file-issue`, run by the agent) and
+  `add --inbox` (the Step 4 drain, which also renders and checks).
 - `${CLAUDE_PLUGIN_ROOT}/reference/skill_arguments.md`: the `--` split.
