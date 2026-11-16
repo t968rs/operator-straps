@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import Any, Dict
 
 from harness_lib import plan_render_html as prh
+from harness_lib.plan_enums import ItemStatus
 from harness_lib.plan_models import ActionPlan
 
 WALK_ROOTS = ()
@@ -56,7 +57,7 @@ def test_the_status_block_lists_every_item_in_plan_order() -> None:
 
 
 def test_every_badge_names_its_item_once_in_the_summary_and_once_in_its_heading() -> None:
-    text, pending = page(), prh.ItemStatus.PENDING.value
+    text, pending = page(), ItemStatus.PENDING.value
     for ident in ("TASK-2", "TASK-1", "TASK-1.1"):
         badge = f'<span class="status" data-status-for="{ident}" data-status="{pending}">{pending}</span>'
         assert text.count(badge) == 2
@@ -65,7 +66,8 @@ def test_every_badge_names_its_item_once_in_the_summary_and_once_in_its_heading(
 
 def test_the_loader_draws_every_badge_that_names_an_item() -> None:
     loader = (prh.PAGES / "components" / "plan.js").read_text(encoding="utf-8")
-    assert 'querySelectorAll(".status[data-status-for=' in loader
+    assert 'querySelectorAll(".status[data-status-for]")' in loader
+    assert 'getAttribute("data-status-for") === id' in loader
     assert 'querySelector(".status")' not in loader
 
 

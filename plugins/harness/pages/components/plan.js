@@ -38,9 +38,9 @@
     node.setAttribute("data-status", status);
   }
   function drawStatuses(id, receipt) {
-    var named = id.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
-    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for=\"" + named + "\"]"),
-      function (node) { drawStatus(node, receipt); });
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
   }
   function cites(change) { return [" (cites ", link("change-", change), ")"]; }
   function drawDeviations(box, dev) {
