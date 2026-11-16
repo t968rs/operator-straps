@@ -330,8 +330,9 @@ def _release_own(path: Path, token: str) -> None:
         break_if_unchanged(path, body)
 
 
-def _check_lease(path: Path, token: str) -> dict:
+def check_lease(path: PathLike, token: str) -> dict:
     """The lease body at ``path`` when it carries ``token``; LockError naming 'no lease' or 'token'."""
+    path = Path(path)
     body = read_holder(path)
     if body is None or body.get("mode") != "lease":
         held = "" if body is None else f" (held by {body.get('owner')!r} in {body.get('mode')} mode)"
@@ -353,7 +354,7 @@ def hold(path: PathLike, owner: str, lease: Optional[str] = None,
     """
     path = Path(path)
     if lease is not None:
-        _check_lease(path, lease)
+        check_lease(path, lease)
         yield
         return
     token = _acquire(path, owner, "write", wait)
@@ -376,6 +377,6 @@ def acquire_lease(path: PathLike, owner: str, wait: Optional[float] = None) -> s
 def release_lease(path: PathLike, token: str) -> None:
     """Remove the lease at ``path`` that carries ``token``; LockError naming 'token' otherwise."""
     path = Path(path)
-    body = _check_lease(path, token)
+    body = check_lease(path, token)
     if not break_if_unchanged(path, body):
         raise LockError(f"lease at {path} changed before its release with this token")

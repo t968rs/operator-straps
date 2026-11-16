@@ -5,7 +5,8 @@
 override. A write lock on this host is stale when its pid is dead (or past ``LEASE_STALE_SECONDS``, against a
 reused pid); one from another host, or an unreadable one, when older than ``WRITE_STALE_SECONDS``; a lease
 only by age (``LEASE_STALE_SECONDS``). A hold removes only a lock that still carries its own token, and a
-break removes only the body it judged stale.
+break removes only the body it judged stale. A busy ``<lock>.break`` guard holds a break off until its
+deadline; a guard older than ``WAIT_SECONDS`` is cleared only while its token is unchanged.
 """
 from __future__ import annotations
 
@@ -100,6 +101,67 @@ def test_a_break_refuses_a_body_that_changed_since_it_was_read(tmp_path: Path) -
     assert not path.exists()
 
 
+def _backdate(path: Path, seconds: float) -> None:
+    """Set the mtime of ``path`` to ``seconds`` ago (negative: into the future)."""
+    stamp = time.time() - seconds
+    os.utime(path, (stamp, stamp))
+
+
+def _guard(path: Path) -> Path:
+    return path.with_name(path.name + ".break")
+
+
+def test_an_unreadable_lock_is_kept_while_fresh_and_broken_past_the_write_age(tmp_path: Path) -> None:
+    path = _lock(tmp_path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('{"pid": 1, "own', encoding="utf-8")
+    with pytest.raises(cl.LockError, match="unreadable"):
+        with cl.hold(path, "add --inbox", wait=0.2):
+            pass
+    assert path.read_text(encoding="utf-8") == '{"pid": 1, "own'
+    _backdate(path, cl.WRITE_STALE_SECONDS + 5)
+    with cl.hold(path, "add --inbox", wait=0.2):
+        assert cl.read_holder(path)["owner"] == "add --inbox"
+    assert not path.exists()
+
+
+def test_a_busy_break_guard_holds_off_the_break(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    path = _lock(tmp_path)
+    _plant(path, pid=424242, owner="stale", token="old")
+    observed = cl.read_holder(path)
+    guard = _guard(path)
+    guard.write_text("another breaker", encoding="utf-8")
+    _backdate(guard, -60)
+    assert cl.break_if_unchanged(path, observed, deadline=time.monotonic()) is False
+    monkeypatch.setattr(cl, "WAIT_SECONDS", 0.1)
+    with pytest.raises(cl.LockError, match="break guard"):
+        cl.break_if_unchanged(path, observed)
+    assert cl.read_holder(path) == observed
+    assert guard.read_text(encoding="utf-8") == "another breaker"
+
+
+def test_a_stale_break_guard_is_cleared_and_the_break_proceeds(tmp_path: Path) -> None:
+    path = _lock(tmp_path)
+    _plant(path, pid=424242, owner="stale", token="old")
+    guard = _guard(path)
+    guard.write_text("crashed breaker", encoding="utf-8")
+    _backdate(guard, cl.WAIT_SECONDS + 5)
+    assert cl.break_if_unchanged(path, cl.read_holder(path)) is True
+    assert not path.exists() and not guard.exists()
+
+
+def test_a_stale_guard_replaced_between_its_reads_is_kept(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+                                                          ) -> None:
+    guard = _guard(_lock(tmp_path))
+    guard.parent.mkdir(parents=True, exist_ok=True)
+    guard.write_text("first", encoding="utf-8")
+    _backdate(guard, cl.WAIT_SECONDS + 5)
+    reads = iter(["first", "second"])
+    monkeypatch.setattr(cl, "_read_text", lambda _path: next(reads))
+    assert cl._clear_stale_guard(guard) is False
+    assert guard.exists()
+
+
 def test_a_write_lock_of_a_dead_pid_is_broken(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     path = _lock(tmp_path)
     _plant(path, pid=424242)
@@ -150,7 +212,8 @@ def test_a_token_with_no_lease_is_refused(tmp_path: Path) -> None:
             pass
 
 
-def test_a_lease_survives_a_dead_pid_and_breaks_by_age(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_a_lease_survives_a_dead_pid_and_breaks_by_age(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+                                                       ) -> None:
     path = _lock(tmp_path)
     monkeypatch.setattr(cl, "pid_alive", lambda pid: False)
     _plant(path, mode="lease", token="t1", owner="todo-editor refresh")
