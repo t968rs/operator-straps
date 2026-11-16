@@ -478,14 +478,16 @@ def _argv_list(commands: List[List[str]], where: str) -> Tuple[Tuple[str, ...], 
 
 
 def _rel_path(value: Any, where: str) -> str:
-    """``value`` when it is a non-empty relative path; ConfigError otherwise.
+    """``value``, as spelled, when it is a non-empty relative path inside the project root; else ConfigError.
 
     Repeats the schema's ``relPath`` shape (no leading slash or backslash, no drive letter), so a load
-    without ``jsonschema`` never accepts a path that escapes the project root.
+    without ``jsonschema`` checks it too, and refuses a value whose normalized form climbs above the project
+    root (``..`` or ``../...``), which the schema pattern lets through.
     """
     if (not isinstance(value, str) or not value or value[0] in "/\\"
             or re.match(r"[A-Za-z]:", value)):
         raise ConfigError(f"{where}: must be a non-empty relative path")
+    _inside_root(posixpath.normpath(value.replace("\\", "/")), where)
     return value
 
 

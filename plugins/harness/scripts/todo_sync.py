@@ -24,7 +24,8 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     cannot record by itself: resolved issues to list as close candidates, trackers to revisit, research
     catalog and stub lines naming a retired id (``dangling:``), and other files naming a retired id
     (``reference (not rewritten):``; the snapshots and the history folders, ``artifacts.plans``,
-    ``reviews``, ``commit_messages``, ``summaries``, ``scratch`` and each planning prefix, are skipped).
+    ``reviews``, ``commit_messages``, ``summaries``, ``scratch`` and each planning prefix, are skipped, and so
+    are the TODO inbox (``<scratch_folder>/todo-inbox``) and ``state_dir``).
     ``--dry-run`` prints the same report and writes nothing.
 ``split ID --spec PATH [--dry-run] [--lease TOKEN]``
     Replace one item with the parts in the spec file (``{"parts": [{...}, {...}]}``, each a set of field
@@ -39,7 +40,7 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     Rescore every item from ``ranking_method``, re-sort and set each rank to its position, after hand edits
     to item fields. Ids never change and only the catalog is written. A catalog already in order is left
     untouched.
-``init``
+``init [--lease TOKEN]``
     Create the TODO folder, an empty schema-valid catalog (the default ranking tables, no items, the current
     commit in ``generated_from``) and the first snapshot (skipped when ``todo.snapshots.dir`` is null). Prints
     one ``created <path>`` line per file. Refuses, exit 2 and nothing written, when the catalog already exists
@@ -67,10 +68,12 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     names the issues filed. A dry run files nothing, labels each such item ``(issue to file)`` and prints
     ``would file N issue(s)``. ``--inbox`` replaces ``--spec`` (one of the two is required): every queued
     inbox file is added in one catalog write, oldest first; accepted files are deleted, a refused one is
-    renamed ``<name>.rejected.json`` beside a ``<name>.reason.txt``; then the snapshot is rendered and the
-    check run. Prints one ``inbox: added N item(s): <id> (#N), ...[; rejected K (<files>)]; check drift=D``
-    line, or ``inbox: empty`` without taking the lock when no file is queued. ``--inbox`` refuses
-    ``--dry-run`` and ``--file-issue`` (``inbox put`` files issues).
+    renamed ``<name>.rejected.json`` beside a ``<name>.reason.txt``; when any item landed, the snapshot is
+    rendered and the check run. Prints one
+    ``inbox: added N item(s): <id> (#N|note), ...[; rejected K (<files>)]; check drift=D`` line when an item
+    landed, ``inbox: rejected K (<files>)`` when every queued file was refused, or ``inbox: empty`` without
+    taking the lock when no file is queued. ``--inbox`` refuses ``--dry-run`` and ``--file-issue``
+    (``inbox put`` files issues).
 ``inbox put --spec PATH [--file-issue]``
     Queue the items of an ``add`` spec in the inbox (``<scratch_folder>/todo-inbox/``), one file per item,
     after a dry run of the whole spec against the catalog; the catalog is never written and no lock is
@@ -89,7 +92,7 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
 ``lease break``
     Remove whatever lock or lease the catalog holds, the manual override for a crashed holder. Prints the
     removed holder's owner, mode and age, or ``lease: none held``.
-``migrate-ids [--dry-run] [--exclude PATH]...``
+``migrate-ids [--dry-run] [--exclude PATH]... [--lease TOKEN]``
     Switch a catalog from rank-tied ``TODO-NNN`` ids to stable ``todo-xxxx`` ids, once. Each item draws an
     id seeded from its old id and title, so a dry run and its real run (and two checkouts of one catalog)
     agree; the ``old -> new`` map is stored in the catalog's ``legacy_ids``. Every live file naming an old
@@ -103,7 +106,8 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     references through the stored map and adds new legacy ids to it; a legacy id the map already holds is
     refused. ``--dry-run`` prints the new ids and the files it would rewrite and writes nothing. A real run
     holds the catalog lease for its whole run (its ``git grep`` and rewrites can outlast a write lock) and
-    frees it afterwards, without the ``lease release`` recount.
+    frees it afterwards, without the ``lease release`` recount; with ``--lease TOKEN`` it runs under that
+    held lease instead and leaves it held.
 
 Every catalog write (``init``, ``add``, ``retire``, ``split``, ``refresh``; not a dry run) holds the catalog
 lock, ``<state_dir>/locks/<catalog path with '/' as '__'>.lock``: the write lock for one command, or with
@@ -185,7 +189,9 @@ def _parser() -> argparse.ArgumentParser:
     rnd.add_argument("--date", type=dt.date.fromisoformat, help="Snapshot date (default: today).")
     sub.add_parser("runner", parents=[common], help="Write the runner pointer.")
     _reshapers(sub, common)
-    sub.add_parser("init", parents=[common], help="Create the TODO folder, an empty catalog and a snapshot.")
+    ini = sub.add_parser("init", parents=[common],
+                         help="Create the TODO folder, an empty catalog and a snapshot.")
+    ini.add_argument("--lease", metavar="TOKEN", help=LEASE_HELP)
     sub.add_parser("untracked", parents=[common], help="List open issues no catalog record mentions.")
     _adders(sub, common)
     _leases(sub, common)
@@ -245,6 +251,9 @@ def _migrator(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) 
     mig.add_argument("--exclude", action="append", default=[], metavar="PATH",
                      help="Leave files under PATH (absolute or relative to the working directory, below "
                           "the project root; matched by path component) as written; repeatable.")
+    mig.add_argument("--lease", metavar="TOKEN",
+                     help="Run under the catalog lease this token names instead of taking a lease of "
+                          "its own.")
 
 
 def _config(args: argparse.Namespace) -> HarnessConfig:
@@ -351,12 +360,12 @@ def _lease(cfg: HarnessConfig, args: argparse.Namespace) -> int:
 
 
 def _migrate(cfg: HarnessConfig, args: argparse.Namespace) -> int:
-    """``migrate-ids``; a real run holds a lease of its own for the whole run."""
+    """``migrate-ids``; a real run holds a lease of its own for the whole run, or the ``--lease`` one."""
     exclude = exclude_paths(cfg, args.exclude, Path.cwd())
     if args.dry_run:
         result = apply_migration(cfg, True, exclude)
     else:
-        with locking.leased(cfg, _owner(args)):
+        with locking.leased(cfg, _owner(args), args.lease):
             result = apply_migration(cfg, False, exclude)
     print("\n".join(migrate_lines(result, args.dry_run)))
     return 0
@@ -416,6 +425,11 @@ def _utf8_streams() -> None:
             stream.reconfigure(encoding="utf-8")
 
 
+def _problem_text(exc: BaseException) -> str:
+    """Join the message and the notes, so a failed lease free is printed with the original error."""
+    return " ".join(" ".join([str(exc), *getattr(exc, "__notes__", ())]).split())
+
+
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """CLI entry point."""
     _utf8_streams()
@@ -423,7 +437,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         return _dispatch(_config(args), args)
     except (ConfigError, TodoSyncError, OSError) as exc:
-        message = " ".join(str(exc).split())
+        message = _problem_text(exc)
         print(f"problem: {message}", file=sys.stderr)
         return 2
 

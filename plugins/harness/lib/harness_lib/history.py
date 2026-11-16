@@ -1,8 +1,8 @@
 """The project folders whose files are history records rather than live code or docs.
 
 Plans, review records, drafted commit messages, PR summaries, run scratch, planning documents, TODO
-snapshots and the TODO inbox quote symbols and ids as they stood when written. Scans that look for live uses of a symbol or an
-id (plan sweeps, the TODO reference scans) skip these folders.
+snapshots and the TODO inbox quote symbols and ids as they stood when written. Scans that look for live
+uses of a symbol or an id (plan sweeps, the TODO reference scans) skip these folders.
 """
 from __future__ import annotations
 

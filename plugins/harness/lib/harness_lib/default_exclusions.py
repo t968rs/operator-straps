@@ -1,10 +1,10 @@
 """The default exclusions file (``.claude/review_exclusions.json``) seeded into a consuming project.
 
-The harness writes review JSONs, PR summaries, run scratch, commit message drafts, TODO inbox drafts, bubble memos, runtime
-state and the agent-watcher rows under the project; the clean-tree check and the review capture treat
-them as machine-generated. A project whose ``exclusions`` value is the default path (in any equivalent
-spelling) gets the file written on first use, with patterns derived from its configured artifact folders
-and rows files. Any other path, or null, is never touched.
+The harness writes review JSONs, PR summaries, run scratch, commit message drafts, TODO inbox drafts,
+bubble memos, runtime state and the agent-watcher rows under the project; the clean-tree check and the
+review capture treat them as machine-generated. A project whose ``exclusions`` value is the default path
+(in any equivalent spelling) gets the file written on first use, with patterns derived from its configured
+artifact folders and rows files. Any other path, or null, is never touched.
 """
 from __future__ import annotations
 

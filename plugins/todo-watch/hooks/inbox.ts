@@ -66,7 +66,10 @@ export const waitCapMs = (remainingMs: number): number =>
     ? Math.min(DRAIN_TIMEOUT_MS, Math.max(0, remainingMs - BUDGET_MARGIN_MS))
     : DRAIN_TIMEOUT_MS
 
-/** Whether an inbox entry is a queued item: a `*.json` that is neither hidden (a put in progress) nor rejected. */
+/**
+ * Whether an inbox entry is a queued item: a `*.json` that is neither hidden (a put, or a drain's claim, in
+ * progress) nor rejected.
+ */
 export const isQueuedName = (name: string): boolean =>
   name.endsWith('.json') && !name.startsWith('.') && !name.endsWith(REJECTED_SUFFIX)
 

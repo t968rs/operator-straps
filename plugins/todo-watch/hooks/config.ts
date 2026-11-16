@@ -127,6 +127,15 @@ const isRooted = (path: string): boolean => /^(\/|[A-Za-z]:)/.test(path)
 /** `inFolder` with the project-root check applied to the result. */
 const todoPath = (folder: string | null, name: string | null): string | null => insideRoot(inFolder(folder, name))
 
+/**
+ * `scratch_folder`, cleaned; the default when it is unset, blank, rooted or climbs above the project root
+ * (harness_lib refuses such a value at config load, so no drain writes there).
+ */
+const scratchOr = (v: unknown): string => {
+  const path = pathOr(v, cleanPath(DEFAULT_SCRATCH_FOLDER))
+  return !isRooted(path) && insideRoot(inFolder(path, '.')) !== null ? path : cleanPath(DEFAULT_SCRATCH_FOLDER)
+}
+
 const parse = (text: string): Json => {
   try {
     const data: unknown = JSON.parse(text)
@@ -150,7 +159,7 @@ export const readConfig = (text: string): TodoWatchConfig => {
   const folder = named !== null && !isRooted(named) && insideRoot(inFolder(named, '.')) !== null ? named : null
   return {
     stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
-    scratchFolder: pathOr(data.scratch_folder, cleanPath(DEFAULT_SCRATCH_FOLDER)),
+    scratchFolder: scratchOr(data.scratch_folder),
     researchDir: pathOr(artifacts.research, DEFAULT_RESEARCH),
     plansDir: pathOr(artifacts.plans, DEFAULT_PLANS),
     folder,

@@ -7,11 +7,14 @@ notice is a band above the prompt by default, kept until its Dismiss button is p
 following each sync change; `todo.notice.style: "toast"` posts it once as a toast instead, kept for
 `todo.notice.toast_seconds` (60 s, the engine's ceiling).
 The sync rules themselves live in Python (`harness_lib.todo_sync` behind `scripts/todo_sync.py`); the mod
-only reads, gates and displays.
+reads, gates and displays, and also drains the TODO inbox: it runs `todo_sync.py add --inbox`, which adds
+the items a `harness:todo-editor` agent queued to the catalog (see Inbox drains). That driver run, under the
+harness catalog lock, is the only catalog write the mod causes; the mod never writes a file itself.
 
 Every hook fails open: an unreadable file, a missing harness config, a missing runner pointer, a refused or
 timed-out process run, or a malformed report or catalog degrades to "nothing to show". No hook blocks or
-fails a tool call, a prompt or a turn on its own error.
+fails a tool call, a prompt or a turn on its own error. The todo-editor `Agent` result and a task-notification
+prompt may wait for a running inbox drain, capped by the hook's budget (at most 60 s).
 
 ## Activation and configuration
 
@@ -34,6 +37,7 @@ value keeps the default):
 | Key | Default | Used for |
 |-----|---------|----------|
 | `state_dir` | `.claude/state/harness` | `<state_dir>/todo-sync/runner.json` (runner pointer) and `report.json` (sync report) |
+| `scratch_folder` | `docs/_scratch/` | `<scratch_folder>/todo-inbox`, the inbox folder a drain trigger lists; a rooted value or one that climbs above the root keeps the default |
 | `artifacts.research` | `docs/RESEARCH` | watched folder (writes under it re-check) |
 | `artifacts.plans` | `docs/PLANS` | watched folder |
 | `todo.folder` | `null` | where the TODO files live; null turns the mod off |
@@ -93,14 +97,37 @@ pointer's `schema_version` and the keys `parseRunner` requires (`python`, `scrip
 harness `write_runner` emits, and checks that the finding parser reads its keys and severities through the
 pinned constants.
 
+### Inbox drains
+
+A `harness:todo-editor` agent queues new TODO items as `*.json` files under `<scratch_folder>/todo-inbox`
+(`todo_sync.py inbox put`) instead of writing the catalog. The mod drains them by running
+`[python, script, "add", "--inbox", "--project", project]` (the runner pointer's values) through
+`$.process.run` with a 60 s cap (`DRAIN_TIMEOUT_MS`). Triggers:
+
+- an `Agent` call to `harness:todo-editor` whose result reads `completed`: a drain starts (unless one runs),
+  and the result waits for it, then carries its summary as context;
+- any subagent's `turn.complete` (foreground, background or continued) while the inbox lists a queued file (a
+  `*.json` neither hidden nor `*.rejected.json`);
+- `session.start`, for items left over from an earlier session.
+
+One drain runs at a time: a request while the driver process runs is owed one rerun after it, a request
+before it starts folds into it. A drain keeps the driver's `inbox: ...` stdout line (none for `inbox: empty`)
+as a pending summary; a non-zero exit, a timeout or a run that never started keeps
+`inbox: drain failed: <last stderr line, timed out or did not run>` instead, once while it waits. The next
+todo-editor `Agent` result or prompt takes the pending summaries into its context; a task-notification prompt
+first waits for a drain in flight. Every such wait is capped by the hook's remaining budget less 1 s, at most
+60 s (`waitCapMs`). A drain that did anything then requests a check run.
+
 ## Hooks
 
 | Hook | Does |
 |------|------|
-| `session.start` | Registers `/todo`, shows the start notice, looks up the runner pointer and schedules the first check. |
+| `session.start` | Registers `/todo`, shows the start notice, looks up the runner pointer and schedules the first check; drains the inbox when it lists a queued item (Inbox drains). |
 | `tool.call` on `Bash`, `PowerShell`, `Edit`, `Write`, `MultiEdit`, `NotebookEdit` | After the call returns, schedules the path gate or the mtime probe (M3). |
+| `tool.call` on `Agent` | A completed `harness:todo-editor` result starts a drain, waits for it (capped) and carries the pending summaries (Inbox drains). |
 | `turn.complete` (main loop) | The runner retry, then the catalog re-read and the mtime probe (M3b). |
-| `prompt.submit` | The runner retry, the report re-read, the probe, and the `TODO_SYNC` line (M2). |
+| `turn.complete` (subagent loop) | Starts a drain when the inbox lists a queued item (Inbox drains). |
+| `prompt.submit` | The runner retry, the report re-read, the probe, the `TODO_SYNC` line (M2) and the pending inbox summaries (a task notification first waits, capped, for a drain in flight). |
 | `session.end`, `session.compact` | After `/clear`, a resume or a main compaction, the next prompt gets the line again. |
 | `command.run` on `todo` | Answers `/todo` while the mod registered it; otherwise passes the command on. |
 | `ui.render` on `AbovePrompt` | Draws the notice band with its Dismiss button (M7, banner style); passes while hidden, empty or under a survey. |

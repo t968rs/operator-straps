@@ -4,7 +4,8 @@ One lock file per catalog, ``<state_dir>/locks/<catalog path with '/' as '__'>.l
 holds the protocol). ``guard`` runs one catalog write under the write lock, or under a lease whose token
 the caller passes; ``acquire`` and ``release`` bracket a lease across several commands, and ``release``
 recounts the catalog, renders the snapshot and runs the check before the lease is freed. ``leased`` wraps
-one command in a lease of its own, freed by ``free`` without that recount. ``break_`` is the manual
+one command in a lease of its own, freed by ``free`` without that recount, or in the held lease a passed
+token names. ``break_`` is the manual
 override. Every ``LockError`` leaves this module as a ``TodoSyncError``.
 """
 from __future__ import annotations
@@ -65,15 +66,6 @@ def acquire(cfg: HarnessConfig, owner: str) -> str:
         raise TodoSyncError(str(exc)) from exc
 
 
-def _verify(path: Path, token: str) -> None:
-    """Refuse, freeing nothing, unless ``path`` holds a lease carrying ``token``."""
-    body = catalog_lock.read_holder(path)
-    if body is None or body.get("mode") != "lease":
-        raise TodoSyncError(f"no lease at {path} for the given token")
-    if body.get("token") != token:
-        raise TodoSyncError(f"lease at {path} held by {body.get('owner')!r} carries another token")
-
-
 def free(cfg: HarnessConfig, token: str) -> None:
     """Remove the lease carrying ``token`` without the recount ``release`` runs.
 
@@ -95,13 +87,18 @@ def _free_noting(cfg: HarnessConfig, token: str, exc: BaseException) -> None:
 
 
 @contextmanager
-def leased(cfg: HarnessConfig, owner: str) -> Iterator[None]:
+def leased(cfg: HarnessConfig, owner: str, lease: Optional[str] = None) -> Iterator[None]:
     """Run the body under a lease of its own, freed afterwards without the recount (``migrate-ids``).
 
-    With no catalog configured the body runs unlocked, as under ``guard``.
+    With ``lease`` the body runs under the held lease that token names, which is neither taken nor freed
+    here, as under ``guard``. With no catalog configured the body runs unlocked, as under ``guard``.
+
+    Raises:
+        TodoSyncError: a lease or write lock is held past the wait, or ``lease`` names no held lease.
     """
-    if not cfg.todo.catalog:
-        yield
+    if not cfg.todo.catalog or lease is not None:
+        with guard(cfg, owner, lease):
+            yield
         return
     token = acquire(cfg, owner)
     try:
@@ -147,7 +144,10 @@ def release(cfg: HarnessConfig, token: str) -> List[str]:
         TodoSyncError: a wrong token or no lease (nothing freed), or a recount, render or check failure
             (the lease is freed regardless; a failed free is noted on that error, not raised over it).
     """
-    _verify(lock_path(cfg), token)
+    try:
+        catalog_lock.check_lease(lock_path(cfg), token)
+    except catalog_lock.LockError as exc:
+        raise TodoSyncError(str(exc)) from exc
     try:
         lines = _settle(cfg)
     except BaseException as exc:
