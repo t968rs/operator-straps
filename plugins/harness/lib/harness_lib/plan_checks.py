@@ -197,7 +197,12 @@ def _option_owner(plan: ActionPlan) -> Dict[str, Decision]:
 
 
 def decision_problems(plan: ActionPlan) -> List[str]:
-    out: List[str] = []
+    """Repeated decision or option ids, and a chosen id that is not one of its decision's options.
+
+    A decision id names a page element (``decision-<id>``), so a repeat is reported like a repeated item id.
+    """
+    ids = [d.id for d in plan.decisions]
+    out = [f"decision id {d} is used {ids.count(d)} times" for d in dict.fromkeys(ids) if ids.count(d) > 1]
     seen: List[str] = [o.id for d in plan.decisions for o in d.options]
     out.extend(f"option id {o} is used {seen.count(o)} times"
                for o in dict.fromkeys(seen) if seen.count(o) > 1)
