@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 1020: Plan page formatting</title>
+<style>
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+code { font: 13px ui-monospace, monospace; background: var(--code); padding: 0 .25em; border-radius: 4px;
+  overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.status { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--muted); vertical-align: middle; }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<h1>Plan 1020: Plan page formatting</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>1020_Plan_page_formatting_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 1020</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 1020</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-16</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>1161-plan-html-improvements -&gt; main</dd><dt>Base commit</dt><dd><code>eac1f25</code></dd><dt>Frozen</dt><dd>2026-11-16 at <code>9ab1bfc</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2>Decisions</h2>
+<ul>
+<li><strong>D1</strong> Where do the page assets live under plugins/harness/pages (issue 289)? Chosen: <code>D1A</code> (pages/styles/shared.css (theme) + pages/styles/plan.css (plan rules) + pages/components/plan.js; the page inlines shared then plan). Rejected: <code>D1B</code> (pages/styles/plan.css + pages/components/plan.js only). Developer, 2026-11-16, in session: the theme in shared.css is reusable by a later TODO page (issue 288).</li>
+<li><strong>D2</strong> Does a pages/views template supply the page shell (issue 289)? Chosen: <code>D2A</code> (no views folder yet; Python keeps building the shell). Rejected: <code>D2B</code> (pages/views/plan.html shell with title, style, body and script slots). Developer, 2026-11-16, in session: add views when a shell is actually shared.</li>
+<li><strong>D3</strong> How are a decision&#x27;s options listed under Chosen and Rejected (issue 278)? Chosen: <code>D3A</code> (one bullet per option: code id, then the summary as written). Rejected: <code>D3B</code> (one bullet per &#x27;; &#x27; clause of each summary). Developer, 2026-11-16, in session: splitting at semicolons cuts summaries that use them.</li>
+<li><strong>D4</strong> What shape is the Status block above Decisions (issue 280)? Chosen: <code>D4A</code> (a list of task headings, each linked, with its live status badge). Rejected: <code>D4B</code> (a table of id, title, dependencies and live status). Developer, 2026-11-16, in session: the issue asks to replicate the task headings and badges.</li>
+<li><strong>D5</strong> How are a decision&#x27;s Chosen, Unchosen and Open markers shown (issue 278)? Chosen: <code>D5A</code> (each marker on a line of its own above its list, drawn as a pill like a task status badge; Chosen bold green, Open bold red, Unchosen muted). Rejected: <code>D5B</code> (Chosen and Rejected labels in the default text style). Developer, 2026-11-16, in session, after the first freeze; the pill look follows the task heading badge (/html/body/section[1]/h3/span).</li>
+</ul>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>harness version</td><td>0.73.0 -&gt; 0.74.0</td><td>plugins/harness/.claude-plugin/plugin.json:3; minor bump for a feature (CLAUDE.md Releases)</td><td>-</td></tr>
+<tr><td>release notes file</td><td>docs/RELEASES/v1.0.0.md (proposed, not cut; latest tag v0.7.0)</td><td>gh release list --limit 1; docs/RELEASES/v1.0.0.md:1</td><td>-</td></tr>
+</table>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>\b_(STYLE|LOADER)\b</code>: <code>docs/TODO/RepoToDo.json</code> (kept: todo-h4za and todo-n7q5 quote the old names; the catalog changes only through todo_sync when the items retire), <code>plugins/arc-straps/skills/arc-meta/SKILL.md</code> (unrelated: the PRO_*_STYLE glob of arc-meta), <code>plugins/harness/lib/harness_lib/plan_render_html.py</code> (rewritten: TASK-1 moves both literals into pages asset files)</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: Move the page CSS and JS into plugins/harness/pages asset files (todo-h4za, issue 289) <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_render_html.py</code>, <code>plugins/harness/pages/styles/shared.css</code>, <code>plugins/harness/pages/styles/plan.css</code>, <code>plugins/harness/pages/components/plan.js</code>, <code>tests/contract/test_no_repo_literals.py</code>, <code>tests/lib/test_plan_page_assets.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:226</code> holds <code>_STYLE = &quot;&quot;&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:251</code> holds <code>_LOADER = &quot;&quot;&quot;(function () {</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:169</code> holds <code>return f&quot;&lt;script&gt;\nvar PIP = {text};\n{_LOADER}&lt;/script&gt;&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:184</code> holds <code>f&quot;&lt;style&gt;{_STYLE}&lt;/style&gt;&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/project.py:67</code> holds <code>def plugin_root() -&gt; Path:</code></li>
+<li><code>tests/contract/test_no_repo_literals.py:18</code> holds <code>TEXT_SUFFIXES = {&quot;.py&quot;, &quot;.md&quot;, &quot;.json&quot;</code></li>
+</ul>
+<p class="action">Create plugins/harness/pages/styles/shared.css with the theme part of _STYLE (the :root color variables and their dark block, body, code, a, .note/.meta) and pages/styles/plan.css with the rest (dl.head, table, .item, .status, .receipt, .change, :target). Create pages/components/plan.js with the _LOADER text unchanged. In plan_render_html.py add PAGES = plugin_root() / &#x27;pages&#x27; (import plugin_root from harness_lib.project) and _asset(folder, name) reading a file as utf-8 inside the function, never at import; _style() returns shared.css then plan.css, and _script() inlines plan.js. Spell &#x27;shared.css&#x27;, &#x27;plan.css&#x27; and &#x27;plan.js&#x27; in code string literals so tools/select_tests.py maps an asset edit to the module. Delete the _STYLE and _LOADER literals and update the module docstring. No pages/views folder (D2A). Add &#x27;.css&#x27; and &#x27;.html&#x27; to TEXT_SUFFIXES in tests/contract/test_no_repo_literals.py so the ban list scans the new assets. The rendered page keeps its rules and loader; only the order of CSS rules may change by the split.</p>
+<ul>
+<li>Test <code>tests/lib/test_plan_page_assets.py::test_pages_sit_under_the_plugin_root</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_plan_page_assets.py::test_the_page_inlines_the_shared_style_then_the_plan_style</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_plan_page_assets.py::test_the_shared_style_holds_the_theme_and_the_plan_style_the_page_rules</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_plan_page_assets.py::test_the_page_inlines_the_loader</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_plan_page_assets.py::test_the_module_holds_no_asset_literals</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_page_assets.py::test_no_views_folder_ships</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_plan_page_assets.py::test_the_literal_ban_scans_page_assets</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_plan_render_html.py tests/lib/test_plan_ledger_state.py tests/contract/test_no_repo_literals.py -q</code>: all pass: the existing page tests hold after the move</li>
+<li>Record it: <code>plan.py record 1020 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: Lay out each decision as a block and theme headings and code (todo-n7q5, issue 278) <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_render_html.py</code>, <code>plugins/harness/pages/styles/shared.css</code>, <code>plugins/harness/pages/styles/plan.css</code>, <code>tests/lib/test_plan_render_html_decisions.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:98-105</code> holds <code>def _decision(d: Decision) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:108-110</code> holds <code>def _section(title: str, rows: List[str], tag: str = &quot;ul&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:177</code> holds <code>_section(&quot;Decisions&quot;, [_decision(d) for d in plan.decisions])</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:227-228</code> holds <code>:root { color-scheme: light dark; --fg: #1f2328;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:233</code> holds <code>code { font: 13px ui-monospace, monospace; background: var(--code);</code></li>
+</ul>
+<p class="action">Rewrite _decision to return a &lt;section class=&quot;decision&quot; id=&quot;decision-&lt;id&gt;&quot;&gt; holding &lt;h3&gt;&lt;id&gt; &lt;question&gt;&lt;/h3&gt;. For a chosen decision: &lt;p class=&quot;pick&quot;&gt;&lt;span class=&quot;mark chosen&quot;&gt;Chosen&lt;/span&gt;&lt;/p&gt;, then &lt;ul class=&quot;options chosen&quot;&gt;; &lt;p class=&quot;pick&quot;&gt;&lt;span class=&quot;mark unchosen&quot;&gt;Unchosen&lt;/span&gt;&lt;/p&gt;, then &lt;ul class=&quot;options unchosen&quot;&gt; (the word Rejected no longer appears, D5A); each &lt;li&gt; is &lt;code&gt;id&lt;/code&gt; plus the summary as written (D3A); then &lt;p class=&quot;why&quot;&gt; with the rationale when there is one. For an open decision: &lt;p class=&quot;pick&quot;&gt;&lt;span class=&quot;mark open&quot;&gt;Open&lt;/span&gt;&lt;/p&gt;, then &lt;ul class=&quot;options open&quot;&gt; with every option. The Decisions heading is followed by the blocks directly, not wrapped in &lt;ul&gt; (_section gains a no-wrapper form or a sibling helper). In shared.css add --accent and --code-fg to the light :root and the dark block, color h1-h3 with var(--accent) and code with var(--code-fg). In plan.css widen the badge rule to &#x27;.status, .mark { ... }&#x27; so a marker is the same pill as a task status badge (font, padding, 1px currentColor border, 1em radius), then .mark.chosen bold (700) in var(--ok), .mark.open bold (700) in var(--bad), .mark.unchosen in var(--muted) (D5A); style .decision; .options.chosen in var(--ok) and .options.unchosen in var(--muted). Escape every text through _e as now. The markdown PIP (plan_render.py) is unchanged.</p>
+<ul>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_a_decision_is_a_block_headed_by_its_id_and_question</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_a_summary_with_a_semicolon_stays_one_bullet</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_the_rationale_follows_the_options</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_an_open_decision_lists_every_option</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_the_theme_defines_accent_colors_for_both_schemes</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_headings_and_code_take_the_accent_colors</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_chosen_and_unchosen_sit_on_lines_of_their_own_above_their_lists</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_chosen_and_unchosen_options_are_told_apart_by_color</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_a_marker_is_a_pill_like_the_status_badge</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_decisions.py::test_the_chosen_marker_is_bold_green_and_the_open_marker_bold_red</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_plan_render_html.py tests/lib/test_plan_page_assets.py -q</code>: all pass</li>
+<li>Record it: <code>plan.py record 1020 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: Add a Status block of task headings and live badges above Decisions (todo-bwe5, issue 280) <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_render_html.py</code>, <code>plugins/harness/pages/components/plan.js</code>, <code>plugins/harness/pages/styles/plan.css</code>, <code>tests/lib/test_plan_render_html_summary.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:153</code> holds <code>&lt;span class=&quot;status&quot; data-status=&quot;{_PENDING}&quot;&gt;{_PENDING}&lt;/span&gt;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:177-178</code> holds <code>body = _header(plan, plan_name) + _section(&quot;Decisions&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:285-289</code> holds <code>function drawStatus(node, receipt) {</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:365-369</code> holds <code>drawStatus(node.querySelector(&quot;.status&quot;), receipts[id]);</code></li>
+</ul>
+<p class="action">Add _summary(plan): &lt;h2 id=&quot;status&quot;&gt;Status&lt;/h2&gt; and &lt;ul class=&quot;summary&quot;&gt; with one &lt;li&gt; per item in plan order: &lt;a href=&quot;#item-&lt;id&gt;&quot;&gt;&lt;id&gt;: &lt;title&gt;&lt;/a&gt; and &lt;span class=&quot;status&quot; data-status-for=&quot;&lt;id&gt;&quot; data-status=&quot;PENDING&quot;&gt;PENDING&lt;/span&gt;; nothing when the plan has no items. render_pip_html emits it after the header and before Decisions. The item heading&#x27;s badge gains the same data-status-for. In plan.js draw each item&#x27;s status into every .status[data-status-for=&quot;&lt;id&gt;&quot;] node (querySelectorAll), for the summary and the item alike, from the receipt the item section already reads; the receipt and design-change drawing stay per section. In plan.css style .summary (no bullets, badge after the title, compact rows).</p>
+<ul>
+<li>Test <code>tests/lib/test_plan_render_html_summary.py::test_the_status_block_sits_above_decisions</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_summary.py::test_the_status_block_lists_every_item_in_plan_order</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_summary.py::test_every_badge_names_its_item_once_in_the_summary_and_once_in_its_heading</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_summary.py::test_the_loader_draws_every_badge_that_names_an_item</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_plan_render_html_summary.py::test_the_summary_style_ships_in_the_plan_style</code> fails with AttributeError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_plan_render_html.py tests/lib/test_plan_page_assets.py tests/lib/test_plan_render_html_decisions.py -q</code>: all pass</li>
+<li>Record it: <code>plan.py record 1020 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: Bump harness to 0.74.0, extend the v1.0.0 notes and the write-plan README <span class="status" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> TASK-3</p>
+<p><strong>Files:</strong> <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code>, <code>plugins/harness/skills/write-plan/README.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.73.0&quot;,</code></li>
+<li><code>docs/RELEASES/v1.0.0.md:28</code> holds <code>| harness | 0.65.1 | 0.73.0 |</code></li>
+<li><code>plugins/harness/skills/write-plan/README.md:75</code> holds <code>The PIP is `NNNN_&lt;title&gt;_PIP.html`.</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_render_html.py:219-222</code> holds <code>if plan_receipts.uses_receipts(plan) and page.exists():</code></li>
+</ul>
+<p class="action">Set plugins/harness/.claude-plugin/plugin.json version 0.74.0. In docs/RELEASES/v1.0.0.md change the harness row to 0.65.1 | 0.74.0 and add one line: Feat(write-plan): the HTML PIP opens with a Status list of task headings and live badges, lays out each decision as a block with Chosen and Rejected lists, themes headings and code, and reads its CSS and JS from plugins/harness/pages (issues 278, 280, 289). In plugins/harness/skills/write-plan/README.md add to the PIP bullet that the page opens with the Status list, and that an existing page keeps its old layout until it is deleted and PLAN render &lt;id&gt; writes it again (render writes a frozen plan&#x27;s page only when it is missing). Then run the lint and validate commands.</p>
+<ul>
+<li>Run <code>python -m ruff check --no-cache plugins/harness/lib/harness_lib/plan_render_html.py tests/lib/test_plan_page_assets.py tests/lib/test_plan_render_html_decisions.py tests/lib/test_plan_render_html_summary.py tests/contract/test_no_repo_literals.py</code>: All checks passed!</li>
+<li>Run <code>claude plugin validate --strict plugins/harness</code>: validation passes</li>
+<li>Record it: <code>plan.py record 1020 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "1020/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatus(node.querySelector(".status"), receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>

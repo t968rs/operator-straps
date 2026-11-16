@@ -1,0 +1,64 @@
+{
+  "plan_id": "1020",
+  "feature": "Plan page formatting",
+  "branch_lineage": "main-->1161-plan-html-improvements",
+  "primary_documents": {
+    "plan": "docs/plans/1020_Plan_page_formatting_ActionPlan.json"
+  },
+  "changes": [
+    {
+      "id": "PR1",
+      "discovered_by": "developer plan review",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 action and tests",
+        "indicated": "Chosen and Rejected labels before their option lists, in default text style"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the frozen plan missed the label wording and color the developer wants",
+        "why_free_form": "Developer: each decision shows Chosen and Unchosen on separate lines, Chosen bold green and Open bold red"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "D5A: Chosen: and Unchosen: label lines; .pick.chosen bold var(--ok), .pick.open bold var(--bad); Rejected renamed Unchosen"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "matches the developer's direction for issue 278"
+      },
+      "date": "2026-11-16"
+    },
+    {
+      "id": "PR2",
+      "discovered_by": "developer plan review",
+      "phase": "plan-review",
+      "items": [
+        "TASK-2"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "D5A and TASK-2 action and tests",
+        "indicated": "Chosen: and Unchosen: as bold text labels in .pick paragraphs"
+      },
+      "issue": {
+        "category": "spec-coverage",
+        "why_categorical": "the marker look the developer wants was not specified",
+        "why_free_form": "Developer: decision status markers should look like the task heading badge at /html/body/section[1]/h3/span"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "markers are span.mark pills sharing the .status badge rule; Chosen bold green, Open bold red, Unchosen muted"
+      },
+      "why_new_outcome": {
+        "category": "spec-source-alignment",
+        "free_form": "matches the developer's direction for issue 278"
+      },
+      "date": "2026-11-16"
+    }
+  ]
+}
