@@ -124,6 +124,19 @@ def test_run_gh_reports_failure_and_missing_gh(monkeypatch) -> None:
         gh.run_gh(Path("."), ["issue", "list"])
 
 
+def test_run_gh_bounds_each_call_and_reports_a_timeout(monkeypatch) -> None:
+    seen: Dict[str, Any] = {}
+
+    def hang(*a, **k):
+        seen.update(k)
+        raise subprocess.TimeoutExpired(["gh"], k["timeout"])
+
+    monkeypatch.setattr(gh.subprocess, "run", hang)
+    with pytest.raises(TodoSyncError, match=r"gh issue create timed out after 120s"):
+        gh.run_gh(Path("."), ["issue", "create", "--title", "t"])
+    assert seen["timeout"] == gh.GH_TIMEOUT_SECONDS == 120.0
+
+
 def test_write_untracked_lands_under_state_dir(make_project) -> None:
     cfg = build(make_project)
     rows = [{"number": 200, "title": "Issue 200"}]

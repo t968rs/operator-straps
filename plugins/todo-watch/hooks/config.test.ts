@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'claude-code/testing'
 
 import {
-  DEFAULT_GH_MAX_AGE_HOURS, DEFAULT_INJECT_CONTEXT, DEFAULT_NOTICE_ITEMS, DEFAULT_NOTICE_STYLE, DEFAULT_PLANS,
-  DEFAULT_RESEARCH,
-  DEFAULT_STATE_DIR, DEFAULT_TOAST_SECONDS, DEFAULT_TOP_N, inFolder, isActive, readConfig, syncDirOf, under,
+  cleanPath, DEFAULT_GH_MAX_AGE_HOURS, DEFAULT_INJECT_CONTEXT, DEFAULT_NOTICE_ITEMS, DEFAULT_NOTICE_STYLE,
+  DEFAULT_PLANS, DEFAULT_RESEARCH, DEFAULT_SCRATCH_FOLDER, DEFAULT_STATE_DIR, DEFAULT_TOAST_SECONDS, DEFAULT_TOP_N,
+  inboxDirOf, inFolder, isActive, readConfig, syncDirOf, under,
 } from './config'
 
 const DEFAULTS = {
-  stateDir: DEFAULT_STATE_DIR, researchDir: DEFAULT_RESEARCH, plansDir: DEFAULT_PLANS, folder: null,
-  catalog: null, catalogSchema: null, topN: DEFAULT_TOP_N, snapshotsDir: null, researchCatalog: null,
+  stateDir: DEFAULT_STATE_DIR, scratchFolder: cleanPath(DEFAULT_SCRATCH_FOLDER), researchDir: DEFAULT_RESEARCH,
+  plansDir: DEFAULT_PLANS, folder: null, catalog: null, catalogSchema: null, topN: DEFAULT_TOP_N, snapshotsDir: null, researchCatalog: null,
   ghMaxAgeHours: DEFAULT_GH_MAX_AGE_HOURS, injectContext: DEFAULT_INJECT_CONTEXT,
   noticeStyle: DEFAULT_NOTICE_STYLE, toastMs: DEFAULT_TOAST_SECONDS * 1000, noticeItems: DEFAULT_NOTICE_ITEMS,
 }
@@ -136,5 +136,12 @@ describe('paths', () => {
 
   test('the sync folder sits under state_dir', async () => {
     expect(syncDirOf(readConfig('{}'))).toBe('.claude/state/harness/todo-sync')
+  })
+
+  test('the inbox sits under scratch_folder, its trailing slash dropped', async () => {
+    expect(DEFAULT_SCRATCH_FOLDER).toBe('docs/_scratch/')
+    expect(inboxDirOf(readConfig('{}'))).toBe('docs/_scratch/todo-inbox')
+    expect(inboxDirOf(readConfig(JSON.stringify({ scratch_folder: 'tmp\\scratch\\' })))).toBe('tmp/scratch/todo-inbox')
+    expect(inboxDirOf(readConfig(JSON.stringify({ scratch_folder: 3 })))).toBe('docs/_scratch/todo-inbox')
   })
 })

@@ -5,6 +5,7 @@
  */
 
 export const DEFAULT_STATE_DIR = '.claude/state/harness'
+export const DEFAULT_SCRATCH_FOLDER = 'docs/_scratch/'
 export const DEFAULT_RESEARCH = 'docs/RESEARCH'
 export const DEFAULT_PLANS = 'docs/PLANS'
 export const DEFAULT_FOLDER: string | null = null
@@ -35,6 +36,8 @@ export const MAX_NOTICE_ITEMS = 10
  */
 export type TodoWatchConfig = {
   stateDir: string
+  /** `scratch_folder`: the TODO inbox lives under it. */
+  scratchFolder: string
   researchDir: string
   plansDir: string
   folder: string | null
@@ -124,6 +127,15 @@ const isRooted = (path: string): boolean => /^(\/|[A-Za-z]:)/.test(path)
 /** `inFolder` with the project-root check applied to the result. */
 const todoPath = (folder: string | null, name: string | null): string | null => insideRoot(inFolder(folder, name))
 
+/**
+ * `scratch_folder`, cleaned; the default when it is unset, blank, rooted or climbs above the project root
+ * (harness_lib refuses such a value at config load, so no drain writes there).
+ */
+const scratchOr = (v: unknown): string => {
+  const path = pathOr(v, cleanPath(DEFAULT_SCRATCH_FOLDER))
+  return !isRooted(path) && insideRoot(inFolder(path, '.')) !== null ? path : cleanPath(DEFAULT_SCRATCH_FOLDER)
+}
+
 const parse = (text: string): Json => {
   try {
     const data: unknown = JSON.parse(text)
@@ -147,6 +159,7 @@ export const readConfig = (text: string): TodoWatchConfig => {
   const folder = named !== null && !isRooted(named) && insideRoot(inFolder(named, '.')) !== null ? named : null
   return {
     stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
+    scratchFolder: scratchOr(data.scratch_folder),
     researchDir: pathOr(artifacts.research, DEFAULT_RESEARCH),
     plansDir: pathOr(artifacts.plans, DEFAULT_PLANS),
     folder,
@@ -177,3 +190,6 @@ export const under = (root: string, path: string): string => (isAbsolute(path) ?
 
 /** `<state_dir>/todo-sync`: the runner pointer and the sync report live here. */
 export const syncDirOf = (c: TodoWatchConfig): string => `${c.stateDir}/todo-sync`
+
+/** `<scratch_folder>/todo-inbox`: the queued items a `todo_sync.py add --inbox` drain adds to the catalog. */
+export const inboxDirOf = (c: TodoWatchConfig): string => `${c.scratchFolder}/todo-inbox`

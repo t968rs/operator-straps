@@ -60,7 +60,8 @@ research entries now fully resolved (`Resolved`), and the GitHub issues that can
 (`Close`). When the reply lists open items (a missing close-candidate evidence, a reference outside the catalog,
 a stub kept for lack of proof, a failed check), name them first. The script's reference list names only the
 retired or split ids and leaves out the history folders (`artifacts.plans`, `reviews`, `commit_messages`,
-`summaries`, `scratch`, each planning prefix and the snapshots), in-progress plans included: an id in a record
-stays as written, but a live plan naming a retired id has to be checked by hand. When the catalog still holds
+`summaries`, `scratch`, each planning prefix, the snapshots, the TODO inbox (`<scratch_folder>/todo-inbox`) and
+`state_dir`), in-progress plans included: an id in a record stays as written, but a live plan naming a retired id
+has to be checked by hand. When the catalog still holds
 rank-tied ids, the agent relays the refusal naming `todo_sync.py migrate-ids`; that switch is the developer's
 to run.

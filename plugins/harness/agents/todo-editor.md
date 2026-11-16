@@ -57,41 +57,48 @@ Ids are stable (`todo-k7qf`): an edit moves ranks, never ids.
 - **Never hand-edit `id`, `rank`, `priority`, `counts`, `depends_on`, `unblocks`, `child_todo_ids`,
   `related_todo_ids`, `retired_ids`, `legacy_ids` or `split_ids`.** The script computes them; a hand edit fails
   rules T1 and T6-T10. To change a score, edit the fields it derives from (`severity`, `impact`, `loe.size`,
-  `blast_radius.level`) and run `TS refresh`.
-- **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split and add spec files. Lines the
+  `blast_radius.level`) and run `TS refresh --lease <token>` (the run's lease).
+- **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split and add spec files under `<state_dir>/todo-sync/` (never a queued file in the inbox). Lines the
   script prints as `reference (not rewritten):` sit in other files: report them, do not edit them. The list
   names only the retired or split ids and never covers the history folders (`artifacts.plans`, `reviews`,
-  `commit_messages`, `summaries`, `scratch`, each planning prefix, the snapshots), in-progress plans included:
+  `commit_messages`, `summaries`, `scratch`, each planning prefix, the snapshots), the TODO inbox
+  (`<scratch_folder>/todo-inbox`) or `state_dir` (the lock body), in-progress plans included:
   flag that a live plan naming a retired id needs a check by hand. A `reference scan failed:` line goes under
   `Open`.
 - **Delete a stub only under `Delete retired: yes`**, and only through the **delete-retired** gate below. No other
   file is ever deleted.
-- **Dry-run first** for retire, split, sync and add; read its report before the real run.
+- **Dry-run first** for retire and split; read its report before the real run. Sync and add run no dry run:
+  `inbox put` validates the spec against the catalog itself.
+- **Queue, never write.** Sync and add only queue items through `inbox put`; the dispatching skill drains the
+  inbox into the catalog once the agent returns. Retire, split and refresh write the catalog, so each holds the
+  catalog lease from its first step to its reply, which keeps a drain or another run from writing in between.
 - **Save, never commit.** No `git commit`, `push`, `reset`, `checkout`, `stash`.
 - Severity and impact follow the catalog's own `ranking_method.severity_scale` and `impact_definitions`; read
   them before assigning either.
 
 ## retire
 
-1. Read each named item. Its status does not mark it finished (the schema has no done status); the developer
+1. `TS lease acquire --owner "todo-editor retire"` and keep the token it prints (`lease: <token>`). Every
+   retire command below passes `--lease <token>`. A `problem:` line naming the holder ends the run: relay it.
+2. Read each named item. Its status does not mark it finished (the schema has no done status); the developer
    says so. Find the landing evidence: `git -C "<root>" log --oneline -20 --all -- <the item's files>` and
    a log grep for the item's title words or issue numbers.
-2. `TS retire <ids> --dry-run`, then `TS retire <ids>`.
-3. Work the follow-up lines:
+3. `TS retire <ids> --dry-run --lease <token>`, then `TS retire <ids> --lease <token>`.
+4. Work the follow-up lines:
    - `issue #N: ...` - add a `close_candidates` entry (`number`, `title`, `url`, `current_state`
      `LIKELY_RESOLVED`, `evidence` naming the commit SHA or PR, `recommended_action`, `related_todo_ids: []`),
      copying the shape of an existing entry. With no evidence found, add nothing and list the issue as open.
    - `tracker #N: ...` - update that tracker's `status_note` and `recommended_action` to the children left.
    - `dangling: <where> names retired <id>` (a catalog string, or a research-catalog or stub line) - reword
      the sentence so it no longer names the retired id (say the work landed, with the SHA when known).
-4. Update what the retirement leaves behind. For each research entry the retired items cited
+5. Update what the retirement leaves behind. For each research entry the retired items cited
    (`catalog_entry_ids`) and its `_IMPL_TODO.md` stub:
-   - Write the implementation status into the stub: what landed (with the commit SHA or PR from step 1) and what
+   - Write the implementation status into the stub: what landed (with the commit SHA or PR from step 2) and what
      is left. Keep the stub's `status:` and `loe:` header lines equal to the entry's (rule S4).
    - Set the entry's `status` and `status_note` in the research catalog to match. Use `PARTIAL` while any
      deliverable is left; `FULLY_IMPLEMENTED` only through the gate below. Rule T4 (a live entry no item cites)
      and T5 (an item citing only terminal entries) show which entries lost their last item.
-5. With `Delete retired: yes`, go to **delete-retired**; otherwise go to **finish**.
+6. With `Delete retired: yes`, go to **delete-retired**; otherwise go to **finish**.
 
 ## delete-retired
 
@@ -108,28 +115,31 @@ the stub, the catalog or a commit message is not evidence.
    the evidence into `status_note`, delete the stub file with `rm` on its absolute path (the last commit that
    held it comes from `git -C "<root>" log -1 --format=%h -- <stub>`), then go to **finish**.
 4. Any deliverable unproven: the stub is kept and the entry stays `PARTIAL`. List the stub under `Stubs` as
-   kept and the unproven deliverable and its failed check under `Open`.
+   kept and the unproven deliverable and its failed check under `Open`. Then go to **finish**.
 
 ## split
 
-1. Read the item, then what it points at: `sources`, `files`, `code_snippet`, linked research entries. Find
+1. `TS lease acquire --owner "todo-editor split"` and keep the token it prints (`lease: <token>`). Every
+   split command below passes `--lease <token>`. A `problem:` line naming the holder ends the run: relay it.
+2. Read the item, then what it points at: `sources`, `files`, `code_snippet`, linked research entries. Find
    the independent deliverables: separate fixes, files or decisions that can land and be verified alone.
    Guidance from the prompt wins. When the item holds only one deliverable, stop and report that instead of
-   inventing parts.
-2. Write the spec to `<state_dir>/todo-sync/split-<id>.json`:
+   inventing parts (the **finish** release still runs).
+3. Write the spec to `<state_dir>/todo-sync/split-<id>.json`:
    `{"parts": [{...}, {...}]}`. Each part is a set of field overrides laid over a copy of the item; unset
    fields are inherited. Set at least `title`, `summary`, `proposed_change`, `files`, and, where the part
    differs from the whole, `code_snippet`, `blast_radius`, `loe`, `severity`, `impact`, `why_ranked`.
    `unblocks` and `depends_on` are inherited; narrow them when only one part feeds a dependent item. Each
    `summary` names the sibling it was split from. Never set `id`, `rank` or `priority`.
-3. `TS split <id> --spec <path> --dry-run`. Check the parts land where expected and the refusal list is
-   empty; fix the spec and rerun on a `problem:` line. The part ids it prints are provisional: the real run
-   draws its own.
-4. `TS split <id> --spec <path>`. The original id joins `retired_ids`, and `split_ids` maps it to its parts.
-5. Each `dangling: <where> names split <orig> (parts <a>, <b>)` line is a sentence still naming the original
+4. `TS split <id> --spec <path> --dry-run --lease <token>`. Check the parts land where expected and the refusal
+   list is empty; fix the spec and rerun on a `problem:` line. The part ids it prints are provisional: the real
+   run draws its own.
+5. `TS split <id> --spec <path> --lease <token>`. The original id joins `retired_ids`, and `split_ids` maps it to
+   its parts.
+6. Each `dangling: <where> names split <orig> (parts <a>, <b>)` line is a sentence still naming the original
    id, left as written. Reword it to name the part it meant, or the parts when it meant the whole item. Take
    the part ids from the real run's report, never the dry run's provisional ones.
-6. Go to **finish**.
+7. Go to **finish**.
 
 ## sync
 
@@ -155,21 +165,25 @@ Runs for `Operation: sync`; the `Issues:` line names the open issues no catalog 
      `summary`. A claim the tree does not confirm or refute is written as `unverified`.
    - `kind` is one of `bug`, `feature`, `refactor`, `test`, `cicd`, `docs`, `skill`; `why_ranked` is one
      sentence naming severity, impact and size.
-3. Write `{"items": [...]}` to `<state_dir>/todo-sync/add.json`. Each item carries `issue` (the number), `url`,
+3. Write `{"items": [...]}` to `<state_dir>/todo-sync/add-<stamp>-<rand>.json`: `<stamp>` is the UTC time as
+   `YYYYMMDDTHHMMSS` and `<rand>` is six random lowercase letters. Several todo-editor agents may draft at once,
+   and a path they share lets one overwrite another's spec between its write and its `inbox put`. Each item carries `issue` (the number), `url`,
    `title`, `kind`, `summary`, `proposed_change`, `blast_radius`, `loe`, `impact`, `severity`, `why_ranked`,
    and optionally `needs_decision`, `decision_question`, `status`, `files`, `related_gh_issues`,
    `code_snippet`. The shapes: `severity` an integer 1 to 5; `loe` an object `{"size": "S", "reasoning": "..."}`;
    `blast_radius` an object `{"level": "S", "reasoning": "...", "consumers": []}`; `files` a list of strings.
-   `add` refuses, with a `problem:` line naming the spec item and field, a value of another shape and any
+   `inbox put` refuses, with a `problem:` line naming the spec item and field, a value of another shape and any
    item the catalog schema rejects: `kind` outside its list, a `url` not `https://`, a `code_snippet` whose
    first line is no `path:line` header, a path listed twice in `files`, extra keys in `loe` or
    `blast_radius`, `needs_decision` true without a `decision_question` (or a question without it), and
    `status` `NEEDS_DECISION` without `needs_decision` true. Never `id`, `rank`, `priority`, `sources`, `gh_issues`, `depends_on` or `unblocks`: the
    script builds the `gh_issue` source and computes the rest. No stub or research folder is needed.
-4. `TS add --spec <path> --dry-run`, read it, then `TS add --spec <path>`. On a `problem:` line fix the spec
-   and rerun once.
-5. List every added item under `Added` as `todo-xxxx for #N`, the id the real run printed (a dry run's ids are
-   provisional), with ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
+4. `TS inbox put --spec <path>`. It validates the spec against the catalog itself, so no dry run comes first,
+   and it queues one inbox file per item without writing the catalog. It prints one `queued <path>` line per
+   item. On a `problem:` line fix the spec and rerun once.
+5. List every queued item under `Added` as `queued: <title> (#N)`, with ` (needs decision)` appended when it
+   carries `needs_decision: true`. The item's id is not drawn yet: the drain's summary line names it later.
+   Skip **finish**: the drain adds the items, renders the snapshot and runs the check.
 
 ## add
 
@@ -198,38 +212,56 @@ session's conversation had already established (or `none`). Draft exactly one it
      research.
 2. Score as in **sync**: `severity`, `impact`, `loe` and `blast_radius` follow the catalog's `ranking_method`
    scales, with a best guess at level 0. `kind` and `why_ranked` as in **sync**.
-3. Write `{"items": [{...}]}` to `<state_dir>/todo-sync/add.json` with the **sync** item keys, never `issue` or
+3. Write `{"items": [{...}]}` to `<state_dir>/todo-sync/add-<stamp>-<rand>.json` (`<stamp>` and `<rand>` as in
+   **sync**, so no other run shares the path) with the **sync** item keys, never `issue` or
    `url`: the script makes the item a local `note` source, or files the issue. A note about an issue that is
    already open belongs to `/harness:sync-gh-todo`, not to `add`: a `related_gh_issues` entry still leaves the
    issue untracked, so the next sync would draft a second item for it. Say so under `Open`.
-4. `TS add --spec <path> --dry-run`, read it, then `TS add --spec <path>`. Under `Issue: yes` both runs take
-   `--file-issue`; under `Issue: no` neither does, even when the note asks for an issue: the item stays local
-   and `Open` says the note asked for one. Never run `gh issue create` yourself. On a `problem:` line fix the
-   spec and rerun once; a `problem:` line naming issues `already filed` is relayed verbatim under `Open`, and
-   the rerun after it sets `issue` and `url` from that line in the spec and drops `--file-issue`, so the
-   issue is not filed twice.
-5. List the item under `Added` as `todo-xxxx (note)`, or `todo-xxxx for #N <url>` from the `filed` line, with
-   ` (needs decision)` appended when it carries `needs_decision: true`. Go to **finish**.
+4. `TS inbox put --spec <path>`. It validates the spec against the catalog itself, so no dry run comes first.
+   Under `Issue: yes` the run takes `--file-issue` (`TS inbox put --spec <path> --file-issue`) and prints a
+   `filed #N <url>` line for the issue it filed; under `Issue: no` it does not, even when the note asks for an
+   issue: the item stays local and `Open` says the note asked for one. Never run `gh issue create` yourself.
+   On a `problem:` line fix the spec and rerun once; a `problem:` line naming issues `already filed` is relayed
+   verbatim under `Open`, and the rerun after it sets `issue` and `url` from that line in the spec and drops
+   `--file-issue`, so the issue is not filed twice.
+5. List the item under `Added` as `queued: <title> (note)`, or `queued: <title> (#N <url>)` from the `filed`
+   line, with ` (needs decision)` appended when it carries `needs_decision: true`. The item's id is not drawn
+   yet: the drain's summary line names it later. Skip **finish**: the drain adds the item, renders the
+   snapshot and runs the check.
 
 ## refresh
 
-1. `TS refresh`. "nothing changed" ends the run: report it.
-2. Go to **finish**.
+1. `TS lease acquire --owner "todo-editor refresh"` and keep the token it prints (`lease: <token>`). A
+   `problem:` line naming the holder ends the run: relay it.
+2. `TS refresh --lease <token>`. "nothing changed" needs no edit: report it after **finish** releases the lease.
+3. Go to **finish**.
 
 ## finish
 
-1. `TS render` (writes the dated snapshot), then `TS check --format markdown`.
-2. A finding your edits caused (T1 schema, T3-T10): fix and rerun. Findings that predate the run, and
+Runs for retire, split and refresh, which hold a lease.
+
+1. `TS check --format markdown`. A finding your edits caused (T1 schema, T3-T10): fix and rerun, except a T9
+   counts finding, which is left for step 2 because its recount clears it. Findings that predate the run, and
    rules outside the catalog (P, S, G), go in the reply as they are.
+2. `TS lease release <token>`, before the reply. It recounts the catalog, renders the dated snapshot, runs the
+   check and frees the lease, then prints `lease released; counts updated|unchanged`, `rendered <path>` (only
+   when `todo.snapshots.dir` is set) and `check drift=<d>`; take the `Check` drift from that line. A release that
+   exits 2 has already freed the lease (only a wrong token keeps it): relay its `problem:` line under `Open` and
+   never run the release again. Take `error` and `warn` from the step 1 check, less any T2 snapshot finding (the
+   release's render clears it) and any T9 counts finding (the release's recount clears it).
 
 ## Stop conditions
 
 Report and stop, do not improvise, when a script exits 2 (relay the `problem:` line verbatim, after one spec
 fix for split, sync or add), when an id is not in the catalog, when a split item holds one deliverable, when `untracked` prints
-`untracked: none`, or when a fix would need a file outside the edit list.
+`untracked: none`, or when a fix would need a file outside the edit list. A retire, split or refresh run that
+holds a lease still runs `TS lease release <token>` before the reply on any of these stops, so the lease never
+waits out its 30 minutes; the one exception is a `problem:` line from the release itself.
 
 A script that refuses because the catalog still holds rank-tied TODO-NNN ids (its `problem:` line names
-`migrate-ids`) ends the run: relay the refusal with the commands the developer runs from the project root,
+`migrate-ids`) ends the run. A retire, split or refresh run first frees its lease with `TS lease release <token>`
+(a real `migrate-ids` run waits on any held lease, then refuses), then relays the refusal with the commands the
+developer runs from the project root,
 `sh "${CLAUDE_PLUGIN_ROOT}/scripts/hpy" "${CLAUDE_PLUGIN_ROOT}/scripts/todo_sync.py" migrate-ids --dry-run`, then
 the same without `--dry-run`, and stop. The switch rewrites every live file that names an old id, so it is the
 developer's call: never run `TS migrate-ids` yourself.
@@ -238,16 +270,18 @@ developer's call: never run `TS migrate-ids` yourself.
 
 ```
 Operation: <retire | split | refresh | sync | add> <ids, issues or the note's first words>
-Result: <the script's first line>
+Result: <the first line of the real (not dry) retire, split or refresh run, not the `lease:` line; for sync and add, the first `queued` line>
 Retired ids: <ids the run retired, a split's original included | none>
 Prose fixed: <file: where, one per line | none>
-Added: <todo-xxxx for #N [<url>] | todo-xxxx (note), each (needs decision) when set, close_candidates #N, tracker #N notes, ... | none>
+Added: <queued: <title> (#N [<url>] | note) for sync and add, each (needs decision) when set, close_candidates #N, tracker #N notes, ... | none>
 Stubs: <stub path: updated | deleted | kept, its status now and what is left, one per line | none>
 Resolved: <research entry id: FULLY_IMPLEMENTED with the evidence run, or PARTIAL with the gap, one per line | none>
 Close: <issue #N: why it can close (commit SHA or PR), one per line | none>
 Open: <issues without evidence, unproven deliverables, references outside the catalog, findings left, ... | none>
 Check: drift=<n> error=<n> warn=<n>
 ```
+
+Sync and add run no check: their `Check` line reads `not run (the drain checks)`.
 
 `Stubs` and `Resolved` answer for every stub and entry the retirement touched, not only the ones that changed. `Close`
 lists an issue only when the evidence is a commit or PR you found; an issue without it goes under `Open`.

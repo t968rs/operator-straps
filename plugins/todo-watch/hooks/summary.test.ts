@@ -80,7 +80,7 @@ describe('formatSummary', () => {
   test('a long or multi-line top title is flattened and clipped', async () => {
     const title = `line one\nline two ${'x'.repeat(80)}`
     const top = [{ id: 'TODO-001', rank: 1, title, status: 'OPEN', score: null }]
-    const shown = formatSummary(summary({ top })).split('top: ')[1]
+    const shown = formatSummary(summary({ top })).split('top: ')[1] ?? ''
     expect(shown.startsWith('line one line two x')).toBe(true)
     expect(shown.length).toBe(60)
     expect(shown.endsWith('…')).toBe(true)
@@ -149,7 +149,7 @@ describe('the notice view', () => {
 
   test('a messy title folds to one clipped line', async () => {
     const top = [{ id: 'TODO-001', rank: 1, title: `a\n\tb ${'x'.repeat(200)}`, status: 'OPEN', score: null }]
-    const [line] = formatNotice(summary({ top }), null, 'found', 3).items
+    const [line = ''] = formatNotice(summary({ top }), null, 'found', 3).items
     expect(line.startsWith('1  a b x')).toBe(true)
     expect(/[\n\t]/.test(line)).toBe(false)
     expect(line.endsWith('…')).toBe(true)

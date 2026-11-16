@@ -1,6 +1,7 @@
 import type {
   EngineInterface,
   On,
+  PromptSubmitInput,
   PromptSubmitResult,
   SessionCompactInput,
   SessionCompactResult,
@@ -9,7 +10,11 @@ import { atom, read, update } from 'claude-code'
 
 import type { NoticeView, SyncFinding, SyncReport, TodoSummary } from '../types'
 import { resetBand, setNoticeView, showBand } from './band'
-import { isAbsolute, syncDirOf, under, type TodoWatchConfig } from './config'
+import { inboxDirOf, isAbsolute, syncDirOf, under, type TodoWatchConfig } from './config'
+import {
+  awaitDrain, type DrainHost, hasQueued, isDraining, requestDrain, restorePending, takePending, TODO_EDITOR,
+  waitCapMs,
+} from './inbox'
 import {
   contextLineFor, formatNotice, formatTodoBody, ghAgeText, isEmptyView, noticeText, parseCatalog,
   type SyncStatus,
@@ -18,7 +23,8 @@ import { resolveWatch, type Watch } from './watch'
 
 /**
  * Engine glue for todo-watch: the start notice and its live view, the runner pointer, gated and coalesced
- * check runs, the sync report (re-read only when its mtime moved) and the TODO_SYNC prompt line.
+ * check runs, the sync report (re-read only when its mtime moved) and the TODO_SYNC prompt line, plus the
+ * triggers of the inbox drain (./inbox): a todo-editor agent's return and the prompt that carries its summary.
  * Active only in a project whose `.claude/harness.json` sets `todo.folder` (./watch). Every host failure
  * degrades to showing nothing; no hook throws into a tool call, a prompt or a turn. Functions taking `$`
  * are function declarations: the engine follows `$` past an import only into one.
@@ -545,9 +551,73 @@ async function afterToolCall($: Dollar, call: CallSeen): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Inbox drains (./inbox)
+
+/** What an Agent result carries that the drain trigger reads. */
+type AgentOutcome = { status?: unknown }
+
+/** The drain's host: the runner pointer looked up afresh (it may have gone stale), a check after a drain. */
+function drainHostOf($: Dollar): DrainHost {
+  return {
+    runner: async () => {
+      const w = await resolveWatch($)
+      return w === undefined ? undefined : lookupRunner($, w)
+    },
+    refresh: () => requestCheck($),
+  }
+}
+
+/** Starts a drain (marked in flight before this returns); resolves once it has ended. Never rejects. */
+function startDrain($: Dollar): Promise<void> {
+  return requestDrain($, drainHostOf($)).catch(noop)
+}
+
+/**
+ * A foreground todo-editor returned: starts a drain unless one is running (its own turn end started the one
+ * covering its items; an item queued after that drain listed the inbox gets its rerun from its writer's turn
+ * end), and waits for it at most `capMs`; the summaries waiting, taken only while the dispatch is live (an
+ * abandoned one leaves them for a prompt to take).
+ */
+async function drainForResult($: Dollar, signal: AbortSignal, capMs: number): Promise<string[]> {
+  if (!isDraining()) void startDrain($)
+  await awaitDrain($, capMs)
+  return signal.aborted ? [] : takePending()
+}
+
+/**
+ * Starts a drain, without waiting on it, when the inbox folder lists a queued item: at `session.start` (wired
+ * in ./register, after `startSession`) and at any subagent's turn end. Never throws.
+ */
+export async function drainQueued($: Dollar): Promise<void> {
+  const w = await resolveWatch($).catch(noop)
+  if (w === undefined || !(await hasQueued($, under(w.root, inboxDirOf(w.cfg))).catch(() => false))) return
+  void startDrain($)
+}
+
+/** This prompt's inbox summaries, taken; a task notification first waits for a drain in flight, up to `capMs`. */
+async function inboxLines($: Dollar, isNotification: boolean, capMs: number): Promise<string[]> {
+  if (isNotification) await awaitDrain($, capMs)
+  return takePending()
+}
+
+/**
+ * Hands back the summaries the prompt did not enter with: all of them when the dispatch was abandoned or the
+ * prompt dropped, else those missing from its context.
+ */
+function restoreUnattached(lines: readonly string[], result: PromptSubmitResult, signal: AbortSignal): void {
+  if (signal.aborted || result.drop !== undefined) return restorePending(lines)
+  const context = result.context ?? []
+  restorePending(lines.filter(line => !context.includes(line)))
+}
+
+/** The prompt as received, for a dispatch already abandoned: `next` is not called after that. */
+const asReceived = (e: PromptSubmitInput): PromptSubmitResult =>
+  ({ text: e.text, context: e.context, origin: e.origin })
+
+// ---------------------------------------------------------------------------
 // Registration
 
-/** Tool and turn hooks: gated check runs and the M3b mtime probe. */
+/** Tool and turn hooks: gated check runs, the M3b mtime probe and the inbox drain triggers. */
 export const registerChecks = (on: On): void => {
   on('tool.call', { tool: WATCH_TOOLS }, async ($, e, next) => {
     const result = await next(e)
@@ -557,22 +627,61 @@ export const registerChecks = (on: On): void => {
     return result
   }).catch((_$, e, next) => next(e))
 
-  on('turn.complete', async ($, e, next) => {
+  // No `.catch` fallback: `next` is called once, first, and the body below it does not throw. Past the budget
+  // the engine keeps that `next` result; the drain wait is capped short of the budget all the same.
+  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
     const result = await next(e)
-    if (e.agentId !== undefined) return result
+    if (e.subagent_type !== TODO_EDITOR) return result
+    // Refusals inline (not a helper) so the checker narrows `result` to one that takes context.
+    if (result.deny !== undefined || result.isError === true) return result
+    if ((result.result as AgentOutcome | undefined)?.status !== 'completed') return result
+    const capMs = waitCapMs(next.budget.remainingMs)
+    const lines = await drainForResult($, next.signal, capMs).catch(() => [] as string[])
+    return lines.length === 0 ? result : { ...result, context: [...(result.context ?? []), ...lines] }
+  })
+
+  // A subagent's turn end (foreground, background or continued) drains what it queued: the listing starts
+  // before `next`, so the drain is in flight before the turn end returns and a task notification waits for it.
+  on('turn.complete', async ($, e, next) => {
+    const queued = e.agentId === undefined ? undefined : drainQueued($).catch(noop)
+    const result = await next(e)
+    if (queued !== undefined) {
+      await queued
+      return result
+    }
     const w = await resolveWatch($).catch(noop)
     if (w !== undefined) await onTrigger($, w).catch(noop)
     return result
   })
 }
 
-/** The TODO_SYNC line on prompts (M2) and its re-force after `/clear`, a resume or a main compaction. */
+/**
+ * The TODO_SYNC line on prompts (M2) and its re-force after `/clear`, a resume or a main compaction; the inbox
+ * summaries waiting, taken (a task notification first waits for a drain in flight, within the hook's budget)
+ * and handed back when the prompt did not enter with them. Once the dispatch is abandoned (its budget spent,
+ * the `.catch` having run `next`) the body never calls `next`.
+ */
 export const registerContext = (on: On): void => {
   on('prompt.submit', async ($, e, next) => {
     const line = await promptLine($).catch(noop)
-    if (line === undefined || next.signal.aborted) return next(e)
-    const result = await next({ ...e, context: [...(e.context ?? []), line] })
-    await recordAttached($, line, result, next.signal).catch(noop)
+    const isNotification = e.origin?.kind === 'task-notification'
+    const capMs = waitCapMs(next.budget.remainingMs)
+    const inbox = await inboxLines($, isNotification, capMs).catch(() => [] as string[])
+    if (next.signal.aborted) {
+      restorePending(inbox)
+      return asReceived(e)
+    }
+    const lines = line === undefined ? inbox : [line, ...inbox]
+    if (lines.length === 0) return next(e)
+    let result: PromptSubmitResult
+    try {
+      result = await next({ ...e, context: [...(e.context ?? []), ...lines] })
+    } catch (err) {
+      restorePending(inbox)
+      throw err
+    }
+    restoreUnattached(inbox, result, next.signal)
+    if (line !== undefined) await recordAttached($, line, result, next.signal).catch(noop)
     return result
   }).catch((_$, e, next) => next(e))
 

@@ -10,6 +10,7 @@
   "plugins": {},
   "schemas_dir": ".claude/agent-schemas",
   "state_dir": ".claude/state/harness",
+  "scratch_folder": "docs/_scratch/",
   "matrix_path": "docs/_harness/pr_review_invocation_test_matrix.jsonl",
   "agent_usage_path": "docs/_harness/agent_usage.jsonl",
   "exclusions": ".claude/review_exclusions.json",

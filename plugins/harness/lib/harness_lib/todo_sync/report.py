@@ -8,12 +8,15 @@ import json
 import os
 import re
 import tempfile
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 SCHEMA_VERSION = 1
 SEVERITIES = ("error", "warn")
+REPLACE_ATTEMPTS = 5
+REPLACE_DELAY_SECONDS = 0.05
 
 
 @dataclass(frozen=True)
@@ -86,6 +89,21 @@ class Report:
                 "line": f.line, "subject": f.subject, "message": f.message, "fix": f.fix}
 
 
+def _replace_with_retry(src: str, dst: Path) -> None:
+    """``os.replace(src, dst)``, retrying ``PermissionError`` up to ``REPLACE_ATTEMPTS`` times.
+
+    The last failure propagates; other ``OSError`` values raise at once.
+    """
+    for attempt in range(1, REPLACE_ATTEMPTS + 1):
+        try:
+            os.replace(src, dst)
+            return
+        except PermissionError:
+            if attempt == REPLACE_ATTEMPTS:
+                raise
+            time.sleep(REPLACE_DELAY_SECONDS)
+
+
 def write_atomic(path: Path, text: str) -> Path:
     """Write ``text`` to ``path`` through a temp file in the same directory and ``os.replace``."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,7 +111,7 @@ def write_atomic(path: Path, text: str) -> Path:
     try:
         with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as fh:
             fh.write(text)
-        os.replace(tmp, path)
+        _replace_with_retry(tmp, path)
     except BaseException:
         Path(tmp).unlink(missing_ok=True)
         raise

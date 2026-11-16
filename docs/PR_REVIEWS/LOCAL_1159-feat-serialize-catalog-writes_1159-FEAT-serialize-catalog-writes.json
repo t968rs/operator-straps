@@ -1,0 +1,301 @@
+{
+  "schema_ref": "https://github.com/t968rs/operator-straps/plugins/harness/schemas/PR_REVIEW.schema.json",
+  "version": "2.3.0",
+  "pr": "local-1159-feat-serialize-catalog-writes",
+  "pr_title": "1159-FEAT-serialize-catalog-writes",
+  "branch": "1159-FEAT-serialize-catalog-writes",
+  "base_branch": "main",
+  "base_sha": "a845e25b2709b5017d92c76a950378201a1d8471",
+  "head_sha": "b1bee65c3bc9969c672ab7cbe8bc7bd032e69a6b",
+  "review_date": "2026-11-15",
+  "verdict": "READY TO MERGE - 7 of 7 findings resolved, 0 bubbled",
+  "stats": {
+    "additions": 1008,
+    "deletions": 0,
+    "files_changed": 4,
+    "source": {
+      "additions": 1007,
+      "deletions": 0,
+      "files_changed": 3
+    }
+  },
+  "reviewers": [
+    "docs (opus)",
+    "roast (opus)",
+    "adv_code (opus)"
+  ],
+  "scoped_review_files": [
+    "docs/_scratch/pr_review/local-1159-feat-serialize-catalog-writes/local-1159-feat-serialize-catalog-writes_20261115T172157Z/findings/docs.json",
+    "docs/_scratch/pr_review/local-1159-feat-serialize-catalog-writes/local-1159-feat-serialize-catalog-writes_20261115T172157Z/findings/roast.json",
+    "docs/_scratch/pr_review/local-1159-feat-serialize-catalog-writes/local-1159-feat-serialize-catalog-writes_20261115T172157Z/findings/adv_code.json"
+  ],
+  "bubbles": [],
+  "strengths": [
+    "Every plan anchor was checked at the head (report.py, reshape.py, retire.py, __init__.py, todo_sync.py, config.py, defaults.json, harness.schema.json, history.py, default_exclusions.py, README.md:492, checks.ts, register.ts, tracker.ts, both plugin.json files, RELEASES/v1.0.0.md:28) and holds its expected text.",
+    "The drain's filter (skip names starting with '.') fits write_atomic's existing mkstemp temp name `.<name>.<rand>.tmp`, so a half-written inbox file is never read, which meets the spec's anti-goal without any new code.",
+    "D2 (write the catalog, then delete the accepted files) and per-file rejection with a .reason.txt file meet the spec's anti-goal that a failed consolidation never loses a drafted item.",
+    "D3 (no lock when the inbox is empty) keeps the fallback and session-start drains from stalling on a held lease, and its rationale is stated.",
+    "The mod trigger design (Decided 17, TASK-6) rests on real engine hooks cited by line (tracker.ts:396-397, 589-591; checks.ts:560-566, 571-577), and it joins the existing session.start and turn.complete hooks instead of registering second ones the engine would refuse.",
+    "TASK-3 and TASK-6 together cover the project's new-config-key checklist: defaults, schema, dataclass and builder, README table, plus the todo-watch config.ts mirror and its Python mirror test.",
+    "Sweep S1 lists every catalog writer in todo_sync (retire, reshape, migrate, scaffold), and each one is assigned a lock mode in TASK-5.",
+    "Sweep S1 enumerates every catalog writer (retire, reshape, migrate, scaffold) and maps each to the lock mode the driver takes, so no write path escapes the lock by omission.",
+    "D2 write-then-delete and the .rejected.json plus .reason.txt pair honor the anti-goal that a failed consolidation never loses a drafted item.",
+    "D3 no-lock-when-empty keeps the fallback and session-start drains from queuing behind a lease when there is nothing to add.",
+    "The skill-side fallback drain (Decided 7) keeps todo-watch optional, so the harness never depends on the mod.",
+    "The Windows liveness check avoids the os.kill-maps-to-TerminateProcess trap explicitly.",
+    "The scratch_folder key touches all four config places plus the todo-watch mirror and its pin test, as the project checklist demands.",
+    "Every task carries file:line anchors with expected text, and every anchor spot-checked (reshape.py, history.py, default_exclusions.py, plugin versions, v1.0.0.md:28) matches the base.",
+    "Every anchor in the plan (43 at:expect pairs across 8 tasks) matches the current file at the cited lines; checked by probes/anchor_probe.py.",
+    "D3 (no lock when the inbox is empty) is pinned by test_an_empty_inbox_needs_no_lock, so the fallback and session-start drains cannot stall behind a lease.",
+    "The lock tests patch pid_alive and WAIT_SECONDS instead of spawning processes or sleeping, and the Windows pid_alive test fails if os.kill is called.",
+    "The S1 sweep lists all four catalog write sites (retire, reshape, migrate, scaffold), and each one is pinned by a lock test in the CLI test file."
+  ],
+  "issues": {
+    "critical": [],
+    "important": [
+      {
+        "id": "I1",
+        "name": "60 s age staleness breaks live write locks the plan itself holds for longer",
+        "file": "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+        "files": [
+          "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+          "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md",
+          "docs/plans/1019_serialize_catalog_writes_PIP.html"
+        ],
+        "lines": "13,232",
+        "reviewer": "docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "Decided 4 (spec lines 88-90) makes a write lock stale at 60 s even when its pid is alive, on the premise that write holds last milliseconds. The plan's holds are longer than that. TASK-5 (plan line 232) wraps the whole retire and split commands in locking.guard, and apply_retirement and _apply run other_references (a `git grep`, retire.py:245) after the write. Decided 16 (spec lines 130-132) says that same `git grep` can outlast the 60 s staleness. Decided 11 (lines 108-112) and TASK-4 also put render_snapshot and check inside the add --inbox hold. A waiter therefore breaks a live holder. In TASK-1 (plan line 13), 'the write lock file is removed in a finally' with no check that the file is still the caller's own, so the original holder then deletes the successor's lock. Two writers can then run read-modify-write at once, which is the race this branch exists to close.\n\nAlso (docs): TASK-1 (plan line 13) says breaking a stale lock means 'os.replace the file to a unique sibling name then unlink it, so two breakers never both remove a fresh lock'. That guarantee does not hold. Breakers A and B both read the same stale body. B renames it away, unlinks it and creates a fresh lock F. A then calls os.replace on the lock path, which now holds F, and moves F away. F's holder is still inside its critical section while A, or another waiter, creates a new lock. The rename makes each removal atomic, but nothing checks that the file removed is the stale one that was observed.\n\nAlso (roast): TASK-1 marks a write lock stale when its age passes WRITE_STALE_SECONDS even if its same-host pid is alive, and removes the write lock file in a finally with no ownership check. Decided 11 stretches the write hold from 'milliseconds' (Decided 4) to add_items plus render plus check. A slow drain past 60 s gets broken by a waiter, the waiter creates its own lock, and the slow drain's finally then unlinks the waiter's fresh lock, admitting a third writer while the second still writes. That is the exact lost-update the branch exists to prevent; the lock unlocks other people's doors.\n\nAlso (roast): TASK-1 claims os.replace of a stale lock to a unique sibling and then unlink means two breakers never both remove a fresh lock. Two waiters that both read the same stale body: the first replaces, unlinks and immediately creates its own lock (it is still in the acquire loop); the second's os.replace then moves that fresh lock aside and deletes it. Nothing compares the moved body with the body judged stale, so the guarantee is asserted, not provided, and the planned tests (contention, dead pid, lease age) never race two breakers.\n\nAlso (roast): TASK-1 spells the POSIX rule (PermissionError means alive) but the Windows path only says OpenProcess plus GetExitCodeProcess; a NULL handle from ERROR_ACCESS_DENIED (an elevated or other-user holder) would read as dead and its live write lock would be broken.",
+        "fix": [
+          "In TASK-1, make write-lock staleness pid-based on the same host (age applies only to a holder on another host or an unreadable body), and have hold()'s finally unlink only when the body still matches this holder (pid plus acquired, or a per-hold nonce); add a test for a hold that outlasts WRITE_STALE_SECONDS",
+          "Alternatively, in TASK-5 narrow the guard to the load-to-write span and run the reference scan, render and check after release, then amend Decided 11 in the plan to say so (the spec stays frozen)",
+          "In TASK-1, after os.replace to the sibling, read the moved body and compare it with the stale body that was read; on a mismatch, restore it with os.link(sibling, path), which fails if a lock already exists, and treat the break as lost; add a two-breaker test",
+          "Alternatively, serialize breakers with an O_EXCL `<lock>.break` guard file, re-read the holder under it and break only when the body is still the observed stale one",
+          "In TASK-1, give write locks a token in the body as leases have, and have hold() remove the file in its finally only when the body still carries its own token (read, compare, then unlink).",
+          "In TASK-1, treat a same-host write lock whose pid_alive() is true as not stale regardless of age (age only for another host or an unreadable body), and add a test where a live holder older than WRITE_STALE_SECONDS is not broken and a broken holder's exit leaves the new lock in place.",
+          "In TASK-1, after os.replace to the sibling, read the sibling and compare it with the body judged stale (pid, acquired, token); on a mismatch, put it back with os.link(sibling, path) (which fails if the path exists) before unlinking the sibling, and add a test that interleaves two breakers with a fresh acquire.",
+          "Alternatively drop the 'never both remove a fresh lock' claim from TASK-1 and document the window as an accepted risk in a plan decision.",
+          "In TASK-1, load kernel32 with use_last_error=True and return True when OpenProcess fails with ctypes.get_last_error() == 5 (ERROR_ACCESS_DENIED), False for any other failure."
+        ]
+      },
+      {
+        "id": "I2",
+        "name": "Drain unlinks only after render and check, so a render failure re-adds note items on every drain",
+        "file": "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+        "files": [
+          "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+          "docs/plans/1019_serialize_catalog_writes_PIP.html",
+          "plugins/harness/lib/harness_lib/todo_sync/__init__.py"
+        ],
+        "lines": "160",
+        "reviewer": "adv_code, docs, roast",
+        "both_reviewers": true,
+        "fix_kind": "mechanical",
+        "summary": "TASK-4 orders drain as write_edits -> render_snapshot -> check -> write_report -> unlink accepted files. D2 accepts a duplicate only for a crash between write and delete, but this order puts two fallible steps in that gap. If render_snapshot raises (TodoSyncError when todo.snapshots.name_pattern does not fully match the fixed snapshot name, see plugins/harness/lib/harness_lib/todo_sync/__init__.py:165-168, or a PermissionError when an editor holds the snapshot .md open on Windows), or check/write_report raises, the catalog already holds the items but the inbox files stay. The next drain (todo-watch session start, the next todo-editor return, or the skill's fallback `add --inbox`) adds every note item (no issue) again with a new id. Issue items get rejected as duplicates and renamed to .rejected.json with a misleading reason. The loop repeats until the render problem is fixed, adding one copy per drain.\n\nAlso (docs): TASK-4 (plan line 160) has put file the issues through reshape._file_pending before it writes the inbox files with write_atomic. apply_add wraps the step after filing so that a failure names the issues already filed (_with_filed, reshape.py:516-521), which lets a rerun avoid filing them twice. The put action does not say to do the same. An OSError from write_atomic after filing would leave issues on GitHub that no inbox file or error message records, and the agent's rerun would file them again.\n\nAlso (roast): TASK-4 passes drain(cfg, today=None) to both add_items (today: Optional[str], an ISO day) and render_snapshot(cfg, date: dt.date). One parameter cannot be both, and None is not a date for render_snapshot.\n\nAlso (adv_code): TASK-4 names each queued file <UTC %Y%m%dT%H%M%S%fZ>-<secrets.token_hex(3)>.json and drain sorts by name, oldest first. On Python 3.11 under Windows (the project's target version), datetime.now reads GetSystemTimeAsFileTime, which has a resolution of about 15.6 ms. All items of one put are written within one tick, so they share the stamp and the random hex suffix decides their order. The drain then adds them, and reports them, in random order instead of spec order. On the local 3.15 interpreter a probe of 2000 back-to-back stamps showed no collision, so the problem appears only on the coarse clock.\n\nAttack: Build the planned inbox.drain as TASK-4 specifies. Make a project (make_project + _todo_helpers.build) with todo.snapshots.dir set and todo.snapshots.name_pattern set to a regex that does not match TODO_Snapshot_YYYY_MMDD.md (for example \"^Snap_.*\\.md$\"). Queue one note file: inbox_dir(cfg)/20261113T000001Z-aaaaaa.json = {\"items\": [<item without issue/url, title 'A local note'>]}. Call inbox.drain(cfg, today=date(2026,11,13)): write_edits lands the note, then render_snapshot raises TodoSyncError('... does not match todo.snapshots.name_pattern ...') before the unlink, so the file stays. Call inbox.drain again: it raises the same way, and the catalog now holds two items titled 'A local note' with different ids. Every further drain adds another. The same happens on Windows with the default config when the dated snapshot .md is open in a viewer that denies delete-share (os.replace raises PermissionError after TASK-2's 5 retries).\n\nAttack: Under a Python 3.11 interpreter on Windows, run the planned tests/scripts/test_todo_sync_catalog_lock_cli.py::test_inbox_put_queues_and_add_inbox_drains repeatedly. inbox put writes the files for #9 and #12 within one ~15.6 ms clock tick, so both names carry the same %f stamp and sort by the random hex. In about half the runs drain adds #12 first and the regex `inbox: added 2 item\\(s\\): todo-.... \\(#9\\), todo-.... \\(#12\\)` fails. Probe of the timestamp mechanics: docs/_scratch/pr_review/local-1159-feat-serialize-catalog-writes/local-1159-feat-serialize-catalog-writes_20261115T172157Z/probes/stamp_probe.py (run it under 3.11 on Windows to see same_stamp > 0).",
+        "fix": [
+          "In TASK-4's action, unlink the accepted files right after write_edits succeeds and before render_snapshot/check/write_report, so the D2 window covers only the write itself; report a later render/check failure as a separate line after the items have landed.",
+          "Alternatively, catch render/check/report errors inside drain, unlink the accepted files anyway, and put the error in DrainResult so drain_lines reports it.",
+          "In TASK-4, wrap the inbox writes after _file_pending so that an OSError or TodoSyncError re-raises as TodoSyncError(_with_filed(str(exc), filed)), matching apply_add",
+          "In TASK-4, declare drain(cfg, today: Optional[dt.date] = None, ...), resolve day = today or dt.date.today(), and pass day.isoformat() to add_items and day to render_snapshot.",
+          "In TASK-4's action, add a zero-padded per-put index between the stamp and the random suffix (<stamp>-<NN>-<hex>.json), so names from one put sort in spec order."
+        ]
+      },
+      {
+        "id": "I3",
+        "name": "Parallel todo-editor agents share one fixed staging spec path",
+        "file": "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+        "files": [
+          "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+          "docs/plans/1019_serialize_catalog_writes_PIP.html",
+          "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md",
+          "plugins/harness/lib/harness_lib/todo_sync/retire.py"
+        ],
+        "lines": "232,380",
+        "reviewer": "docs, adv_code",
+        "both_reviewers": true,
+        "fix_kind": "judgment",
+        "summary": "TASK-7 has the sync and add operations write their spec to the fixed path <state_dir>/todo-sync/add.json and then run `TS inbox put --spec <path>`. Goal 1 of the spec (line 15) is several todo-editor agents drafting at once. Two agents on the same checkout therefore overwrite each other's add.json between the write and the `inbox put`. One agent queues the other's item (a duplicate) and its own drafted item is never queued, which is the 'loses a drafted item' outcome the spec's anti-goals (line 50) forbid. inbox put reads nothing else, and the lock does not cover the staging file, so the plan's lock and inbox design does not prevent this. The existing todo-editor.md lines 158 and 201 use the same fixed path. That was safe only while adds ran one at a time.\n\nAlso (adv_code): TASK-5 has locking.release(cfg, token) verify the token, run reshape.apply_refresh, render, check and write the report, and only then call catalog_lock.release_lease. apply_refresh raises TodoSyncError on an unparseable catalog or a catalog still holding TODO-NNN ids (plugins/harness/lib/harness_lib/todo_sync/retire.py:209-214) and on any item that cannot be scored (plugins/harness/lib/harness_lib/todo_sync/reshape.py:405-408). The lease is for todo-editor runs that hand-edit the catalog (the planned test appends close_candidates by hand), so this can happen. When it does, `lease release` exits 2 and the lock file stays. TASK-7's prose ('on any stop condition still releases') then has no working release. Leases go stale only by age (LEASE_STALE_SECONDS=1800). For up to 30 minutes, every todo-watch drain, every skill fallback `add --inbox` with a queued file, and every other writer refuses naming the dead lease. Nothing in the TASK-7 prose tells the agent to run `lease break`.\n\nAttack: With TASK-5 built as specified: in a make_project catalog run `todo_sync.py lease acquire --owner \"todo-editor retire\"` and keep the token. Hand-edit the catalog so it no longer parses (for example, drop the closing brace), as a todo-editor hand edit gone wrong would. Run `todo_sync.py lease release <token>`: apply_refresh -> load_catalog raises TodoSyncError '<catalog>: unparseable' (retire.py:209-210) before release_lease runs, the command exits 2, and locking.lock_path(cfg) still exists with mode 'lease'. Restore the catalog, queue one inbox file and run `todo_sync.py add --inbox`: it exits 2 naming 'todo-editor retire', and keeps doing so until the lease's acquired time is 1800 s old or someone runs `lease break`.",
+        "fix": [
+          "In TASK-7, have each agent write its spec to a unique staging path, for example <state_dir>/todo-sync/add-<random hex>.json or a name built from a UTC stamp and a random suffix, delete it after `inbox put` succeeds, and pin the unique-name rule in tests/skills/test_todo_inbox_prose_contract.py",
+          "Alternatively, give `inbox put` a `--spec -` form in TASK-5 that reads the spec from stdin, and have TASK-7 pipe the spec in so no shared file exists",
+          "In TASK-5's action, have release run the refresh/render/check in a try and call catalog_lock.release_lease in a finally (after the token check passes), printing the refresh error as a problem line while still freeing the lock.",
+          "Alternatively, keep the order but add a `--no-refresh` path to `lease release` and have the TASK-7 todo-editor prose fall back to it (or to `lease break`) when release exits non-zero."
+        ]
+      },
+      {
+        "id": "I4",
+        "name": "lease release keeps the lease when its refresh, render or check raises",
+        "file": "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+        "files": [
+          "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+          "docs/plans/1019_serialize_catalog_writes_PIP.html",
+          "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md"
+        ],
+        "lines": "232",
+        "reviewer": "roast",
+        "fix_kind": "judgment",
+        "summary": "TASK-5 has release verify the token, run reshape.apply_refresh, render, check and write the report, and only then call catalog_lock.release_lease, with no finally. apply_refresh loads through load_catalog (refused on rank-tied ids) and rescoring raises TodoSyncError on a bad item; the hand edits that the lease exists to protect are the likeliest cause. The lease then stays for LEASE_STALE_SECONDS (30 min), every mod drain and fallback drain waits 10 s and refuses, and the TASK-7 agent text 'on any stop condition still releases' reruns the same failing release.\n\nAlso (roast): Spec Decided 6 says lease release 'reruns the catalog recount'; TASK-5 calls reshape.apply_refresh, which rescores every item, reorders the list and rewrites every rank (reshape.py _rerank) before recounting. Every retire or split run would end with a catalog-wide rerank the agent never asked for, and it widens the failure surface of the previous finding.",
+        "fix": [
+          "In TASK-5, run release_lease in a finally once the token is verified, print the refresh or check failure as a line and exit non-zero, and add a test where a malformed catalog still frees the lease.",
+          "Or add 'lease release TOKEN --no-refresh' to TASK-5 and name it in the TASK-7 stop-condition text as the release to use when the recount fails.",
+          "In TASK-5, have release do a recount-only write: load_catalog, set data['counts'] = recount(data.get('counts'), data, ()), write_edits(cfg, dump_like(data, raw)) when it changed.",
+          "Or keep apply_refresh and record a plan decision stating that release deliberately reranks, with its rationale."
+        ]
+      }
+    ],
+    "minor": [
+      {
+        "id": "M1",
+        "name": "A failed mod drain says nothing to the main session",
+        "file": "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+        "lines": "307",
+        "reviewer": "roast",
+        "fix_kind": "mechanical",
+        "summary": "TASK-6 keeps only a stdout line starting 'inbox: ' as the pending summary. A drain that refuses (a lease held by a structural todo-editor run, a malformed catalog) exits non-zero with its reason on stderr, so nothing is attached and the queued items sit in the inbox without a word until some later trigger.",
+        "fix": [
+          "In TASK-6, on a non-zero exit or timeout set the pending summary to 'inbox: drain failed: <last stderr line>' and add an inbox.test.ts case for it."
+        ]
+      },
+      {
+        "id": "M2",
+        "name": "Spec line range for retire's read-modify-write misses the write",
+        "file": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md",
+        "lines": "10",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "The Intent section (spec line 10) cites `retire.py:180-187` for the read-modify-write in apply_retirement. At the head, load_catalog is at retire.py:184 and write_edits at retire.py:188, so the cited range stops before the write. The plan's anchor for the same code (TASK-5, retire.py:181-188) is correct.",
+        "fix": [
+          "Change `retire.py:180-187` to `retire.py:184-188` in the spec's Intent section"
+        ]
+      },
+      {
+        "id": "M3",
+        "name": "Spec calls add-todo and sync-gh-todo agents; they are skills dispatching harness:todo-editor",
+        "file": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md",
+        "lines": "79-80",
+        "reviewer": "docs",
+        "fix_kind": "mechanical",
+        "summary": "Decided 1 (spec lines 79-80) says '`harness:add-todo` and `harness:sync-gh-todo` agents never write the catalog'. No such agents exist. Both are skills (plugins/harness/skills/add-todo/SKILL.md:61, sync-gh-todo/SKILL.md:46) that dispatch `harness:todo-editor`, and that is the subagent_type the mod matches in Decided 17. A reader could look for, or match on, agent names that do not exist.",
+        "fix": [
+          "Reword Decided 1 to say the todo-editor's add and sync operations (dispatched by the add-todo and sync-gh-todo skills) never write the catalog; if the spec is frozen, record the correction in the plan instead"
+        ]
+      }
+    ]
+  },
+  "bubble_up": [],
+  "verification_log": {
+    "dispatch_time": {
+      "pr_metadata_check": {
+        "command": "git rev-parse --verify --quiet HEAD^{commit}; git rev-parse --verify --quiet main^{commit}; git merge-base <base sha> <head sha>; git branch --show-current; git show-ref --verify --quiet refs/heads/HEAD; git rev-list --count <merge base>..<head sha>",
+        "stdout": "b1bee65c3bc9969c672ab7cbe8bc7bd032e69a6b\na845e25b2709b5017d92c76a950378201a1d8471\n1159-FEAT-serialize-catalog-writes\n1\n",
+        "result": "OK (state=LOCAL; no PR)"
+      },
+      "structural_guards_check": {
+        "applies": false,
+        "command": "",
+        "stdout_tail": "",
+        "result": "SKIPPED (no CICD/test-infra paths in PR)"
+      },
+      "adversarial_check": {
+        "applies": true,
+        "workflow": "workflows/adversarial-review.js",
+        "code_slots": [
+          "adv_code"
+        ],
+        "refute_slots": [
+          "adv_refute_docs",
+          "adv_refute_roast",
+          "adv_refute_adv_code"
+        ],
+        "result": "OK (16 checked, 0 refuted, 3 code findings)",
+        "counts": {
+          "findings_checked": 16,
+          "findings_refuted": 0,
+          "findings_upheld": 16,
+          "code_findings": 3
+        },
+        "refuted_ids": [],
+        "unrefuted_ids": []
+      }
+    },
+    "pre_fix_time": {
+      "current_branch_check": {
+        "command": "git rev-parse --abbrev-ref HEAD",
+        "stdout": "1159-FEAT-serialize-catalog-writes",
+        "result": "OK"
+      },
+      "branch_match_check": {
+        "assertion": "CURRENT_BRANCH == headRefName",
+        "current_branch": "1159-FEAT-serialize-catalog-writes",
+        "head_ref_name": "1159-FEAT-serialize-catalog-writes",
+        "result": "OK (match)"
+      },
+      "clean_tree_check": {
+        "command": "git status --porcelain --untracked-files=all",
+        "stdout": "",
+        "filtered_stdout": "",
+        "exclusions_fixture": ".claude/pr_review_exclusions.json",
+        "result": "OK (empty after exclusions)"
+      },
+      "sha_ancestry_check": {
+        "base_sha": "a845e25b2709b5017d92c76a950378201a1d8471",
+        "head_sha": "b1bee65c3bc9969c672ab7cbe8bc7bd032e69a6b",
+        "base_ancestor_command": "git merge-base --is-ancestor a845e25b2709b5017d92c76a950378201a1d8471 HEAD",
+        "base_ancestor_exit": 0,
+        "head_ancestor_command": "git merge-base --is-ancestor b1bee65c3bc9969c672ab7cbe8bc7bd032e69a6b HEAD",
+        "head_ancestor_exit": 0,
+        "result": "OK (both ancestors)"
+      },
+      "base_branch_recorded": {
+        "source": "plan.json meta.base_branch",
+        "value": "main",
+        "result": "OK (recorded; configured base)"
+      }
+    }
+  },
+  "post_review_resolutions": [
+    {
+      "id": "M2",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-15",
+      "evidence": "b1bee65 (working-tree snapshot; developer commits) - closed, no action: the spec is a frozen snapshot after its review patch; the plan's TASK-5 anchor (retire.py:181-188) already holds the correct range"
+    },
+    {
+      "id": "M3",
+      "status": "CLOSED_NO_ACTION",
+      "date": "2026-11-15",
+      "evidence": "b1bee65 (working-tree snapshot; developer commits) - closed, no action: the spec is a frozen snapshot after its review patch; the same wording in the plan (TASK-3 README row) now names the todo-editor agent's add and sync runs"
+    },
+    {
+      "id": "I1",
+      "status": "RESOLVED",
+      "date": "2026-11-15",
+      "evidence": "b1bee65 (working-tree snapshot; developer commits) - plan TASK-1: write locks carry a token and a hold removes only its own; same-host write staleness is pid-based (age only for another host, an unreadable body, or past LEASE_STALE_SECONDS); breaks go through break_if_unchanged under a .break guard; ERROR_ACCESS_DENIED reads alive on Windows; three planned tests added (outside fixer waves)"
+    },
+    {
+      "id": "I2",
+      "status": "RESOLVED",
+      "date": "2026-11-15",
+      "evidence": "b1bee65 (working-tree snapshot; developer commits) - plan TASK-4: drain unlinks accepted files right after write_edits, before render/check/report; put re-raises inbox write failures with _with_filed; drain takes today as dt.date; inbox names carry a per-put index; three planned tests added (outside fixer waves)"
+    },
+    {
+      "id": "I3",
+      "status": "RESOLVED",
+      "date": "2026-11-15",
+      "evidence": "b1bee65 (working-tree snapshot; developer commits) - plan TASK-7: each add/sync run stages its spec at <state_dir>/todo-sync/add-<stamp>-<rand>.json, never a shared add.json; prose contract test pins it (outside fixer waves)"
+    },
+    {
+      "id": "I4",
+      "status": "RESOLVED",
+      "date": "2026-11-15",
+      "evidence": "b1bee65 (working-tree snapshot; developer commits) - plan TASK-5: lease release does the recount alone (no rerank) and frees the lease in a finally; TASK-7 prose relays a failed release instead of rerunning it; planned CLI test added (outside fixer waves)"
+    },
+    {
+      "id": "M1",
+      "status": "RESOLVED",
+      "date": "2026-11-15",
+      "evidence": "b1bee65 (working-tree snapshot; developer commits) - plan TASK-6: a non-zero or timed-out drain attaches 'inbox: drain failed: <stderr line>'; inbox.test.ts case listed (outside fixer waves)"
+    }
+  ]
+}

@@ -24,6 +24,7 @@ Reader = Callable[[str, str], Any]
 #: defaults.json key path -> (exported constant in config.ts, literal reader)
 _MIRRORED: Dict[Tuple[str, ...], Tuple[str, Reader]] = {
     ("state_dir",): ("DEFAULT_STATE_DIR", ts_optional_string),
+    ("scratch_folder",): ("DEFAULT_SCRATCH_FOLDER", ts_optional_string),
     ("artifacts", "research"): ("DEFAULT_RESEARCH", ts_optional_string),
     ("artifacts", "plans"): ("DEFAULT_PLANS", ts_optional_string),
     ("todo", "folder"): ("DEFAULT_FOLDER", ts_optional_string),
@@ -104,6 +105,7 @@ def test_mirrored_defaults_equal_an_unconfigured_project(make_project, config_ts
     cfg = activate(load_config(make_project(config={})))
     loaded: Dict[str, Value] = {
         "DEFAULT_STATE_DIR": cfg.state_dir,
+        "DEFAULT_SCRATCH_FOLDER": cfg.scratch_folder,
         "DEFAULT_RESEARCH": cfg.artifacts.research,
         "DEFAULT_PLANS": cfg.artifacts.plans,
         "DEFAULT_FOLDER": cfg.todo.folder,

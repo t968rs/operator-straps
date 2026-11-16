@@ -244,8 +244,8 @@ def git_grep(cfg: HarnessConfig, args: Sequence[str]) -> Tuple[str, ...]:
 
 def other_references(cfg: HarnessConfig, ids: Sequence[str]) -> Tuple[str, ...]:
     """``path:line:text`` of tracked or untracked files naming any of ``ids`` (any case, whole word) outside
-    the catalog, its companions and ``history_paths``; ``()`` when ``ids`` is empty or the project root
-    holds no ``.git``.
+    the catalog, its companions, ``history_paths`` and ``state_dir`` (the catalog lock lies there, its owner
+    free text that may name an id); ``()`` when ``ids`` is empty or the project root holds no ``.git``.
 
     The skipped paths are dropped here rather than passed as exclude pathspecs, which overrun the Windows
     command line once the list grows.
@@ -259,6 +259,7 @@ def other_references(cfg: HarnessConfig, ids: Sequence[str]) -> Tuple[str, ...]:
     patterns = [arg for x in wanted for arg in ("-e", x)]
     lines = git_grep(cfg, ["--untracked", "-n", "-I", "-i", "-F", "-w", *patterns])
     skip = [posix(rel) for rel in (cfg.todo.catalog, *companions(cfg)) if rel] + list(history_paths(cfg))
+    skip.append(posix(cfg.state_dir).rstrip("/"))
     return tuple(line.strip() for line in lines if not under_any(line.partition(":")[0], skip))
 
 
