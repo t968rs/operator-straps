@@ -31,8 +31,8 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <body>
 <h1>Plan 1019: serialize catalog writes</h1>
 <p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>1019_serialize_catalog_writes_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
-<p class="note">Not frozen yet: every item reads PENDING. Receipts and design changes appear after <code>plan.py freeze 1019</code> writes live.js.</p>
-<dl class="head"><dt>Plan created</dt><dd>2026-11-13</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md</code></dd><dt>Branch</dt><dd>1159-FEAT-serialize-catalog-writes -&gt; main</dd><dt>Base commit</dt><dd><code>a845e25</code></dd><dt>Frozen</dt><dd>no</dd><dt>Execution model</dt><dd>parallel2 waves</dd></dl>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 1019</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 1019</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-13</dd><dt>Spec</dt><dd><code>docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md</code></dd><dt>Branch</dt><dd>1159-FEAT-serialize-catalog-writes -&gt; main</dd><dt>Base commit</dt><dd><code>a845e25</code></dd><dt>Frozen</dt><dd>2026-11-15 at <code>71a22d0</code></dd><dt>Execution model</dt><dd>parallel2 waves</dd></dl>
 <h2>Decisions</h2>
 <ul>
 <li><strong>D1</strong> What does inbox put validate before it writes a file? Chosen: <code>full-dry-run</code> (add_items on a copy of the current catalog, as add --dry-run does (catches an issue already in the catalog)). Rejected: <code>schema-only</code> (the spec shape alone). Spec, Left to the builder: a full dry run catches most rejections while the agent can still fix them.</li>
@@ -66,12 +66,15 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li><code>plugins/harness/lib/harness_lib/default_exclusions.py:83-86</code> holds <code>with open(target, &quot;x&quot;, encoding=&quot;utf-8&quot;)</code></li>
 <li><code>plugins/harness/config/defaults.json:12</code> holds <code>&quot;state_dir&quot;: &quot;.claude/state/harness&quot;</code></li>
 </ul>
-<p class="action">Create harness_lib/catalog_lock.py (standard library only, generic: names no catalog). Constants WAIT_SECONDS=10.0, WRITE_STALE_SECONDS=60.0, LEASE_STALE_SECONDS=1800.0. LockError(RuntimeError). Body JSON {pid, host (socket.gethostname()), owner, mode &#x27;write&#x27;|&#x27;lease&#x27;, acquired (time.time()), token (lease only, secrets.token_hex(8))}. hold(path, owner, lease=None, wait=None) is a contextmanager: with lease set, the file must hold a lease whose token matches (else LockError naming &#x27;no lease&#x27; or &#x27;token&#x27;, at once, no wait) and the body runs without touching the file; without lease, create the file with os.open(O_CREAT|O_EXCL|O_WRONLY), retrying with random jitter (20-120 ms) until wait (None reads the module&#x27;s WAIT_SECONDS at call time, so a test can patch it) runs out, breaking a stale holder first; on timeout raise LockError naming the holder&#x27;s owner, mode and age. The write lock file is removed in a finally. acquire_lease(path, owner, wait=None) -&gt; token (same create/retry/stale rules; a second lease waits and refuses naming the first). release_lease(path, token) removes it; a wrong token raises LockError naming &#x27;token&#x27;. break_lock(path) -&gt; Optional[dict] removes any lock and returns its body. read_holder(path) -&gt; Optional[dict] (unreadable body counts as stale-write after WRITE_STALE_SECONDS by mtime). Staleness: write = age &gt; WRITE_STALE_SECONDS, or same host and not pid_alive(pid); lease = age &gt; LEASE_STALE_SECONDS only. pid_alive(pid): POSIX os.kill(pid, 0) (ProcessLookupError False, PermissionError True); Windows ctypes kernel32 OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION=0x1000) + GetExitCodeProcess == STILL_ACTIVE(259), CloseHandle; never os.kill on Windows. Breaking a stale lock: os.replace the file to a unique sibling name then unlink it, so two breakers never both remove a fresh lock. Functions under 50 lines. Copy the planned test file first.</p>
+<p class="action">Create harness_lib/catalog_lock.py (standard library only, generic: names no catalog). Constants WAIT_SECONDS=10.0, WRITE_STALE_SECONDS=60.0, LEASE_STALE_SECONDS=1800.0. LockError(RuntimeError). Body JSON {pid, host (socket.gethostname()), owner, mode &#x27;write&#x27;|&#x27;lease&#x27;, acquired (time.time()), token (secrets.token_hex(8), on write locks and leases alike)}. hold(path, owner, lease=None, wait=None) is a contextmanager: with lease set, the file must hold a lease whose token matches (else LockError naming &#x27;no lease&#x27; or &#x27;token&#x27;, at once, no wait) and the body runs without touching the file; without lease, create the file with os.open(O_CREAT|O_EXCL|O_WRONLY), retrying with random jitter (20-120 ms) until wait (None reads the module&#x27;s WAIT_SECONDS at call time, so a test can patch it) runs out, breaking a stale holder first; on timeout raise LockError naming the holder&#x27;s owner, mode and age. The finally removes the write lock file only when its body still carries this hold&#x27;s token (read, compare, unlink), so a holder that was broken never deletes its successor&#x27;s lock. acquire_lease(path, owner, wait=None) -&gt; token (same create/retry/stale rules; a second lease waits and refuses naming the first). release_lease(path, token) removes it; a wrong token raises LockError naming &#x27;token&#x27;. break_lock(path) -&gt; Optional[dict] removes any lock and returns its body. read_holder(path) -&gt; Optional[dict]. Staleness of a write lock: same host -&gt; not pid_alive(pid), or age &gt; LEASE_STALE_SECONDS (the ceiling against a reused pid); a live same-host holder is never broken by WRITE_STALE_SECONDS, since a hold spans add_items, render and check (Decided 11) and a git grep reference scan (Decided 16). Another host, or an unreadable body (age by mtime) -&gt; age &gt; WRITE_STALE_SECONDS. Lease -&gt; age &gt; LEASE_STALE_SECONDS only. pid_alive(pid): POSIX os.kill(pid, 0) (ProcessLookupError False, PermissionError True); Windows ctypes WinDLL(&#x27;kernel32&#x27;, use_last_error=True) OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION=0x1000) + GetExitCodeProcess == STILL_ACTIVE(259), CloseHandle; a failed OpenProcess with ctypes.get_last_error() == 5 (ERROR_ACCESS_DENIED: an elevated or other-user process) is alive, any other failure dead; never os.kill on Windows. Breaking a stale lock goes through break_if_unchanged(path, observed) -&gt; bool: under an O_EXCL &#x27;&lt;lock&gt;.break&#x27; guard file (itself stale after WAIT_SECONDS by mtime; a busy guard means another breaker is at work, so retry), re-read the body and unlink the lock only when it still equals the observed stale body; otherwise return False and leave it. Two breakers that read one stale body therefore never remove the fresh lock one of them created. Functions under 50 lines. Copy the planned test file first.</p>
 <ul>
 <li>Test <code>tests/lib/test_catalog_lock.py::test_hold_creates_the_file_and_removes_it</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/lib/test_catalog_lock.py::test_a_lease_blocks_a_plain_writer_and_admits_its_token</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/lib/test_catalog_lock.py::test_a_write_lock_of_a_dead_pid_is_broken</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/lib/test_catalog_lock.py::test_a_lease_survives_a_dead_pid_and_breaks_by_age</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_catalog_lock.py::test_a_live_same_host_holder_past_the_write_age_is_kept</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_catalog_lock.py::test_a_broken_holder_leaves_its_successor_lock_in_place</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_catalog_lock.py::test_a_break_refuses_a_body_that_changed_since_it_was_read</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/lib/test_catalog_lock.py::test_pid_alive_reads_this_process_without_signalling_it</code> fails with ImportError, then passes</li>
 <li>Record it: <code>plan.py record 1019 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
 </ul>
@@ -110,7 +113,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li><code>plugins/harness/lib/harness_lib/default_exclusions.py:33</code> holds <code>&quot;pr-review run scratch&quot;</code></li>
 <li><code>README.md:492</code> holds <code>| `state_dir`</code></li>
 </ul>
-<p class="action">New top-level key scratch_folder, default &#x27;docs/_scratch/&#x27;, in the four places: config/defaults.json (after state_dir), config/harness.schema.json (relPath, description: agent scratch; the TODO inbox lives in &lt;scratch_folder&gt;/todo-inbox/), lib/harness_lib/config.py (HarnessConfig field scratch_folder: str placed before the defaulted canned_messages, _build reads m[&#x27;scratch_folder&#x27;], and a method todo_inbox() -&gt; str returning the repo-relative POSIX folder f&#x27;{posix scratch_folder without trailing /}/todo-inbox&#x27;), and the README key table row after state_dir (used by: the TODO inbox that add-todo and sync-gh-todo agents write and todo_sync.py add --inbox drains; independent of artifacts.scratch). history.history_paths appends cfg.todo_inbox(); default_exclusions._entries adds (f&#x27;{todo_inbox}/*&#x27;, &#x27;TODO inbox drafts&#x27;). artifacts.scratch is unchanged. Copy the planned test file first.</p>
+<p class="action">New top-level key scratch_folder, default &#x27;docs/_scratch/&#x27;, in the four places: config/defaults.json (after state_dir), config/harness.schema.json (relPath, description: agent scratch; the TODO inbox lives in &lt;scratch_folder&gt;/todo-inbox/), lib/harness_lib/config.py (HarnessConfig field scratch_folder: str placed before the defaulted canned_messages, _build reads m[&#x27;scratch_folder&#x27;], and a method todo_inbox() -&gt; str returning the repo-relative POSIX folder f&#x27;{posix scratch_folder without trailing /}/todo-inbox&#x27;), and the README key table row after state_dir (used by: the TODO inbox that the todo-editor agent&#x27;s add and sync runs write and todo_sync.py add --inbox drains; independent of artifacts.scratch). history.history_paths appends cfg.todo_inbox(); default_exclusions._entries adds (f&#x27;{todo_inbox}/*&#x27;, &#x27;TODO inbox drafts&#x27;). artifacts.scratch is unchanged. Copy the planned test file first.</p>
 <ul>
 <li>Test <code>tests/lib/test_config_scratch_folder.py::test_scratch_folder_defaults_to_docs_scratch</code> fails with AttributeError, then passes</li>
 <li>Test <code>tests/lib/test_config_scratch_folder.py::test_the_inbox_is_a_history_path</code> fails with AssertionError, then passes</li>
@@ -137,12 +140,15 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li><code>plugins/harness/lib/harness_lib/todo_sync/__init__.py:122</code> holds <code>def check(cfg: HarnessConfig, rules</code></li>
 <li><code>plugins/harness/lib/harness_lib/todo_sync/report.py:103-105</code> holds <code>def write_report(report: Report, path: Path)</code></li>
 </ul>
-<p class="action">Create todo_sync/inbox.py. inbox_dir(cfg) = cfg.path(cfg.todo_inbox()). put(cfg, spec, file_issues=False, rng=None) -&gt; PutResult(paths, filed): read_spec(spec, &#x27;items&#x27;); load_catalog(cfg, &#x27;add&#x27;) and validate with add_items on that data (D1 full dry run; with file_issues and items lacking &#x27;issue&#x27; use reshape._preview_add) so a refusal raises TodoSyncError and writes nothing; then, with file_issues, reshape._file_pending files the issues; then write each item as {&#x27;items&#x27;: [item]} with report.write_atomic to &lt;inbox&gt;/&lt;UTC %Y%m%dT%H%M%S%fZ&gt;-&lt;secrets.token_hex(3)&gt;.json, returning the paths in spec order. drain(cfg, today=None, rng=None) -&gt; DrainResult(added: ((id, issue|None), ...), rejected: ((name, reason), ...), drift: Optional[int]): list *.json not starting with &#x27;.&#x27; and not ending .rejected.json, sorted by name (oldest first); none -&gt; empty result. load_catalog once; for each file read_spec + add_items on the working catalog, keeping the result on success and recording (name, reason) on TodoSyncError/RankingError/ValueError. Any accepted: write_edits(cfg, dump_like(working, raw)) (D2 write first), render_snapshot(cfg, today) when todo.snapshots.dir is set, report = check(cfg), write_report(report, report_path(cfg)), drift = report.drift; then unlink the accepted files. Each rejected file: rename to &lt;stem&gt;.rejected.json and write &lt;stem&gt;.reason.txt. The caller holds the lock; drain takes none. drain_lines(result) -&gt; one line: &#x27;inbox: empty&#x27;, or &#x27;inbox: added N item(s): &lt;id&gt; (#N|note), ...[; rejected M (&lt;names&gt;)]; check drift=&lt;d&gt;&#x27; (no check part when nothing landed; &#x27;inbox: rejected M (...)&#x27; then). Functions under 50 lines. Copy the planned test file first.</p>
+<p class="action">Create todo_sync/inbox.py. It binds render_snapshot, check and report_path (from harness_lib.todo_sync) and write_atomic (from .report) as module names, so a test patches inbox.&lt;name&gt;. inbox_dir(cfg) = cfg.path(cfg.todo_inbox()). put(cfg, spec, file_issues=False, rng=None) -&gt; PutResult(paths, filed): read_spec(spec, &#x27;items&#x27;); load_catalog(cfg, &#x27;add&#x27;) and validate with add_items on that data (D1 full dry run; with file_issues and items lacking &#x27;issue&#x27; use reshape._preview_add) so a refusal raises TodoSyncError and writes nothing; then, with file_issues, reshape._file_pending files the issues; then write each item as {&#x27;items&#x27;: [item]} with write_atomic to &lt;inbox&gt;/&lt;_stamp()&gt;-&lt;NN&gt;-&lt;secrets.token_hex(3)&gt;.json, where _stamp() is the UTC time as %Y%m%dT%H%M%S%fZ and NN the item&#x27;s zero-padded index in the spec, so names from one put sort in spec order even on a clock that repeats a stamp (about 15.6 ms on Windows); returns the paths in spec order. Once any issue is filed, an OSError or TodoSyncError from the inbox writes re-raises as TodoSyncError(reshape._with_filed(str(exc), filed)), as apply_add does, so a rerun never files them twice. drain(cfg, today: Optional[dt.date] = None, rng=None) -&gt; DrainResult(added: ((id, issue|None), ...), rejected: ((name, reason), ...), drift: Optional[int]): day = today or dt.date.today(); list *.json not starting with &#x27;.&#x27; and not ending .rejected.json, sorted by name (oldest first); none -&gt; empty result. load_catalog once; for each file read_spec + add_items(working, specs, day.isoformat(), rng) on the working catalog, keeping the result on success and recording (name, reason) on TodoSyncError/RankingError/ValueError. Any accepted: write_edits(cfg, dump_like(working, raw)) (D2 write first), then at once unlink the accepted files, so the D2 window covers the write alone; only then render_snapshot(cfg, day) when todo.snapshots.dir is set, report = check(cfg), write_report(report, report_path(cfg)), drift = report.drift. A render, check or report failure raises after the items have landed and their files are gone, so the next drain never adds them again. Each rejected file: rename to &lt;stem&gt;.rejected.json and write &lt;stem&gt;.reason.txt. The caller holds the lock; drain takes none. drain_lines(result) -&gt; one line: &#x27;inbox: empty&#x27;, or &#x27;inbox: added N item(s): &lt;id&gt; (#N|note), ...[; rejected M (&lt;names&gt;)]; check drift=&lt;d&gt;&#x27; (no check part when nothing landed; &#x27;inbox: rejected M (...)&#x27; then). Functions under 50 lines. Copy the planned test file first.</p>
 <ul>
 <li>Test <code>tests/lib/test_todo_sync_inbox.py::test_put_writes_one_file_per_item_and_leaves_the_catalog</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/lib/test_todo_sync_inbox.py::test_put_files_the_issue_first_and_stores_it</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/lib/test_todo_sync_inbox.py::test_drain_adds_every_file_in_one_write_and_deletes_them</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/lib/test_todo_sync_inbox.py::test_drain_keeps_a_rejected_file_with_its_reason_and_lands_the_rest</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_inbox.py::test_put_names_sort_in_spec_order_on_a_repeated_stamp</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_inbox.py::test_a_failed_inbox_write_names_the_issue_already_filed</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/lib/test_todo_sync_inbox.py::test_a_failed_render_after_the_write_never_adds_the_items_twice</code> fails with ImportError, then passes</li>
 <li>Record it: <code>plan.py record 1019 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
 </ul>
 <div class="receipt"><p class="note">No receipt.</p></div>
@@ -161,11 +167,14 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:538-540</code> holds <code>def apply_refresh(cfg: HarnessConfig, dry_run: bool = False)</code></li>
 <li><code>plugins/harness/lib/harness_lib/todo_sync/reshape.py:416-433</code> holds <code>data[&quot;counts&quot;] = recount(data.get(&quot;counts&quot;), data, ())</code></li>
 <li><code>plugins/harness/lib/harness_lib/todo_sync/retire.py:181-188</code> holds <code>raw, data = load_catalog(cfg, &quot;retire&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/retire.py:144</code> holds <code>def recount(stored: Any, data: Dict[str, Any], retired: Sequence[Dict[str, Any]]) -&gt; Dict[str, Any]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/todo_sync/retire.py:270</code> holds <code>def dump_like(data: Dict[str, Any], raw: str) -&gt; str:</code></li>
 </ul>
-<p class="action">Create todo_sync/locking.py: lock_path(cfg) = cfg.path(state_dir)/&#x27;locks&#x27;/&lt;posix catalog rel with &#x27;/&#x27; replaced by &#x27;__&#x27;&gt;.lock; guard(cfg, owner, lease=None) wraps catalog_lock.hold and re-raises LockError as TodoSyncError; acquire(cfg, owner) -&gt; token; release(cfg, token): verify the token (catalog_lock.read_holder), run reshape.apply_refresh(cfg) (recount, Decided 6), render the snapshot when todo.snapshots.dir is set, run check and write the report, then catalog_lock.release_lease; returns the lines to print, the first &#x27;lease released; &lt;refresh head&gt;&#x27;, the last &#x27;check drift=&lt;d&gt;&#x27;; break_(cfg) -&gt; body or None. In scripts/todo_sync.py: add --lease TOKEN to retire, split, refresh and add; add gets --inbox (mutually exclusive with --spec, one of the two required) ; new &#x27;inbox put --spec PATH [--file-issue]&#x27; prints one &#x27;queued &lt;repo-relative path&gt;&#x27; line per file and &#x27;filed #N &lt;url&gt;&#x27; lines; new &#x27;lease acquire --owner TEXT&#x27; (prints &#x27;lease: &lt;token&gt;&#x27;), &#x27;lease release TOKEN&#x27;, &#x27;lease break&#x27; (prints the removed holder&#x27;s owner, mode and age, or &#x27;lease: none held&#x27;). _dispatch runs every non-dry-run catalog write (add --spec, add --inbox with a file queued (D3), retire, split, refresh, init) inside locking.guard(cfg, &#x27;&lt;command line&gt;&#x27;, args.lease); migrate-ids (non-dry-run) acquires its own lease and releases it in a finally without the recount (Decided 16). Dry runs, check, render, untracked, runner and inbox put take no lock. add --inbox prints inbox.drain_lines. Extend the module docstring for each new subcommand and flag. Keep functions under 50 lines (split _dispatch). Copy the planned test file first.</p>
+<p class="action">Create todo_sync/locking.py: lock_path(cfg) = cfg.path(state_dir)/&#x27;locks&#x27;/&lt;posix catalog rel with &#x27;/&#x27; replaced by &#x27;__&#x27;&gt;.lock; guard(cfg, owner, lease=None) wraps catalog_lock.hold and re-raises LockError as TodoSyncError; acquire(cfg, owner) -&gt; token; release(cfg, token): verify the token (catalog_lock.read_holder; a wrong token or no lease refuses and frees nothing), then in a try: the recount alone (Decided 6; no rescore or rerank): raw, data = load_catalog(cfg, &#x27;lease release&#x27;), data[&#x27;counts&#x27;] = retire.recount(data.get(&#x27;counts&#x27;), data, ()), write_edits(cfg, dump_like(data, raw)) only when the text changed; render the snapshot when todo.snapshots.dir is set; run check and write the report; and in the finally catalog_lock.release_lease, so a catalog the recount cannot load still frees the lease and the command exits 2 with its problem line; returns the lines to print, the first &#x27;lease released; &lt;recount head&gt;&#x27;, the last &#x27;check drift=&lt;d&gt;&#x27;; break_(cfg) -&gt; body or None. In scripts/todo_sync.py: add --lease TOKEN to retire, split, refresh and add; add gets --inbox (mutually exclusive with --spec, one of the two required) ; new &#x27;inbox put --spec PATH [--file-issue]&#x27; prints one &#x27;queued &lt;repo-relative path&gt;&#x27; line per file and &#x27;filed #N &lt;url&gt;&#x27; lines; new &#x27;lease acquire --owner TEXT&#x27; (prints &#x27;lease: &lt;token&gt;&#x27;), &#x27;lease release TOKEN&#x27;, &#x27;lease break&#x27; (prints the removed holder&#x27;s owner, mode and age, or &#x27;lease: none held&#x27;). _dispatch runs every non-dry-run catalog write (add --spec, add --inbox with a file queued (D3), retire, split, refresh, init) inside locking.guard(cfg, &#x27;&lt;command line&gt;&#x27;, args.lease); migrate-ids (non-dry-run) acquires its own lease and releases it in a finally without the recount (Decided 16). Dry runs, check, render, untracked, runner and inbox put take no lock. add --inbox prints inbox.drain_lines. Extend the module docstring for each new subcommand and flag. Keep functions under 50 lines (split _dispatch). Copy the planned test file first.</p>
 <ul>
 <li>Test <code>tests/scripts/test_todo_sync_catalog_lock_cli.py::test_a_lease_admits_its_holder_and_refuses_every_other_writer</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/scripts/test_todo_sync_catalog_lock_cli.py::test_release_recounts_a_hand_appended_close_candidate</code> fails with ImportError, then passes</li>
+<li>Test <code>tests/scripts/test_todo_sync_catalog_lock_cli.py::test_release_frees_the_lease_when_the_catalog_cannot_load</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/scripts/test_todo_sync_catalog_lock_cli.py::test_init_holds_the_lock</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/scripts/test_todo_sync_catalog_lock_cli.py::test_migrate_ids_holds_the_lock</code> fails with ImportError, then passes</li>
 <li>Test <code>tests/scripts/test_todo_sync_catalog_lock_cli.py::test_add_inbox_holds_the_lock_and_keeps_the_queued_file</code> fails with ImportError, then passes</li>
@@ -190,7 +199,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li><code>plugins/agent-watcher/hooks/core/tracker.ts:396-397</code> holds <code>if (res?.status === &#x27;async_launched&#x27; &amp;&amp; res.agentId !== undefined) {</code></li>
 <li><code>plugins/agent-watcher/hooks/core/tracker.ts:566-568</code> holds <code>return lines.length === 0 ? r : { ...r, context: [...(r.context ?? []), ...lines] }</code></li>
 </ul>
-<p class="action">config.ts: export DEFAULT_SCRATCH_FOLDER = &#x27;docs/_scratch/&#x27; and read scratch_folder into scratchFolder (cleanPath); inboxDirOf(c) = `${scratchFolder}/todo-inbox`. New hooks/inbox.ts: single-flight drain like checks.ts runCycle/requestCheck (one in flight, at most one owed rerun); a drain runs [runner.python, runner.script, &#x27;add&#x27;, &#x27;--inbox&#x27;, &#x27;--project&#x27;, runner.project] with timeoutMs DRAIN_TIMEOUT_MS = 60_000 through $.process.run and keeps the stdout line starting &#x27;inbox: &#x27; (not &#x27;inbox: empty&#x27;) as the pending summary; then requests a check refresh. Triggers (spec Decided 17): (a) on(&#x27;tool.call&#x27;, { tool: &#x27;Agent&#x27; }) for subagent_type &#x27;harness:todo-editor&#x27;: after next(e), a result with status &#x27;completed&#x27; drains now and appends the summary to the result&#x27;s context; status &#x27;async_launched&#x27; records its agentId; (b) checks.ts&#x27;s turn.complete hook, for an e.agentId recorded in (a), starts the drain (it returns early for subagent loops today); (c) registerContext&#x27;s prompt.submit adds the pending summary line (awaiting an in-flight drain up to DRAIN_TIMEOUT_MS when e.origin.kind is &#x27;task-notification&#x27;), then clears it once attached; (d) the session.start hook in register.ts drains when the inbox folder lists a *.json that is not *.rejected.json. The engine allows one session.start and one unmatched turn.complete hook, so (b) and (d) join the existing hooks. New inbox.test.ts covers: foreground return appends context; background return drains on turn.complete and the next task-notification prompt carries the line; two returns while a drain runs give one owed rerun; empty stdout attaches nothing; session start with an empty inbox spawns no process. Add DEFAULT_SCRATCH_FOLDER to the Python mirror test.</p>
+<p class="action">config.ts: export DEFAULT_SCRATCH_FOLDER = &#x27;docs/_scratch/&#x27; and read scratch_folder into scratchFolder (cleanPath); inboxDirOf(c) = `${scratchFolder}/todo-inbox`. New hooks/inbox.ts: single-flight drain like checks.ts runCycle/requestCheck (one in flight, at most one owed rerun); a drain runs [runner.python, runner.script, &#x27;add&#x27;, &#x27;--inbox&#x27;, &#x27;--project&#x27;, runner.project] with timeoutMs DRAIN_TIMEOUT_MS = 60_000 through $.process.run and keeps the stdout line starting &#x27;inbox: &#x27; (not &#x27;inbox: empty&#x27;) as the pending summary; a non-zero exit or a timeout sets the pending summary to &#x27;inbox: drain failed: &lt;last non-empty stderr line, or timed out&gt;&#x27; instead, so a refused drain (a lease held, a catalog that will not load) still reaches the main session; then requests a check refresh. Triggers (spec Decided 17): (a) on(&#x27;tool.call&#x27;, { tool: &#x27;Agent&#x27; }) for subagent_type &#x27;harness:todo-editor&#x27;: after next(e), a result with status &#x27;completed&#x27; drains now and appends the summary to the result&#x27;s context; status &#x27;async_launched&#x27; records its agentId; (b) checks.ts&#x27;s turn.complete hook, for an e.agentId recorded in (a), starts the drain (it returns early for subagent loops today); (c) registerContext&#x27;s prompt.submit adds the pending summary line (awaiting an in-flight drain up to DRAIN_TIMEOUT_MS when e.origin.kind is &#x27;task-notification&#x27;), then clears it once attached; (d) the session.start hook in register.ts drains when the inbox folder lists a *.json that is not *.rejected.json. The engine allows one session.start and one unmatched turn.complete hook, so (b) and (d) join the existing hooks. New inbox.test.ts covers: foreground return appends context; background return drains on turn.complete and the next task-notification prompt carries the line; two returns while a drain runs give one owed rerun; empty stdout attaches nothing; a failed drain attaches &#x27;inbox: drain failed: &lt;stderr line&gt;&#x27;; session start with an empty inbox spawns no process. Add DEFAULT_SCRATCH_FOLDER to the Python mirror test.</p>
 <ul>
 <li>Test <code>tests/mods/test_todo_watch_config_mirror.py::test_every_mirrored_key_is_pinned</code> fails with AssertionError, then passes</li>
 <li>Run <code>claude plugin test plugins/todo-watch</code>: every test passes, inbox.test.ts included</li>
@@ -212,11 +221,12 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li><code>plugins/harness/skills/sync-gh-todo/SKILL.md:60-64</code> holds <code>## Step 3: report</code></li>
 <li><code>plugins/harness/skills/add-todo/SKILL.md:71-75</code> holds <code>## Step 4: report</code></li>
 </ul>
-<p class="action">todo-editor.md: sync step 3-5 and add step 3-5 write the spec to &lt;state_dir&gt;/todo-sync/add.json and run `TS inbox put --spec &lt;path&gt;` (add under Issue: yes: `TS inbox put --spec &lt;path&gt; --file-issue`; never `TS add --spec`); inbox put validates against the catalog itself, so no dry run; on a problem: line fix the spec and rerun once; the Added line lists each item as &#x27;queued: &lt;title&gt; (#N | note)&#x27;, its id named later by the drain&#x27;s summary line; add and sync skip the finish render and check (the drain does both). Edit-only list gains the inbox spec. retire, split and refresh start with `TS lease acquire --owner &quot;todo-editor &lt;operation&gt;&quot;` (keep the printed token) and pass --lease &lt;token&gt; to every TS retire/split/refresh; finish runs `TS check --format markdown` and fixes, then `TS lease release &lt;token&gt;` (recounts, renders, checks) before the reply, and on any stop condition still releases. Reply block fields unchanged. add-todo and sync-gh-todo SKILL.md: after the agent returns, run the launcher line `... todo_sync.py add --inbox` once and relay its line with the reply (&#x27;inbox: empty&#x27; means the todo-watch mod already drained; its summary line arrives as context). README TODO paragraph: one sentence on the inbox, the lock and the lease. Copy both planned test files first (the sync contract file replaces the existing one).</p>
+<p class="action">todo-editor.md: sync step 3-5 and add step 3-5 write the spec to a path no other run shares, &lt;state_dir&gt;/todo-sync/add-&lt;stamp&gt;-&lt;rand&gt;.json (&lt;stamp&gt; the UTC time as YYYYMMDDTHHMMSS, &lt;rand&gt; six random lowercase letters; several todo-editor agents may draft at once, and a shared add.json lets one overwrite another&#x27;s spec between its write and its put), never the old fixed add.json, and run `TS inbox put --spec &lt;path&gt;` (add under Issue: yes: `TS inbox put --spec &lt;path&gt; --file-issue`; never `TS add --spec`); inbox put validates against the catalog itself, so no dry run; on a problem: line fix the spec and rerun once; the Added line lists each item as &#x27;queued: &lt;title&gt; (#N | note)&#x27;, its id named later by the drain&#x27;s summary line; add and sync skip the finish render and check (the drain does both). Edit-only list gains the inbox spec. retire, split and refresh start with `TS lease acquire --owner &quot;todo-editor &lt;operation&gt;&quot;` (keep the printed token) and pass --lease &lt;token&gt; to every TS retire/split/refresh; finish runs `TS check --format markdown` and fixes, then `TS lease release &lt;token&gt;` (recounts, renders, checks) before the reply, and on any stop condition still releases; a release that exits non-zero has already freed the lease (only a wrong token keeps it), so the agent relays its problem line under Open and never reruns it. Reply block fields unchanged. add-todo and sync-gh-todo SKILL.md: after the agent returns, run the launcher line `... todo_sync.py add --inbox` once and relay its line with the reply (&#x27;inbox: empty&#x27; means the todo-watch mod already drained; its summary line arrives as context). README TODO paragraph: one sentence on the inbox, the lock and the lease. Copy both planned test files first (the sync contract file replaces the existing one).</p>
 <ul>
 <li>Test <code>tests/skills/test_sync_gh_todo_skill_contract.py::test_skill_command_lines_parse</code> fails with AssertionError, then passes</li>
 <li>Test <code>tests/skills/test_sync_gh_todo_skill_contract.py::test_agent_documents_the_sync_operation</code> fails with AssertionError, then passes</li>
 <li>Test <code>tests/skills/test_todo_inbox_prose_contract.py::test_structural_runs_hold_a_lease[retire]</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_todo_inbox_prose_contract.py::test_each_run_stages_its_spec_at_a_path_of_its_own[sync]</code> fails with AssertionError, then passes</li>
 <li>Test <code>tests/skills/test_todo_inbox_prose_contract.py::test_the_add_skill_drains_the_inbox_after_the_agent</code> fails with AssertionError, then passes</li>
 <li>Record it: <code>plan.py record 1019 TASK-7 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
 </ul>
@@ -244,5 +254,145 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 </section>
 <h2 id="evolution">Design evolution</h2>
 <div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "1019/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatus(node.querySelector(".status"), receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
 </body>
 </html>

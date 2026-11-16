@@ -1,0 +1,38 @@
+{
+  "plan_id": "1019",
+  "feature": "serialize catalog writes",
+  "branch_lineage": "main-->1159-FEAT-serialize-catalog-writes",
+  "primary_documents": {
+    "plan": "docs/plans/1019_serialize_catalog_writes_ActionPlan.json",
+    "spec": "docs/superpowers/specs/2026-11-13-serialize-catalog-writes-design.md"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "task-5 lane quality review",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-5 files",
+        "indicated": "only scripts/todo_sync.py, todo_sync/locking.py and the planned CLI test change"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "the lock file inside the project is visible to the retire/split reference scan",
+        "why_free_form": "lease acquire --owner stores free text in <state_dir>/locks/<catalog>.lock; retire.other_references (git grep --untracked) skips history_paths but not state_dir, so an owner naming an item id made that item's own retire report the lock file as a reference to fix by hand"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-5 also adds state_dir to the skip list of retire.other_references and adds tests/scripts/test_todo_sync_lock_reference_scan.py, a git-backed test that a lease owner naming the retired id yields no locks/ reference line"
+      },
+      "why_new_outcome": {
+        "category": "execution-blocker",
+        "free_form": "without the skip a todo-editor retire under a lease can be told to hand-edit the lock body; the planned CLI tests run without git and cannot see it"
+      },
+      "date": "2026-11-15"
+    }
+  ]
+}
