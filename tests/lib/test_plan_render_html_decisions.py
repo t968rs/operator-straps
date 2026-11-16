@@ -88,17 +88,22 @@ def style() -> str:
     return page().split("<style>", 1)[1].split("</style>", 1)[0]
 
 
+def shared_style() -> str:
+    return (prh.PAGES / "styles" / "shared.css").read_text(encoding="utf-8")
+
+
 def test_the_theme_defines_accent_colors_for_both_schemes() -> None:
-    css = style()
-    dark = css[css.index("prefers-color-scheme: dark"):]
+    css = shared_style()
+    start = css.index("prefers-color-scheme: dark")
+    dark = css[start:css.index("} }", start)]
     for name in ("--accent:", "--code-fg:"):
-        assert name in css[:css.index("prefers-color-scheme: dark")] and name in dark
+        assert name in css[:start] and name in dark
 
 
 def test_headings_and_code_take_the_accent_colors() -> None:
-    css = style()
-    assert re.search(r"h2[^{}]*\{[^}]*color:\s*var\(--accent\)", css)
-    assert re.search(r"(^|[}\s])code[^{}]*\{[^}]*color:\s*var\(--code-fg\)", css)
+    css = shared_style()
+    assert re.search(r"h2[^{}]*\{[^}]*(?:^|[{;\s])color:\s*var\(--accent\)", css)
+    assert re.search(r"(^|[}\s])code[^{}]*\{[^}]*(?:^|[{;\s])color:\s*var\(--code-fg\)", css)
 
 
 def rule(css: str, selector: str) -> str:

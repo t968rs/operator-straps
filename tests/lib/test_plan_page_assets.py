@@ -6,6 +6,7 @@ self-contained and opens from disk. The module holds no ``_STYLE`` or ``_LOADER`
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Dict
 
 from harness_lib import plan_render_html as prh
@@ -63,6 +64,8 @@ def test_the_page_inlines_the_loader() -> None:
 
 def test_the_module_holds_no_asset_literals() -> None:
     assert not hasattr(prh, "_STYLE") and not hasattr(prh, "_LOADER")
+    source = Path(prh.__file__).read_text(encoding="utf-8")
+    assert "prefers-color-scheme" not in source and "querySelectorAll" not in source
 
 
 def test_no_views_folder_ships() -> None:
@@ -71,4 +74,6 @@ def test_no_views_folder_ships() -> None:
 
 def test_the_literal_ban_scans_page_assets() -> None:
     from contract import test_no_repo_literals as literals
-    assert {".css", ".html"} <= literals.TEXT_SUFFIXES
+    scanned = {p.relative_to(literals.REPO_ROOT).as_posix() for p in literals.FILES}
+    assert {"plugins/harness/pages/styles/shared.css", "plugins/harness/pages/styles/plan.css",
+            "plugins/harness/pages/components/plan.js"} <= scanned
