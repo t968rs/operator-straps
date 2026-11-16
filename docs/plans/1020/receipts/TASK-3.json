@@ -1,0 +1,29 @@
+{
+  "plan_id": "1020",
+  "item": "TASK-3",
+  "outcome": {
+    "kind": "complete",
+    "provenance": {
+      "source": "staged",
+      "tree": "3f8b109ec04c41bb7eb7660f3549f53c47adee70"
+    },
+    "tests": {
+      "nodes": [
+        "tests/lib/test_plan_render_html_summary.py::test_the_status_block_sits_above_decisions",
+        "tests/lib/test_plan_render_html_summary.py::test_the_status_block_lists_every_item_in_plan_order",
+        "tests/lib/test_plan_render_html_summary.py::test_every_badge_names_its_item_once_in_the_summary_and_once_in_its_heading",
+        "tests/lib/test_plan_render_html_summary.py::test_the_loader_draws_every_badge_that_names_an_item",
+        "tests/lib/test_plan_render_html_summary.py::test_the_summary_style_ships_in_the_plan_style"
+      ],
+      "command": "python -m pytest -q -p no:cacheprovider --tb=auto tests/lib/test_plan_render_html_summary.py::test_the_status_block_sits_above_decisions tests/lib/test_plan_render_html_summary.py::test_the_status_block_lists_every_item_in_plan_order tests/lib/test_plan_render_html_summary.py::test_every_badge_names_its_item_once_in_the_summary_and_once_in_its_heading tests/lib/test_plan_render_html_summary.py::test_the_loader_draws_every_badge_that_names_an_item tests/lib/test_plan_render_html_summary.py::test_the_summary_style_ships_in_the_plan_style"
+    }
+  },
+  "evidence": "staged tree 3f8b109: 5 test node(s) passed",
+  "deviations": {
+    "extra_files": [],
+    "substitutions": [],
+    "change_digests": {}
+  },
+  "date": "2026-11-16",
+  "seal": "4ba640d7f1beaa982750f683919824db7896ff6983542ace86a4e99d6beb921b"
+}
