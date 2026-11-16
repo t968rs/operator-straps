@@ -219,6 +219,7 @@ class HarnessConfig:
     strap: StrapConfig
     plugins: Tuple[Tuple[str, str], ...]
     attach: AttachConfig
+    scratch_folder: str
     canned_messages: Tuple[CannedSet, ...] = ()
 
     def plugin(self, name: str) -> Dict[str, Any]:
@@ -228,6 +229,11 @@ class HarnessConfig:
     def path(self, rel: str) -> Path:
         """Absolute path of a project-relative POSIX path."""
         return self.project_root / Path(rel)
+
+    def todo_inbox(self) -> str:
+        """Repo-relative POSIX folder of the TODO inbox: ``<scratch_folder>/todo-inbox``."""
+        base = self.scratch_folder.replace("\\", "/").rstrip("/")
+        return f"{base}/todo-inbox"
 
     def resolve_base_branch(self) -> str:
         """Configured base branch, else the branch ``origin/HEAD`` points at, else ``main``."""
@@ -350,6 +356,7 @@ def _build(m: Dict[str, Any], root: Path, source: Optional[Path],
         strap=_strap(m["strap"]),
         plugins=_plugins(m["plugins"]),
         attach=_attach(m["attach"]),
+        scratch_folder=_rel_path(m["scratch_folder"], "scratch_folder"),
         canned_messages=_canned_messages(m["canned_messages"]),
     )
 
@@ -468,6 +475,18 @@ def _argv_list(commands: List[List[str]], where: str) -> Tuple[Tuple[str, ...], 
     if not isinstance(commands, list) or not all(_is_argv(argv) for argv in commands):
         raise ConfigError(f"{where}: must be a list of non-empty lists of non-empty strings")
     return tuple(tuple(argv) for argv in commands)
+
+
+def _rel_path(value: Any, where: str) -> str:
+    """``value`` when it is a non-empty relative path; ConfigError otherwise.
+
+    Repeats the schema's ``relPath`` shape (no leading slash or backslash, no drive letter), so a load
+    without ``jsonschema`` never accepts a path that escapes the project root.
+    """
+    if (not isinstance(value, str) or not value or value[0] in "/\\"
+            or re.match(r"[A-Za-z]:", value)):
+        raise ConfigError(f"{where}: must be a non-empty relative path")
+    return value
 
 
 def _is_argv(argv: Any) -> bool:
