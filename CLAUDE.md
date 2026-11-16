@@ -70,7 +70,7 @@ plugin (ArcGIS Pro toolbox skills) plus eight TypeScript mods (`agent-watcher`, 
   `--extend-ignore E501`, so a long line never fails a build).
 - CI (`.github/workflows/ci.yml`) runs pytest and ruff on Ubuntu, pytest on Windows limited to tests marked
   `cross_os` (shell launcher, git worktree paths, junctions; mark a new test that depends on the OS), plus strict
-  validation and the mod tests. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
+  validation and the mod tests on Ubuntu only. Pull requests run only what the diff reaches, chosen by `tools/select_tests.py`: a test runs when it
   changed, when its import closure holds a changed file (the closure follows the `pythonpath` entries and every
   `tests/` folder holding a `_`-prefixed helper), when its source names a changed or deleted file (the
   basename, or a `.py` file's bare module name), or when it walks a tree that holds a changed path. A
@@ -92,6 +92,11 @@ plugin (ArcGIS Pro toolbox skills) plus eight TypeScript mods (`agent-watcher`, 
   pull request skips it and only
   the full run after the merge to `main` catches the break.
   Preview a diff with `python tools/select_tests.py --base main`.
+- Replay the Windows leg locally with `python tools/ci_local.py [--full] --python <3.11 interpreter>`: the same
+  selection, `-m cross_os` pytest, runtime catalog and hpy check, in a runner-shaped environment (session
+  variables dropped, Git Bash first on PATH, an isolated global git config; `--short-temp` for an 8.3 TEMP).
+  It prints a CI-vs-local table and exits 3 when ci.yml has drifted from its copies
+  (`tests/scripts/test_ci_local.py` guards them).
 
 ## Code style
 
