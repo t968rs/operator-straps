@@ -20,6 +20,7 @@ const bandOn = (surface: Surface, hasSurvey = false) => ({
   surface,
   props: {
     hasSurvey,
+    isCollapsed: false,
     isWorking: false,
     maxRows: 20,
     bodyColumns: 80,
@@ -169,7 +170,8 @@ describe('the band above the prompt', () => {
     engineDraws(on)
     await start($, w)
     const clean = await bandNodes($)
-    expect(clean.all.map(t => t.text.trim())).toEqual([...START_LINES, '✓ in sync'])
+    // the engine stacks each plugin's band as its own part: the band's lines, then the part beneath
+    expect(clean.all.map(t => t.text.trim())).toEqual([...START_LINES, '✓ in sync', 'engine'])
     expect(clean.items.map(t => t.props.wrap)).toEqual(['truncate-end', 'truncate-end'])
     expect(clean.status[0]?.props.color).toBe('success')
     await reportDrift($, w, 2)

@@ -1,8 +1,8 @@
 """Guard test: the sync-gh-todo skill, the todo-editor agent and ``todo_sync.py`` agree.
 
-The skill runs ``untracked`` and hands the listed issues to the agent; the agent owns the drafting and the
-``add`` call. The files are prose, so the test parses the skill's own command lines with the driver's parser
-and pins the names the skill and the agent must share.
+The skill runs ``untracked``, hands the listed issues to the agent and drains the inbox once it returns; the
+agent owns the drafting and queues each item with ``inbox put``. The files are prose, so the test parses the
+skill's own command lines with the driver's parser and pins the names the skill and the agent must share.
 """
 from __future__ import annotations
 
@@ -50,9 +50,9 @@ def test_skill_command_lines_parse() -> None:
     spec.loader.exec_module(module)
     lines = re.findall(rf"^{re.escape(_LAUNCHER)} (.*)$", _text(_SKILL), re.MULTILINE)
     assert lines, "skill never runs todo_sync.py through the launcher"
-    for line in lines:
-        assert module._parser().parse_args(shlex.split(line)).command in {"untracked", "init"}
-    assert {module._parser().parse_args(shlex.split(line)).command for line in lines} == {"untracked", "init"}
+    parsed = [module._parser().parse_args(shlex.split(line)) for line in lines]
+    assert {args.command for args in parsed} == {"untracked", "init", "add"}
+    assert all(args.inbox for args in parsed if args.command == "add"), "the skill drains only the inbox"
 
 
 def test_skill_starts_a_missing_catalog_with_init() -> None:
@@ -78,9 +78,10 @@ def test_agent_documents_the_sync_operation() -> None:
     description = body.split("---", 2)[1]
     assert "sync" in description
     section = body.split("## sync", 1)[1].split("\n## ", 1)[0]
-    for needle in ("untracked.json", "add --spec", "--dry-run", "needs_decision", "one item per issue",
-                   "unverified", "reviews", "review_errors", '"size"', '"consumers"'):
+    for needle in ("untracked.json", "inbox put --spec", "needs_decision", "one item per issue",
+                   "unverified", "reviews", "review_errors", '"size"', '"consumers"', "queued"):
         assert needle in section, f"sync section never mentions {needle!r}"
+    assert "TS add --spec" not in section, "the sync agent queues items; it never writes the catalog"
 
 
 def test_agent_reply_block_is_unchanged() -> None:
