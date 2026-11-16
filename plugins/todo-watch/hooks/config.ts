@@ -5,6 +5,7 @@
  */
 
 export const DEFAULT_STATE_DIR = '.claude/state/harness'
+export const DEFAULT_SCRATCH_FOLDER = 'docs/_scratch/'
 export const DEFAULT_RESEARCH = 'docs/RESEARCH'
 export const DEFAULT_PLANS = 'docs/PLANS'
 export const DEFAULT_FOLDER: string | null = null
@@ -35,6 +36,8 @@ export const MAX_NOTICE_ITEMS = 10
  */
 export type TodoWatchConfig = {
   stateDir: string
+  /** `scratch_folder`: the TODO inbox lives under it. */
+  scratchFolder: string
   researchDir: string
   plansDir: string
   folder: string | null
@@ -147,6 +150,7 @@ export const readConfig = (text: string): TodoWatchConfig => {
   const folder = named !== null && !isRooted(named) && insideRoot(inFolder(named, '.')) !== null ? named : null
   return {
     stateDir: pathOr(data.state_dir, DEFAULT_STATE_DIR),
+    scratchFolder: pathOr(data.scratch_folder, cleanPath(DEFAULT_SCRATCH_FOLDER)),
     researchDir: pathOr(artifacts.research, DEFAULT_RESEARCH),
     plansDir: pathOr(artifacts.plans, DEFAULT_PLANS),
     folder,
@@ -177,3 +181,6 @@ export const under = (root: string, path: string): string => (isAbsolute(path) ?
 
 /** `<state_dir>/todo-sync`: the runner pointer and the sync report live here. */
 export const syncDirOf = (c: TodoWatchConfig): string => `${c.stateDir}/todo-sync`
+
+/** `<scratch_folder>/todo-inbox`: the queued items a `todo_sync.py add --inbox` drain adds to the catalog. */
+export const inboxDirOf = (c: TodoWatchConfig): string => `${c.scratchFolder}/todo-inbox`

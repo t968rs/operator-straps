@@ -22,6 +22,7 @@ export const CATALOG_REL = `${TODO_DIR}/RepoToDo.json`
 export const RESEARCH_CATALOG_REL = `${TODO_DIR}/ResearchImplementationCatalog.json`
 export const SNAPSHOTS_REL = `${TODO_DIR}/Snapshots`
 export const SYNC_REL = '.claude/state/harness/todo-sync'
+export const INBOX_REL = 'docs/_scratch/todo-inbox'
 
 /** The whole `todo` block a project needs: every other path takes its default under the folder. */
 export const CONFIG = { todo: { folder: TODO_DIR } }
@@ -32,6 +33,9 @@ export const TOAST_CONFIG = { todo: { folder: TODO_DIR, notice: { style: 'toast'
 
 /** How the engine's check run ends. */
 export type EngineMode = 'ok' | 'timeout' | 'fail'
+
+/** How the engine's inbox drain (`add --inbox`) answers. */
+export type DrainAnswer = { stdout: string; stderr: string; exitCode: number; isTimeout: boolean; isHeld: boolean }
 
 export type WorldOpts = {
   /** The project root env and cwd answer with; `/repo` when not given. */
@@ -77,6 +81,16 @@ export type World = {
   engine: { mode: EngineMode; drift: number; byRule: Record<string, number>; isHeld: boolean; reports: number }
   /** Check runs held while `engine.isHeld`: release them in order. */
   held: Array<() => void>
+  /** The inbox drain's answer; `inbox: empty` by default. */
+  drain: DrainAnswer
+  /** Drains held while `drain.isHeld`: release them in order. */
+  drainHeld: Array<() => void>
+  /** Stdouts for the next drains, one each, in order; `drain.stdout` once empty. */
+  drainOuts: string[]
+  /** Queues one inbox item file under the default scratch folder. */
+  queueItem: (name?: string) => void
+  /** What the Agent tool beneath answers. */
+  agent: unknown
   /** Writes a file; its mtime is the clock's now unless given. */
   setFile: (path: string, text: string, mtimeMs?: number) => void
   /** Moves a file's mtime to the clock's now unless given. */
@@ -184,10 +198,22 @@ async function check(w: World): Promise<{ value: ProcessRunResult } | { deny: st
   return { value: ran('{"ignored": true}') }
 }
 
+/**
+ * The engine's inbox drain: answers per `drain`, after a hold while `drain.isHeld`; its stdout is the next of
+ * `drainOuts` when one is queued (taken as the drain starts), else `drain.stdout`.
+ */
+async function drainRun(w: World): Promise<{ value: ProcessRunResult } | { deny: string }> {
+  const stdout = w.drainOuts.shift() ?? w.drain.stdout
+  if (w.drain.isHeld) await new Promise<void>(resolve => w.drainHeld.push(resolve))
+  if (w.drain.isTimeout) return { deny: 'process timed out after 60000 ms' }
+  return { value: { ...ran(stdout, w.drain.exitCode), stderr: w.drain.stderr } }
+}
+
 function engineHooks(on: On, w: World): void {
   on('process.run', async (_$, e) => {
     w.runs.push([...e.argv])
     w.inits.push(e.init)
+    if (e.argv[2] === 'add') return drainRun(w)
     return e.argv[2] === 'check' ? check(w) : { value: ran('', 128) }
   })
   on('ui.toast', (_$, e) => {
@@ -232,6 +258,7 @@ function bottoms(on: On, w: World): void {
     return { result } as never
   })
   on('tool.call', { tool: /^(Edit|NotebookEdit)$/ }, () => ({ result: {} }) as never)
+  on('tool.call', { tool: 'Agent' }, () => w.agent as never)
 }
 
 function seed(w: World, opts: WorldOpts): void {
@@ -254,7 +281,10 @@ export function world(on: On, opts: WorldOpts = {}): World {
   const files = new Map<string, Rec>()
   const w: World = {
     root, files, reads: [], runs: [], inits: [], notices: [], toasts: [], toastTimeouts: [], band: [], notice: null,
-    commands: [], descriptions: [], isRegisterRefused: false, held: [],
+    commands: [], descriptions: [], isRegisterRefused: false, held: [], drainHeld: [], drainOuts: [],
+    queueItem: name => w.setFile(`${root}/${INBOX_REL}/${name ?? '20261115T100000000000Z-01-ab12.json'}`, '{}'),
+    drain: { stdout: 'inbox: empty\n', stderr: '', exitCode: 0, isTimeout: false, isHeld: false },
+    agent: { result: {}, text: '' },
     clock: mock.clock(on, { now: NOW }),
     engine: { mode: 'ok', drift: 0, byRule: {}, isHeld: false, reports: 0 },
     setFile: (path, text, mtimeMs) => files.set(keyOf(path), { text, mtimeMs: mtimeMs ?? w.clock.now() }),
@@ -280,6 +310,9 @@ export function world(on: On, opts: WorldOpts = {}): World {
 /** The check runs among the process runs. */
 export const checkRuns = (w: World): string[][] => w.runs.filter(argv => argv[2] === 'check')
 
+/** The inbox drains among the process runs. */
+export const drainRuns = (w: World): string[][] => w.runs.filter(argv => argv[2] === 'add')
+
 // ---------------------------------------------------------------------------
 // Raising events
 
@@ -301,6 +334,41 @@ export async function prompt($: Engine, w: World): Promise<readonly string[]> {
 export async function turnEnd($: Engine, w: World): Promise<void> {
   await $.turn.complete({ answer: 'ok', durationMs: 5, isAborted: false, turnId: 't1', reason: 'answer' })
   await w.clock.settle()
+}
+
+/** A subagent loop's turn end (`agentId`), then the work it scheduled. */
+export async function agentTurnEnd($: Engine, w: World, agentId: string): Promise<void> {
+  await $.turn.complete({ answer: 'done', durationMs: 5, isAborted: false, turnId: `t-${agentId}`, reason: 'answer', agentId })
+  await w.clock.settle()
+}
+
+/** A background task's notification prompt, then the work it scheduled; answers the context it entered with. */
+export async function notify($: Engine, w: World): Promise<readonly string[]> {
+  const out = await $.prompt.submit({ ...submit, origin: { kind: 'task-notification' } })
+  await w.clock.settle()
+  return 'context' in out ? (out.context ?? []) : []
+}
+
+/** An Agent result as the engine answers a finished foreground dispatch. */
+export const completedAgent = (text = 'done') => ({
+  result: {
+    status: 'completed', agentId: 'loop-fg', totalTokens: 10, totalToolUseCount: 1, totalDurationMs: 5,
+    content: [{ type: 'text', text }], prompt: '',
+  },
+  text,
+})
+
+/** An Agent result as the engine answers a backgrounded dispatch. */
+export const launchedAgent = (agentId: string) => ({
+  result: { status: 'async_launched', agentId, description: 'd', prompt: '', outputFile: 'f' },
+  text: 'launched',
+})
+
+/** One Agent dispatch of `subagentType`; answers the tool result's context. */
+export async function dispatch($: Engine, w: World, subagentType = 'harness:todo-editor'): Promise<readonly string[]> {
+  const out = await $.tool.call({ tool: 'Agent', description: 'd', prompt: 'p', subagent_type: subagentType })
+  await w.clock.settle()
+  return out.context ?? []
 }
 
 export async function runTodo($: Engine): Promise<string> {
