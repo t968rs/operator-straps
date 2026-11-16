@@ -156,7 +156,8 @@ def write(plan: pm.ActionPlan, repo: Repo = None) -> pm.ActionPlan:
         checked = pd.validate_plan(raw)
     except pd.PlanError as exc:
         problems += exc.problems
-    problems += pc.duplicate_problems(checked) if checked is not None else []
+    if checked is not None:
+        problems += pc.duplicate_problems(checked) + pc.decision_id_problems(checked)
     if problems or checked is None:
         raise pd.PlanError(problems)
     pd.save_plan(path, checked)

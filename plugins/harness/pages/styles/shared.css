@@ -1,0 +1,12 @@
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae; --code-fg: #8250df; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; --accent: #79c0ff;
+  --code-fg: #d2a8ff; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--accent); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }

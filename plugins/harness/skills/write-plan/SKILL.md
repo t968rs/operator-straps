@@ -67,7 +67,7 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
 
    | Field | Carries | Checked by `check` |
    |---|---|---|
-   | `decisions[]` | each design question (id `D<n>`), its options and `chosen` (null = open) | chosen is one of its options |
+   | `decisions[]` | each design question (id `D<n>`), its options and `chosen` (null = open) | decision ids and option ids are unique; chosen is one of its options |
    | `values[]` | every threshold, count or band copied from the spec or the code, with `assumes` | no value assumes a rejected option |
    | `formats[]` | every literal format another component parses, with `source` (an anchor at its producer or parser) | the source anchor |
    | `sweeps[]` | every search the plan relies on (id `S<n>`; old names, moved paths) with each hit file classified; the history folders (plans, reviews, commit messages, summaries, scratch, planning prefixes, TODO snapshots) and the plan's own `source_document` are never hits | reruns the pattern; unclassified hits and stale classifications fail, except a classified file absent on the side checked (deleted after the base, or added after it) |
