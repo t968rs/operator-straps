@@ -86,6 +86,60 @@
         "free_form": "the release notes and README describe the page TASK-2 builds and the writers that actually rewrite it (plan.py save and freeze call write_pip)"
       },
       "date": "2026-11-16"
+    },
+    {
+      "id": "EX1",
+      "discovered_by": "parallel2 quality review of lane task-2 (finding C3)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-5"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "items TASK-1 to TASK-4",
+        "indicated": "no item checks decision ids for uniqueness"
+      },
+      "issue": {
+        "category": "correctness",
+        "why_categorical": "TASK-2 derives a page element id from each decision id",
+        "why_free_form": "decision_problems checks option ids and chosen membership only; a plan with D1 twice renders two id=\"decision-D1\" elements"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-5: decision_problems reports a repeated decision id"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "Developer, 2026-11-16, in session: fix C3 in this plan"
+      },
+      "date": "2026-11-16"
+    },
+    {
+      "id": "EX2",
+      "discovered_by": "parallel2 quality review of lane task-3 (finding C4)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-3 planned test test_the_loader_draws_every_badge_that_names_an_item",
+        "indicated": "asserts 'data-status-for' and 'querySelectorAll' in plan.js and 'data-status-for' in the page script"
+      },
+      "issue": {
+        "category": "tdd-discipline",
+        "why_categorical": "the assertions held before TASK-3",
+        "why_free_form": "querySelectorAll was already in plan.js and the page inlines plan.js, so the test passes on a loader that draws only the heading badge"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "the test asserts the loader queries '.status[data-status-for=' and no longer reads querySelector(\".status\") per section"
+      },
+      "why_new_outcome": {
+        "category": "mechanical-fix",
+        "free_form": "Developer, 2026-11-16, in session: tighten C4 in this plan"
+      },
+      "date": "2026-11-16"
     }
   ]
 }

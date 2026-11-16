@@ -278,6 +278,48 @@
           "expect": "validation passes"
         }
       ]
+    },
+    {
+      "id": "TASK-5",
+      "title": "Report a decision id used twice as a plan problem (review finding C3)",
+      "action": "In plugins/harness/lib/harness_lib/plan_checks.py, decision_problems reports a decision id used more than once as 'decision id <id> is used <n> times', once per repeated id in first-seen order and before the option-id problems, worded like duplicate_problems' item-id problem. The HTML PIP anchors each decision block at id=\"decision-<id>\" (TASK-2), so a repeated decision id would put two elements with one id on the page; check and freeze now refuse such a plan. Copy the planned test tests/lib/test_plan_checks_decision_ids.py to its repo path. In docs/RELEASES/v1.0.0.md add one line after the Feat(write-plan) HTML PIP line: Fix(write-plan): plan.py check reports a decision id used twice, which the HTML PIP would render as two decision blocks with one element id.",
+      "files": [
+        "plugins/harness/lib/harness_lib/plan_checks.py",
+        "tests/lib/test_plan_checks_decision_ids.py",
+        "docs/RELEASES/v1.0.0.md"
+      ],
+      "dependencies": [
+        "TASK-2"
+      ],
+      "status": "PENDING",
+      "evidence": "not started",
+      "model": "sonnet",
+      "anchors": [
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_checks.py:199-207",
+          "expect": "def decision_problems(plan: ActionPlan) -> List[str]:"
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_checks.py:135-137",
+          "expect": "return [f\"item id {i} is used {ids.count(i)} times\""
+        },
+        {
+          "at": "plugins/harness/lib/harness_lib/plan_checks.py:235",
+          "expect": "return (duplicate_problems(plan) + dependency_problems(plan) + decision_problems(plan)"
+        }
+      ],
+      "commands": [
+        {
+          "run": "python -m pytest tests/lib/test_plan_checks.py tests/lib/test_plan_checks_decision_ids.py -q",
+          "expect": "all pass: the existing decision checks hold"
+        }
+      ],
+      "tests": [
+        {
+          "node": "tests/lib/test_plan_checks_decision_ids.py::test_a_decision_id_used_twice_is_a_problem",
+          "red": "AssertionError"
+        }
+      ]
     }
   ],
   "base_commit": "eac1f255112c3243c4cb4d27c0cea52e6091adeb",

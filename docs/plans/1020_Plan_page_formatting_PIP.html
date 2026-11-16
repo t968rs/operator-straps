@@ -5,21 +5,36 @@
 <title>Plan 1020: Plan page formatting</title>
 <style>
 :root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
-  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; }
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae; --code-fg: #8250df; }
 @media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
-  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; } }
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; --accent: #79c0ff;
+  --code-fg: #d2a8ff; } }
 body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
   margin: 2rem auto; padding: 0 1rem; }
-code { font: 13px ui-monospace, monospace; background: var(--code); padding: 0 .25em; border-radius: 4px;
-  overflow-wrap: anywhere; }
+h1, h2, h3 { color: var(--accent); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
 a { color: inherit; }
 .note, .meta { color: var(--muted); }
 dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
 dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
 table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
 .item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
-.status { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
   border-radius: 1em; color: var(--muted); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--muted); }
 .status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
 .status[data-status="IN_PROGRESS"] { color: var(--run); }
 .status[data-status="BLOCKED"] { color: var(--bad); }
@@ -32,15 +47,21 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <h1>Plan 1020: Plan page formatting</h1>
 <p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>1020_Plan_page_formatting_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
 <p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 1020</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 1020</code>.</span></p>
-<dl class="head"><dt>Plan created</dt><dd>2026-11-16</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>1161-plan-html-improvements -&gt; main</dd><dt>Base commit</dt><dd><code>eac1f25</code></dd><dt>Frozen</dt><dd>2026-11-16 at <code>534fdfc</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
-<h2>Decisions</h2>
-<ul>
-<li><strong>D1</strong> Where do the page assets live under plugins/harness/pages (issue 289)? Chosen: <code>D1A</code> (pages/styles/shared.css (theme) + pages/styles/plan.css (plan rules) + pages/components/plan.js; the page inlines shared then plan). Rejected: <code>D1B</code> (pages/styles/plan.css + pages/components/plan.js only). Developer, 2026-11-16, in session: the theme in shared.css is reusable by a later TODO page (issue 288).</li>
-<li><strong>D2</strong> Does a pages/views template supply the page shell (issue 289)? Chosen: <code>D2A</code> (no views folder yet; Python keeps building the shell). Rejected: <code>D2B</code> (pages/views/plan.html shell with title, style, body and script slots). Developer, 2026-11-16, in session: add views when a shell is actually shared.</li>
-<li><strong>D3</strong> How are a decision&#x27;s options listed under Chosen and Unchosen (issue 278)? Chosen: <code>D3A</code> (one bullet per option: code id, then the summary as written). Rejected: <code>D3B</code> (one bullet per &#x27;; &#x27; clause of each summary). Developer, 2026-11-16, in session: splitting at semicolons cuts summaries that use them.</li>
-<li><strong>D4</strong> What shape is the Status block above Decisions (issue 280)? Chosen: <code>D4A</code> (a list of task headings, each linked, with its live status badge). Rejected: <code>D4B</code> (a table of id, title, dependencies and live status). Developer, 2026-11-16, in session: the issue asks to replicate the task headings and badges.</li>
-<li><strong>D5</strong> How are a decision&#x27;s Chosen, Unchosen and Open markers shown (issue 278)? Chosen: <code>D5A</code> (each marker on a line of its own above its list, drawn as a pill like a task status badge; Chosen bold green, Open bold red, Unchosen muted). Rejected: <code>D5B</code> (Chosen and Rejected labels in the default text style). Developer, 2026-11-16, in session, after the first freeze; the pill look follows the task heading badge (/html/body/section[1]/h3/span).</li>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-16</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>1161-plan-html-improvements -&gt; main</dd><dt>Base commit</dt><dd><code>eac1f25</code></dd><dt>Frozen</dt><dd>2026-11-16 at <code>00468c4</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-TASK-1">TASK-1: Move the page CSS and JS into plugins/harness/pages asset files (todo-h4za, issue 289)</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: Lay out each decision as a block and theme headings and code (todo-n7q5, issue 278)</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: Add a Status block of task headings and live badges above Decisions (todo-bwe5, issue 280)</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: Bump harness to 0.74.0, extend the v1.0.0 notes and the write-plan README</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-5">TASK-5: Report a decision id used twice as a plan problem (review finding C3)</a> <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></li>
 </ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 Where do the page assets live under plugins/harness/pages (issue 289)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D1A</code> pages/styles/shared.css (theme) + pages/styles/plan.css (plan rules) + pages/components/plan.js; the page inlines shared then plan</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D1B</code> pages/styles/plan.css + pages/components/plan.js only</li></ul><p class="why">Developer, 2026-11-16, in session: the theme in shared.css is reusable by a later TODO page (issue 288).</p></section>
+<section class="decision" id="decision-D2"><h3>D2 Does a pages/views template supply the page shell (issue 289)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D2A</code> no views folder yet; Python keeps building the shell</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D2B</code> pages/views/plan.html shell with title, style, body and script slots</li></ul><p class="why">Developer, 2026-11-16, in session: add views when a shell is actually shared.</p></section>
+<section class="decision" id="decision-D3"><h3>D3 How are a decision&#x27;s options listed under Chosen and Unchosen (issue 278)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D3A</code> one bullet per option: code id, then the summary as written</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D3B</code> one bullet per &#x27;; &#x27; clause of each summary</li></ul><p class="why">Developer, 2026-11-16, in session: splitting at semicolons cuts summaries that use them.</p></section>
+<section class="decision" id="decision-D4"><h3>D4 What shape is the Status block above Decisions (issue 280)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D4A</code> a list of task headings, each linked, with its live status badge</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D4B</code> a table of id, title, dependencies and live status</li></ul><p class="why">Developer, 2026-11-16, in session: the issue asks to replicate the task headings and badges.</p></section>
+<section class="decision" id="decision-D5"><h3>D5 How are a decision&#x27;s Chosen, Unchosen and Open markers shown (issue 278)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>D5A</code> each marker on a line of its own above its list, drawn as a pill like a task status badge; Chosen bold green, Open bold red, Unchosen muted</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>D5B</code> Chosen and Rejected labels in the default text style</li></ul><p class="why">Developer, 2026-11-16, in session, after the first freeze; the pill look follows the task heading badge (/html/body/section[1]/h3/span).</p></section>
 <h2>Values</h2>
 <table>
 <tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
@@ -53,7 +74,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 </ul>
 <h2>Tasks</h2>
 <section class="item" id="item-TASK-1" data-item="TASK-1">
-<h3>TASK-1: Move the page CSS and JS into plugins/harness/pages asset files (todo-h4za, issue 289) <span class="status" data-status="PENDING">PENDING</span></h3>
+<h3>TASK-1: Move the page CSS and JS into plugins/harness/pages asset files (todo-h4za, issue 289) <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
 <p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
 <p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_render_html.py</code>, <code>plugins/harness/pages/styles/shared.css</code>, <code>plugins/harness/pages/styles/plan.css</code>, <code>plugins/harness/pages/components/plan.js</code>, <code>tests/contract/test_no_repo_literals.py</code>, <code>tests/lib/test_plan_page_assets.py</code></p>
 <p><strong>Anchors:</strong></p>
@@ -81,7 +102,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <p class="changes" hidden></p>
 </section>
 <section class="item" id="item-TASK-2" data-item="TASK-2">
-<h3>TASK-2: Lay out each decision as a block and theme headings and code (todo-n7q5, issue 278) <span class="status" data-status="PENDING">PENDING</span></h3>
+<h3>TASK-2: Lay out each decision as a block and theme headings and code (todo-n7q5, issue 278) <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
 <p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-1</p>
 <p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_render_html.py</code>, <code>plugins/harness/pages/styles/shared.css</code>, <code>plugins/harness/pages/styles/plan.css</code>, <code>tests/lib/test_plan_render_html_decisions.py</code></p>
 <p><strong>Anchors:</strong></p>
@@ -111,7 +132,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <p class="changes" hidden></p>
 </section>
 <section class="item" id="item-TASK-3" data-item="TASK-3">
-<h3>TASK-3: Add a Status block of task headings and live badges above Decisions (todo-bwe5, issue 280) <span class="status" data-status="PENDING">PENDING</span></h3>
+<h3>TASK-3: Add a Status block of task headings and live badges above Decisions (todo-bwe5, issue 280) <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
 <p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-2</p>
 <p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_render_html.py</code>, <code>plugins/harness/pages/components/plan.js</code>, <code>plugins/harness/pages/styles/plan.css</code>, <code>tests/lib/test_plan_render_html_summary.py</code></p>
 <p><strong>Anchors:</strong></p>
@@ -135,7 +156,7 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <p class="changes" hidden></p>
 </section>
 <section class="item" id="item-TASK-4" data-item="TASK-4">
-<h3>TASK-4: Bump harness to 0.74.0, extend the v1.0.0 notes and the write-plan README <span class="status" data-status="PENDING">PENDING</span></h3>
+<h3>TASK-4: Bump harness to 0.74.0, extend the v1.0.0 notes and the write-plan README <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
 <p class="meta"><strong>Model:</strong> haiku | <strong>Depends on:</strong> TASK-3</p>
 <p><strong>Files:</strong> <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code>, <code>plugins/harness/skills/write-plan/README.md</code></p>
 <p><strong>Anchors:</strong></p>
@@ -150,6 +171,25 @@ table { border-collapse: collapse; } th, td { border: 1px solid var(--line); pad
 <li>Run <code>python -m ruff check --no-cache plugins/harness/lib/harness_lib/plan_render_html.py tests/lib/test_plan_page_assets.py tests/lib/test_plan_render_html_decisions.py tests/lib/test_plan_render_html_summary.py tests/contract/test_no_repo_literals.py</code>: All checks passed!</li>
 <li>Run <code>claude plugin validate --strict plugins/harness</code>: validation passes</li>
 <li>Record it: <code>plan.py record 1020 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-5" data-item="TASK-5">
+<h3>TASK-5: Report a decision id used twice as a plan problem (review finding C3) <span class="status" data-status-for="TASK-5" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_checks.py</code>, <code>tests/lib/test_plan_checks_decision_ids.py</code>, <code>docs/RELEASES/v1.0.0.md</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_checks.py:199-207</code> holds <code>def decision_problems(plan: ActionPlan) -&gt; List[str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_checks.py:135-137</code> holds <code>return [f&quot;item id {i} is used {ids.count(i)} times&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_checks.py:235</code> holds <code>return (duplicate_problems(plan) + dependency_problems(plan) + decision_problems(plan)</code></li>
+</ul>
+<p class="action">In plugins/harness/lib/harness_lib/plan_checks.py, decision_problems reports a decision id used more than once as &#x27;decision id &lt;id&gt; is used &lt;n&gt; times&#x27;, once per repeated id in first-seen order and before the option-id problems, worded like duplicate_problems&#x27; item-id problem. The HTML PIP anchors each decision block at id=&quot;decision-&lt;id&gt;&quot; (TASK-2), so a repeated decision id would put two elements with one id on the page; check and freeze now refuse such a plan. Copy the planned test tests/lib/test_plan_checks_decision_ids.py to its repo path. In docs/RELEASES/v1.0.0.md add one line after the Feat(write-plan) HTML PIP line: Fix(write-plan): plan.py check reports a decision id used twice, which the HTML PIP would render as two decision blocks with one element id.</p>
+<ul>
+<li>Test <code>tests/lib/test_plan_checks_decision_ids.py::test_a_decision_id_used_twice_is_a_problem</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_plan_checks.py tests/lib/test_plan_checks_decision_ids.py -q</code>: all pass: the existing decision checks hold</li>
+<li>Record it: <code>plan.py record 1020 TASK-5 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
 </ul>
 <div class="receipt"><p class="note">No receipt.</p></div>
 <p class="changes" hidden></p>
@@ -196,6 +236,11 @@ var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "comple
     var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
     node.textContent = status;
     node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    var named = id.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for=\"" + named + "\"]"),
+      function (node) { drawStatus(node, receipt); });
   }
   function cites(change) { return [" (cites ", link("change-", change), ")"]; }
   function drawDeviations(box, dev) {
@@ -274,7 +319,7 @@ var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "comple
     var receipts = byItem(live), evo = (live && live.evolution) || null;
     Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
       var id = node.getAttribute("data-item");
-      drawStatus(node.querySelector(".status"), receipts[id]);
+      drawStatuses(id, receipts[id]);
       drawReceipt(node.querySelector(".receipt"), receipts[id]);
       drawLinks(node.querySelector(".changes"), id, evo);
     });
