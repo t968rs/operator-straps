@@ -1,10 +1,14 @@
 """The HTML PIP of a receipts plan: one self-contained page that redraws itself from a ``live.js`` sidecar.
 
-The page carries the frozen plan (header, decisions, values, formats, sweeps, items) as escaped HTML with
-inline CSS and JS and no network address, so it opens from disk. Its script adds
+The page carries the frozen plan (header, status, decisions, values, formats, sweeps, items) as escaped
+HTML with inline CSS and JS and no network address, so it opens from disk. The CSS and the loader script
+are asset files under ``PAGES`` (``pages/styles/shared.css``, ``pages/styles/plan.css``,
+``pages/components/plan.js`` in the plugin root), read when a page renders: the CSS is always inlined, the
+loader script only on a plan frozen with receipts. Its script adds
 ``<script src="<plan_id>/live.js?t=<ms>">`` and re-adds it every ``RELOAD_MS`` with a fresh ``t``; the
 sidecar sets ``window.PLAN_LIVE`` (receipts, the DesignEvolution catalog, the build time). Each load redraws
-only the live parts: every item's status and receipt, the DesignEvolution entries linked from the items they
+only the live parts: every item's status (drawn into both its heading badge and its Status-block badge)
+and receipt, the DesignEvolution entries linked from the items they
 name, and the build time. Without ``PLAN_LIVE`` every item reads PENDING and the page names
 ``plan.py render <plan_id>``, the command that writes the sidecar (and refreshes one left stale by a pull).
 Only a plan frozen with receipts has a sidecar: the page of a plan not frozen yet carries neither the loader
@@ -18,7 +22,7 @@ from __future__ import annotations
 import html
 import json
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Optional
 
 from harness_lib import plan_live, plan_receipts, plan_record
 from harness_lib.plan_doc import pip_html_path, pip_path
@@ -26,8 +30,10 @@ from harness_lib.plan_enums import ItemStatus, OutcomeKind, RecordScheme
 from harness_lib.plan_models import (ActionItem, ActionPlan, Blocked, Closed, Completed, Decision,
                                      DecisionOption, Started)
 from harness_lib.plan_render import _NAME, _expand_base, render_pip
+from harness_lib.project import plugin_root
 
 RELOAD_MS = 3000
+PAGES = plugin_root() / "pages"
 _PENDING = ItemStatus.PENDING.value
 # Outcome kind -> the item status it implies, read from the outcome models so the page cannot drift.
 _KIND_STATUS: Dict[str, str] = {
@@ -49,6 +55,16 @@ def _e(text: object) -> str:
 
 def _code(text: object) -> str:
     return f"<code>{_e(text)}</code>"
+
+
+def _asset(folder: str, name: str) -> str:
+    """The text of ``pages/<folder>/<name>``, read when called."""
+    return (PAGES / folder / name).read_text(encoding="utf-8")
+
+
+def _style() -> str:
+    """The page CSS: the shared theme, then the plan page rules."""
+    return _asset("styles", "shared.css") + _asset("styles", "plan.css")
 
 
 def _title(plan: ActionPlan, plan_name: str) -> str:
@@ -91,23 +107,32 @@ def _header(plan: ActionPlan, plan_name: str) -> List[str]:
             _live_note(plan), f'<dl class="head">{cells}</dl>']
 
 
-def _options(options: Iterable[DecisionOption]) -> str:
-    return ", ".join(f"{_code(o.id)} ({_e(o.summary)})" for o in options)
+def _options(options: Iterable[DecisionOption], kind: str) -> str:
+    """One marker line, then one bullet per option: its id, then its summary as written."""
+    label = kind.capitalize()
+    items = "".join(f"<li>{_code(o.id)} {_e(o.summary)}</li>" for o in options)
+    return (f'<p class="pick"><span class="mark {kind}">{label}</span></p>'
+            f'<ul class="options {kind}">{items}</ul>')
 
 
 def _decision(d: Decision) -> str:
-    head = f"<li><strong>{_e(d.id)}</strong> {_e(d.question)} "
+    """A decision block: its id and question, the option lists under their markers, then the rationale."""
     if d.chosen is None:
-        return f"{head}<strong>Open.</strong> Options: {_options(d.options)}.</li>"
-    chosen = [o for o in d.options if o.id == d.chosen]
-    rejected = [o for o in d.options if o.id != d.chosen]
-    why = f" {_e(d.rationale)}" if d.rationale else ""
-    return f"{head}Chosen: {_options(chosen)}. Rejected: {_options(rejected)}.{why}</li>"
+        lists = _options(d.options, "open")
+    else:
+        lists = (_options([o for o in d.options if o.id == d.chosen], "chosen")
+                 + _options([o for o in d.options if o.id != d.chosen], "unchosen"))
+    why = f'<p class="why">{_e(d.rationale)}</p>' if d.rationale else ""
+    return (f'<section class="decision" id="decision-{_e(d.id)}">'
+            f"<h3>{_e(d.id)} {_e(d.question)}</h3>{lists}{why}</section>")
 
 
-def _section(title: str, rows: List[str], tag: str = "ul") -> List[str]:
-    """A titled section holding ``rows`` inside ``tag``; nothing when there are no rows."""
-    return [f"<h2>{title}</h2>", f"<{tag}>", *rows, f"</{tag}>"] if rows else []
+def _section(title: str, rows: List[str], tag: Optional[str] = "ul") -> List[str]:
+    """A titled section of ``rows`` inside ``tag``, or bare when ``tag`` is None; nothing without rows."""
+    if not rows:
+        return []
+    wrapped = rows if tag is None else [f"<{tag}>", *rows, f"</{tag}>"]
+    return [f"<h2>{title}</h2>", *wrapped]
 
 
 def _values(plan: ActionPlan) -> List[str]:
@@ -147,11 +172,27 @@ def _steps(plan: ActionPlan, item: ActionItem) -> List[str]:
     return ["<ul>", *steps, "</ul>"]
 
 
+def _badge(ident: str) -> str:
+    """The pending status badge of the item with id ``ident``, escaped here; the loader redraws it."""
+    return f'<span class="status" data-status-for="{_e(ident)}" data-status="{_PENDING}">{_PENDING}</span>'
+
+
+def _summary(plan: ActionPlan) -> List[str]:
+    """The Status block: one linked heading and live badge per item in plan order; nothing without items."""
+    rows = []
+    for item in plan.items:
+        ident = _e(item.id)
+        rows.append(f'<li><a href="#item-{ident}">{ident}: {_e(item.title)}</a> {_badge(item.id)}</li>')
+    if not rows:
+        return []
+    return ['<h2 id="status">Status</h2>', '<ul class="summary">', *rows, "</ul>"]
+
+
 def _item(plan: ActionPlan, item: ActionItem) -> List[str]:
     ident = _e(item.id)
     return [f'<section class="item" id="item-{ident}" data-item="{ident}">',
-            f'<h3>{ident}: {_e(item.title)} <span class="status" data-status="{_PENDING}">{_PENDING}</span>'
-            "</h3>", *_item_meta(item), f'<p class="action">{_e(item.action)}</p>', *_steps(plan, item),
+            f"<h3>{ident}: {_e(item.title)} {_badge(item.id)}</h3>",
+            *_item_meta(item), f'<p class="action">{_e(item.action)}</p>', *_steps(plan, item),
             '<div class="receipt"><p class="note">No receipt.</p></div>',
             '<p class="changes" hidden></p>', "</section>"]
 
@@ -166,7 +207,7 @@ def _script(plan: ActionPlan) -> str:
     config = {"src": f"{plan.plan_id}/live.js?t=", "reloadMs": RELOAD_MS, "kinds": _KIND_STATUS,
               "pending": _PENDING}
     text = json.dumps(config, sort_keys=True).replace("<", "\\u003c")
-    return f"<script>\nvar PIP = {text};\n{_LOADER}</script>"
+    return f"<script>\nvar PIP = {text};\n{_asset('components', 'plan.js')}</script>"
 
 
 def render_pip_html(plan: ActionPlan, plan_name: str) -> str:
@@ -174,15 +215,16 @@ def render_pip_html(plan: ActionPlan, plan_name: str) -> str:
 
     The loader script that polls ``live.js`` is added only on a plan frozen with receipts.
     """
-    body = _header(plan, plan_name) + _section("Decisions", [_decision(d) for d in plan.decisions])
+    body = _header(plan, plan_name) + _summary(plan)
+    body += _section("Decisions", [_decision(d) for d in plan.decisions], tag=None)
     body += _values(plan) + _formats(plan) + _sweeps(plan) + ["<h2>Tasks</h2>"]
     for item in plan.items:
         body += _item(plan, item)
     body += _evolution()
     script = [_script(plan)] if plan_receipts.uses_receipts(plan) else []
     return "\n".join(["<!DOCTYPE html>", '<html lang="en">', "<head>", '<meta charset="utf-8">',
-                      f"<title>{_e(_title(plan, plan_name))}</title>", f"<style>{_STYLE}</style>", "</head>",
-                      "<body>", *body, *script, "</body>", "</html>"]) + "\n"
+                      f"<title>{_e(_title(plan, plan_name))}</title>", f"<style>\n{_style()}</style>",
+                      "</head>", "<body>", *body, *script, "</body>", "</html>"]) + "\n"
 
 
 def _keeps_markdown(plan_file: Path, plan: ActionPlan) -> bool:
@@ -221,168 +263,3 @@ def refresh_pip(plan_file: Path, plan: ActionPlan) -> Path:
         plan_live.write_live(plan_file.parent, plan.plan_id)
         return page
     return write_pip(plan_file, plan)
-
-
-_STYLE = """
-:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
-  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; }
-@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
-  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; } }
-body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
-  margin: 2rem auto; padding: 0 1rem; }
-code { font: 13px ui-monospace, monospace; background: var(--code); padding: 0 .25em; border-radius: 4px;
-  overflow-wrap: anywhere; }
-a { color: inherit; }
-.note, .meta { color: var(--muted); }
-dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
-dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
-table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
-.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
-.status { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
-  border-radius: 1em; color: var(--muted); vertical-align: middle; }
-.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
-.status[data-status="IN_PROGRESS"] { color: var(--run); }
-.status[data-status="BLOCKED"] { color: var(--bad); }
-.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
-.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
-:target { outline: 2px solid var(--run); outline-offset: 4px; }
-"""
-
-_LOADER = """(function () {
-  "use strict";
-  var last = null;
-  function el(tag, cls, text) {
-    var node = document.createElement(tag);
-    if (cls) { node.className = cls; }
-    if (text !== undefined && text !== null) { node.textContent = String(text); }
-    return node;
-  }
-  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
-  function code(text) { return el("code", "", text); }
-  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
-  function short(sha) { return String(sha || "").slice(0, 7); }
-  function append(node, parts) {
-    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
-    return node;
-  }
-  function list(label, rows) {
-    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
-    var ul = el("ul", "", null);
-    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
-    wrap.appendChild(ul);
-    return wrap;
-  }
-  function byItem(live) {
-    var out = {}, rows = (live && live.receipts) || [];
-    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
-    rows.forEach(function (r) { out[r.item] = r; });
-    return out;
-  }
-  function where(prov) {
-    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
-    return "staged, tree " + short(prov.tree);
-  }
-  function drawStatus(node, receipt) {
-    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
-    node.textContent = status;
-    node.setAttribute("data-status", status);
-  }
-  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
-  function drawDeviations(box, dev) {
-    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
-    var subs = (dev.substitutions || []).map(function (s) {
-      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
-    });
-    if (extras.length) { box.appendChild(list("Extra files", extras)); }
-    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
-  }
-  function drawReceipt(box, r) {
-    clear(box);
-    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
-    var outcome = r.outcome || {}, head = "Recorded " + r.date;
-    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
-    box.appendChild(el("p", "", head));
-    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
-    if (outcome.tests) {
-      var tests = outcome.tests;
-      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
-      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
-    }
-    drawDeviations(box, r.deviations || {});
-  }
-  function links(prefix, ids) {
-    var parts = [];
-    ids.forEach(function (id, i) {
-      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
-    });
-    return parts;
-  }
-  function labelled(label, parts) {
-    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
-  }
-  function drawLinks(node, id, evo) {
-    clear(node);
-    var named = ((evo && evo.changes) || []).filter(function (c) {
-      return (c.items || []).indexOf(id) >= 0;
-    });
-    node.hidden = !named.length;
-    if (!named.length) { return; }
-    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
-      return c.id;
-    }))));
-  }
-  function drawChange(c) {
-    var box = el("div", "change", null);
-    box.id = "change-" + c.id;
-    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
-    var items = links("item-", c.items || []);
-    box.appendChild(labelled("Items", items.length ? items : ["none"]));
-    var was = c.original;
-    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
-    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
-    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
-    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
-    return box;
-  }
-  function drawEvolution(evo) {
-    var box = document.getElementById("evolution-entries");
-    clear(box);
-    var changes = (evo && evo.changes) || [];
-    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
-    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
-    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
-  }
-  function drawBuilt(live) {
-    document.getElementById("live-missing").hidden = !!live;
-    document.getElementById("live-built").hidden = !live;
-    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
-  }
-  function draw(live) {
-    var key = live ? JSON.stringify(live) : "";
-    if (key === last) { return; }
-    last = key;
-    var receipts = byItem(live), evo = (live && live.evolution) || null;
-    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
-      var id = node.getAttribute("data-item");
-      drawStatus(node.querySelector(".status"), receipts[id]);
-      drawReceipt(node.querySelector(".receipt"), receipts[id]);
-      drawLinks(node.querySelector(".changes"), id, evo);
-    });
-    drawEvolution(evo);
-    drawBuilt(live);
-  }
-  function load() {
-    var old = document.getElementById("plan-live");
-    if (old) { old.parentNode.removeChild(old); }
-    window.PLAN_LIVE = undefined;
-    var tag = document.createElement("script");
-    tag.id = "plan-live";
-    tag.src = PIP.src + Date.now();
-    tag.onload = function () { draw(window.PLAN_LIVE || null); };
-    tag.onerror = function () { draw(null); };
-    document.head.appendChild(tag);
-  }
-  load();
-  window.setInterval(load, PIP.reloadMs);
-})();
-"""
