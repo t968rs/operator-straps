@@ -11,20 +11,31 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from harness_lib.todo_sync import TodoSyncError
 
+GH_TIMEOUT_SECONDS = 120.0
+"""The longest one ``gh`` call may run. ``add --spec --file-issue`` files issues under the catalog write lock,
+so a hung ``gh`` (a stalled network, an auth prompt) would otherwise hold every other writer off."""
+
+
+def _label(args: Sequence[str]) -> str:
+    """The call as an error names it: ``api <path>`` or the first two arguments."""
+    return f"api {args[-1]}" if args and args[0] == "api" else " ".join(args[:2])
+
 
 def run_gh(cwd: Path, args: Sequence[str], stdin: Optional[str] = None) -> str:
-    """Stdout of ``gh <args>`` run in ``cwd`` with ``stdin`` as input; a missing ``gh`` or a failure raises.
+    """Stdout of ``gh <args>`` run in ``cwd`` with ``stdin`` as input; a missing ``gh``, a failure or a call
+    past ``GH_TIMEOUT_SECONDS`` raises.
 
     Long text (an issue body) travels on ``stdin`` so the command line stays under the Windows length limit.
     """
     try:
         done = subprocess.run(["gh", *args], cwd=cwd, input=stdin, capture_output=True, text=True,
-                              encoding="utf-8", errors="replace")
+                              encoding="utf-8", errors="replace", timeout=GH_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired as exc:
+        raise TodoSyncError(f"gh {_label(args)} timed out after {GH_TIMEOUT_SECONDS:.0f}s") from exc
     except OSError as exc:
         raise TodoSyncError(f"gh could not run ({exc}); install gh or check PATH") from exc
     if done.returncode != 0:
-        label = f"api {args[-1]}" if args and args[0] == "api" else " ".join(args[:2])
-        raise TodoSyncError(f"gh {label} failed: {done.stderr.strip()}")
+        raise TodoSyncError(f"gh {_label(args)} failed: {done.stderr.strip()}")
     return done.stdout
 
 
