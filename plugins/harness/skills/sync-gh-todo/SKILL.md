@@ -16,8 +16,8 @@ The TODO checks compare the catalogs, stubs and snapshot with each other and nev
 reaches the catalog only when someone writes an item for it. `todo_sync.py untracked` lists the open issues no
 catalog record mentions; the `todo-editor` agent drafts one item per issue from the issue text and, when the
 issue links a PR review, from the review's own text, and queues them with `todo_sync.py inbox put`;
-`todo_sync.py add --inbox` then inserts and ranks the queued items. The
-catalog and the issue text never enter the main session's context.
+`todo_sync.py add --inbox` then inserts and ranks the queued items. The catalog and the issue text never enter
+the main session's context.
 
 ## Step 1: list the untracked issues
 
@@ -72,11 +72,14 @@ with a `; rejected M (<files>)` part when the catalog refused some queued files;
 when it refused all of them; or `inbox: empty`. A refused file stays in the inbox as `<name>.rejected.json`
 beside a `<name>.reason.txt` naming why: report its item as not added. `inbox: empty` means nothing was waiting:
 either the agent queued nothing (its reply says why), or the todo-watch mod already drained the inbox and its
-summary line arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain; the
-queued items stay in the inbox.
+summary line arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain.
+`problem: inbox: added <ids>, then: <reason>` means those items landed and only the follow-up (render, check
+or inbox file cleanup) failed: report them as added. A lock refusal naming the holder
+`todo_sync.py add --inbox` means the todo-watch mod is still draining and its summary line arrives as context.
+Any other `problem:` line leaves the queued items in the inbox.
 
 ## Step 4: report
 
 Relay the agent's reply as it stands, with the Step 3 line. The edits are saved, not committed; the developer
-reviews the diff and commits. The items are the agent's best guess from the issue text: say so, and name any item the reply's `Added`
-line marks `(needs decision)`.
+reviews the diff and commits. The items are the agent's best guess from the issue text: say so, and name any
+item the reply's `Added` line marks `(needs decision)`.

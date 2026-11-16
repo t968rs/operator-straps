@@ -10,8 +10,8 @@ Arguments: `$ARGUMENTS`
 
 The developer types a short note; the conversation usually already holds the rest (the files, the ids, what was
 found). The main session passes that on in a `Context:` line and hands everything else to the `todo-editor`
-agent, which researches at the level asked, drafts the item and queues it with `todo_sync.py inbox put`. Main-session time stays
-near zero, and the research is done once, by the agent, at the depth the developer chose.
+agent, which researches at the level asked, drafts the item and queues it with `todo_sync.py inbox put`.
+Main-session time stays near zero, and the research is done once, by the agent, at the depth the developer chose.
 
 ## Arguments
 
@@ -82,8 +82,10 @@ with a `; rejected M (<files>)` part when the catalog refused some queued files;
 when it refused all of them; or `inbox: empty`. A refused file stays in the inbox as `<name>.rejected.json`
 beside a `<name>.reason.txt` naming why: report its item as not added. `inbox: empty` means nothing was waiting:
 either the agent queued nothing (its reply says why), or the todo-watch mod already drained the inbox and its
-summary line arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain; the
-queued items stay in the inbox.
+summary line arrives as context. A `problem:` line ends the run: relay it once without rerunning the drain. When
+it opens with `inbox: added`, those items landed and only the render, check or file cleanup failed: report them
+as added. When it names a lock held by `todo_sync.py add --inbox`, the todo-watch mod is draining those items and
+its summary line arrives as context. Otherwise the queued items stay in the inbox.
 
 ## Step 5: report
 
@@ -101,8 +103,8 @@ reviews the diff and commits. With `--issue`, name the issue the reply's `Added`
   or holding the dispatch to ask the developer is the same research by another name. Write the claim into the
   Context line as unverified ("the developer reports X; not checked") and dispatch; the agent confirms or
   refutes it at the level given.
-- **The main session does not write the catalog.** Not one entry, not "just this once": ids, ranks and counts
-  belong to `todo_sync.py`, and the drafting belongs to the agent.
+- **The main session does not edit the catalog.** Not one entry, not "just this once": the Step 4 drain is its
+  only catalog write, and ids, ranks and counts belong to `todo_sync.py`, the drafting to the agent.
 - **The note goes verbatim.** The session adds context beside it, never rewrites it.
 - **Only `--issue` files an issue.** A note that says "file an issue" without the flag stays local; say so in
   the report.

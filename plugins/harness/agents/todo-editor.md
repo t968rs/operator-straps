@@ -61,7 +61,8 @@ Ids are stable (`todo-k7qf`): an edit moves ranks, never ids.
 - **Edit only** the catalog, the research catalog, `_IMPL_TODO.md` stubs and the split and add spec files under `<state_dir>/todo-sync/` (never a queued file in the inbox). Lines the
   script prints as `reference (not rewritten):` sit in other files: report them, do not edit them. The list
   names only the retired or split ids and never covers the history folders (`artifacts.plans`, `reviews`,
-  `commit_messages`, `summaries`, `scratch`, each planning prefix, the snapshots), in-progress plans included:
+  `commit_messages`, `summaries`, `scratch`, each planning prefix, the snapshots), the TODO inbox
+  (`<scratch_folder>/todo-inbox`) or `state_dir` (the lock body), in-progress plans included:
   flag that a live plan naming a retired id needs a check by hand. A `reference scan failed:` line goes under
   `Open`.
 - **Delete a stub only under `Delete retired: yes`**, and only through the **delete-retired** gate below. No other
@@ -239,13 +240,15 @@ session's conversation had already established (or `none`). Draft exactly one it
 
 Runs for retire, split and refresh, which hold a lease.
 
-1. `TS check --format markdown`. A finding your edits caused (T1 schema, T3-T10): fix and rerun. Findings that
-   predate the run, and rules outside the catalog (P, S, G), go in the reply as they are.
+1. `TS check --format markdown`. A finding your edits caused (T1 schema, T3-T10): fix and rerun, except a T9
+   counts finding, which is left for step 2 because its recount clears it. Findings that predate the run, and
+   rules outside the catalog (P, S, G), go in the reply as they are.
 2. `TS lease release <token>`, before the reply. It recounts the catalog, renders the dated snapshot, runs the
    check and frees the lease, then prints `lease released; counts updated|unchanged`, `rendered <path>` (only
-   when `todo.snapshots.dir` is set) and `check drift=<d>`; take the `Check` drift from that line. A release that exits 2 has already freed the lease
-   (only a wrong token keeps it): relay its `problem:` line under `Open` and never run the release again. Take `error` and `warn` from the step 1 check, less any T2 snapshot
-   finding: the release's render clears it.
+   when `todo.snapshots.dir` is set) and `check drift=<d>`; take the `Check` drift from that line. A release that
+   exits 2 has already freed the lease (only a wrong token keeps it): relay its `problem:` line under `Open` and
+   never run the release again. Take `error` and `warn` from the step 1 check, less any T2 snapshot finding (the
+   release's render clears it) and any T9 counts finding (the release's recount clears it).
 
 ## Stop conditions
 
