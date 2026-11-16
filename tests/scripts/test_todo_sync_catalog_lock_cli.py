@@ -235,3 +235,26 @@ def test_add_takes_a_spec_or_the_inbox(driver, make_project, capsys) -> None:
     cfg = build(make_project)
     with pytest.raises(SystemExit):
         driver.main(["--project", str(cfg.project_root), "add"])
+
+
+@pytest.mark.parametrize("flag", ["--dry-run", "--file-issue"])
+def test_add_inbox_refuses_dry_run_and_file_issue(driver, make_project, capsys, flag: str) -> None:
+    cfg = build(make_project)
+    code, _, err = _run(driver, cfg, capsys, "add", "--inbox", flag)
+    assert code == 2 and "add --inbox takes neither --dry-run nor --file-issue" in err
+
+
+def test_add_inbox_drains_under_a_held_lease(driver, make_project, capsys, tmp_path: Path) -> None:
+    cfg = build(make_project)
+    token = _token(_run(driver, cfg, capsys, "lease", "acquire", "--owner", "todo-editor split")[1])
+    spec = tmp_path / "add.json"
+    spec.write_text(json.dumps({"items": [_item(9)]}), encoding="utf-8")
+    code, _, err = _run(driver, cfg, capsys, "inbox", "put", "--spec", str(spec))
+    assert code == 0, err
+    assert len(list(inbox.inbox_dir(cfg).glob("*.json"))) == 1
+    code, out, err = _run(driver, cfg, capsys, "add", "--inbox", "--lease", token)
+    assert code == 0, err
+    [line] = out.splitlines()
+    assert re.match(rf"inbox: added 1 item\(s\): {NEW_ID} \(#9\)", line), line
+    assert list(inbox.inbox_dir(cfg).glob("*.json")) == []
+    assert locking.lock_path(cfg).exists()

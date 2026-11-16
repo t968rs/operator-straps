@@ -26,6 +26,22 @@ def test_scratch_folder_loads_an_override(make_project) -> None:
     hash(cfg)
 
 
+def test_the_inbox_folder_normalizes_slashes_like_the_mod(make_project) -> None:
+    cfg = load_config(make_project({"scratch_folder": "tmp\\scratch\\"}))
+    assert cfg.todo_inbox() == "tmp/scratch/todo-inbox"
+
+
+@pytest.mark.parametrize("value", ["..", "../shared/", "docs/../../x", "..\\outside"])
+def test_a_scratch_folder_above_the_root_is_refused(make_project, value: str) -> None:
+    with pytest.raises(ConfigError, match="scratch_folder"):
+        load_config(make_project({"scratch_folder": value}))
+
+
+def test_a_scratch_folder_that_folds_inside_the_root_loads(make_project) -> None:
+    cfg = load_config(make_project({"scratch_folder": "tmp/../agents/"}))
+    assert cfg.scratch_folder == "tmp/../agents/"
+
+
 def test_scratch_folder_is_independent_of_the_pr_review_scratch(make_project) -> None:
     cfg = load_config(make_project({"scratch_folder": "tmp/agents"}))
     assert cfg.artifacts.scratch == "docs/_scratch/pr_review"

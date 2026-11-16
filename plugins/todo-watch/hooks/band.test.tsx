@@ -170,8 +170,11 @@ describe('the band above the prompt', () => {
     engineDraws(on)
     await start($, w)
     const clean = await bandNodes($)
-    // the engine stacks each plugin's band as its own part: the band's lines, then the part beneath
-    expect(clean.all.map(t => t.text.trim())).toEqual([...START_LINES, '✓ in sync', 'engine'])
+    // 2.1.323+ stacks each plugin's band as its own part (the band's lines, then the part beneath, here
+    // 'engine'); 2.1.322 replaces the part beneath while the plugin draws, so the trailing node is optional
+    const texts = clean.all.map(t => t.text.trim())
+    const own = texts.at(-1) === 'engine' ? texts.slice(0, -1) : texts
+    expect(own).toEqual([...START_LINES, '✓ in sync'])
     expect(clean.items.map(t => t.props.wrap)).toEqual(['truncate-end', 'truncate-end'])
     expect(clean.status[0]?.props.color).toBe('success')
     await reportDrift($, w, 2)

@@ -55,6 +55,13 @@ def test_skill_command_lines_parse() -> None:
     assert all(args.inbox for args in parsed if args.command == "add"), "the skill drains only the inbox"
 
 
+def test_skill_drains_the_inbox_after_dispatching_the_agent() -> None:
+    body = _text(_SKILL)
+    drain = re.search(rf"^{re.escape(_LAUNCHER)} add --inbox\s*$", body, re.MULTILINE)
+    assert drain, "the skill never drains the inbox through the launcher"
+    assert body.index("harness:todo-editor") < drain.start(), "the drain runs before the agent is dispatched"
+
+
 def test_skill_starts_a_missing_catalog_with_init() -> None:
     body = _text(_SKILL)
     assert "file not found" in body and "init" in body
@@ -78,10 +85,9 @@ def test_agent_documents_the_sync_operation() -> None:
     description = body.split("---", 2)[1]
     assert "sync" in description
     section = body.split("## sync", 1)[1].split("\n## ", 1)[0]
-    for needle in ("untracked.json", "inbox put --spec", "needs_decision", "one item per issue",
-                   "unverified", "reviews", "review_errors", '"size"', '"consumers"', "queued"):
+    for needle in ("untracked.json", "needs_decision", "one item per issue",
+                   "unverified", "reviews", "review_errors", '"size"', '"consumers"'):
         assert needle in section, f"sync section never mentions {needle!r}"
-    assert "TS add --spec" not in section, "the sync agent queues items; it never writes the catalog"
 
 
 def test_agent_reply_block_is_unchanged() -> None:

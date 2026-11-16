@@ -87,3 +87,6 @@ def test_the_add_skill_drains_the_inbox_after_the_agent(parser) -> None:
     drains = [line for line in lines if parser.parse_args(shlex.split(line)).command == "add"]
     assert drains and all(parser.parse_args(shlex.split(line)).inbox for line in drains)
     assert "inbox: empty" in body
+    drain = re.search(rf"^{re.escape(_LAUNCHER)} add --inbox\s*$", body, re.MULTILINE)
+    assert drain, "the add skill never drains the inbox through the launcher"
+    assert body.index("harness:todo-editor") < drain.start(), "the drain runs before the agent is dispatched"
