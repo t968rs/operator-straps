@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import subprocess
 import sys
 from pathlib import Path
 from types import ModuleType
@@ -47,6 +48,10 @@ DRIFTS = [
      "python job step order"),
     (HPY_STEP, "      - name: lint docs\n        run: true\n" + HPY_STEP,
      "python job step order"),
+    ("python tools/select_tests.py --full", "python tools/select_tests.py --all", "select command"),
+    ("--junitxml=.artifacts/pytest-junit.xml", "--junitxml=.artifacts/junit.xml", "pytest command"),
+    ('"$rc" = 5', '"$rc" = 4', "pytest command"),
+    ("\n  python:\n", "\n  python-tests:\n", "python job step order"),
 ]
 
 
@@ -82,14 +87,17 @@ def test_ci_env_drops_session_variables_and_marks_the_runner(ci: ModuleType, tmp
     for folder in (bash, py, py / "Scripts"):
         folder.mkdir(parents=True)
     base = {"CLAUDE_PROJECT_DIR": "x", "HARNESS_PY": "x", "GIT_AUTHOR_NAME": "x", "PYTHONPATH": "x",
-            "VIRTUAL_ENV": "x", "GITHUB_OUTPUT": "x", "TEMP": "t", "PATH": "old"}
+            "VIRTUAL_ENV": "x", "GITHUB_OUTPUT": "x", "RUNNER_TEMP": "x", "CONDA_PREFIX": "x",
+            "APPDATA": "a", "TEMP": "t", "PATH": "old"}
     env = ci.ci_env(base, py / "python.exe", [bash], tmp_path / "gitconfig")
     for gone in ("CLAUDE_PROJECT_DIR", "HARNESS_PY", "GIT_AUTHOR_NAME", "PYTHONPATH", "VIRTUAL_ENV",
-                 "GITHUB_OUTPUT"):
+                 "GITHUB_OUTPUT", "RUNNER_TEMP", "CONDA_PREFIX"):
         assert gone not in env
     assert env["TEMP"] == "t"
+    assert env["APPDATA"] == "a"
     assert (env["CI"], env["GITHUB_ACTIONS"], env["RUNNER_OS"]) == ("true", "true", "Windows")
     assert env["PYTHONNOUSERSITE"] == "1"
+    assert env["MSYSTEM"] == "MINGW64"
     assert env["GIT_CONFIG_GLOBAL"] == str(tmp_path / "gitconfig")
     parts = env["PATH"].split(ci.os.pathsep)
     assert parts[:3] == [str(bash), str(py), str(py / "Scripts")]
@@ -134,4 +142,48 @@ def test_version_gate_accepts_only_311(ci: ModuleType) -> None:
 @pytest.mark.cross_os
 @pytest.mark.skipif(sys.platform != "win32", reason="Git for Windows layout")
 def test_git_bash_dirs_hold_sh(ci: ModuleType) -> None:
-    assert any((d / "sh.exe").is_file() for d in ci.git_bash_dirs())
+    dirs = ci.git_bash_dirs()
+    found = {name: ci.shutil.which(name) for name in ("git", "bash", "sh")}
+    assert any((d / "sh.exe").is_file() for d in dirs), f"no sh.exe in {dirs}; PATH resolves {found}"
+
+
+def test_fresh_out_dir_refuses_a_folder_it_did_not_write(ci: ModuleType, tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "keep.txt").write_text("mine", encoding="utf-8")
+    problem = ci.fresh_out_dir(out)
+    assert problem is not None and "holds files this tool did not write" in problem
+    assert (out / "keep.txt").read_text(encoding="utf-8") == "mine"
+    assert not (out / ci.OUT_MARKER).exists()
+
+
+def test_fresh_out_dir_empties_a_marked_folder(ci: ModuleType, tmp_path: Path) -> None:
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / ci.OUT_MARKER).write_text("old", encoding="utf-8")
+    (out / "stale.txt").write_text("x", encoding="utf-8")
+    assert ci.fresh_out_dir(out) is None
+    assert not (out / "stale.txt").exists()
+    assert (out / ci.OUT_MARKER).read_text(encoding="utf-8") == "written by tools/ci_local.py\n"
+
+
+@pytest.mark.parametrize("make", [False, True], ids=["missing", "empty"])
+def test_fresh_out_dir_accepts_a_missing_or_empty_folder(ci: ModuleType, tmp_path: Path, make: bool) -> None:
+    out = tmp_path / "a" / "out"
+    if make:
+        out.mkdir(parents=True)
+    assert ci.fresh_out_dir(out) is None
+    assert (out / ci.OUT_MARKER).is_file()
+
+
+def test_safe_directories_round_trip_through_git(ci: ModuleType, tmp_path: Path) -> None:
+    entries = ["E:\\work\\a#b;c", 'C:\\x "q"\\repo', "/srv/plain"]
+    path = ci.write_safe_directories(tmp_path / "gitconfig", [*entries, "  "])
+    done = subprocess.run(["git", "config", "--file", str(path), "--get-all", "safe.directory"],
+                          capture_output=True, text=True, check=True)
+    assert done.stdout.splitlines() == entries
+
+
+def test_safe_directories_without_entries_leave_an_empty_file(ci: ModuleType, tmp_path: Path) -> None:
+    path = ci.write_safe_directories(tmp_path / "gitconfig", [])
+    assert path.read_text(encoding="utf-8") == ""

@@ -13,8 +13,9 @@ the checkout has one, else the interpreter running this script; anything but 3.1
 
 Every step runs in an environment shaped like a ``shell: bash`` step on the runner: Git Bash's folders, then
 the target interpreter's, lead PATH; session variables (``CLAUDE*``, ``HARNESS_*``, ``GIT_*``, ``PYTHON*``,
-``CONDA_*``, ``VIRTUAL_ENV``) are dropped; ``CI``, ``GITHUB_ACTIONS`` and ``RUNNER_OS=Windows`` are set; the
-global git config is swapped for one holding only the ``safe.directory`` entries. ``--keep-env`` runs in the
+``GITHUB_*``, ``RUNNER_*``, ``CONDA_*``, ``VIRTUAL_ENV*``) are dropped; ``CI``, ``GITHUB_ACTIONS``,
+``RUNNER_OS=Windows``, ``MSYSTEM=MINGW64`` and ``PYTHONNOUSERSITE=1`` are set; the global git config is
+swapped for one holding only the ``safe.directory`` entries. ``--keep-env`` runs in the
 caller's environment instead. ``--short-temp`` points TEMP and TMP at an 8.3 short path, as the runner's
 ``RUNNER~1`` profile does.
 
@@ -115,9 +116,13 @@ class Context:
 
 
 def job_lines(text: str, job: str) -> List[str]:
-    """The lines under ``jobs.<job>:`` of a workflow, up to the next job."""
+    """The lines under ``jobs.<job>:`` of a workflow, up to the next job; empty when the job is absent, so a
+    renamed or removed job fails the drift checks instead of raising."""
     lines = text.splitlines()
-    start = lines.index(f"  {job}:") + 1
+    header = f"  {job}:"
+    if header not in lines:
+        return []
+    start = lines.index(header) + 1
     end = next((i for i in range(start, len(lines)) if re.match(r"  \S", lines[i])), len(lines))
     return lines[start:end]
 
@@ -167,12 +172,23 @@ def workflow_drift(text: str) -> List[str]:
 
 def git_bash_dirs() -> List[Path]:
     """Git for Windows' ``mingw64/bin`` and ``usr/bin``, which a ``shell: bash`` step puts ahead of PATH."""
-    git = shutil.which("git")
-    if git is None:
+    top = git_root()
+    if top is None:
         return []
-    top = Path(git).resolve().parent.parent
-    top = top.parent if top.name.lower() == "mingw64" else top
     return [d for d in (top / "mingw64" / "bin", top / "usr" / "bin") if d.is_dir()]
+
+
+def git_root() -> Optional[Path]:
+    """The Git for Windows install folder: the first ancestor of ``git``, ``bash`` or ``sh`` on PATH, or of
+    ``%ProgramFiles%/Git``, that holds ``usr/bin/sh.exe``."""
+    found = [shutil.which(name) for name in ("git", "bash", "sh")]
+    starts = [Path(p).resolve() for p in found if p]
+    starts.append(Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Git" / "git-bash.exe")
+    for start in starts:
+        hit = next((d for d in start.parents if (d / "usr" / "bin" / "sh.exe").is_file()), None)
+        if hit is not None:
+            return hit
+    return None
 
 
 def isolated_git_global(out_dir: Path) -> Path:
@@ -180,9 +196,16 @@ def isolated_git_global(out_dir: Path) -> Path:
     aliases or hooks, but a checkout owned by another account must still open."""
     done = subprocess.run(["git", "config", "--global", "--get-all", "safe.directory"],
                           capture_output=True, text=True, check=False)
-    entries = "".join(f"\tdirectory = {d}\n" for d in done.stdout.splitlines() if d.strip())
-    path = out_dir / "gitconfig"
-    path.write_text(f"[safe]\n{entries}" if entries else "", encoding="utf-8")
+    return write_safe_directories(out_dir / "gitconfig", done.stdout.splitlines())
+
+
+def write_safe_directories(path: Path, entries: Sequence[str]) -> Path:
+    """A git config file at ``path`` holding one ``safe.directory`` per non-blank entry, written through
+    ``git config --file`` so git escapes backslashes, quotes and comment characters itself."""
+    path.write_text("", encoding="utf-8")
+    for entry in (e for e in entries if e.strip()):
+        subprocess.run(["git", "config", "--file", str(path), "--add", "safe.directory", entry],
+                       capture_output=True, text=True, check=True)
     return path
 
 
@@ -253,15 +276,19 @@ def version_problem(version: str, any_python: bool) -> Optional[str]:
             "or --any-python")
 
 
-def git_out(*args: str) -> str:
-    done = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, check=False)
+def git_out(*args: str, env: Optional[Mapping[str, str]] = None) -> str:
+    """Stripped stdout of a git command in the repo root; ``env`` replaces the caller's environment."""
+    done = subprocess.run(["git", "-C", str(ROOT), *args], env=None if env is None else dict(env),
+                          capture_output=True, text=True, check=False)
     return done.stdout.strip()
 
 
 def preconditions(args: argparse.Namespace, ctx: Context) -> List[str]:
     """Problems that stop the replay before its first step."""
     problems = []
-    found = version_problem(str(ctx.facts["version"]), args.any_python)
+    version = str(ctx.facts["version"])
+    found = (f"cannot run --python {args.python}" if version == "unrunnable"
+             else version_problem(version, args.any_python))
     if found:
         problems.append(found)
     if shutil.which("sh", path=ctx.env.get("PATH", "")) is None:
@@ -289,8 +316,9 @@ def gap_rows(ctx: Context) -> List[Tuple[str, str, str]]:
     rows += [(name, spec or "newest", packages.get(name) or "missing") for name, spec in requirements()]
     symlinks = "allowed" if symlink_allowed(ctx.out_dir) else "refused: symlink tests skip"
     rows += [
-        ("git", "runner image", git_out("--version")),
-        ("core.autocrlf", "true (unverified)", git_out("config", "--get", "core.autocrlf") or "unset"),
+        ("git", "runner image", git_out("--version", env=ctx.env)),
+        ("core.autocrlf", "true (unverified)",
+         git_out("config", "--get", "core.autocrlf", env=ctx.env) or "unset"),
         ("symlinks", "allowed (admin)", symlinks),
         ("TEMP", RUNNER_TEMP, ctx.env.get("TEMP", "")),
         ("code page", "runner default", str(ctx.facts["encoding"])),
@@ -380,9 +408,15 @@ def run_step(name: str, argv: Sequence[str], ctx: Context, dry_run: bool,
 
 
 def skip_reasons(junit: Path) -> Dict[str, int]:
-    """Skipped-test count per skip message; environment skips (no sh, no symlink privilege) show here."""
+    """Skipped-test count per skip message; environment skips (no sh, no symlink privilege) show here. A
+    report cut short (a killed or crashed pytest) gives no counts rather than stopping the run."""
     counts: Dict[str, int] = {}
-    for node in ElementTree.parse(junit).iter("skipped"):
+    try:
+        tree = ElementTree.parse(junit)
+    except ElementTree.ParseError:
+        print(f"    junit unreadable: {junit.name}")
+        return counts
+    for node in tree.iter("skipped"):
         message = (node.get("message") or "").strip()
         counts[message] = counts.get(message, 0) + 1
     return counts
@@ -403,8 +437,9 @@ def run_tests(args: argparse.Namespace, ctx: Context, sel: Selection) -> List[st
     junit = ctx.out_dir / "pytest-junit.xml"
     rc = run_step("pytest", pytest_argv(ctx.python, sel.tests, junit), ctx, args.dry_run, args.timeout)
     failed = [] if windows_rc(rc) == 0 else ["pytest"]
-    if junit.is_file():
-        print_skips(skip_reasons(junit))
+    if junit.is_file() or args.dry_run:
+        if junit.is_file():
+            print_skips(skip_reasons(junit))
         catalog = [str(ctx.python), "tools/ci_test_runtime_catalog.py", str(junit),
                    str(ctx.out_dir / "test-runtime-catalog.json")]
         if run_step(CATALOG_STEP, catalog, ctx, args.dry_run):
@@ -447,7 +482,7 @@ def fresh_out_dir(path: Path) -> Optional[str]:
 
 
 def prepare(args: argparse.Namespace) -> Tuple[Optional[Context], List[str]]:
-    """The replay context, or None and the problems; notes ride along either way."""
+    """The replay context and the warning notes, or None and the problems."""
     problem = fresh_out_dir(args.out_dir)
     if problem:
         return None, [problem]
