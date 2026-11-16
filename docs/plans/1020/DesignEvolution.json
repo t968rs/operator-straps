@@ -59,6 +59,33 @@
         "free_form": "matches the developer's direction for issue 278"
       },
       "date": "2026-11-16"
+    },
+    {
+      "id": "PR3",
+      "discovered_by": "pr-review of PR 294 (docs and overall reviewers)",
+      "phase": "pr-bot-review",
+      "items": [
+        "TASK-4"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-4 action; D3 question",
+        "indicated": "release line: a block with Chosen and Rejected lists; README: an existing page keeps its old layout until deleted and rendered; D3: Chosen and Rejected"
+      },
+      "issue": {
+        "category": "spec-plan-drift",
+        "why_categorical": "PR1 renamed Rejected to Unchosen in TASK-2 only",
+        "why_free_form": "TASK-4 dictated a release line naming the Rejected list D5A removed, and its README sentence missed that plan_api.write and freeze rewrite an existing page; D3 still asked about a Rejected list"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-4 release line names Chosen and Unchosen (or Open) lists under pill markers; README sentence names plan_api.write, freeze --refreeze and delete-then-render; D3 asks about Chosen and Unchosen"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the release notes and README describe the page TASK-2 builds and the writers that actually rewrite it (plan.py save and freeze call write_pip)"
+      },
+      "date": "2026-11-16"
     }
   ]
 }
