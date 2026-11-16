@@ -65,8 +65,8 @@ def test_every_badge_names_its_item_once_in_the_summary_and_once_in_its_heading(
 
 def test_the_loader_draws_every_badge_that_names_an_item() -> None:
     loader = (prh.PAGES / "components" / "plan.js").read_text(encoding="utf-8")
-    assert "data-status-for" in loader and "querySelectorAll" in loader
-    assert "data-status-for" in page().split("<script>", 1)[1]
+    assert 'querySelectorAll(".status[data-status-for=' in loader
+    assert 'querySelector(".status")' not in loader
 
 
 def test_the_summary_style_ships_in_the_plan_style() -> None:
