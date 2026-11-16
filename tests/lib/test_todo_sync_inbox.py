@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _todo_helpers import CATALOG_REL, SNAP_DIR, build  # noqa: E402
 from harness_lib.todo_sync import TodoSyncError, gh, inbox  # noqa: E402
+from harness_lib.todo_sync.ranking import RankingError  # noqa: E402
 
 WALK_ROOTS = ()
 DAY = dt.date(2026, 11, 13)
@@ -102,11 +103,31 @@ def test_put_names_sort_in_spec_order_on_a_repeated_stamp(make_project, tmp_path
                                                          monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(inbox, "_stamp", lambda: "20261113T000000000000Z")
     cfg = build(make_project)
-    items = [_item(issue) for issue in (9, 12, 13, 14, 15, 16)]
-    result = inbox.put(cfg, _spec(tmp_path, items))
+    order = [9, *range(12, 22)]
+    result = inbox.put(cfg, _spec(tmp_path, [_item(issue) for issue in order]))
+    assert len(result.paths) == 11
     assert sorted(result.paths, key=lambda p: p.name) == list(result.paths)
     issues = [json.loads(p.read_text(encoding="utf-8"))["items"][0]["issue"] for p in result.paths]
-    assert issues == [9, 12, 13, 14, 15, 16]
+    assert issues == order
+
+
+def test_a_failed_rename_deletes_the_files_already_renamed(make_project, tmp_path: Path,
+                                                         monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = build(make_project)
+    real = inbox._report._replace_with_retry
+    calls: List[str] = []
+
+    def second_fails(src: str, dst: Path) -> None:
+        if not Path(dst).name.startswith("."):
+            calls.append(src)
+            if len(calls) == 2:
+                raise OSError("rename refused")
+        real(src, dst)
+
+    monkeypatch.setattr(inbox._report, "_replace_with_retry", second_fails)
+    with pytest.raises(OSError, match="rename refused"):
+        inbox.put(cfg, _spec(tmp_path, [_item(9), _item(12)]))
+    assert _names(cfg) == []
 
 
 def test_a_failed_inbox_write_names_the_issue_already_filed(make_project, tmp_path: Path,
@@ -138,6 +159,99 @@ def test_a_failed_render_after_the_write_never_adds_the_items_twice(make_project
     assert inbox.drain_lines(inbox.drain(cfg, today=DAY)) == ["inbox: empty"]
     titles = [i["title"] for i in _catalog(cfg)["items"]]
     assert titles.count("A local note") == 1
+
+
+def _refuse_unlink(path: Path) -> None:
+    raise PermissionError(13, "file in use")
+
+
+def test_an_undeletable_accepted_file_is_named_and_never_added_twice(make_project,
+                                                                     monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = build(make_project)
+    name = "20261113T000001Z-00-aaaaaa.json"
+    _queue(cfg, name, [_item(None, title="A local note")])
+    with monkeypatch.context() as patch:
+        patch.setattr(inbox, "_unlink_with_retry", _refuse_unlink)
+        with pytest.raises(TodoSyncError) as caught:
+            inbox.drain(cfg, today=DAY)
+    message = str(caught.value)
+    assert message.startswith("inbox: added ") and "could not be deleted" in message and name in message
+    assert inbox.queued(cfg) == []
+    assert inbox.drain_lines(inbox.drain(cfg, today=DAY)) == ["inbox: empty"]
+    titles = [i["title"] for i in _catalog(cfg)["items"]]
+    assert titles.count("A local note") == 1
+
+
+def test_a_file_that_cannot_be_claimed_stays_queued_for_a_later_drain(
+        make_project, monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = build(make_project)
+    held = _queue(cfg, "20261113T000001Z-00-aaaaaa.json", [_item(None, title="A held note")])
+    _queue(cfg, "20261113T000002Z-00-bbbbbb.json", [_item(9)])
+    real = inbox._report._replace_with_retry
+
+    def hold(src: str, dst: Path) -> None:
+        if Path(src) == held:
+            raise PermissionError(13, "file in use")
+        real(src, dst)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(inbox._report, "_replace_with_retry", hold)
+        result = inbox.drain(cfg, today=DAY)
+    assert [issue for _, issue in result.added] == [9]
+    assert inbox.queued(cfg) == [held]
+    inbox.drain(cfg, today=DAY)
+    titles = [i["title"] for i in _catalog(cfg)["items"]]
+    assert titles.count("A held note") == 1
+
+
+def test_a_failed_catalog_write_puts_every_claimed_file_back(make_project,
+                                                             monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = build(make_project)
+    before = cfg.path(CATALOG_REL).read_bytes()
+    names = ["20261113T000001Z-00-aaaaaa.json", "20261113T000002Z-00-bbbbbb.json"]
+    _queue(cfg, names[0], [_item(9)])
+    _queue(cfg, names[1], [_item(11)])
+
+    def refuse(cfg, text: str) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(inbox, "write_edits", refuse)
+    with pytest.raises(OSError, match="disk full"):
+        inbox.drain(cfg, today=DAY)
+    assert _names(cfg) == names
+    assert cfg.path(CATALOG_REL).read_bytes() == before
+
+
+def test_a_catalog_that_cannot_be_ranked_leaves_the_inbox_untouched(make_project,
+                                                                    monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = build(make_project)
+    before = cfg.path(CATALOG_REL).read_bytes()
+    _queue(cfg, "20261113T000001Z-00-aaaaaa.json", [_item(9)])
+
+    def broken(data: Dict[str, Any]) -> None:
+        raise RankingError("ranking_method lacks a weight")
+
+    monkeypatch.setattr(inbox.reshape, "refresh_items", broken)
+    with pytest.raises(TodoSyncError, match="catalog cannot be ranked"):
+        inbox.drain(cfg, today=DAY)
+    assert _names(cfg) == ["20261113T000001Z-00-aaaaaa.json"]
+    assert cfg.path(CATALOG_REL).read_bytes() == before
+
+
+def test_a_refused_file_that_cannot_be_set_aside_is_reported_and_stays_queued(
+        make_project, monkeypatch: pytest.MonkeyPatch) -> None:
+    cfg = build(make_project)
+    name = "20261113T000001Z-00-aaaaaa.json"
+    _queue(cfg, name, [_item(11)])
+
+    def refuse(claim, reason: str) -> None:
+        raise OSError("rename refused")
+
+    monkeypatch.setattr(inbox, "_set_aside", refuse)
+    with pytest.raises(TodoSyncError, match="could not be set aside") as caught:
+        inbox.drain(cfg, today=DAY)
+    assert name in str(caught.value)
+    assert _names(cfg) == [name]
 
 
 def test_drain_of_an_empty_inbox_writes_nothing(make_project) -> None:
@@ -183,10 +297,12 @@ def test_drain_keeps_a_rejected_file_with_its_reason_and_lands_the_rest(make_pro
 def test_drain_skips_temp_and_rejected_files(make_project) -> None:
     cfg = build(make_project)
     _queue(cfg, ".20261113T000001Z-aaaaaa.json.x1.tmp", [_item(9)])
+    _queue(cfg, ".20261113T000001000000Z-01-aaaaaa.json", [_item(12)])
     _queue(cfg, "20261113T000000Z-zzzzzz.rejected.json", [_item(13)])
+    assert inbox.queued(cfg) == []
     result = inbox.drain(cfg, today=DAY)
     assert (result.added, result.rejected) == ((), ())
-    assert len(_names(cfg)) == 2
+    assert len(_names(cfg)) == 3
 
 
 def test_drain_with_only_rejections_leaves_the_catalog(make_project) -> None:

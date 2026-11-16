@@ -2,9 +2,10 @@
 
 ``put`` validates a whole ``add`` spec against the catalog (a dry run), files the issues asked for, then
 writes each item to ``<scratch_folder>/todo-inbox/<stamp>-<NN>-<hex>.json`` without touching the catalog.
-``drain`` adds every inbox file to the catalog in one write, oldest first, deletes the accepted files, keeps
-each rejected one as ``<stem>.rejected.json`` beside a ``<stem>.reason.txt``, then renders the snapshot and
-runs the check. The caller holds the catalog lock around a drain; ``drain`` takes none.
+``drain`` claims every inbox file (a hidden ``.<name>.draining``, so no later drain lists it again), adds
+them to the catalog in one write, oldest first, deletes the accepted files, keeps each rejected one as
+``<stem>.rejected.json`` beside a ``<stem>.reason.txt``, then, when any item landed, renders the snapshot
+and runs the check. The caller holds the catalog lock around a drain; ``drain`` takes none.
 """
 from __future__ import annotations
 
@@ -29,8 +30,10 @@ from harness_lib.todo_sync.retire import dump_like, load_catalog, write_edits
 
 REJECTED_SUFFIX = ".rejected.json"
 REASON_SUFFIX = ".reason.txt"
+CLAIM_SUFFIX = ".draining"
 
 Added = Tuple[Tuple[str, Optional[int]], ...]
+Claim = Tuple[Path, Path]
 Filed = Tuple[Tuple[int, str], ...]
 
 
@@ -92,8 +95,10 @@ def _write_items(cfg: HarnessConfig, items: Sequence[Any]) -> Tuple[Path, ...]:
     """Write each item as ``{"items": [item]}`` under one stamp, its zero-padded spec index next, so the
     names sort in spec order even when the clock repeats a stamp.
 
-    Every item is written under a hidden name first and only then renamed, so a drain never sees part of a
-    put; on any failure every file written so far (hidden or renamed) is deleted and the error re-raised.
+    Every item is written under a hidden name first and only then renamed, so a drain never reads a
+    half-written file. The renames run one at a time, so a drain may take the renamed files of a put whose
+    later renames are still pending. On any failure every file written so far (hidden or renamed) that is
+    still present is deleted and the error re-raised; a file a drain already took stays in the catalog.
     """
     folder, stamp = inbox_dir(cfg), _stamp()
     width = max(2, len(str(len(items) - 1)))
@@ -117,8 +122,8 @@ def _write_items(cfg: HarnessConfig, items: Sequence[Any]) -> Tuple[Path, ...]:
 def put(cfg: HarnessConfig, spec: Path, file_issues: bool = False,
         rng: Optional[random.Random] = None) -> PutResult:
     """Validate the ``add`` spec ``spec`` against the catalog, file the issues asked for, then write one
-    inbox file per item; the catalog is never written. A put is all or nothing: a failed inbox write
-    leaves nothing queued.
+    inbox file per item; the catalog is never written. A failed inbox write deletes every file of the put
+    still in the inbox; a drain that ran between two renames may already have added the earlier items.
 
     Raises:
         TodoSyncError: an unreadable spec, an item the catalog refuses (nothing is filed or written), a
@@ -141,7 +146,8 @@ def put(cfg: HarnessConfig, spec: Path, file_issues: bool = False,
 
 
 def queued(cfg: HarnessConfig) -> List[Path]:
-    """The inbox files waiting for a drain, oldest (by name) first; temp and rejected files are skipped."""
+    """The inbox files waiting for a drain, oldest (by name) first; hidden (temp or claimed) and rejected
+    files are skipped."""
     folder = inbox_dir(cfg)
     if not folder.is_dir():
         return []
@@ -150,20 +156,46 @@ def queued(cfg: HarnessConfig) -> List[Path]:
                    and not p.name.endswith(REJECTED_SUFFIX)), key=lambda p: p.name)
 
 
-def _absorb(files: Sequence[Path], working: Dict[str, Any], day: str, rng: Optional[random.Random]
-            ) -> Tuple[Dict[str, Any], List[Path], Added, List[Tuple[Path, str]]]:
-    """Add each file's items to ``working`` in turn; ``(catalog, accepted files, added, rejected)``."""
-    accepted: List[Path] = []
-    added: List[Tuple[str, Optional[int]]] = []
-    rejected: List[Tuple[Path, str]] = []
+def _claimed(path: Path) -> Path:
+    """The hidden name a drain moves the queued file ``path`` to while it adds the file's items."""
+    return path.with_name(f".{path.name}{CLAIM_SUFFIX}")
+
+
+def _claim_all(files: Sequence[Path]) -> List[Claim]:
+    """Move each queued file to its claimed name, so no later drain lists it again; ``(queued, claimed)``
+    for every file moved. A file that cannot be moved (another process holds it) stays queued for a later
+    drain."""
+    claims: List[Claim] = []
     for path in files:
         try:
-            out = add_items(working, read_spec(path, "items"), day, rng)
+            _report._replace_with_retry(str(path), _claimed(path))
+        except OSError:
+            continue
+        claims.append((path, _claimed(path)))
+    return claims
+
+
+def _release(claims: Sequence[Claim]) -> None:
+    """Move every claimed file back to its queued name, best effort."""
+    for path, claimed in claims:
+        with contextlib.suppress(OSError):
+            _report._replace_with_retry(str(claimed), path)
+
+
+def _absorb(claims: Sequence[Claim], working: Dict[str, Any], day: str, rng: Optional[random.Random]
+            ) -> Tuple[Dict[str, Any], List[Claim], Added, List[Tuple[Claim, str]]]:
+    """Add each claimed file's items to ``working`` in turn; ``(catalog, accepted, added, rejected)``."""
+    accepted: List[Claim] = []
+    added: List[Tuple[str, Optional[int]]] = []
+    rejected: List[Tuple[Claim, str]] = []
+    for claim in claims:
+        try:
+            out = add_items(working, read_spec(claim[1], "items"), day, rng)
         except (TodoSyncError, RankingError, ValueError) as exc:
-            rejected.append((path, str(exc)))
+            rejected.append((claim, str(exc)))
             continue
         working = out.catalog
-        accepted.append(path)
+        accepted.append(claim)
         added.extend(out.added)
     return working, accepted, tuple(added), rejected
 
@@ -191,32 +223,37 @@ def _unlink_with_retry(path: Path) -> None:
             time.sleep(_report.REPLACE_DELAY_SECONDS)
 
 
-def _remove_accepted(paths: Sequence[Path]) -> List[Path]:
-    """Delete every accepted inbox file; the ones that could not be deleted."""
+def _remove_accepted(claims: Sequence[Claim]) -> List[Path]:
+    """Delete every accepted claimed file; the claimed files that could not be deleted (hidden, so no
+    drain reads them again)."""
     left: List[Path] = []
-    for path in paths:
+    for _path, claimed in claims:
         try:
-            _unlink_with_retry(path)
+            _unlink_with_retry(claimed)
         except OSError:
-            left.append(path)
+            left.append(claimed)
     return left
 
 
-def _set_aside(path: Path, reason: str) -> None:
-    """Rename a refused inbox file to ``<stem>.rejected.json`` and write ``<stem>.reason.txt`` beside it."""
+def _set_aside(claim: Claim, reason: str) -> None:
+    """Rename a refused claimed file to ``<stem>.rejected.json`` and write ``<stem>.reason.txt`` beside it,
+    ``<stem>`` taken from its queued name."""
+    path, claimed = claim
     stem = path.name[:-len(".json")]
     write_atomic(path.with_name(stem + REASON_SUFFIX), reason.rstrip("\n") + "\n")
-    _report._replace_with_retry(str(path), path.with_name(stem + REJECTED_SUFFIX))
+    _report._replace_with_retry(str(claimed), path.with_name(stem + REJECTED_SUFFIX))
 
 
-def _set_aside_all(rejected: Sequence[Tuple[Path, str]]) -> List[Path]:
-    """Set every refused file aside; the ones that could not be."""
+def _set_aside_all(rejected: Sequence[Tuple[Claim, str]]) -> List[Path]:
+    """Set every refused file aside, moving one that could not be back to its queued name; the queued
+    names of the ones that could not be."""
     stuck: List[Path] = []
-    for path, reason in rejected:
+    for claim, reason in rejected:
         try:
-            _set_aside(path, reason)
+            _set_aside(claim, reason)
         except OSError:
-            stuck.append(path)
+            _release([claim])
+            stuck.append(claim[0])
     return stuck
 
 
@@ -225,7 +262,7 @@ def _problems(left: Sequence[Path], stuck: Sequence[Path]) -> List[str]:
     out: List[str] = []
     if left:
         out.append(f"inbox file(s) {', '.join(p.name for p in left)} are already in the catalog but could "
-                   "not be deleted: delete them before the next drain")
+                   "not be deleted; no drain reads them again: delete them")
     if stuck:
         out.append(f"refused inbox file(s) {', '.join(p.name for p in stuck)} could not be set aside; "
                    "the next drain refuses them again")
@@ -265,15 +302,20 @@ def _follow_up(cfg: HarnessConfig, day: dt.date) -> int:
 def drain(cfg: HarnessConfig, today: Optional[dt.date] = None,
           rng: Optional[random.Random] = None) -> DrainResult:
     """Add every inbox file to the catalog in one write, oldest first, then delete the accepted files, set
-    each refused one aside with its reason, render the snapshot and run the check. The caller holds the
-    catalog lock.
+    each refused one aside with its reason, and, when any item landed, render the snapshot and run the
+    check. The caller holds the catalog lock.
+
+    Each queued file is first claimed (moved to the hidden ``.<name>.draining``, which no drain lists), so an
+    accepted file that cannot be deleted afterwards is never added twice; a file that cannot be claimed
+    stays queued for a later drain, and a failed catalog write moves every claimed file back. A drain killed
+    between its claim and its delete leaves the claimed files in place for a person to resolve.
 
     Raises:
         TodoSyncError: an unreadable catalog or one that cannot be ranked (the inbox is left untouched); a
             render, check or report failure after the items landed (their files are already gone, so the
-            next drain never adds them again); or accepted files that could not be deleted (named, to be
-            deleted before the next drain) or refused files that could not be set aside, raised once the
-            rest of the drain has run. When items landed, the message opens with the ids added.
+            next drain never adds them again); or accepted files that could not be deleted (named, hidden
+            from every later drain) or refused files that could not be set aside, raised once the rest of
+            the drain has run. When items landed, the message opens with the ids added.
     """
     day = today or dt.date.today()
     files = queued(cfg)
@@ -281,11 +323,15 @@ def drain(cfg: HarnessConfig, today: Optional[dt.date] = None,
         return DrainResult()
     raw, data = load_catalog(cfg, "add")
     _probe(data)
-    working, accepted, added, rejected = _absorb(files, data, day.isoformat(), rng)
-    left: List[Path] = []
-    if accepted:
-        write_edits(cfg, dump_like(working, raw))
-        left = _remove_accepted(accepted)
+    claims = _claim_all(files)
+    try:
+        working, accepted, added, rejected = _absorb(claims, data, day.isoformat(), rng)
+        if accepted:
+            write_edits(cfg, dump_like(working, raw))
+    except BaseException:
+        _release(claims)
+        raise
+    left = _remove_accepted(accepted)
     stuck = _set_aside_all(rejected)
     try:
         drift = _finish(cfg, day, bool(accepted), left, stuck)
@@ -293,7 +339,7 @@ def drain(cfg: HarnessConfig, today: Optional[dt.date] = None,
         if not accepted:
             raise
         raise TodoSyncError(f"inbox: added {_added_text(added)}, then: {exc}") from exc
-    refused = tuple((path.name, reason) for path, reason in rejected)
+    refused = tuple((claim[0].name, reason) for claim, reason in rejected)
     return DrainResult(added if accepted else (), refused, drift)
 
 
