@@ -238,7 +238,7 @@
     {
       "id": "TASK-4",
       "title": "Bump harness to 0.74.0, extend the v1.0.0 notes and the write-plan README",
-      "action": "Set plugins/harness/.claude-plugin/plugin.json version 0.74.0. In docs/RELEASES/v1.0.0.md change the harness row to 0.65.1 | 0.74.0 and add one line: Feat(write-plan): the HTML PIP opens with a Status list of task headings and live badges, lays out each decision as a block with Chosen and Rejected lists, themes headings and code, and reads its CSS and JS from plugins/harness/pages (issues 278, 280, 289). In plugins/harness/skills/write-plan/README.md add to the PIP bullet that the page opens with the Status list, and that an existing page keeps its old layout until it is deleted and PLAN render <id> writes it again (render writes a frozen plan's page only when it is missing). Then run the lint and validate commands.",
+      "action": "Set plugins/harness/.claude-plugin/plugin.json version 0.74.0. In docs/RELEASES/v1.0.0.md change the harness row to 0.65.1 | 0.74.0 and add one line: Feat(write-plan): the HTML PIP opens with a Status list of task headings and live badges, lays out each decision as a block with Chosen and Unchosen (or Open) lists under pill markers drawn like the task status badge, themes headings and code, and reads its CSS and JS from plugins/harness/pages (issues 278, 280, 289). In plugins/harness/skills/write-plan/README.md add to the PIP bullet that the page opens with the Status list, and that an existing page keeps its old layout until it is written again: by plan_api.write, by freeze --refreeze, or by deleting it and running PLAN render <id> (render writes a frozen plan's page only when it is missing). Then run the lint and validate commands.",
       "files": [
         "plugins/harness/.claude-plugin/plugin.json",
         "docs/RELEASES/v1.0.0.md",
@@ -316,7 +316,7 @@
     },
     {
       "id": "D3",
-      "question": "How are a decision's options listed under Chosen and Rejected (issue 278)?",
+      "question": "How are a decision's options listed under Chosen and Unchosen (issue 278)?",
       "options": [
         {
           "id": "D3A",
