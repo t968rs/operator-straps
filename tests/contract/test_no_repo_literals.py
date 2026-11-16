@@ -16,7 +16,7 @@ from conftest import REPO_ROOT
 WALK_ROOTS = ("plugins/",)
 PLUGINS = REPO_ROOT / "plugins"
 TEXT_SUFFIXES = {".py", ".md", ".json", ".jsonl", ".ts", ".tsx", ".js", ".mjs", ".cjs", ".sh", ".txt",
-                 ".yaml", ".yml", ".tmpl"}
+                 ".yaml", ".yml", ".tmpl", ".css", ".html"}
 SKIP_DIRS = {"node_modules", "__pycache__", ".claude-plugin-cache"}
 
 BANNED: Tuple[Tuple[str, re.Pattern], ...] = (
