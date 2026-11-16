@@ -73,10 +73,10 @@ developer's request and leaves the plan Frozen or Locked.
   the commit (and the tag or branch name you passed, when it was not a bare SHA), the test nodes that ran, and
   any deviation. The plan JSON and the PIP are not touched.
 - The PIP is `NNNN_<title>_PIP.html`. A plan started at this version has the page from `new` on; only a plan
-  started before receipts swaps its markdown PIP for the page at the first freeze. The page opens with a Status
-  list of the task headings and their live badges. A page written before this layout keeps its old look until
-  it is written again: by `plan_api.write`, by `freeze --refreeze`, or by deleting it and running
-  `PLAN render <id>` (render writes a frozen plan's page only when it is missing). Open it from disk in a
+  started before receipts swaps its markdown PIP for the page at the first freeze. Below its header the page
+  lists every task heading with its live badge (the Status list). A page written before this layout keeps its
+  old look until it is written again: by `plan_api.write`, by `freeze --refreeze`, or by deleting it and running
+  `PLAN render <id>` (render writes a frozen receipts plan's page only when it is missing). Open it from disk in a
   browser: it reloads `<id>/live.js` every few seconds, so a `record` in the terminal shows up on the page
   without a re-render.
 - `live.js` is derived from the receipts and the DesignEvolution catalog. The driver keeps a `.gitignore` in
