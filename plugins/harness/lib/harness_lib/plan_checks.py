@@ -196,13 +196,19 @@ def _option_owner(plan: ActionPlan) -> Dict[str, Decision]:
     return {o.id: d for d in plan.decisions for o in d.options}
 
 
-def decision_problems(plan: ActionPlan) -> List[str]:
-    """Repeated decision or option ids, and a chosen id that is not one of its decision's options.
+def decision_id_problems(plan: ActionPlan) -> List[str]:
+    """Repeated decision ids.
 
-    A decision id names a page element (``decision-<id>``), so a repeat is reported like a repeated item id.
+    A decision id names a page element (``decision-<id>``), so a repeat is reported like a repeated item id:
+    ``plan_api.write`` refuses it beside ``duplicate_problems``, and check and freeze report it.
     """
     ids = [d.id for d in plan.decisions]
-    out = [f"decision id {d} is used {ids.count(d)} times" for d in dict.fromkeys(ids) if ids.count(d) > 1]
+    return [f"decision id {d} is used {ids.count(d)} times" for d in dict.fromkeys(ids) if ids.count(d) > 1]
+
+
+def decision_problems(plan: ActionPlan) -> List[str]:
+    """Repeated decision or option ids, and a chosen id that is not one of its decision's options."""
+    out = decision_id_problems(plan)
     seen: List[str] = [o.id for d in plan.decisions for o in d.options]
     out.extend(f"option id {o} is used {seen.count(o)} times"
                for o in dict.fromkeys(seen) if seen.count(o) > 1)
