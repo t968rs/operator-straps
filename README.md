@@ -453,8 +453,12 @@ records. An entry that names no issue becomes a local-only item with a `note` so
 `--file-issue` instead files a GitHub issue for it once the whole spec validates, and records that issue.
 `/harness:sync-gh-todo` runs `untracked` (running `init` first when `untracked` reports `todo.catalog` as `file not
 found`, then `untracked` again) and hands the issues to the `todo-editor` agent. The agent drafts each item from
-`untracked.json` (a best guess for a thin issue, flagged as needing a decision when it turns on a choice), runs
-`add`, then `render` and `check`. A `gh_issue` source needs no `_IMPL_TODO.md` stub.
+`untracked.json` (a best guess for a thin issue, flagged as needing a decision when it turns on a choice) and
+queues it with `inbox put`; the skill then runs `add --inbox`, which adds the queued items in one catalog write,
+then renders and checks. A `gh_issue` source needs no `_IMPL_TODO.md` stub. Every catalog write holds a lock;
+the `todo-editor` agent's adds queue through the inbox (`inbox put`, drained by `add --inbox` or the `todo-watch`
+mod), and its retire, split and refresh hold a lease from `lease acquire` to `lease release`, so no other write
+lands between their commands.
 
 ```text
 /harness:sync-gh-todo
@@ -463,8 +467,8 @@ found`, then `untracked` again) and hands the issues to the `todo-editor` agent.
 [main session]  todo_sync.py init             only when untracked reports the catalog file not found,
                                               then untracked again
 [todo-editor]   draft one item per issue      from the issue text and the text of any linked PR review
-[todo-editor]   todo_sync.py add --spec PATH  insert, score, rank, recount; refuses a recorded issue
-[todo-editor]   todo_sync.py render, check    new snapshot, then the drift checks
+[todo-editor]   todo_sync.py inbox put        queue each item; refuses a recorded issue
+[main session]  todo_sync.py add --inbox      insert, score, rank, recount, then render and check
 ```
 
 `/harness:add-todo [--issue] [-r|--research 0-3] -- <note>` turns a note typed in the prompt into one catalog
@@ -473,7 +477,7 @@ dispatches the `todo-editor` agent with the note verbatim and a `Context:` line 
 established (files, ids, findings), so the note can stay short. The level sets how far the agent reads before it
 drafts: 0 (the default) writes a reminder from the note, 1 reads the files named, 2 also traces callers, related
 items and open issues, 3 also reads history and linked reviews and cites `path:line` for every claim. Without
-`--issue` the item stays local (a `note` source); with it, `add --file-issue` files the issue.
+`--issue` the item stays local (a `note` source); with it, `inbox put --file-issue` files the issue.
 
 ```text
 /harness:add-todo -r 2 -- <note>
@@ -481,8 +485,8 @@ items and open issues, 3 also reads history and linked reviews and cites `path:l
 [main session]  add_todo.py row -r 2          the dispatch row: agent, model, Issue, Research, Project root
 [main session]  + Note:, Context:             the note verbatim, the conversation's context
 [todo-editor]   research at the given level   read, trace, cite
-[todo-editor]   todo_sync.py add --spec PATH  insert as a note (or --file-issue), score, rank, recount
-[todo-editor]   todo_sync.py render, check    new snapshot, then the drift checks
+[todo-editor]   todo_sync.py inbox put        queue as a note (or with --file-issue)
+[main session]  todo_sync.py add --inbox      insert, score, rank, recount, then render and check
 ```
 
 | Key                            | Default                                                                                         | Used by                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -490,6 +494,7 @@ items and open issues, 3 also reads history and linked reviews and cites `path:l
 | `base_branch`                  | `origin/HEAD`, else `main`                                                                      | merge bases, `d-w`, `agent-watcher`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `integration_branches`         | base branch + `main`                                                                            | `d-w` (fetch-and-cut targets)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | `state_dir`                    | `.claude/state/harness`                                                                         | Phase 5 sentinels, `pr-team` runtime, `session-bookmark/notes.json`, `parallel2/` runs (gitignore it)                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `scratch_folder`               | `docs/_scratch/`                                                                                | the TODO inbox (`<scratch_folder>/todo-inbox/`) that the `todo-editor` agent's `add` and `sync` runs write and `todo_sync.py add --inbox` drains; independent of `artifacts.scratch`                                                                                                                                                                                                                                                                                                                                                                               |
 | `agent_usage_path`             | `docs/_harness/agent_usage.jsonl`                                                               | `agent-watcher`: one usage row per Agent dispatch of any type or forked skill (model, tokens, runtime, fixer counts)                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `artifacts.*`                  | `docs/PR_REVIEWS`, `docs/PLANS`, ...                                                            | review, plan, summary and commit-message output                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | `tests.*`                      | `tests/`, common test-file pattern                                                              | review bucketing, commit grouping                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
