@@ -1,6 +1,7 @@
 """todo_sync driver: check a project's TODO, research and plan artifacts for drift, render the snapshot,
 write the runner pointer, start a catalog, list untracked GitHub issues, add, retire, split or re-rank
-catalog items, queue items in the inbox, hold the catalog lease, and switch a catalog to stable ids once.
+catalog items, queue items and field updates in the inbox, hold the catalog lease, and switch a catalog to
+stable ids once.
 
 ``check [--format summary|json|markdown] [--out PATH] [--rules S1,S2] [--fail-on error|warn]``
     Run the rule catalog and write the report (``TodoSyncReport.schema.json``) atomically to ``--out`` or
@@ -71,21 +72,30 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     names the issues filed. A dry run files nothing, labels each such item ``(issue to file)`` and prints
     ``would file N issue(s)``. ``--inbox`` replaces ``--spec`` (one of the two is required): every queued
     inbox file is added in one catalog write, oldest first; accepted files are deleted, a refused one is
-    renamed ``<name>.rejected.json`` beside a ``<name>.reason.txt``; when any item landed, the snapshot is
-    rendered and the check run. Prints one
-    ``inbox: added N item(s): <id> (#N|note), ...[; rejected K (<files>)]; check drift=D`` line when an item
-    landed, ``inbox: rejected K (<files>)`` when every queued file was refused, or ``inbox: empty`` without
-    taking the lock when no file is queued. ``--inbox`` refuses ``--dry-run`` and ``--file-issue``
+    renamed ``<name>.rejected.json`` beside a ``<name>.reason.txt``. Queued updates are applied with the
+    queued items in name order, then the catalog is re-ranked; a later queued update of a field an earlier
+    one set wins and the line names it. When anything landed, the snapshot is rendered and the check run.
+    Prints one
+    ``inbox: [added N item(s): ...; ][updated M item(s): <id> (<fields>), ...; ][overwrote <id> <field>,
+    ...; ][rejected K (<files>); ]check drift=D`` line when anything landed, ``inbox: rejected K (<files>)``
+    when every queued file was refused, or ``inbox: empty`` without taking the lock when no file is queued
+    (an added item reads ``<id> (#N|note)``). ``--inbox`` refuses ``--dry-run`` and ``--file-issue``
     (``inbox put`` files issues).
-``inbox put --spec PATH [--file-issue]``
+``inbox put --spec PATH [--file-issue | --update]``
     Queue the items of an ``add`` spec in the inbox (``<scratch_folder>/todo-inbox/``), one file per item,
     after a dry run of the whole spec against the catalog; the catalog is never written and no lock is
     taken. ``--file-issue`` files an issue for each entry that names none first, as ``add`` does. Prints one
     ``queued <repo-relative path>`` line per file and one ``filed #N <url>`` line per issue filed.
-``lease acquire --owner TEXT``
+    ``--update`` queues field updates of existing items instead: the spec is
+    ``{"updates": [{"id": ..., "fields": {...}}]}``, each field one an ``add`` spec may carry other than
+    ``issue`` and ``url``, each id a live item (a retired or split id is refused), and one spec sets a field
+    of an item once. The whole spec is checked against the catalog first, then one inbox file is written per
+    update. ``--update`` takes no ``--file-issue`` (an update files no issue).
+``lease acquire --owner TEXT [--wait SECONDS]``
     Take the catalog lease for a run of several commands and print ``lease: <token>``. Until it is released
     every catalog write without ``--lease <token>`` (the todo-watch mod's drain included) waits, then refuses
-    naming the holder. A lease turns stale after 30 minutes.
+    naming the holder. A lease turns stale after 30 minutes. ``--wait`` sets how long a held lease or write
+    lock is waited on before the refusal (default 10 seconds; a todo-editor split passes 300).
 ``lease release TOKEN``
     Recount the catalog (no rescore or rerank; written only when the counts change), render the snapshot
     (when ``todo.snapshots.dir`` is set), run the check, write its report and free the lease; prints
@@ -167,6 +177,17 @@ def _summary() -> str:
     return " ".join((__doc__ or "").split("\n\n")[0].split())
 
 
+def _seconds(text: str) -> float:
+    """Argparse type of ``--wait``: a number of seconds, 0 or more."""
+    try:
+        value = float(text)
+    except ValueError:
+        value = -1.0
+    if not value >= 0:
+        raise argparse.ArgumentTypeError("must be a number of seconds, 0 or more")
+    return value
+
+
 def _globals() -> argparse.ArgumentParser:
     """``--project`` / ``--config``, accepted before or after the subcommand."""
     common = argparse.ArgumentParser(add_help=False)
@@ -219,6 +240,9 @@ def _adders(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) ->
     put.add_argument("--spec", type=Path, required=True, help='JSON file: {"items": [{...}, {...}]}.')
     put.add_argument("--file-issue", action="store_true",
                      help="File a GitHub issue for each item that names none, once the spec validates.")
+    put.add_argument("--update", action="store_true",
+                     help='Queue field updates of existing items: the spec is {"updates": [{"id": ..., '
+                          '"fields": {...}}]}.')
 
 
 def _leases(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) -> None:
@@ -227,6 +251,8 @@ def _leases(sub: argparse._SubParsersAction, common: argparse.ArgumentParser) ->
     lease_sub = lease.add_subparsers(dest="lease_command", required=True)
     acq = lease_sub.add_parser("acquire", parents=[common], help="Take the lease and print its token.")
     acq.add_argument("--owner", required=True, help="Who holds the lease, named in every refusal.")
+    acq.add_argument("--wait", type=_seconds, metavar="SECONDS",
+                     help="Wait up to SECONDS for a held lease or write lock before refusing (default: 10).")
     rel = lease_sub.add_parser("release", parents=[common], help="Recount, check and free the lease.")
     rel.add_argument("token", help="The token lease acquire printed.")
     lease_sub.add_parser("break", parents=[common], help="Remove any lock or lease the catalog holds.")
@@ -331,8 +357,14 @@ def _drain(cfg: HarnessConfig, args: argparse.Namespace) -> int:
 
 
 def _inbox(cfg: HarnessConfig, args: argparse.Namespace) -> int:
-    """``inbox put``: queue the spec's items and name each file and filed issue."""
-    result = inbox.put(cfg, args.spec, args.file_issue)
+    """``inbox put``: queue the spec's items (or, with ``--update``, its field updates) and name each file
+    and filed issue."""
+    if args.update:
+        if args.file_issue:
+            raise TodoSyncError("inbox put --update takes no --file-issue (an update files no issue)")
+        result = inbox.put_updates(cfg, args.spec)
+    else:
+        result = inbox.put(cfg, args.spec, args.file_issue)
     for path in result.paths:
         print(f"queued {posix(str(path.relative_to(cfg.project_root)))}")
     for number, url in result.filed:
@@ -355,7 +387,7 @@ def _broken(body: Optional[dict]) -> str:
 def _lease(cfg: HarnessConfig, args: argparse.Namespace) -> int:
     """``lease acquire``, ``lease release`` and ``lease break``."""
     if args.lease_command == "acquire":
-        print(f"lease: {locking.acquire(cfg, args.owner)}")
+        print(f"lease: {locking.acquire(cfg, args.owner, args.wait)}")
     elif args.lease_command == "release":
         print("\n".join(locking.release(cfg, args.token)))
     else:
