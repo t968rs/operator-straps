@@ -463,22 +463,23 @@ def base_claim_problems(repo: Path, plan: pm.ActionPlan) -> List[str]:
     base = plan.base_commit
     if not base or claims_rev(plan) is not None:
         return []
-    found = (pc.anchor_problems(plan, repo, base)
-             + pc.sweep_problems(plan, repo, history_paths(active()), base))
-    return [f"at base {base[:7]}: {p}" for p in found]
+    return claims_at(repo, plan, base)
 
 
-def relink_claim_problems(repo: Path, plan_file: Path, plan: pm.ActionPlan, candidate: str) -> List[str]:
+def claims_at(repo: Path, plan: pm.ActionPlan, rev: str) -> List[str]:
+    """The plan's anchor and sweep problems at ``rev``, each on an ``at base <sha7>:`` line."""
+    found = (pc.anchor_problems(plan, repo, rev)
+             + pc.sweep_problems(plan, repo, history_paths(active()), rev))
+    return [f"at base {rev[:7]}: {p}" for p in found]
+
+
+def relink_claim_problems(repo: Path, plan: pm.ActionPlan, candidate: str) -> List[str]:
     """Anchors and sweeps that fail at ``candidate``, the base a ``relink`` would write (D1A).
 
     Runs whether or not an item is done: ``check`` reads the claims at the base once one is, and a freeze
-    before that point requires them there. The item statuses come from the record book's view, since a
-    receipts plan keeps them in its receipts.
+    before that point requires them there. No claim reads an item status.
     """
-    view = book_of(plan_file, plan).view()
-    found = (pc.anchor_problems(view, repo, candidate)
-             + pc.sweep_problems(view, repo, history_paths(active()), candidate))
-    return [f"at base {candidate[:7]}: {p}" for p in found]
+    return claims_at(repo, plan, candidate)
 
 
 def receipt_split(book: prt.ReceiptBook, refreeze: bool) -> Tuple[List[str], List[str]]:
@@ -1052,7 +1053,7 @@ def cmd_relink(repo: Path, args: argparse.Namespace) -> int:
     plan_file = locate(repo, args.plan)
     plan = pd.load_plan(plan_file)
     entry, lines = pk.relink(repo, plan_file, plan, args.to, save,
-                             vet=lambda sha: relink_claim_problems(repo, plan_file, plan, sha))
+                             vet=lambda sha: relink_claim_problems(repo, plan, sha))
     print("\n".join([f"relink [done] | plan {plan.plan_id} | base {(entry.old_base or '')[:7]} -> "
                      f"{(entry.new_base or '')[:7]} ({entry.match})", *lines]))
     return 0

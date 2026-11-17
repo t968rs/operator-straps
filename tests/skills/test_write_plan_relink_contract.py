@@ -30,7 +30,12 @@ def test_the_relink_paragraph_states_the_base_check(relink_step: str) -> None:
 
 def test_the_relink_paragraph_names_the_off_history_end_state(relink_step: str) -> None:
     assert "squashed inside another pull request" in relink_step
-    assert "end state" in relink_step and "`off-history:`" in relink_step
+    assert "the `off-history:` warning is then the correct end state" in relink_step
+
+
+def test_the_relink_paragraph_orders_a_claim_fix_before_the_refreeze(relink_step: str) -> None:
+    assert ("correct the anchors and sweeps for the candidate base with `write`, rerun the relink, "
+            "then `freeze --refreeze`") in relink_step
 
 
 def test_the_skill_readme_states_the_relink_refusal(plugin_root: Path) -> None:

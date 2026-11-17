@@ -39,6 +39,7 @@ def test_relink_without_a_counterpart_names_the_off_history_end_state(run: Run, 
     assert old not in git(project, "rev-list", "HEAD").splitlines()
     code, out, err = run("relink", "1")
     assert code == 1, out + err
-    assert prefixed(err, "problem: no commit on HEAD's history matches base"), err
-    assert "off-history" in err, err
+    lines = prefixed(err, "problem: no commit on HEAD's history matches base")
+    assert lines, err
+    assert "off-history: warning in check is then the end state" in lines[0], err
     assert "pass --to REF" not in err, err

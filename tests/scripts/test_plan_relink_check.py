@@ -3,8 +3,9 @@
 ``check`` reads anchors and sweeps at ``base_commit`` once an item is done, and a freeze before that point
 requires them at the base, so ``relink`` runs the same claims at the candidate base before it saves the plan
 JSON, writes the ``relink`` entry or tags the new base. A refusal names each failing claim on a
-``problem: at base <sha7>:`` line and leaves the plan JSON, the ledger and the base tags as they were. Item
-statuses are read through the record book, so an item done in a receipt counts as done.
+``problem: at base <sha7>:`` line and leaves the plan JSON, the ledger and the base tags as they were. The
+claims run whether or not an item is done; the two anchor tests pin that one rule on a plan with an item
+recorded done and on one with none. A rewritten base with the same tree passes both kinds of claim.
 """
 from __future__ import annotations
 
@@ -18,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import _plan_driver_helpers as helpers  # noqa: E402
 from _plan_driver_helpers import Run, plan_file, read_plan, write_op, write_plan  # noqa: E402
-from _plan_lock_helpers import STEM, commit_all, entries, fill, prefixed  # noqa: E402
+from _plan_lock_helpers import STEM, commit_all, entries, fill, prefixed, rewrite_base  # noqa: E402
 
 driver, project, run = helpers.driver, helpers.project, helpers.run  # the shared fixtures, by name
 WALK_ROOTS = ()  # walks only a make_project repo
@@ -107,3 +108,14 @@ def test_relink_refuses_a_base_where_a_sweep_classification_goes_stale(run: Run,
     _frozen_plan(run, project, anchor=False, sweep=True)
     _record_done(run, project)
     _assert_refused(run, project, root, "sweep S1")
+
+
+def test_relink_accepts_a_rewritten_base_where_the_anchors_and_sweeps_hold(run: Run, project: Path) -> None:
+    """The counterpart has the old base's tree, so the anchor on a file the base added and the sweep hold."""
+    _, base = _advance_main(project)
+    _frozen_plan(run, project, anchor=True, sweep=True)
+    assert read_plan(project)["base_commit"] == base
+    new = rewrite_base(project, base)
+    code, _, err = run("relink", "1")
+    assert code == 0, err
+    assert read_plan(project)["base_commit"] == new

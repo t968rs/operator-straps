@@ -4608,7 +4608,7 @@
       "title": "plan.py archive: fold a finished plan's driver tags into one archive tag",
       "url": "https://github.com/t968rs/operator-straps/issues/284",
       "current_state": "LIKELY_RESOLVED",
-      "evidence": "PR #299 (\"Feature(plan): `plan.py archive` command\") is MERGED at 2026-11-17T09:01:04Z as 73dc114, on main (`git branch -a --contains 73dc114`). plugins/harness/scripts/plan.py:1046 defines cmd_archive; archive plumbing in freeze_git and archive-aware plan_lock tagging landed in fd83f10 and f9b1377. `gh issue view 284` already reports CLOSED (COMPLETED) at 2026-11-17T09:01:33Z. Catalog item todo-4zhu retired.",
+      "evidence": "PR #299 (\"Feature(plan): `plan.py archive` command\") is MERGED at 2026-11-17T09:01:04Z as 73dc114, on main (`git branch -a --contains 73dc114`). plugins/harness/scripts/plan.py defines cmd_archive; archive plumbing in freeze_git and archive-aware plan_lock tagging landed in fd83f10 and f9b1377. `gh issue view 284` already reports CLOSED (COMPLETED) at 2026-11-17T09:01:33Z. Catalog item todo-4zhu retired.",
       "recommended_action": "None: already closed as completed by PR #299 (merge commit 73dc114); drop this entry once confirmed.",
       "related_todo_ids": []
     },
@@ -4617,7 +4617,7 @@
       "title": "Driver-created local tags for every necessary, plan-referenced and base-to-freeze commit",
       "url": "https://github.com/t968rs/operator-straps/issues/265",
       "current_state": "LIKELY_RESOLVED",
-      "evidence": "PR #271 (\"Feat(write-plan, strap-skills): freeze ledger, commit tags, Frozen and Locked (plan 1015)\") is MERGED at 2026-11-12T05:44:41Z as 7f5aedf, on main; it carries 763fba5 (git tag plumbing) and 067d52f (freeze ledger wired into plan.py and strap.py). The drivers create base and freeze tags, and check warns `untagged:` and `off-history:` (plugins/harness/lib/harness_lib/strap_lock.py:489-515 and plan_lock.py:640-669). `gh issue view 265` already reports CLOSED (COMPLETED) at 2026-11-12T05:44:43Z. Catalog item todo-w3ck retired.",
+      "evidence": "PR #271 (\"Feat(write-plan, strap-skills): freeze ledger, commit tags, Frozen and Locked (plan 1015)\") is MERGED at 2026-11-12T05:44:41Z as 7f5aedf, on main; it carries 763fba5 (git tag plumbing) and 067d52f (freeze ledger wired into plan.py and strap.py). The drivers create base and freeze tags, and check warns `untagged:` and `off-history:` (plugins/harness/lib/harness_lib/strap_lock.py:489-515 and plan_lock.py's _base_lines and _entry_lines). `gh issue view 265` already reports CLOSED (COMPLETED) at 2026-11-12T05:44:43Z. Catalog item todo-w3ck retired.",
       "recommended_action": "None: already closed as completed by PR #271 (merge commit 7f5aedf); drop this entry once confirmed.",
       "related_todo_ids": []
     },
