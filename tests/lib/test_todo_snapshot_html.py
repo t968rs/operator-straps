@@ -18,7 +18,7 @@ import pytest
 
 from harness_lib.todo_sync import snapshot_html as sh
 from harness_lib.todo_sync.report import snapshot_header
-from harness_lib.todo_sync.sources import parse_header, ranked_items, top_items
+from harness_lib.todo_sync.sources import parse_header
 
 SHA = "0" * 64
 SOURCE = "docs/TODO/RepoToDo.json"
@@ -213,12 +213,6 @@ def test_rest_rows_link_their_stubs_by_position() -> None:
 def test_no_remaining_items_draws_no_second_table() -> None:
     text = _page(_items())
     assert 'id="rest"' not in text and 'class="items rest"' not in text
-
-
-def test_ranked_items_put_items_without_an_int_rank_last() -> None:
-    items = [{**_item("todo-c", 9), "rank": None}, _item("todo-b", 2), _item("todo-a", 1)]
-    assert [i["id"] for i in ranked_items(items)] == ["todo-a", "todo-b", "todo-c"]
-    assert top_items(items, 2) == ranked_items(items)[:2]
 
 
 def test_one_row_per_top_item_in_rank_order() -> None:

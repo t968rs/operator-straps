@@ -2,21 +2,18 @@
 
 Every leaf command of the parser (``check``, ``inbox put``, ``lease release``, ...) has a ``### `<command>```
 section, every option of that command is named in backticks inside its section, and the two global options
-(``--project``, ``--config``) are named once in the document. The snapshot page's Render info block links the
-document's GitHub copy from its ``todo_sync.py`` name, and that link points at this file.
+(``--project``, ``--config``) are named in its ``## Global options`` section. The snapshot page's Render info
+block links the document's GitHub copy from its ``todo_sync.py`` name, and that link points at this file.
 """
 from __future__ import annotations
 
 import argparse
 import importlib.util
-import sys
-from pathlib import Path
+import re
 from typing import Iterator, List, Tuple
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
-
-from conftest import PLUGIN_ROOT  # noqa: E402
-from harness_lib.todo_sync import snapshot_html as sh  # noqa: E402
+from conftest import PLUGIN_ROOT
+from harness_lib.todo_sync import snapshot_html as sh
 
 REPO_ROOT = PLUGIN_ROOT.parents[1]
 SCRIPT = PLUGIN_ROOT / "scripts" / "todo_sync.py"
@@ -53,10 +50,21 @@ def _doc() -> str:
     return DOC.read_text(encoding="utf-8")
 
 
+_HEADING = re.compile(r"\n#{2,3} ")
+
+
+def _span(doc: str, start: int) -> str:
+    """The text from ``start`` up to the next ``##`` or ``###`` heading, or the end of the document."""
+    end = _HEADING.search(doc, start + 1)
+    return doc[start:] if end is None else doc[start:end.start()]
+
+
 def _section(doc: str, name: str) -> str:
-    start = doc.index(f"### `{name}`\n")
-    end = doc.find("\n### ", start + 1)
-    return doc[start:] if end == -1 else doc[start:end]
+    return _span(doc, doc.index(f"### `{name}`\n"))
+
+
+def _globals_section(doc: str) -> str:
+    return _span(doc, doc.index("## Global options\n"))
 
 
 def test_every_command_has_a_section() -> None:
@@ -74,8 +82,8 @@ def test_every_option_is_named_in_its_command_section() -> None:
 
 
 def test_the_global_options_are_named() -> None:
-    doc = _doc()
-    assert all(f"`{opt}" in doc for opt in GLOBALS)
+    section = _globals_section(_doc())
+    assert all(f"`{opt}" in section for opt in GLOBALS)
 
 
 def test_the_render_info_links_the_document() -> None:
