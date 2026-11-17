@@ -158,8 +158,8 @@ def put_updates(cfg: HarnessConfig, spec: Path) -> PutResult:
     catalog is never written.
 
     Raises:
-        TodoSyncError: an unreadable spec or an update the catalog refuses (nothing is written), or a failed
-            inbox write.
+        TodoSyncError: an unreadable spec or an update the catalog refuses (nothing is written).
+        OSError: a failed inbox write (every file of the put still present is deleted).
     """
     entries = read_spec(spec, "updates")
     _raw, data = load_catalog(cfg, "update")
@@ -222,13 +222,13 @@ class _Absorbed:
 
 
 def _holds_updates(path: Path) -> bool:
-    """Whether the file at ``path`` is an object holding an ``updates`` list; an unreadable one is not, so
-    the add path reports it."""
+    """Whether the file at ``path`` is an object holding an ``updates`` key; the update reader then refuses
+    a malformed value with an update-spec reason. An unreadable file is not, so the add path reports it."""
     try:
         doc = json.loads(path.read_bytes().decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError):
         return False
-    return isinstance(doc, dict) and isinstance(doc.get("updates"), list)
+    return isinstance(doc, dict) and "updates" in doc
 
 
 def _absorb_updates(state: _Absorbed, path: Path) -> None:
@@ -340,7 +340,7 @@ def _problems(left: Sequence[Path], stuck: Sequence[Path]) -> List[str]:
 
 def _finish(cfg: HarnessConfig, day: dt.date, landed: bool, left: Sequence[Path],
             stuck: Sequence[Path]) -> Optional[int]:
-    """Run the follow-up when items landed, then raise one ``TodoSyncError`` naming every failure; the
+    """Run the follow-up when anything landed, then raise one ``TodoSyncError`` naming every failure; the
     drift (``None`` when nothing landed)."""
     drift: Optional[int] = None
     failure: Optional[Exception] = None

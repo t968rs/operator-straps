@@ -125,8 +125,9 @@ stable ids once.
 Every catalog write (``init``, ``add``, ``retire``, ``split``, ``refresh``; not a dry run) holds the catalog
 lock, ``<state_dir>/locks/<catalog path with '/' as '__'>.lock``: the write lock for one command, or with
 ``--lease TOKEN`` the lease that token names (a wrong token refuses at once). A lock another owner holds is
-waited on for 10 seconds, then refused naming its owner, mode and age. ``check``, ``render``, ``runner``,
-``untracked``, ``inbox put`` and every dry run take no lock.
+waited on for 10 seconds (``lease acquire --wait SECONDS`` waits that long instead), then refused naming
+its owner, mode and age. ``check``, ``render``, ``runner``, ``untracked``, ``inbox put`` and every dry run
+take no lock.
 
 ``--project`` (default: the git top level of the working directory) and ``--config`` (an alternate
 ``harness.json``) go before or after the subcommand. A configuration error, an unknown rule id or any
@@ -139,6 +140,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import math
 import sys
 import time
 from pathlib import Path
@@ -178,12 +180,12 @@ def _summary() -> str:
 
 
 def _seconds(text: str) -> float:
-    """Argparse type of ``--wait``: a number of seconds, 0 or more."""
+    """Argparse type of ``--wait``: a finite number of seconds, 0 or more."""
     try:
         value = float(text)
     except ValueError:
         value = -1.0
-    if not value >= 0:
+    if not (math.isfinite(value) and value >= 0):
         raise argparse.ArgumentTypeError("must be a number of seconds, 0 or more")
     return value
 

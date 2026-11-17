@@ -2,8 +2,8 @@
 
 `todo_sync.py` is the harness plugin's command-line driver for a project's TODO catalog (`todo.catalog`, under
 `todo.folder` in `.claude/harness.json`). It checks the catalog and the research and plan artifacts around
-it for drift, renders the snapshot page, adds, retires, splits and re-ranks items, queues drafted items in an
-inbox, holds the catalog lease, and switches an old catalog to stable ids once.
+it for drift, renders the snapshot page, adds, retires, splits and re-ranks items, queues drafted items and
+field updates in an inbox, holds the catalog lease, and switches an old catalog to stable ids once.
 
 It is a Python script, not a slash command. Skills, the `harness:todo-editor` agent and the `todo-watch` mod
 run it, and a person can run it by hand. It always runs through the plugin's launcher, from the project
@@ -40,13 +40,13 @@ Both go before or after the command.
 | `check` | The `todo-watch` mod after catalog edits; `add --inbox` and `lease release` run it too. |
 | `render` | A person, on demand; `init`, `add --inbox` and `lease release` render too. |
 | `runner` | A person. The harness SessionStart hook writes the same pointer without the command. |
-| `retire`, `split`, `refresh` | The `harness:todo-editor` agent, dispatched by `/harness:todo-edit`. |
+| `retire`, `split`, `refresh` | The `harness:todo-editor` agent, dispatched by `/harness:todo-edit`; `--split` dispatches one agent per id at once. |
 | `init` | `/harness:add-todo` and `/harness:sync-gh-todo` when the catalog does not exist yet, or a person. |
 | `untracked` | `/harness:sync-gh-todo`; the agent again when its file is missing. |
 | `add --spec` | A person. No skill or agent runs it: they queue items with `inbox put` instead. |
 | `add --inbox` | `/harness:add-todo`, `/harness:sync-gh-todo` and `/harness:todo-edit --update` after their agents return, and the `todo-watch` mod. |
 | `inbox put` | The `harness:todo-editor` agent, for `add` and `sync` runs, and with `--update` for update runs (any agent may queue updates). |
-| `lease acquire`, `lease release` | The `harness:todo-editor` agent, around a retire, split or refresh run. |
+| `lease acquire`, `lease release` | The `harness:todo-editor` agent, around a retire, split or refresh run; the parallel split agents of `/harness:todo-edit --split` (one per id, at once) each take the lease in turn. |
 | `lease break` | A person, to clear the lock of a crashed holder. |
 | `migrate-ids` | A person only; the agent names it and never runs it. |
 
@@ -58,6 +58,10 @@ Every catalog write (`init`, `add`, `retire`, `split`, `refresh`; never a dry ru
 (`lease acquire --wait SECONDS` waits that long instead), then refused naming its owner, mode and age.
 `check`, `render`, `runner`, `untracked`, `inbox put` and every dry run take no lock. `add --inbox` takes
 the lock only when a file is queued; with nothing queued it prints `inbox: empty` and takes none.
+`/harness:todo-edit` runs several `harness:todo-editor` agents at once against one catalog: the parallel
+split agents each take the lease with `lease acquire --wait 300` from the dry run to `lease release`, so
+they apply one at a time; the parallel update agents queue with `inbox put` (no lock), and the skill drains
+them once with `add --inbox`.
 A real `migrate-ids` run holds a catalog lease of its own for the whole run and frees it afterwards, or, with
 `--lease TOKEN`, runs under that lease and leaves it held. A catalog that still holds `TODO-NNN` ids refuses `untracked`, `add`, `retire`, `split` and `refresh`, naming `migrate-ids`.
 
@@ -159,13 +163,13 @@ listing limit. No options.
 
 ### `add`
 
-Adds items to the catalog, either from a spec file or from the inbox. Exactly one of `--spec` and `--inbox`
+Adds items to the catalog, either from a spec file or from the inbox (which also applies queued field updates). Exactly one of `--spec` and `--inbox`
 is required.
 
 | Option | Meaning |
 |---|---|
 | `--spec PATH` | JSON file `{"items": [{...}, {...}]}`. Each entry holds the fields a person judges (never `id`, `rank` or `priority`) and names its `issue` and `url`, or neither. Each item gets a new stable id and a source (`gh_issue`, or a local `note` dated today), is scored, and the catalog is re-sorted and recounted. An issue the catalog already records is refused. Only the catalog is written: the snapshot page waits for the next render. |
-| `--inbox` | Add every queued inbox file in one catalog write, oldest first. Accepted files are deleted; a refused one is renamed `<name>.rejected.json` beside a `<name>.reason.txt`. Queued updates are applied with the queued items in name order, then the catalog is re-ranked; a later queued update of a field an earlier one set wins and the line names it. When any item lands, the page is rendered and the check run. Prints `inbox: [added N item(s): ...; ][updated M item(s): <id> (<fields>), ...; ][overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=D`, `inbox: rejected K (<files>)`, or `inbox: empty` (without taking the lock). |
+| `--inbox` | Add every queued inbox file in one catalog write, oldest first. Accepted files are deleted; a refused one is renamed `<name>.rejected.json` beside a `<name>.reason.txt`. Queued updates are applied with the queued items in name order, then the catalog is re-ranked; a later queued update of a field an earlier one set wins and the line names it. When anything lands (an added item or an update), the page is rendered and the check run. Prints `inbox: [added N item(s): ...; ][updated M item(s): <id> (<fields>), ...; ][overwrote <id> <field>, ...; ][rejected K (<files>); ]check drift=D`, `inbox: rejected K (<files>)`, or `inbox: empty` (without taking the lock). |
 | `--dry-run` | With `--spec` only: print the result with ids of its own and write nothing. |
 | `--file-issue` | With `--spec` only: file a GitHub issue (`gh issue create`) for each entry that names none, once the whole spec passes a dry run, and record it as the item's `gh_issue` source. A dry run files nothing and prints `would file N issue(s)`. |
 | `--lease TOKEN` | Run under the lease this token names instead of taking the write lock. |
