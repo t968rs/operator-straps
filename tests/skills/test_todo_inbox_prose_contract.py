@@ -1,9 +1,9 @@
 """Guard test: the todo-editor agent and the add-todo skill follow the inbox and lease flow.
 
 Add and sync runs queue each drafted item with ``inbox put`` and never write the catalog; the dispatching
-skills drain the inbox once the agent returns, so the harness works without the todo-watch mod. Retire,
-split and refresh runs hold a lease from start to reply. Every ``TS <subcommand>`` the agent names parses
-with the driver's own parser.
+skills drain the inbox once the agent returns, so the harness works without the todo-watch mod. Retire and
+refresh runs hold a lease from start to reply, a split from its dry run to its reply. Every
+``TS <subcommand>`` the agent names parses with the driver's own parser.
 """
 from __future__ import annotations
 

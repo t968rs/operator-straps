@@ -7,8 +7,9 @@ notice is a band above the prompt by default, kept until its Dismiss button is p
 following each sync change; `todo.notice.style: "toast"` posts it once as a toast instead, kept for
 `todo.notice.toast_seconds` (60 s, the engine's ceiling).
 The sync rules themselves live in Python (`harness_lib.todo_sync` behind `scripts/todo_sync.py`); the mod
-reads, gates and displays, and also drains the TODO inbox: it runs `todo_sync.py add --inbox`, which adds
-the items a `harness:todo-editor` agent queued to the catalog (see Inbox drains). That driver run, under the
+reads, gates and displays, and also drains the TODO inbox: it runs `todo_sync.py add --inbox`, which applies
+the files a `harness:todo-editor` agent queued (new items and field updates of existing ones) to the catalog
+(see Inbox drains). That driver run, under the
 harness catalog lock, is the only catalog write the mod causes; the mod never writes a file itself.
 
 Every hook fails open: an unreadable file, a missing harness config, a missing runner pointer, a refused or
@@ -99,8 +100,9 @@ pinned constants.
 
 ### Inbox drains
 
-A `harness:todo-editor` agent queues new TODO items as `*.json` files under `<scratch_folder>/todo-inbox`
-(`todo_sync.py inbox put`) instead of writing the catalog. The mod drains them by running
+A `harness:todo-editor` agent queues new TODO items and field updates of existing items as `*.json` files
+under `<scratch_folder>/todo-inbox` (`todo_sync.py inbox put`, `inbox put --update`) instead of writing the
+catalog. The mod drains them by running
 `[python, script, "add", "--inbox", "--project", project]` (the runner pointer's values) through
 `$.process.run` with a 60 s cap (`DRAIN_TIMEOUT_MS`). Triggers:
 
