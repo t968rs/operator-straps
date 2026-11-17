@@ -1,11 +1,15 @@
-"""The TODO inbox: drafted ``add`` items wait here, one file per item, until a drain adds them to the catalog.
+"""The TODO inbox: drafted ``add`` items and field updates of existing items wait here, one file per item or
+per update, until a drain applies them to the catalog.
 
 ``put`` validates a whole ``add`` spec against the catalog (a dry run), files the issues asked for, then
 writes each item to ``<scratch_folder>/todo-inbox/<stamp>-<NN>-<hex>.json`` without touching the catalog.
-``drain`` claims every inbox file (a hidden ``.<name>.draining``, so no later drain lists it again), adds
-them to the catalog in one write, oldest first, deletes the accepted files, keeps each rejected one as
-``<stem>.rejected.json`` beside a ``<stem>.reason.txt``, then, when any item landed, renders the snapshot
-and runs the check. The caller holds the catalog lock around a drain; ``drain`` takes none.
+``put_updates`` does the same for an update spec, one ``{"updates": [update]}`` file per update.
+``drain`` claims every inbox file (a hidden ``.<name>.draining``, so no later drain lists it again), applies
+them to the catalog in one write, oldest first (an update file through ``updates.apply_updates``, an add file
+through ``add_items``; a later update of a field an earlier file set wins and is named), deletes the
+accepted files, keeps each rejected one as ``<stem>.rejected.json`` beside a ``<stem>.reason.txt``, then,
+when anything landed, renders the snapshot and runs the check. The caller holds the catalog lock around a
+drain; ``drain`` takes none.
 """
 from __future__ import annotations
 
@@ -15,9 +19,9 @@ import json
 import random
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from harness_lib.config import HarnessConfig
 from harness_lib.todo_sync import TodoSyncError, check, render_snapshot, report_path
@@ -27,6 +31,7 @@ from harness_lib.todo_sync.ranking import RankingError
 from harness_lib.todo_sync.report import write_atomic, write_report
 from harness_lib.todo_sync.reshape import add_items, read_spec
 from harness_lib.todo_sync.retire import dump_like, load_catalog, write_edits
+from harness_lib.todo_sync.updates import ItemFields, apply_updates, merge_updated
 
 REJECTED_SUFFIX = ".rejected.json"
 REASON_SUFFIX = ".reason.txt"
@@ -47,12 +52,15 @@ class PutResult:
 
 @dataclass(frozen=True)
 class DrainResult:
-    """What a drain added ``(id, issue or None)``, the files it refused ``(name, reason)`` and the check's
-    drift (``None`` when nothing landed)."""
+    """What a drain added ``(id, issue or None)``, the files it refused ``(name, reason)``, the check's
+    drift (``None`` when nothing landed), the fields it updated ``(id, fields)`` and the fields a later
+    file set again ``(id, field)``."""
 
     added: Added = ()
     rejected: Tuple[Tuple[str, str], ...] = ()
     drift: Optional[int] = None
+    updated: Tuple[ItemFields, ...] = ()
+    overwritten: Tuple[Tuple[str, str], ...] = ()
 
 
 def inbox_dir(cfg: HarnessConfig) -> Path:
@@ -91,8 +99,8 @@ def _hidden(path: Path) -> Path:
     return path.with_name("." + path.name)
 
 
-def _write_items(cfg: HarnessConfig, items: Sequence[Any]) -> Tuple[Path, ...]:
-    """Write each item as ``{"items": [item]}`` under one stamp, its zero-padded spec index next, so the
+def _write_items(cfg: HarnessConfig, items: Sequence[Any], key: str = "items") -> Tuple[Path, ...]:
+    """Write each item as ``{key: [item]}`` under one stamp, its zero-padded spec index next, so the
     names sort in spec order even when the clock repeats a stamp.
 
     Every item is written under a hidden name first and only then renamed, so a drain never reads a
@@ -107,7 +115,7 @@ def _write_items(cfg: HarnessConfig, items: Sequence[Any]) -> Tuple[Path, ...]:
     try:
         for final, item in zip(finals, items):
             written.append(_hidden(final))
-            write_atomic(_hidden(final), json.dumps({"items": [item]}, indent=2, ensure_ascii=False) + "\n")
+            write_atomic(_hidden(final), json.dumps({key: [item]}, indent=2, ensure_ascii=False) + "\n")
         for final in finals:
             written.append(final)
             _report._replace_with_retry(str(_hidden(final)), final)
@@ -143,6 +151,23 @@ def put(cfg: HarnessConfig, spec: Path, file_issues: bool = False,
             raise
         raise TodoSyncError(reshape._with_filed(str(exc), filed)) from exc
     return PutResult(paths, filed)
+
+
+def put_updates(cfg: HarnessConfig, spec: Path) -> PutResult:
+    """Validate the update spec ``spec`` against the catalog, then write one inbox file per update; the
+    catalog is never written.
+
+    Raises:
+        TodoSyncError: an unreadable spec or an update the catalog refuses (nothing is written), or a failed
+            inbox write.
+    """
+    entries = read_spec(spec, "updates")
+    _raw, data = load_catalog(cfg, "update")
+    try:
+        apply_updates(data, entries)
+    except RankingError as exc:
+        raise TodoSyncError(str(exc)) from exc
+    return PutResult(_write_items(cfg, entries, "updates"))
 
 
 def queued(cfg: HarnessConfig) -> List[Path]:
@@ -182,22 +207,66 @@ def _release(claims: Sequence[Claim]) -> None:
             _report._replace_with_retry(str(claimed), path)
 
 
-def _absorb(claims: Sequence[Claim], working: Dict[str, Any], day: str, rng: Optional[random.Random]
-            ) -> Tuple[Dict[str, Any], List[Claim], Added, List[Tuple[Claim, str]]]:
-    """Add each claimed file's items to ``working`` in turn; ``(catalog, accepted, added, rejected)``."""
-    accepted: List[Claim] = []
-    added: List[Tuple[str, Optional[int]]] = []
-    rejected: List[Tuple[Claim, str]] = []
+@dataclass
+class _Absorbed:
+    """The working catalog of a drain and what its files did to it so far; ``seen`` holds every
+    ``(id, field)`` an accepted update file set."""
+
+    catalog: Dict[str, Any]
+    accepted: List[Claim] = field(default_factory=list)
+    added: List[Tuple[str, Optional[int]]] = field(default_factory=list)
+    updated: List[ItemFields] = field(default_factory=list)
+    overwritten: List[Tuple[str, str]] = field(default_factory=list)
+    rejected: List[Tuple[Claim, str]] = field(default_factory=list)
+    seen: Set[Tuple[str, str]] = field(default_factory=set)
+
+
+def _holds_updates(path: Path) -> bool:
+    """Whether the file at ``path`` is an object holding an ``updates`` list; an unreadable one is not, so
+    the add path reports it."""
+    try:
+        doc = json.loads(path.read_bytes().decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    return isinstance(doc, dict) and isinstance(doc.get("updates"), list)
+
+
+def _absorb_updates(state: _Absorbed, path: Path) -> None:
+    """Apply the update file at ``path`` to the working catalog; each ``(id, field)`` an earlier file set
+    joins ``overwritten`` once."""
+    out = apply_updates(state.catalog, read_spec(path, "updates"))
+    for item_id, fields in out.updated:
+        for name in fields:
+            pair = (item_id, name)
+            if pair in state.seen and pair not in state.overwritten:
+                state.overwritten.append(pair)
+            state.seen.add(pair)
+    state.updated.extend(out.updated)
+    state.catalog = out.catalog
+
+
+def _absorb_one(state: _Absorbed, claim: Claim, day: str, rng: Optional[random.Random]) -> None:
+    """Apply one claimed file (updates or add items) to the working catalog, or record why it is refused."""
+    try:
+        if _holds_updates(claim[1]):
+            _absorb_updates(state, claim[1])
+        else:
+            out = add_items(state.catalog, read_spec(claim[1], "items"), day, rng)
+            state.catalog = out.catalog
+            state.added.extend(out.added)
+    except (TodoSyncError, RankingError, ValueError) as exc:
+        state.rejected.append((claim, str(exc)))
+        return
+    state.accepted.append(claim)
+
+
+def _absorb(claims: Sequence[Claim], working: Dict[str, Any], day: str,
+            rng: Optional[random.Random]) -> _Absorbed:
+    """Apply each claimed file to ``working`` in turn, oldest first."""
+    state = _Absorbed(working)
     for claim in claims:
-        try:
-            out = add_items(working, read_spec(claim[1], "items"), day, rng)
-        except (TodoSyncError, RankingError, ValueError) as exc:
-            rejected.append((claim, str(exc)))
-            continue
-        working = out.catalog
-        accepted.append(claim)
-        added.extend(out.added)
-    return working, accepted, tuple(added), rejected
+        _absorb_one(state, claim, day, rng)
+    return state
 
 
 def _probe(data: Dict[str, Any]) -> None:
@@ -301,9 +370,9 @@ def _follow_up(cfg: HarnessConfig, day: dt.date) -> int:
 
 def drain(cfg: HarnessConfig, today: Optional[dt.date] = None,
           rng: Optional[random.Random] = None) -> DrainResult:
-    """Add every inbox file to the catalog in one write, oldest first, then delete the accepted files, set
-    each refused one aside with its reason, and, when any item landed, render the snapshot and run the
-    check. The caller holds the catalog lock.
+    """Apply every inbox file (add items or field updates) to the catalog in one write, oldest first, then
+    delete the accepted files, set each refused one aside with its reason, and, when anything landed, render
+    the snapshot and run the check. The caller holds the catalog lock.
 
     Each queued file is first claimed (moved to the hidden ``.<name>.draining``, which no drain lists), so an
     accepted file that cannot be deleted afterwards is never added twice; a file that cannot be claimed
@@ -315,7 +384,7 @@ def drain(cfg: HarnessConfig, today: Optional[dt.date] = None,
             render, check or report failure after the items landed (their files are already gone, so the
             next drain never adds them again); or accepted files that could not be deleted (named, hidden
             from every later drain) or refused files that could not be set aside, raised once the rest of
-            the drain has run. When items landed, the message opens with the ids added.
+            the drain has run. When anything landed, the message opens with what was added and updated.
     """
     day = today or dt.date.today()
     files = queued(cfg)
@@ -325,37 +394,59 @@ def drain(cfg: HarnessConfig, today: Optional[dt.date] = None,
     _probe(data)
     claims = _claim_all(files)
     try:
-        working, accepted, added, rejected = _absorb(claims, data, day.isoformat(), rng)
-        if accepted:
-            write_edits(cfg, dump_like(working, raw))
+        got = _absorb(claims, data, day.isoformat(), rng)
+        if got.accepted:
+            write_edits(cfg, dump_like(got.catalog, raw))
     except BaseException:
         _release(claims)
         raise
-    left = _remove_accepted(accepted)
-    stuck = _set_aside_all(rejected)
+    left = _remove_accepted(got.accepted)
+    stuck = _set_aside_all(got.rejected)
+    added, updated = tuple(got.added), merge_updated(got.updated)
     try:
-        drift = _finish(cfg, day, bool(accepted), left, stuck)
+        drift = _finish(cfg, day, bool(got.accepted), left, stuck)
     except (TodoSyncError, OSError) as exc:
-        if not accepted:
+        if not got.accepted:
             raise
-        raise TodoSyncError(f"inbox: added {_added_text(added)}, then: {exc}") from exc
-    refused = tuple((claim[0].name, reason) for claim, reason in rejected)
-    return DrainResult(added if accepted else (), refused, drift)
+        raise TodoSyncError(f"inbox: {_landed_text(added, updated)}, then: {exc}") from exc
+    refused = tuple((claim[0].name, reason) for claim, reason in got.rejected)
+    return DrainResult(added, refused, drift, updated=updated, overwritten=tuple(got.overwritten))
 
 
 def _added_text(added: Added) -> str:
     return ", ".join(f"{new} ({f'#{issue}' if issue is not None else 'note'})" for new, issue in added)
 
 
+def _updated_text(updated: Sequence[ItemFields]) -> str:
+    return ", ".join(f"{item_id} ({', '.join(fields)})" for item_id, fields in updated)
+
+
+def _landed_text(added: Added, updated: Sequence[ItemFields]) -> str:
+    """``added <ids>`` and ``updated <ids>`` for what a drain landed, joined by ``'; '``."""
+    parts = [f"added {_added_text(added)}"] if added else []
+    if updated:
+        parts.append(f"updated {_updated_text(updated)}")
+    return "; ".join(parts)
+
+
 def drain_lines(result: DrainResult) -> List[str]:
-    """The drain's one-line report: what landed, what was refused, and the check's drift."""
-    if not result.added and not result.rejected:
+    """The drain's one-line report: what landed, what a later file overwrote, what was refused, and the
+    check's drift."""
+    landed = bool(result.added or result.updated)
+    if not landed and not result.rejected:
         return ["inbox: empty"]
     names = ", ".join(name for name, _ in result.rejected)
     refused = f"rejected {len(result.rejected)} ({names})"
-    if not result.added:
+    if not landed:
         return [f"inbox: {refused}"]
-    line = f"inbox: added {len(result.added)} item(s): {_added_text(result.added)}"
+    parts: List[str] = []
+    if result.added:
+        parts.append(f"added {len(result.added)} item(s): {_added_text(result.added)}")
+    if result.updated:
+        parts.append(f"updated {len(result.updated)} item(s): {_updated_text(result.updated)}")
+    if result.overwritten:
+        parts.append("overwrote " + ", ".join(f"{item_id} {name}" for item_id, name in result.overwritten))
     if result.rejected:
-        line += f"; {refused}"
-    return [f"{line}; check drift={result.drift}"]
+        parts.append(refused)
+    parts.append(f"check drift={result.drift}")
+    return ["inbox: " + "; ".join(parts)]
