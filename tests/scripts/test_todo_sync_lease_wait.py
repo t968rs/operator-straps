@@ -70,11 +70,13 @@ def test_acquire_waits_past_the_default_for_a_lease_freed_meanwhile(make_project
 def test_acquire_refuses_once_its_own_wait_runs_out(make_project) -> None:
     cfg = build(make_project)
     held = locking.acquire(cfg, "todo-editor split")
-    started = time.monotonic()
-    with pytest.raises(TodoSyncError, match="todo-editor split"):
-        locking.acquire(cfg, "another split", wait=0.6)
-    assert time.monotonic() - started >= 0.5
-    locking.free(cfg, held)
+    try:
+        started = time.monotonic()
+        with pytest.raises(TodoSyncError, match="todo-editor split"):
+            locking.acquire(cfg, "another split", wait=0.6)
+        assert time.monotonic() - started >= 0.5
+    finally:
+        locking.free(cfg, held)
 
 
 def test_lease_acquire_takes_a_wait_in_seconds(driver) -> None:

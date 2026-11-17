@@ -252,6 +252,7 @@ def test_code_spans_become_code_elements() -> None:
 
 def test_id_cell_holds_the_bare_id_for_copying() -> None:
     rows = _rows(_page(_items()[:2], links=[[ALPHA, BETA], []]))
+    assert len(rows) == 2
     for row, ident in zip(rows, IDS):
         assert re.search(r'<td class="c-id"><span class="id">([^<]*)</span></td>', row).group(1) == ident
         assert "<a" not in _cells(row)[1]

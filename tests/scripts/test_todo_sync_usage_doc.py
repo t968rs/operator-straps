@@ -3,11 +3,13 @@
 Every leaf command of the parser (``check``, ``inbox put``, ``lease release``, ...) has a ``### `<command>```
 section, every option of that command is named in backticks inside its section, and the two global options
 (``--project``, ``--config``) are named in its ``## Global options`` section. The snapshot page's Render info
-block links the document's GitHub copy from its ``todo_sync.py`` name, and that link points at this file.
+block links the document's GitHub copy from its ``todo_sync.py`` name, and that link points at this file. The
+script's module docstring stays a summary that points here, so the commands are described in one place.
 """
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib.util
 import re
 from typing import Iterator, List, Tuple
@@ -77,13 +79,19 @@ def test_every_command_has_a_section() -> None:
 def test_every_option_is_named_in_its_command_section() -> None:
     doc = _doc()
     missing = [(name, opt) for name, cmd in _leaves(_parser()) for opt in _options(cmd)
-               if f"`{opt}" not in _section(doc, name)]
+               if not re.search(rf"`{re.escape(opt)}(?![\w-])", _section(doc, name))]
     assert missing == []
 
 
 def test_the_global_options_are_named() -> None:
     section = _globals_section(_doc())
     assert all(f"`{opt}" in section for opt in GLOBALS)
+
+
+def test_the_script_docstring_points_here_instead_of_listing_commands() -> None:
+    doc = ast.get_docstring(ast.parse(SCRIPT.read_text(encoding="utf-8"))) or ""
+    assert DOC.name in doc
+    assert len(doc.split("\n\n")) <= 2
 
 
 def test_the_render_info_links_the_document() -> None:

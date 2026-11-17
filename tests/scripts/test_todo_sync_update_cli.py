@@ -11,6 +11,7 @@ import importlib.util
 import json
 import re
 import sys
+import threading
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -90,14 +91,32 @@ def test_put_update_queues_and_add_inbox_applies(driver, make_project, capsys, t
     assert (_item(cfg, ID3)["severity"], _item(cfg, ID3)["rank"]) == (5, 2)
 
 
+def _put_in_threads(driver, cfg, specs: List[Path]) -> List[int]:
+    """Run one ``inbox put --update`` per spec, each from its own thread, started together."""
+    codes: List[int] = []
+    gate = threading.Barrier(len(specs))
+
+    def put(spec: Path) -> None:
+        gate.wait()
+        codes.append(driver.main(["--project", str(cfg.project_root), "inbox", "put", "--update",
+                                  "--spec", str(spec)]))
+
+    threads = [threading.Thread(target=put, args=(spec,)) for spec in specs]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    return codes
+
+
 def test_parallel_queued_updates_land_in_one_drain_with_drift_0(driver, make_project, capsys,
                                                                 tmp_path: Path) -> None:
     cfg = build(make_project)
     _parse(driver, ["inbox", "put", "--update", "--spec", "update.json"])
     first = _spec(tmp_path, [{"id": ID3, "fields": RISE}], "lane-1.json")
     second = _spec(tmp_path, [{"id": ID2, "fields": {"summary": "Narrowed to one file."}}], "lane-2.json")
-    for spec in (first, second):
-        assert _run(driver, cfg, capsys, "inbox", "put", "--update", "--spec", str(spec))[0] == 0
+    assert _put_in_threads(driver, cfg, [first, second]) == [0, 0], capsys.readouterr().err
+    capsys.readouterr()
     code, out, err = _run(driver, cfg, capsys, "add", "--inbox")
     assert code == 0, err
     assert out.startswith("inbox: updated 2 item(s): ") and out.strip().endswith("check drift=0")

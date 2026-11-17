@@ -218,6 +218,31 @@ def test_drain_refuses_an_update_that_sets_a_computed_field(make_project) -> Non
     assert result.updated == ((ID2, ("summary",)),)
 
 
+def test_drain_reads_any_updates_key_as_an_update_file(make_project) -> None:
+    cfg = build(make_project)
+    third = "20261117T000003000000Z-00-cccccc.json"
+    _queue(cfg, FIRST, {"updates": "x"})
+    _queue(cfg, SECOND, {"updates": []})
+    _queue(cfg, third, _update(ID2, {"summary": "b"}))
+    result = inbox.drain(cfg, today=DAY)
+    reasons = dict(result.rejected)
+    assert sorted(reasons) == [FIRST, SECOND]
+    assert "update spec" in reasons[FIRST] and "add spec" not in reasons[FIRST]
+    assert "at least one update" in reasons[SECOND]
+    assert result.updated == ((ID2, ("summary",)),)
+
+
+def test_drain_refuses_a_file_holding_both_items_and_updates(make_project) -> None:
+    cfg = build(make_project)
+    before = cfg.path(CATALOG_REL).read_bytes()
+    _queue(cfg, FIRST, {**_added(9), **_update(ID3, RISE)})
+    result = inbox.drain(cfg, today=DAY)
+    [(name, reason)] = result.rejected
+    assert name == FIRST and "both items and updates" in reason
+    assert result.added == () and result.updated == ()
+    assert cfg.path(CATALOG_REL).read_bytes() == before
+
+
 def test_drain_lines_name_the_updates_and_the_overwrites() -> None:
     both = inbox.DrainResult(added=(("todo-k7qf", 9),), updated=((ID3, ("summary", "severity")),),
                              overwritten=((ID3, "summary"),), drift=0)

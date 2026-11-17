@@ -235,9 +235,19 @@ def test_the_title_opens_with_the_gh_repo_name(make_project) -> None:
     assert _title(root) == "widgets | TODO Snapshot (2026-10-21)"
 
 
-def test_without_a_gh_repo_the_title_opens_with_the_checkout_folder(make_project) -> None:
+def test_without_a_gh_repo_or_remote_the_title_opens_with_the_checkout_folder(make_project) -> None:
     root = _render(make_project, _files())
     assert _title(root) == f"{root.resolve().name} | TODO Snapshot (2026-10-21)"
+
+
+def test_without_a_gh_repo_the_title_opens_with_the_origin_name(make_project) -> None:
+    root = make_project(config(), files=_files())
+    added = subprocess.run(["git", "-C", str(root), "remote", "add", "origin",
+                            "git@github.com:o/gadgets.git"], capture_output=True, text=True)
+    assert added.returncode == 0, added.stderr
+    done = _run(["render", "--date", "2026-10-21"], root)
+    assert done.returncode == 0, done.stderr
+    assert _title(root) == "gadgets | TODO Snapshot (2026-10-21)"
 
 
 def test_render_with_null_stub_name(make_project) -> None:

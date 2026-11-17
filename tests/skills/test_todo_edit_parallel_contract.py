@@ -99,4 +99,13 @@ def test_the_agent_reports_queued_updates_under_added() -> None:
     update = _agent_section("update")
     assert "queued update: <id> (<fields>)" in update
     reply = _AGENT.read_text(encoding="utf-8").split("\n## Reply\n", 1)[1]
-    assert "queued update" in reply
+    added = re.search(r"^Added: .*$", reply, re.MULTILINE)
+    assert added, "the Reply section has no 'Added:' line"
+    assert "queued update: <id> (<fields>)" in added.group(0)
+
+
+def test_split_and_update_agents_apply_only_their_own_ids_guidance() -> None:
+    rule = "apply only what it says about this item's id, plus what applies to all"
+    for name in ("split", "update"):
+        flat = " ".join(_agent_section(name).split())
+        assert rule in flat, f"the {name} section never limits shared guidance to its own id"

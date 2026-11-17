@@ -35,33 +35,48 @@ DARK = {"--fg": "#d4d4d4", "--bg": "#1f1f1f", "--muted": "#9d9d9d", "--heading":
 #: The light scheme keeps its look: headings in the accent blue, pills in the muted gray.
 LIGHT = {"--heading": "#0550ae", "--chip": "#59636e"}
 # Runs theme.js against stubbed browser globals. ``stored`` seeds localStorage (null: empty), ``corner``
-# says whether the page has a ``.corner`` element, ``clicks`` presses the button that many times; the output
-# is the data-theme after load and after each click, the button labels, the stored value at the end and the
-# element the button went into.
+# says whether the page has a ``.corner`` element, ``clicks`` presses the button that many times, and
+# ``deferred`` runs the script as a ``<head>`` script does in a browser: ``document.body`` (and so the corner)
+# is null while it runs, ``addEventListener`` records each listener, and the listeners run once the body
+# exists. The output is the data-theme after load and after each click, the button labels, the stored value
+# at the end, the element the button went into, and ``early``: whether a button existed, the data-theme and
+# the recorded event names when the script itself returned.
 THEME_HARNESS = r"""
 const data = JSON.parse(require("fs").readFileSync(0, "utf8"));
 const store = data.stored === null ? {} : {"harness-page-theme": data.stored};
 const attrs = {};
 const root = {setAttribute(k, v) { attrs[k] = v; }, removeAttribute(k) { delete attrs[k]; }};
+const listeners = [];
 let button = null;
 let parent = null;
 const body = {appendChild(el) { button = el; parent = "body"; }};
 const corner = {appendChild(el) { button = el; parent = "corner"; }};
-const document = {documentElement: root, body: body,
-                  querySelector(sel) { return sel === ".corner" && data.corner ? corner : null; },
-                  createElement() { return {}; }, addEventListener() { throw new Error("no body"); }};
+const document = {
+  documentElement: root, body: data.deferred ? null : body,
+  querySelector(sel) { return sel === ".corner" && data.corner && document.body ? corner : null; },
+  createElement() { return {}; },
+  addEventListener(name, fn) {
+    if (!data.deferred) { throw new Error("no listener expected while the body exists"); }
+    listeners.push([name, fn]);
+  }};
 const window = {localStorage: {getItem(k) { return k in store ? store[k] : null; },
                                setItem(k, v) { store[k] = String(v); }}};
 new Function("window", "document", data.source)(window, document);
+const early = {button: button !== null, theme: attrs["data-theme"] || "auto",
+               events: listeners.map((pair) => pair[0])};
+if (data.deferred) {
+  document.body = body;
+  listeners.forEach((pair) => pair[1]());
+}
 const themes = [attrs["data-theme"] || "auto"];
-const labels = [button.textContent];
-for (let i = 0; i < data.clicks; i += 1) {
+const labels = button ? [button.textContent] : [];
+for (let i = 0; button && i < data.clicks; i += 1) {
   button.onclick();
   themes.push(attrs["data-theme"] || "auto");
   labels.push(button.textContent);
 }
 process.stdout.write(JSON.stringify({themes, labels, stored: store["harness-page-theme"] || null,
-                                     id: button.id, parent}));
+                                     id: button ? button.id : null, parent, early}));
 """
 
 
@@ -180,8 +195,9 @@ def test_the_todo_stamp_still_reads_from_the_trailing_script() -> None:
     assert stamp is not None and re.fullmatch(r"[0-9a-f]{64}", stamp)
 
 
-def _run(stored: Any, clicks: int, corner: bool = True) -> Dict[str, Any]:
-    feed = json.dumps({"source": _theme_js(), "stored": stored, "clicks": clicks, "corner": corner})
+def _run(stored: Any, clicks: int, corner: bool = True, deferred: bool = False) -> Dict[str, Any]:
+    feed = json.dumps({"source": _theme_js(), "stored": stored, "clicks": clicks, "corner": corner,
+                       "deferred": deferred})
     done = subprocess.run([NODE, "-e", THEME_HARNESS], input=feed, capture_output=True, text=True,
                           encoding="utf-8", timeout=60, check=False)
     assert done.returncode == 0, done.stderr
@@ -208,3 +224,14 @@ def test_a_stored_choice_applies_at_load_and_junk_reads_as_auto() -> None:
 def test_the_toggle_goes_under_the_brand_else_into_the_body() -> None:
     assert _run(None, 0)["parent"] == "corner"
     assert _run(None, 0, corner=False)["parent"] == "body"
+
+
+@pytest.mark.skipif(NODE is None, reason="node is not installed")
+def test_a_head_script_adds_the_toggle_on_dom_content_loaded() -> None:
+    """Inlined in ``<head>``, the script runs before the body exists: the stored theme applies at once and
+    the button waits for ``DOMContentLoaded``, then lands under the brand and still cycles."""
+    out = _run("dark", 3, deferred=True)
+    assert out["early"] == {"button": False, "theme": "dark", "events": ["DOMContentLoaded"]}
+    assert out["id"] == "theme-toggle" and out["parent"] == "corner"
+    assert out["themes"] == ["dark", "auto", "light", "dark"]
+    assert out["stored"] == "dark"
