@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Plan 1021: Plan Tagging Single Aggregate Tag Folds the Rest</title>
+<style>
+:root { color-scheme: light dark; --fg: #1f2328; --bg: #ffffff; --muted: #59636e; --line: #d1d9e0;
+  --code: #f6f8fa; --ok: #1a7f37; --run: #9a6700; --bad: #cf222e; --accent: #0550ae; --code-fg: #8250df; }
+@media (prefers-color-scheme: dark) { :root { --fg: #e6edf3; --bg: #0d1117; --muted: #9198a1;
+  --line: #3d444d; --code: #151b23; --ok: #3fb950; --run: #d29922; --bad: #f85149; --accent: #79c0ff;
+  --code-fg: #d2a8ff; } }
+body { font: 15px/1.5 system-ui, sans-serif; color: var(--fg); background: var(--bg); max-width: 62rem;
+  margin: 2rem auto; padding: 0 1rem; }
+h1, h2, h3 { color: var(--accent); }
+code { font: 13px ui-monospace, monospace; background: var(--code); color: var(--code-fg); padding: 0 .25em;
+  border-radius: 4px; overflow-wrap: anywhere; }
+a { color: inherit; }
+.note, .meta { color: var(--muted); }
+dl.head { display: grid; grid-template-columns: max-content 1fr; gap: .15rem 1rem; }
+dl.head dt { font-weight: 600; } dl.head dd { margin: 0; }
+table { border-collapse: collapse; } th, td { border: 1px solid var(--line); padding: .25em .5em; }
+.item { border-top: 1px solid var(--line); padding: .5rem 0 1rem; }
+.summary { list-style: none; margin: .25rem 0 1rem; padding: 0; }
+.summary li { margin: .1rem 0; }
+.summary .status { margin-left: .5rem; }
+.decision { border-top: 1px solid var(--line); padding: .25rem 0 .75rem; }
+.decision h3 { margin: .5rem 0; }
+.pick { margin: .5rem 0 .1rem; }
+.options { margin: 0 0 .5rem; }
+.options.chosen { color: var(--ok); }
+.options.unchosen { color: var(--muted); }
+.why { margin: .25rem 0 0; }
+.status, .mark { font: 600 12px ui-monospace, monospace; padding: .1em .6em; border: 1px solid currentColor;
+  border-radius: 1em; color: var(--muted); vertical-align: middle; }
+.mark.chosen { font-weight: 700; color: var(--ok); }
+.mark.open { font-weight: 700; color: var(--bad); }
+.mark.unchosen { color: var(--muted); }
+.status[data-status="COMPLETE"], .status[data-status="CLOSED_NO_ACTION"] { color: var(--ok); }
+.status[data-status="IN_PROGRESS"] { color: var(--run); }
+.status[data-status="BLOCKED"] { color: var(--bad); }
+.receipt { border-left: 3px solid var(--line); padding-left: .75rem; }
+.change { border-top: 1px dashed var(--line); padding: .25rem 0; }
+:target { outline: 2px solid var(--run); outline-offset: 4px; }
+</style>
+</head>
+<body>
+<h1>Plan 1021: Plan Tagging Single Aggregate Tag Folds the Rest</h1>
+<p class="note">Written by <code>plan.py new</code>, <code>plan_api.write</code>, <code>plan.py freeze</code> from <code>1021_Plan_Tagging_Single_Aggregate_Tag_Folds_the_Rest_ActionPlan.json</code>; <code>plan.py render</code> restores a missing page and its live.js. Change the JSON through the driver; edits to this file are overwritten.</p>
+<p class="note"><span id="live-missing">No live.js beside this page, so every item reads PENDING: run <code>plan.py render 1021</code> to write it.</span><span id="live-built" hidden>live.js built <code id="live-built-at"></code>; after a pull, run <code>plan.py render 1021</code>.</span></p>
+<dl class="head"><dt>Plan created</dt><dd>2026-11-16</dd><dt>Spec</dt><dd>none</dd><dt>Branch</dt><dd>1162-plan-skill-tag-archive -&gt; main</dd><dt>Base commit</dt><dd><code>36c328e</code></dd><dt>Frozen</dt><dd>2026-11-16 at <code>a6ff3b5</code></dd><dt>Execution model</dt><dd>serial</dd></dl>
+<h2 id="status">Status</h2>
+<ul class="summary">
+<li><a href="#item-STR-1">STR-1: Reopen the write-plan strap spec for round 4 at HEAD (D4)</a> <span class="status" data-status-for="STR-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-1">TASK-1: freeze_git archive plumbing: tag name, bytes-fed mktree, commit-tree, reachability</a> <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-2">TASK-2: plan.py archive: fold a plan&#x27;s driver tags into archive/&lt;stem&gt;/r1 and delete them</a> <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-3">TASK-3: Reconcile and check count an archived plan&#x27;s objects as tagged</a> <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-TASK-4">TASK-4: Docs: archive step, tag row and actor wording (issues 284 and 283); harness 0.75.0</a> <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></li>
+<li><a href="#item-STR-2">STR-2: Strap round 4 of write-plan: archive behaviors, greens on the new hash, freeze</a> <span class="status" data-status-for="STR-2" data-status="PENDING">PENDING</span></li>
+</ul>
+<h2>Decisions</h2>
+<section class="decision" id="decision-D1"><h3>D1 What does plan.py archive do on a plan that already has an archive tag?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>fold-again</code> fold the later driver tags into archive/&lt;stem&gt;/r1-&lt;m&gt;, the previous archive commit a parent; no tag ever moves</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>refuse</code> refuse; later driver tags stay as plain tags</li></ul><p class="why">Developer, 2026-11-16, in session: fold again as r1-2</p></section>
+<section class="decision" id="decision-D2"><h3>D2 Does this plan also add an archive to strap specs (strap_lock.py)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>plan-only</code> plan.py archive only; the plumbing in freeze_git.py stays stem-keyed for a later strap archive</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>plan-and-strap</code> plan.py archive and strap.py archive in one plan</li></ul><p class="why">Developer, 2026-11-16, in session: plan only; strap goes to deferred_to_future_plans</p></section>
+<section class="decision" id="decision-D3"><h3>D3 Does this plan fix the issue 283 wording spots issue 284 cites (write-plan SKILL.md:154, PLANS_PIP_Template.md:208-218)?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>fix-here</code> fix both here; todo-cvm4 keeps the bin/ wrapper part</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>leave</code> leave both to issue 283</li></ul><p class="why">Developer, 2026-11-16, in session: fix both here</p></section>
+<section class="decision" id="decision-D4"><h3>D4 How does the write-plan strap spec (Locked at lock r3.4, stale) take the plan.py and SKILL.md changes?</h3><p class="pick"><span class="mark chosen">Chosen</span></p><ul class="options chosen"><li><code>reopen-at-head</code> strap.py reopen write-plan at HEAD before any part edit, round 4 with mechanical archive behaviors, greens for B9-B11, then freeze</li></ul><p class="pick"><span class="mark unchosen">Unchosen</span></p><ul class="options unchosen"><li><code>later</code> no strap item; a separate strap round later</li></ul><p class="why">Developer, 2026-11-16, in session: yes, reopen at HEAD</p></section>
+<h2>Values</h2>
+<table>
+<tr><th>Name</th><th>Value</th><th>Source</th><th>Assumes</th></tr>
+<tr><td>folded driver tag kinds</td><td>base, receipt, and every ledger entry kind: freeze, lock, unlock, arm, reopen, relink</td><td>plugins/harness/lib/harness_lib/plan_lock.py:167-168 (_entry_stem: &lt;kind&gt;/&lt;stem&gt;/r1.&lt;k&gt;, -commit tagged for every non-history entry) and plugins/harness/lib/harness_lib/freeze_ledger.py:31-37 (EntryKind)</td><td>-</td></tr>
+<tr><td>plan round</td><td>1</td><td>plugins/harness/lib/harness_lib/plan_lock.py:37</td><td>-</td></tr>
+<tr><td>re-archive suffix</td><td>r1-&lt;m&gt;, m from 2</td><td>plugins/harness/lib/harness_lib/freeze_git.py:108-110 (base_tag&#x27;s -&lt;m&gt; form)</td><td>fold-again</td></tr>
+</table>
+<h2>Formats</h2>
+<ul>
+<li><strong>archive tag name, read by seen_plan_ids through _PLAN_TAG</strong>: <code>archive/plan/1021-plan-tagging-single-aggregate-tag-folds-the-rest/r1</code>, copied from <code>plugins/harness/lib/harness_lib/plan_lock.py:41</code></li>
+<li><strong>receipt tag name, parsed by plan_archive into receipts/&lt;ITEM&gt;[.n]</strong>: <code>receipt/plan/0001-add-operators/TASK-2-tree.2</code>, copied from <code>plugins/harness/lib/harness_lib/plan_lock.py:645-652</code></li>
+<li><strong>entry tag name, parsed by plan_archive into freezes/r1.&lt;k&gt; or a parent</strong>: <code>freeze/plan/0001-add-operators/r1.3-tree, lock/plan/0001-add-operators/r1.4-commit.2</code>, copied from <code>plugins/harness/lib/harness_lib/freeze_git.py:113-120</code></li>
+</ul>
+<h2>Sweeps</h2>
+<ul>
+<li><strong>S1</strong> <code>&quot;tag&quot;, &quot;--list&quot;</code>: <code>plugins/harness/lib/harness_lib/freeze_git.py</code> (tag_seqs matches ^[^/]+/&lt;stem&gt;/r1\.(\d+)- only; archive/&lt;stem&gt;/r1 and r1-&lt;m&gt; never match), <code>plugins/harness/lib/harness_lib/plan_lock.py</code> (prefix lists of base, receipt and -commit tags; _PLAN_TAG also counts archive ids, as wanted), <code>plugins/harness/lib/harness_lib/strap_lock.py</code> (strap stems (skill/&lt;name&gt;); out of scope (D2)), <code>tests/lib/test_freeze_git.py</code> (test helper listing tags; unaffected), <code>tests/scripts/_plan_lock_helpers.py</code> (tag_target helper; reused by the archive tests), <code>tests/scripts/test_plan_lock.py</code> (tags() helper; unaffected), <code>tests/scripts/test_plan_relink_lock.py</code> (tag listing in relink tests; unaffected), <code>tests/scripts/test_strap_lock.py</code> (strap tests; out of scope (D2)), <code>tests/scripts/test_strap_relink_lock.py</code> (strap tests; out of scope (D2))</li>
+<li><strong>S2</strong> <code>archive/(plan|skill)/</code>: <code>docs/TODO/RepoToDo.json</code> (todo-4zhu&#x27;s own summary; no code uses the archive/ namespace yet)</li>
+<li><strong>S3</strong> <code>\b_tagger\b</code>: <code>plugins/harness/lib/harness_lib/plan_lock.py</code> (renamed to tagger (TASK-2); the two uses at :230 and :263 follow), <code>plugins/harness/lib/harness_lib/strap_lock.py</code> (strap&#x27;s own _tagger; untouched (D2))</li>
+</ul>
+<h2>Tasks</h2>
+<section class="item" id="item-STR-1" data-item="STR-1">
+<h3>STR-1: Reopen the write-plan strap spec for round 4 at HEAD (D4) <span class="status" data-status-for="STR-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>docs/plans/strap/write-plan/SkillSpec.json</code>, <code>docs/plans/freezes/skill/write-plan/</code></p>
+<p class="action">Before any edit to a write-plan strap part (plan.py, SKILL.md, README.md and the rest the spec lists), with the developer&#x27;s OK given 2026-11-16 in session, run strap.py reopen write-plan with the default base (HEAD, whose parts equal the working tree). The spec is Locked at lock r3.4 and stale since plan 1020; the reopen keeps round 3 in rounds, sets mode edit, moves base, appends a reopen entry and tags the new base. Relay its tag: and push: lines. Record on the commit or index holding SkillSpec.json and the reopen entry.</p>
+<ul>
+<li>Run <code>sh &quot;${CLAUDE_PLUGIN_ROOT}/scripts/hpy&quot; &quot;${CLAUDE_PLUGIN_ROOT}/scripts/strap.py&quot; reopen write-plan</code>: reopen [done] | write-plan | round 4</li>
+<li>Record it: <code>plan.py record 1021 STR-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-1" data-item="TASK-1">
+<h3>TASK-1: freeze_git archive plumbing: tag name, bytes-fed mktree, commit-tree, reachability <span class="status" data-status-for="TASK-1" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> none</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/freeze_git.py</code>, <code>tests/lib/test_freeze_git_archive.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/freeze_git.py:34-40</code> holds <code>capture_output=True, text=True</code></li>
+<li><code>plugins/harness/lib/harness_lib/freeze_git.py:108-110</code> holds <code>def base_tag(stem: str, round: int, m: int = 1) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/freeze_git.py:127-130</code> holds <code>pattern = re.compile(rf&quot;^[^/]+/{re.escape(stem)}/r{round}\.(\d+)-&quot;)</code></li>
+<li><code>plugins/harness/lib/harness_lib/freeze_git.py:195-196</code> holds <code>def _on_head(repo: PathLike, commit: Optional[str]) -&gt; bool:</code></li>
+</ul>
+<p class="action">In plugins/harness/lib/harness_lib/freeze_git.py add, beside the name builders and with the module docstring updated: archive_tag(stem, round, m=1) -&gt; archive/&lt;stem&gt;/r&lt;N&gt; or archive/&lt;stem&gt;/r&lt;N&gt;-&lt;m&gt; (as base_tag does for m); mktree(repo, entries: Mapping[str, str]) -&gt; tree sha: a tree whose entries are the named subtrees (mode 040000), built by git mktree -z with stdin given as bytes (a _run_bytes helper beside _run: subprocess.run with input=bytes, no text mode), entries joined with NUL and sorted by name, so text-mode newline translation on Windows can never add \r to a name; an empty mapping gives the empty tree; commit_tree(repo, tree, parents, message) -&gt; commit sha via git commit-tree with one -p per distinct parent in first-seen order and the message on stdin (-F -); archive_tips(repo, stem) -&gt; the commits archive/&lt;stem&gt;/r&lt;N&gt;[-&lt;m&gt;] tags peel to, ordered by m (the plain name first), other stems never; reaches(repo, tips, obj) -&gt; True when obj is a commit and an ancestor of (or equal to) any tip (merge-base --is-ancestor; a tree or a missing object gives False); tree_held(repo, tips, tree) -&gt; True when tree is any subtree listed by git ls-tree -r -d -z of a tip; delete_tags(repo, names) -&gt; git tag -d of the names (no call for none). Every git call keeps -C repo; FreezeGitError on a failing step. Copy the planned test file to tests/lib/test_freeze_git_archive.py first.</p>
+<ul>
+<li>Test <code>tests/lib/test_freeze_git_archive.py::test_archive_tag_names</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git_archive.py::test_mktree_feeds_bytes_and_keeps_names_exact</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git_archive.py::test_mktree_of_nothing_is_the_empty_tree</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git_archive.py::test_commit_tree_takes_each_parent_once_in_order</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git_archive.py::test_archive_tips_reaches_and_tree_held</code> fails with AttributeError, then passes</li>
+<li>Test <code>tests/lib/test_freeze_git_archive.py::test_delete_tags_removes_only_the_named</code> fails with AttributeError, then passes</li>
+<li>Run <code>python -m pytest tests/lib/test_freeze_git_archive.py tests/lib/test_freeze_git.py -q</code>: all pass</li>
+<li>Record it: <code>plan.py record 1021 TASK-1 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-2" data-item="TASK-2">
+<h3>TASK-2: plan.py archive: fold a plan&#x27;s driver tags into archive/&lt;stem&gt;/r1 and delete them <span class="status" data-status-for="TASK-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-1, STR-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_archive.py</code>, <code>plugins/harness/scripts/plan.py</code>, <code>plugins/harness/lib/harness_lib/plan_lock.py</code>, <code>tests/scripts/test_plan_archive.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/scripts/plan.py:1083-1087</code> holds <code>&quot;relink&quot;: cmd_relink,</code></li>
+<li><code>plugins/harness/scripts/plan.py:1071-1080</code> holds <code>def _lock_parsers(sub: Any) -&gt; None:</code></li>
+<li><code>plugins/harness/scripts/plan.py:1015-1021</code> holds <code>entry, lines = pk.relink(repo, plan_file, plan, args.to, save)</code></li>
+<li><code>plugins/harness/scripts/plan.py:9-18</code> holds <code>Freeze ledger and tags (``harness_lib.plan_lock``)</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:208-210</code> holds <code>def _tagger(repo: Path) -&gt; Iterator[None]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:230</code> holds <code>with _tagger(repo):</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:263</code> holds <code>with _tagger(repo):</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:79-81</code> holds <code>def stem_of(plan_file: Path, plan: pm.ActionPlan) -&gt; str:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:195-196</code> holds <code>def preflight(repo: Path, tags: Tags, fresh: Sequence[str] = ()) -&gt; None:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:645</code> holds <code>prefix = f&quot;receipt/{stem_of(plan_file, plan)}/{item_id}-{part}&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/freeze_git.py:161</code> holds <code>def ensure_tag(repo: PathLike, name: str, target: str, message: str) -&gt; Optional[str]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:167-168</code> holds <code>return f&quot;{entry.kind.value}/{stem}/r{entry.round}.{entry.seq}&quot;</code></li>
+<li><code>plugins/harness/lib/harness_lib/freeze_ledger.py:31-37</code> holds <code>relink = &quot;relink&quot;</code></li>
+</ul>
+<p class="action">New plugins/harness/lib/harness_lib/plan_archive.py (module docstring, functions under 50 lines) and an archive subcommand in plugins/harness/scripts/plan.py. driver_tags(repo, stem): {name: peeled object} of every tag under &lt;stem&gt;/ whose first segment is base, receipt or a freeze_ledger.EntryKind value (freeze, lock, unlock, arm, reopen, relink), archive/ tags never: relink, arm and unlock entries carry &lt;kind&gt;/&lt;stem&gt;/r1.&lt;k&gt;-commit tags (plan_lock._entry_stem), and they fold like the rest. The fold: a receipt/&lt;stem&gt;/&lt;ITEM&gt;-tree[.n] tag puts its tree at receipts/&lt;ITEM&gt;[.n]; a receipt -commit[.n] tag puts the commit&#x27;s tree at receipts/&lt;ITEM&gt;[.n] (receipts/&lt;ITEM&gt;-commit[.n] when a -tree tag already took that name) and the commit among the parents; freeze/ and lock/ &lt;stem&gt;/r1.&lt;k&gt;-tree put the tree at freezes/r1.&lt;k&gt;; every &lt;kind&gt;/&lt;stem&gt;/r1.&lt;k&gt;-commit[.n] tag of any entry kind and every base tag (r1 and r1-&lt;m&gt;) add the commit to the parents. Re-archive (D1): when fg.archive_tips(repo, stem) is not empty, the new name is fg.archive_tag(stem, 1, m) with m one past the highest existing (the plain name counts as 1) and the last tip is the first parent. Message: &#x27;Archive of &lt;stem&gt;: every base, receipt and ledger entry object&#x27;, a blank line, then one &#x27;&lt;tag name&gt; &lt;sha40&gt;&#x27; line per folded tag sorted by name (plus &#x27;previous: &lt;archive tag&gt; &lt;sha40&gt;&#x27; on a re-archive). Build with fg.mktree (receipts and freezes subtrees, then the root holding whichever are non-empty) and fg.commit_tree inside plan_lock&#x27;s identity fallback (rename plan_lock._tagger to tagger, its uses at :230 and :263 follow; S3). Before any tag is created, verify through the module attributes fg.reaches (each folded commit) and fg.tree_held (each folded tree) with the new commit as the only tip; each miss is a problem &#x27;&lt;name&gt; (&lt;sha7&gt;) is not reachable from the archive; nothing tagged or deleted&#x27; and the command refuses (PlanError). Then preflight and create the archive tag (pk.preflight, fg.ensure_tag, annotated, message &#x27;&lt;stem&gt;: archive of round 1&#x27;), then fg.delete_tags on the folded names. Output: &#x27;archive [done] | plan &lt;id&gt; | &lt;archive tag&gt; -&gt; &lt;sha7&gt; | folded &lt;n&gt; tag(s)&#x27;, &#x27;tag: &lt;archive tag&gt; -&gt; &lt;sha7&gt;&#x27;, &#x27;push: git push origin &lt;archive tag&gt;&#x27;, &#x27;deleted: &lt;folded names sorted, space-joined&gt;&#x27;, and with --remote &#x27;remote: git push origin --delete &lt;folded names but receipt/ ones, sorted&gt;&#x27; (no line when none is left). No driver tags: problem &#x27;plan &lt;id&gt; has no driver tags to archive&#x27;. The command runs no reconcile. plan.py: cmd_archive, an archive parser in _lock_parsers (help: fold the plan&#x27;s driver tags into one archive tag, on the developer&#x27;s explicit ask; --remote: also print the remote delete line), COMMANDS entry, and an archive PLAN [--remote] section in the module docstring that also states the check change of TASK-3. Copy the planned test file to its repo path first.</p>
+<ul>
+<li>Test <code>tests/scripts/test_plan_archive.py::test_archive_folds_every_driver_tag_into_one</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_archive.py::test_archive_remote_line_skips_receipt_tags</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_archive.py::test_archive_again_folds_later_tags_into_r1_2</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_archive.py::test_archive_folds_the_commit_tags_of_every_entry_kind</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_archive.py::test_archive_refuses_when_an_object_is_unreachable</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/scripts/test_plan_archive.py tests/scripts/test_plan_lock.py tests/scripts/test_plan_relink_lock.py -q</code>: all pass</li>
+<li>Record it: <code>plan.py record 1021 TASK-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-3" data-item="TASK-3">
+<h3>TASK-3: Reconcile and check count an archived plan&#x27;s objects as tagged <span class="status" data-status-for="TASK-3" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-2</p>
+<p><strong>Files:</strong> <code>plugins/harness/lib/harness_lib/plan_lock.py</code>, <code>plugins/harness/lib/harness_lib/freeze_git.py</code>, <code>tests/scripts/test_plan_archive_check.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:250-264</code> holds <code>def reconcile(repo: Path, plan_file: Path, plan: pm.ActionPlan) -&gt; Tuple[List[str], List[str]]:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:286</code> holds <code>more, late = reconcile(repo, plan_file, plan)</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:563-573</code> holds <code>lines = [] if _on_head(repo, base) else [f&quot;off-history: {base[:7]} ({role})&quot;]</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:583-595</code> holds <code>if entry.tree and _peel(repo, tree_tag(stem, entry.kind.value, entry.seq)) != entry.tree:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:618-632</code> holds <code>lines = reconcile_lines(repo, plan_file, plan) + _base_lines(repo, plan, stem, scenario)</code></li>
+<li><code>plugins/harness/scripts/plan.py:377</code> holds <code>*pk.reconcile_lines(repo, plan_file, plan)]))</code></li>
+<li><code>plugins/harness/scripts/plan.py:880</code> holds <code>return lines + pk.reconcile_lines(repo, plan_file, plan)</code></li>
+<li><code>plugins/harness/scripts/plan.py:983</code> holds <code>*pk.reconcile_lines(repo, plan_file, plan)]))</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:182-187</code> holds <code>def base_held(repo: Path, stem: str, base: str) -&gt; bool:</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:321</code> holds <code>pending = Pending(stem, earlier, seq, base_tags(stem, plan.base_commit, repo))</code></li>
+<li><code>plugins/harness/lib/harness_lib/plan_lock.py:592</code> holds <code>tagged = git(repo, &quot;tag&quot;, &quot;--list&quot;, f&quot;{_entry_stem(stem, entry)}-commit*&quot;).stdout.split()</code></li>
+</ul>
+<p class="action">In plugins/harness/lib/harness_lib/plan_lock.py, with tips = fg.archive_tips(repo, stem) and folded = fg.archived_names(repo, tips) read once per call (archived_names, new in plugins/harness/lib/harness_lib/freeze_git.py: the set of tag names the &#x27;&lt;name&gt; &lt;sha40&gt;&#x27; lines of the tips&#x27; commit messages list; empty for no tips): reconcile drops each row whose entry has a &#x27;&lt;entry stem&gt;-commit&#x27; or &#x27;-commit.&lt;n&gt;&#x27; name in folded, so an entry an archive folded gets no new -commit tag, even after a rebase moved the commit that added its file, while an entry written after the archive (a refreeze, relink, arm or unlock) is tagged as before and folds into r1-&lt;m&gt; (D1); base_held is also True when an archive reaches the base (fg.reaches), so a refreeze after the archive tags no base; _base_lines prints off-history only when the base is off HEAD&#x27;s history and no archive reaches it, and untagged only when no base tag peels to it and no archive reaches it; _entry_lines prints a tree line only when no tree tag holds the entry&#x27;s tree and no archive tree holds it (fg.tree_held), and the commit line only when the entry has no -commit name in folded (the archive keeps that entry&#x27;s commit as a parent). An object outside every archive warns as before. Update the module docstrings of both files and the check_lines docstring. Copy the planned test file to its repo path first.</p>
+<ul>
+<li>Test <code>tests/scripts/test_plan_archive_check.py::test_commands_after_archive_tag_nothing_and_warn_nothing</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_archive_check.py::test_a_rewritten_base_the_archive_reaches_is_quiet</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_archive_check.py::test_an_entry_written_after_the_archive_is_tagged_and_folds_again</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/scripts/test_plan_archive_check.py::test_a_tree_outside_the_archive_still_warns</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/scripts/test_plan_archive_check.py tests/scripts/test_plan_archive.py tests/scripts/test_plan_lock.py tests/scripts/test_plan_relink_lock.py -q</code>: all pass</li>
+<li>Record it: <code>plan.py record 1021 TASK-3 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-TASK-4" data-item="TASK-4">
+<h3>TASK-4: Docs: archive step, tag row and actor wording (issues 284 and 283); harness 0.75.0 <span class="status" data-status-for="TASK-4" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> sonnet | <strong>Depends on:</strong> TASK-2, TASK-3, STR-1</p>
+<p><strong>Files:</strong> <code>plugins/harness/skills/write-plan/SKILL.md</code>, <code>plugins/harness/skills/write-plan/README.md</code>, <code>plugins/harness/schemas/PLANS_PIP_Template.md</code>, <code>plugins/harness/schemas/README.md</code>, <code>README.md</code>, <code>plugins/harness/.claude-plugin/plugin.json</code>, <code>docs/RELEASES/v1.0.0.md</code>, <code>tests/skills/test_write_plan_archive_contract.py</code></p>
+<p><strong>Anchors:</strong></p>
+<ul>
+<li><code>plugins/harness/skills/write-plan/SKILL.md:153-155</code> holds <code>after the developer commits the freeze run `PLAN check &lt;id&gt;`</code></li>
+<li><code>plugins/harness/skills/write-plan/SKILL.md:144</code> holds <code>| `receipt/&lt;stem&gt;/&lt;ITEM&gt;-commit` or `-tree` |</code></li>
+<li><code>plugins/harness/skills/write-plan/SKILL.md:183-188</code> holds <code>**Relink.** After the developer rebases or squashes</code></li>
+<li><code>plugins/harness/skills/write-plan/SKILL.md:190</code> holds <code>**What a record proves.**</code></li>
+<li><code>plugins/harness/skills/write-plan/README.md:45</code> holds <code>| Relink | `PLAN relink &lt;id&gt; [--to REF]` |</code></li>
+<li><code>plugins/harness/skills/write-plan/README.md:129</code> holds <code>6. **Before the merge**: `PLAN check &lt;id&gt;` and `PLAN verify &lt;id&gt;`.</code></li>
+<li><code>plugins/harness/schemas/README.md:152</code> holds <code>**Tags:** the same commands create annotated, local tags</code></li>
+<li><code>plugins/harness/schemas/PLANS_PIP_Template.md:206-213</code> holds <code>## Merge/Integration</code></li>
+<li><code>plugins/harness/schemas/PLANS_PIP_Template.md:210</code> holds <code>1. Merge worktrees back to feature branch</code></li>
+<li><code>README.md:26</code> holds <code>`relink` re-points the base after a rebase</code></li>
+<li><code>plugins/harness/.claude-plugin/plugin.json:3</code> holds <code>&quot;version&quot;: &quot;0.74.0&quot;,</code></li>
+<li><code>docs/RELEASES/v1.0.0.md:28</code> holds <code>| harness | 0.65.1 | 0.74.0 |</code></li>
+<li><code>docs/RELEASES/v1.0.0.md:177</code> holds <code>Fix(write-plan): `plan.py check` reports a decision id used twice</code></li>
+</ul>
+<p class="action">plugins/harness/skills/write-plan/SKILL.md: an **Archive.** paragraph after **Relink.**: PLAN archive &lt;id&gt; [--remote] runs only on the developer&#x27;s explicit ask, at merge time; it folds the plan&#x27;s base, receipt and ledger entry tags (freeze, lock, arm, unlock, relink) into one annotated tag archive/&lt;stem&gt;/r1 over a plumbing commit (receipts/ and freezes/ subtrees, the base, entry and receipt commits as parents, a message mapping each folded name to its object), verifies every object is reachable before tagging, deletes the folded local tags, prints one push: line for the archive and, with --remote, a remote: line for the developer; a later run folds new tags into archive/&lt;stem&gt;/r1-&lt;m&gt;; afterwards no command re-tags an entry the archive folded or a base it reaches, check counts an object the archive holds as tagged in its untagged: and off-history: lines, and an entry written later is tagged as before until the next archive folds it. Add a | `archive/&lt;stem&gt;/r1`, `archive/&lt;stem&gt;/r1-&lt;m&gt;` | row to the tag table, name archive in Related&#x27;s plan_lock line, and reword SKILL.md:153-155 so the actor is the agent: &#x27;so once the developer has committed the freeze, the agent runs `PLAN check &lt;id&gt;`: it creates the `-commit` tag and prints its `push:` line for the developer to run.&#x27; plugins/harness/skills/write-plan/README.md: an Archive row after Relink in the command table and the archive in the merge steps. plugins/harness/schemas/PLANS_PIP_Template.md: the Merge/Integration steps each start with (developer) or (agent), and gain &#x27;(agent) plan.py archive {PLAN_ID}, on the developer&#x27;s explicit ask, after the merge&#x27; (the developer runs the push: line it prints). plugins/harness/schemas/README.md: one sentence in the Tags paragraph on archive/&lt;stem&gt;/r1 (plans only). README.md (root): the write-plan row names archive. plugins/harness/.claude-plugin/plugin.json: 0.74.0 -&gt; 0.75.0. docs/RELEASES/v1.0.0.md: harness row Now 0.75.0, and a line after the Fix(write-plan) decision-id line: Feat(write-plan): plan.py archive folds a finished plan&#x27;s driver tags into one archive tag (issue 284), plus Fix(write-plan): skill and PIP template name the actor of each post-freeze and merge step (issue 283). Copy the planned test file to its repo path first.</p>
+<ul>
+<li>Test <code>tests/skills/test_write_plan_archive_contract.py::test_the_skill_has_an_archive_step</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_write_plan_archive_contract.py::test_the_tag_table_names_the_archive_tag</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_write_plan_archive_contract.py::test_the_agent_runs_check_after_the_freeze_commit</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_write_plan_archive_contract.py::test_the_skill_readme_and_schemas_readme_name_the_archive</code> fails with AssertionError, then passes</li>
+<li>Test <code>tests/skills/test_write_plan_archive_contract.py::test_the_pip_template_merge_steps_name_an_actor</code> fails with AssertionError, then passes</li>
+<li>Run <code>python -m pytest tests/skills/test_write_plan_archive_contract.py tests/skills/test_write_plan_receipts_contract.py tests/skills/test_write_plan_record_contract.py -q</code>: all pass</li>
+<li>Record it: <code>plan.py record 1021 TASK-4 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<section class="item" id="item-STR-2" data-item="STR-2">
+<h3>STR-2: Strap round 4 of write-plan: archive behaviors, greens on the new hash, freeze <span class="status" data-status-for="STR-2" data-status="PENDING">PENDING</span></h3>
+<p class="meta"><strong>Model:</strong> opus | <strong>Depends on:</strong> TASK-2, TASK-3, TASK-4</p>
+<p><strong>Files:</strong> <code>docs/plans/strap/write-plan/SkillSpec.json</code>, <code>docs/plans/freezes/skill/write-plan/</code></p>
+<p class="action">After TASK-1 to TASK-4 are in the tree, through strap.py api write-plan: add_part the plan_archive module (plugins/harness/lib/harness_lib/plan_archive.py); add three mechanical behaviors whose tests are the planned nodes of TASK-2 (tests/scripts/test_plan_archive.py), TASK-3 (tests/scripts/test_plan_archive_check.py) and TASK-4 (tests/skills/test_write_plan_archive_contract.py), red AssertionError, each with a one-line rationale (a driver or file fact a pytest node proves); copy those three test files to docs/plans/strap/write-plan/tests/&lt;repo path&gt;. Run strap.py check write-plan until clean, strap.py red write-plan (it runs at the round-4 base, where archive is absent), then the greens of the earlier judgment behaviors B9, B10 and B11 on the new content hash: strap.py run write-plan &lt;B&gt; --arm green, one strap-scenario-runner dispatch at a time with the printed model, graded with verbatim quotes; a failed green is fixed in SKILL.md and run again on the same scenario. Then strap.py freeze write-plan and relay its tag: and push: lines. Lock waits for the developer&#x27;s explicit ask.</p>
+<ul>
+<li>Run <code>sh &quot;${CLAUDE_PLUGIN_ROOT}/scripts/hpy&quot; &quot;${CLAUDE_PLUGIN_ROOT}/scripts/strap.py&quot; check write-plan</code>: check [ok] | write-plan</li>
+<li>Run <code>sh &quot;${CLAUDE_PLUGIN_ROOT}/scripts/hpy&quot; &quot;${CLAUDE_PLUGIN_ROOT}/scripts/strap.py&quot; red write-plan</code>: red [ok]</li>
+<li>Run <code>sh &quot;${CLAUDE_PLUGIN_ROOT}/scripts/hpy&quot; &quot;${CLAUDE_PLUGIN_ROOT}/scripts/strap.py&quot; freeze write-plan</code>: freeze [done] | write-plan</li>
+<li>Record it: <code>plan.py record 1021 STR-2 --sha &lt;sha&gt;</code> or <code>--staged</code></li>
+</ul>
+<div class="receipt"><p class="note">No receipt.</p></div>
+<p class="changes" hidden></p>
+</section>
+<h2 id="evolution">Design evolution</h2>
+<div id="evolution-entries"><p class="note">No DesignEvolution catalog in live.js.</p></div>
+<script>
+var PIP = {"kinds": {"blocked": "BLOCKED", "closed": "CLOSED_NO_ACTION", "complete": "COMPLETE", "started": "IN_PROGRESS"}, "pending": "PENDING", "reloadMs": 3000, "src": "1021/live.js?t="};
+(function () {
+  "use strict";
+  var last = null;
+  function el(tag, cls, text) {
+    var node = document.createElement(tag);
+    if (cls) { node.className = cls; }
+    if (text !== undefined && text !== null) { node.textContent = String(text); }
+    return node;
+  }
+  function clear(node) { while (node.firstChild) { node.removeChild(node.firstChild); } }
+  function code(text) { return el("code", "", text); }
+  function link(prefix, id) { var a = el("a", "", id); a.href = "#" + prefix + id; return a; }
+  function short(sha) { return String(sha || "").slice(0, 7); }
+  function append(node, parts) {
+    parts.forEach(function (p) { node.appendChild(typeof p === "string" ? document.createTextNode(p) : p); });
+    return node;
+  }
+  function list(label, rows) {
+    var wrap = append(el("div", "", null), [el("strong", "", label + ":")]);
+    var ul = el("ul", "", null);
+    rows.forEach(function (parts) { ul.appendChild(append(el("li", "", null), parts)); });
+    wrap.appendChild(ul);
+    return wrap;
+  }
+  function byItem(live) {
+    var out = {}, rows = (live && live.receipts) || [];
+    if (!Array.isArray(rows)) { rows = Object.keys(rows).map(function (k) { return rows[k]; }); }
+    rows.forEach(function (r) { out[r.item] = r; });
+    return out;
+  }
+  function where(prov) {
+    if (prov.source === "commit") { return "commit " + short(prov.commit) + ", tree " + short(prov.tree); }
+    return "staged, tree " + short(prov.tree);
+  }
+  function drawStatus(node, receipt) {
+    var status = receipt ? (PIP.kinds[(receipt.outcome || {}).kind] || PIP.pending) : PIP.pending;
+    node.textContent = status;
+    node.setAttribute("data-status", status);
+  }
+  function drawStatuses(id, receipt) {
+    Array.prototype.forEach.call(document.querySelectorAll(".status[data-status-for]"), function (node) {
+      if (node.getAttribute("data-status-for") === id) { drawStatus(node, receipt); }
+    });
+  }
+  function cites(change) { return [" (cites ", link("change-", change), ")"]; }
+  function drawDeviations(box, dev) {
+    var extras = (dev.extra_files || []).map(function (x) { return [code(x.path)].concat(cites(x.change)); });
+    var subs = (dev.substitutions || []).map(function (s) {
+      return [code(s.planned), " replaced by ", code(s.node)].concat(cites(s.change));
+    });
+    if (extras.length) { box.appendChild(list("Extra files", extras)); }
+    if (subs.length) { box.appendChild(list("Substitutions", subs)); }
+  }
+  function drawReceipt(box, r) {
+    clear(box);
+    if (!r) { box.appendChild(el("p", "note", "No receipt.")); return; }
+    var outcome = r.outcome || {}, head = "Recorded " + r.date;
+    if (outcome.provenance) { head += ", " + where(outcome.provenance); }
+    box.appendChild(el("p", "", head));
+    box.appendChild(append(el("p", "", null), [el("strong", "", "Evidence: "), String(r.evidence)]));
+    if (outcome.tests) {
+      var tests = outcome.tests;
+      box.appendChild(list("Passed nodes", tests.nodes.map(function (n) { return [code(n)]; })));
+      box.appendChild(append(el("p", "", null), [el("strong", "", "Command: "), code(tests.command)]));
+    }
+    drawDeviations(box, r.deviations || {});
+  }
+  function links(prefix, ids) {
+    var parts = [];
+    ids.forEach(function (id, i) {
+      parts = parts.concat(i ? [", ", link(prefix, id)] : [link(prefix, id)]);
+    });
+    return parts;
+  }
+  function labelled(label, parts) {
+    return append(el("p", "", null), [el("strong", "", label + ": ")].concat(parts));
+  }
+  function drawLinks(node, id, evo) {
+    clear(node);
+    var named = ((evo && evo.changes) || []).filter(function (c) {
+      return (c.items || []).indexOf(id) >= 0;
+    });
+    node.hidden = !named.length;
+    if (!named.length) { return; }
+    append(node, [el("strong", "", "Design changes: ")].concat(links("change-", named.map(function (c) {
+      return c.id;
+    }))));
+  }
+  function drawChange(c) {
+    var box = el("div", "change", null);
+    box.id = "change-" + c.id;
+    box.appendChild(el("h3", "", c.id + " (" + c.phase + ", " + c.date + ", " + c.discovered_by + ")"));
+    var items = links("item-", c.items || []);
+    box.appendChild(labelled("Items", items.length ? items : ["none"]));
+    var was = c.original;
+    box.appendChild(labelled("Was", [was.doc + " " + was.location + ": " + was.indicated]));
+    box.appendChild(labelled("Issue", [c.issue.category + ": " + c.issue.why_free_form]));
+    box.appendChild(labelled("Now", [c.new_outcome.doc + ": " + c.new_outcome.indicated]));
+    box.appendChild(labelled("Why", [c.why_new_outcome.category + ": " + c.why_new_outcome.free_form]));
+    return box;
+  }
+  function drawEvolution(evo) {
+    var box = document.getElementById("evolution-entries");
+    clear(box);
+    var changes = (evo && evo.changes) || [];
+    if (!evo) { box.appendChild(el("p", "note", "No DesignEvolution catalog in live.js.")); return; }
+    if (!changes.length) { box.appendChild(el("p", "note", "The DesignEvolution catalog holds no change.")); }
+    changes.forEach(function (c) { box.appendChild(drawChange(c)); });
+  }
+  function drawBuilt(live) {
+    document.getElementById("live-missing").hidden = !!live;
+    document.getElementById("live-built").hidden = !live;
+    document.getElementById("live-built-at").textContent = live ? String(live.built) : "";
+  }
+  function draw(live) {
+    var key = live ? JSON.stringify(live) : "";
+    if (key === last) { return; }
+    last = key;
+    var receipts = byItem(live), evo = (live && live.evolution) || null;
+    Array.prototype.forEach.call(document.querySelectorAll(".item[data-item]"), function (node) {
+      var id = node.getAttribute("data-item");
+      drawStatuses(id, receipts[id]);
+      drawReceipt(node.querySelector(".receipt"), receipts[id]);
+      drawLinks(node.querySelector(".changes"), id, evo);
+    });
+    drawEvolution(evo);
+    drawBuilt(live);
+  }
+  function load() {
+    var old = document.getElementById("plan-live");
+    if (old) { old.parentNode.removeChild(old); }
+    window.PLAN_LIVE = undefined;
+    var tag = document.createElement("script");
+    tag.id = "plan-live";
+    tag.src = PIP.src + Date.now();
+    tag.onload = function () { draw(window.PLAN_LIVE || null); };
+    tag.onerror = function () { draw(null); };
+    document.head.appendChild(tag);
+  }
+  load();
+  window.setInterval(load, PIP.reloadMs);
+})();
+</script>
+</body>
+</html>
