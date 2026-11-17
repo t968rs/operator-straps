@@ -45,7 +45,8 @@ def merge_updated(pairs: Iterable[Tuple[str, Sequence[str]]]) -> Tuple[ItemField
 
 
 def _resolve(n: int, catalog: Dict[str, Any], raw: str) -> str:
-    """The live id update ``n`` names; a retired, split, unknown or doubled id raises."""
+    """The live id update ``n`` names; a retired, split or unknown id, or a raw naming more than one
+    id, raises."""
     try:
         found = todo_ids.resolve_ids(catalog, [raw])
     except TodoSyncError as exc:

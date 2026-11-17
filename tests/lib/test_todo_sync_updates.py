@@ -113,7 +113,7 @@ def test_a_retired_or_split_id_is_refused() -> None:
 
 @pytest.mark.parametrize("entry, needle", [
     ({"id": ID1, "fields": {"severity": 9}}, "severity must be"),
-    ({"id": ID1, "fields": {"kind": "chore"}}, "update 1"),
+    ({"id": ID1, "fields": {"kind": "chore"}}, "update 1: kind: 'chore' is not one of"),
     ({"id": ID1, "fields": {}}, "update 1 sets no field"),
     ({"id": ID1}, "update 1 sets no field"),
     ({"fields": {"summary": "x"}}, "update 1 names no id"),
@@ -154,11 +154,20 @@ def test_put_updates_writes_nothing_on_a_refusal(make_project, tmp_path: Path) -
     assert inbox.queued(cfg) == []
 
 
-def test_drain_applies_adds_and_updates_in_one_write(make_project) -> None:
+def test_drain_applies_adds_and_updates_in_one_write(make_project, monkeypatch: pytest.MonkeyPatch) -> None:
     cfg = build(make_project)
     _queue(cfg, FIRST, _added(9))
     _queue(cfg, SECOND, _update(ID3, RISE))
+    writes: List[Any] = []
+    real_write = inbox.write_edits
+
+    def counted(*args: Any, **kwargs: Any) -> Any:
+        writes.append(args)
+        return real_write(*args, **kwargs)
+
+    monkeypatch.setattr(inbox, "write_edits", counted)
     result = inbox.drain(cfg, today=DAY)
+    assert len(writes) == 1, "the adds and the updates land in one catalog write"
     assert [issue for _, issue in result.added] == [9]
     assert result.updated == ((ID3, ("severity", "impact")),)
     assert result.overwritten == () and result.rejected == ()
