@@ -2,14 +2,19 @@
 
 ``archive_tag`` names ``archive/<stem>/r<N>`` and ``archive/<stem>/r<N>-<m>``. ``mktree`` builds a tree of
 named subtrees and feeds ``git mktree -z`` bytes, so no entry name gains a ``\\r`` on Windows.
-``commit_tree`` writes a commit over a tree with every distinct parent, in order. ``archive_tips`` lists
-the commits the archive tags of one stem peel to; ``reaches`` and ``tree_held`` answer whether an archive
-keeps a commit or a tree reachable. ``delete_tags`` removes the named local tags only.
+``commit_tree`` writes a commit over a tree with every distinct parent, in order, and stores its message
+without a ``\\r``. ``archive_tips`` lists the commits the archive tags of one stem peel to, plus each
+earlier archive a ``previous:`` line chains to when that line names the commit's first parent (a forged
+line naming any other commit is not followed). ``reaches`` answers whether an archive keeps a commit
+reachable; ``held_trees`` gives its subtree set and ``tree_held`` tests one tree against it.
+``archived_names`` collects the folded tag names of the tips' messages, skipping ``previous:`` lines.
+``delete_tags`` removes the named local tags only.
 
 Every repository is a throwaway one under ``tmp_path``.
 """
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from types import ModuleType
 from typing import Any, List, Tuple
@@ -114,6 +119,7 @@ def test_archived_names_keeps_folded_lines_and_skips_previous(
     assert fg.archived_names(repo, []) == set()
 
 
+@pytest.mark.cross_os
 def test_commit_tree_takes_each_parent_once_in_order(make_project, monkeypatch: pytest.MonkeyPatch) -> None:
     fg = _freeze_git(monkeypatch)
     repo = make_project(files={"a.txt": "a\n"})
@@ -125,6 +131,37 @@ def test_commit_tree_takes_each_parent_once_in_order(make_project, monkeypatch: 
     assert git(repo, "rev-list", "--parents", "-n", "1", commit).split()[1:] == [second, first]
     assert git(repo, "rev-parse", f"{commit}^{{tree}}") == tree
     assert git(repo, "log", "-1", "--format=%B", commit).startswith("Archive of x")
+    raw = subprocess.run(["git", "-C", str(repo), "cat-file", "commit", commit],
+                         capture_output=True, check=True).stdout
+    assert b"\r" not in raw and b"\n\nArchive of x\n\nfreeze/x/r1.1-tree abc\n" in raw
+
+
+def test_archive_tips_follow_a_previous_line_naming_the_first_parent(
+        make_project, monkeypatch: pytest.MonkeyPatch) -> None:
+    fg = _freeze_git(monkeypatch)
+    repo = make_project(files={"a.txt": "a\n"})
+    head = git(repo, "rev-parse", "HEAD")
+    tree = fg.mktree(repo, {})
+    earlier = fg.commit_tree(repo, tree, [head], "Archive one\n")
+    tip = fg.commit_tree(repo, tree, [earlier], f"Archive two\n\nprevious: archive/{STEM}/r1 {earlier}\n")
+    git(repo, "tag", "-a", "-m", "second", fg.archive_tag(STEM, 1, 2), tip)
+    assert fg.archive_tips(repo, STEM) == [tip, earlier]
+
+
+def test_archive_tips_skip_a_previous_line_naming_another_commit(
+        make_project, monkeypatch: pytest.MonkeyPatch) -> None:
+    fg = _freeze_git(monkeypatch)
+    repo = make_project(files={"a.txt": "a\n"})
+    head = git(repo, "rev-parse", "HEAD")
+    tree = fg.mktree(repo, {})
+    orphan = fg.commit_tree(repo, tree, [], "orphan\n")
+    forged = f"previous: archive/{STEM}/r1 {orphan}\n"
+    second_parent = fg.commit_tree(repo, tree, [head, orphan], f"Archive\n\n{forged}")
+    no_parent = fg.commit_tree(repo, tree, [], f"Archive\n\n{forged}")
+    git(repo, "tag", "-a", "-m", "second parent", fg.archive_tag(STEM, 1), second_parent)
+    git(repo, "tag", "-a", "-m", "no parent", fg.archive_tag(OTHER, 1), no_parent)
+    assert fg.archive_tips(repo, STEM) == [second_parent]
+    assert fg.archive_tips(repo, OTHER) == [no_parent]
 
 
 def test_archive_tips_reaches_and_tree_held(make_project, monkeypatch: pytest.MonkeyPatch) -> None:
