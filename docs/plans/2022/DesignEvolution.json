@@ -1,0 +1,38 @@
+{
+  "plan_id": "2022",
+  "feature": "TODO snapshot as one HTML page",
+  "branch_lineage": "main-->1165-todo-snapshot-html",
+  "primary_documents": {
+    "plan": "docs/plans/2022_TODO_snapshot_as_one_HTML_page_ActionPlan.json"
+  },
+  "changes": [
+    {
+      "id": "EX1",
+      "discovered_by": "review-local local-todo-page-2022 (-a)",
+      "phase": "post-exec-start",
+      "items": [
+        "TASK-2",
+        "TASK-3"
+      ],
+      "original": {
+        "doc": "plan",
+        "location": "TASK-2 and TASK-3 files",
+        "indicated": "TASK-2 changes only the todo_sync render, sources, rules, scaffold and report modules; TASK-3 changes canned messages, schema, README, agent prose, provenance, gitignore, version and release notes"
+      },
+      "issue": {
+        "category": "reference-accuracy",
+        "why_categorical": "prose outside the item files still described dated markdown snapshots",
+        "why_free_form": "Review findings M4, M7 and M9: the TodoSnapshots docstring in config.py, the stub_links.py docstrings (and its href encoding of % # ?) and the sync-gh-todo SKILL.md init line still named Markdown or dated snapshots"
+      },
+      "new_outcome": {
+        "doc": "plan",
+        "indicated": "TASK-2 also edits todo_sync/stub_links.py; TASK-3 also edits harness_lib/config.py and skills/sync-gh-todo/SKILL.md"
+      },
+      "why_new_outcome": {
+        "category": "factual-correction",
+        "free_form": "the review closed those findings in the same files; leaving them would ship docs that contradict the page"
+      },
+      "date": "2026-11-17"
+    }
+  ]
+}
