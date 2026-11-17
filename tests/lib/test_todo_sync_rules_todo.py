@@ -11,7 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _todo_helpers import (CATALOG_REL, ID1, ID2, ID3, LEGACY_CATALOG, RESEARCH_REL, SNAP_DIR,  # noqa: E402
+from _todo_helpers import (CATALOG_REL, ID1, ID2, ID3, LEGACY_CATALOG, RESEARCH_REL,  # noqa: E402
                            SNAP_REL, build, config, rule_findings, todo_files)
 
 RULES = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T9", "T10"]
@@ -91,19 +91,11 @@ def test_t2_snapshot_without_header(make_project) -> None:
     assert f.message == "snapshot not produced by render (no header)"
 
 
-def test_t2_newest_snapshot_wins(make_project) -> None:
-    files = todo_files()
-    files[f"{SNAP_DIR}/TODO_Snapshot_2026_1020.md"] = "no header\n"
-    files[f"{SNAP_DIR}/TODO_Snapshot_2026_1018.md"] = files[SNAP_REL]
-    [f] = rule_findings(build(make_project, files), "T2")
-    assert f.file == f"{SNAP_DIR}/TODO_Snapshot_2026_1020.md"
-
-
 def test_t2_no_snapshot(make_project) -> None:
     files = todo_files()
     del files[SNAP_REL]
     [f] = rule_findings(build(make_project, files), "T2")
-    assert (f.severity, f.file) == ("warn", SNAP_DIR)
+    assert (f.severity, f.file) == ("warn", SNAP_REL)
 
 
 def test_t3_unknown_entry_and_missing_source(make_project) -> None:

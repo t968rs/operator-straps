@@ -1,17 +1,16 @@
 """Findings, the check report (``TodoSyncReport.schema.json``), its atomic JSON writer and text formats.
 
-Also renders the TODO snapshot Markdown whose header line rule T2 reads back.
+Also writes the TODO snapshot header line rule T2 reads back; ``snapshot_html`` draws the page under it.
 """
 from __future__ import annotations
 
 import json
 import os
-import re
 import tempfile
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 SCHEMA_VERSION = 1
 SEVERITIES = ("error", "warn")
@@ -159,67 +158,3 @@ def format_markdown(report: Report) -> str:
 def snapshot_header(source: str, top: int, rows_sha256: str, rendered: str) -> str:
     """The first line of a rendered snapshot; rule T2 parses it back."""
     return f"<!-- todo-snapshot source={source} top={top} rows_sha256={rows_sha256} rendered={rendered} -->"
-
-
-def gh_cell(item: Dict[str, Any]) -> str:
-    """Direct issues, else the tracker, else related issues, else ``none``."""
-    if item.get("gh_issues"):
-        return ", ".join(f"#{n}" for n in item["gh_issues"])
-    if item.get("tracker"):
-        return f"tracker #{item['tracker']}"
-    if item.get("related_gh_issues"):
-        return "related " + ", ".join(f"#{n}" for n in item["related_gh_issues"])
-    return "none"
-
-
-_LINK_ESCAPES = str.maketrans({"[": "\\[", "]": "\\]", "(": "\\(", ")": "\\)"})
-_CODE_SPAN = re.compile(r"(?<!`)(`+)(?!`).+?(?<!`)\1(?!`)", re.S)
-
-
-def _escape_links(text: str) -> str:
-    """``text`` with ``[ ] ( )`` backslash-escaped outside code spans; code spans stay verbatim."""
-    out: List[str] = []
-    pos = 0
-    for span in _CODE_SPAN.finditer(text):
-        out += [text[pos:span.start()].translate(_LINK_ESCAPES), span.group(0)]
-        pos = span.end()
-    out.append(text[pos:].translate(_LINK_ESCAPES))
-    return "".join(out)
-
-
-def _item_cell(item: Dict[str, Any], targets: Sequence[str]) -> str:
-    """``id title``, or ``[id](t1) title [2](t2) ...`` with the title unable to form a link."""
-    if not targets:
-        return _cell(f"{item.get('id', '')} {item.get('title', '')}")
-    title = _escape_links(_cell(item.get("title", "")))
-    extra = "".join(f" [{n}]({t})" for n, t in enumerate(targets[1:], 2))
-    return f"[{item.get('id', '')}]({targets[0]}) {title}{extra}"
-
-
-def _table_row(item: Dict[str, Any], targets: Sequence[str] = ()) -> List[str]:
-    score = (item.get("priority") or {}).get("score")
-    return [str(item.get("rank", "")), _item_cell(item, targets),
-            _cell(item.get("kind")), _cell((item.get("blast_radius") or {}).get("level")),
-            _cell((item.get("loe") or {}).get("size")), "" if score is None else f"{score:.2f}",
-            gh_cell(item)]
-
-
-def aligned_table(head: Sequence[str], rows: Sequence[Sequence[str]]) -> List[str]:
-    """Markdown table lines with every column padded to its widest cell."""
-    widths = [max(len(r[c]) for r in [head, *rows]) for c in range(len(head))]
-
-    def fmt(row: Sequence[str]) -> str:
-        return "| " + " | ".join(v.ljust(w) for v, w in zip(row, widths)) + " |"
-
-    return [fmt(head), "|" + "|".join("-" * (w + 2) for w in widths) + "|", *(fmt(r) for r in rows)]
-
-
-def snapshot_markdown(header: str, top: Sequence[Dict[str, Any]], top_n: int, rendered: str,
-                      links: Optional[Sequence[Sequence[str]]] = None) -> str:
-    """The whole snapshot file: header line, title and the top-N table; ``links[k]`` holds the stub link
-    targets of row ``top[k]`` (by position, so rows sharing an id never share links)."""
-    head = ["Rank", "Item", "Kind", "Blast", "LoE", "Score", "GH"]
-    targets = list(links or [])
-    rows = [_table_row(item, targets[k] if k < len(targets) else ()) for k, item in enumerate(top)]
-    table = aligned_table(head, rows)
-    return "\n".join([header, "", f"# TODO Snapshot: Top {top_n} ({rendered})", "", *table]) + "\n"

@@ -1,5 +1,5 @@
-"""The ``scripts/todo_sync.py`` driver: check, render, runner, retire, split, refresh and migrate-ids
-subcommands, exit codes, output formats.
+"""The ``scripts/todo_sync.py`` driver: check, runner, retire, split, refresh and migrate-ids subcommands,
+exit codes, output formats (``render`` lives in ``test_todo_sync_render_page.py``).
 
 Each case runs the script as a subprocess against a ``make_project`` tree built by
 ``tests/lib/_todo_helpers.py``, which copies the ``TodoCatalog.min.json`` fixture (stable ids ID1-ID3) or
@@ -22,12 +22,11 @@ import pytest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "lib"))
 
 from _todo_helpers import (CATALOG_REL, ID1, ID2, ID3, LEGACY_CATALOG, PIP, PIP_REL,  # noqa: E402
-                           RESEARCH_REL, SNAP_DIR, SNAP_REL, STUB_REL, TODO_DIR, config, stub_text,
+                           RESEARCH_REL, SNAP_REL, STUB_REL, config, stub_text,
                            todo_files)
 from conftest import GIT_ENV, PLUGIN_ROOT  # noqa: E402
 
 SCRIPT = PLUGIN_ROOT / "scripts" / "todo_sync.py"
-BETA_STUB = "docs/RESEARCH/Beta/_IMPL_TODO.md"
 REPORT_SCHEMA = json.loads((PLUGIN_ROOT / "schemas" / "TodoSyncReport.schema.json").read_text("utf-8"))
 REPORT_REL = Path(".claude") / "state" / "harness" / "todo-sync" / "report.json"
 NEW_ID = r"todo-[2-9a-hjkmnp-z]{4}"
@@ -141,128 +140,6 @@ def test_alternate_config(make_project, tmp_path: Path) -> None:
     alt.write_text(json.dumps(config()), encoding="utf-8")
     done = _run(["--config", str(alt), "check"], root)
     assert done.returncode == 0 and done.stdout.startswith("todo-sync drift=0"), done.stderr
-
-
-def test_render_then_t2_is_clean(make_project) -> None:
-    files = todo_files()
-    del files[SNAP_REL]
-    files[CATALOG_REL]["items"][0]["title"] = "Pipes | in the title"
-    root = make_project(config(), files=files)
-    done = _run(["render", "--date", "2026-10-21"], root)
-    assert done.returncode == 0, done.stderr
-    written = root / SNAP_DIR / "TODO_Snapshot_2026_1021.md"
-    assert Path(done.stdout.strip()) == written
-    lines = written.read_text(encoding="utf-8").splitlines()
-    assert lines[0].startswith(f"<!-- todo-snapshot source={CATALOG_REL} top=10 rows_sha256=")
-    assert lines[0].endswith(" rendered=2026-10-21 -->")
-    assert lines[2] == "# TODO Snapshot: Top 10 (2026-10-21)"
-    assert lines[4].startswith("| Rank | Item")
-    assert f"| {ID1} Pipes \\| in the title " in lines[6]
-    assert f"| [{ID2}](../../Alpha/_IMPL_TODO.md) Split the loader module " in lines[7]
-    assert "](" not in lines[6] and "](" not in lines[8]
-    assert lines[7].rstrip(" |").endswith("tracker #101") and lines[8].rstrip(" |").endswith("none")
-    assert len({len(line) for line in lines[4:]}) == 1
-    check = _run(["check", "--rules", "T2"], root)
-    assert _report(root)["findings"] == [], check.stdout
-
-
-def _cells(line: str) -> List[str]:
-    return [c.strip() for c in re.split(r"(?<!\\)\|", line)[1:-1]]
-
-
-def test_render_extra_stubs_and_escaping(make_project) -> None:
-    files = todo_files()
-    del files[SNAP_REL]
-    files[BETA_STUB] = stub_text("beta-cache")
-    item = files[CATALOG_REL]["items"][1]
-    item["title"] = "a | [b](c)"
-    item["sources"].append({"type": "impl_stub", "ref": BETA_STUB, "item": "Beta part"})
-    root = make_project(config(), files=files)
-    done = _run(["render", "--date", "2026-10-21"], root)
-    assert done.returncode == 0, done.stderr
-    row = (root / SNAP_DIR / "TODO_Snapshot_2026_1021.md").read_text(encoding="utf-8").splitlines()[7]
-    cells = _cells(row)
-    assert len(cells) == 7
-    assert cells[1] == (f"[{ID2}](../../Alpha/_IMPL_TODO.md) a \\| \\[b\\]\\(c\\) "
-                        "[2](../../Beta/_IMPL_TODO.md)")
-
-
-def _render_rows(make_project, files: dict) -> List[str]:
-    """Render ``files`` (snapshot removed) and return the three table rows."""
-    del files[SNAP_REL]
-    root = make_project(config(), files=files)
-    done = _run(["render", "--date", "2026-10-21"], root)
-    assert done.returncode == 0, done.stderr
-    return (root / SNAP_DIR / "TODO_Snapshot_2026_1021.md").read_text(encoding="utf-8").splitlines()[6:9]
-
-
-def test_render_keeps_code_spans_unescaped(make_project) -> None:
-    files = todo_files()
-    files[CATALOG_REL]["items"][1]["title"] = "Split `load()` from [x](y) and ``a`b[c]``"
-    cells = _cells(_render_rows(make_project, files)[1])
-    assert cells[1] == (f"[{ID2}](../../Alpha/_IMPL_TODO.md) Split `load()` from \\[x\\]\\(y\\) "
-                        "and ``a`b[c]``")
-
-
-def test_render_stubless_title_is_unchanged(make_project) -> None:
-    files = todo_files()
-    files[CATALOG_REL]["items"][2]["title"] = "Pick [x](y)"
-    assert _cells(_render_rows(make_project, files)[2])[1] == f"{ID3} Pick [x](y)"
-
-
-def test_render_without_a_research_catalog_scans_anchors(make_project) -> None:
-    files = todo_files()
-    del files[RESEARCH_REL]
-    files[CATALOG_REL]["items"][1]["sources"] = []
-    cell = _cells(_render_rows(make_project, files)[1])[1]
-    assert cell == f"[{ID2}](../../Alpha/_IMPL_TODO.md) Split the loader module"
-
-
-def test_render_links_rows_by_position_not_id(make_project) -> None:
-    files = todo_files()
-    files[BETA_STUB] = stub_text("beta-cache")
-    items = files[CATALOG_REL]["items"]
-    items[2].update(id=ID2, sources=[{"type": "impl_stub", "ref": BETA_STUB, "item": "Beta"}])
-    rows = _render_rows(make_project, files)
-    assert _cells(rows[1])[1] == f"[{ID2}](../../Alpha/_IMPL_TODO.md) Split the loader module"
-    assert _cells(rows[2])[1] == f"[{ID2}](../../Beta/_IMPL_TODO.md) Choose a cache format"
-
-
-def test_render_tolerates_malformed_link_fields(make_project) -> None:
-    files = todo_files()
-    items = files[CATALOG_REL]["items"]
-    items[0].update(sources=5, catalog_entry_ids=5)
-    items[1]["id"] = [ID2]
-    rows = _render_rows(make_project, files)
-    assert _cells(rows[0])[1] == f"{ID1} Parser drops the last row"
-    assert "](" not in rows[1]
-
-
-def test_render_with_null_stub_name(make_project) -> None:
-    files = todo_files()
-    del files[SNAP_REL]
-    root = make_project(config({"folder": TODO_DIR, "stub_name": None}), files=files)
-    done = _run(["render", "--date", "2026-10-21"], root)
-    assert done.returncode == 0, done.stderr
-    lines = (root / SNAP_DIR / "TODO_Snapshot_2026_1021.md").read_text(encoding="utf-8").splitlines()
-    assert f"| [{ID2}](../../Alpha/_IMPL_TODO.md) Split the loader module " in lines[7]
-
-
-def test_render_creates_the_default_snapshots_folder(make_project) -> None:
-    files = todo_files()
-    del files[SNAP_REL]
-    root = make_project(config(), files=files)
-    done = _run(["render", "--date", "2026-10-21"], root)
-    assert done.returncode == 0, done.stderr
-    assert Path(done.stdout.strip()) == root / SNAP_DIR / "TODO_Snapshot_2026_1021.md"
-    assert _run(["check", "--rules", "T2"], root).returncode == 0 and _report(root)["findings"] == []
-
-
-def test_render_refuses_a_name_the_pattern_rejects(make_project) -> None:
-    cfg = config()
-    cfg["todo"]["snapshots"] = {"name_pattern": r"Snap_(?P<date>\d{8})\.md"}
-    done = _run(["render", "--date", "2026-10-21"], make_project(cfg, files=todo_files()))
-    assert done.returncode == 2 and "does not match" in done.stderr
 
 
 def test_runner_pointer(clean: Path) -> None:

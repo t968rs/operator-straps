@@ -19,7 +19,7 @@ from harness_lib.todo_sync.ids import ALPHABET
 TODO_DIR = "docs/RESEARCH/_TODO"
 CATALOG_REL = f"{TODO_DIR}/RepoToDo.json"
 SNAP_DIR = f"{TODO_DIR}/Snapshots"
-SNAP_REL = f"{SNAP_DIR}/TODO_Snapshot_2026_1019.md"
+SNAP_REL = f"{SNAP_DIR}/TODO_Snapshot.html"
 RESEARCH_REL = f"{TODO_DIR}/ResearchImplementationCatalog.json"
 STUB_REL = "docs/RESEARCH/Alpha/_IMPL_TODO.md"
 PLAN_REL = "docs/PLANS/0001_Sample_ActionPlan.json"

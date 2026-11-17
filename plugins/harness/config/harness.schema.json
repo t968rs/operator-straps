@@ -175,8 +175,8 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Folder render writes dated snapshots into and T2 reads the newest from, relative to folder; null turns T2 and render off."},
-            "name_pattern": {"$ref": "#/$defs/regex", "description": "Regex a snapshot file name must fully match; named group date required (checked at config load); newest by date, else mtime. render always writes TODO_Snapshot_YYYY_MMDD.md (fixed name), so this pattern must also fully match that name or render refuses."}
+            "dir": {"oneOf": [{"$ref": "#/$defs/relPath"}, {"type": "null"}], "description": "Folder, relative to folder, where render rewrites the one snapshot page TODO_Snapshot.html (the page T2 reads) and its todo_live.js stamp, which an open page polls to reload itself; null turns T2 and render off."},
+            "name_pattern": {"$ref": "#/$defs/regex", "description": "Legacy: the name pattern of the dated Markdown snapshots earlier releases wrote. Kept so existing configs validate (named group date still required at config load); no rule or command reads it now that render writes TODO_Snapshot.html."}
           }
         },
         "research": {
@@ -199,7 +199,7 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "repo": {"oneOf": [{"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"}, {"type": "null"}], "description": "owner/name the issue fetch reads; null: the origin remote. Phase 3: the fetch is not built yet, so no rule reads it today."},
+            "repo": {"oneOf": [{"type": "string", "pattern": "^[^/\\s]+/[^/\\s]+$"}, {"type": "null"}], "description": "owner/name read by render, which links each item's gh issue number on the snapshot page to https://github.com/<repo>/issues/N (null: links come only from an item's gh_issue source url, else the number is plain text) and by `todo_sync.py untracked`, `add --file-issue` and `inbox put --file-issue`, which pass it to gh as --repo, where null means the repository gh resolves for the checkout."},
             "max_age_hours": {"type": "number", "exclusiveMinimum": 0, "description": "Issue cache age past which G5 warns (Phase 3; no G rule runs yet) and the /todo summary line shows the age. The start notice does not show it."}
           }
         },

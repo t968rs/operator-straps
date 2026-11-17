@@ -1,5 +1,5 @@
-"""The starter TODO catalog ``todo_sync.py init`` writes: an empty, schema-valid ``RepoToDo.json`` and the first
-snapshot, so a project that has just set ``todo.folder`` has something every sync rule can read.
+"""The starter TODO catalog ``todo_sync.py init`` writes: an empty, schema-valid ``RepoToDo.json`` and the
+snapshot page, so a project that has just set ``todo.folder`` has something every sync rule can read.
 
 ``init_catalog`` never overwrites an existing catalog. The ranking tables are the defaults a new catalog starts
 from; a project edits them in the catalog and ``todo_sync.py refresh`` rescores every item.
@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from harness_lib.config import HarnessConfig
-from harness_lib.todo_sync import TodoSyncError, render_snapshot, snapshot_name
+from harness_lib.todo_sync import TodoSyncError, render_snapshot
 from harness_lib.todo_sync.report import write_atomic
 from harness_lib.todo_sync.sources import posix
 
@@ -71,7 +71,8 @@ _SHA = re.compile(r"^[0-9a-f]{7,40}$")
 
 @dataclass(frozen=True)
 class InitResult:
-    """The files ``init_catalog`` wrote; ``snapshot`` is None when ``todo.snapshots.dir`` is null."""
+    """The catalog and page ``init_catalog`` wrote (the ``todo_live.js`` stamp beside the page is not held);
+    ``snapshot`` is None when ``todo.snapshots.dir`` is null."""
 
     catalog: Path
     snapshot: Optional[Path]
@@ -105,35 +106,25 @@ def _head_sha(root: Path) -> str:
     return sha
 
 
-def _check_snapshot_name(cfg: HarnessConfig, day: dt.date) -> None:
-    """Refuse, before any file is written, a snapshot name ``render_snapshot`` would refuse."""
-    name = snapshot_name(day)
-    pattern = cfg.todo.snapshots.name_pattern
-    if cfg.todo.snapshots.dir and not re.fullmatch(pattern, name):
-        raise TodoSyncError(f"{name} does not match todo.snapshots.name_pattern {pattern}; "
-                            "init wrote nothing")
-
-
 def _first_snapshot(cfg: HarnessConfig, day: dt.date) -> Optional[Path]:
-    """The first snapshot, or None without ``todo.snapshots.dir``; a refusal names the catalog left behind."""
+    """The snapshot page, or None without ``todo.snapshots.dir``; a refusal names the catalog left behind."""
     if not cfg.todo.snapshots.dir:
         return None
     try:
         return render_snapshot(cfg, day)
-    except TodoSyncError as exc:
+    except (TodoSyncError, OSError) as exc:
         raise TodoSyncError(f"{exc}; {posix(cfg.todo.catalog)} was created, finish with todo_sync.py "
                             "render") from exc
 
 
 def init_catalog(cfg: HarnessConfig, today: Optional[dt.date] = None) -> InitResult:
-    """Write the starter catalog and, when ``todo.snapshots.dir`` is set, the first snapshot."""
+    """Write the starter catalog and, when ``todo.snapshots.dir`` is set, the snapshot page."""
     if not cfg.todo.enabled or not cfg.todo.catalog:
         raise TodoSyncError("init needs todo.folder")
     path = cfg.path(cfg.todo.catalog)
     if path.exists():
         raise TodoSyncError(f"{posix(cfg.todo.catalog)} already exists; init never overwrites a catalog")
     day = today or dt.date.today()
-    _check_snapshot_name(cfg, day)
     catalog = starter_catalog(_head_sha(cfg.project_root), day)
     write_atomic(path, json.dumps(catalog, indent=2, ensure_ascii=False) + "\n")
     return InitResult(path, _first_snapshot(cfg, day))

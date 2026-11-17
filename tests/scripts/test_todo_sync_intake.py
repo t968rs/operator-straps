@@ -105,7 +105,7 @@ def test_init_creates_the_catalog_and_refuses_a_second_run(driver, make_project,
     assert driver.main(["--project", str(root), "init"]) == 0
     lines = capsys.readouterr().out.splitlines()
     assert lines[0] == f"created {CATALOG_REL}"
-    assert lines[1].startswith(f"created {SNAP_DIR}/TODO_Snapshot_")
+    assert lines[1] == f"created {SNAP_DIR}/TODO_Snapshot.html"
     assert lines[-1] == "next: todo_sync.py check, or /harness:sync-gh-todo to add the open issues"
     assert (root / CATALOG_REL).is_file()
     before = (root / CATALOG_REL).read_bytes()

@@ -11,8 +11,9 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     in ``rules_skipped``; the todo-watch mod ignores such a subset report instead of reading its drift as
     the whole project's.
 ``render [--date YYYY-MM-DD]``
-    Write ``<todo.snapshots.dir>/TODO_Snapshot_<YYYY>_<MMDD>.md`` (header line, title, top-N table) and
-    print its path.
+    Rewrite the one snapshot page ``<todo.snapshots.dir>/TODO_Snapshot.html`` (T2 header line, catalog
+    summary, top-N table) and its ``todo_live.js`` stamp, which an open page polls to reload itself, and
+    print the page's path. ``--date`` sets the render date the page shows.
 ``runner``
     Write ``<state_dir>/todo-sync/runner.json`` (interpreter, this script, project, report) and print its
     path.
@@ -42,10 +43,11 @@ catalog items, queue items in the inbox, hold the catalog lease, and switch a ca
     untouched.
 ``init [--lease TOKEN]``
     Create the TODO folder, an empty schema-valid catalog (the default ranking tables, no items, the current
-    commit in ``generated_from``) and the first snapshot (skipped when ``todo.snapshots.dir`` is null). Prints
-    one ``created <path>`` line per file. Refuses, exit 2 and nothing written, when the catalog already exists
-    or the snapshot name does not match ``todo.snapshots.name_pattern``; needs ``todo.folder`` and a git
-    commit. A snapshot that fails after the catalog is written names the catalog and ``render`` as the way on.
+    commit in ``generated_from``) and the snapshot page with its ``todo_live.js`` stamp beside it (both
+    skipped when ``todo.snapshots.dir`` is null). Prints a ``created <path>`` line for the catalog and one for
+    the page; the stamp is written alongside the page and not listed. Refuses, exit 2 and nothing written,
+    when the catalog already exists; needs ``todo.folder`` and a git commit. A snapshot that fails after
+    the catalog is written names the catalog and ``render`` as the way on.
 ``untracked``
     List the open GitHub issues (``gh issue list``; ``todo.gh.repo``, else the repository ``gh`` resolves for
     the checkout) that no catalog record covers: no item that resolves it (``gh_issues`` or a ``gh_issue``
@@ -185,7 +187,7 @@ def _parser() -> argparse.ArgumentParser:
     chk.add_argument("--rules", help="Comma-separated rule ids to run (default: all).")
     chk.add_argument("--fail-on", choices=FAIL_LEVELS,
                      help="Exit 1 when a finding reaches this severity (warn: any warn or error).")
-    rnd = sub.add_parser("render", parents=[common], help="Write the dated top-N snapshot.")
+    rnd = sub.add_parser("render", parents=[common], help="Rewrite the snapshot page and its stamp.")
     rnd.add_argument("--date", type=dt.date.fromisoformat, help="Snapshot date (default: today).")
     sub.add_parser("runner", parents=[common], help="Write the runner pointer.")
     _reshapers(sub, common)

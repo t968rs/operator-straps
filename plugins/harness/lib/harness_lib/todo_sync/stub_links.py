@@ -1,9 +1,9 @@
-"""Snapshot item links: an item's ``_IMPL_TODO.md`` stubs and their Markdown link targets.
+"""Snapshot item links: an item's ``_IMPL_TODO.md`` stubs and their link targets.
 
 ``item_stubs`` collects every distinct stub on disk for a TODO item, in route order: ``impl_stub`` source
 refs, then ``<research_folder ref>/<stub_name>``, then each listed research entry's ``stub_path`` followed by
-every stub whose anchor names that entry. ``link_target`` turns a stub path into a target relative to the
-snapshot folder.
+every stub whose anchor names that entry. ``link_target`` turns a stub path into a link target (an ``href``
+value in the snapshot page) relative to the snapshot folder.
 """
 from __future__ import annotations
 
@@ -14,7 +14,8 @@ from typing import Any, Dict, Iterator, List, Optional
 
 from harness_lib.todo_sync.sources import Sources, posix
 
-_ENCODE = {" ": "%20", "(": "%28", ")": "%29", "<": "%3C", ">": "%3E", "|": "%7C"}
+_ENCODE = {"%": "%25", " ": "%20", "#": "%23", "(": "%28", ")": "%29", ":": "%3A", "<": "%3C", ">": "%3E",
+           "?": "%3F", "|": "%7C"}
 
 
 def _norm(ref: Any) -> Optional[str]:
@@ -107,7 +108,12 @@ def item_stubs(src: Sources, item: Dict[str, Any]) -> List[str]:
 
 
 def link_target(stub_rel: str, from_dir_rel: str) -> str:
-    """``stub_rel`` relative to ``from_dir_rel`` (POSIX), with space, parentheses, ``<>`` and ``|``
-    percent-encoded."""
+    """``stub_rel`` relative to ``from_dir_rel`` (POSIX) as an ``href`` value for the snapshot page.
+
+    ``%``, ``#`` and ``?`` are percent-encoded so a path never turns into a bad escape, a fragment or a
+    query, and ``:`` so a first segment never reads as a URL scheme (a relative path needs no literal
+    colon); space, parentheses, ``<>`` and ``|`` are encoded as well. Each character maps once, so an
+    existing ``%`` never double-encodes an escape this function adds.
+    """
     rel = posixpath.relpath("/" + posix(stub_rel), "/" + posix(from_dir_rel))
     return "".join(_ENCODE.get(ch, ch) for ch in rel)

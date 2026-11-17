@@ -152,3 +152,6 @@ def test_link_target() -> None:
     assert link_target(spaced, SNAP_DIR) == "../../A%20B%20%28x%29/_IMPL_TODO.md"
     angled = "docs/RESEARCH/a<b>|c/_IMPL_TODO.md"
     assert link_target(angled, SNAP_DIR) == "../../a%3Cb%3E%7Cc/_IMPL_TODO.md"
+    # %, # and ? each map once: an existing escape gains one %25, never a second pass.
+    marked = "docs/RESEARCH/a%20#b?c/_IMPL_TODO.md"
+    assert link_target(marked, SNAP_DIR) == "../../a%2520%23b%3Fc/_IMPL_TODO.md"
