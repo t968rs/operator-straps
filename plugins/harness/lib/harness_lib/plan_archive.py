@@ -194,7 +194,8 @@ def unreachable(repo: Path, commit: str, fold: Fold) -> List[str]:
     """A problem per folded commit the archive does not reach and per folded tree it does not hold."""
     tips = [commit]
     missed = {name: obj for name, obj in fold.commits.items() if not fg.reaches(repo, tips, obj)}
-    missed.update({name: obj for name, obj in fold.trees.items() if not fg.tree_held(repo, tips, obj)})
+    held = fg.held_trees(repo, tips)
+    missed.update({name: obj for name, obj in fold.trees.items() if obj not in held})
     return [UNREACHABLE.format(name=name, sha7=missed[name][:7]) for name in sorted(missed)]
 
 
