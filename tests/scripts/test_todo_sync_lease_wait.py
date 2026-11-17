@@ -87,7 +87,7 @@ def test_the_wait_defaults_to_the_lock_wait(driver) -> None:
     assert getattr(args, "wait", "missing") is None
 
 
-@pytest.mark.parametrize("value", ["-1", "soon"])
+@pytest.mark.parametrize("value", ["-1", "soon", "inf", "1e999"])
 def test_the_wait_is_a_non_negative_number(driver, capsys, value: str) -> None:
     with pytest.raises(SystemExit):
         driver._parser().parse_args(["lease", "acquire", "--owner", "x", "--wait", value])

@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+from harness_lib.todo_sync import updates
+
 _PLUGIN_ROOT = Path(__file__).resolve().parents[2] / "plugins" / "harness"
 _SKILL = _PLUGIN_ROOT / "skills" / "todo-edit" / "SKILL.md"
 _AGENT = _PLUGIN_ROOT / "agents" / "todo-editor.md"
@@ -69,7 +71,10 @@ def test_the_skill_drains_the_inbox_once_after_the_update_agents(parser) -> None
     drain = re.search(rf"^{re.escape(_LAUNCHER)} (add --inbox)\s*$", body, re.MULTILINE)
     assert drain, "the skill never drains the inbox through the launcher"
     assert parser.parse_args(shlex.split(drain.group(1))).inbox
-    assert body.index("harness:todo-editor") < drain.start()
+    assert body.index('subagent_type="harness:todo-editor"') < drain.start()
+    assert body.index("## Step 2") < drain.start()
+    drains = re.findall(rf"^{re.escape(_LAUNCHER)} add --inbox\s*$", body, re.MULTILINE)
+    assert len(drains) == 1, f"the skill drains the inbox {len(drains)} times"
     assert "inbox: empty" in body
 
 
@@ -83,9 +88,11 @@ def test_the_agent_queues_updates_and_holds_no_lease() -> None:
 
 def test_the_agent_names_the_fields_an_update_may_set() -> None:
     update = _agent_section("update")
-    for field in ("`summary`", "`files`", "`code_snippet`", "`proposed_change`", "`severity`", "`loe`"):
-        assert field in update, field
-    assert "`rank`" in update, "the section names a field the script refuses"
+    sentence = re.search(r"Choose new values only for (.+?), and only for", update, re.DOTALL)
+    assert sentence, "the update section has no 'Choose new values only for ...' sentence"
+    named = set(re.findall(r"`([a-z_]+)`", sentence.group(1)))
+    assert named == set(updates.UPDATE_FIELDS), named ^ set(updates.UPDATE_FIELDS)
+    assert "`rank`" in update, "the section never names rank among the refused fields"
 
 
 def test_the_agent_reports_queued_updates_under_added() -> None:

@@ -16,6 +16,7 @@ _AGENT = Path(__file__).resolve().parents[2] / "plugins" / "harness" / "agents" 
 
 def _section(name: str) -> str:
     body = _AGENT.read_text(encoding="utf-8")
+    assert f"\n## {name}\n" in body, f"todo-editor.md has no {name} section"
     return body.split(f"\n## {name}\n", 1)[1].split("\n## ", 1)[0]
 
 
@@ -25,7 +26,10 @@ def _steps(section: str) -> List[str]:
 
 
 def _acquire_step(name: str) -> int:
-    return next(n for n, step in enumerate(_steps(_section(name))) if "TS lease acquire" in step)
+    steps = _steps(_section(name))
+    index = next((n for n, step in enumerate(steps) if "TS lease acquire" in step), None)
+    assert index is not None, f"todo-editor.md {name} section has no TS lease acquire step"
+    return index
 
 
 def test_split_writes_its_spec_before_it_takes_the_lease() -> None:
