@@ -208,7 +208,8 @@ in a ledger of write-once entry files, and the drivers tag what each entry names
    its first parent.
 
    Afterwards no command re-tags an entry the archive folded or a base it reaches, and `check` prints no
-   `untagged:` line for an object an archive holds and no `off-history:` line for a base an archive reaches.
+   `untagged:` line for an object an archive holds; a base off HEAD's history still prints `off-history:`,
+   the relink cue, whether an archive reaches it or not.
    An entry written later (a refreeze, lock, relink, arm or unlock) is tagged as before, until the next
    archive folds it.
 
