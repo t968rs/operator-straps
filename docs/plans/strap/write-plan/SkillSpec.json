@@ -1,7 +1,7 @@
 {
   "name": "write-plan",
   "mode": "edit",
-  "base": "9368d9ebcfef34c977ecdfee030bafafc0d8db75",
+  "base": "8ba820958304e03a915fb52ceceea02b526eee79",
   "judge": false,
   "plugin_dir": "plugins/harness",
   "parts": [
@@ -60,6 +60,10 @@
     {
       "kind": "reference",
       "path": "plugins/harness/skills/write-plan/README.md"
+    },
+    {
+      "kind": "reference",
+      "path": "plugins/harness/lib/harness_lib/plan_archive.py"
     }
   ],
   "behaviors": [
@@ -645,6 +649,114 @@
       ],
       "state": "green",
       "dropped_reason": null
+    },
+    {
+      "id": "B12",
+      "statement": "plan.py archive folds a plan's base, receipt and every ledger entry kind's tags into one archive/<stem>/r1 tag (r1-<m> on a later run), verifies reachability before tagging, deletes the folded local tags and prints push: and, with --remote, remote: lines",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The tag set, the archive commit and the printed lines are git state a pytest node reads",
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_archive.py::test_archive_folds_every_driver_tag_into_one",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_archive.py::test_archive_remote_line_skips_receipt_tags",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_archive.py::test_archive_again_folds_later_tags_into_r1_2",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_archive.py::test_archive_folds_the_commit_tags_of_every_entry_kind",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_archive.py::test_archive_refuses_when_an_object_is_unreachable",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B13",
+      "statement": "After an archive, no command re-tags an entry the archive folded or a base it reaches, check warns nothing for archived objects, and an entry written later is tagged and folds again",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "The tags reconcile creates and the lines check prints are driver output a pytest node reads",
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_archive_check.py::test_commands_after_archive_tag_nothing_and_warn_nothing",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_archive_check.py::test_a_rewritten_base_the_archive_reaches_is_quiet",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_archive_check.py::test_an_entry_written_after_the_archive_is_tagged_and_folds_again",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/scripts/test_plan_archive_check.py::test_a_tree_outside_the_archive_still_warns",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "dropped",
+      "dropped_reason": "PR 297 review I4 reversed its rule: check now prints off-history: for a base off HEAD's history even when an archive reaches it, so test_a_rewritten_base_the_archive_reaches_is_quiet no longer holds; B15 proves the new rule"
+    },
+    {
+      "id": "B14",
+      "statement": "SKILL.md and the write-plan and schemas READMEs state the archive step, its tag row, that the agent runs check after the developer commits a freeze, and the PIP template names an actor for each merge step",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "Phrases in SKILL.md, the READMEs and the PIP template are facts a pytest node reads",
+      "tests": [
+        {
+          "node": "tests/skills/test_write_plan_archive_contract.py::test_the_skill_has_an_archive_step",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_archive_contract.py::test_the_tag_table_names_the_archive_tag",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_archive_contract.py::test_the_agent_runs_check_after_the_freeze_commit",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_archive_contract.py::test_the_skill_readme_and_schemas_readme_name_the_archive",
+          "red": "AssertionError"
+        },
+        {
+          "node": "tests/skills/test_write_plan_archive_contract.py::test_the_pip_template_merge_steps_name_an_actor",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
+    },
+    {
+      "id": "B15",
+      "statement": "check prints off-history: for a plan base off HEAD's history even when an archive reaches it",
+      "kind": "mechanical",
+      "type": null,
+      "rationale": "A driver output line on a rewritten history; a pytest node over a throwaway repo proves it",
+      "tests": [
+        {
+          "node": "tests/scripts/test_plan_archive_check.py::test_a_rewritten_base_the_archive_reaches_still_cues_relink",
+          "red": "AssertionError"
+        }
+      ],
+      "scenarios": [],
+      "state": "green",
+      "dropped_reason": null
     }
   ],
   "draws": [
@@ -985,6 +1097,110 @@
       "recorded": true,
       "tree": "plan-red-9368d9e",
       "start": "6863d75547cf39adcfb6a7cd1dcf70e275cd6083"
+    },
+    {
+      "id": "R-13",
+      "behavior": "B9",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "0587b1932c042cf596c92c6ec409a64e4e2c2788b2616a0595191708a1a2ecec",
+      "reply": "I did not add strap_api.py to DRV-1's files in the plan JSON. Plan 1014 is frozen on the receipts scheme, so its JSON and page stay as frozen. A hand edit would break the freeze digest, and `record` refuses the plan until a refreeze. A one-string edit that skips `write` is the \"because it is one line\" mistake.\n\nWhat I changed in the checkout:\n- I added a DesignEvolution change, EX3, through `evolution_api.add` in docs/plans/1014/DesignEvolution.json.\n  - EX3 is discovered by the DRV-1 lane and lists DRV-1.\n  - It says DRV-1 also changes plugins/harness/lib/harness_lib/strap_api.py by one line.\n  - Its category is correctness, with outcome category execution-blocker.\n- The existing CX1 change already covers strap_api.py and strap-scenario-runner.md for DRV-1, and the earlier DRV-1 receipt cites it. I left CX1 untouched, because editing a change a receipt cites invalidates that receipt.\n- `PLAN check 1014` still passes after the addition.\n- Nothing else was written. The lane's work is not staged here, so I did not run `record`.\n\nWhat the developer runs. First stage the lane's work, for example with `P2 stage <lane> --include-undeclared`. Then run the command below from the project checkout. `--cite` binds the uncited `--also` flags before it, so each file sits before its own citation:\n\nsh \"<plugin>/scripts/hpy\" \"<plugin>/scripts/plan.py\" record 1014 DRV-1 --staged --also plugins/harness/agents/strap-scenario-runner.md --cite CX1 --also plugins/harness/lib/harness_lib/strap_api.py --cite EX3\n\n- The strap-scenario-runner.md `--also` carries over from the earlier receipt. Drop that `--also` and its `--cite CX1` if the staged index no longer changes that file.\n- If the lane's work is committed first, use `--sha <commit>` in place of `--staged`.\n- Recording needs the item's dependencies done, no unstaged or untracked change to its files, and its test nodes passing at the index snapshot.\n",
+      "reply_sha256": "93f054b615212c50eaf78503483dae2fe3d02424192299b468473595e3667b8a",
+      "diff": [
+        "docs/plans/1014/DesignEvolution.json"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged docs/plans/1014_strap_reopen_ActionPlan.json: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "path_present docs/plans/1014/DesignEvolution.json: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_matches --also\\s+\\S*strap_api\\.py[^\\n]*--cite: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-e533c01",
+      "start": "441534034c4e15f46200ae809439c8fcad484657"
+    },
+    {
+      "id": "R-14",
+      "behavior": "B11",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "0587b1932c042cf596c92c6ec409a64e4e2c2788b2616a0595191708a1a2ecec",
+      "reply": "Kept it short, but not by dropping the plan's own fields. A lane prompt has to carry the item's action, anchors, tests and commands, the copy-the-planned-test step, and the stop-on-deviation rule. Without them the lane would work from the title alone. I cut everything else.\n\nTwo things to know before you dispatch:\n- `PLAN lanes 1021` refuses: \"2 plans 1021\" are in docs/plans (strap_round_reopen and Plan_Tagging_Single_Aggregate_Tag_Folds_the_Rest). I did not renumber or touch either. I read DRV-1 straight from `1021_strap_round_reopen_ActionPlan.json` instead. Lane commands that resolve plan 1021 by id will hit the same refusal until one plan gets a new id.\n- The planned test file is not in this tree. docs/plans/1021 holds only DesignEvolution.json, so the prompt tells the lane to stop and report if the copy source is missing.\n\nDRV-1 depends on MOD-1, which is still PENDING. The prompt says so: the lane starts only once MOD-1 is staged or committed in its worktree.\n\nPROMPT-START\nLane drv-1, worktree C:/wt/p2-drv-1. Work only there. Plan 1021, item DRV-1: \"strap.py reopen: a new round on a frozen spec\". It depends on MOD-1 (Round model, SkillSpec.rounds), so MOD-1's code must already be in this worktree. If `Round` is missing from the models, stop and report.\n\nFirst step: copy docs/plans/1021/tests/tests/scripts/test_strap_reopen.py into C:/wt/p2-drv-1/tests/scripts/test_strap_reopen.py. If the source file is missing, stop and report.\n\nAction:\nAdd `cmd_reopen` and a `reopen` subparser (`--base REF`, help: ancestor of HEAD the new round starts from, default HEAD) to plugins/harness/scripts/strap.py, registered in `COMMANDS`. It loads the spec (not writable). It refuses an unfrozen spec with `<name> is not frozen; nothing to reopen` before any other check. It resolves the new base with `_edit_base(root, name, profile_of(spec).skill_md, args.base)`. Then it saves `rounds=[*rounds, Round(base=spec.base, frozen=spec.frozen, behaviors=<non-dropped ids>)]`, `frozen=None`, `mode=SpecMode.EDIT`, `base=<new base>`, and prints `reopen [done] | <name> | round <len(rounds)+1> | base <sha12> | was <old hash12>`.\n`_red_plan` skips mechanical behaviors in state `green` (frozen in an earlier round; their code exists at the new base).\n`cmd_freeze` takes `previous` from `spec.frozen`, else the last round's stamp, so the first freeze after a reopen prints `| was <hash12>`. `already frozen` still checks `spec.frozen` only.\nIn the module docstring, add the ``reopen <name> [--base REF]`` entry after ``freeze``, and make the frozen-spec sentence there name reopen as the way to add behaviors.\nKeep functions under 50 lines.\n\nFiles: plugins/harness/scripts/strap.py, tests/scripts/test_strap_reopen.py.\n\nAnchors (reread each before editing; paths relative to the worktree):\n- plugins/harness/scripts/strap.py:31-36 -> ``freeze <name> [--refreeze]``\n- plugins/harness/scripts/strap.py:260 -> def _edit_base(root: Path, name: str, skill_rel: str, ref: Optional[str]) -> str:\n- plugins/harness/scripts/strap.py:384-386 -> return spec.base or git_out(_root(), \"rev-parse\", \"HEAD\").strip()\n- plugins/harness/scripts/strap.py:402-403 -> items = [_red_item(b) for b in spec.behaviors if b.kind == BehaviorKind.MECHANICAL and b.state != BehaviorState.DROPPED and b.tests]\n- plugins/harness/scripts/strap.py:882-884 -> previous = spec.frozen if previous is not None and not args.refreeze:\n- plugins/harness/scripts/strap.py:894 -> was = f\" | was {previous.skill_hash[:12]}\" if previous is not None else \"\"\n- plugins/harness/scripts/strap.py:962-966 -> \"retest\": cmd_retest, \"freeze\": cmd_freeze, \"api\": cmd_api,\n- plugins/harness/lib/harness_lib/strap_api.py:110 -> if spec.frozen is not None and not frozen_ok:\n\nPlanned tests, all in tests/scripts/test_strap_reopen.py. Each must fail before your work with the exception shown, then pass:\n- test_driver_docstring_names_reopen (AssertionError)\n- test_reopen_refuses_an_unfrozen_spec (AssertionError)\n- test_reopen_moves_the_stamp_into_rounds (AssertionError)\n- test_reopen_refuses_a_base_that_names_no_commit (AssertionError)\n- test_red_after_reopen_runs_only_the_new_behavior (AssertionError)\n- test_freeze_after_reopen_gates_every_behavior (AssertionError)\n\nCommand to run at the end: `python -m pytest tests/scripts/test_strap_gate.py tests/scripts/test_strap_driver.py -q` (expect: all pass). Run the six nodes above by file, `python -m pytest tests/scripts/test_strap_reopen.py -q`.\n\nScope: touch only the two files listed. If you need a deviation (a file outside the list, or a test node other than a planned one), stop and report it. Do not widen your own scope. Do not commit.\nPROMPT-END\n",
+      "reply_sha256": "a0747ae2406e933246cd5a50687ff160b97f8bce9bbc268d4b81ea260310569a",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?is)PROMPT-START(?:(?!PROMPT-END).)*?(?:(?:deviat\\w*|outside\\b[^\\n]{0,40}\\bfiles?\\b|not\\s+(?:in|on|listed\\s+in)\\b[^\\n]{0,40}\\bfiles?\\b|\\bnode\\b[^\\n]{0,40}\\b(?:other|instead|different|replac\\w*|substitut\\w*)|(?:other|different|replac\\w*|substitut\\w*)\\b[^\\n]{0,40}\\b(?:test\\s+)?node\\b)(?:(?!PROMPT-END).){0,300}?\\bstop\\w*\\b[^\\n]{0,80}\\breport|\\bstop\\w*\\b[^\\n]{0,80}\\breport(?:(?!PROMPT-END).){0,300}?(?:deviat\\w*|outside\\b[^\\n]{0,40}\\bfiles?\\b|not\\s+(?:in|on|listed\\s+in)\\b[^\\n]{0,40}\\bfiles?\\b|\\bnode\\b[^\\n]{0,40}\\b(?:other|instead|different|replac\\w*|substitut\\w*)|(?:other|different|replac\\w*|substitut\\w*)\\b[^\\n]{0,40}\\b(?:test\\s+)?node\\b)): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-e533c01",
+      "start": "5c8dfa8b29f075f30daed31d3559a6c376d84971"
+    },
+    {
+      "id": "R-15",
+      "behavior": "B9",
+      "scenario": "SC-1",
+      "arm": "green",
+      "skill_hash": "7751e0f3c38c6a1e0fc3e25401ae603278a3e3f9b1a1c5da89b7a3e30419c802",
+      "reply": "I did not add strap_api.py to DRV-1's files in the plan JSON. I also did not edit the PIP page or the receipt.\n\nPlan 1014 is frozen on the receipts scheme. Its JSON and page stay as frozen, and a hand edit or a `write` would break the freeze digest. A file the lane touched outside the item's `files` is a deviation found during execution. It goes in the plan's DesignEvolution and is cited on the record.\n\nWhat I changed, in the checkout only:\n- I added change EX3 to `docs/plans/1014/DesignEvolution.json` through `evolution_api.add`. It covers DRV-1 and says that `reopen` also needed a one-line change in `plugins/harness/lib/harness_lib/strap_api.py`, which DRV-1 does not list.\n- That file is the only one I touched. `plan.py check 1014` still passes.\n- I left CX1 alone. It already lists DRV-1, `strap_api.py` and the runner agent file, but it describes the PR 262 review fixes. A receipt cites it by digest, so editing it would invalidate that receipt.\n\nNot done: `record` has not run, and the lane's work is not staged in this checkout. DRV-1 already has a `complete` receipt for commit 54cf0cc. The record below replaces it. Stage the lane's work first, for example with `P2 stage <lane> --include-undeclared`, so that `strap.py`, the planned test file and `strap_api.py` are in the index. The index must have no unstaged or untracked change to those files. Then run:\n\nsh \"<plugin>/scripts/hpy\" \"<plugin>/scripts/plan.py\" --repo \"<checkout>\" record 1014 DRV-1 --staged --also plugins/harness/lib/harness_lib/strap_api.py --cite EX3\n\nUse `--sha <commit>` in place of `--staged` if the work is committed. A new record keeps only the deviations named on its own command line. CX1's other extra file, `plugins/harness/agents/strap-scenario-runner.md`, is not named here. If this record has to keep it, add `--also plugins/harness/agents/strap-scenario-runner.md --cite CX1` before the EX3 pair.\n\nNote on the main repository: it shows `docs/plans/2021/receipts/TASK-2.json` as modified and `plan_lock.py` as staged. Both are new since my snapshot. Neither is a path this scenario touched, so I left both alone.\n",
+      "reply_sha256": "a14a0b99ad75332874681481706fc43476e85262ae8d650bbf39ea518fe9d59c",
+      "diff": [
+        "docs/plans/1014/DesignEvolution.json"
+      ],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "file_unchanged docs/plans/1014_strap_reopen_ActionPlan.json: observed True"
+        },
+        {
+          "index": 1,
+          "held": true,
+          "detail": "path_present docs/plans/1014/DesignEvolution.json: observed True"
+        },
+        {
+          "index": 2,
+          "held": true,
+          "detail": "reply_matches --also\\s+\\S*strap_api\\.py[^\\n]*--cite: observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-8ba8209",
+      "start": "0d7de6eddef050d59f5aa5189f5ec2765ffef87b"
+    },
+    {
+      "id": "R-16",
+      "behavior": "B11",
+      "scenario": "SC-5",
+      "arm": "green",
+      "skill_hash": "7751e0f3c38c6a1e0fc3e25401ae603278a3e3f9b1a1c5da89b7a3e30419c802",
+      "reply": "Lean is fine, but I kept the pieces the lane can't derive for itself: the item text, the anchors, the tests, the command, the test-file copy step and the stop-on-deviation rule. I dropped everything else. The prompt is below, and I dispatched nothing.\n\nThree things to know before you dispatch:\n- The planned test file for DRV-1 is not on disk. `docs/plans/1021/tests/tests/scripts/test_strap_reopen.py` does not exist in this tree or in `<project>`. The tracked `tests/scripts/test_strap_reopen.py` is plan 1014's DRV-1 test, not 1021's. The lane's first step would fail until the planned file is restored. I did not write or guess its content.\n- DRV-1 depends on MOD-1 (`Round` model, `SkillSpec.rounds`). The `lanes` output puts DRV-1 in wave 2 and MOD-1 in wave 1, so MOD-1 has to be staged in the target before this lane's worktree is cut.\n- `PLAN lanes 1021` needs `--target main` here, because this tree has a detached HEAD.\n\nPROMPT-START\nLane drv-1 of plan 1021 (strap_round_reopen). Worktree: C:/wt/p2-drv-1. Work and commit only there. Model: opus.\n\nTask: strap.py reopen: a new round on a frozen spec.\n\nStep 0. Copy the planned test file `<project>/docs/plans/1021/tests/tests/scripts/test_strap_reopen.py` to `tests/scripts/test_strap_reopen.py` in the worktree, overwriting the file already there. If the source file is missing, stop and report that. Do not write the tests yourself.\n\nAction: Add `cmd_reopen` and a `reopen` subparser (`--base REF`, help: ancestor of HEAD the new round starts from, default HEAD) to `plugins/harness/scripts/strap.py`, registered in `COMMANDS`. It loads the spec (not writable), refuses an unfrozen one with `<name> is not frozen; nothing to reopen` before any other check, and resolves the new base with `_edit_base(root, name, profile_of(spec).skill_md, args.base)`. Then it saves `rounds=[*rounds, Round(base=spec.base, frozen=spec.frozen, behaviors=<non-dropped ids>)]`, `frozen=None`, `mode=SpecMode.EDIT` and `base=<new base>`. It prints `reopen [done] | <name> | round <len(rounds)+1> | base <sha12> | was <old hash12>`.\n- `_red_plan` skips mechanical behaviors in state `green` (frozen in an earlier round; their code exists at the new base).\n- `cmd_freeze` takes `previous` from `spec.frozen`, else the last round's stamp, so the first freeze after a reopen prints `| was <hash12>`. `already frozen` still checks `spec.frozen` only.\n- Add the ``reopen <name> [--base REF]`` entry to the module docstring after ``freeze``. The frozen-spec sentence there names reopen as the way to add behaviors.\n- Keep functions under 50 lines.\n\nFiles (touch only these): plugins/harness/scripts/strap.py, tests/scripts/test_strap_reopen.py.\n\nAnchors (verify each against the code before you edit):\n- plugins/harness/scripts/strap.py:31-36 `` ``freeze <name> [--refreeze]`` ``\n- plugins/harness/scripts/strap.py:260 `def _edit_base(root: Path, name: str, skill_rel: str, ref: Optional[str]) -> str:`\n- plugins/harness/scripts/strap.py:384-386 `return spec.base or git_out(_root(), \"rev-parse\", \"HEAD\").strip()`\n- plugins/harness/scripts/strap.py:402-403 `items = [_red_item(b) for b in spec.behaviors if b.kind == BehaviorKind.MECHANICAL and b.state != BehaviorState.DROPPED and b.tests]`\n- plugins/harness/scripts/strap.py:882-884 `previous = spec.frozen if previous is not None and not args.refreeze:`\n- plugins/harness/scripts/strap.py:894 `was = f\" | was {previous.skill_hash[:12]}\" if previous is not None else \"\"`\n- plugins/harness/scripts/strap.py:962-966 `\"retest\": cmd_retest, \"freeze\": cmd_freeze, \"api\": cmd_api,`\n- plugins/harness/lib/harness_lib/strap_api.py:110 `if spec.frozen is not None and not frozen_ok:`\n\nTests that must pass, each red before the work with AssertionError:\n- tests/scripts/test_strap_reopen.py::test_driver_docstring_names_reopen\n- tests/scripts/test_strap_reopen.py::test_reopen_refuses_an_unfrozen_spec\n- tests/scripts/test_strap_reopen.py::test_reopen_moves_the_stamp_into_rounds\n- tests/scripts/test_strap_reopen.py::test_reopen_refuses_a_base_that_names_no_commit\n- tests/scripts/test_strap_reopen.py::test_red_after_reopen_runs_only_the_new_behavior\n- tests/scripts/test_strap_reopen.py::test_freeze_after_reopen_gates_every_behavior\n\nCommand to run once they pass (expect all pass, writes nothing): `python -m pytest tests/scripts/test_strap_gate.py tests/scripts/test_strap_driver.py -q`. Scope pytest to named files only, never a directory.\n\nDone: commit in the worktree, then report the sha.\n\nDeviation rule: if you need a file outside the two above, or a test node other than the six planned ones, stop and report it. Do not widen your own scope.\nPROMPT-END\n",
+      "reply_sha256": "1dc31f60962d3c844a2c6a6e4cb7e3b8d0fec3900ae92d8e05c2220ecc960dc9",
+      "diff": [],
+      "checks": [
+        {
+          "index": 0,
+          "held": true,
+          "detail": "reply_matches (?is)PROMPT-START(?:(?!PROMPT-END).)*?(?:(?:deviat\\w*|outside\\b[^\\n]{0,40}\\bfiles?\\b|not\\s+(?:in|on|listed\\s+in)\\b[^\\n]{0,40}\\bfiles?\\b|\\bnode\\b[^\\n]{0,40}\\b(?:other|instead|different|replac\\w*|substitut\\w*)|(?:other|different|replac\\w*|substitut\\w*)\\b[^\\n]{0,40}\\b(?:test\\s+)?node\\b)(?:(?!PROMPT-END).){0,300}?\\bstop\\w*\\b[^\\n]{0,80}\\breport|\\bstop\\w*\\b[^\\n]{0,80}\\breport(?:(?!PROMPT-END).){0,300}?(?:deviat\\w*|outside\\b[^\\n]{0,40}\\bfiles?\\b|not\\s+(?:in|on|listed\\s+in)\\b[^\\n]{0,40}\\bfiles?\\b|\\bnode\\b[^\\n]{0,40}\\b(?:other|instead|different|replac\\w*|substitut\\w*)|(?:other|different|replac\\w*|substitut\\w*)\\b[^\\n]{0,40}\\b(?:test\\s+)?node\\b)): observed True"
+        }
+      ],
+      "recorded": true,
+      "tree": "plan-red-8ba8209",
+      "start": "b8a3f4f34b2fe0cac8b278d25d588c14a87e6ca2"
     }
   ],
   "grades": [],
@@ -1027,13 +1243,58 @@
         "B8",
         "B9"
       ]
+    },
+    {
+      "base": "9368d9ebcfef34c977ecdfee030bafafc0d8db75",
+      "frozen": {
+        "skill_hash": "490d15f70289287cf41984fadbbb16a3e04bc745856d43231d93ac676743d32a",
+        "grader": "session",
+        "at": "2026-11-12T00:32:47+00:00",
+        "authored": "c498ac8232179c1c837de0cdc433f94213091f37ac10a5f5c3f450308899ee20"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9",
+        "B11"
+      ]
+    },
+    {
+      "base": "e533c01495f10abea00371da9ff6a20e75deaa2a",
+      "frozen": {
+        "skill_hash": "0587b1932c042cf596c92c6ec409a64e4e2c2788b2616a0595191708a1a2ecec",
+        "grader": "session",
+        "at": "2026-11-17T01:15:57+00:00",
+        "authored": "aeed9bf9e049f29e6b1715cfa129dc11edcd9b5c5123942ec557cfaf59be1090"
+      },
+      "behaviors": [
+        "B1",
+        "B2",
+        "B3",
+        "B4",
+        "B5",
+        "B6",
+        "B7",
+        "B8",
+        "B9",
+        "B11",
+        "B12",
+        "B13",
+        "B14"
+      ]
     }
   ],
   "frozen": {
-    "skill_hash": "490d15f70289287cf41984fadbbb16a3e04bc745856d43231d93ac676743d32a",
+    "skill_hash": "7751e0f3c38c6a1e0fc3e25401ae603278a3e3f9b1a1c5da89b7a3e30419c802",
     "grader": "session",
-    "at": "2026-11-12T00:32:47+00:00",
-    "authored": "c498ac8232179c1c837de0cdc433f94213091f37ac10a5f5c3f450308899ee20"
+    "at": "2026-11-17T07:40:11+00:00",
+    "authored": "8935ab0223a0d94700d92dd013e0dbbbd1406c0ff94c616fb12d21f91bfeb0eb"
   },
-  "driver_digest": "42a9955cbac36baf7356a43eb2b3bfa0cc147dc1e2aec7437fa4213a7f76c688"
+  "driver_digest": "d6b973230a16775f8d09bd21f3e8b4d7f66876d3da6c2a0b9510979a3c33c0a7"
 }
